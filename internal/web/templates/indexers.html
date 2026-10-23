@@ -1,98 +1,78 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>{{T "indexers.title"}}</h1>
-    <p class="muted">{{T "indexers.subtitle"}}</p>
+    <h1>{{T "idx.title"}}</h1>
+    <p class="muted">{{T "idx.subtitle"}}</p>
   </div>
   <div class="actions">
-    <a class="btn primary" href="/indexers/new">{{T "indexers.newNative"}}</a>
-    <a class="btn" href="/definitions">{{T "indexers.definitions"}}</a>
-    <a class="btn" href="/indexers/export">{{T "indexers.export"}}</a>
+    <a class="btn" href="/import">{{T "idx.import"}}</a>
+    <a class="btn primary" href="/indexers/new">{{T "idx.add"}}</a>
   </div>
 </section>
 
-{{template "native_body" .}}
-{{end}}
-
-{{define "native_body"}}
 {{if .Unavailable}}<p class="flash warn" role="status">{{T "indexers.unavailable"}}</p>{{end}}
 
 <section class="panel">
-  <div class="panel-head">
-    <h2>{{T "indexers.nativeTitle"}} <span class="chip">{{.Count}}</span></h2>
-    <span class="muted">{{T "indexers.vaultHint"}}</span>
-  </div>
-  <div class="actions">
-    <form method="post" action="/indexers/run-all" style="display:inline">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn" type="submit">{{T "indexers.runAll"}}</button>
+  <div class="indexer-toolbar">
+    <form class="indexer-search" method="get" action="/indexers" role="search">
+      <label class="sr-only" for="indexer-search">{{T "idx.searchPlaceholder"}}</label>
+      <input id="indexer-search" name="q" type="search" value="{{.Query}}" placeholder="{{T "idx.searchPlaceholder"}}" autocomplete="off">
+      {{if .State}}<input type="hidden" name="state" value="{{.State}}">{{end}}
+      <button class="btn" type="submit">{{T "idx.searchAction"}}</button>
     </form>
-    <form method="post" action="/indexers/test-all" style="display:inline">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn" type="submit">{{T "indexers.testAll"}}</button>
-    </form>
+    <nav class="filter-tabs" aria-label="{{T "idx.filtersLabel"}}">
+      <a class="tab{{if not .State}} active{{end}}" href="/indexers{{if .Query}}?q={{.Query}}{{end}}">{{T "idx.filterAll"}} <span class="chip">{{.Total}}</span></a>
+      <a class="tab{{if eq .State "problem"}} active{{end}}" href="/indexers?state=problem{{if .Query}}&amp;q={{.Query}}{{end}}">{{T "idx.filterProblems"}} <span class="chip">{{.Problems}}</span></a>
+      <a class="tab{{if eq .State "disabled"}} active{{end}}" href="/indexers?state=disabled{{if .Query}}&amp;q={{.Query}}{{end}}">{{T "idx.filterDisabled"}} <span class="chip">{{.Disabled}}</span></a>
+    </nav>
   </div>
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">{{T "common.name"}}</th>
-          <th scope="col">{{T "common.slug"}}</th>
-          <th scope="col">{{T "common.definition"}}</th>
-          <th scope="col">{{T "common.protocol"}}</th>
-          <th scope="col">{{T "common.status"}}</th>
-          <th scope="col">{{T "common.priority"}}</th>
-          <th scope="col">{{T "common.tags"}}</th>
-          <th scope="col">{{T "common.secrets"}}</th>
-          <th scope="col">{{T "common.lastError"}}</th>
-          <th scope="col">{{T "common.lastRun"}}</th>
-          <th scope="col" class="right">{{T "common.actions"}}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Rows}}
-        <tr>
-          <td><a href="/indexers/{{.Indexer.ID}}">{{.Indexer.Name}}</a></td>
-          <td><code>{{.Indexer.Slug}}</code></td>
-          <td><a href="/definitions/{{.Indexer.DefinitionID}}">{{.Definition}}</a><div class="sub"><code>{{.Indexer.DefinitionID}}</code></div></td>
-          <td>{{.Indexer.Protocol}}</td>
-          <td>
-            {{if not .Indexer.Enabled}}<span class="chip">{{T "indexers.inactive"}}</span>
-            {{else if .LastError}}<span class="chip danger">{{T "common.error"}}</span>
-            {{else if .LastRun}}<span class="chip ok">{{T "indexers.active"}}</span>
-            {{else}}<span class="chip warn">{{T "indexers.waiting"}}</span>{{end}}
-          </td>
-          <td>{{.Indexer.Priority}}</td>
-          <td>{{if .Indexer.Tags}}{{.Indexer.Tags}}{{else}}<span class="muted">—</span>{{end}}</td>
-          <td>{{if .HasSecrets}}<span class="chip ok">{{.SecretCount}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
-          <td>{{if .LastError}}<span class="text-danger" title="{{.LastError}}">{{truncate .LastError 80}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
-          <td>{{if .LastRun}}{{ago .LastRun.StartedAt}}<div class="sub"><span class="chip {{if eq .LastRun.Status "ok"}}ok{{else if eq .LastRun.Status "error"}}danger{{else}}warn{{end}}">{{statusLabel .LastRun.Status}}</span></div>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</td>
-          <td class="right nowrap">
-            <form method="post" action="/indexers/{{.Indexer.ID}}/run" style="display:inline">
-              <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small" type="submit">{{T "common.run"}}</button>
-            </form>
-            <form method="post" action="/indexers/{{.Indexer.ID}}/test" style="display:inline">
-              <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small" type="submit">{{T "common.test"}}</button>
-            </form>
-            <a class="btn small" href="/indexers/{{.Indexer.ID}}/edit">{{T "common.edit"}}</a>
-            <form method="post" action="/indexers/{{.Indexer.ID}}/delete" style="display:inline" data-confirm="{{T "indexers.deleteConfirm"}}">
-              <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small danger" type="submit">{{T "common.delete"}}</button>
-            </form>
-          </td>
-        </tr>
-        {{else}}
-        <tr><td colspan="11" class="empty">{{T "indexers.empty"}}</td></tr>
-        {{end}}
-      </tbody>
-    </table>
+
+  <form id="indexer-bulk" method="post" action="/indexers/bulk" class="bulk-form">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+  </form>
+  <div class="bulk-bar" data-bulk-actions hidden>
+    <label class="check"><input type="checkbox" data-select-all data-select-target='input[name="ids"]'> <span>{{T "idx.selectAll"}}</span></label>
+    <span class="muted"><span data-bulk-count>0</span> {{T "idx.selected"}}</span>
+    <span class="bulk-spacer"></span>
+    <button class="btn small" type="submit" form="indexer-bulk" name="action" value="disable">{{T "idx.bulkDisable"}}</button>
+    <button class="btn small" type="submit" form="indexer-bulk" name="action" value="enable">{{T "idx.bulkEnable"}}</button>
+    <button class="btn small danger" type="submit" form="indexer-bulk" name="action" value="delete" data-confirm="{{T "idx.bulkConfirm"}}">{{T "idx.bulkDelete"}}</button>
   </div>
+
+  {{if .Rows}}
+  <ul class="indexer-list">
+    {{range .Rows}}
+    <li class="indexer-row" data-state="{{.Status.State}}">
+      <label class="bulk-check"><input type="checkbox" name="ids" value="{{.Indexer.ID}}" form="indexer-bulk" data-bulk-check aria-label="{{T "idx.select" .Indexer.Name}}"></label>
+      {{template "status-dot" .Status}}
+      <div class="indexer-main">
+        <a class="indexer-name" href="/indexers/{{.Indexer.ID}}">{{.Indexer.Name}}</a>
+        <div class="badges">
+          {{range .Badges}}<span class="badge badge-{{.Kind}}">{{.Label}}</span>{{end}}
+          {{if .FiltersLabel}}<span class="badge soft">{{.FiltersLabel}}</span>{{end}}
+        </div>
+        {{if .Problem}}{{template "problem" .Problem}}{{end}}
+      </div>
+      <div class="indexer-updated">{{if .LastUpdate}}{{ago .LastUpdate}}{{else}}{{T "idx.neverUpdated"}}{{end}}</div>
+      <details class="row-menu">
+        <summary aria-label="{{T "idx.menu" .Indexer.Name}}">⋯</summary>
+        <div class="row-menu-list">
+          <form method="post" action="/indexers/{{.Indexer.ID}}/test"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit">{{T "idx.test"}}</button></form>
+          <form method="post" action="/indexers/{{.Indexer.ID}}/run"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit">{{T "idx.updateNow"}}</button></form>
+          <form method="post" action="/indexers/{{.Indexer.ID}}/toggle"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit">{{if .Indexer.Enabled}}{{T "idx.disable"}}{{else}}{{T "idx.enable"}}{{end}}</button></form>
+          <form method="post" action="/indexers/{{.Indexer.ID}}/duplicate"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit">{{T "idx.duplicate"}}</button></form>
+          <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="{{T "idx.deleteConfirm" .Indexer.Name}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item danger" type="submit">{{T "idx.delete"}}</button></form>
+        </div>
+      </details>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  {{template "empty" .Empty}}
+  {{end}}
 </section>
 
-<section class="panel">
-  <div class="panel-head"><h2>{{T "indexers.configTitle"}}</h2></div>
+{{template "advanced-open" (advanced (T "idx.configTools"))}}
   <p class="help">{{T "indexers.exportHelp"}}</p>
   <div class="actions">
     <a class="btn" href="/indexers/export">{{T "indexers.export"}}</a>
@@ -101,9 +81,9 @@
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <div class="field">
       <label for="indexers_json">{{T "indexers.importLabel"}}</label>
-      <textarea id="indexers_json" name="json" rows="6" spellcheck="false" placeholder="{ &quot;version&quot;: 1, &quot;indexers&quot;: [ … ] }"></textarea>
+      <textarea id="indexers_json" name="json" rows="5" spellcheck="false" placeholder="{ &quot;version&quot;: 1, &quot;indexers&quot;: [ … ] }"></textarea>
     </div>
     <button class="btn" type="submit">{{T "indexers.importAction"}}</button>
   </form>
-</section>
+{{template "advanced-close"}}
 {{end}}

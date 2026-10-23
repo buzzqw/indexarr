@@ -127,7 +127,7 @@ func TestUnifiedIndexersPage(t *testing.T) {
 		t.Fatalf("GET /indexers = %d: %s", native.Code, native.Body.String())
 	}
 	nativeBody := native.Body.String()
-	for _, want := range []string{"New native indexer", "vault", "/indexers/export"} {
+	for _, want := range []string{"Add indexer", "Import", "/indexers/export"} {
 		if !strings.Contains(nativeBody, want) {
 			t.Errorf("indexers page missing %q", want)
 		}

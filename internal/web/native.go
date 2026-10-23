@@ -15,8 +15,6 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/catalog"
 	"github.com/buzzqw/indexarr/internal/definition"
-	"github.com/buzzqw/indexarr/internal/engine"
-	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -343,75 +341,7 @@ func validationProblems(err error, fallback string) []string {
 	return []string{message}
 }
 
-// ------------------------------------------------------------------- indexers
-
-type indexerRow struct {
-	Indexer       store.Indexer
-	Definition    string
-	HasSecrets    bool
-	LastError     string
-	LastRun       *store.IndexerHistory
-	Tags          string
-	SecretCount   int
-	DefinitionRef string
-}
-
-type indexersPage struct {
-	base
-	Rows        []indexerRow
-	Unavailable bool
-	Count       int
-}
-
-func (s *Server) indexersPage(w http.ResponseWriter, r *http.Request) {
-	if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("tab")), "legacy") {
-		// The old legacy tab is a bookmark from the pre-WP16 UI.
-		http.Redirect(w, r, "/indexers", http.StatusFound)
-		return
-	}
-	data := indexersPage{
-		base: s.newBaseT(r, "indexers.title", "indexers"),
-	}
-	if s.svc != nil {
-		indexers, err := s.svc.Indexers(r.Context())
-		if err != nil {
-			s.renderError(w, r, http.StatusInternalServerError, err.Error())
-			return
-		}
-		defs, _ := s.store.ListDefinitions(r.Context())
-		names := make(map[string]string, len(defs))
-		for _, def := range defs {
-			names[def.ID] = definitionName(def)
-		}
-
-		for _, in := range indexers {
-			row := indexerRow{
-				Indexer:    in,
-				Definition: names[in.DefinitionID],
-				Tags:       in.Tags,
-			}
-			if row.Definition == "" {
-				row.Definition = in.DefinitionID
-			}
-			keys, err := s.svc.SecretKeys(r.Context(), in.ID)
-			if err == nil {
-				row.SecretCount = len(keys)
-				row.HasSecrets = len(keys) > 0
-			}
-			if state, err := s.store.GetIndexerState(r.Context(), in.ID); err == nil {
-				row.LastError = state.LastError
-			}
-			if history, err := s.store.ListIndexerHistory(r.Context(), in.ID, 1); err == nil && len(history) > 0 {
-				row.LastRun = &history[0]
-			}
-			data.Rows = append(data.Rows, row)
-		}
-		data.Count = len(data.Rows)
-	} else {
-		data.Unavailable = true
-	}
-	s.render(w, r, "indexers", data, http.StatusOK)
-}
+// ------------------------------------------------------------------- helpers
 
 func definitionName(def store.Definition) string {
 	parsed, err := definition.Parse([]byte(def.Body))
@@ -424,145 +354,6 @@ func definitionName(def store.Definition) string {
 type indexerConfigEntry struct {
 	Key   string
 	Value string
-}
-
-type indexerPage struct {
-	base
-	Indexer          store.Indexer
-	Definition       store.Definition
-	DefinitionName   string
-	Public           []indexerConfigEntry
-	SecretKeys       []string
-	State            store.IndexerState
-	HasState         bool
-	LastRun          *store.IndexerHistory
-	Test             *engine.TestResult
-	Run              *indexer.RunStats
-	RunItems         []engine.Item
-	ApplicationCount int
-}
-
-func (s *Server) indexerPage(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r)
-	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, s.translate(r, "indexer.error.invalidID"))
-		return
-	}
-	data, err := s.buildIndexerPage(r, id)
-	if err != nil {
-		s.renderError(w, r, statusForIndexerError(err), s.indexerErrorMessage(r, err))
-		return
-	}
-	s.render(w, r, "indexer", data, http.StatusOK)
-}
-
-func (s *Server) buildIndexerPage(r *http.Request, id int64) (indexerPage, error) {
-	in, err := s.store.GetIndexer(r.Context(), id)
-	if err != nil {
-		return indexerPage{}, err
-	}
-	data := indexerPage{
-		base:       s.newBase(r, in.Name, "indexers"),
-		Indexer:    in,
-		Definition: store.Definition{ID: in.DefinitionID},
-		Public:     publicConfig(in.ConfigJSON),
-	}
-	if applications, err := s.store.ListApplications(r.Context()); err == nil {
-		data.ApplicationCount = len(applications)
-	}
-	if def, err := s.store.GetDefinition(r.Context(), in.DefinitionID); err == nil {
-		data.Definition = def
-		data.DefinitionName = definitionName(def)
-	} else {
-		data.DefinitionName = in.DefinitionID
-	}
-	secrets, err := s.store.ListSecrets(r.Context(), in.ID)
-	if err == nil {
-		for _, secret := range secrets {
-			data.SecretKeys = append(data.SecretKeys, secret.Key)
-		}
-	}
-	if state, err := s.store.GetIndexerState(r.Context(), in.ID); err == nil {
-		data.State = state
-		data.HasState = true
-	}
-	if history, err := s.store.ListIndexerHistory(r.Context(), in.ID, 1); err == nil && len(history) > 0 {
-		data.LastRun = &history[0]
-	}
-	return data, nil
-}
-
-func (s *Server) indexerTest(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r)
-	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.invalidID"))
-		return
-	}
-	if _, err := s.store.GetIndexer(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.notFound"))
-		return
-	}
-	if s.native == nil {
-		data, buildErr := s.buildIndexerPage(r, id)
-		if buildErr != nil {
-			redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, buildErr))
-			return
-		}
-		data.Error = s.translate(r, "indexer.error.nativeEngineTest")
-		s.render(w, r, "indexer", data, http.StatusOK)
-		return
-	}
-	result, testErr := s.native.Test(r.Context(), id)
-	data, buildErr := s.buildIndexerPage(r, id)
-	if buildErr != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, buildErr))
-		return
-	}
-	data.Test = &result
-	if testErr != nil {
-		data.Error = s.translate(r, "indexer.testFailedDetail", testErr.Error())
-	}
-	s.render(w, r, "indexer", data, http.StatusOK)
-}
-
-func (s *Server) indexerRun(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r)
-	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.invalidID"))
-		return
-	}
-	if _, err := s.store.GetIndexer(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.notFound"))
-		return
-	}
-	if s.native == nil {
-		data, buildErr := s.buildIndexerPage(r, id)
-		if buildErr != nil {
-			redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, buildErr))
-			return
-		}
-		data.Error = s.translate(r, "indexer.error.nativeEngineRun")
-		s.render(w, r, "indexer", data, http.StatusOK)
-		return
-	}
-	stats, runErr := s.native.Run(r.Context(), id)
-	data, buildErr := s.buildIndexerPage(r, id)
-	if buildErr != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, buildErr))
-		return
-	}
-	if stats != nil {
-		data.Run = stats
-		if len(stats.Items) > 20 {
-			data.RunItems = stats.Items[:20]
-		} else {
-			data.RunItems = stats.Items
-		}
-	}
-	if runErr != nil {
-		data.Error = s.translate(r, "indexer.runFailed", runErr.Error())
-	}
-	s.render(w, r, "indexer", data, http.StatusOK)
 }
 
 func statusForIndexerError(err error) int {
@@ -626,15 +417,6 @@ func configText(value any) string {
 
 // ---------------------------------------------------------------- form pages
 
-type definitionOption struct {
-	ID        string
-	Name      string
-	Protocol  string
-	Family    string
-	Installed bool
-	Derived   bool
-}
-
 type indexerSettingOption struct {
 	Value    string
 	Label    string
@@ -655,166 +437,6 @@ type indexerSettingField struct {
 	HasSecret   bool
 }
 
-type indexerFormPage struct {
-	base
-	IsNew           bool
-	Indexer         store.Indexer
-	DefinitionID    string
-	DefinitionName  string
-	Definitions     []definitionOption
-	Derived         bool
-	Name            string
-	Slug            string
-	Protocol        string
-	Priority        int
-	Tags            string
-	Enabled         bool
-	URL             string
-	Categories      string
-	Query           string
-	UserAgent       string
-	DefaultCategory string
-	AllowPrivate    bool
-	Fields          []indexerSettingField
-	Problems        []string
-}
-
-func (s *Server) indexerNew(w http.ResponseWriter, r *http.Request) {
-	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
-		return
-	}
-	defID := strings.TrimSpace(r.URL.Query().Get("definition"))
-	data, err := s.buildIndexerForm(r, defID, nil, nil, nil)
-	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-	s.render(w, r, "indexer_form", data, http.StatusOK)
-}
-
-func (s *Server) indexerEdit(w http.ResponseWriter, r *http.Request) {
-	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
-		return
-	}
-	id, err := pathID(r)
-	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, s.translate(r, "indexer.error.invalidID"))
-		return
-	}
-	current, err := s.store.GetIndexer(r.Context(), id)
-	if err != nil {
-		s.renderError(w, r, statusForIndexerError(err), s.indexerErrorMessage(r, err))
-		return
-	}
-	data, err := s.buildIndexerForm(r, current.DefinitionID, &current, nil, nil)
-	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-	s.render(w, r, "indexer_form", data, http.StatusOK)
-}
-
-func (s *Server) indexerCreate(w http.ResponseWriter, r *http.Request) {
-	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
-		return
-	}
-	defID := strings.TrimSpace(r.FormValue("definition_id"))
-	parsed, _, err := s.loadDefinitionForForm(r, defID)
-	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, s.translate(r, "indexerForm.invalidDefinition", err.Error()))
-		return
-	}
-	in, err := indexerInputFromForm(r, parsed)
-	if err != nil {
-		s.renderIndexerFormError(w, r, defID, nil, nil, []string{err.Error()})
-		return
-	}
-	if err := s.ensureStoredDefinition(r, defID); err != nil {
-		s.renderIndexerFormError(w, r, defID, nil, &in, []string{err.Error()})
-		return
-	}
-	created, err := s.svc.Create(r.Context(), in)
-	if err != nil {
-		s.renderIndexerFormError(w, r, defID, nil, &in, []string{s.indexerFriendlyError(r, err)})
-		return
-	}
-	redirect(w, r, "/indexers/"+strconv.FormatInt(created.ID, 10), s.translate(r, "indexer.created"), "")
-}
-
-func (s *Server) indexerUpdate(w http.ResponseWriter, r *http.Request) {
-	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
-		return
-	}
-	id, err := pathID(r)
-	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.invalidID"))
-		return
-	}
-	current, err := s.store.GetIndexer(r.Context(), id)
-	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, err))
-		return
-	}
-	defID := strings.TrimSpace(r.FormValue("definition_id"))
-	if defID == "" {
-		defID = current.DefinitionID
-	}
-	parsed, _, err := s.loadDefinitionForForm(r, defID)
-	if err != nil {
-		s.renderIndexerFormError(w, r, defID, &current, nil, []string{s.translate(r, "indexerForm.definitionInvalid", err.Error())})
-		return
-	}
-	in, err := indexerInputFromForm(r, parsed)
-	if err != nil {
-		s.renderIndexerFormError(w, r, defID, &current, nil, []string{err.Error()})
-		return
-	}
-	if err := s.addExtraSecretValues(r, current.ID, parsed, &in); err != nil {
-		s.renderIndexerFormError(w, r, defID, &current, &in, []string{err.Error()})
-		return
-	}
-	if err := s.ensureStoredDefinition(r, defID); err != nil {
-		s.renderIndexerFormError(w, r, defID, &current, &in, []string{err.Error()})
-		return
-	}
-	if _, err := s.svc.Update(r.Context(), id, in); err != nil {
-		s.renderIndexerFormError(w, r, defID, &current, &in, []string{s.indexerFriendlyError(r, err)})
-		return
-	}
-	redirect(w, r, "/indexers/"+strconv.FormatInt(id, 10), s.translate(r, "indexer.saved"), "")
-}
-
-func (s *Server) indexerDelete(w http.ResponseWriter, r *http.Request) {
-	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
-		return
-	}
-	id, err := pathID(r)
-	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.invalidID"))
-		return
-	}
-	if err := s.svc.Delete(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers?tab=native", "", s.indexerFriendlyError(r, err))
-		return
-	}
-	redirect(w, r, "/indexers?tab=native", s.translate(r, "indexer.deleted"), "")
-}
-
-func (s *Server) renderIndexerFormError(w http.ResponseWriter, r *http.Request, defID string, current *store.Indexer, in *indexersvc.Input, problems []string) {
-	data, err := s.buildIndexerForm(r, defID, current, in, problems)
-	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, err.Error())
-		return
-	}
-	data.Error = s.translate(r, "indexerForm.checkFields")
-	s.render(w, r, "indexer_form", data, http.StatusBadRequest)
-}
-
 func (s *Server) indexerFriendlyError(r *http.Request, err error) string {
 	switch {
 	case errors.Is(err, indexersvc.ErrSlugTaken):
@@ -828,167 +450,6 @@ func (s *Server) indexerFriendlyError(r *http.Request, err error) string {
 	default:
 		return err.Error()
 	}
-}
-
-// buildIndexerForm prepares the form from a definition, an existing indexer
-// and an optional submitted input. Secret values are never copied into the
-// page: only the names and whether a value is configured.
-func (s *Server) buildIndexerForm(r *http.Request, defID string, current *store.Indexer, in *indexersvc.Input, problems []string) (indexerFormPage, error) {
-	options, err := s.definitionOptions(r)
-	if err != nil {
-		return indexerFormPage{}, err
-	}
-	data := indexerFormPage{
-		base:        s.newBaseT(r, "indexerForm.new", "indexers"),
-		IsNew:       current == nil,
-		Definitions: options,
-		Priority:    25,
-		Enabled:     true,
-		Problems:    problems,
-	}
-	if current != nil {
-		data.Title = s.translate(r, "indexerForm.edit", current.Name)
-		data.Indexer = *current
-		data.Name = current.Name
-		data.Slug = current.Slug
-		data.Protocol = current.Protocol
-		data.Priority = current.Priority
-		data.Tags = current.Tags
-		data.Enabled = current.Enabled
-	}
-	if in != nil {
-		data.Name = in.Name
-		data.Slug = in.Slug
-		data.Protocol = in.Protocol
-		if in.Priority != nil {
-			data.Priority = *in.Priority
-		}
-		data.Tags = strings.Join(in.Tags, ", ")
-		if in.Enabled != nil {
-			data.Enabled = *in.Enabled
-		}
-	}
-	if defID == "" {
-		if current != nil {
-			defID = current.DefinitionID
-		} else if len(options) > 0 {
-			defID = options[0].ID
-		}
-	}
-	data.DefinitionID = defID
-	if defID == "" {
-		data.Problems = append(data.Problems, s.translate(r, "indexerForm.noDefinitions"))
-		return data, nil
-	}
-
-	parsed, _, err := s.loadDefinitionForForm(r, defID)
-	if err != nil {
-		return indexerFormPage{}, err
-	}
-	data.DefinitionName = parsed.Meta.Name
-	data.Derived = parsed.IsDerived()
-	if data.Protocol == "" {
-		data.Protocol = parsed.Meta.Protocol
-	}
-
-	config := map[string]string{}
-	secretKeys := map[string]bool{}
-	if current != nil {
-		config = publicConfigMap(current.ConfigJSON)
-		secrets, err := s.store.ListSecrets(r.Context(), current.ID)
-		if err != nil {
-			return indexerFormPage{}, err
-		}
-		for _, secret := range secrets {
-			secretKeys[secret.Key] = true
-		}
-	}
-	value := func(key string) string {
-		if in != nil {
-			if submitted, ok := in.Settings[key]; ok {
-				return submitted
-			}
-		}
-		return config[key]
-	}
-
-	data.URL = value("url")
-	data.Categories = value("categories")
-	data.Query = value("query")
-	data.UserAgent = value("user_agent")
-	data.DefaultCategory = value("default_category")
-	data.AllowPrivate = truthy(value("allow_private"))
-
-	seenSecret := map[string]bool{}
-	for _, setting := range parsed.Settings {
-		name := setting.Name
-		if fixedSettingNames[name] {
-			continue
-		}
-		label := strings.TrimSpace(setting.Label)
-		if label == "" {
-			label = name
-		}
-		if indexersvc.IsSecretKey(name) {
-			seenSecret[name] = true
-			data.Fields = append(data.Fields, indexerSettingField{
-				Name:      name,
-				Label:     label,
-				Help:      setting.Help,
-				Type:      "password",
-				Required:  setting.Required,
-				Secret:    true,
-				HasSecret: secretKeys[name],
-			})
-			continue
-		}
-		fieldType := settingFieldType(setting)
-		raw := value(name)
-		if current == nil && in == nil && raw == "" {
-			raw = setting.Default
-		}
-		field := indexerSettingField{
-			Name:     name,
-			Label:    label,
-			Help:     setting.Help,
-			Type:     fieldType,
-			Value:    raw,
-			Required: setting.Required,
-		}
-		if fieldType == "checkbox" {
-			field.Checked = truthy(raw)
-		}
-		if fieldType == "select" {
-			for _, option := range setting.Options {
-				field.Options = append(field.Options, indexerSettingOption{
-					Value:    option,
-					Label:    option,
-					Selected: option == raw,
-				})
-			}
-		}
-		data.Fields = append(data.Fields, field)
-	}
-
-	// A secret present in the vault but missing from the definition is still
-	// shown by name, so it can be replaced or removed.
-	extra := make([]string, 0)
-	for key := range secretKeys {
-		if !seenSecret[key] {
-			extra = append(extra, key)
-		}
-	}
-	sort.Strings(extra)
-	for _, key := range extra {
-		data.Fields = append(data.Fields, indexerSettingField{
-			Name:      key,
-			Label:     key,
-			Type:      "password",
-			Secret:    true,
-			HasSecret: true,
-		})
-	}
-	return data, nil
 }
 
 func settingFieldType(setting definition.Setting) string {
@@ -1031,45 +492,6 @@ func publicConfigMap(raw string) map[string]string {
 		out[key] = configText(value)
 	}
 	return out
-}
-
-func (s *Server) definitionOptions(r *http.Request) ([]definitionOption, error) {
-	defs, err := s.store.ListDefinitions(r.Context())
-	if err != nil {
-		return nil, err
-	}
-	options := make([]definitionOption, 0, len(defs))
-	installed := make(map[string]bool, len(defs))
-	for _, def := range defs {
-		installed[def.ID] = true
-		option := definitionOption{ID: def.ID, Name: definitionName(def), Installed: true}
-		if parsed, err := definition.Parse([]byte(def.Body)); err == nil {
-			option.Protocol = parsed.Meta.Protocol
-			option.Family = parsed.Connector
-			option.Derived = parsed.IsDerived()
-			if option.Family == "" {
-				option.Family = def.Family
-			}
-		}
-		options = append(options, option)
-	}
-	entries, err := catalog.Builtins()
-	if err != nil {
-		return options, nil
-	}
-	for _, entry := range entries {
-		if installed[entry.ID] {
-			continue
-		}
-		options = append(options, definitionOption{
-			ID:       entry.ID,
-			Name:     entry.Definition.Meta.Name,
-			Protocol: entry.Definition.Meta.Protocol,
-			Family:   entry.Definition.Connector,
-			Derived:  entry.Definition.IsDerived(),
-		})
-	}
-	return options, nil
 }
 
 // loadDefinitionForForm reads a stored definition or a built-in catalog entry.
@@ -1131,9 +553,19 @@ func indexerInputFromForm(r *http.Request, parsed *definition.Definition) (index
 		priority = value
 	}
 	enabled := r.FormValue("enabled") != ""
+	categories := strings.TrimSpace(r.FormValue("categories"))
+	if values := r.Form["categories"]; len(values) > 0 {
+		joined := make([]string, 0, len(values))
+		for _, value := range values {
+			if value = strings.TrimSpace(value); value != "" {
+				joined = append(joined, value)
+			}
+		}
+		categories = strings.Join(joined, ",")
+	}
 	settings := map[string]string{
 		"url":              strings.TrimSpace(r.FormValue("url")),
-		"categories":       strings.TrimSpace(r.FormValue("categories")),
+		"categories":       categories,
 		"query":            strings.TrimSpace(r.FormValue("query")),
 		"user_agent":       strings.TrimSpace(r.FormValue("user_agent")),
 		"default_category": strings.TrimSpace(r.FormValue("default_category")),

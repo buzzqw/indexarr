@@ -101,7 +101,7 @@ check /sw.js "indexarr-static"
 check /definitions "Definitions"
 check /definitions/new "New definition"
 check /indexers "Indexers"
-check /indexers/new "New native indexer"
+check /indexers/new "Add indexer"
 check /applications "Applications"
 check /import "Import"
 

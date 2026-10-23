@@ -471,6 +471,20 @@ tutte le 7 lingue. La definizione TorrentGalaxy estrae dimensione e
 seeders/leechers dalla fixture WP7; la fixture non ha categorie, quindi la
 definizione non ne inventa (resta il fallback generico 8000 "Other").
 
+**Stato fase 2 (23/10): fatta** (`HASH`). `/indexers` è un elenco unico per
+sito, con badge Pubblico/Privato/Via Jackett/Via Prowlarr/Feed, pallino di
+stato, problema scritto sotto la riga, menu "⋯" e azioni di massa solo dopo la
+selezione. `/indexers/new` parte dalla ricerca del sito o da un indirizzo
+incollato (una definizione verificata, Torznab/Newznab, feed o endpoint
+Jackett/Prowlarr); il form mostra solo Nome, Categorie localizzate e i campi
+obbligatori, tutto il resto è in "Avanzate", e "Aggiungi e prova" salva e
+esegue il test per fasi. `/indexers/{id}` è la pagina di lavoro del sito:
+stato e prossimo aggiornamento, statistiche, filtri/impostazioni, ultime
+release e "Avanzate e diagnostica" chiuso. I componenti di §5 stanno in
+`templates/components.html` con le classi in `app.css`; le etichette standard
+delle impostazioni usano `setting.<name>.label` in tutte le 7 lingue, con la
+`label` della definizione come fallback.
+
 ---
 
 ## 8. Come si verifica

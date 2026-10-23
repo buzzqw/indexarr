@@ -59,11 +59,12 @@ var pageNames = []string{
 }
 
 var templateFuncMap = template.FuncMap{
-	"bytes":    humanBytes,
-	"date":     humanDate,
-	"dateOnly": humanDateOnly,
-	"ago":      humanAgo,
-	"catName":  categories.Name,
+	"bytes":      humanBytes,
+	"date":       humanDate,
+	"dateOnly":   humanDateOnly,
+	"ago":        humanAgo,
+	"catName":    categories.Name,
+	"catNameInt": func(id int) string { return categories.Name(strconv.Itoa(id)) },
 	"num": func(value int64) string {
 		if value < 0 {
 			return "?"
@@ -151,6 +152,20 @@ func init() {
 		funcs["stateLabel"] = func(state string) string {
 			return stateLabel(lang, state)
 		}
+		funcs["phaseLabel"] = func(name string) string {
+			return phaseLabel(lang, name)
+		}
+		funcs["phaseMessage"] = func(message string) string {
+			switch strings.ToLower(strings.TrimSpace(message)) {
+			case "not required":
+				return i18n.T(lang, "idx.phase.notRequired")
+			case "skipped":
+				return i18n.T(lang, "idx.phase.skipped")
+			default:
+				return message
+			}
+		}
+		funcs["advanced"] = advancedSection
 		funcs["statusLabel"] = func(status string) string {
 			return statusLabel(lang, status)
 		}
@@ -160,13 +175,16 @@ func init() {
 		funcs["ago"] = func(value time.Time) string {
 			return humanAgoLang(lang, value)
 		}
+		funcs["until"] = func(value time.Time) string {
+			return humanUntilLang(lang, value)
+		}
 
 		set := &templateSet{
 			pages:    map[string]*template.Template{},
 			partials: map[string]*template.Template{},
 		}
 		for _, name := range pageNames {
-			files := []string{"templates/layout.html", "templates/" + name + ".html"}
+			files := []string{"templates/layout.html", "templates/components.html", "templates/" + name + ".html"}
 			switch name {
 			case "releases":
 				files = append(files, "templates/releases_results.html")
@@ -247,6 +265,17 @@ func stateLabel(lang i18n.Language, state string) string {
 	default:
 		return state
 	}
+}
+
+// phaseLabel names one test phase in the page language. Unknown future phases
+// keep their technical name instead of disappearing.
+func phaseLabel(lang i18n.Language, name string) string {
+	key := "idx.phase." + strings.ToLower(strings.TrimSpace(name))
+	label := i18n.T(lang, key)
+	if label == key || strings.TrimSpace(label) == "" {
+		return name
+	}
+	return label
 }
 
 func statusLabel(lang i18n.Language, status string) string {
@@ -411,21 +440,24 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /definitions/new", s.definitionNew)
 	ui.HandleFunc("POST /definitions", s.definitionCreate)
 	ui.HandleFunc("GET /definitions/{id}", s.definitionPage)
-	ui.HandleFunc("GET /indexers", s.indexersPage)
-	ui.HandleFunc("GET /indexers/new", s.indexerNew)
-	ui.HandleFunc("POST /indexers", s.indexerCreate)
+	ui.HandleFunc("GET /indexers", s.indexersUnifiedPage)
+	ui.HandleFunc("GET /indexers/new", s.indexerUnifiedNew)
+	ui.HandleFunc("POST /indexers", s.indexerUnifiedCreate)
 	ui.HandleFunc("POST /indexers/test-all", s.indexersTestAll)
 	ui.HandleFunc("POST /indexers/run-all", s.indexersRunAll)
+	ui.HandleFunc("POST /indexers/bulk", s.indexersBulk)
 	ui.HandleFunc("GET /indexers/export", s.indexersExport)
 	ui.HandleFunc("POST /indexers/import", s.indexersImport)
 	ui.HandleFunc("GET /indexers/discover", s.indexersDiscover)
 	ui.HandleFunc("POST /indexers/quick", s.indexerQuickAdd)
-	ui.HandleFunc("GET /indexers/{id}", s.indexerPage)
-	ui.HandleFunc("GET /indexers/{id}/edit", s.indexerEdit)
-	ui.HandleFunc("POST /indexers/{id}", s.indexerUpdate)
-	ui.HandleFunc("POST /indexers/{id}/delete", s.indexerDelete)
-	ui.HandleFunc("POST /indexers/{id}/test", s.indexerTest)
-	ui.HandleFunc("POST /indexers/{id}/run", s.indexerRun)
+	ui.HandleFunc("GET /indexers/{id}", s.indexerUnifiedDetail)
+	ui.HandleFunc("GET /indexers/{id}/edit", s.indexerUnifiedEdit)
+	ui.HandleFunc("POST /indexers/{id}", s.indexerUnifiedUpdate)
+	ui.HandleFunc("POST /indexers/{id}/delete", s.indexerUnifiedDelete)
+	ui.HandleFunc("POST /indexers/{id}/toggle", s.indexerToggle)
+	ui.HandleFunc("POST /indexers/{id}/duplicate", s.indexerDuplicate)
+	ui.HandleFunc("POST /indexers/{id}/test", s.indexerUnifiedTest)
+	ui.HandleFunc("POST /indexers/{id}/run", s.indexerUnifiedRun)
 	ui.HandleFunc("GET /applications", s.applicationsPage)
 	ui.HandleFunc("GET /applications/new", s.applicationNew)
 	ui.HandleFunc("POST /applications", s.applicationCreate)
@@ -790,6 +822,27 @@ func humanDateOnly(value time.Time) string {
 
 func humanAgo(value time.Time) string {
 	return humanAgoLang(i18n.EN, value)
+}
+
+// humanUntilLang renders a future instant ("in 56 min") for the next update.
+func humanUntilLang(lang i18n.Language, value time.Time) string {
+	if value.IsZero() {
+		return i18n.T(lang, "common.never")
+	}
+	remaining := time.Until(value)
+	if remaining <= 0 {
+		return i18n.T(lang, "time.justNow")
+	}
+	switch {
+	case remaining < time.Minute:
+		return i18n.T(lang, "time.justNow")
+	case remaining < time.Hour:
+		return i18n.T(lang, "time.inMinutes", int(remaining.Minutes()))
+	case remaining < 24*time.Hour:
+		return i18n.T(lang, "time.inHours", int(remaining.Hours()))
+	default:
+		return i18n.T(lang, "time.inDays", int(remaining.Hours()/24))
+	}
 }
 
 // humanAgoLang renders the relative time used by every list. The labels come

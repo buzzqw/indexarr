@@ -181,7 +181,7 @@ func TestNativePagesRender(t *testing.T) {
 		}
 	}
 	form := get(t, env.handler, "/indexers/new?definition=test-native").Body.String()
-	for _, want := range []string{"New native indexer", "API key", "Flavore", "Allow private addresses"} {
+	for _, want := range []string{"Add Test Native", "API key", "Flavore", "The site is on my local network"} {
 		if !strings.Contains(form, want) {
 			t.Errorf("indexer form missing %q", want)
 		}
@@ -228,7 +228,7 @@ func TestNativeIndexerLifecycle(t *testing.T) {
 	}
 
 	list := get(t, env.handler, "/indexers").Body.String()
-	if !strings.Contains(list, "Native One") || !strings.Contains(list, "native-one") {
+	if !strings.Contains(list, "Native One") {
 		t.Errorf("indexers page does not list the indexer:\n%s", list)
 	}
 
@@ -246,8 +246,8 @@ func TestNativeIndexerLifecycle(t *testing.T) {
 	if strings.Contains(detail, "topsecretvalue") {
 		t.Fatal("the indexer page leaked a secret value")
 	}
-	if !strings.Contains(detail, "apikey") || !strings.Contains(detail, "Public configuration") {
-		t.Errorf("detail does not show the public configuration")
+	if !strings.Contains(detail, "apikey") || !strings.Contains(detail, "Configuration") {
+		t.Errorf("detail does not show the configuration")
 	}
 
 	// Update keeps the secret when the password field is empty.
@@ -309,7 +309,7 @@ func TestNativeTestAndRun(t *testing.T) {
 		t.Fatalf("test status = %d: %s", testRecorder.Code, testRecorder.Body.String())
 	}
 	testBody := testRecorder.Body.String()
-	for _, want := range []string{"Test result", "test passed", "reach", "caps", "search", "Duration"} {
+	for _, want := range []string{"Test result", "test passed", "Site reachable", "caps", "Search", "Duration"} {
 		if !strings.Contains(testBody, want) {
 			t.Errorf("test result missing %q:\n%s", want, testBody)
 		}
@@ -323,7 +323,7 @@ func TestNativeTestAndRun(t *testing.T) {
 		t.Fatalf("run status = %d: %s", runRecorder.Code, runRecorder.Body.String())
 	}
 	runBody := runRecorder.Body.String()
-	for _, want := range []string{"Run result", "Seen", "New", "Example.Show.S02E03.1080p", "5040"} {
+	for _, want := range []string{"Last update result", "Seen", "New", "Example.Show.S02E03.1080p", "TV/HD"} {
 		if !strings.Contains(runBody, want) {
 			t.Errorf("run result missing %q:\n%s", want, runBody)
 		}

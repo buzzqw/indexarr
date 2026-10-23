@@ -147,7 +147,7 @@ func TestItalianCatalogOnOwnedPages(t *testing.T) {
 		path string
 		want []string
 	}{
-		{"/indexers?lang=it", []string{"Indexer", "Nuovo indexer nativo"}},
+		{"/indexers?lang=it", []string{"Indexer", "Aggiungi indexer"}},
 		{"/definitions?lang=it", []string{"Definizioni", "Catalogo built-in", "Azione"}},
 		{"/applications?lang=it", []string{"Applicazioni", "Livelli di sincronizzazione", "Sincronizza tutte"}},
 		{"/import?lang=it", []string{"Importa", "Anteprima, nessuna modifica", "Genera piano da Prowlarr"}},

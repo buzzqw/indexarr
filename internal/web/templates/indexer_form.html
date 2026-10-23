@@ -1,122 +1,57 @@
 {{define "content"}}
+{{if .Choosing}}
+{{template "site-picker" .Picker}}
+{{else}}
 <section class="page-head">
   <div>
-    <h1>{{if .IsNew}}{{T "indexerForm.new"}}{{else}}{{T "indexerForm.edit" .Indexer.Name}}{{end}}</h1>
-    <p class="muted">{{if .IsNew}}{{T "indexerForm.newSubtitle"}}{{else}}<code>{{.Indexer.Slug}}</code>{{end}}</p>
+    <h1>{{.Title}}</h1>
+    <p class="muted">{{if .IsNew}}{{T "idx.formSubtitle"}}{{else}}{{.DefinitionName}}{{end}}</p>
   </div>
-  <a class="btn" href="{{if .IsNew}}/indexers?tab=native{{else}}/indexers/{{.Indexer.ID}}{{end}}">{{T "indexerForm.cancel"}}</a>
+  <a class="btn" href="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">{{T "idx.cancel"}}</a>
 </section>
 
 {{if .Problems}}
 <section class="panel">
   <div class="panel-head"><h2>{{T "indexerForm.problems"}}</h2></div>
-  <div class="prose">
-    <ul>{{range .Problems}}<li><code>{{.}}</code></li>{{end}}</ul>
-  </div>
+  <ul class="problems">{{range .Problems}}<li>{{.}}</li>{{end}}</ul>
 </section>
 {{end}}
 
-{{if .Derived}}
-<p class="flash warn" role="alert">{{T "indexerForm.derivedWarning"}}</p>
-{{end}}
+{{if .Note}}<p class="flash warn" role="alert">{{.Note}}</p>{{end}}
+{{if .Derived}}<p class="flash warn" role="alert">{{T "indexerForm.derivedWarning"}}</p>{{end}}
+{{if .StateWarning}}<p class="flash warn" role="alert">{{.StateWarning}}</p>{{end}}
 
-<form class="panel form" method="post" action="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">
+<form class="panel form compact-form" method="post" action="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <input type="hidden" name="definition_id" value="{{.DefinitionID}}">
 
   <div class="form-grid">
     <div class="field grow">
-      <label for="definition_id">{{T "indexerForm.definition"}}</label>
-      <select id="definition_id" name="definition_id" required{{if .IsNew}} data-definition-select{{end}}>
-        {{range .Definitions}}<option value="{{.ID}}"{{if eq .ID $.DefinitionID}} selected{{end}}>{{.Name}} · {{.ID}}{{if not .Installed}} {{T "indexerForm.catalog"}}{{end}}</option>{{end}}
-      </select>
-      <p class="help">{{T "indexerForm.definitionHelp"}}</p>
-      {{if .DefinitionName}}<p class="help">{{T "indexerForm.generated" .DefinitionName}}</p>{{end}}
-    </div>
-    <div class="field">
-      <label for="protocol">{{T "indexerForm.protocol"}}</label>
-      <select id="protocol" name="protocol">
-        <option value="torrent"{{if eq .Protocol "torrent"}} selected{{end}}>torrent</option>
-        <option value="usenet"{{if eq .Protocol "usenet"}} selected{{end}}>usenet</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="form-grid">
-    <div class="field grow">
-      <label for="name">{{T "indexerForm.name"}}</label>
+      <label for="name">{{T "idx.name"}}</label>
       <input id="name" name="name" type="text" required maxlength="100" value="{{.Name}}" placeholder="{{T "indexerForm.namePlaceholder"}}">
     </div>
-    <div class="field">
-      <label for="slug">{{T "indexerForm.slug"}}</label>
-      <input id="slug" name="slug" type="text" value="{{.Slug}}" placeholder="{{T "indexerForm.slugPlaceholder"}}">
-      <p class="help">{{T "indexerForm.slugHelp"}}</p>
-    </div>
   </div>
 
-  <div class="form-grid">
-    <div class="field">
-      <label for="priority">{{T "indexerForm.priority"}}</label>
-      <input id="priority" name="priority" type="number" value="{{.Priority}}">
-      <p class="help">{{T "indexerForm.priorityHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="tags">{{T "indexerForm.tags"}}</label>
-      <input id="tags" name="tags" type="text" value="{{.Tags}}" placeholder="{{T "indexerForm.tagsPlaceholder"}}">
-      <p class="help">{{T "indexerForm.tagsHelp"}}</p>
-    </div>
-    <div class="field checkbox">
-      <input id="enabled" name="enabled" type="checkbox"{{if .Enabled}} checked{{end}}>
-      <label for="enabled">{{T "indexerForm.enabled"}}</label>
-      <p class="help">{{T "indexerForm.enabledHelp"}}</p>
-    </div>
+  {{if .ShowURL}}
+  <div class="field">
+    <label for="url">{{.URLLabel}}</label>
+    <input id="url" name="url" type="url" required value="{{.URLValue}}" placeholder="{{T "indexerForm.urlPlaceholder"}}">
   </div>
+  {{else if eq (len .URLChoices) 1}}
+  <input type="hidden" name="url" value="{{.URLValue}}">
+  {{end}}
 
-  <div class="form-grid">
-    <div class="field grow">
-      <label for="url">{{T "indexerForm.url"}}</label>
-      <input id="url" name="url" type="url" value="{{.URL}}" placeholder="{{T "indexerForm.urlPlaceholder"}}">
-      <p class="help">{{T "indexerForm.urlHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="categories">{{T "indexerForm.categories"}}</label>
-      <input id="categories" name="categories" type="text" value="{{.Categories}}" placeholder="5000,2000">
-      <p class="help">{{T "indexerForm.categoriesHelp"}}</p>
-    </div>
-  </div>
+  {{if .Categories}}{{template "category-picker" .}}{{end}}
 
-  <div class="form-grid">
-    <div class="field grow">
-      <label for="query">{{T "indexerForm.query"}}</label>
-      <input id="query" name="query" type="text" value="{{.Query}}" placeholder="{{T "indexerForm.queryPlaceholder"}}">
-      <p class="help">{{T "indexerForm.queryHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="default_category">{{T "indexerForm.defaultCategory"}}</label>
-      <input id="default_category" name="default_category" type="text" value="{{.DefaultCategory}}" placeholder="{{T "indexerForm.defaultCategoryPlaceholder"}}">
-      <p class="help">{{T "indexerForm.defaultCategoryHelp"}}</p>
-    </div>
-  </div>
-
-  <div class="form-grid">
-    <div class="field grow">
-      <label for="user_agent">{{T "indexerForm.userAgent"}}</label>
-      <input id="user_agent" name="user_agent" type="text" value="{{.UserAgent}}" placeholder="{{T "indexerForm.userAgentPlaceholder"}}">
-    </div>
-    <div class="field checkbox">
-      <input id="allow_private" name="allow_private" type="checkbox"{{if .AllowPrivate}} checked{{end}}>
-      <label for="allow_private">{{T "indexerForm.allowPrivate"}}</label>
-      <p class="help">{{T "indexerForm.allowPrivateHelp"}}</p>
-    </div>
-  </div>
-
-  {{range .Fields}}
+  {{range .RequiredFields}}
   <div class="field{{if eq .Type "checkbox"}} checkbox{{end}}">
     <label for="setting_{{.Name}}">{{.Label}}{{if .Required}} *{{end}}</label>
     {{if eq .Type "password"}}
-    <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}">
-    {{if .HasSecret}}
-    <label class="muted" style="font-size: 0.85rem;"><input type="checkbox" name="clear_{{.Name}}"> {{T "indexerForm.removeSecret"}}</label>
-    {{end}}
+    <div class="secret-field" data-secret-change-field>
+      <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}"{{if .Required}} required{{end}}>
+      {{if .HasSecret}}<button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>{{end}}
+    </div>
+    {{if .HasSecret}}<label class="check muted"><input type="checkbox" name="clear_{{.Name}}"> <span>{{T "indexerForm.removeSecret"}}</span></label>{{end}}
     {{else if eq .Type "checkbox"}}
     <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="checkbox"{{if .Checked}} checked{{end}}>
     {{else if eq .Type "select"}}
@@ -130,21 +65,104 @@
   </div>
   {{end}}
 
+  {{template "advanced-open" (advanced (T "component.advanced"))}}
+    <div class="form-grid">
+      <div class="field">
+        <label for="protocol">{{T "idx.protocol"}}</label>
+        <select id="protocol" name="protocol">
+          <option value="torrent"{{if eq .Protocol "torrent"}} selected{{end}}>torrent</option>
+          <option value="usenet"{{if eq .Protocol "usenet"}} selected{{end}}>usenet</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="slug">{{T "idx.slug"}}</label>
+        <input id="slug" name="slug" type="text" value="{{.Slug}}" placeholder="{{T "indexerForm.slugPlaceholder"}}">
+      </div>
+      <div class="field">
+        <label for="priority">{{T "idx.priority"}}</label>
+        <input id="priority" name="priority" type="number" value="{{.Priority}}">
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field grow">
+        <label for="tags">{{T "idx.tags"}}</label>
+        <input id="tags" name="tags" type="text" value="{{.Tags}}" placeholder="{{T "indexerForm.tagsPlaceholder"}}">
+      </div>
+      <div class="field grow">
+        <label for="user_agent">{{T "idx.userAgent"}}</label>
+        <input id="user_agent" name="user_agent" type="text" value="{{.UserAgent}}" placeholder="{{T "indexerForm.userAgentPlaceholder"}}">
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field grow">
+        <label for="query">{{T "idx.query"}}</label>
+        <input id="query" name="query" type="text" value="{{.Query}}" placeholder="{{T "indexerForm.queryPlaceholder"}}">
+      </div>
+      <div class="field">
+        <label for="default_category">{{T "idx.defaultCategory"}}</label>
+        <input id="default_category" name="default_category" type="text" value="{{.DefaultCategory}}" placeholder="{{T "indexerForm.defaultCategoryPlaceholder"}}">
+      </div>
+    </div>
+
+    {{if gt (len .URLChoices) 1}}
+    <div class="field">
+      <label for="url">{{T "idx.siteAddress"}}</label>
+      <select id="url" name="url">
+        {{range .URLChoices}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+    {{end}}
+
+    {{range .AdvancedFields}}
+    <div class="field{{if eq .Type "checkbox"}} checkbox{{end}}">
+      <label for="setting_{{.Name}}">{{.Label}}</label>
+      {{if eq .Type "password"}}
+      <div class="secret-field" data-secret-change-field>
+        <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}">
+        {{if .HasSecret}}<button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>{{end}}
+      </div>
+      {{if .HasSecret}}<label class="check muted"><input type="checkbox" name="clear_{{.Name}}"> <span>{{T "indexerForm.removeSecret"}}</span></label>{{end}}
+      {{else if eq .Type "checkbox"}}
+      <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="checkbox"{{if .Checked}} checked{{end}}>
+      {{else if eq .Type "select"}}
+      <select id="setting_{{.Name}}" name="setting_{{.Name}}">
+        {{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+      {{else}}
+      <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="text" value="{{.Value}}">
+      {{end}}
+      {{if .Help}}<p class="help">{{.Help}}</p>{{end}}
+    </div>
+    {{end}}
+
+    <div class="form-grid">
+      <div class="field checkbox">
+        <input id="allow_private" name="allow_private" type="checkbox"{{if .AllowPrivate}} checked{{end}}>
+        <label for="allow_private">{{T "idx.allowPrivate"}}</label>
+        <p class="help">{{T "idx.allowPrivateHelp"}}</p>
+      </div>
+      <div class="field checkbox">
+        <input id="enabled" name="enabled" type="checkbox"{{if .Enabled}} checked{{end}}>
+        <label for="enabled">{{T "indexerForm.enabled"}}</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>{{T "setting.proxy.label"}}</label>
+      <p class="muted">{{T "idx.noProxy"}}</p>
+    </div>
+  {{template "advanced-close"}}
+
   <div class="actions">
-    <button class="btn primary" type="submit">{{if .IsNew}}{{T "indexerForm.create"}}{{else}}{{T "indexerForm.save"}}{{end}}</button>
-    <a class="btn" href="{{if .IsNew}}/indexers?tab=native{{else}}/indexers/{{.Indexer.ID}}{{end}}">{{T "indexerForm.cancelAction"}}</a>
+    {{if .IsNew}}
+    <button class="btn primary" type="submit" name="test" value="1">{{T "idx.addAndTest"}}</button>
+    <button class="btn" type="submit" name="save" value="1">{{T "idx.addWithoutTest"}}</button>
+    {{else}}
+    <button class="btn primary" type="submit">{{T "indexerForm.save"}}</button>
+    {{end}}
   </div>
 </form>
-
-{{if not .IsNew}}
-<section class="panel danger-zone">
-  <div class="panel-head"><h2>{{T "indexerForm.dangerZone"}}</h2></div>
-  <div class="prose">
-    <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="{{T "indexerForm.deleteConfirm"}}">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn danger" type="submit">{{T "indexerForm.delete"}}</button>
-    </form>
-  </div>
-</section>
 {{end}}
 {{end}}

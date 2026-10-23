@@ -92,12 +92,12 @@ attive; resta in lista finché esistono utenti.
 
 | Voce | Verifica | Stato (23/10) |
 |---|---|---|
-| Aggiunta da catalogo con form generato dai `settings` della definizione | Test UI su definizioni di ciascun tipo di login | fatto; usabilità da rifare (WP14) |
+| Aggiunta da catalogo con form generato dai `settings` della definizione | Test UI su definizioni di ciascun tipo di login | fatto; usabilità rifatta (UI fase 2) |
 | Test indexer (login, ricerca, download) con esito strutturato | Esito per fase, non solo "ok/errore" | parziale |
 | Proxy per indexer: HTTP, SOCKS4/5, FlareSolverr | Test con proxy simulati | parziale: FlareSolverr nativo da fare (WP11) |
 | Limiti per indexer: query/giorno, grab/giorno | Le \*arr ricevono l'errore Torznab corretto al superamento | fatto |
 | Priorità, tag, abilitazione, redirect del download | Test | parziale |
-| Storico query e grab, statistiche per indexer | Visibili in UI e API | parziale |
+| Storico query e grab, statistiche per indexer | Visibili in UI e API | parziale: statistiche nel dettaglio (UI fase 2) |
 | Health: indexer falliti, disabilitati temporaneamente, motivo | Stato visibile e notificabile | da fare (WP9) |
 | Ricerca manuale dalla UI e invio ai client di download: qBittorrent e Transmission (esistenti), più Deluge e rTorrent; SABnzbd e NZBGet per Usenet | Test end-to-end con client simulato | parziale: client fatti, UI con un solo client (WP14) |
 | Notifiche (health, grab, aggiornamenti) | Test sui canali supportati | parziale: lo scheduler nativo notifica nuove release, fallimenti e auto-disable; health e grab in WP13 |

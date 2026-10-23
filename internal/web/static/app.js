@@ -249,9 +249,33 @@ if ("serviceWorker" in navigator) {
     const checked = event.target.checked;
     const selector = event.target.getAttribute("data-select-target") || 'input[name="ids"]';
     const group = event.target.closest("form") || document;
-    group.querySelectorAll(selector).forEach((box) => {
+    let boxes = group.querySelectorAll(selector);
+    if (!boxes.length) {
+      boxes = document.querySelectorAll(selector);
+    }
+    boxes.forEach((box) => {
       box.checked = checked;
     });
+  });
+
+  // Bulk actions appear only after a selection (UI-GUIDE §4.2). The list works
+  // without this enhancement: every row still has its own "⋯" menu.
+  const syncBulkActions = () => {
+    const boxes = Array.from(document.querySelectorAll("[data-bulk-check]"));
+    const selected = boxes.filter((box) => box.checked).length;
+    const bar = document.querySelector("[data-bulk-actions]");
+    if (bar) {
+      bar.hidden = selected === 0;
+    }
+    document.querySelectorAll("[data-bulk-count]").forEach((node) => {
+      node.textContent = String(selected);
+    });
+  };
+  syncBulkActions();
+  document.addEventListener("change", (event) => {
+    if (event.target.matches("[data-bulk-check], [data-select-all]")) {
+      syncBulkActions();
+    }
   });
 
   // One definition chooser on /indexers/new: changing it reloads the form with

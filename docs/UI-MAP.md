@@ -46,10 +46,13 @@ Regole di navigazione:
 | `/releases/results` | Frammento HTML dei risultati | Non è una pagina completa: niente `<nav>` |
 | `/releases/{id}` | Dettaglio release | Link generati dalle liste |
 | `/releases/{id}/torrent` | Download `.torrent` dalla UI | Non nel route matrix |
-| `/indexers` | Elenco indexer | Non è la pagina “aggiungi” |
-| `/indexers/new` | Nuovo indexer | Unica voce “aggiungi indexer” |
-| `/indexers/{id}` | Dettaglio indexer | Test e run nell'azione |
-| `/indexers/{id}/edit` | Modifica indexer | — |
+| `/indexers` | Elenco unico per sito | Badge, stato, menu "⋯", azioni di massa dopo la selezione |
+| `/indexers/new` | Ricerca sito o indirizzo incollato | Form compatto: Nome, Categorie, soli campi obbligatori |
+| `/indexers/{id}` | Pagina di lavoro del sito | Stato, statistiche, release, "Avanzate e diagnostica" |
+| `/indexers/{id}/edit` | Modifica indexer | Stesso form compatto dell'aggiunta |
+| `/indexers/{id}/toggle` | Attiva o disattiva | POST |
+| `/indexers/{id}/duplicate` | Duplica un indexer | POST |
+| `/indexers/bulk` | Azioni di massa | POST: enable, disable, delete |
 | `/indexers/export` | Export JSON della configurazione | Solo valori pubblici, mai segreti |
 | `/indexers/import` | Import JSON della configurazione | Crea indexer nativi |
 | `/indexers/discover` | Scoperta feed su una pagina | Aggiunge un indexer RSS |

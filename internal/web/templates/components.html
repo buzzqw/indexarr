@@ -1,0 +1,71 @@
+{{define "status-dot"}}<span class="status-dot status-{{.State}}" role="img" aria-label="{{.Label}}"><span class="dot" aria-hidden="true"></span><span class="sr-only">{{.Label}}</span></span>{{end}}
+
+{{define "problem"}}<p class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span>{{.Text}}</span>{{if .ActionLabel}} <a class="problem-action" href="{{.ActionURL}}">{{.ActionLabel}}</a>{{end}}</p>{{end}}
+
+{{define "advanced-open"}}<details class="advanced"{{if .Open}} open{{end}}><summary>{{if .Title}}{{.Title}}{{else}}{{T "component.advanced"}}{{end}}</summary><div class="advanced-body">{{end}}
+
+{{define "advanced-close"}}</div></details>{{end}}
+
+{{define "empty"}}<div class="empty-state"><p class="empty-title">{{.Title}}</p>{{if .Text}}<p class="muted">{{.Text}}</p>{{end}}{{if .ActionLabel}}<a class="btn primary" href="{{.ActionURL}}">{{.ActionLabel}}</a>{{end}}</div>{{end}}
+
+{{define "next-step"}}<div class="next-step" role="status"><p>{{.Text}}</p>{{if .ActionLabel}}<a class="btn primary" href="{{.ActionURL}}">{{.ActionLabel}}</a>{{end}}</div>{{end}}
+
+{{define "category-picker"}}<fieldset class="category-picker"><legend>{{T "idx.categories"}}</legend><div class="category-options">{{range .Categories}}<label class="check"><input type="checkbox" name="categories" value="{{.ID}}"{{if .Checked}} checked{{end}}><span>{{.Label}}</span></label>{{end}}</div><p class="help">{{.Help}}</p></fieldset>{{end}}
+
+{{define "site-picker"}}<section class="panel site-picker">
+  <div class="panel-head"><h2>{{.Title}}</h2></div>
+  <form class="site-search" method="get" action="{{.Action}}" role="search">
+    <label class="sr-only" for="site-search">{{.SiteSearch}}</label>
+    <input id="site-search" name="q" type="text" value="{{.Query}}" placeholder="{{.SiteSearch}}" autocomplete="off">
+    <button class="btn primary" type="submit">{{T "idx.searchAction"}}</button>
+  </form>
+  {{if .Message}}<p class="flash warn" role="alert">{{.Message}}</p>{{end}}
+  {{if .Sites}}
+  <h3 class="site-group">{{.BrowseLabel}}</h3>
+  <ul class="site-list">
+    {{range .Sites}}
+    <li class="site-row">
+      <a class="site-link" href="/indexers/new?definition={{.ID}}">
+        <span class="site-name">{{.Name}}</span>
+        <span class="site-meta">
+          <span class="badge">{{if .Public}}{{T "idx.badgePublic"}}{{else}}{{T "idx.badgePrivate"}}{{end}}</span>
+          {{range .Categories}}<span class="badge soft">{{.}}</span>{{end}}
+          <span class="state state-{{.State}}">{{.StateLabel}}</span>
+        </span>
+      </a>
+    </li>
+    {{end}}
+  </ul>
+  {{end}}
+  {{if .Types}}
+  <h3 class="site-group">{{T "idx.siteTypes"}}</h3>
+  <ul class="site-list">
+    {{range .Types}}
+    <li class="site-row">
+      <a class="site-link" href="/indexers/new?definition={{.ID}}">
+        <span class="site-name">{{.Name}}</span>
+        <span class="site-meta">
+          <span class="badge">{{if .Public}}{{T "idx.badgePublic"}}{{else}}{{T "idx.badgePrivate"}}{{end}}</span>
+          <span class="state state-{{.State}}">{{.StateLabel}}</span>
+        </span>
+      </a>
+    </li>
+    {{end}}
+  </ul>
+  {{end}}
+  {{if .NotFound}}{{template "empty" .Empty}}{{end}}
+  <div class="site-fallback">
+    <p class="muted">{{T "idx.notFound"}}</p>
+    <div class="actions">
+      <a class="btn" href="{{.BridgeURL}}">{{.BridgeLabel}}</a>
+      <a class="btn" href="{{.FeedURL}}">{{.FeedLabel}}</a>
+    </div>
+  </div>
+</section>{{end}}
+
+{{define "confirm"}}<form method="post" action="{{.Action}}" data-confirm="{{.Message}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="btn {{.Class}}" type="submit">{{.Label}}</button></form>{{end}}
+
+{{define "secret-field"}}<div class="secret-field" data-secret-field data-secret-url="{{.URL}}">
+  <input id="{{.ID}}" name="{{if .Name}}{{.Name}}{{else}}{{.ID}}{{end}}" type="password" value="" {{if .Required}}required{{end}} autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}">
+  {{if .HasSecret}}<button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>{{end}}
+</div>{{end}}

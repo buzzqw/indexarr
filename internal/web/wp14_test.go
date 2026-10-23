@@ -51,8 +51,8 @@ func TestDerivedDefinitionWarning(t *testing.T) {
 	seedDefinition(t, env.store, "derived-draft", "newznab", derivedDefinitionBody)
 
 	form := get(t, env.handler, "/indexers/new?definition=derived-draft").Body.String()
-	if !strings.Contains(form, `value="derived-draft" selected`) {
-		t.Error("the derived definition is not selectable")
+	if !strings.Contains(form, `name="definition_id" value="derived-draft"`) {
+		t.Error("the derived definition is not selected")
 	}
 	if !strings.Contains(form, "Derived draft: rewrite it") {
 		t.Error("the create form does not warn about a derived draft")
@@ -181,7 +181,7 @@ func TestIndexerDetailNextStep(t *testing.T) {
 	}
 	body := get(t, env.handler, "/indexers/"+strconv.FormatInt(created.ID, 10)).Body.String()
 	for _, want := range []string{
-		"Next step", "Connect application", "Manage applications",
+		"Next step", "Connect an app",
 		`href="/applications/new"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -203,6 +203,7 @@ func TestOwnedTemplatesUseCatalog(t *testing.T) {
 		"layout", "dashboard", "indexers", "indexer", "indexer_form",
 		"definitions", "definition", "definition_form", "applications",
 		"application_form", "import", "activity", "runs", "logs", "error",
+		"components",
 	}
 	allowed := map[string]bool{
 		"indexarr": true,

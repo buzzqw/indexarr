@@ -1,67 +1,51 @@
 {{define "content"}}
 <section class="page-head">
   <div>
+    <p class="crumb"><a href="/indexers">← {{T "idx.title"}}</a></p>
     <h1>{{.Indexer.Name}}</h1>
-    <p class="muted"><code>{{.Indexer.Slug}}</code> · <a href="/definitions/{{.Indexer.DefinitionID}}">{{.DefinitionName}}</a></p>
+    <div class="detail-status">
+      {{template "status-dot" .Status}}
+      <span>{{.Status.Label}}</span>
+      {{range .Badges}}<span class="badge badge-{{.Kind}}">{{.Label}}</span>{{end}}
+    </div>
+    {{if .Problem}}{{template "problem" .Problem}}{{end}}
   </div>
   <div class="actions">
-    <a class="btn" href="/indexers/{{.Indexer.ID}}/edit">{{T "indexer.edit"}}</a>
-    <a class="btn" href="/indexers?tab=native">{{T "indexer.back"}}</a>
-  </div>
-</section>
-
-<section class="panel">
-  <div class="panel-head"><h2>{{T "indexer.state"}}</h2></div>
-  <dl class="detail">
-    <dt>{{T "common.definition"}}</dt><dd><a href="/definitions/{{.Indexer.DefinitionID}}"><code>{{.Indexer.DefinitionID}}</code></a></dd>
-    <dt>{{T "common.protocol"}}</dt><dd>{{.Indexer.Protocol}}</dd>
-    <dt>{{T "indexer.enabled"}}</dt><dd>{{if .Indexer.Enabled}}<span class="chip ok">{{T "common.yes"}}</span>{{else}}<span class="chip">{{T "common.no"}}</span>{{end}}</dd>
-    <dt>{{T "common.priority"}}</dt><dd>{{.Indexer.Priority}}</dd>
-    <dt>{{T "common.tags"}}</dt><dd>{{if .Indexer.Tags}}{{.Indexer.Tags}}{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>{{T "common.secrets"}}</dt><dd>{{if .SecretKeys}}<span class="chip ok">{{T "indexer.configured" (len .SecretKeys)}}</span>{{else}}<span class="muted">{{T "indexer.none"}}</span>{{end}}</dd>
-    <dt>{{T "indexer.circuit"}}</dt><dd>{{if .HasState}}{{if .State.Circuit}}{{.State.Circuit}}{{else}}{{T "indexer.circuitClosed"}}{{end}}{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>{{T "common.lastError"}}</dt><dd>{{if .State.LastError}}<code>{{.State.LastError}}</code>{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>{{T "common.lastRun"}}</dt>
-    <dd>{{if .LastRun}}{{date .LastRun.StartedAt}} <span class="muted">({{ago .LastRun.StartedAt}})</span> · <span class="chip {{if eq .LastRun.Status "ok"}}ok{{else if eq .LastRun.Status "error"}}danger{{else}}warn{{end}}">{{statusLabel .LastRun.Status}}</span>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</dd>
-  </dl>
-  <div class="actions" style="padding: 0 1.1rem 1rem;">
     <form method="post" action="/indexers/{{.Indexer.ID}}/test">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn" type="submit">{{T "indexer.testRun"}}</button>
+      <button class="btn primary" type="submit">{{T "idx.test"}}</button>
     </form>
     <form method="post" action="/indexers/{{.Indexer.ID}}/run">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn primary" type="submit">{{T "indexer.runNow"}}</button>
+      <button class="btn" type="submit">{{T "idx.updateNow"}}</button>
     </form>
-  </div>
-</section>
-
-<section class="panel">
-  <div class="panel-head"><h2>{{T "indexer.nextStep"}}</h2></div>
-  <div class="prose">
-    <p>{{if .ApplicationCount}}{{T "indexer.nextStepConnected" .ApplicationCount}}{{else}}{{T "indexer.nextStepConnect"}}{{end}}</p>
-    <div class="actions">
-      <a class="btn primary" href="/applications/new">{{T "indexer.connectApp"}}</a>
-      <a class="btn" href="/applications">{{T "indexer.manageApps"}}</a>
-    </div>
+    <details class="row-menu">
+      <summary aria-label="{{T "idx.menu" .Indexer.Name}}">⋯</summary>
+      <div class="row-menu-list">
+        <a class="menu-item" href="/indexers/{{.Indexer.ID}}/edit">{{T "common.edit"}}</a>
+        <form method="post" action="/indexers/{{.Indexer.ID}}/toggle"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="menu-item" type="submit">{{if .Indexer.Enabled}}{{T "idx.disable"}}{{else}}{{T "idx.enable"}}{{end}}</button></form>
+        <form method="post" action="/indexers/{{.Indexer.ID}}/duplicate"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="menu-item" type="submit">{{T "idx.duplicate"}}</button></form>
+        <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="{{T "idx.deleteConfirm" .Indexer.Name}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="menu-item danger" type="submit">{{T "idx.delete"}}</button></form>
+      </div>
+    </details>
   </div>
 </section>
 
 {{if .Test}}
 <section class="panel">
-  <div class="panel-head"><h2>{{T "indexer.testResult"}}</h2></div>
-  <p style="padding: 0 1.1rem;">
+  <div class="panel-head">
+    <h2>{{T "idx.detail.testPhases"}}</h2>
     {{if .Test.OK}}<span class="chip ok">{{T "indexer.testPassed"}}</span>{{else}}<span class="chip danger">{{T "indexer.testFailed"}}</span>{{end}}
-  </p>
+  </div>
   <div class="table-scroll">
     <table>
       <thead><tr><th scope="col">{{T "indexer.phase"}}</th><th scope="col">{{T "dashboard.outcome"}}</th><th scope="col">{{T "indexer.message"}}</th><th scope="col">{{T "indexer.duration"}}</th></tr></thead>
       <tbody>
         {{range .Test.Phases}}
         <tr>
-          <td>{{.Name}}</td>
+          <td>{{phaseLabel .Name}}</td>
           <td>{{if .OK}}<span class="chip ok">{{T "common.ok"}}</span>{{else}}<span class="chip danger">{{T "common.error"}}</span>{{end}}</td>
-          <td>{{if .Message}}{{.Message}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td>{{if .Message}}{{phaseMessage .Message}}{{else}}<span class="muted">—</span>{{end}}</td>
           <td>{{duration .Duration}}</td>
         </tr>
         {{else}}
@@ -73,16 +57,29 @@
 </section>
 {{end}}
 
-{{if .Run}}
 <section class="panel">
-  <div class="panel-head"><h2>{{T "indexer.runResult"}}</h2></div>
-  <dl class="detail">
+  <div class="panel-head"><h2>{{T "idx.detail.status"}}</h2></div>
+  <dl class="detail detail-grid">
+    <dt>{{T "idx.detail.lastUpdate"}}</dt>
+    <dd>{{if .LastRun}}{{date .LastRun.StartedAt}} <span class="muted">({{ago .LastRun.StartedAt}})</span>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</dd>
+    <dt>{{T "idx.detail.nextUpdate"}}</dt>
+    <dd>{{if .HasNext}}{{until .NextUpdate}}{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "idx.detail.queries"}}</dt>
+    <dd>{{.Stats.Queries}}</dd>
+    <dt>{{T "idx.detail.avgLatency"}}</dt>
+    <dd>{{.Stats.AvgLatency}}</dd>
+    <dt>{{T "idx.detail.grabs"}}</dt>
+    <dd>{{.Stats.Grabs}}</dd>
+  </dl>
+
+  {{if .Run}}
+  <div class="panel-head"><h2>{{T "idx.detail.runSummary"}}</h2></div>
+  <dl class="detail detail-grid">
     <dt>{{T "indexer.seen"}}</dt><dd>{{.Run.Seen}}</dd>
     <dt>{{T "indexer.new"}}</dt><dd>{{.Run.New}}</dd>
     <dt>{{T "indexer.updated"}}</dt><dd>{{.Run.Updated}}</dd>
-    <dt>{{T "indexer.blocked"}}</dt><dd>{{.Run.Blocked}}</dd>
     <dt>{{T "indexer.skipped"}}</dt><dd>{{.Run.Skipped}}</dd>
-    <dt>{{T "indexer.torrents"}}</dt><dd>{{.Run.Torrents}}</dd>
+    <dt>{{T "indexer.blocked"}}</dt><dd>{{.Run.Blocked}}</dd>
   </dl>
   {{if .RunItems}}
   <div class="table-scroll">
@@ -92,52 +89,88 @@
         {{range .RunItems}}
         <tr>
           <td>{{.Title}}</td>
-          <td>{{bytes .Size}}</td>
-          <td>{{.Seeders}}</td>
-          <td>{{if .Categories}}{{range .Categories}}<span class="chip">{{.}}</span> {{end}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td>{{sizeOrDash .Size}}</td>
+          <td>{{numOrDash .Seeders}}</td>
+          <td>{{if .Categories}}{{range .Categories}}<span class="chip">{{catNameInt .}}</span> {{end}}{{else}}<span class="muted">—</span>{{end}}</td>
         </tr>
         {{end}}
       </tbody>
     </table>
   </div>
-  <p class="muted" style="padding: 0 1.1rem 1rem;">{{T "indexer.itemsLimit"}}</p>
-  {{else}}
-  <p class="muted" style="padding: 0 1.1rem 1rem;">{{T "indexer.noItems"}}</p>
+  {{end}}
   {{end}}
 </section>
-{{end}}
 
 <section class="panel">
-  <div class="panel-head"><h2>{{T "indexer.publicConfig"}}</h2></div>
-  {{if .Public}}
+  <div class="panel-head">
+    <h2>{{T "idx.detail.filters"}}</h2>
+    <a class="link" href="/indexers/{{.Indexer.ID}}/edit">{{T "common.edit"}}</a>
+  </div>
+  <div class="panel-body">
+    {{if .Categories}}
+    <div class="badges">{{range .Categories}}<span class="badge soft">{{.}}</span>{{end}}</div>
+    {{end}}
+    {{if .FilterRows}}
+    <dl class="detail">
+      {{range .FilterRows}}<dt>{{.Key}}</dt><dd>{{.Value}}</dd>{{end}}
+    </dl>
+    {{else}}<p class="muted">{{T "idx.detail.noFilters"}}</p>{{end}}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>{{T "idx.detail.latest"}}</h2>
+    <a class="link" href="/releases?indexer={{.Indexer.ID}}">{{T "common.view"}}</a>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th scope="col">{{T "indexer.titleColumn"}}</th><th scope="col">{{T "indexer.size"}}</th><th scope="col">{{T "indexer.seeders"}}</th><th scope="col">{{T "common.updated"}}</th></tr></thead>
+      <tbody>
+        {{range .Releases}}
+        <tr>
+          <td><a href="/releases/{{.ID}}">{{truncate .Title 80}}</a></td>
+          <td>{{sizeOrDash .Size}}</td>
+          <td>{{numOrDash .Seeders}}</td>
+          <td class="nowrap">{{ago .FirstSeenAt}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="4" class="empty">{{T "idx.detail.noReleases"}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{{template "next-step" .NextStep}}
+
+{{template "advanced-open" (advanced (T "idx.detail.diagnostics"))}}
+  <dl class="detail">
+    <dt>{{T "idx.detail.support"}}</dt><dd>{{.DefinitionName}} <code>{{.DefinitionID}}</code></dd>
+    <dt>{{T "idx.detail.version"}}</dt><dd>{{.DefinitionVersion}}</dd>
+    <dt>{{T "idx.detail.hash"}}</dt><dd><code>{{.HashShort}}</code></dd>
+    <dt>{{T "idx.detail.origin"}}</dt><dd>{{.Origin}}</dd>
+    <dt>{{T "config.connector"}}</dt><dd>{{.Connector}}</dd>
+    <dt>{{T "common.protocol"}}</dt><dd>{{.Protocol}}</dd>
+    <dt>{{T "idx.detail.lastError"}}</dt><dd>{{if .LastError}}<code>{{.LastError}}</code>{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "idx.detail.secrets"}}</dt><dd>{{if .SecretKeys}}{{range .SecretKeys}}<code>{{.}}</code> {{end}}{{else}}<span class="muted">{{T "idx.detail.secretsNone"}}</span>{{end}}</dd>
+  </dl>
+
+  <h3 class="sub-head">{{T "idx.detail.hostRequests"}}</h3>
+  {{if .HostRequests}}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th scope="col">{{T "idx.detail.host"}}</th><th scope="col">429</th><th scope="col">403</th><th scope="col">{{T "idx.detail.breaker"}}</th></tr></thead>
+      <tbody>
+        {{range .HostRequests}}<tr><td>{{.Host}}</td><td>{{.RateLimited}}</td><td>{{.Forbidden}}</td><td>{{.Breaker}}</td></tr>{{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}<p class="muted">{{T "idx.detail.noHosts"}}</p>{{end}}
+
+  <h3 class="sub-head">{{T "idx.detail.config"}}</h3>
   <dl class="detail">
     {{range .Public}}<dt><code>{{.Key}}</code></dt><dd>{{if .Value}}{{.Value}}{{else}}<span class="muted">—</span>{{end}}</dd>{{end}}
   </dl>
-  {{else}}
-  <p class="muted" style="padding: 0 1.1rem 1rem;">{{T "indexer.noPublic"}}</p>
-  {{end}}
-</section>
-
-<section class="panel">
-  <div class="panel-head"><h2>{{T "indexer.vaultSecrets"}}</h2></div>
-  <div class="prose">
-    {{if .SecretKeys}}
-    <p>{{T "indexer.secretsText"}}</p>
-    <ul>{{range .SecretKeys}}<li><code>{{.}}</code></li>{{end}}</ul>
-    {{else}}
-    <p class="muted">{{T "indexer.noSecrets"}}</p>
-    {{end}}
-  </div>
-</section>
-
-<section class="panel danger-zone">
-  <div class="panel-head"><h2>{{T "indexer.dangerZone"}}</h2></div>
-  <div class="prose">
-    <p>{{T "indexer.dangerText"}}</p>
-    <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="{{T "indexer.deleteConfirm"}}">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn danger" type="submit">{{T "indexer.delete"}}</button>
-    </form>
-  </div>
-</section>
+{{template "advanced-close"}}
 {{end}}

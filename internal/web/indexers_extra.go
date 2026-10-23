@@ -34,7 +34,7 @@ func (s *Server) indexersTestAll(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/indexers", "", err.Error())
 		return
 	}
-	redirect(w, r, "/indexers", fmt.Sprintf("Testing %d indexer(s); see the Logs tab", count), "")
+	redirect(w, r, "/indexers", s.translate(r, "idx.testAllQueued", count), "")
 }
 
 func (s *Server) indexersRunAll(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +47,7 @@ func (s *Server) indexersRunAll(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/indexers", "", err.Error())
 		return
 	}
-	redirect(w, r, "/indexers", fmt.Sprintf("Run queued for %d indexer(s)", count), "")
+	redirect(w, r, "/indexers", s.translate(r, "idx.runAllQueued", count), "")
 }
 
 // --------------------------------------------------------------- JSON export
@@ -128,20 +128,20 @@ func (s *Server) indexersImport(w http.ResponseWriter, r *http.Request) {
 	}
 	raw := strings.TrimSpace(r.FormValue("json"))
 	if raw == "" {
-		redirect(w, r, "/indexers", "", "Paste the indexers JSON to import")
+		redirect(w, r, "/indexers", "", s.translate(r, "idx.importEmpty"))
 		return
 	}
 	var payload indexersJSON
 	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-		redirect(w, r, "/indexers", "", "Invalid indexers JSON: "+err.Error())
+		redirect(w, r, "/indexers", "", s.translate(r, "idx.importInvalidJSON", err.Error()))
 		return
 	}
 	if payload.Version != 0 && payload.Version != 1 {
-		redirect(w, r, "/indexers", "", fmt.Sprintf("Unsupported indexers JSON version %d", payload.Version))
+		redirect(w, r, "/indexers", "", s.translate(r, "idx.importVersion", payload.Version))
 		return
 	}
 	if len(payload.Indexers) == 0 {
-		redirect(w, r, "/indexers", "", "The JSON contains no indexers")
+		redirect(w, r, "/indexers", "", s.translate(r, "idx.importNoIndexers"))
 		return
 	}
 	existing, err := s.store.ListIndexers(r.Context())
@@ -196,14 +196,7 @@ func (s *Server) indexersImport(w http.ResponseWriter, r *http.Request) {
 		names[strings.ToLower(name)] = true
 		imported++
 	}
-	message := fmt.Sprintf("%d indexer(s) imported", imported)
-	if skipped > 0 {
-		message += fmt.Sprintf(", %d already present", skipped)
-	}
-	if invalid > 0 {
-		message += fmt.Sprintf(", %d invalid (see Logs)", invalid)
-	}
-	redirect(w, r, "/indexers", message, "")
+	redirect(w, r, "/indexers", s.translate(r, "idx.importDone", imported, skipped, invalid), "")
 }
 
 // ---------------------------------------------------------------- discovery
@@ -217,7 +210,7 @@ type discoverPage struct {
 func (s *Server) indexersDiscover(w http.ResponseWriter, r *http.Request) {
 	rawURL := strings.TrimSpace(r.URL.Query().Get("url"))
 	if rawURL == "" {
-		redirect(w, r, "/indexers", "", "Enter a site URL to discover feeds")
+		redirect(w, r, "/indexers", "", s.translate(r, "idx.discoverMissing"))
 		return
 	}
 	settings, err := s.store.LoadSettings(r.Context())
@@ -256,7 +249,7 @@ func (s *Server) indexerQuickAdd(w http.ResponseWriter, r *http.Request) {
 	rawURL := strings.TrimSpace(r.FormValue("url"))
 	parsed, err := url.Parse(rawURL)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		redirect(w, r, "/indexers", "", "URL must be an absolute http:// or https:// address")
+		redirect(w, r, "/indexers", "", s.translate(r, "idx.urlInvalid"))
 		return
 	}
 	name := strings.TrimSpace(r.FormValue("name"))
@@ -289,7 +282,7 @@ func (s *Server) indexerQuickAdd(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/indexers", "", s.indexerFriendlyError(r, err))
 		return
 	}
-	redirect(w, r, "/indexers", "RSS indexer added: "+name, "")
+	redirect(w, r, "/indexers", s.translate(r, "idx.feedAdded", name), "")
 }
 
 const rssDefinitionBody = `schema: 1
