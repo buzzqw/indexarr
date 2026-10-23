@@ -706,6 +706,7 @@ legacy resta quello predefinito finché la migrazione non è completa.
 
 - [Piano di implementazione](docs/INDEXARR2-PLAN.md)
 - [Guida alle definizioni](docs/DEFINITIONS.md) — formato v1, fixture, sicurezza
+- [MirCrew](docs/MIRCREW.md) — ponte Torznab, definizione nativa e sessione FlareSolverr
 - [Architettura indexarr 2](docs/ARCHITECTURE.md#indexarr-2)
 - [Analisi e visione](indexarr2.md)
 

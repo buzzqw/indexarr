@@ -117,6 +117,11 @@ definitions:
     state: bozza
     author: indexarr
 
+  - id: mircrew
+    file: definitions/mircrew.yaml
+    state: bozza
+    author: indexarr
+
   - id: 1337x
     file: definitions/1337x.yaml
     state: verificata

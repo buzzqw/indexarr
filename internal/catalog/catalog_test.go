@@ -237,6 +237,7 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 		"showrss",
 		"corsaro-account",
 		"ildragonegro",
+		"mircrew",
 		"1337x",
 		"animetosho",
 		"kickasstorrents",

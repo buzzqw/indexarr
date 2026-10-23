@@ -1,0 +1,418 @@
+<html dir="ltr" lang="it"><head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>MIRCrew - Pannello di Controllo Utente - Login</title>
+
+	<link rel="alternate" type="application/atom+xml" title="Feed - MIRCrew" href="/feed?sid=synthetic-sid">	<link rel="alternate" type="application/atom+xml" title="Feed - News" href="/feed/news?sid=synthetic-sid">		<link rel="alternate" type="application/atom+xml" title="Feed - Nuovi argomenti" href="/feed/topics?sid=synthetic-sid">				
+
+<!--
+	phpBB style name: prosilver
+	Based on style:   prosilver (this is the default phpBB3 style)
+	Original author:  Tom Beddard ( http://www.subBlue.com/ )
+	Modified by:
+-->
+
+<link href="./assets/css/font-awesome.min.css?assets_version=366" rel="stylesheet">
+<link href="./styles/prosilver/theme/stylesheet.css?assets_version=366" rel="stylesheet">
+<link href="./styles/prosilver/theme/it/stylesheet.css?assets_version=366" rel="stylesheet">
+
+
+
+	<link href="./assets/cookieconsent/cookieconsent.min.css?assets_version=366" rel="stylesheet">
+
+<!--[if lte IE 9]>
+	<link href="./styles/prosilver/theme/tweaks.css?assets_version=366" rel="stylesheet">
+<![endif]-->
+
+<style>
+	html,
+	body {
+		background-attachment: fixed;
+		background-image: url("./images/mircrew/background/background.jpg");
+		background-position: center center;
+		background-repeat: no-repeat;
+		background-size: cover;
+	}
+</style>
+
+<style>
+	.headerbar {
+		background-image: url("./images/mircrew/header/header_new.png");
+		background-position: center center;
+		background-repeat: no-repeat;
+		background-size: cover;
+		height: 190px;
+		margin-bottom: 4px;
+		width: auto;
+	}
+
+	@media (max-width: 700px) {
+		.headerbar {
+			height: 60px;
+		}
+
+		.logo {
+			display: inline-block;
+			height: auto;
+			width: auto;
+		}
+
+		.logo:hover {
+			text-decoration: none;
+		}
+	}
+
+		.site-description {
+		display: none;
+	}
+	
+	</style>
+<link rel="shortcut icon" href="./images/mircrew/favicon/favicon_new.png">
+<link rel="apple-touch-icon" href="./images/mircrew/favicon/favicon_new.png">
+
+
+
+
+<link href="./ext/alfredoramos/simplespoiler/styles/all/theme/css/common.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/alfredoramos/simplespoiler/styles/prosilver/theme/css/style.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/alfredoramos/simplespoiler/styles/prosilver/theme/css/colors.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/bb3mobi/lastpostavatar/styles/all/theme/lastpostavatar.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/dmzx/membertimecounter/styles/prosilver/theme/membertimecounter.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/dmzx/topstats/styles/prosilver/theme/topstats.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/galandas/togglebbcode/styles/all/theme/togglestyle.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/marcovo/hideBBcode/styles/all/theme/custom.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/mircrew/css/styles/all/theme/custom.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/mircrew/pageloader/styles/all/theme/pageloader.min.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/mircrew/profilebox/styles/prosilver/theme/profilebox.min.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/oxpus/basicstats/styles/prosilver/theme/basicstats.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/rmcgirr83/elonw/styles/all/theme/elonw.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/toxyy/postformtemplates/styles/all/theme/post_form_templates.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/vse/abbc3/styles/all/theme/abbc3_common.min.css?assets_version=366" rel="stylesheet" media="screen">
+<link href="./ext/vse/lightbox/styles/all/template/lightbox/css/lightbox.min.css?assets_version=366" rel="stylesheet" media="screen">
+
+
+	<style>
+		@media (min-width: 900px) {
+			.signature img.postimage,			.content img.postimage {
+				
+				max-width: 720px !important;
+			}
+		}
+	</style>
+
+<style></style></head>
+<body id="phpbb" class="notouch section-ucp ltr hasjs"><div role="dialog" aria-live="polite" aria-label="cookieconsent" aria-describedby="cookieconsent:desc" class="cc-window cc-banner cc-type-info cc-theme-classic cc-bottom cc-color-override--1687565279 " style=""><!--googleoff: all--><span id="cookieconsent:desc" class="cc-message">Questo sito utilizza cookie al fine di fornire la migliore navigazione possibile <a aria-label="learn more about cookies" role="button" tabindex="0" class="cc-link" href="./ucp.php?mode=privacy&amp;sid=synthetic-sid" rel="noopener noreferrer nofollow" target="_blank">Ulteriori informazioni</a></span><div class="cc-compliance"><a aria-label="dismiss cookie message" role="button" tabindex="0" class="cc-btn cc-dismiss">Accetto</a></div><!--googleon: all--></div>
+
+
+<div id="wrap" class="wrap">
+	<a id="top" class="top-anchor" accesskey="t"></a>
+	<div id="page-header">
+		<div class="headerbar" role="banner">
+					<div class="inner">
+
+			<div id="site-description" class="site-description">
+		<a id="logo" class="logo" href="./index.php?sid=synthetic-sid" title="MIR Home">
+					<span class="site_logo"></span>
+				</a>
+				<h1>MIRCrew</h1>
+				<p>Sharing Community</p>
+				<p class="skiplink"><a href="#start_here">Passa al contenuto</a></p>
+			</div>
+
+									
+			</div>
+					</div>
+				<div class="navbar" role="navigation">
+	<div class="inner">
+
+	<ul id="nav-main" class="nav-main linklist" role="menubar">
+
+		<li id="quick-links" class="quick-links dropdown-container responsive-menu hidden" data-skip-responsive="true" style="">
+			<a href="#" class="dropdown-trigger dropdown-toggle">
+				<i class="icon fa-bars fa-fw" aria-hidden="true"></i><span>Collegamenti Rapidi</span>
+			</a>
+			<div class="dropdown">
+				<div class="pointer"><div class="pointer-inner"></div></div>
+				<ul class="dropdown-contents" role="menu">
+					
+					
+										<li class="separator"></li>
+
+									</ul>
+			</div>
+		</li>
+
+		<li data-last-responsive="true">
+	<a href="/smartfeed/ui?sid=synthetic-sid" title="Smartfeed" role="menuitem">
+		<i class="icon fa-rss fa-fw" aria-hidden="true"></i><span>Smartfeed</span>
+	</a>
+</li>
+		<li data-skip-responsive="true">
+			<a href="/help/faq?sid=synthetic-sid" rel="help" title="FAQ (Domande Frequenti)" role="menuitem">
+				<i class="icon fa-question-circle fa-fw" aria-hidden="true"></i><span>FAQ</span>
+			</a>
+		</li>
+						
+			<li class="rightside" data-skip-responsive="true">
+			<a href="./ucp.php?mode=login&amp;redirect=ucp.php%3Fmode%3Dlogin&amp;sid=synthetic-sid" title="Login" accesskey="x" role="menuitem">
+				<i class="icon fa-power-off fa-fw" aria-hidden="true"></i><span>Login</span>
+			</a>
+		</li>
+					<li class="rightside" data-skip-responsive="true">
+				<a href="./ucp.php?mode=register&amp;sid=synthetic-sid" role="menuitem">
+					<i class="icon fa-pencil-square-o  fa-fw" aria-hidden="true"></i><span>Iscriviti</span>
+				</a>
+			</li>
+						</ul>
+
+	<ul id="nav-breadcrumbs" class="nav-breadcrumbs linklist navlinks" role="menubar">
+				
+		
+		<li class="breadcrumbs" itemscope="" itemtype="https://schema.org/BreadcrumbList">
+
+			
+							<span class="crumb" itemtype="https://schema.org/ListItem" itemprop="itemListElement" itemscope=""><a itemprop="item" href="./index.php?sid=synthetic-sid" accesskey="h" data-navbar-reference="index" title="MIR Home"><i class="icon fa-home fa-fw"></i><span itemprop="name">MIR Home</span></a><meta itemprop="position" content="1"></span>
+
+			
+					</li>
+
+		
+			</ul>
+
+	</div>
+</div>
+	</div>
+
+	<!-- Extension alert to new user alex75 www.phpbb-store.it -->
+    
+	<a id="start_here" class="anchor"></a>
+	<div id="page-body" class="page-body" role="main">
+		
+		
+	
+
+
+<form action="./ucp.php?mode=login&amp;sid=synthetic-sid" method="post" id="login" data-focus="username">
+<div class="panel">
+	<div class="inner">
+
+	<div class="content">
+		<h2 class="login-title">Login</h2>
+
+		<fieldset class="fields1">
+				<dl>
+			<dt><label for="username">Nome utente:</label></dt>
+			<dd><input type="text" tabindex="1" name="username" id="username" size="25" value="" class="inputbox autowidth"></dd>
+		</dl>
+		<dl>
+			<dt><label for="password">Password:</label></dt>
+			<dd><input type="password" tabindex="2" id="password" name="password" size="25" class="inputbox autowidth" autocomplete="off"></dd>
+					</dl>
+						<dl>
+			<dt>&nbsp;</dt>
+			<dd><label for="autologin"><input type="checkbox" name="autologin" id="autologin" tabindex="4"> Ricordami</label></dd>			<dd><label for="viewonline"><input type="checkbox" name="viewonline" id="viewonline" tabindex="5"> Nascondi il mio stato per questa sessione</label></dd>
+		</dl>
+		
+		<input type="hidden" name="redirect" value="./ucp.php?mode=login&amp;sid=synthetic-sid">
+<input type="hidden" name="creation_time" value="synthetic-creation-time">
+<input type="hidden" name="form_token" value="synthetic-form-token">
+
+		
+		<dl>
+			<dt>&nbsp;</dt>
+			<dd><input type="hidden" name="sid" value="synthetic-sid">
+<input type="hidden" name="redirect" value="index.php">
+<input type="submit" name="login" tabindex="6" value="Login" class="button1"></dd>
+		</dl>
+		</fieldset>
+	</div>
+
+		</div>
+</div>
+
+
+	<div class="panel">
+		<div class="inner">
+
+		<div class="content">
+			<h3>Iscriviti</h3>
+			<p>Per eseguire il login devi essere registrato. La registrazione richiede solo pochi secondi e garantisce l’accesso alle funzioni avanzate. L’amministratore può anche dare permessi speciali agli utenti. Prima di eseguire il login assicurati di aver letto i termini d’uso e le varie regole.</p>
+			<p><strong><a href="./ucp.php?mode=terms&amp;sid=synthetic-sid">Condizioni d’uso</a> | <a href="./ucp.php?mode=privacy&amp;sid=synthetic-sid">Trattamento dei dati personali</a></strong></p>
+			<hr class="dashed">
+			<p><a href="./ucp.php?mode=register&amp;sid=synthetic-sid" class="button2">Iscriviti</a></p>
+		</div>
+
+		</div>
+	</div>
+
+</form>
+
+			</div>
+
+
+<div id="page-footer" class="page-footer" role="contentinfo">
+	<div class="navbar" role="navigation">
+	<div class="inner">
+
+	<ul id="nav-footer" class="nav-footer linklist" role="menubar">
+		<li class="breadcrumbs">
+									<span class="crumb"><a href="./index.php?sid=synthetic-sid" data-navbar-reference="index" title="MIR Home"><i class="icon fa-home fa-fw" aria-hidden="true"></i><span>MIR Home</span></a></span>					</li>
+		
+				<li class="responsive-menu hidden rightside dropdown-container"><a href="javascript:void(0);" class="js-responsive-menu-link responsive-menu-link dropdown-toggle"><i class="icon fa-bars fa-fw" aria-hidden="true"></i></a><div class="dropdown"><div class="pointer"><div class="pointer-inner"></div></div><ul class="dropdown-contents"></ul></div></li><li class="rightside">Tutti gli orari sono <span title="Europa/Roma">UTC+02:00</span></li>
+							<li class="rightside">
+				<a href="./ucp.php?mode=delete_cookies&amp;sid=synthetic-sid" data-ajax="true" data-refresh="true" role="menuitem">
+					<i class="icon fa-trash fa-fw" aria-hidden="true"></i><span>Cancella cookie</span>
+				</a>
+			</li>
+														</ul>
+
+	</div>
+</div>
+
+	<div class="copyright">
+				<p class="footer-row">
+			<span class="footer-copyright">Creato da <a href="https://www.phpbb.com/">phpBB</a>® Forum Software © phpBB Limited</span>
+		</p>
+				<p class="footer-row">
+			<span class="footer-copyright">Traduzione Italiana <a href="https://www.phpbb-italia.it">phpBB-Italia.it</a></span>
+		</p>
+						<p class="footer-row" role="menu">
+			<a class="footer-link" href="./ucp.php?mode=privacy&amp;sid=synthetic-sid" title="Privacy" role="menuitem">
+				<span class="footer-link-text">Privacy</span>
+			</a>
+			|
+			<a class="footer-link" href="./ucp.php?mode=terms&amp;sid=synthetic-sid" title="Condizioni" role="menuitem">
+				<span class="footer-link-text">Condizioni</span>
+			</a>
+		</p>
+					</div>
+
+	<div id="darkenwrapper" class="darkenwrapper" data-ajax-error-title="Errore AJAX" data-ajax-error-text="Si è verificato un errore durante l’elaborazione della richiesta." data-ajax-error-text-abort="Richiesta utente interrotta" data-ajax-error-text-timeout="La tua richiesta è scaduta; riprova." data-ajax-error-text-parsererror="Si è verificato un errore con la richiesta e il server ha restituito una risposta non valida.">
+		<div id="darken" class="darken">&nbsp;</div>
+	</div>
+
+	<div id="phpbb_alert" class="phpbb_alert" data-l-err="Errore" data-l-timeout-processing-req="Richiesta scaduta.">
+		<a href="#" class="alert_close">
+			<i class="icon fa-times-circle fa-fw" aria-hidden="true"></i>
+		</a>
+		<h3 class="alert_title">&nbsp;</h3><p class="alert_text"></p>
+	</div>
+	<div id="phpbb_confirm" class="phpbb_alert">
+		<a href="#" class="alert_close">
+			<i class="icon fa-times-circle fa-fw" aria-hidden="true"></i>
+		</a>
+		<div class="alert_text"></div>
+	</div>
+</div>
+
+</div>
+
+<div>
+	<a id="bottom" class="anchor" accesskey="z"></a>
+	</div>
+
+<script src="./assets/javascript/jquery-3.6.0.min.js?assets_version=366"></script>
+<script src="./assets/javascript/core.js?assets_version=366"></script>
+
+	<script src="./assets/cookieconsent/cookieconsent.min.js?assets_version=366"></script>
+	<script>
+		if (typeof window.cookieconsent === "object") {
+			window.addEventListener("load", function(){
+				window.cookieconsent.initialise({
+					"palette": {
+						"popup": {
+							"background": "#0F538A"
+						},
+						"button": {
+							"background": "#E5E5E5"
+						}
+					},
+					"theme": "classic",
+					"content": {
+						"message": "Questo\u0020sito\u0020utilizza\u0020cookie\u0020al\u0020fine\u0020di\u0020fornire\u0020la\u0020migliore\u0020navigazione\u0020possibile",
+						"dismiss": "Accetto",
+						"link": "Ulteriori\u0020informazioni",
+						"href": "./ucp.php?mode=privacy&amp;sid=synthetic-sid"
+					}
+				});
+			});
+		}
+	</script>
+
+<script type="text/javascript">
+// <![CDATA[
+$(document).ready(function(){
+
+$("#member").countdown({
+		date: '',
+		leadingZero: false,
+		yearsAndMonths: true,
+		htmlTemplate: "<span class='cd-online'></span> <strong>%y</strong> <span class=\"cd-online\">YEARS</span> <strong>%m</strong> <span class=\"cd-online\">MONTHS</span>	<strong>%d</strong> <span class=\"cd-online\">giorni</span> <strong>%h</strong> <span class=\"cd-online\">Ore</span> <strong>%i</strong> <span class=\"cd-online\">Minuti E</span> <strong>%s</strong> <span class=\"cd-online\">Secondi</span>",
+		direction: "up"
+	});
+	});
+
+// ]]>
+</script>
+<script type="text/javascript">
+// <![CDATA[
+$(document).ready(function(){
+	$(".toggle_container").hide(); 
+	//Switch the "Open" and "Close" state per click then slide up/down (depending on open/close state)
+	$("h2.trigger").click(function(){
+		$(this).toggleClass("active").next().slideToggle("fast");
+		$(this).find(".fa").toggleClass("fa-plus-circle fa-minus-circle");
+		return false; //Prevent the browser jump to the link anchor
+	});
+});	
+// ]]>
+</script>
+<!--
+<div id="mircrew-loader-wrapper">
+	<div id="mircrew-loader"></div>
+</div>
+-->
+
+<div id="mircrew-loader-wrapper">
+	<div class="inner one"></div>
+	<div class="inner two"></div>
+	<div class="inner three"></div>
+</div>
+
+<script>
+		var elonw_title = "Opens\u0020in\u0020new\u0020window";
+</script>
+											<script>
+		var vseLightbox = {};
+		vseLightbox.resizeHeight = 0;
+		vseLightbox.resizeWidth = 720;
+		vseLightbox.lightboxGal = 0;
+		vseLightbox.lightboxSig = 1;
+		vseLightbox.imageTitles = 0;
+		vseLightbox.lightboxAll = 0;
+		vseLightbox.downloadFile = 'download/file.php';
+	</script>
+
+<script src="./styles/prosilver/template/forum_fn.js?assets_version=366"></script>
+<script src="./styles/prosilver/template/ajax.js?assets_version=366"></script>
+<script src="./ext/dmzx/membertimecounter/styles/prosilver/template/jquery.jcountdown.js?assets_version=366"></script>
+<script src="./ext/mircrew/pageloader/styles/all/template/pageloader.min.js?assets_version=366"></script>
+<script src="./ext/rmcgirr83/elonw/styles/all/template/js/elonw.js?assets_version=366"></script>
+<script src="./ext/vse/abbc3/styles/all/template/js/abbc3.min.js?assets_version=366"></script>
+<script src="./ext/vse/lightbox/styles/all/template/js/resizer.js?assets_version=366"></script>
+<script src="./ext/vse/lightbox/styles/all/template/lightbox/js/lightbox.min.js?assets_version=366"></script>
+<script src="./ext/alfredoramos/simplespoiler/styles/all/theme/js/details-element-polyfill.min.js?assets_version=366"></script>
+<script src="./ext/alfredoramos/simplespoiler/styles/all/theme/js/spoiler.js?assets_version=366"></script>
+
+
+<script>
+	lightbox.option({
+		'albumLabel': 'Immagine\u0020\u00251\u0020di\u0020\u00252'
+	});
+</script>
+
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4f3fc57daaf7c50',t:'MTc5Mjc5MjUyMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><iframe height="1" width="1" style="position: absolute; top: 0px; left: 0px; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; visibility: hidden;"></iframe>
+
+<div id="lightboxOverlay" tabindex="-1" class="lightboxOverlay" style="display: none;"></div><div id="lightbox" tabindex="-1" class="lightbox" style="display: none;"><div class="lb-outerContainer"><div class="lb-container"><img class="lb-image" src="data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" alt=""><div class="lb-nav"><a class="lb-prev" aria-label="Previous image" href=""></a><a class="lb-next" aria-label="Next image" href=""></a></div><div class="lb-loader"><a class="lb-cancel"></a></div></div></div><div class="lb-dataContainer"><div class="lb-data"><div class="lb-details"><span class="lb-caption"></span><span class="lb-number"></span></div><div class="lb-closeContainer"><a class="lb-close"></a></div></div></div></div></body></html>

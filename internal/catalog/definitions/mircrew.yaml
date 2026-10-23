@@ -1,0 +1,150 @@
+# BOZZA (draft). MirCrew native definition.
+#
+# MirCrew protects every page with Cloudflare and hides the magnets of a topic
+# until the first post is thanked. The definition therefore uses:
+#   - a persistent FlareSolverr session for every request, login included;
+#   - a phpBB login verified on ucp.php (the index page is public and cannot
+#     prove that the login worked);
+#   - download.before, which opens the topic only on grab, thanks it when the
+#     magnets are still hidden, reopens it and reads the links;
+#   - download.select: season_episode, because one topic often contains the
+#     whole season plus single episodes and several resolutions.
+#
+# Fixtures were captured from https://mircrew-releases.org on 2026-10-23 and
+# then sanitized: form tokens, session ids, usernames and avatar URLs are
+# synthetic. The topic fixture is a first post that was already thanked, so
+# running the offline test never performs an engagement action. State stays
+# "bozza" until the coordinator verifies it with a real account.
+schema: 1
+
+meta:
+  id: mircrew
+  name: MirCrew
+  language: it-IT
+  type: private
+  protocol: torrent
+  author: indexarr
+  description: MirCrew Italian forum (phpBB, Cloudflare, magnets unlocked by thanking a topic).
+  urls:
+    - https://mircrew-releases.org/
+  updated: "2026-10-23"
+  latest: false
+
+settings:
+  - name: username
+    type: text
+    label: "Username"
+    required: true
+  - name: password
+    type: password
+    label: "Password"
+    required: true
+  - name: flaresolverr
+    type: text
+    label: "FlareSolverr URL"
+    help: "Optional. Empty uses the global FlareSolverr URL from the network settings; set it to override, for example http://127.0.0.1:8191."
+
+categories:
+  - { site: "51", standard: 5040, desc: "Serie TV in corso" }
+  - { site: "52", standard: 5040, desc: "Serie TV complete" }
+  - { site: "26", standard: 2040, desc: "Film" }
+  - { site: "28", standard: 8000, desc: "Indice" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep]
+  movie-search: [q]
+
+session:
+  # Every request of this indexer, login included, runs through one browser
+  # session. The session is recycled after 12 hours; orphaned sessions with
+  # the mircrew-idx prefix are closed before the first request.
+  mode: flaresolverr
+  endpoint: "{{ settings.flaresolverr }}"
+  name_prefix: mircrew-idx
+  max_age: 12h
+  timeout: 60s
+
+auth:
+  strategy: form
+  steps:
+    - get: /ucp.php?mode=login
+      extract:
+        creation_time: { selector: 'input[name="creation_time"]', attr: value }
+        form_token: { selector: 'input[name="form_token"]', attr: value }
+        sid: { selector: 'input[name="sid"]', attr: value }
+        redirect: { selector: 'input[name="redirect"]', attr: value }
+    - post: /ucp.php?mode=login
+      form:
+        username: "{{ settings.username }}"
+        password: "{{ settings.password }}"
+        login: Login
+        redirect: "{{ redirect }}"
+        creation_time: "{{ creation_time }}"
+        form_token: "{{ form_token }}"
+        sid: "{{ sid }}"
+  # ucp.php is a protected page: index.php is public and shows the same title
+  # whether the user is logged in or not.
+  success: { selector: 'a[href*="mode=logout"]' }
+  failure:
+    - { selector: "div.error", message: text }
+  refresh_after: 6h
+
+search:
+  request:
+    get: /search.php
+    params:
+      keywords: "{{ query.keywords_raw }}"
+      sf: titleonly
+      sr: topics
+  # phpBB paginates search results with start=25, 50, ...
+  pagination: { type: offset, start: 0, step: 25, max_pages: 2, param: start }
+  keywords_format: separate
+  response:
+    type: html
+    rows: { selector: "ul.topiclist.topics > li.row" }
+    fields:
+      title:    { selector: "a.topictitle", filters: [trim] }
+      details:  { selector: "a.topictitle", attr: href, type: url }
+      category: { selector: 'a[href*="viewforum.php?f="]', attr: href, filters: [{ query_param: f }], type: category }
+      date:     { selector: "time", attr: datetime, type: date }
+    required: [title, details]
+
+download:
+  resolve_on: grab
+  from: details
+  # A topic carries many magnets: single episodes, the season pack and often
+  # more than one resolution. The grab request's season/episode chooses.
+  select: season_episode
+  before:
+    # The magnets are hidden until the first post is thanked. This block is
+    # reached only from Download, never from a search.
+    wait: 2s
+    extract:
+      thanks: { selector: 'a[href*="thanks="]', attr: href }
+    action:
+      get: "{{ thanks }}"
+  extract:
+    - magnet: { selector: 'a.magnetBtn[href^="magnet:"]', attr: href }
+      all: true
+
+health:
+  query: Reacher
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/mircrew/search.html
+    expect: { min_rows: 2, required: [title, details, category, date] }
+  - name: login-ok
+    fixture: fixtures/mircrew/login-ok.html
+    expect: { authenticated: true }
+  - name: login-failed
+    fixture: fixtures/mircrew/login.html
+    expect: { authenticated: false }
+  - name: topic-magnets
+    fixture: fixtures/mircrew/topic.html
+    expect: { min_rows: 1 }
+  - name: topic-locked
+    fixture: fixtures/mircrew/topic-locked.html
+    expect: { min_rows: 0 }

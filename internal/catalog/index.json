@@ -477,6 +477,26 @@
     ]
   },
   {
+    "id": "mircrew",
+    "name": "MirCrew",
+    "description": "MirCrew Italian forum (phpBB, Cloudflare, magnets unlocked by thanking a topic).",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "mircrew-releases.org"
+    ]
+  },
+  {
     "id": "newznab-generic",
     "name": "Newznab (generic)",
     "description": "Generic Newznab indexer; the family connector reads URL and API key.",
