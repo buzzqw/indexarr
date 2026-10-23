@@ -209,3 +209,50 @@ Sono quelle standard newznab/Torznab. Le radici emesse da `caps`:
 
 Le sottocategorie complete sono in `internal/categories/categories.go` e nella
 risposta `t=caps`.
+
+## API amministrativa `/api/v2`
+
+`indexarr 2` espone un'API JSON versionata per definizioni, indexer nativi e
+applicazioni \*arr. È pensata per script e automazione: usa le stesse API key
+del server Torznab, senza cookie e senza CSRF.
+
+- Autenticazione: `?apikey=...`, header `X-Api-Key` o `Authorization: Bearer ...`
+- Errori: JSON `{"error":"..."}` con stato HTTP coerente
+- Corpi: massimo 1 MiB; campi sconosciuti rifiutati
+- Nessuna risposta contiene API key, password, cookie, URL del tracker o
+  `download_ref`
+
+| Metodo | Percorso | Uso |
+|---|---|---|
+| GET | `/api/v2/health` | stato e versione |
+| GET/POST | `/api/v2/definitions` | elenco / crea definizione YAML |
+| POST | `/api/v2/definitions/validate` | valida senza salvare |
+| GET/PUT/DELETE | `/api/v2/definitions/{id}` | leggi (con body) / aggiorna / cancella |
+| GET | `/api/v2/catalog` | catalogo built-in e stato installazione |
+| POST | `/api/v2/catalog/sync` | sincronizza il catalogo nel database |
+| GET/POST | `/api/v2/indexers` | elenco / crea indexer nativo |
+| GET/PUT/DELETE | `/api/v2/indexers/{id}` | dettaglio / aggiorna / cancella |
+| POST | `/api/v2/indexers/{id}/test` | test per fase (reach/auth/search) |
+| POST | `/api/v2/indexers/{id}/search` | ricerca live, senza URL del tracker |
+| POST | `/api/v2/indexers/{id}/run` | un run di ingestion |
+| GET/POST | `/api/v2/applications` | elenco / collega una \*arr |
+| GET/PUT/DELETE | `/api/v2/applications/{id}` | dettaglio / aggiorna / scollega |
+| POST | `/api/v2/applications/{id}/sync` | riconcilia un'applicazione |
+| POST | `/api/v2/applications/sync` | riconcilia tutte |
+
+Esempio:
+
+```sh
+curl -X POST "http://localhost:8484/api/v2/indexers?apikey=$KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "definition_id": "newznab-generic",
+        "name": "Il mio Usenet",
+        "settings": {"url": "https://indexer.example/api", "apikey": "..."}
+      }'
+```
+
+I valori con nome che contiene `api_key`, `apikey`, `token`, `password`,
+`passkey`, `secret` o `cookie` vengono cifrati nel vault; gli altri finiscono
+in `config_json`. Le definizioni built-in sono oggi in stato `bozza`: non sono
+state verificate contro un sito live.

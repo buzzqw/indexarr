@@ -57,8 +57,8 @@ func TestIndexarr2Schema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2FoundationVersion {
-		t.Fatalf("schema version = %d, want %d", version, indexarr2FoundationVersion)
+	if version != indexarr2UsenetPayloadVersion {
+		t.Fatalf("schema version = %d, want %d", version, indexarr2UsenetPayloadVersion)
 	}
 	var name string
 	if err := st.DB().QueryRowContext(ctx,
@@ -68,6 +68,23 @@ func TestIndexarr2Schema(t *testing.T) {
 	}
 	if name != "indexarr2 foundation" {
 		t.Fatalf("migration name = %q", name)
+	}
+	if err := st.DB().QueryRowContext(ctx,
+		`SELECT name FROM schema_migrations WHERE version = ?`,
+		indexarr2UsenetPayloadVersion).Scan(&name); err != nil {
+		t.Fatalf("usenet payload migration row: %v", err)
+	}
+	if name != "usenet payload" {
+		t.Fatalf("usenet payload migration name = %q", name)
+	}
+	for _, column := range []string{"protocol", "payload", "payload_type"} {
+		exists, err := st.columnExists("releases", column)
+		if err != nil {
+			t.Fatalf("columnExists(%s): %v", column, err)
+		}
+		if !exists {
+			t.Errorf("releases.%s is missing", column)
+		}
 	}
 	for _, table := range []string{
 		"definitions", "indexers", "indexer_secrets", "indexer_state",
@@ -116,8 +133,16 @@ func TestMigrationIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2FoundationVersion {
+	if version != indexarr2UsenetPayloadVersion {
 		t.Fatalf("schema version = %d", version)
+	}
+	if err := second.DB().QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM schema_migrations WHERE version = ?`,
+		indexarr2UsenetPayloadVersion).Scan(&rows); err != nil {
+		t.Fatalf("count payload migrations: %v", err)
+	}
+	if rows != 1 {
+		t.Fatalf("payload migration rows = %d, want 1", rows)
 	}
 }
 
@@ -126,7 +151,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	st := newTestStore(t)
 
 	wantErr := errors.New("boom")
-	err := st.applyMigration(ctx, 2, "broken", func(tx *sql.Tx) error {
+	err := st.applyMigration(ctx, 3, "broken", func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `CREATE TABLE migration_should_rollback (id INTEGER)`); err != nil {
 			return err
 		}
@@ -139,7 +164,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2FoundationVersion {
+	if version != indexarr2UsenetPayloadVersion {
 		t.Fatalf("schema version after failure = %d", version)
 	}
 	var tables int
@@ -153,7 +178,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	}
 	var rows int
 	if err := st.DB().QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM schema_migrations WHERE version = 2`).Scan(&rows); err != nil {
+		`SELECT COUNT(*) FROM schema_migrations WHERE version = 3`).Scan(&rows); err != nil {
 		t.Fatalf("check migration row: %v", err)
 	}
 	if rows != 0 {

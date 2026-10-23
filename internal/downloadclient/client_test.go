@@ -145,9 +145,3 @@ func TestTransmissionMetainfo(t *testing.T) {
 		t.Errorf("metainfo = %q", metainfo)
 	}
 }
-
-func TestUnknownClient(t *testing.T) {
-	if err := Add(context.Background(), Config{Kind: "deluge"}, store.Release{Magnet: "magnet:x"}); err == nil {
-		t.Error("unknown client accepted")
-	}
-}

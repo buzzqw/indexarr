@@ -23,7 +23,7 @@ const (
 // is a Torznab endpoint. Aggregate endpoints use the pseudo-slug "all".
 func torznabPath(path string) (string, bool) {
 	switch path {
-	case pathAPI, pathTorznab:
+	case pathAPI, pathNewznab, pathTorznab:
 		return slugAll, true
 	}
 	if slug, ok := pathBetween(path, pathJackettPrefix, pathJackettSuffix); ok {

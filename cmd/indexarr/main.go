@@ -23,13 +23,16 @@ import (
 	"github.com/buzzqw/indexarr/internal/backup"
 	"github.com/buzzqw/indexarr/internal/catalog"
 	"github.com/buzzqw/indexarr/internal/config"
+	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	coreengine "github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/family"
 	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/ingest"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/store"
+	"github.com/buzzqw/indexarr/internal/syncjob"
 	"github.com/buzzqw/indexarr/internal/vault"
 	"github.com/buzzqw/indexarr/internal/web"
 )
@@ -149,6 +152,54 @@ func main() {
 		indexerManager = nil
 	}
 
+	indexerService, err := indexersvc.New(indexersvc.Config{
+		Store: st, Vault: secretVault, Manager: indexerManager,
+	})
+	if err != nil {
+		logger.Warn("native indexer pages disabled", "error", err)
+		indexerService = nil
+	}
+
+	var syncService *syncjob.Service
+	if secretVault != nil {
+		baseURL := strings.TrimSpace(settings.PublicURL)
+		if baseURL == "" {
+			baseURL = displayURL(cfg.Listen)
+			logger.Warn("public_url is empty; app sync will advertise a local address",
+				"base_url", baseURL)
+		}
+		syncService, err = syncjob.New(syncjob.Config{
+			Store: st, Vault: secretVault, Logger: logger, BaseURL: baseURL,
+		})
+		if err != nil {
+			logger.Warn("app sync disabled", "error", err)
+			syncService = nil
+		} else {
+			syncService.Start(ctx)
+		}
+	}
+
+	var downloadResolver func(context.Context, int64) ([]byte, string, string, error)
+	if indexerManager != nil && secretVault != nil {
+		resolver, resolverErr := downloadproxy.New(downloadproxy.Config{
+			Store: st, Vault: secretVault, Manager: indexerManager,
+		})
+		if resolverErr != nil {
+			logger.Warn("download proxy disabled", "error", resolverErr)
+		} else {
+			downloadResolver = func(ctx context.Context, id int64) ([]byte, string, string, error) {
+				payload, err := resolver.Resolve(ctx, id)
+				if err != nil {
+					return nil, "", "", err
+				}
+				if len(payload.Body) == 0 {
+					return nil, "", "", errors.New("payload unavailable")
+				}
+				return payload.Body, payload.ContentType, payload.Filename, nil
+			}
+		}
+	}
+
 	var nativeRunner *native.Runner
 	if indexerManager != nil {
 		nativeRunner, err = native.New(native.Config{
@@ -168,7 +219,7 @@ func main() {
 
 	var adminHandler http.Handler
 	adminServer, err := adminapi.New(adminapi.Config{
-		Store: st, Vault: secretVault, Manager: indexerManager,
+		Store: st, Vault: secretVault, Manager: indexerManager, Sync: syncService,
 		Logger: logger, Version: version,
 	})
 	if err != nil {
@@ -185,6 +236,8 @@ func main() {
 		Handler: web.New(web.Config{
 			Store: st, Engine: engine, Logger: logger, Logs: logBuffer, Level: levelVar,
 			Version: version, Started: time.Now(), Admin: adminHandler,
+			Native: indexerManager, Indexers: indexerService,
+			DownloadResolver: downloadResolver,
 			Restart: func() {
 				if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
 					logger.Error("cannot restart for restore", "error", err)
@@ -214,6 +267,9 @@ func main() {
 	engine.Wait()
 	if nativeRunner != nil {
 		nativeRunner.Wait()
+	}
+	if syncService != nil {
+		syncService.Wait()
 	}
 	logger.Info("stopped")
 }

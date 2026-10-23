@@ -209,8 +209,15 @@ reti private e metadata cloud salvo `allow_private`) e redirect rivalidati.
 | `internal/family` | Connettori di famiglia `unit3d` e `newznab`, registrati come factory |
 | `internal/vault` | AES-256-GCM; chiave da `INDEXARR_MASTER_KEY` o file separato, mai nel database |
 | `internal/catalog` | Catalogo incorporato (`catalog.yaml` + `definitions/*.yaml`): manifest validato, definizioni parsate, sincronizzazione verso lo store |
-| `internal/indexer` | Costruisce e mette in cache il connettore da definizione + configurazione + segreti, esegue un indexer e registra storico e provenance |
+| `internal/indexer` | Costruisce e mette in cache il connettore da definizione + configurazione + segreti, esegue un indexer torrent/Usenet, registra storico e provenance |
+| `internal/indexersvc` | Servizio delle pagine native: validazione, creazione/aggiornamento/cancellazione indexer, separazione tra config pubblica e segreti nel vault |
+| `internal/native` | Scheduler degli indexer nativi con worker limitati; salta il ponte legacy |
+| `internal/adminapi` | API JSON `/api/v2` autenticata con API key: definizioni, catalogo, indexer, applicazioni, test/search/run |
+| `internal/syncjob` | Riconciliazione periodica delle applicazioni \*arr con `appsync`, persistenza di `app_indexers` e gestione dei livelli di sync |
+| `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.torrent`/`.nzb` non ancora in cache |
+| `internal/importers` | Piano di import da Prowlarr e Jackett (indexer, applicazioni, proxy, categorie) |
 | `internal/appsync` | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr (API Servarr) e Mylar3/LazyLibrarian, con livelli di sync |
+| `internal/downloadclient` | Invio a qBittorrent, Transmission, Deluge, rTorrent, SABnzbd e NZBGet |
 | `internal/deftool` | Logica testabile del CLI: validazione, formattazione, controllo fixture |
 | `cmd/indexarr-def` | CLI `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` |
 
@@ -239,8 +246,11 @@ La migrazione numerata `1` (`indexarr2 foundation`) aggiunge:
 `schema_migrations` registra versione, nome e data di ogni migrazione numerata.
 La cache `releases` e `releases_fts` restano condivise: il protocollo vive
 sull'indexer, `release_sources` aggiunge la provenienza senza duplicare le
-release e il payload scaricato (`.torrent` o `.nzb`) usa il BLOB della cache
-esistente.
+release. La migrazione `2` (`usenet payload`) aggiunge a `releases` il campo
+`protocol`, il BLOB `payload` e `payload_type`: i torrent continuano a usare
+`torrent`, mentre i `.nzb` vivono in `payload` con tipo `application/x-nzb`.
+`download_ref` in `release_sources` è cifrato e non espone mai l'URL del
+tracker.
 
 ### Migrazioni e backfill
 

@@ -566,6 +566,18 @@ code {
   overflow-wrap: anywhere;
 }
 
+pre.yaml {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow: auto;
+  max-height: 42rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  tab-size: 2;
+}
+
 /* Mobile layout: one horizontally scrollable nav row and tables rendered as
    stacked cards. Labels for the cards come from the <th> cells via app.js;
    without JavaScript the tables keep their normal horizontal scroll. */

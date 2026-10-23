@@ -635,7 +635,11 @@ definizioni è descritto in [`docs/DEFINITIONS.md`](docs/DEFINITIONS.md).
 | `internal/catalog` | Catalogo built-in incorporato (`catalog.yaml` + `definitions/*.yaml`), validato e sincronizzabile | sì |
 | `internal/indexer` | Costruisce e mette in cache il connettore da definizione + config + segreti; esegue un indexer; salva release, provenance, storico e stato | sì |
 | `internal/native` | Scheduler degli indexer nativi; salta il ponte legacy; worker limitati | sì |
-| `internal/adminapi` | API `/api/v2`: definizioni, catalogo, indexer, segreti nel vault, test/search/run | sì |
+| `internal/adminapi` | API `/api/v2`: definizioni, catalogo, indexer, applicazioni, segreti nel vault, test/search/run | sì |
+| `internal/indexersvc` | Servizio delle pagine native: crea/aggiorna/cancella indexer, separa segreti e config pubblica | sì |
+| `internal/syncjob` | Riconciliazione periodica con Sonarr/Radarr/Lidarr/Readarr/Whisparr; scrive `app_indexers` | sì |
+| `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.nzb`/`.torrent` su richiesta | sì |
+| `internal/importers` | Piano di import da Prowlarr e Jackett (definizioni, indexer, applicazioni, proxy) | sì |
 | `internal/torznabapi` | Distribuzione Torznab: alias Jackett, routing per indexer, filtri aggregati, errori 100–900 | sì |
 | `internal/appsync` | Client Servarr (Sonarr/Radarr/Lidarr/Readarr/Whisparr), Mylar3/LazyLibrarian per il test, reconcile puro | sì |
 | `internal/deftool`, `cmd/indexarr-def` | CLI `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` | sì |
@@ -670,8 +674,16 @@ All'avvio `cmd/indexarr`:
 4. avvia `native.Runner`: esegue subito gli indexer nativi e poi ogni
    `default_interval`; gli indexer ponte (`torznab`/`rss`) vengono saltati e
    restano allo scheduler legacy;
-5. monta `/api/v2` fuori dall'autenticazione Basic della UI, con auth a API key;
-6. avvia il server HTTP e lo scheduler legacy.
+5. avvia `syncjob`: dopo 2 secondi riconcilia le applicazioni \*arr e poi ogni
+   15 minuti;
+6. monta `/api/v2` fuori dall'autenticazione Basic della UI, con auth a API key;
+7. monta le pagine native `/definitions` e `/indexers`, con form generati dai
+   `settings`, test per fase e run manuale;
+8. avvia il server HTTP e lo scheduler legacy.
+
+Il proxy `/dl/{id}.torrent` e `/dl/{id}.nzb` serve i payload salvati; se il
+payload non c'è, `downloadproxy` apre il `download_ref` cifrato e lo scarica
+dal connettore dell'indexer, poi lo salva in cache.
 
 Un indexer nativo creato da `/api/v2` viene eseguito al giro successivo (o
 subito con `POST /api/v2/indexers/{id}/run`). Non serve riavviare.
@@ -694,6 +706,10 @@ Nessun cookie, nessun CSRF. Errori JSON.
 | POST | `/api/v2/indexers/{id}/test` |
 | POST | `/api/v2/indexers/{id}/search` |
 | POST | `/api/v2/indexers/{id}/run` |
+| GET/POST | `/api/v2/applications` |
+| GET/PUT/DELETE | `/api/v2/applications/{id}` |
+| POST | `/api/v2/applications/{id}/sync` |
+| POST | `/api/v2/applications/sync` |
 
 Le risposte non contengono mai `api_key`, password, cookie o URL del tracker.
 La ricerca restituisce solo titolo, GUID, dimensione, seeders/leechers,
@@ -728,29 +744,30 @@ make def-validate          # 6 definizioni: 3 esempi + 3 built-in
 
 Risultato: tutto verde. Il QA reale crea e cancella un indexer Newznab via
 `/api/v2`, verifica che il segreto non compaia nella risposta e che il vault
-lo possa decifrare. Il runner nativo, su una copia del DB reale, salta 37
+lo possa decifrare; crea e cancella un'applicazione Sonarr con sync
+`disabled`; verifica le pagine `/definitions`, `/indexers`, `/newznab/api` e
+`/api/v2/applications`. Il runner nativo, su una copia del DB reale, salta 37
 indexer ponte su 37 e non tocca il percorso legacy.
 
 ### 15.7 Limiti noti e prossima ondata
 
 Ancora da fare, in ordine di valore:
 
-1. **UI web** per definizioni e indexer nativi (la API c'è, le pagine no):
-   catalogo, form generato dai `settings`, test per fase, migrazione dal ponte.
-2. **App sync cablato**: i client esistono; mancano job, persistenza
-   `applications`/`app_indexers`, riconciliazione periodica e rollback.
-3. **Proxy download completo**: `download_ref` opaco per indexer senza
-   `.torrent`, proxy `.nzb` Newznab, limiti query/grab applicati davvero,
-   proxy HTTP/SOCKS/FlareSolverr per indexer.
-4. **Client di download mancanti**: Deluge, rTorrent, SABnzbd, NZBGet.
-5. **Catalogo reale**: sostituire le definizioni `bozza` con definizioni
+1. **Limiti query/grab applicati davvero** (le colonne esistono, l'enforcement
+   no) e stato `blocked` per i CAPTCHA.
+2. **Proxy per indexer** (HTTP, SOCKS4/5, FlareSolverr): oggi c'è solo
+   `allow_private`.
+3. **Catalogo reale**: sostituire le definizioni `bozza` con definizioni
    `verificate` su fixture osservate; health check live e canary.
-6. **Credenziali legacy → vault** e svuotamento progressivo del ponte.
-7. **Provenance in uscita**: “visto su N indexer”, scelta del link migliore,
+4. **Credenziali legacy → vault** e svuotamento progressivo del ponte.
+5. **Provenance in uscita**: “visto su N indexer”, scelta del link migliore,
    refresh dei seeders con TTL.
+6. **App sync**: snapshot per il rollback in un clic, pagine web, sync per
+   Mylar3/LazyLibrarian quando l'API è verificata.
+7. **Import Prowlarr/Jackett cablato**: `internal/importers` produce il piano;
+   mancano endpoint e UI che lo applichino.
 8. **Sicurezza e manutenzione**: firma del catalogo remoto, studio delle
-   definizioni, riparazione assistita, stato `blocked` per CAPTCHA, rete di
-   salute opt-in.
+   definizioni, riparazione assistita, rete di salute opt-in.
 
 ### 15.8 Come lavorare (per il prossimo agente)
 

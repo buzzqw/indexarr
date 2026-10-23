@@ -31,11 +31,20 @@ type Server struct {
 	started    time.Time
 	limits     *minuteLimiter
 	liveSearch func(context.Context, store.Filter) (int, error)
+
+	downloadResolver func(context.Context, int64) ([]byte, string, string, error)
 }
 
 // SetLiveSearch installs the callback used when the cache has no results.
 func (s *Server) SetLiveSearch(fn func(context.Context, store.Filter) (int, error)) {
 	s.liveSearch = fn
+}
+
+// SetDownloadResolver installs the callback used to fetch a payload that is
+// not stored yet (an opaque release_sources.download_ref). The callback
+// returns body, content type and filename.
+func (s *Server) SetDownloadResolver(fn func(context.Context, int64) ([]byte, string, string, error)) {
+	s.downloadResolver = fn
 }
 
 // New builds the server.
@@ -48,6 +57,7 @@ func New(st *store.Store, logger *slog.Logger, version string) *Server {
 
 const (
 	pathAPI      = "/api"
+	pathNewznab  = "/newznab/api"
 	pathTorznab  = "/torznab/api"
 	pathDownload = "/dl/"
 	maxResults   = 100
@@ -125,7 +135,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 				writeTorznabError(w, http.StatusBadRequest, torznabIncorrectParameter, "invalid release id")
 				return
 			}
-			s.serveTorrentByID(w, r, id)
+			s.serveReleaseByID(w, r, id, "")
 			return
 		}
 		release, found, err := s.store.ReleaseByExternalID(r.Context(), rawID)
@@ -138,7 +148,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 			writeTorznabError(w, http.StatusNotFound, torznabIncorrectParameter, "release not found")
 			return
 		}
-		s.serveTorrent(w, r, release)
+		s.serveRelease(w, r, release, "")
 		return
 	}
 	switch function {
@@ -290,16 +300,25 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := strings.TrimPrefix(r.URL.Path, pathDownload)
-	name = strings.TrimSuffix(name, ".torrent")
+	extension := ""
+	lower := strings.ToLower(name)
+	switch {
+	case strings.HasSuffix(lower, ".torrent"):
+		extension = ".torrent"
+		name = name[:len(name)-len(".torrent")]
+	case strings.HasSuffix(lower, ".nzb"):
+		extension = ".nzb"
+		name = name[:len(name)-len(".nzb")]
+	}
 	id, err := strconv.ParseInt(strings.TrimSpace(name), 10, 64)
 	if err != nil || id <= 0 {
 		s.writeError(w, http.StatusBadRequest, "invalid release id")
 		return
 	}
-	s.serveTorrentByID(w, r, id)
+	s.serveReleaseByID(w, r, id, extension)
 }
 
-func (s *Server) serveTorrentByID(w http.ResponseWriter, r *http.Request, id int64) {
+func (s *Server) serveReleaseByID(w http.ResponseWriter, r *http.Request, id int64, extension string) {
 	release, err := s.store.GetRelease(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -310,25 +329,82 @@ func (s *Server) serveTorrentByID(w http.ResponseWriter, r *http.Request, id int
 		writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
 		return
 	}
-	s.serveTorrent(w, r, release)
+	s.serveRelease(w, r, release, extension)
 }
 
-func (s *Server) serveTorrent(w http.ResponseWriter, r *http.Request, release store.Release) {
-	if len(release.Torrent) == 0 {
-		s.writeError(w, http.StatusNotFound, "no .torrent stored for this release; use the magnet link")
+func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release store.Release, extension string) {
+	usenet := isUsenetRelease(release)
+	switch extension {
+	case ".nzb":
+		usenet = true
+	case ".torrent":
+		usenet = false
+	}
+	body, contentType, filename := s.releasePayload(r.Context(), release, usenet)
+	if len(body) == 0 {
+		if usenet {
+			s.writeError(w, http.StatusNotFound, "no .nzb stored for this release")
+		} else {
+			s.writeError(w, http.StatusNotFound, "no .torrent stored for this release; use the magnet link")
+		}
 		return
 	}
-	w.Header().Set("Content-Type", "application/x-bittorrent")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+TorrentFilename(release.Title)+`"`)
-	w.Header().Set("Content-Length", strconv.Itoa(len(release.Torrent)))
+	if strings.TrimSpace(contentType) == "" {
+		contentType = "application/x-bittorrent"
+		if usenet {
+			contentType = "application/x-nzb"
+		}
+	}
+	if strings.TrimSpace(filename) == "" {
+		if usenet {
+			filename = NZBFilename(release.Title)
+		} else {
+			filename = TorrentFilename(release.Title)
+		}
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+headerFilename(filename)+`"`)
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if r.Method == http.MethodHead {
 		return
 	}
-	if _, err := w.Write(release.Torrent); err != nil {
-		s.log.Debug("torznab: write torrent", "error", err)
+	if _, err := w.Write(body); err != nil {
+		s.log.Debug("torznab: write payload", "error", err)
 	}
+}
+
+// releasePayload returns the stored bytes or asks the download resolver for
+// them. The resolver is only consulted when no matching payload is cached.
+func (s *Server) releasePayload(ctx context.Context, release store.Release, usenet bool) ([]byte, string, string) {
+	if usenet {
+		if len(release.Payload) > 0 {
+			return release.Payload, release.PayloadType, NZBFilename(release.Title)
+		}
+	} else {
+		if len(release.Torrent) > 0 {
+			return release.Torrent, "application/x-bittorrent", TorrentFilename(release.Title)
+		}
+		if len(release.Payload) > 0 && !isUsenetRelease(release) {
+			return release.Payload, release.PayloadType, TorrentFilename(release.Title)
+		}
+	}
+	if s.downloadResolver == nil {
+		return nil, "", ""
+	}
+	body, contentType, filename, err := s.downloadResolver(ctx, release.ID)
+	if err != nil || len(body) == 0 {
+		return nil, "", ""
+	}
+	return body, contentType, filename
+}
+
+func isUsenetRelease(release store.Release) bool {
+	if strings.EqualFold(strings.TrimSpace(release.Protocol), "usenet") {
+		return true
+	}
+	return strings.Contains(strings.ToLower(release.PayloadType), "nzb")
 }
 
 func (s *Server) writeCaps(w http.ResponseWriter, settings store.Settings) {
@@ -376,12 +452,28 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings store.Settings
 	if apiKey == "" {
 		apiKey = settings.APIKey
 	}
-	link := release.Magnet
-	if len(release.Torrent) > 0 {
-		link = base + "/dl/" + strconv.FormatInt(release.ID, 10) + ".torrent?apikey=" + url.QueryEscape(apiKey)
+	usenet := isUsenetRelease(release)
+	id := strconv.FormatInt(release.ID, 10)
+	key := url.QueryEscape(apiKey)
+	link := ""
+	switch {
+	case len(release.Torrent) > 0:
+		link = base + "/dl/" + id + ".torrent?apikey=" + key
+	case len(release.Payload) > 0 && !usenet:
+		link = base + "/dl/" + id + ".torrent?apikey=" + key
+	case usenet:
+		// Newznab clients grab through the same proxy; the resolver fetches an
+		// opaque reference on first use.
+		link = base + "/dl/" + id + ".nzb?apikey=" + key
+	case release.Magnet != "":
+		link = release.Magnet
 	}
 	if link == "" {
 		return
+	}
+	enclosureType := "application/x-bittorrent"
+	if usenet {
+		enclosureType = "application/x-nzb"
 	}
 	size := release.Size
 	if size <= 0 {
@@ -407,7 +499,7 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings store.Settings
 	fmt.Fprintf(b, `<pubDate>%s</pubDate>`, published.Format(time.RFC1123Z))
 	fmt.Fprintf(b, `<size>%d</size>`, size)
 	fmt.Fprintf(b, `<category>%s</category>`, esc(category))
-	fmt.Fprintf(b, `<enclosure url="%s" length="%d" type="application/x-bittorrent"/>`, esc(link), size)
+	fmt.Fprintf(b, `<enclosure url="%s" length="%d" type="%s"/>`, esc(link), size, enclosureType)
 	fmt.Fprintf(b, `<torznab:attr name="category" value="%s"/>`, esc(category))
 	fmt.Fprintf(b, `<torznab:attr name="size" value="%d"/>`, size)
 	if release.Seeders >= 0 {
@@ -422,8 +514,11 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings store.Settings
 	if release.InfoHash != "" {
 		fmt.Fprintf(b, `<torznab:attr name="infohash" value="%s"/>`, esc(release.InfoHash))
 	}
-	if release.Magnet != "" {
+	if !usenet && release.Magnet != "" {
 		fmt.Fprintf(b, `<torznab:attr name="magneturl" value="%s"/>`, esc(release.Magnet))
+	}
+	if usenet {
+		fmt.Fprintf(b, `<torznab:attr name="protocol" value="usenet"/>`)
 	}
 	if !published.IsZero() {
 		fmt.Fprintf(b, `<torznab:attr name="publishdate" value="%s"/>`, published.Format(time.RFC3339))
@@ -576,6 +671,15 @@ func splitCategories(raw string) []string {
 
 // TorrentFilename builds a safe download name from a release title.
 func TorrentFilename(title string) string {
+	return safeFilename(title, ".torrent")
+}
+
+// NZBFilename builds a safe Newznab download name from a release title.
+func NZBFilename(title string) string {
+	return safeFilename(title, ".nzb")
+}
+
+func safeFilename(title, extension string) string {
 	var b strings.Builder
 	for _, r := range title {
 		switch {
@@ -593,5 +697,27 @@ func TorrentFilename(title string) string {
 	if len(runes) > 100 {
 		name = string(runes[:100])
 	}
-	return name + ".torrent"
+	return name + extension
+}
+
+// headerFilename keeps a resolver-provided name safe for Content-Disposition.
+func headerFilename(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "release"
+	}
+	name = strings.Map(func(r rune) rune {
+		switch r {
+		case '"', '\r', '\n', '\\', '/':
+			return '_'
+		}
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, name)
+	if name == "" {
+		return "release"
+	}
+	return name
 }

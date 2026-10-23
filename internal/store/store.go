@@ -223,6 +223,23 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 2 gives every release a protocol and a generic payload, so
+	// Usenet .nzb files live next to torrents without a second cache.
+	if err := s.applyMigration(context.Background(), indexarr2UsenetPayloadVersion,
+		"usenet payload", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`ALTER TABLE releases ADD COLUMN protocol TEXT NOT NULL DEFAULT 'torrent'`,
+				`ALTER TABLE releases ADD COLUMN payload BLOB`,
+				`ALTER TABLE releases ADD COLUMN payload_type TEXT NOT NULL DEFAULT ''`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
 	// Existing installations are bridged automatically: every legacy source
 	// becomes a definition plus an indexer exactly once.
 	if _, err := s.BackfillLegacySources(context.Background()); err != nil {

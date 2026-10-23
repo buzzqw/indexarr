@@ -682,6 +682,12 @@ legacy resta quello predefinito finché la migrazione non è completa.
 - [Architettura indexarr 2](docs/ARCHITECTURE.md#indexarr-2)
 - [Analisi e visione](indexarr2.md)
 
+La UI include le pagine **Definizioni** e **Indexer nativi** (form generato dai
+`settings`, test per fase, run manuale). Il sync verso le \*arr si configura da
+`/api/v2/applications`; il proxy serve `.torrent` e `.nzb` senza esporre URL o
+passkey. I client di download supportano qBittorrent, Transmission, Deluge,
+rTorrent, SABnzbd e NZBGet.
+
 Il CLI delle definizioni è `indexarr-def`:
 
 ```bash

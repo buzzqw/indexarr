@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/categories"
+	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/ingest"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/store"
@@ -33,6 +35,7 @@ var templates = map[string]*template.Template{}
 var pageNames = []string{
 	"dashboard", "releases", "release", "sources", "source_form", "source_bulk",
 	"runs", "run", "rules", "logs", "settings", "maintenance", "discover", "error",
+	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
 }
 
 var templateFuncMap = template.FuncMap{
@@ -65,6 +68,21 @@ var templateFuncMap = template.FuncMap{
 		return string(runes[:max]) + "…"
 	},
 	"categoryGroups": categories.Groups,
+	"stateClass": func(state string) string {
+		switch state {
+		case "verificata", "stabile":
+			return "ok"
+		case "degradata":
+			return "danger"
+		case "bozza":
+			return "warn"
+		default:
+			return ""
+		}
+	},
+	"duration": func(value time.Duration) string {
+		return value.Round(time.Millisecond).String()
+	},
 }
 
 // partialTemplates are HTML fragments rendered without the layout, for live
@@ -110,9 +128,20 @@ type Config struct {
 	Version string
 	Started time.Time
 	Restart func()
+	// Native is the runtime manager of the native indexers. It is optional:
+	// without it the pages still list and configure indexers but cannot run
+	// tests or imports.
+	Native *indexer.Manager
+	// Indexers is the service behind the native indexer pages. It is optional
+	// and the pages degrade with a clear message when it is nil.
+	Indexers *indexersvc.Service
 	// Admin is the versioned /api/v2 handler. It authenticates with the
 	// Torznab API key itself, so it is mounted outside the UI session.
 	Admin http.Handler
+	// DownloadResolver fetches a payload that is not stored yet (an opaque
+	// release_sources.download_ref). It returns body, content type and
+	// filename. Optional: without it the proxy only serves stored payloads.
+	DownloadResolver func(context.Context, int64) ([]byte, string, string, error)
 }
 
 // Server serves the web interface, the Torznab API and the health endpoint.
@@ -128,6 +157,8 @@ type Server struct {
 	level   *slog.LevelVar
 	restart func()
 	admin   http.Handler
+	native  *indexer.Manager
+	svc     *indexersvc.Service
 }
 
 // New builds the HTTP server.
@@ -161,10 +192,13 @@ func New(cfg Config) *Server {
 		level:   level,
 		restart: cfg.Restart,
 		admin:   cfg.Admin,
+		native:  cfg.Native,
+		svc:     cfg.Indexers,
 	}
 	if cfg.Engine != nil {
 		srv.torznab.SetLiveSearch(cfg.Engine.SearchLive)
 	}
+	srv.torznab.SetDownloadResolver(cfg.DownloadResolver)
 	return srv
 }
 
@@ -204,6 +238,19 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /sources/{id}/cancel", s.sourceCancel)
 	ui.HandleFunc("POST /sources/test-all", s.sourcesTestAll)
 	ui.HandleFunc("POST /sources/run-all", s.sourcesRunAll)
+	ui.HandleFunc("GET /definitions", s.definitionsPage)
+	ui.HandleFunc("GET /definitions/new", s.definitionNew)
+	ui.HandleFunc("POST /definitions", s.definitionCreate)
+	ui.HandleFunc("GET /definitions/{id}", s.definitionPage)
+	ui.HandleFunc("GET /indexers", s.indexersPage)
+	ui.HandleFunc("GET /indexers/new", s.indexerNew)
+	ui.HandleFunc("POST /indexers", s.indexerCreate)
+	ui.HandleFunc("GET /indexers/{id}", s.indexerPage)
+	ui.HandleFunc("GET /indexers/{id}/edit", s.indexerEdit)
+	ui.HandleFunc("POST /indexers/{id}", s.indexerUpdate)
+	ui.HandleFunc("POST /indexers/{id}/delete", s.indexerDelete)
+	ui.HandleFunc("POST /indexers/{id}/test", s.indexerTest)
+	ui.HandleFunc("POST /indexers/{id}/run", s.indexerRun)
 	ui.HandleFunc("GET /runs", s.runsPage)
 	ui.HandleFunc("GET /runs/{id}", s.runPage)
 	ui.HandleFunc("POST /runs/clear", s.runsClear)
@@ -232,6 +279,7 @@ func (s *Server) Handler() http.Handler {
 	// Torznab clients authenticate with their own API key: the UI's Basic
 	// authentication must not wrap these routes.
 	outer.Handle("/api", s.torznab)
+	outer.Handle("/newznab/api", s.torznab)
 	outer.Handle("/torznab/api", s.torznab)
 	outer.Handle("/dl/", s.torznab)
 	if s.admin != nil {

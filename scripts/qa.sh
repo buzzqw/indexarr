@@ -94,6 +94,10 @@ check /healthz '"status":"ok"'
 check /static/app.css "max-width: 720px"
 check /static/manifest.webmanifest '"name": "indexarr"'
 check /sw.js "indexarr-static"
+check /definitions "Definizioni"
+check /definitions/new "Nuova definizione"
+check /indexers "Indexer nativi"
+check /indexers/new "Nuovo indexer nativo"
 
 KEY="$(grep -o 'apikey=[0-9a-f]\{64\}' "$LOG" | head -n 1 | cut -d= -f2)"
 if [[ -z "$KEY" ]]; then
@@ -107,6 +111,13 @@ if ! grep -q '<caps' <<<"$CAPS"; then
   exit 1
 fi
 echo "ok   /api?t=caps"
+
+NEWZNAB="$(curl -fsS "$BASE/newznab/api?t=caps&apikey=$KEY")"
+if ! grep -q '<caps' <<<"$NEWZNAB"; then
+  echo "FAIL /newznab/api?t=caps: no <caps> element" >&2
+  exit 1
+fi
+echo "ok   /newznab/api?t=caps"
 
 echo "==> admin API v2"
 HEALTH="$(curl -fsS "$BASE/api/v2/health?apikey=$KEY")"
@@ -150,5 +161,30 @@ if [[ -z "$NATIVE_ID" ]]; then
 fi
 curl -fsS -X DELETE "$BASE/api/v2/indexers/$NATIVE_ID?apikey=$KEY" >/dev/null
 echo "ok   /api/v2/indexers (vault create/delete)"
+
+APP="$(curl -fsS -X POST "$BASE/api/v2/applications?apikey=$KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"kind":"sonarr","name":"QA Sonarr","url":"http://127.0.0.1:8989","api_key":"qa-app-key","sync_level":"disabled"}')"
+if ! grep -q '"has_api_key":true' <<<"$APP"; then
+  echo "FAIL /api/v2/applications create: $APP" >&2
+  exit 1
+fi
+if grep -q 'qa-app-key' <<<"$APP"; then
+  echo "FAIL /api/v2/applications leaked the API key" >&2
+  exit 1
+fi
+APP_ID="$(grep -o '"id":[0-9]*' <<<"$APP" | head -n 1 | cut -d: -f2)"
+if [[ -z "$APP_ID" ]]; then
+  echo "FAIL /api/v2/applications create: no id" >&2
+  echo "$APP" >&2
+  exit 1
+fi
+SYNC="$(curl -fsS -X POST "$BASE/api/v2/applications/$APP_ID/sync?apikey=$KEY")"
+if ! grep -q '"added":0' <<<"$SYNC"; then
+  echo "FAIL /api/v2/applications sync: $SYNC" >&2
+  exit 1
+fi
+curl -fsS -X DELETE "$BASE/api/v2/applications/$APP_ID?apikey=$KEY" >/dev/null
+echo "ok   /api/v2/applications (vault + sync)"
 
 echo "QA passed"

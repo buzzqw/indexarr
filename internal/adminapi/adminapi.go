@@ -20,6 +20,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
+	"github.com/buzzqw/indexarr/internal/syncjob"
 	"github.com/buzzqw/indexarr/internal/vault"
 )
 
@@ -31,17 +32,19 @@ type Config struct {
 	Store   *store.Store
 	Vault   *vault.Vault
 	Manager *indexer.Manager // optional: enables test/search/run
+	Sync    *syncjob.Service // optional: enables application sync endpoints
 	Logger  *slog.Logger
 	Version string // optional, reported by /api/v2/health
 }
 
 // Server serves the versioned admin API.
 type Server struct {
-	store   *store.Store
-	vault   *vault.Vault
-	manager *indexer.Manager
-	logger  *slog.Logger
-	version string
+	store       *store.Store
+	vault       *vault.Vault
+	manager     *indexer.Manager
+	syncService *syncjob.Service
+	logger      *slog.Logger
+	version     string
 }
 
 // New builds an admin API server. A store is required; every other field is
@@ -55,11 +58,12 @@ func New(cfg Config) (*Server, error) {
 		logger = slog.Default()
 	}
 	return &Server{
-		store:   cfg.Store,
-		vault:   cfg.Vault,
-		manager: cfg.Manager,
-		logger:  logger,
-		version: strings.TrimSpace(cfg.Version),
+		store:       cfg.Store,
+		vault:       cfg.Vault,
+		manager:     cfg.Manager,
+		syncService: cfg.Sync,
+		logger:      logger,
+		version:     strings.TrimSpace(cfg.Version),
 	}, nil
 }
 
@@ -88,6 +92,14 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v2/indexers/{id}/test", s.handleIndexerTest)
 	mux.HandleFunc("POST /api/v2/indexers/{id}/search", s.handleIndexerSearch)
 	mux.HandleFunc("POST /api/v2/indexers/{id}/run", s.handleIndexerRun)
+
+	mux.HandleFunc("GET /api/v2/applications", s.handleApplicationList)
+	mux.HandleFunc("POST /api/v2/applications", s.handleApplicationCreate)
+	mux.HandleFunc("POST /api/v2/applications/sync", s.handleApplicationSyncAll)
+	mux.HandleFunc("GET /api/v2/applications/{id}", s.handleApplicationGet)
+	mux.HandleFunc("PUT /api/v2/applications/{id}", s.handleApplicationUpdate)
+	mux.HandleFunc("DELETE /api/v2/applications/{id}", s.handleApplicationDelete)
+	mux.HandleFunc("POST /api/v2/applications/{id}/sync", s.handleApplicationSync)
 
 	// JSON for unknown routes, so clients never receive an HTML body.
 	notFound := func(w http.ResponseWriter, _ *http.Request) {

@@ -9,7 +9,10 @@ import (
 
 // indexarr2FoundationVersion is the first numbered migration. The legacy
 // schema above is created idempotently on every open and is not numbered.
-const indexarr2FoundationVersion = 1
+const (
+	indexarr2FoundationVersion    = 1
+	indexarr2UsenetPayloadVersion = 2
+)
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
 	version    INTEGER PRIMARY KEY,

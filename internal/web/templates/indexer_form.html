@@ -1,0 +1,159 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{if .IsNew}}Nuovo indexer nativo{{else}}Modifica {{.Indexer.Name}}{{end}}</h1>
+    <p class="muted">{{if .IsNew}}Scegli una definizione, poi compila i campi generati dai suoi <code>settings</code>.{{else}}<code>{{.Indexer.Slug}}</code>{{end}}</p>
+  </div>
+  <a class="btn" href="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">← Annulla</a>
+</section>
+
+{{if .Problems}}
+<section class="panel">
+  <div class="panel-head"><h2>Problemi</h2></div>
+  <div class="prose">
+    <ul>{{range .Problems}}<li><code>{{.}}</code></li>{{end}}</ul>
+  </div>
+</section>
+{{end}}
+
+<section class="panel">
+  <div class="panel-head"><h2>Definizione</h2></div>
+  <form class="inline-form" method="get" action="/indexers/new">
+    <div class="field grow">
+      <label for="definition_choice">Carica i campi di una definizione</label>
+      <select id="definition_choice" name="definition">
+        {{range .Definitions}}<option value="{{.ID}}"{{if eq .ID $.DefinitionID}} selected{{end}}>{{.Name}} · {{.ID}}{{if not .Installed}} (catalogo){{end}}</option>{{end}}
+      </select>
+      <p class="help">Per un indexer esistente la definizione si cambia dal modulo qui sotto e i campi vengono aggiornati al salvataggio.</p>
+    </div>
+    <div class="actions"><button class="btn" type="submit">Carica campi</button></div>
+  </form>
+</section>
+
+<form class="panel form" method="post" action="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="definition_id">Definizione</label>
+      <select id="definition_id" name="definition_id" required>
+        {{range .Definitions}}<option value="{{.ID}}"{{if eq .ID $.DefinitionID}} selected{{end}}>{{.Name}} · {{.ID}}{{if not .Installed}} (catalogo){{end}}</option>{{end}}
+      </select>
+      {{if .DefinitionName}}<p class="help">Campi generati da <strong>{{.DefinitionName}}</strong>.</p>{{end}}
+    </div>
+    <div class="field">
+      <label for="protocol">Protocollo</label>
+      <select id="protocol" name="protocol">
+        <option value="torrent"{{if eq .Protocol "torrent"}} selected{{end}}>torrent</option>
+        <option value="usenet"{{if eq .Protocol "usenet"}} selected{{end}}>usenet</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="name">Nome</label>
+      <input id="name" name="name" type="text" required maxlength="100" value="{{.Name}}" placeholder="Il mio indexer">
+    </div>
+    <div class="field">
+      <label for="slug">Slug</label>
+      <input id="slug" name="slug" type="text" value="{{.Slug}}" placeholder="generato dal nome">
+      <p class="help">Usato nell'endpoint Torznab e come chiave univoca.</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="priority">Priorità</label>
+      <input id="priority" name="priority" type="number" value="{{.Priority}}">
+      <p class="help">Valore più basso = preferito nelle risposte aggregate.</p>
+    </div>
+    <div class="field">
+      <label for="tags">Tag</label>
+      <input id="tags" name="tags" type="text" value="{{.Tags}}" placeholder="film, serie-tv">
+      <p class="help">Separati da virgola.</p>
+    </div>
+    <div class="field checkbox">
+      <input id="enabled" name="enabled" type="checkbox"{{if .Enabled}} checked{{end}}>
+      <label for="enabled">Abilitato</label>
+      <p class="help">Un indexer disattivato non viene eseguito dallo scheduler.</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="url">URL</label>
+      <input id="url" name="url" type="url" value="{{.URL}}" placeholder="https://indexer.example/api">
+      <p class="help">Endpoint di ricerca o base URL usato dal connettore.</p>
+    </div>
+    <div class="field">
+      <label for="categories">Categorie</label>
+      <input id="categories" name="categories" type="text" value="{{.Categories}}" placeholder="5000,2000">
+      <p class="help">ID Torznab/Newznab separati da virgola; vuoto = tutte.</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="query">Query fissa</label>
+      <input id="query" name="query" type="text" value="{{.Query}}" placeholder="opzionale">
+      <p class="help">Se impostata l'esecuzione usa una ricerca; altrimenti legge gli ultimi risultati.</p>
+    </div>
+    <div class="field">
+      <label for="default_category">Categoria predefinita</label>
+      <input id="default_category" name="default_category" type="text" value="{{.DefaultCategory}}" placeholder="5040">
+      <p class="help">Usata quando un elemento non ha una categoria propria.</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="user_agent">User agent</label>
+      <input id="user_agent" name="user_agent" type="text" value="{{.UserAgent}}" placeholder="usa quello globale">
+    </div>
+    <div class="field checkbox">
+      <input id="allow_private" name="allow_private" type="checkbox"{{if .AllowPrivate}} checked{{end}}>
+      <label for="allow_private">Consenti indirizzi privati</label>
+      <p class="help">Necessario per indexer sulla rete locale; disattiva la protezione SSRF solo per questo indexer.</p>
+    </div>
+  </div>
+
+  {{range .Fields}}
+  <div class="field{{if eq .Type "checkbox"}} checkbox{{end}}">
+    <label for="setting_{{.Name}}">{{.Label}}{{if .Required}} *{{end}}</label>
+    {{if eq .Type "password"}}
+    <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}•••••• (configurato, lascia vuoto per mantenere){{else}}inserisci il valore{{end}}">
+    {{if .HasSecret}}
+    <label class="muted" style="font-size: 0.85rem;"><input type="checkbox" name="clear_{{.Name}}"> Rimuovi il segreto memorizzato</label>
+    {{end}}
+    {{else if eq .Type "checkbox"}}
+    <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="checkbox"{{if .Checked}} checked{{end}}>
+    {{else if eq .Type "select"}}
+    <select id="setting_{{.Name}}" name="setting_{{.Name}}">
+      {{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    {{else}}
+    <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="text" value="{{.Value}}">
+    {{end}}
+    {{if .Help}}<p class="help">{{.Help}}</p>{{end}}
+  </div>
+  {{end}}
+
+  <div class="actions">
+    <button class="btn primary" type="submit">{{if .IsNew}}Crea indexer{{else}}Salva indexer{{end}}</button>
+    <a class="btn" href="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">Annulla</a>
+  </div>
+</form>
+
+{{if not .IsNew}}
+<section class="panel danger-zone">
+  <div class="panel-head"><h2>Zona pericolosa</h2></div>
+  <div class="prose">
+    <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="Eliminare questo indexer? I segreti e lo stato vengono rimossi.">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn danger" type="submit">Elimina indexer</button>
+    </form>
+  </div>
+</section>
+{{end}}
+{{end}}

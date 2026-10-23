@@ -35,6 +35,9 @@ type Release struct {
 	Torrent          []byte
 	TorrentSize      int64
 	TorrentFetchedAt time.Time
+	Protocol         string
+	Payload          []byte
+	PayloadType      string
 	FirstSeenAt      time.Time
 	LastSeenAt       time.Time
 	TimesSeen        int64
@@ -72,7 +75,23 @@ type Filter struct {
 const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
 	search_title, size, seeders, leechers, category, published_at, source_id,
 	source_name, guid, magnet, torrent, torrent_size, torrent_fetched_at,
-	first_seen_at, last_seen_at, times_seen, favorite, hidden`
+	first_seen_at, last_seen_at, times_seen, favorite, hidden,
+	protocol, payload, payload_type`
+
+// ErrNoPayload reports that a release has neither a torrent nor a generic
+// payload stored.
+var ErrNoPayload = errors.New("store: release has no payload")
+
+func normalizeReleaseProtocol(protocol string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(protocol)) {
+	case "", "torrent":
+		return "torrent", nil
+	case "usenet":
+		return "usenet", nil
+	default:
+		return "", fmt.Errorf("store: invalid release protocol %q", protocol)
+	}
+}
 
 // UpsertRelease stores a release, merging it with an existing row that has the
 // same key or infohash. It reports whether the row is new.
@@ -93,6 +112,12 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 	if rel.TorrentSize <= 0 {
 		rel.TorrentSize = int64(len(rel.Torrent))
 	}
+	protocolProvided := strings.TrimSpace(rel.Protocol) != ""
+	protocol, err := normalizeReleaseProtocol(rel.Protocol)
+	if err != nil {
+		return false, err
+	}
+	rel.Protocol = protocol
 	// A torrent fetched after the first sighting gives the release its real
 	// identity: reuse the key already stored for that infohash instead of
 	// creating a second row.
@@ -115,14 +140,18 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 	if len(rel.Torrent) > 0 {
 		torrent = rel.Torrent
 	}
+	var payload any
+	if len(rel.Payload) > 0 {
+		payload = rel.Payload
+	}
 	var id int64
 	var timesSeen int64
-	err := s.db.QueryRowContext(ctx, `
+	err = s.db.QueryRowContext(ctx, `
 		INSERT INTO releases(dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
 			search_title, size, seeders, leechers, category, published_at, source_id,
 			source_name, guid, magnet, torrent, torrent_size, torrent_fetched_at,
-			first_seen_at, last_seen_at, times_seen)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+			first_seen_at, last_seen_at, protocol, payload, payload_type, times_seen)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
 		ON CONFLICT(dedup_key) DO UPDATE SET
 			infohash = CASE WHEN excluded.infohash <> '' THEN excluded.infohash ELSE releases.infohash END,
 			imdb_id = CASE WHEN excluded.imdb_id <> '' THEN excluded.imdb_id ELSE releases.imdb_id END,
@@ -142,6 +171,9 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 			torrent = COALESCE(excluded.torrent, releases.torrent),
 			torrent_size = CASE WHEN excluded.torrent IS NOT NULL THEN excluded.torrent_size ELSE releases.torrent_size END,
 			torrent_fetched_at = CASE WHEN excluded.torrent IS NOT NULL THEN excluded.torrent_fetched_at ELSE releases.torrent_fetched_at END,
+			protocol = CASE WHEN ? <> 0 THEN excluded.protocol ELSE releases.protocol END,
+			payload = COALESCE(excluded.payload, releases.payload),
+			payload_type = CASE WHEN excluded.payload_type <> '' THEN excluded.payload_type ELSE releases.payload_type END,
 			last_seen_at = excluded.last_seen_at,
 			times_seen = releases.times_seen + 1
 		RETURNING id, times_seen`,
@@ -149,7 +181,8 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 		rel.Title, rel.SearchTitle, rel.Size, rel.Seeders, rel.Leechers,
 		rel.Category, rel.PublishedAt.Unix(), sourceID, rel.SourceName,
 		rel.GUID, rel.Magnet, torrent, rel.TorrentSize,
-		rel.TorrentFetchedAt.Unix(), rel.FirstSeenAt.Unix(), rel.LastSeenAt.Unix()).Scan(&id, &timesSeen)
+		rel.TorrentFetchedAt.Unix(), rel.FirstSeenAt.Unix(), rel.LastSeenAt.Unix(),
+		rel.Protocol, payload, rel.PayloadType, boolInt(protocolProvided)).Scan(&id, &timesSeen)
 	if err != nil {
 		return false, fmt.Errorf("upsert release: %w", err)
 	}
@@ -211,6 +244,79 @@ func (s *Store) GetRelease(ctx context.Context, id int64) (Release, error) {
 		return Release{}, err
 	}
 	return rel, err
+}
+
+// PayloadByReleaseID resolves the downloadable bytes of a release. It prefers
+// the legacy torrent column, falls back to the generic payload and defaults the
+// content type to application/x-bittorrent (application/x-nzb for usenet).
+func (s *Store) PayloadByReleaseID(ctx context.Context, id int64) ([]byte, string, string, error) {
+	var torrent, payload []byte
+	var payloadType, protocol string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT torrent, payload, payload_type, protocol FROM releases WHERE id = ?`, id).
+		Scan(&torrent, &payload, &payloadType, &protocol)
+	if err != nil {
+		return nil, "", "", err
+	}
+	protocol = strings.ToLower(strings.TrimSpace(protocol))
+	if protocol == "" {
+		protocol = "torrent"
+	}
+	if len(torrent) > 0 {
+		contentType := strings.TrimSpace(payloadType)
+		if contentType == "" || contentType == "application/x-nzb" {
+			contentType = "application/x-bittorrent"
+		}
+		return torrent, contentType, protocol, nil
+	}
+	if len(payload) > 0 {
+		contentType := strings.TrimSpace(payloadType)
+		if contentType == "" {
+			contentType = "application/x-bittorrent"
+			if protocol == "usenet" {
+				contentType = "application/x-nzb"
+			}
+		}
+		return payload, contentType, protocol, nil
+	}
+	return nil, "", protocol, ErrNoPayload
+}
+
+// SavePayload stores a payload fetched by the opaque download resolver. A
+// torrent payload goes to the legacy torrent column so the rest of indexarr
+// keeps reading it; a usenet payload goes to the generic payload column.
+func (s *Store) SavePayload(ctx context.Context, id int64, body []byte, contentType, protocol string) error {
+	if len(body) == 0 {
+		return errors.New("store: empty payload")
+	}
+	protocol, err := normalizeReleaseProtocol(protocol)
+	if err != nil {
+		return err
+	}
+	now := time.Now().Unix()
+	var res sql.Result
+	if protocol == "usenet" {
+		if strings.TrimSpace(contentType) == "" {
+			contentType = "application/x-nzb"
+		}
+		res, err = s.db.ExecContext(ctx, `
+			UPDATE releases SET protocol = 'usenet', payload = ?, payload_type = ?,
+				torrent = NULL, torrent_size = 0, torrent_fetched_at = 0
+			WHERE id = ?`, body, contentType, id)
+	} else {
+		res, err = s.db.ExecContext(ctx, `
+			UPDATE releases SET protocol = 'torrent', torrent = ?, torrent_size = ?,
+				torrent_fetched_at = ?, payload = NULL, payload_type = ''
+			WHERE id = ?`, body, len(body), now, id)
+	}
+	if err != nil {
+		return fmt.Errorf("store release payload: %w", err)
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // SearchReleases returns one page of releases and the total matching count.
@@ -676,13 +782,14 @@ func scanRelease(scanner interface{ Scan(...any) error }) (Release, error) {
 	var out Release
 	var published, torrentFetched, firstSeen, lastSeen int64
 	var sourceID sql.NullInt64
-	var torrent []byte
+	var torrent, payload []byte
 	var favorite, hidden int
 	err := scanner.Scan(&out.ID, &out.DedupKey, &out.InfoHash, &out.IMDbID, &out.TMDbID,
 		&out.TVDbID, &out.Title, &out.SearchTitle, &out.Size, &out.Seeders,
 		&out.Leechers, &out.Category, &published, &sourceID, &out.SourceName,
 		&out.GUID, &out.Magnet, &torrent, &out.TorrentSize, &torrentFetched,
-		&firstSeen, &lastSeen, &out.TimesSeen, &favorite, &hidden)
+		&firstSeen, &lastSeen, &out.TimesSeen, &favorite, &hidden,
+		&out.Protocol, &payload, &out.PayloadType)
 	if err != nil {
 		return Release{}, err
 	}
@@ -694,6 +801,10 @@ func scanRelease(scanner interface{ Scan(...any) error }) (Release, error) {
 		out.SourceID = sourceID.Int64
 	}
 	out.Torrent = torrent
+	out.Payload = payload
+	if strings.TrimSpace(out.Protocol) == "" {
+		out.Protocol = "torrent"
+	}
 	out.Favorite = favorite != 0
 	out.Hidden = hidden != 0
 	return out, nil

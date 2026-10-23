@@ -1,0 +1,45 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Nuova definizione</h1>
+    <p class="muted">Incolla il YAML del formato nativo v1 oppure carica un file. La definizione viene validata prima di essere salvata come bozza locale.</p>
+  </div>
+  <a class="btn" href="/definitions">← Definizioni</a>
+</section>
+
+{{if .Problems}}
+<section class="panel">
+  <div class="panel-head"><h2>Problemi</h2></div>
+  <div class="prose">
+    <ul>
+      {{range .Problems}}<li><code>{{.}}</code></li>{{end}}
+    </ul>
+  </div>
+</section>
+{{end}}
+
+<form class="panel form" method="post" action="/definitions?csrf={{.CSRF}}" enctype="multipart/form-data">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <div class="field">
+    <label for="body">YAML</label>
+    <textarea id="body" name="body" rows="22" spellcheck="false" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{{.Body}}</textarea>
+    <p class="help">Schema 1: <code>meta</code>, <code>settings</code>, <code>categories</code>, <code>capabilities</code>, <code>auth</code>, <code>search</code>. I campi sconosciuti sono rifiutati.</p>
+  </div>
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="file">Oppure carica un file .yaml</label>
+      <input id="file" name="file" type="file" accept=".yaml,.yml,text/yaml,text/plain">
+      <p class="help">Se il file contiene del testo, ha la precedenza sul campo YAML.</p>
+    </div>
+    <div class="field checkbox">
+      <input id="overwrite" name="overwrite" type="checkbox">
+      <label for="overwrite">Sovrascrivi se esiste</label>
+      <p class="help">Senza questa opzione una definizione con lo stesso <code>meta.id</code> viene rifiutata.</p>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn primary" type="submit">Valida e salva</button>
+    <a class="btn" href="/definitions">Annulla</a>
+  </div>
+</form>
+{{end}}

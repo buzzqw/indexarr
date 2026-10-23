@@ -81,6 +81,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	}
 	matcher := store.NewBlocklistMatcher(rules)
 
+	usenet := engine.Protocol(strings.ToLower(strings.TrimSpace(indexer.Protocol))) == engine.ProtocolUsenet
 	seen := make(map[string]struct{}, len(items))
 	for _, raw := range items {
 		if err := ctx.Err(); err != nil {
@@ -88,6 +89,12 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 
 		item := raw
+		if usenet {
+			if err := m.runUsenetItem(ctx, indexer, item, stats, seen, matcher, &payloadBytes); err != nil {
+				return stats, err
+			}
+			continue
+		}
 		hash := itemHash(item)
 		if hash != "" {
 			item.InfoHash = hash
@@ -186,6 +193,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			GUID:        item.GUID,
 			Magnet:      magnet,
 			Torrent:     torrent,
+			Protocol:    "torrent",
 			FirstSeenAt: now,
 			LastSeenAt:  now,
 		}
@@ -224,6 +232,174 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	}
 
 	return stats, nil
+}
+
+// runUsenetItem stores one Usenet release. There is no infohash: the GUID is
+// the identity and the downloaded .nzb (or an opaque, vault-sealed download
+// reference) is the link the Newznab API later serves.
+func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item engine.Item, stats *RunStats,
+	seen map[string]struct{}, matcher *store.BlocklistMatcher, payloadBytes *int64) error {
+	item.Protocol = engine.ProtocolUsenet
+	guid := strings.TrimSpace(item.GUID)
+	downloadURL := strings.TrimSpace(item.DownloadURL)
+	if guid == "" && downloadURL == "" {
+		stats.Skipped++
+		return nil
+	}
+	if key := usenetIdentity(item); key != "" {
+		if _, duplicate := seen[key]; duplicate {
+			stats.Skipped++
+			return nil
+		}
+		seen[key] = struct{}{}
+	}
+
+	category := itemCategory(item)
+	if _, match := matcher.Match("", item.Title, indexer.Name, category); match {
+		stats.Blocked++
+		return nil
+	}
+
+	dedupKey := releaseKey("", item, indexer.Slug)
+	if dedupKey == "" {
+		stats.Skipped++
+		return nil
+	}
+
+	// A previous run may already have the .nzb: update the metadata without
+	// spending another download.
+	var body []byte
+	var payloadType string
+	existing, found, err := m.store.ReleaseByKey(ctx, dedupKey)
+	if err != nil {
+		return fmt.Errorf("indexer %s: load release %q: %w", indexer.Slug, item.Title, err)
+	}
+	if found {
+		switch {
+		case len(existing.Payload) > 0:
+			body = existing.Payload
+			payloadType = existing.PayloadType
+		case len(existing.Torrent) > 0:
+			body = existing.Torrent
+			payloadType = existing.PayloadType
+		}
+	}
+
+	magnet := strings.TrimSpace(item.Magnet)
+	if len(body) == 0 && magnet == "" && downloadURL != "" && stats.Torrents < m.maxTorrents {
+		payload, downloadErr := m.Download(ctx, indexer.ID, item)
+		if downloadErr != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			m.logger.Warn("indexer: usenet download failed",
+				"indexer", indexer.Slug,
+				"error", m.redact(indexer.ID, downloadErr.Error()))
+			stats.Skipped++
+			return nil
+		}
+		if len(payload.Body) > 0 {
+			body = payload.Body
+			payloadType = strings.TrimSpace(payload.ContentType)
+			if payloadType == "" {
+				payloadType = "application/x-nzb"
+			}
+			*payloadBytes += int64(len(payload.Body))
+			stats.Torrents++
+		}
+		if magnet == "" {
+			magnet = strings.TrimSpace(payload.Magnet)
+		}
+	}
+	if len(body) > 0 && payloadType == "" {
+		payloadType = "application/x-nzb"
+	}
+
+	// Without a payload, keep only an opaque reference. The raw tracker URL
+	// (which carries the passkey) never reaches the database.
+	downloadRef := ""
+	if len(body) == 0 && magnet == "" && downloadURL != "" {
+		if m.vault == nil {
+			stats.Skipped++
+			return nil
+		}
+		ref, refErr := SealDownloadRef(m.vault, indexer.ID, item)
+		if refErr != nil {
+			m.logger.Warn("indexer: seal download reference",
+				"indexer", indexer.Slug, "error", refErr)
+			stats.Skipped++
+			return nil
+		}
+		downloadRef = ref
+	}
+	if len(body) == 0 && magnet == "" && downloadRef == "" {
+		stats.Skipped++
+		return nil
+	}
+
+	now := time.Now()
+	release := &store.Release{
+		DedupKey:    dedupKey,
+		IMDbID:      item.IMDbID,
+		TMDbID:      item.TMDbID,
+		TVDbID:      item.TVDbID,
+		Title:       item.Title,
+		SearchTitle: textutil.NormalizeTitle(item.Title),
+		Size:        item.Size,
+		Seeders:     item.Seeders,
+		Leechers:    item.Leechers,
+		Category:    category,
+		PublishedAt: item.Published,
+		SourceID:    indexer.LegacySourceID,
+		SourceName:  indexer.Name,
+		GUID:        item.GUID,
+		Magnet:      magnet,
+		Protocol:    "usenet",
+		Payload:     body,
+		PayloadType: payloadType,
+		FirstSeenAt: now,
+		LastSeenAt:  now,
+	}
+
+	isNew, storeErr := m.store.UpsertRelease(ctx, release)
+	if storeErr != nil {
+		return fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr)
+	}
+	if isNew {
+		stats.New++
+	} else {
+		stats.Updated++
+	}
+
+	if provenanceErr := m.store.RecordReleaseSource(ctx, store.ReleaseSource{
+		ReleaseID:   release.ID,
+		IndexerID:   indexer.ID,
+		FirstSeenAt: release.FirstSeenAt,
+		LastSeenAt:  release.LastSeenAt,
+		Seeders:     item.Seeders,
+		Leechers:    item.Leechers,
+		DownloadRef: downloadRef,
+	}); provenanceErr != nil {
+		m.logger.Warn("indexer: record release source",
+			"indexer", indexer.Slug,
+			"release_id", release.ID,
+			"error", m.redact(indexer.ID, provenanceErr.Error()))
+	}
+
+	if len(stats.Items) < maxRunItems {
+		stats.Items = append(stats.Items, item)
+	}
+	return nil
+}
+
+func usenetIdentity(item engine.Item) string {
+	if guid := strings.TrimSpace(item.GUID); guid != "" {
+		return "guid:" + guid
+	}
+	if url := strings.TrimSpace(item.DownloadURL); url != "" {
+		return "url:" + url
+	}
+	return ""
 }
 
 // itemHash returns the normalized infohash from the explicit field or from the
