@@ -599,6 +599,44 @@ binario temporaneo, per esempio:
 viva; `--jackett` serve solo per la verifica GET. Il test offline dello script
 è `./scripts/fresh-start_test.sh`.
 
+### Aggiornamento della produzione (dati conservati)
+
+`scripts/upgrade.sh` aggiorna il binario **senza azzerare il database**. Di
+default è un dry run: valida i prerequisiti, compila `cmd/indexarr` e
+`cmd/indexarr-import` in una directory temporanea e stampa il piano, senza
+fermare il servizio.
+
+```bash
+./scripts/upgrade.sh                       # dry run
+./scripts/upgrade.sh --apply --yes         # aggiornamento della produzione
+./scripts/upgrade.sh --rollback --yes      # ripristina l'ultimo backup
+```
+
+Comando completo per il coordinatore, su una sola riga:
+
+```bash
+cd /home/andres/indexarr && ./scripts/upgrade.sh --apply --yes
+```
+
+Con `--apply` il build avviene **prima** di fermare il servizio. Poi crea un
+backup coerente con `VACUUM INTO` in `data/backups/pre-upgrade-<timestamp>.db`,
+salva i binari precedenti come `bin/indexarr.old-<timestamp>` e
+`bin/indexarr-import.old-<timestamp>`, ferma il servizio, installa i nuovi
+binari e riparte. Verifica `/healthz` con la versione nuova, `t=caps` e una
+ricerca Torznab con la API key letta dal DB (mai stampata). Se un controllo
+fallisce ripristina automaticamente DB e binari e riavvia la versione
+precedente.
+
+La prova generale su una copia usa `--data-dir`, `--port 18510`, `--no-systemd`
+e binari temporanei; non tocca `:8484`, `data/`, `bin/indexarr` o systemd:
+
+```bash
+./scripts/upgrade_test.sh
+```
+
+Gli esiti delle tre prove (aggiornamento riuscito, build rotto, health fallito
+con rollback automatico) sono in [scripts/README.md](scripts/README.md).
+
 ### Servizio systemd di sistema
 
 Se preferisci un servizio globale, usa l'esempio

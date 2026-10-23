@@ -21,12 +21,12 @@
 #      environment (never on the command line, never printed);
 #   6. starts the service again and waits for /healthz.
 #
-# With --build, step 0 compiles cmd/indexarr from this checkout into a temporary
-# file, and the real --apply installs it as the binary after saving the previous
-# one as <binary>.old-<timestamp>. A dry run with --build only prints the plan:
-# it never compiles, never installs and never touches the current binary.
-# --rollback restores <binary>.old-<timestamp> that matches the data.old-*
-# directory it is restoring, when that backup exists.
+# With --build, step 0 compiles cmd/indexarr and cmd/indexarr-import from this
+# checkout into temporary files, and the real --apply installs both after saving
+# the previous ones as <binary>.old-<timestamp>. A dry run with --build only
+# prints the plan: it never compiles, never installs and never touches the
+# current binaries. --rollback restores the <binary>.old-<timestamp> that matches
+# the data.old-* directory it is restoring, when that backup exists.
 #
 # On any error after the data directory has been moved, the script stops the
 # new service, moves the failed directory aside as data.failed-<timestamp>/,
@@ -81,8 +81,11 @@ PORT=""
 NO_SYSTEMD=0
 BUILD=0
 BUILD_TMP=""
+BUILD_IMPORTER_TMP=""
 BINARY_OLD=""
+IMPORTER_OLD=""
 BINARY_INSTALLED=0
+IMPORTER_INSTALLED=0
 MODE="dry-run"
 JACKETT_URL="${JACKETT_URL:-}"
 PROWLARR_URL="${PROWLARR_URL:-}"
@@ -116,6 +119,9 @@ note() {
 cleanup_build() {
 	if [[ -n "$BUILD_TMP" ]]; then
 		rm -f "$BUILD_TMP" 2>/dev/null || true
+	fi
+	if [[ -n "$BUILD_IMPORTER_TMP" ]]; then
+		rm -f "$BUILD_IMPORTER_TMP" 2>/dev/null || true
 	fi
 }
 trap cleanup_build EXIT
@@ -411,15 +417,18 @@ read_torrentleech_feed() {
 
 # --- binary build and rollback -------------------------------------------
 
-# build_binary compiles the current checkout into a temporary file next to the
-# target binary. It never installs anything: install_binary does that only in
-# the real --apply, after the service has stopped.
+# build_binary compiles the current checkout into temporary files next to the
+# target binaries. It never installs anything: install_binary does that only in
+# the real --apply, after the service has stopped. Both cmd/indexarr and
+# cmd/indexarr-import are built, so --apply never stops for a missing importer.
 build_binary() {
 	[[ "$BUILD" == "1" ]] || return 0
 	command -v go >/dev/null 2>&1 || die "--build requires go in PATH"
 	[[ -d "$ROOT/cmd/indexarr" ]] || die "--build requires the source tree at $ROOT"
-	mkdir -p "$(dirname "$BINARY")"
+	[[ -d "$ROOT/cmd/indexarr-import" ]] || die "--build requires $ROOT/cmd/indexarr-import"
+	mkdir -p "$(dirname "$BINARY")" "$(dirname "$IMPORTER")"
 	BUILD_TMP="$(mktemp "$(dirname "$BINARY")/.indexarr-build.XXXXXX")"
+	BUILD_IMPORTER_TMP="$(mktemp "$(dirname "$IMPORTER")/.indexarr-import-build.XXXXXX")"
 	local version
 	version="$(cd "$ROOT" && git describe --tags --always --dirty 2>/dev/null || echo dev)"
 	step "building indexarr from $ROOT ($version)"
@@ -430,7 +439,15 @@ build_binary() {
 		die "go build failed; nothing was changed"
 	fi
 	chmod 0755 "$BUILD_TMP"
-	note "build ready (temporary; not installed yet)"
+	step "building indexarr-import from $ROOT"
+	if ! (cd "$ROOT" && CGO_ENABLED=0 go build -trimpath \
+		-o "$BUILD_IMPORTER_TMP" ./cmd/indexarr-import); then
+		rm -f "$BUILD_IMPORTER_TMP"
+		BUILD_IMPORTER_TMP=""
+		die "go build of cmd/indexarr-import failed; nothing was changed"
+	fi
+	chmod 0755 "$BUILD_IMPORTER_TMP"
+	note "both builds ready (temporary; not installed yet)"
 }
 
 # install_binary saves the previous binary and installs the compiled one. The
@@ -438,6 +455,7 @@ build_binary() {
 install_binary() {
 	[[ "$BUILD" == "1" ]] || return 0
 	[[ -n "$BUILD_TMP" && -f "$BUILD_TMP" ]] || die "the built binary is missing"
+	[[ -n "$BUILD_IMPORTER_TMP" && -f "$BUILD_IMPORTER_TMP" ]] || die "the built importer is missing"
 	if [[ -e "$BINARY" ]]; then
 		[[ ! -e "$BINARY_OLD" ]] || die "binary backup already exists: $BINARY_OLD"
 		cp -p "$BINARY" "$BINARY_OLD" || die "cannot save the previous binary as $BINARY_OLD"
@@ -445,11 +463,21 @@ install_binary() {
 	else
 		note "no previous binary at $BINARY; nothing to save"
 	fi
+	if [[ -e "$IMPORTER" ]]; then
+		[[ ! -e "$IMPORTER_OLD" ]] || die "importer backup already exists: $IMPORTER_OLD"
+		cp -p "$IMPORTER" "$IMPORTER_OLD" || die "cannot save the previous importer as $IMPORTER_OLD"
+		note "previous importer saved as $IMPORTER_OLD"
+	else
+		note "no previous importer at $IMPORTER; nothing to save"
+	fi
 	install -m 0755 "$BUILD_TMP" "$BINARY" || die "cannot install the new binary at $BINARY"
+	install -m 0755 "$BUILD_IMPORTER_TMP" "$IMPORTER" || die "cannot install the new importer at $IMPORTER"
 	BINARY_INSTALLED=1
-	rm -f "$BUILD_TMP"
+	IMPORTER_INSTALLED=1
+	rm -f "$BUILD_TMP" "$BUILD_IMPORTER_TMP"
 	BUILD_TMP=""
-	note "installed the binary built from this checkout"
+	BUILD_IMPORTER_TMP=""
+	note "installed the binaries built from this checkout"
 }
 
 # binary_backup_for_data prints <binary>.old-<timestamp> matching a data.old-*
@@ -467,14 +495,22 @@ binary_backup_for_data() {
 # restore_binary_for_data puts back the binary saved with the data backup, if
 # both exist. It is used by --rollback and by the automatic error path.
 restore_binary_for_data() {
-	local backup="$1" oldbin
+	local backup="$1" oldbin oldimp
 	oldbin="$(binary_backup_for_data "$backup")"
 	if [[ -z "$oldbin" || ! -f "$oldbin" ]]; then
 		note "no binary backup matches $backup; the binary is left unchanged"
-		return 0
+	else
+		install -m 0755 "$oldbin" "$BINARY" || die "cannot restore the previous binary from $oldbin"
+		note "previous binary restored from $oldbin"
 	fi
-	install -m 0755 "$oldbin" "$BINARY" || die "cannot restore the previous binary from $oldbin"
-	note "previous binary restored from $oldbin"
+	if [[ -n "$oldbin" ]]; then
+		oldimp="$IMPORTER.old-${oldbin##*.old-}"
+		if [[ -f "$oldimp" ]]; then
+			install -m 0755 "$oldimp" "$IMPORTER" ||
+				die "cannot restore the previous importer from $oldimp"
+			note "previous importer restored from $oldimp"
+		fi
+	fi
 }
 
 # --- preflight ------------------------------------------------------------
@@ -492,8 +528,8 @@ preflight_common() {
 	if [[ "$BUILD" != "1" ]]; then
 		[[ -x "$BINARY" ]] || die "binary not found or not executable: $BINARY (use --build to compile it)"
 	fi
-	if [[ "$MODE" == "apply" && "$SKIP_IMPORT" != "1" ]]; then
-		[[ -x "$IMPORTER" ]] || die "importer not found or not executable: $IMPORTER"
+	if [[ "$MODE" == "apply" && "$SKIP_IMPORT" != "1" && "$BUILD" != "1" ]]; then
+		[[ -x "$IMPORTER" ]] || die "importer not found or not executable: $IMPORTER (use --build to compile it)"
 	fi
 	if [[ "$NO_SYSTEMD" == "1" ]]; then
 		[[ -n "$LISTEN" ]] || die "no listen address"
@@ -509,20 +545,30 @@ preflight_dry_run() {
 		note "old database missing: $DB (--apply would stop here)"
 	fi
 	if [[ "$BUILD" == "1" ]]; then
-		note "binary: $BINARY (--build would compile it from $ROOT; nothing is built in a dry run)"
+		note "binary: $BINARY (--build compiles it from $ROOT; nothing is built in a dry run)"
+		note "importer: $IMPORTER (--build compiles cmd/indexarr-import too)"
 		if command -v go >/dev/null 2>&1; then
 			note "build tool: $(command -v go)"
 		else
-			note "build tool: go not found (--apply --build would stop here)"
+			die "build tool not found: go (--apply --build would stop here)"
 		fi
+		[[ -d "$ROOT/cmd/indexarr" ]] || die "source tree not found: $ROOT/cmd/indexarr"
+		[[ -d "$ROOT/cmd/indexarr-import" ]] || die "source tree not found: $ROOT/cmd/indexarr-import"
 	elif [[ -x "$BINARY" ]]; then
 		note "binary: $BINARY"
 	else
-		note "binary missing: $BINARY (--apply would stop here)"
+		die "binary missing: $BINARY (use --build to compile it)"
 	fi
 	if [[ "$SKIP_IMPORT" == "1" ]]; then
 		note "import: skipped (--skip-import)"
+	elif [[ "$BUILD" == "1" ]]; then
+		note "importer: built by --build (checked above)"
+	elif [[ -x "$IMPORTER" ]]; then
+		note "importer: $IMPORTER"
 	else
+		die "importer missing: $IMPORTER (use --build to compile it)"
+	fi
+	if [[ "$SKIP_IMPORT" != "1" ]]; then
 		if [[ -f "$ENV_FILE" ]]; then
 			note "manager env file: $ENV_FILE"
 		else
@@ -557,10 +603,18 @@ preflight_apply() {
 	[[ ! -e "$FAILED_DIR" ]] || die "failed directory already exists: $FAILED_DIR"
 	if [[ "$BUILD" == "1" ]]; then
 		BINARY_OLD="$BINARY.old-$STAMP"
+		IMPORTER_OLD="$IMPORTER.old-$STAMP"
 		[[ ! -e "$BINARY_OLD" ]] || die "binary backup already exists: $BINARY_OLD"
+		[[ ! -e "$IMPORTER_OLD" ]] || die "importer backup already exists: $IMPORTER_OLD"
 	fi
 
 	build_binary
+	# The manager probes run before install_binary, so use the freshly built
+	# importer when --build produced one. run_import uses the installed copy.
+	IMPORTER_RUN="$IMPORTER"
+	if [[ "$BUILD" == "1" ]]; then
+		IMPORTER_RUN="$BUILD_IMPORTER_TMP"
+	fi
 
 	if [[ "$SKIP_IMPORT" != "1" ]]; then
 		TL_RSS_URL="$(read_torrentleech_feed)"
@@ -582,7 +636,7 @@ preflight_apply() {
 
 		if [[ -n "$PROWLARR_URL" ]]; then
 			step "checking Prowlarr read-only: $PROWLARR_URL"
-			if ! INDEXARR_PROWLARR_KEY="$PROWLARR_KEY" "$IMPORTER" \
+			if ! INDEXARR_PROWLARR_KEY="$PROWLARR_KEY" "$IMPORTER_RUN" \
 				-prowlarr "$PROWLARR_URL" -timeout 20s >/dev/null 2>"$DATA_DIR/.fresh-start-prowlarr.err"; then
 				local err
 				err="$(tail -n 3 "$DATA_DIR/.fresh-start-prowlarr.err" 2>/dev/null || true)"
@@ -661,6 +715,12 @@ apply_error() {
 		if install -m 0755 "$BINARY_OLD" "$BINARY"; then
 			printf 'rollback: restored the previous binary %s\n' "$BINARY_OLD" >&2
 			BINARY_INSTALLED=0
+		fi
+	fi
+	if [[ "$IMPORTER_INSTALLED" == "1" && -n "${IMPORTER_OLD:-}" && -f "${IMPORTER_OLD:-}" ]]; then
+		if install -m 0755 "$IMPORTER_OLD" "$IMPORTER"; then
+			printf 'rollback: restored the previous importer %s\n' "$IMPORTER_OLD" >&2
+			IMPORTER_INSTALLED=0
 		fi
 	fi
 	if [[ -n "${OLD_DIR:-}" && -d "${OLD_DIR:-}" ]]; then
@@ -846,8 +906,8 @@ show_plan() {
 	preflight_dry_run
 	printf '\nsteps:\n'
 	if [[ "$BUILD" == "1" ]]; then
-		printf '  0. build %s from %s; save the old one as %s.old-<timestamp>\n' "$BINARY" "$ROOT" "$BINARY"
-		printf '     (only --apply installs it; this dry run does neither)\n'
+		printf '  0. build %s and %s from %s; save the old ones as *.old-<timestamp>\n' "$BINARY" "$IMPORTER" "$ROOT"
+		printf '     (only --apply installs them; this dry run does neither)\n'
 	fi
 	printf '  1. stop the service\n'
 	printf '  2. move %s to %s.old-<timestamp>/\n' "$DATA_DIR" "$DATA_DIR"
