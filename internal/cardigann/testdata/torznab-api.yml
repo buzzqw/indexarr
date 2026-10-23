@@ -1,0 +1,38 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-torznab-api
+name: Synthetic Torznab API
+description: A made-up Torznab API definition.
+type: private
+links:
+  - https://torznab.example/
+caps:
+  categorymappings:
+    - { id: 2000, cat: Movies, desc: Movies }
+    - { id: 5000, cat: TV, desc: TV }
+  modes:
+    search: [q]
+    tv-search: [q, season, ep]
+settings:
+  - { name: apikey, type: text, label: API key }
+login:
+  path: torznab/api
+  method: get
+  inputs:
+    apikey: "{{ .Config.apikey }}"
+    t: caps
+search:
+  paths:
+    - path: torznab/api
+      response:
+        type: xml
+  inputs:
+    apikey: "{{ .Config.apikey }}"
+    t: "{{ .Query.Type }}"
+    q: "{{ .Keywords }}"
+    cat: "{{ join .Categories \",\" }}"
+  rows:
+    selector: rss > channel > item
+  fields:
+    title: { selector: title }
+    download: { selector: link }
+    size: { selector: size }

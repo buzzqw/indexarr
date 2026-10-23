@@ -51,7 +51,9 @@ type definitionRow struct {
 
 type definitionsPage struct {
 	base
-	Rows []definitionRow
+	CatalogRows []definitionRow
+	LocalRows   []definitionRow
+	LegacyCount int
 }
 
 func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
@@ -70,11 +72,21 @@ func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
 		counts[in.DefinitionID]++
 	}
 
-	rows := make([]definitionRow, 0, len(defs))
+	data := definitionsPage{base: s.newBase(r, "Definitions", "definitions")}
 	seen := make(map[string]bool, len(defs))
 	for _, def := range defs {
+		if strings.HasPrefix(def.ID, "legacy-") {
+			data.LegacyCount++
+			continue
+		}
 		seen[def.ID] = true
-		rows = append(rows, definitionRowFromStore(def, counts[def.ID]))
+		row := definitionRowFromStore(def, counts[def.ID])
+		if def.Origin == catalog.OriginBuiltin {
+			row.Builtin = true
+			data.CatalogRows = append(data.CatalogRows, row)
+			continue
+		}
+		data.LocalRows = append(data.LocalRows, row)
 	}
 
 	entries, catalogErr := catalog.Builtins()
@@ -96,13 +108,10 @@ func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
 			Builtin:  true,
 		}
 		row.HashShort = shortHash(row.Hash)
-		rows = append(rows, row)
+		data.CatalogRows = append(data.CatalogRows, row)
 	}
 
-	s.render(w, r, "definitions", definitionsPage{
-		base: s.newBase(r, "Definizioni", "definitions"),
-		Rows: rows,
-	}, http.StatusOK)
+	s.render(w, r, "definitions", data, http.StatusOK)
 }
 
 func definitionRowFromStore(def store.Definition, indexers int) definitionRow {
@@ -179,7 +188,7 @@ func (s *Server) definitionPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := definitionPage{
-		base:       s.newBase(r, "Definizione "+id, "definitions"),
+		base:       s.newBase(r, "Definition "+id, "definitions"),
 		Definition: def,
 		Name:       id,
 		Family:     def.Family,
@@ -235,7 +244,7 @@ type definitionFormPage struct {
 
 func (s *Server) definitionNew(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, "definition_form", definitionFormPage{
-		base: s.newBase(r, "Nuova definizione", "definitions"),
+		base: s.newBase(r, "New definition", "definitions"),
 		Body: "schema: 1\nmeta:\n  id: my-indexer\n  name: My Indexer\n  type: private\n  protocol: torrent\n  urls:\n    - https://indexer.example/\n",
 	}, http.StatusOK)
 }
@@ -285,7 +294,7 @@ func (s *Server) definitionCreate(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) renderDefinitionFormError(w http.ResponseWriter, r *http.Request, body string, problems []string) {
 	data := definitionFormPage{
-		base:     s.newBase(r, "Nuova definizione", "definitions"),
+		base:     s.newBase(r, "New definition", "definitions"),
 		Body:     body,
 		Problems: problems,
 	}
@@ -349,49 +358,70 @@ type indexerRow struct {
 
 type indexersPage struct {
 	base
+	Tab         string
 	Rows        []indexerRow
-	Unavailable string
+	Unavailable bool
+	Legacy      sourcesPage
+	NativeCount int
+	LegacyCount int
 }
 
 func (s *Server) indexersPage(w http.ResponseWriter, r *http.Request) {
-	data := indexersPage{base: s.newBase(r, "Indexer nativi", "indexers")}
-	if s.svc == nil {
-		data.Unavailable = "Il servizio degli indexer nativi non è configurato: le pagine restano disponibili in sola lettura."
-		s.render(w, r, "indexers", data, http.StatusOK)
-		return
+	tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab")))
+	if tab != "legacy" {
+		tab = "native"
 	}
-	indexers, err := s.svc.Indexers(r.Context())
+	legacy, err := s.sourcesData(r)
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	defs, _ := s.store.ListDefinitions(r.Context())
-	names := make(map[string]string, len(defs))
-	for _, def := range defs {
-		names[def.ID] = definitionName(def)
+	data := indexersPage{
+		base:        s.newBase(r, "Indexers", "indexers"),
+		Tab:         tab,
+		Legacy:      legacy,
+		LegacyCount: len(legacy.Sources),
 	}
+	if s.svc != nil {
+		indexers, err := s.svc.Indexers(r.Context())
+		if err != nil {
+			s.renderError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+		defs, _ := s.store.ListDefinitions(r.Context())
+		names := make(map[string]string, len(defs))
+		for _, def := range defs {
+			names[def.ID] = definitionName(def)
+		}
 
-	for _, in := range indexers {
-		row := indexerRow{
-			Indexer:    in,
-			Definition: names[in.DefinitionID],
-			Tags:       in.Tags,
+		for _, in := range indexers {
+			if in.LegacySourceID > 0 {
+				continue
+			}
+			row := indexerRow{
+				Indexer:    in,
+				Definition: names[in.DefinitionID],
+				Tags:       in.Tags,
+			}
+			if row.Definition == "" {
+				row.Definition = in.DefinitionID
+			}
+			keys, err := s.svc.SecretKeys(r.Context(), in.ID)
+			if err == nil {
+				row.SecretCount = len(keys)
+				row.HasSecrets = len(keys) > 0
+			}
+			if state, err := s.store.GetIndexerState(r.Context(), in.ID); err == nil {
+				row.LastError = state.LastError
+			}
+			if history, err := s.store.ListIndexerHistory(r.Context(), in.ID, 1); err == nil && len(history) > 0 {
+				row.LastRun = &history[0]
+			}
+			data.Rows = append(data.Rows, row)
 		}
-		if row.Definition == "" {
-			row.Definition = in.DefinitionID
-		}
-		keys, err := s.svc.SecretKeys(r.Context(), in.ID)
-		if err == nil {
-			row.SecretCount = len(keys)
-			row.HasSecrets = len(keys) > 0
-		}
-		if state, err := s.store.GetIndexerState(r.Context(), in.ID); err == nil {
-			row.LastError = state.LastError
-		}
-		if history, err := s.store.ListIndexerHistory(r.Context(), in.ID, 1); err == nil && len(history) > 0 {
-			row.LastRun = &history[0]
-		}
-		data.Rows = append(data.Rows, row)
+		data.NativeCount = len(data.Rows)
+	} else {
+		data.Unavailable = true
 	}
 	s.render(w, r, "indexers", data, http.StatusOK)
 }
@@ -474,17 +504,17 @@ func (s *Server) buildIndexerPage(r *http.Request, id int64) (indexerPage, error
 func (s *Server) indexerTest(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers", "", "ID indexer non valido")
+		redirect(w, r, "/indexers?tab=native", "", "ID indexer non valido")
 		return
 	}
 	if _, err := s.store.GetIndexer(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers", "", "Indexer non trovato")
+		redirect(w, r, "/indexers?tab=native", "", "Indexer non trovato")
 		return
 	}
 	if s.native == nil {
 		data, buildErr := s.buildIndexerPage(r, id)
 		if buildErr != nil {
-			redirect(w, r, "/indexers", "", indexerErrorMessage(buildErr))
+			redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(buildErr))
 			return
 		}
 		data.Error = "Il motore nativo non è configurato: impossibile eseguire il test."
@@ -494,7 +524,7 @@ func (s *Server) indexerTest(w http.ResponseWriter, r *http.Request) {
 	result, testErr := s.native.Test(r.Context(), id)
 	data, buildErr := s.buildIndexerPage(r, id)
 	if buildErr != nil {
-		redirect(w, r, "/indexers", "", indexerErrorMessage(buildErr))
+		redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(buildErr))
 		return
 	}
 	data.Test = &result
@@ -507,17 +537,17 @@ func (s *Server) indexerTest(w http.ResponseWriter, r *http.Request) {
 func (s *Server) indexerRun(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers", "", "ID indexer non valido")
+		redirect(w, r, "/indexers?tab=native", "", "ID indexer non valido")
 		return
 	}
 	if _, err := s.store.GetIndexer(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers", "", "Indexer non trovato")
+		redirect(w, r, "/indexers?tab=native", "", "Indexer non trovato")
 		return
 	}
 	if s.native == nil {
 		data, buildErr := s.buildIndexerPage(r, id)
 		if buildErr != nil {
-			redirect(w, r, "/indexers", "", indexerErrorMessage(buildErr))
+			redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(buildErr))
 			return
 		}
 		data.Error = "Il motore nativo non è configurato: impossibile eseguire l'indexer."
@@ -527,7 +557,7 @@ func (s *Server) indexerRun(w http.ResponseWriter, r *http.Request) {
 	stats, runErr := s.native.Run(r.Context(), id)
 	data, buildErr := s.buildIndexerPage(r, id)
 	if buildErr != nil {
-		redirect(w, r, "/indexers", "", indexerErrorMessage(buildErr))
+		redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(buildErr))
 		return
 	}
 	if stats != nil {
@@ -728,12 +758,12 @@ func (s *Server) indexerUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers", "", "ID indexer non valido")
+		redirect(w, r, "/indexers?tab=native", "", "ID indexer non valido")
 		return
 	}
 	current, err := s.store.GetIndexer(r.Context(), id)
 	if err != nil {
-		redirect(w, r, "/indexers", "", indexerErrorMessage(err))
+		redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(err))
 		return
 	}
 	defID := strings.TrimSpace(r.FormValue("definition_id"))
@@ -772,14 +802,14 @@ func (s *Server) indexerDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers", "", "ID indexer non valido")
+		redirect(w, r, "/indexers?tab=native", "", "ID indexer non valido")
 		return
 	}
 	if err := s.svc.Delete(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers", "", indexerFriendlyError(err))
+		redirect(w, r, "/indexers?tab=native", "", indexerFriendlyError(err))
 		return
 	}
-	redirect(w, r, "/indexers", "Indexer eliminato", "")
+	redirect(w, r, "/indexers?tab=native", "Indexer eliminato", "")
 }
 
 func (s *Server) renderIndexerFormError(w http.ResponseWriter, r *http.Request, defID string, current *store.Indexer, in *indexersvc.Input, problems []string) {
@@ -816,7 +846,7 @@ func (s *Server) buildIndexerForm(r *http.Request, defID string, current *store.
 		return indexerFormPage{}, err
 	}
 	data := indexerFormPage{
-		base:        s.newBase(r, "Indexer nativo", "indexers"),
+		base:        s.newBase(r, "Native indexer", "indexers"),
 		IsNew:       current == nil,
 		Definitions: options,
 		Priority:    25,

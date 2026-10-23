@@ -16,3 +16,10 @@ coverage.out
 # Simulazione end-to-end
 sim/.bin/
 sim/.data/
+
+# Simulazione con applicazioni reali
+sim/real/.data/
+
+# Binari di test e helper locali
+*.test
+/indexarr-import

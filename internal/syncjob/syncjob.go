@@ -435,7 +435,7 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string) ([]ap
 			Name:                    appsync.ManagedPrefix + indexer.Name,
 			Implementation:          implementation,
 			ConfigContract:          contract,
-			BaseURL:                 s.baseURL + "/torznab/" + slug + "/api",
+			BaseURL:                 s.baseURL + "/torznab/" + slug,
 			APIKey:                  indexarrKey,
 			Categories:              cats,
 			Priority:                clampPriority(indexer.Priority),

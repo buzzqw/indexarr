@@ -1,0 +1,23 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{T "activity.title"}}</h1>
+    <p class="muted">{{T "activity.subtitle"}}</p>
+  </div>
+</section>
+
+<nav class="tabs" aria-label="{{T "activity.tabsLabel"}}">
+  <a class="tab{{if eq .Tab "runs"}} active{{end}}" href="/activity?tab=runs"{{if eq .Tab "runs"}} aria-current="page"{{end}}>
+    {{T "activity.runs"}} <span class="chip">{{len .Runs.Runs}}</span>
+  </a>
+  <a class="tab{{if eq .Tab "logs"}} active{{end}}" href="/activity?tab=logs"{{if eq .Tab "logs"}} aria-current="page"{{end}}>
+    {{T "activity.logs"}} <span class="chip">{{.Logs.BufferSize}}</span>
+  </a>
+</nav>
+
+{{if eq .Tab "logs"}}
+{{template "logs_body" .Logs}}
+{{else}}
+{{template "runs_body" .Runs}}
+{{end}}
+{{end}}

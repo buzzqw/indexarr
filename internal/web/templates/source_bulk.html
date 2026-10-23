@@ -1,10 +1,10 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>Bulk add RSS feeds</h1>
+    <h1>Bulk RSS add</h1>
     <p class="muted">Paste a list of feeds or an OPML export. Every entry becomes an RSS source.</p>
   </div>
-  <a class="btn" href="/sources">← Back to sources</a>
+  <a class="btn" href="/indexers?tab=legacy">← Legacy bridge</a>
 </section>
 
 {{if .Problems}}
@@ -56,7 +56,7 @@
 
   <div class="actions">
     <button class="btn primary" type="submit">Add feeds</button>
-    <a class="btn" href="/sources">Cancel</a>
+    <a class="btn" href="/indexers?tab=legacy">Cancel</a>
   </div>
 </form>
 

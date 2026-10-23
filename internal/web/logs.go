@@ -42,7 +42,12 @@ func parseLogLevel(raw string) (slog.Level, bool) {
 	}
 }
 
-func (s *Server) logsPage(w http.ResponseWriter, r *http.Request) {
+// logsRedirect keeps /logs working and folds the old page into Attività.
+func (s *Server) logsRedirect(w http.ResponseWriter, r *http.Request) {
+	redirectTab(w, r, "/activity", "logs")
+}
+
+func (s *Server) logsData(r *http.Request) logsPage {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	levelName := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("level")))
 	minLevel, ok := parseLogLevel(levelName)
@@ -91,7 +96,7 @@ func (s *Server) logsPage(w http.ResponseWriter, r *http.Request) {
 		runtimeLevel = strings.ToLower(s.level.Level().String())
 	}
 	data := logsPage{
-		base:         s.newBase(r, "Logs", "logs"),
+		base:         s.newBase(r, "Log", "activity"),
 		Entries:      entries,
 		Level:        levelName,
 		RuntimeLevel: runtimeLevel,
@@ -103,12 +108,12 @@ func (s *Server) logsPage(w http.ResponseWriter, r *http.Request) {
 		BufferSize:   s.logs.Len(),
 		MaxEntries:   s.logs.Cap(),
 		DownloadURL:  "/logs/download?" + values.Encode(),
-		ProblemsURL:  "/logs?" + problemValues.Encode(),
+		ProblemsURL:  "/activity?tab=logs&" + problemValues.Encode(),
 	}
 	if auto {
 		data.AutoRefresh = 10
 	}
-	s.render(w, r, "logs", data, http.StatusOK)
+	return data
 }
 
 func (s *Server) logsDownload(w http.ResponseWriter, r *http.Request) {

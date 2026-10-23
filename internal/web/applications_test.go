@@ -98,7 +98,7 @@ func TestApplicationPagesRender(t *testing.T) {
 		t.Fatalf("GET /applications = %d: %s", list.Code, list.Body.String())
 	}
 	body := list.Body.String()
-	for _, want := range []string{"Applicazioni", "Livelli di sincronizzazione", "Disabilitato", "Sincronizzazione completa", "Nessuna applicazione configurata"} {
+	for _, want := range []string{"Applications", "Synchronization levels", "Disabled", "Full sync", "No applications configured"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("applications page missing %q", want)
 		}
@@ -113,7 +113,7 @@ func TestApplicationPagesRender(t *testing.T) {
 	if form.Code != http.StatusOK {
 		t.Fatalf("GET /applications/new = %d: %s", form.Code, form.Body.String())
 	}
-	for _, want := range []string{"Nuova applicazione", "Sincronizzazione completa", "Chiave API"} {
+	for _, want := range []string{"New application", "Full sync", "API key"} {
 		if !strings.Contains(form.Body.String(), want) {
 			t.Errorf("application form missing %q", want)
 		}
@@ -151,7 +151,7 @@ func TestApplicationCreateSealsAPIKey(t *testing.T) {
 	if strings.Contains(list, secret) || strings.Contains(edit, secret) {
 		t.Fatal("a page leaked the API key")
 	}
-	if !strings.Contains(edit, "configurata") || !strings.Contains(edit, "Rimuovi la chiave API") {
+	if !strings.Contains(edit, "configured") || !strings.Contains(edit, "Remove the stored API key") {
 		t.Error("the edit form does not show the stored-key state")
 	}
 }

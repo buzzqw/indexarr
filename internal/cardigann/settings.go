@@ -17,6 +17,12 @@ func (c *converter) convertSettings() {
 			c.addWarning("setting without a name ignored")
 			continue
 		}
+		if strings.EqualFold(strings.TrimSpace(raw.Type), "info") {
+			// Info settings are Cardigann help text, not inputs. Their
+			// defaults often embed markup or account URLs and are not useful
+			// in a native definition.
+			continue
+		}
 		if _, exists := c.settingNames[original]; exists {
 			c.addWarning("duplicate setting %q ignored", original)
 			continue

@@ -2,10 +2,13 @@ package cardigann
 
 import (
 	"fmt"
+	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/buzzqw/indexarr/internal/definition"
+	"gopkg.in/yaml.v3"
 )
 
 // convertSearch maps search.paths, search.inputs, rows and fields. The first
@@ -33,6 +36,14 @@ func (c *converter) convertSearch() (definition.Search, error) {
 	}
 
 	method := strings.ToLower(strings.TrimSpace(firstNonEmpty(path.Method, search.Method)))
+	if strings.Contains(method, "{{") {
+		convertedMethod, methodErr := c.convertTemplate("search.method", method, false)
+		if methodErr != nil {
+			return definition.Search{}, methodErr
+		}
+		c.addWarning("search method template %q approximated to %q", method, strings.TrimSpace(convertedMethod))
+		method = strings.ToLower(strings.TrimSpace(convertedMethod))
+	}
 	if method == "" {
 		method = "get"
 	}
@@ -59,6 +70,16 @@ func (c *converter) convertSearch() (definition.Search, error) {
 			c.addWarning("search input with an empty name ignored")
 			continue
 		}
+		if key == "$raw" {
+			rawParams, rawErr := c.convertRawInput("search.inputs.$raw", inputs[key])
+			if rawErr != nil {
+				return definition.Search{}, rawErr
+			}
+			for name, value := range rawParams {
+				renderedInputs[name] = value
+			}
+			continue
+		}
 		rendered, err := c.convertTemplate("search.inputs."+key, inputs[key], true)
 		if err != nil {
 			return definition.Search{}, err
@@ -66,7 +87,15 @@ func (c *converter) convertSearch() (definition.Search, error) {
 		renderedInputs[key] = rendered
 	}
 
+	headers, err := c.convertHeaders("search.headers", search.Headers, path.Headers)
+	if err != nil {
+		return definition.Search{}, err
+	}
+
 	request := definition.Request{}
+	if len(headers) > 0 {
+		request.Headers = headers
+	}
 	if method == "post" {
 		request.Post = requestPath
 		request.Form = renderedInputs
@@ -126,10 +155,6 @@ func (c *converter) reportSearchExtras(search *rawSearch) {
 		c.addUnsupported("keywordsfilters")
 		c.addWarning("keywordsfilters are not mapped; keyword rewriting is lost")
 	}
-	if nodeSet(search.Headers) {
-		c.addUnsupported("search.headers")
-		c.addWarning("search.headers are not mapped")
-	}
 	if nodeSet(search.TitleFilters) || nodeSet(c.raw.TitleFilters) {
 		c.addUnsupported("titlefilters")
 		c.addWarning("titlefilters are not mapped; title rewriting is lost")
@@ -156,10 +181,6 @@ func (c *converter) reportSearchExtras(search *rawSearch) {
 	for _, path := range search.Paths {
 		if nodeSet(path.FollowRedirect) {
 			c.addWarning("search path followredirect is implicit in the native transport")
-		}
-		if nodeSet(path.Headers) {
-			c.addUnsupported("search.headers")
-			c.addWarning("search path headers are not mapped")
 		}
 	}
 }
@@ -207,6 +228,7 @@ func (c *converter) convertResponse(search *rawSearch, path rawSearchPath) (defi
 	if len(fields) == 0 {
 		return definition.Response{}, fmt.Errorf("search has no fields")
 	}
+	fields = c.resolveTextFields(fields)
 
 	c.reportResponseExtras(search, path)
 
@@ -603,4 +625,188 @@ func looksLikeJSONPath(path string) bool {
 		}
 	}
 	return true
+}
+
+// convertHeaders maps Cardigann search headers to native request headers.
+// A list value is joined with ", " because HTTP allows equivalent repeated
+// values in a single comma-separated field, with a warning that they are not
+// byte-for-byte equivalent.
+func (c *converter) convertHeaders(label string, nodes ...yaml.Node) (map[string]string, error) {
+	var out map[string]string
+	for _, node := range nodes {
+		if nodeSet(node) {
+			if node.Kind == yaml.AliasNode && node.Alias != nil {
+				node = *node.Alias
+			}
+			if node.Kind != yaml.MappingNode {
+				c.addWarning("%s is not a mapping; ignored", label)
+				continue
+			}
+			for index := 0; index+1 < len(node.Content); index += 2 {
+				name := strings.TrimSpace(scalarText(node.Content[index]))
+				if name == "" {
+					c.addWarning("%s contains a header without a name; ignored", label)
+					continue
+				}
+				value, multiple := headerValue(node.Content[index+1])
+				if multiple {
+					c.addWarning("header %q has multiple values; joined with \", \"", name)
+				}
+				if value == "" {
+					c.addWarning("header %q has no usable value; ignored", name)
+					continue
+				}
+				converted, err := c.convertTemplate(label+"."+name, value, true)
+				if err != nil {
+					return nil, err
+				}
+				if out == nil {
+					out = make(map[string]string, len(nodes)*2)
+				}
+				out[name] = converted
+			}
+		}
+	}
+	return out, nil
+}
+
+func headerValue(node *yaml.Node) (string, bool) {
+	if node == nil {
+		return "", false
+	}
+	if node.Kind == yaml.AliasNode && node.Alias != nil {
+		return headerValue(node.Alias)
+	}
+	switch node.Kind {
+	case yaml.ScalarNode:
+		return scalarText(node), false
+	case yaml.SequenceNode:
+		parts := make([]string, 0, len(node.Content))
+		for _, item := range node.Content {
+			if text := scalarText(item); text != "" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.Join(parts, ", "), len(parts) > 1
+	case yaml.MappingNode:
+		return scalarText(node), false
+	default:
+		return "", false
+	}
+}
+
+// convertRawInput expands Cardigann's special $raw input. Cardigann appends
+// the rendered string to the query; native definitions need individual
+// parameters, so the fragment is parsed after template conversion.
+func (c *converter) convertRawInput(label, source string) (map[string]string, error) {
+	fragment, err := c.convertTemplateMode(label, source, true, true)
+	if err != nil {
+		return nil, err
+	}
+	fragment = strings.TrimSpace(fragment)
+	fragment = strings.TrimPrefix(fragment, "?")
+	fragment = strings.Trim(fragment, "&")
+	if fragment == "" {
+		return nil, nil
+	}
+	out, err := parseRawQuery(fragment)
+	if err != nil {
+		return nil, fmt.Errorf("%s: raw query fragment cannot be parsed: %w", label, err)
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	c.addWarning("raw search input $raw expanded into native query parameters; repeated parameters are approximated")
+	return out, nil
+}
+
+var resultFieldPattern = regexp.MustCompile(`\.Result\.([A-Za-z0-9_]+)`)
+
+// resolveTextFields replaces a text-only field whose template only selects
+// among other result fields (for example a computed title) with a field that
+// has a real selector. The native format has no computed fields, so this is
+// the only representation that keeps the required title or download link.
+func (c *converter) resolveTextFields(fields rawFields) rawFields {
+	out := make(rawFields, len(fields))
+	for name, field := range fields {
+		out[name] = field
+	}
+	for name := range fields {
+		field := fields[name]
+		if !textOnlyField(field) {
+			continue
+		}
+		seen := map[string]bool{name: true}
+		resolved, ok := c.resolveTextField(name, fields, seen, 0)
+		if !ok {
+			continue
+		}
+		resolved.Text = ""
+		out[name] = resolved
+		c.addWarning("field %q text template resolved from another result field", name)
+	}
+	return out
+}
+
+func (c *converter) resolveTextField(name string, fields rawFields, seen map[string]bool, depth int) (rawField, bool) {
+	if depth > 8 {
+		return rawField{}, false
+	}
+	field, ok := fields[name]
+	if !ok {
+		return rawField{}, false
+	}
+	if !textOnlyField(field) {
+		return field, true
+	}
+	for _, match := range resultFieldPattern.FindAllStringSubmatch(field.Text, -1) {
+		target := match[1]
+		if seen[target] {
+			continue
+		}
+		seen[target] = true
+		child, found := c.resolveTextField(target, fields, seen, depth+1)
+		if !found || textOnlyField(child) {
+			continue
+		}
+		child.Filters = append(append([]rawFilter(nil), child.Filters...), field.Filters...)
+		child.Text = ""
+		return child, true
+	}
+	return rawField{}, false
+}
+
+func textOnlyField(field rawField) bool {
+	return len(field.Selector) == 0 && strings.TrimSpace(field.Path) == ""
+}
+
+// parseRawQuery parses a raw Cardigann query fragment. It deliberately avoids
+// net/url.ParseQuery because definitions sometimes use semicolons inside a
+// value and Go rejects those as separators.
+func parseRawQuery(fragment string) (map[string]string, error) {
+	out := make(map[string]string)
+	for _, pair := range strings.Split(fragment, "&") {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+		key, value := pair, ""
+		if index := strings.IndexByte(pair, '='); index >= 0 {
+			key, value = pair[:index], pair[index+1:]
+		}
+		decodedKey, err := url.QueryUnescape(key)
+		if err != nil {
+			return nil, fmt.Errorf("invalid parameter name %q", key)
+		}
+		decodedValue, err := url.QueryUnescape(value)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value for %q", decodedKey)
+		}
+		decodedKey = strings.TrimSpace(decodedKey)
+		if decodedKey == "" || strings.Contains(decodedKey, "{{") {
+			return nil, fmt.Errorf("parameter name %q cannot be represented", decodedKey)
+		}
+		out[decodedKey] = decodedValue
+	}
+	return out, nil
 }

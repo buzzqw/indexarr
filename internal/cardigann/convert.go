@@ -132,8 +132,19 @@ func convertDefinition(body []byte, opts Options) (Result, error) {
 		return Result{}, fmt.Errorf("cardigann: empty document")
 	}
 	var raw rawDefinition
+	repairedEscapes := false
 	if err := yaml.Unmarshal(body, &raw); err != nil {
-		return Result{}, fmt.Errorf("cardigann: YAML: %w", err)
+		if !strings.Contains(err.Error(), "unknown escape character") {
+			return Result{}, fmt.Errorf("cardigann: YAML: %w", err)
+		}
+		repaired := repairYAMLEscapes(body)
+		if bytes.Equal(repaired, body) {
+			return Result{}, fmt.Errorf("cardigann: YAML: %w", err)
+		}
+		if retry := yaml.Unmarshal(repaired, &raw); retry != nil {
+			return Result{}, fmt.Errorf("cardigann: YAML: %w", err)
+		}
+		repairedEscapes = true
 	}
 
 	c := &converter{
@@ -145,6 +156,9 @@ func convertDefinition(body []byte, opts Options) (Result, error) {
 	}
 	c.result.SourceID = strings.TrimSpace(raw.ID)
 	c.result.Name = strings.TrimSpace(raw.Name)
+	if repairedEscapes {
+		c.addWarning("double-quoted YAML contained invalid escapes; backslashes were preserved")
+	}
 
 	if nodeSet(raw.Go) || nodeSet(raw.Custom) || nodeSet(raw.Code) || nodeSet(raw.Script) {
 		c.addUnsupported("custom Go")
@@ -168,14 +182,31 @@ func convertDefinition(body []byte, opts Options) (Result, error) {
 	c.convertSettings()
 	categories := c.convertCategories()
 	capabilities := c.convertCapabilities()
-	auth := c.convertAuth()
-	search, err := c.convertSearch()
-	if err != nil {
-		return c.fail(err)
+
+	var auth *definition.Auth
+	var search definition.Search
+	connector := ""
+	if detected, reason := c.detectFamily(); detected != "" {
+		connector = detected
+		c.addWarning("API definition mapped to the %s family connector: %s", detected, reason)
+		if headers := c.familyHeaders(); len(headers) > 0 {
+			if authorization := headers["Authorization"]; strings.Contains(strings.ToLower(authorization), "bearer") {
+				c.addWarning("the family connector sends its own Bearer Authorization header; the source header template was not translated")
+			}
+		}
+		c.applyFamilySettings(detected, meta)
+	} else {
+		auth = c.convertAuth()
+		convertedSearch, err := c.convertSearch()
+		if err != nil {
+			return c.fail(err)
+		}
+		search = convertedSearch
 	}
 
 	def := &definition.Definition{
 		Schema:       definition.CurrentSchema,
+		Connector:    connector,
 		Meta:         meta,
 		Settings:     c.settings,
 		Categories:   categories,
@@ -393,4 +424,56 @@ func (c *converter) fail(err error) (Result, error) {
 	c.result.Body = nil
 	c.result.Hash = ""
 	return c.result, err
+}
+
+// repairYAMLEscapes doubles backslashes that YAML does not recognise inside a
+// double-quoted scalar. Some definitions contain regexes such as "\/" which
+// yaml.v3 rejects but which the author clearly meant as a literal backslash.
+func repairYAMLEscapes(body []byte) []byte {
+	var out bytes.Buffer
+	out.Grow(len(body))
+	inDouble := false
+	escaped := false
+	for _, char := range body {
+		if inDouble {
+			if escaped {
+				if yamlEscapeAllowed(char) {
+					out.WriteByte('\\')
+					out.WriteByte(char)
+				} else {
+					out.WriteString("\\\\")
+					out.WriteByte(char)
+				}
+				escaped = false
+				continue
+			}
+			if char == '\\' {
+				escaped = true
+				continue
+			}
+			if char == '"' {
+				inDouble = false
+			}
+			out.WriteByte(char)
+			continue
+		}
+		if char == '"' {
+			inDouble = true
+		}
+		out.WriteByte(char)
+	}
+	if escaped {
+		out.WriteByte('\\')
+	}
+	return out.Bytes()
+}
+
+func yamlEscapeAllowed(char byte) bool {
+	switch char {
+	case '0', 'a', 'b', 't', 'n', 'v', 'f', 'r', 'e', ' ', '"', '\\',
+		'N', '_', 'L', 'P', 'x', 'u', 'U', '\n', '\r':
+		return true
+	default:
+		return false
+	}
 }

@@ -21,17 +21,24 @@ type sourcesPage struct {
 	HostWarning     string
 }
 
-func (s *Server) sourcesPage(w http.ResponseWriter, r *http.Request) {
+// sourcesRedirect keeps the old /sources URL working: the legacy sources now
+// live in the Ponte legacy tab of the unified indexer page.
+func (s *Server) sourcesRedirect(w http.ResponseWriter, r *http.Request) {
+	redirectTab(w, r, "/indexers", "legacy")
+}
+
+// sourcesData loads the legacy source panel shared by the redirect target and
+// the unified /indexers page.
+func (s *Server) sourcesData(r *http.Request) (sourcesPage, error) {
 	sources, err := s.store.ListSources(r.Context())
 	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
+		return sourcesPage{}, err
 	}
 	settings, _ := s.store.LoadSettings(r.Context())
 	running := map[int64]bool{}
 	hosts := map[string]int{}
 	for _, source := range sources {
-		running[source.ID] = s.engine.IsRunning(source.ID)
+		running[source.ID] = s.engine != nil && s.engine.IsRunning(source.ID)
 		if parsed, err := url.Parse(source.URL); err == nil && parsed.Hostname() != "" {
 			hosts[strings.ToLower(parsed.Hostname())]++
 		}
@@ -45,15 +52,15 @@ func (s *Server) sourcesPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if topCount >= 5 {
-		hostWarning = fmt.Sprintf("%d sources share the host %s. Remote sites often rate-limit (HTTP 429): use the checkboxes to disable, merge or delete the listings you do not need, or set a longer interval.", topCount, topHost)
+		hostWarning = fmt.Sprintf("%d sorgenti condividono l'host %s. I siti remoti limitano spesso le richieste (HTTP 429): disabilita, unisci o elimina gli elenchi che non servono, oppure aumenta l'intervallo.", topCount, topHost)
 	}
-	s.render(w, r, "sources", sourcesPage{
-		base:            s.newBase(r, "Sources", "sources"),
+	return sourcesPage{
+		base:            s.newBase(r, "Ponte legacy", "sources"),
 		Sources:         sources,
 		Running:         running,
 		DefaultInterval: settings.DefaultIntervalSeconds,
 		HostWarning:     hostWarning,
-	}, http.StatusOK)
+	}, nil
 }
 
 type sourceFormPage struct {
@@ -66,7 +73,7 @@ type sourceFormPage struct {
 func (s *Server) sourceNew(w http.ResponseWriter, r *http.Request) {
 	settings, _ := s.store.LoadSettings(r.Context())
 	s.render(w, r, "source_form", sourceFormPage{
-		base: s.newBase(r, "New source", "sources"),
+		base: s.newBase(r, "Nuova sorgente legacy", "sources"),
 		Source: store.Source{
 			Kind:    "torznab",
 			Manager: "auto",
@@ -90,7 +97,7 @@ func (s *Server) sourceEdit(w http.ResponseWriter, r *http.Request) {
 	}
 	settings, _ := s.store.LoadSettings(r.Context())
 	s.render(w, r, "source_form", sourceFormPage{
-		base:            s.newBase(r, "Edit source", "sources"),
+		base:            s.newBase(r, "Modifica sorgente legacy", "sources"),
 		Source:          source,
 		DefaultInterval: settings.DefaultIntervalSeconds,
 	}, http.StatusOK)
@@ -165,7 +172,7 @@ func (s *Server) sourceUpdate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) renderSourceFormError(w http.ResponseWriter, r *http.Request, source store.Source, isNew bool, err error) {
 	settings, _ := s.store.LoadSettings(r.Context())
 	data := sourceFormPage{
-		base:            s.newBase(r, "Source", "sources"),
+		base:            s.newBase(r, "Sorgente legacy", "sources"),
 		Source:          source,
 		IsNew:           isNew,
 		DefaultInterval: settings.DefaultIntervalSeconds,

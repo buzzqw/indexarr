@@ -1,0 +1,60 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-unit3d-api
+name: Synthetic UNIT3D API
+description: A made-up UNIT3D API definition.
+type: private
+links:
+  - https://unit3d.example/
+caps:
+  categorymappings:
+    - { id: 1, cat: Movies, desc: Movies }
+    - { id: 2, cat: TV, desc: TV }
+  modes:
+    search: [q]
+    tv-search: [q, season, ep, imdbid, tvdbid, tmdbid]
+    movie-search: [q, imdbid, tmdbid]
+settings:
+  - { name: apikey, type: text, label: APIKey }
+  - { name: info_key, type: info, label: About your API key, default: "Synthetic help text." }
+  - { name: freeleech, type: checkbox, label: Freeleech only, default: false }
+  - { name: sort, type: select, label: Sort, default: created_at, options: { created_at: created, seeders: seeders } }
+login:
+  path: api/torrents
+  method: get
+  error:
+    - selector: a[href*="/login"]
+      message:
+        text: "The synthetic API key was not accepted."
+search:
+  paths:
+    - path: api/torrents/filter
+      response:
+        type: json
+  headers:
+    Authorization: ["Bearer {{ .Config.apikey }}"]
+  inputs:
+    $raw: "{{ range .Categories }}&categories[]={{.}}{{end}}"
+    name: "{{ .Keywords }}"
+    seasonNumber: "{{ .Query.Season }}"
+    episodeNumber: "{{ .Query.Ep }}"
+    imdbId: "{{ .Query.IMDBIDShort }}"
+    tmdbId: "{{ .Query.TMDBID }}"
+    tvdbId: "{{ .Query.TVDBID }}"
+    free[]: "{{ if .Config.freeleech }}100{{ else }}{{ end }}"
+    sortField: "{{ .Config.sort }}"
+  rows:
+    selector: data
+    attribute: attributes
+  fields:
+    category:
+      selector: category_id
+    title:
+      selector: name
+    details:
+      selector: details_link
+    download:
+      selector: download_link
+    seeders:
+      selector: seeders
+    size:
+      selector: size

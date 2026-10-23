@@ -95,7 +95,7 @@ func (s *Server) sourcesDiscover(w http.ResponseWriter, r *http.Request) {
 		FlareSolverr: settings.FlareSolverrURL,
 	}, settings.FetchTimeout())
 	data := discoverPage{
-		base:      s.newBase(r, "Feed discovery", "sources"),
+		base:      s.newBase(r, "Scoperta dei feed", "sources"),
 		SourceURL: rawURL,
 		Feeds:     feeds,
 	}

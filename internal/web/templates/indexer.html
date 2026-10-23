@@ -5,56 +5,56 @@
     <p class="muted"><code>{{.Indexer.Slug}}</code> · <a href="/definitions/{{.Indexer.DefinitionID}}">{{.DefinitionName}}</a></p>
   </div>
   <div class="actions">
-    <a class="btn" href="/indexers/{{.Indexer.ID}}/edit">Modifica</a>
-    <a class="btn" href="/indexers">← Indexer nativi</a>
+    <a class="btn" href="/indexers/{{.Indexer.ID}}/edit">{{T "indexer.edit"}}</a>
+    <a class="btn" href="/indexers?tab=native">{{T "indexer.back"}}</a>
   </div>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Stato</h2></div>
+  <div class="panel-head"><h2>{{T "indexer.state"}}</h2></div>
   <dl class="detail">
-    <dt>Definizione</dt><dd><a href="/definitions/{{.Indexer.DefinitionID}}"><code>{{.Indexer.DefinitionID}}</code></a></dd>
-    <dt>Protocollo</dt><dd>{{.Indexer.Protocol}}</dd>
-    <dt>Abilitato</dt><dd>{{if .Indexer.Enabled}}<span class="chip ok">sì</span>{{else}}<span class="chip">no</span>{{end}}</dd>
-    <dt>Priorità</dt><dd>{{.Indexer.Priority}}</dd>
-    <dt>Tag</dt><dd>{{if .Indexer.Tags}}{{.Indexer.Tags}}{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>Segreti</dt><dd>{{if .SecretKeys}}<span class="chip ok">{{len .SecretKeys}} configurati</span>{{else}}<span class="muted">nessuno</span>{{end}}</dd>
-    <dt>Circuito</dt><dd>{{if .HasState}}{{if .State.Circuit}}{{.State.Circuit}}{{else}}closed{{end}}{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>Ultimo errore</dt><dd>{{if .State.LastError}}<code>{{.State.LastError}}</code>{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>Ultima esecuzione</dt>
-    <dd>{{if .LastRun}}{{date .LastRun.StartedAt}} <span class="muted">({{ago .LastRun.StartedAt}})</span> · <span class="chip {{if eq .LastRun.Status "ok"}}ok{{else if eq .LastRun.Status "error"}}danger{{else}}warn{{end}}">{{.LastRun.Status}}</span>{{else}}<span class="muted">mai</span>{{end}}</dd>
+    <dt>{{T "common.definition"}}</dt><dd><a href="/definitions/{{.Indexer.DefinitionID}}"><code>{{.Indexer.DefinitionID}}</code></a></dd>
+    <dt>{{T "common.protocol"}}</dt><dd>{{.Indexer.Protocol}}</dd>
+    <dt>{{T "indexer.enabled"}}</dt><dd>{{if .Indexer.Enabled}}<span class="chip ok">{{T "common.yes"}}</span>{{else}}<span class="chip">{{T "common.no"}}</span>{{end}}</dd>
+    <dt>{{T "common.priority"}}</dt><dd>{{.Indexer.Priority}}</dd>
+    <dt>{{T "common.tags"}}</dt><dd>{{if .Indexer.Tags}}{{.Indexer.Tags}}{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "common.secrets"}}</dt><dd>{{if .SecretKeys}}<span class="chip ok">{{T "indexer.configured" (len .SecretKeys)}}</span>{{else}}<span class="muted">{{T "indexer.none"}}</span>{{end}}</dd>
+    <dt>{{T "indexer.circuit"}}</dt><dd>{{if .HasState}}{{if .State.Circuit}}{{.State.Circuit}}{{else}}closed{{end}}{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "common.lastError"}}</dt><dd>{{if .State.LastError}}<code>{{.State.LastError}}</code>{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "common.lastRun"}}</dt>
+    <dd>{{if .LastRun}}{{date .LastRun.StartedAt}} <span class="muted">({{ago .LastRun.StartedAt}})</span> · <span class="chip {{if eq .LastRun.Status "ok"}}ok{{else if eq .LastRun.Status "error"}}danger{{else}}warn{{end}}">{{statusLabel .LastRun.Status}}</span>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</dd>
   </dl>
   <div class="actions" style="padding: 0 1.1rem 1rem;">
     <form method="post" action="/indexers/{{.Indexer.ID}}/test">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn" type="submit">Esegui test</button>
+      <button class="btn" type="submit">{{T "indexer.testRun"}}</button>
     </form>
     <form method="post" action="/indexers/{{.Indexer.ID}}/run">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn primary" type="submit">Esegui ora</button>
+      <button class="btn primary" type="submit">{{T "indexer.runNow"}}</button>
     </form>
   </div>
 </section>
 
 {{if .Test}}
 <section class="panel">
-  <div class="panel-head"><h2>Risultato del test</h2></div>
+  <div class="panel-head"><h2>{{T "indexer.testResult"}}</h2></div>
   <p style="padding: 0 1.1rem;">
-    {{if .Test.OK}}<span class="chip ok">test superato</span>{{else}}<span class="chip danger">test non superato</span>{{end}}
+    {{if .Test.OK}}<span class="chip ok">{{T "indexer.testPassed"}}</span>{{else}}<span class="chip danger">{{T "indexer.testFailed"}}</span>{{end}}
   </p>
   <div class="table-scroll">
     <table>
-      <thead><tr><th scope="col">Fase</th><th scope="col">Esito</th><th scope="col">Messaggio</th><th scope="col">Durata</th></tr></thead>
+      <thead><tr><th scope="col">{{T "indexer.phase"}}</th><th scope="col">{{T "dashboard.outcome"}}</th><th scope="col">{{T "indexer.message"}}</th><th scope="col">{{T "indexer.duration"}}</th></tr></thead>
       <tbody>
         {{range .Test.Phases}}
         <tr>
           <td>{{.Name}}</td>
-          <td>{{if .OK}}<span class="chip ok">ok</span>{{else}}<span class="chip danger">errore</span>{{end}}</td>
+          <td>{{if .OK}}<span class="chip ok">ok</span>{{else}}<span class="chip danger">{{T "common.error"}}</span>{{end}}</td>
           <td>{{if .Message}}{{.Message}}{{else}}<span class="muted">—</span>{{end}}</td>
           <td>{{duration .Duration}}</td>
         </tr>
         {{else}}
-        <tr><td colspan="4" class="empty">Il connettore non ha riportato fasi.</td></tr>
+        <tr><td colspan="4" class="empty">{{T "indexer.noPhases"}}</td></tr>
         {{end}}
       </tbody>
     </table>
@@ -64,19 +64,19 @@
 
 {{if .Run}}
 <section class="panel">
-  <div class="panel-head"><h2>Risultato dell'esecuzione</h2></div>
+  <div class="panel-head"><h2>{{T "indexer.runResult"}}</h2></div>
   <dl class="detail">
-    <dt>Visti</dt><dd>{{.Run.Seen}}</dd>
-    <dt>Nuovi</dt><dd>{{.Run.New}}</dd>
-    <dt>Aggiornati</dt><dd>{{.Run.Updated}}</dd>
-    <dt>Bloccati</dt><dd>{{.Run.Blocked}}</dd>
-    <dt>Saltati</dt><dd>{{.Run.Skipped}}</dd>
-    <dt>Torrent scaricati</dt><dd>{{.Run.Torrents}}</dd>
+    <dt>{{T "indexer.seen"}}</dt><dd>{{.Run.Seen}}</dd>
+    <dt>{{T "indexer.new"}}</dt><dd>{{.Run.New}}</dd>
+    <dt>{{T "indexer.updated"}}</dt><dd>{{.Run.Updated}}</dd>
+    <dt>{{T "indexer.blocked"}}</dt><dd>{{.Run.Blocked}}</dd>
+    <dt>{{T "indexer.skipped"}}</dt><dd>{{.Run.Skipped}}</dd>
+    <dt>{{T "indexer.torrents"}}</dt><dd>{{.Run.Torrents}}</dd>
   </dl>
   {{if .RunItems}}
   <div class="table-scroll">
     <table>
-      <thead><tr><th scope="col">Titolo</th><th scope="col">Dimensione</th><th scope="col">Seeder</th><th scope="col">Categorie</th></tr></thead>
+      <thead><tr><th scope="col">{{T "indexer.titleColumn"}}</th><th scope="col">{{T "indexer.size"}}</th><th scope="col">{{T "indexer.seeders"}}</th><th scope="col">{{T "indexer.categories"}}</th></tr></thead>
       <tbody>
         {{range .RunItems}}
         <tr>
@@ -89,43 +89,43 @@
       </tbody>
     </table>
   </div>
-  <p class="muted" style="padding: 0 1.1rem 1rem;">Mostrati al massimo i primi 20 elementi; il resto è nella cache releases.</p>
+  <p class="muted" style="padding: 0 1.1rem 1rem;">{{T "indexer.itemsLimit"}}</p>
   {{else}}
-  <p class="muted" style="padding: 0 1.1rem 1rem;">Nessun elemento restituito.</p>
+  <p class="muted" style="padding: 0 1.1rem 1rem;">{{T "indexer.noItems"}}</p>
   {{end}}
 </section>
 {{end}}
 
 <section class="panel">
-  <div class="panel-head"><h2>Configurazione pubblica</h2></div>
+  <div class="panel-head"><h2>{{T "indexer.publicConfig"}}</h2></div>
   {{if .Public}}
   <dl class="detail">
     {{range .Public}}<dt><code>{{.Key}}</code></dt><dd>{{if .Value}}{{.Value}}{{else}}<span class="muted">—</span>{{end}}</dd>{{end}}
   </dl>
   {{else}}
-  <p class="muted" style="padding: 0 1.1rem 1rem;">Nessun valore pubblico configurato.</p>
+  <p class="muted" style="padding: 0 1.1rem 1rem;">{{T "indexer.noPublic"}}</p>
   {{end}}
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Segreti nel vault</h2></div>
+  <div class="panel-head"><h2>{{T "indexer.vaultSecrets"}}</h2></div>
   <div class="prose">
     {{if .SecretKeys}}
-    <p>I valori non vengono mai mostrati. Le chiavi configurate sono:</p>
+    <p>{{T "indexer.secretsText"}}</p>
     <ul>{{range .SecretKeys}}<li><code>{{.}}</code></li>{{end}}</ul>
     {{else}}
-    <p class="muted">Nessun segreto memorizzato per questo indexer.</p>
+    <p class="muted">{{T "indexer.noSecrets"}}</p>
     {{end}}
   </div>
 </section>
 
 <section class="panel danger-zone">
-  <div class="panel-head"><h2>Zona pericolosa</h2></div>
+  <div class="panel-head"><h2>{{T "indexer.dangerZone"}}</h2></div>
   <div class="prose">
-    <p>Elimina l'indexer, i segreti nel vault, lo stato e la cronologia associata. Le release già salvate restano nella cache.</p>
-    <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="Eliminare questo indexer? I segreti e lo stato vengono rimossi.">
+    <p>{{T "indexer.dangerText"}}</p>
+    <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="{{T "indexer.deleteConfirm"}}">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn danger" type="submit">Elimina indexer</button>
+      <button class="btn danger" type="submit">{{T "indexer.delete"}}</button>
     </form>
   </div>
 </section>

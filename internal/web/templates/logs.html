@@ -1,65 +1,63 @@
-{{define "content"}}
-<section class="page-head">
-  <div>
-    <h1>Logs</h1>
-    <p class="muted">In-memory log of the running process, newest first. The same lines go to stdout and the systemd journal.</p>
-  </div>
+{{define "logs_body"}}
+<div class="section-head">
+  <p class="muted">{{T "logs.subtitle"}}</p>
   <div class="actions">
-    <a class="btn" href="{{.ProblemsURL}}">Problems ({{.ProblemCount}})</a>
-    <a class="btn" href="{{.DownloadURL}}">Download .txt</a>
-    <form method="post" action="/logs/clear" data-confirm="Clear the in-memory log buffer?">
+    <a class="btn" href="{{.ProblemsURL}}">{{T "logs.problems" .ProblemCount}}</a>
+    <a class="btn" href="{{.DownloadURL}}">{{T "logs.download"}}</a>
+    <form method="post" action="/logs/clear" data-confirm="{{T "logs.clearConfirm"}}">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn danger" type="submit">Clear</button>
+      <button class="btn danger" type="submit">{{T "logs.clear"}}</button>
     </form>
   </div>
-</section>
+</div>
 
 <section class="panel">
-  <div class="panel-head"><h2>Runtime verbosity</h2></div>
+  <div class="panel-head"><h2>{{T "logs.levelTitle"}}</h2></div>
   <form class="filters" method="post" action="/logs/level">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <div class="field">
-      <label for="runtime_level">Process log level</label>
+      <label for="runtime_level">{{T "logs.processLevel"}}</label>
       <select id="runtime_level" name="runtime_level">
-        <option value="debug"{{if eq .RuntimeLevel "debug"}} selected{{end}}>Debug</option>
-        <option value="info"{{if eq .RuntimeLevel "info"}} selected{{end}}>Info</option>
-        <option value="warn"{{if eq .RuntimeLevel "warn"}} selected{{end}}>Warning</option>
-        <option value="error"{{if eq .RuntimeLevel "error"}} selected{{end}}>Error</option>
+        <option value="debug"{{if eq .RuntimeLevel "debug"}} selected{{end}}>{{T "logs.levels.debug"}}</option>
+        <option value="info"{{if eq .RuntimeLevel "info"}} selected{{end}}>{{T "logs.levels.info"}}</option>
+        <option value="warn"{{if eq .RuntimeLevel "warn"}} selected{{end}}>{{T "logs.levels.warn"}}</option>
+        <option value="error"{{if eq .RuntimeLevel "error"}} selected{{end}}>{{T "logs.levels.error"}}</option>
       </select>
-      <p class="help">Applied immediately and stored in the database; it survives restarts.</p>
+      <p class="help">{{T "logs.levelHelp"}}</p>
     </div>
     <div class="field actions-field">
-      <button class="btn primary" type="submit">Set level</button>
+      <button class="btn primary" type="submit">{{T "logs.setLevel"}}</button>
     </div>
   </form>
 </section>
 
-<form class="filters" method="get" action="/logs">
+<form class="filters" method="get" action="/activity">
+  <input type="hidden" name="tab" value="logs">
   <div class="field">
-    <label for="level">Level</label>
+    <label for="level">{{T "logs.filterLevel"}}</label>
     <select id="level" name="level">
-      <option value="debug"{{if eq .Level "debug"}} selected{{end}}>Debug and above</option>
-      <option value="info"{{if eq .Level "info"}} selected{{end}}>Info and above</option>
-      <option value="warn"{{if eq .Level "warn"}} selected{{end}}>Warning and above</option>
-      <option value="error"{{if eq .Level "error"}} selected{{end}}>Errors only</option>
+      <option value="debug"{{if eq .Level "debug"}} selected{{end}}>{{T "logs.levelAll"}}</option>
+      <option value="info"{{if eq .Level "info"}} selected{{end}}>{{T "logs.levelInfoUp"}}</option>
+      <option value="warn"{{if eq .Level "warn"}} selected{{end}}>{{T "logs.levelWarnUp"}}</option>
+      <option value="error"{{if eq .Level "error"}} selected{{end}}>{{T "logs.levelErrorOnly"}}</option>
     </select>
   </div>
   <div class="field">
-    <label for="component">Origin</label>
+    <label for="component">{{T "logs.origin"}}</label>
     <select id="component" name="component">
-      <option value=""{{if eq .Component ""}} selected{{end}}>All origins</option>
-      <option value="indexarr"{{if eq .Component "indexarr"}} selected{{end}}>indexarr</option>
-      <option value="indexer"{{if eq .Component "indexer"}} selected{{end}}>Indexer / Torznab</option>
-      <option value="rss"{{if eq .Component "rss"}} selected{{end}}>RSS / HTML</option>
-      <option value="notify"{{if eq .Component "notify"}} selected{{end}}>Notifications</option>
+      <option value=""{{if eq .Component ""}} selected{{end}}>{{T "logs.allOrigins"}}</option>
+      <option value="indexarr"{{if eq .Component "indexarr"}} selected{{end}}>{{T "logs.origin.indexarr"}}</option>
+      <option value="indexer"{{if eq .Component "indexer"}} selected{{end}}>{{T "logs.origin.indexer"}}</option>
+      <option value="rss"{{if eq .Component "rss"}} selected{{end}}>{{T "logs.origin.rss"}}</option>
+      <option value="notify"{{if eq .Component "notify"}} selected{{end}}>{{T "logs.origin.notify"}}</option>
     </select>
   </div>
   <div class="field grow">
-    <label for="q">Search</label>
-    <input id="q" name="q" type="search" value="{{.Query}}" placeholder="message or attribute">
+    <label for="q">{{T "logs.search"}}</label>
+    <input id="q" name="q" type="search" value="{{.Query}}" placeholder="{{T "logs.searchPlaceholder"}}">
   </div>
   <div class="field">
-    <label for="limit">Lines</label>
+    <label for="limit">{{T "logs.rows"}}</label>
     <select id="limit" name="limit">
       <option value="100"{{if eq .Limit 100}} selected{{end}}>100</option>
       <option value="300"{{if eq .Limit 300}} selected{{end}}>300</option>
@@ -68,19 +66,17 @@
   </div>
   <div class="field checkbox">
     <input id="auto" name="auto" type="checkbox" value="1"{{if .Auto}} checked{{end}}>
-    <label for="auto">Auto refresh (10s)</label>
+    <label for="auto">{{T "logs.autoRefresh"}}</label>
   </div>
   <div class="field actions-field">
-    <button class="btn primary" type="submit">Apply</button>
-    <a class="btn" href="/logs">Reset</a>
+    <button class="btn primary" type="submit">{{T "logs.apply"}}</button>
+    <a class="btn" href="/activity?tab=logs">{{T "logs.reset"}}</a>
   </div>
 </form>
 
 <p class="muted log-summary">
-  Showing {{len .Entries}} of {{.BufferSize}} captured (max {{.MaxEntries}});
-  <strong>{{.ProblemCount}}</strong> warning(s)/error(s) match the current filters.
-  The process level is <strong>{{.RuntimeLevel}}</strong>; change it above without a restart.
-  API keys, passwords and tokens are redacted.
+  {{T "logs.summary" (len .Entries) .BufferSize .MaxEntries .ProblemCount}}
+  {{T "logs.summaryLevel" .RuntimeLevel}}
 </p>
 
 <section class="panel logs-panel">
@@ -94,17 +90,16 @@
     </div>
   </div>
   {{else}}
-  <p class="empty">No log entries match this filter. The buffer is empty after a restart or a clear.</p>
+  <p class="empty">{{T "logs.empty"}}</p>
   {{end}}
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Where the log lives</h2></div>
+  <div class="panel-head"><h2>{{T "logs.whereTitle"}}</h2></div>
   <div class="prose">
-    <p>This page keeps the last {{.MaxEntries}} records in memory; they disappear on restart or when you press Clear.</p>
-    <p>With the systemd user service the full stream is also in the journal:
-      <code>journalctl --user -u indexarr -f</code>. In Docker use <code>docker logs -f indexarr</code>.</p>
-    <p>To see debug messages select <strong>Debug</strong> in <em>Runtime verbosity</em> above; no restart is needed. The <code>log_level</code> in indexarr.json is only the startup fallback.</p>
+    <p>{{T "logs.whereText" .MaxEntries}}</p>
+    <p>{{T "logs.whereJournal"}}</p>
+    <p>{{T "logs.whereDebug"}}</p>
   </div>
 </section>
 {{end}}

@@ -1,60 +1,79 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>Definizioni</h1>
-    <p class="muted">Definizioni native salvate e catalogo integrato. Ogni definizione descrive come interrogare un indexer.</p>
+    <h1>{{T "definitions.title"}}</h1>
+    <p class="muted">{{T "definitions.subtitle"}}</p>
   </div>
   <div class="actions">
-    <a class="btn primary" href="/definitions/new">Nuova definizione</a>
-    <a class="btn" href="/indexers">Indexer nativi</a>
+    <a class="btn primary" href="/definitions/new">{{T "definitions.new"}}</a>
+    <a class="btn" href="/indexers">{{T "definitions.openIndexers"}}</a>
   </div>
 </section>
 
 <section class="panel">
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">ID</th>
-          <th scope="col">Nome</th>
-          <th scope="col">Famiglia / connettore</th>
-          <th scope="col">Protocollo</th>
-          <th scope="col">Stato</th>
-          <th scope="col">Origine</th>
-          <th scope="col">Hash</th>
-          <th scope="col">Aggiornata</th>
-          <th scope="col">Indexer</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Rows}}
-        <tr>
-          <td><a href="/definitions/{{.ID}}"><code>{{.ID}}</code></a></td>
-          <td>
-            <a href="/definitions/{{.ID}}">{{.Name}}</a>
-            {{if .ParseError}}<div class="sub text-danger" title="{{.ParseError}}">{{truncate .ParseError 90}}</div>{{end}}
-          </td>
-          <td>{{if .Family}}<span class="chip">{{.Family}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
-          <td>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</td>
-          <td><span class="chip {{stateClass .State}}">{{if .State}}{{.State}}{{else}}sconosciuto{{end}}</span></td>
-          <td>{{if .Builtin}}catalogo{{else}}{{.Origin}}{{end}}</td>
-          <td>{{if .HashShort}}<code title="{{.Hash}}">{{.HashShort}}</code>{{else}}<span class="muted">—</span>{{end}}</td>
-          <td>{{date .UpdatedAt}}</td>
-          <td>{{if .Indexers}}<a href="/definitions/{{.ID}}">{{.Indexers}}</a>{{else}}0{{end}}</td>
-        </tr>
-        {{else}}
-        <tr><td colspan="9" class="empty">Nessuna definizione disponibile.</td></tr>
-        {{end}}
-      </tbody>
-    </table>
+  <div class="panel-head">
+    <h2>{{T "definitions.catalog"}} <span class="chip">{{len .CatalogRows}}</span></h2>
+    <span class="muted">{{T "definitions.catalogHint"}}</span>
   </div>
+  {{template "definition_table" .CatalogRows}}
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Come funziona</h2></div>
+  <div class="panel-head">
+    <h2>{{T "definitions.local"}} <span class="chip">{{len .LocalRows}}</span></h2>
+    <span class="muted">{{T "definitions.localHint"}}</span>
+  </div>
+  {{if .LegacyCount}}<p class="muted">{{T "definitions.legacyNotice" .LegacyCount}} <a href="/indexers?tab=legacy">{{T "indexers.legacy"}}</a>.</p>{{end}}
+  {{template "definition_table" .LocalRows}}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "definitions.how"}}</h2></div>
   <div class="prose">
-    <p>Le definizioni <strong>locali</strong> hanno origine <code>local</code> e non vengono mai sovrascritte dal catalogo. Le voci del <strong>catalogo integrato</strong> sono bozze: vengono installate la prima volta che le usi in un indexer.</p>
-    <p>Lo stato <strong>bozza</strong> significa che la definizione non è stata verificata su un sito reale. Usa il dettaglio per vedere il YAML, i problemi di validazione e gli indexer che la usano.</p>
+    <p>{{T "definitions.howLocal"}}</p>
+    <p>{{T "definitions.howDraft"}}</p>
   </div>
 </section>
+{{end}}
+
+{{define "definition_table"}}
+<div class="table-scroll">
+  <table class="definitions-table">
+    <thead>
+      <tr>
+        <th scope="col">{{T "definitions.id"}}</th>
+        <th scope="col">{{T "definitions.name"}}</th>
+        <th scope="col">{{T "definitions.family"}}</th>
+        <th scope="col">{{T "definitions.protocol"}}</th>
+        <th scope="col">{{T "definitions.state"}}</th>
+        <th scope="col">{{T "definitions.origin"}}</th>
+        <th scope="col">{{T "definitions.hash"}}</th>
+        <th scope="col">{{T "definitions.updated"}}</th>
+        <th scope="col">{{T "definitions.indexerCount"}}</th>
+        <th scope="col" class="right">{{T "definitions.action"}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .}}
+      <tr>
+        <td><a href="/definitions/{{.ID}}"><code>{{.ID}}</code></a></td>
+        <td>
+          <a href="/definitions/{{.ID}}">{{.Name}}</a>
+          {{if .ParseError}}<div class="sub text-danger" title="{{.ParseError}}">{{truncate .ParseError 90}}</div>{{end}}
+        </td>
+        <td>{{if .Family}}<span class="chip">{{.Family}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td><span class="chip {{stateClass .State}}">{{stateLabel .State}}</span></td>
+        <td>{{if .Builtin}}{{T "definitions.catalogOrigin"}}{{else}}{{.Origin}}{{end}}</td>
+        <td>{{if .HashShort}}<code title="{{.Hash}}">{{.HashShort}}</code>{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{date .UpdatedAt}}</td>
+        <td>{{if .Indexers}}<a href="/definitions/{{.ID}}">{{.Indexers}}</a>{{else}}0{{end}}</td>
+        <td class="right nowrap"><a class="btn small" href="/indexers/new?definition={{.ID}}" title="{{T "definitions.createIndexerTitle"}}">{{T "definitions.createIndexer"}}</a></td>
+      </tr>
+      {{else}}
+      <tr><td colspan="10" class="empty">{{T "definitions.empty"}}</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
 {{end}}

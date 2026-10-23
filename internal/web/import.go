@@ -59,7 +59,7 @@ type importPage struct {
 }
 
 func (s *Server) importPage(w http.ResponseWriter, r *http.Request) {
-	data := importPage{base: s.newBase(r, "Importa", "import")}
+	data := importPage{base: s.newBase(r, "Import", "import")}
 	data.ProwlarrURL = strings.TrimSpace(r.URL.Query().Get("base_url"))
 	data.JackettPath = strings.TrimSpace(r.URL.Query().Get("path"))
 	s.render(w, r, "import", data, http.StatusOK)
@@ -69,7 +69,7 @@ func (s *Server) importProwlarr(w http.ResponseWriter, r *http.Request) {
 	baseURL := strings.TrimSpace(r.FormValue("base_url"))
 	apiKey := strings.TrimSpace(r.FormValue("api_key"))
 	data := importPage{
-		base:        s.newBase(r, "Importa", "import"),
+		base:        s.newBase(r, "Import", "import"),
 		ProwlarrURL: baseURL,
 	}
 	if baseURL == "" || apiKey == "" {
@@ -94,7 +94,7 @@ func (s *Server) importProwlarr(w http.ResponseWriter, r *http.Request) {
 func (s *Server) importJackett(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimSpace(r.FormValue("path"))
 	data := importPage{
-		base:        s.newBase(r, "Importa", "import"),
+		base:        s.newBase(r, "Import", "import"),
 		JackettPath: path,
 	}
 	if path == "" {

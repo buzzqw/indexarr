@@ -456,7 +456,7 @@ func TestSyncLifecycle(t *testing.T) {
 	if got := alphaItem["priority"]; got != float64(25) {
 		t.Errorf("alpha priority = %v", got)
 	}
-	if got := fakeField(alphaItem, "baseUrl"); got != "https://indexarr.example/torznab/alpha/api" {
+	if got := fakeField(alphaItem, "baseUrl"); got != "https://indexarr.example/torznab/alpha" {
 		t.Errorf("alpha baseUrl = %v", got)
 	}
 	if got := fakeField(alphaItem, "apiKey"); got != testIndexarrKey {
@@ -501,7 +501,7 @@ func TestSyncLifecycle(t *testing.T) {
 	wantAlphaHash := appsync.SpecHash(appsync.IndexerSpec{
 		Name: appsync.ManagedPrefix + "Alpha Tracker", Implementation: "Torznab",
 		ConfigContract: "TorznabSettings",
-		BaseURL:        "https://indexarr.example/torznab/alpha/api", APIKey: testIndexarrKey,
+		BaseURL:        "https://indexarr.example/torznab/alpha", APIKey: testIndexarrKey,
 		Categories: []int{1000, 2000, 5000}, Priority: 25,
 		EnableRSS: true, EnableAutomaticSearch: true, EnableInteractiveSearch: true,
 		Protocol: "torrent",
@@ -590,7 +590,7 @@ func TestSyncLifecycle(t *testing.T) {
 		want := appsync.SpecHash(appsync.IndexerSpec{
 			Name: appsync.ManagedPrefix + "Alpha Tracker", Implementation: "Torznab",
 			ConfigContract: "TorznabSettings",
-			BaseURL:        "https://indexarr.example/torznab/alpha/api", APIKey: testIndexarrKey,
+			BaseURL:        "https://indexarr.example/torznab/alpha", APIKey: testIndexarrKey,
 			Categories: []int{1000, 2000, 5000}, Priority: 40,
 			EnableRSS: true, EnableAutomaticSearch: true, EnableInteractiveSearch: true,
 			Protocol: "torrent",

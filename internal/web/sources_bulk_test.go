@@ -35,7 +35,7 @@ func createBulkTestSources(t *testing.T, env *testEnv) []int64 {
 func TestSourcesBulkActions(t *testing.T) {
 	env := newTestEnv(t)
 	ids := createBulkTestSources(t, env)
-	token, cookie := csrfFrom(t, env.handler, "/sources")
+	token, cookie := csrfFrom(t, env.handler, "/indexers?tab=legacy")
 
 	post := func(values url.Values) *httptest.ResponseRecorder {
 		values.Set("csrf", token)
@@ -81,7 +81,7 @@ func TestSourcesBulkActions(t *testing.T) {
 func TestSourcesExportImportAndClone(t *testing.T) {
 	env := newTestEnv(t)
 	ids := createBulkTestSources(t, env)
-	token, cookie := csrfFrom(t, env.handler, "/sources")
+	token, cookie := csrfFrom(t, env.handler, "/indexers?tab=legacy")
 
 	export := get(t, env.handler, "/sources/export")
 	if export.Code != http.StatusOK {

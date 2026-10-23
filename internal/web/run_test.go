@@ -56,7 +56,7 @@ func TestRunDetail(t *testing.T) {
 		t.Fatalf("status = %d", recorder.Code)
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"Run #", "Run source", "Blocked"} {
+	for _, want := range []string{"Run source", "Blocked"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("run page missing %q", want)
 		}

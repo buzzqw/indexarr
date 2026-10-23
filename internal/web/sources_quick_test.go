@@ -12,7 +12,7 @@ import (
 
 func TestQuickAddDetectsKind(t *testing.T) {
 	env := newTestEnv(t)
-	token, cookie := csrfFrom(t, env.handler, "/sources")
+	token, cookie := csrfFrom(t, env.handler, "/indexers?tab=legacy")
 
 	recorder := postForm(t, env.handler, "/sources/quick", url.Values{
 		"csrf": {token},
@@ -68,7 +68,7 @@ func TestDiscoverFeedsPage(t *testing.T) {
 		</head></html>`)
 	}))
 	defer page.Close()
-	token, cookie := csrfFrom(t, env.handler, "/sources")
+	token, cookie := csrfFrom(t, env.handler, "/indexers?tab=legacy")
 	discover := get(t, env.handler, "/sources/discover?url="+url.QueryEscape(page.URL))
 	if discover.Code != http.StatusOK || !strings.Contains(discover.Body.String(), page.URL+"/atom.xml") {
 		t.Fatalf("discover = %d: %s", discover.Code, discover.Body.String())

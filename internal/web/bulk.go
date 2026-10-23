@@ -54,7 +54,7 @@ type sourceBulkPage struct {
 func (s *Server) sourceBulkNew(w http.ResponseWriter, r *http.Request) {
 	settings, _ := s.store.LoadSettings(r.Context())
 	s.render(w, r, "source_bulk", sourceBulkPage{
-		base:            s.newBase(r, "Bulk add RSS feeds", "sources"),
+		base:            s.newBase(r, "Aggiunta RSS in blocco", "sources"),
 		Enabled:         true,
 		DefaultInterval: settings.DefaultIntervalSeconds,
 	}, http.StatusOK)
@@ -145,7 +145,7 @@ func (s *Server) sourceBulkCreate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) renderBulk(w http.ResponseWriter, r *http.Request, text string, interval int, enabled, runNow bool, report bulkReport, status int) {
 	settings, _ := s.store.LoadSettings(r.Context())
 	data := sourceBulkPage{
-		base:            s.newBase(r, "Bulk add RSS feeds", "sources"),
+		base:            s.newBase(r, "Aggiunta RSS in blocco", "sources"),
 		Feeds:           text,
 		IntervalSeconds: interval,
 		Enabled:         enabled,

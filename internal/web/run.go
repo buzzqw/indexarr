@@ -38,7 +38,7 @@ func (s *Server) runPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, "run", runPage{
-		base: s.newBase(r, fmt.Sprintf("Run %d", run.ID), "runs"),
+		base: s.newBase(r, fmt.Sprintf("Run %d", run.ID), "activity"),
 		Run:  run,
 	}, http.StatusOK)
 }

@@ -40,8 +40,12 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
+	// WAL allows several readers concurrently with one writer. A small pool
+	// keeps a burst of Torznab clients from serialising behind a single
+	// connection while still bounding memory: each connection owns a 4 MiB
+	// page cache. busy_timeout absorbs the brief write-lock contention.
+	db.SetMaxOpenConns(4)
+	db.SetMaxIdleConns(4)
 	if err := db.Ping(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("ping %s: %w", path, err)
@@ -196,12 +200,23 @@ func (s *Store) migrate() error {
 	}
 	// These indexes depend on columns added by ensureReleaseColumns, so they
 	// cannot live in the statements above: an existing database does not have
-	// hidden/favorite until the ALTER TABLE has run.
+	// hidden/favorite until the ALTER TABLE has run. The published/seen indexes
+	// carry id so ORDER BY <date> DESC, id DESC is satisfied by the index and
+	// LIMIT can stop early instead of sorting every matching row.
 	for _, statement := range []string{
 		`CREATE INDEX IF NOT EXISTS releases_hidden ON releases(hidden)`,
 		`CREATE INDEX IF NOT EXISTS releases_favorite ON releases(favorite)`,
-		`CREATE INDEX IF NOT EXISTS releases_visible_published ON releases(hidden, published_at DESC)`,
-		`CREATE INDEX IF NOT EXISTS releases_visible_seen ON releases(hidden, last_seen_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS releases_visible_published_id
+			ON releases(hidden, published_at DESC, id DESC)`,
+		`CREATE INDEX IF NOT EXISTS releases_visible_seen_id
+			ON releases(hidden, last_seen_at DESC, id DESC)`,
+		`CREATE INDEX IF NOT EXISTS releases_visible_source_published
+			ON releases(hidden, source_id, published_at DESC, id DESC)`,
+		`CREATE INDEX IF NOT EXISTS releases_visible_category_published
+			ON releases(hidden, category, published_at DESC, id DESC)`,
+		// Superseded by the *_id variants, which also order the id tie-break.
+		`DROP INDEX IF EXISTS releases_visible_published`,
+		`DROP INDEX IF EXISTS releases_visible_seen`,
 	} {
 		if _, err := s.db.Exec(statement); err != nil {
 			return fmt.Errorf("migrate index: %w", err)

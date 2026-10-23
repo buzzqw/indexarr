@@ -2,12 +2,19 @@
 <section class="page-head">
   <div>
     <h1>Settings</h1>
-    <p class="muted">Runtime options are stored in the SQLite database and applied without editing files.</p>
+    <p class="muted">Le opzioni vengono salvate nel database SQLite e applicate senza modificare i file.</p>
   </div>
 </section>
 
-<section class="panel">
-  <div class="panel-head"><h2>Torznab API</h2></div>
+<nav class="subnav" aria-label="Sezioni delle impostazioni">
+  <a href="#api-torznab">API e Torznab</a>
+  <a href="#client-download">Client di download</a>
+  <a href="#notifiche">Notifiche</a>
+  <a href="#backup-manutenzione">Backup and maintenance</a>
+</nav>
+
+<section class="panel" id="api-torznab">
+  <div class="panel-head"><h2>API e Torznab</h2></div>
   <div class="field">
     <label for="api_key_view">API key</label>
     <div class="copy-row">
@@ -73,7 +80,7 @@
 
 <form class="panel form" method="post" action="/settings">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <div class="panel-head"><h2>Ingestion</h2></div>
+  <div class="panel-head"><h2>Acquisizione</h2></div>
 
   <div class="form-grid">
     <div class="field">
@@ -134,7 +141,7 @@
     </div>
   </div>
 
-  <div class="panel-head"><h2>Notifications</h2></div>
+  <div class="panel-head"><h2 id="notifiche">Notifiche</h2></div>
   <div class="form-grid">
     <div class="field grow">
       <label for="notify_webhook_url">Webhook URL</label>
@@ -168,7 +175,7 @@
     </div>
   </div>
 
-  <div class="panel-head"><h2>Torznab ratio hints</h2></div>
+  <div class="panel-head"><h2>Suggerimenti ratio Torznab</h2></div>
   <div class="form-grid">
     <div class="field">
       <label for="torznab_download_factor">Download volume factor</label>
@@ -197,7 +204,7 @@
     </div>
   </div>
 
-  <div class="panel-head"><h2>Download client</h2></div>
+  <div class="panel-head"><h2 id="client-download">Client di download</h2></div>
   <div class="form-grid">
     <div class="field">
       <label for="download_client">Client</label>
@@ -235,7 +242,7 @@
     </div>
   </div>
 
-  <div class="panel-head"><h2>Automatic backups</h2></div>
+  <div class="panel-head"><h2 id="backup-manutenzione">Automatic backups</h2></div>
   <div class="form-grid">
     <div class="field checkbox">
       <input id="backup_enabled" name="backup_enabled" type="checkbox"{{if .Settings.BackupEnabled}} checked{{end}}>
@@ -262,7 +269,7 @@
     <p class="help">0 keeps everything. The cleanup runs every six hours and can be triggered from Maintenance.</p>
   </div>
 
-  <div class="panel-head"><h2>Web access</h2></div>
+  <div class="panel-head"><h2>Accesso web</h2></div>
   {{if not .Settings.UIUser}}<p class="flash warn" role="status">The web interface is open to anyone who can reach the port. Set a user and password, or keep it behind a trusted network/reverse proxy.</p>{{end}}
   <div class="form-grid">
     <div class="field">

@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/buzzqw/indexarr/internal/categories"
 	"github.com/buzzqw/indexarr/internal/store"
@@ -455,9 +456,12 @@ func isUsenetRelease(release store.Release) bool {
 
 func (s *Server) writeCaps(w http.ResponseWriter, settings store.Settings) {
 	var b bytes.Buffer
+	b.Grow(4096)
 	b.WriteString(xml.Header)
 	b.WriteString(`<caps>`)
-	fmt.Fprintf(&b, `<server version="1.0" title="%s"/>`, esc("indexarr "+s.version))
+	b.WriteString(`<server version="1.0" title="`)
+	writeEsc(&b, "indexarr "+s.version)
+	b.WriteString(`"/>`)
 	b.WriteString(`<limits max="100" default="50"/>`)
 	b.WriteString(`<registration available="no" open="no"/>`)
 	b.WriteString(`<searching>`)
@@ -468,9 +472,17 @@ func (s *Server) writeCaps(w http.ResponseWriter, settings store.Settings) {
 	b.WriteString(`<book-search available="yes" supportedParams="q"/>`)
 	b.WriteString(`</searching><categories>`)
 	for _, group := range categories.Groups() {
-		fmt.Fprintf(&b, `<category id="%d" name="%s">`, group.Top.ID, esc(group.Top.Name))
+		b.WriteString(`<category id="`)
+		writeInt(&b, int64(group.Top.ID))
+		b.WriteString(`" name="`)
+		writeEsc(&b, group.Top.Name)
+		b.WriteString(`">`)
 		for _, child := range group.Children {
-			fmt.Fprintf(&b, `<subcat id="%d" name="%s"/>`, child.ID, esc(child.Name))
+			b.WriteString(`<subcat id="`)
+			writeInt(&b, int64(child.ID))
+			b.WriteString(`" name="`)
+			writeEsc(&b, child.Name)
+			b.WriteString(`"/>`)
 		}
 		b.WriteString(`</category>`)
 	}
@@ -502,27 +514,34 @@ func (s *Server) pageProvenance(ctx context.Context, releases []store.Release) m
 
 func (s *Server) writeSearch(w http.ResponseWriter, base string, settings store.Settings, apiKey string, releases []store.Release, total int64, offset int, provenance map[int64]store.ReleaseProvenance) {
 	var b bytes.Buffer
+	// One item is roughly 1.3 KiB with a magnet and provenance attributes;
+	// reserving the estimated size avoids the repeated slice growth of a 100
+	// item response.
+	b.Grow(2048 + len(releases)*1400)
 	b.WriteString(xml.Header)
 	b.WriteString(`<rss version="2.0" xmlns:torznab="http://torznab.com/schemas/2015/feed" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/">`)
 	b.WriteString(`<channel>`)
 	b.WriteString(`<title>indexarr</title>`)
-	fmt.Fprintf(&b, `<link>%s</link>`, esc(base))
+	b.WriteString(`<link>`)
+	writeEsc(&b, base)
+	b.WriteString(`</link>`)
 	b.WriteString(`<description>indexarr Torznab index</description>`)
-	fmt.Fprintf(&b, `<newznab:response offset="%d" total="%d"/>`, offset, total)
+	b.WriteString(`<newznab:response offset="`)
+	writeInt(&b, int64(offset))
+	b.WriteString(`" total="`)
+	writeInt(&b, total)
+	b.WriteString(`"/>`)
+	key := url.QueryEscape(apiKey)
 	for _, release := range releases {
-		s.writeItem(&b, base, settings, apiKey, release, provenance[release.ID])
+		s.writeItem(&b, base, &settings, key, release, provenance[release.ID])
 	}
 	b.WriteString(`</channel></rss>`)
 	s.writeXML(w, b.Bytes())
 }
 
-func (s *Server) writeItem(b *bytes.Buffer, base string, settings store.Settings, apiKey string, release store.Release, provenance store.ReleaseProvenance) {
-	if apiKey == "" {
-		apiKey = settings.APIKey
-	}
+func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Settings, key string, release store.Release, provenance store.ReleaseProvenance) {
 	usenet := isUsenetRelease(release)
 	id := strconv.FormatInt(release.ID, 10)
-	key := url.QueryEscape(apiKey)
 	link := ""
 	switch {
 	case len(release.Torrent) > 0:
@@ -560,16 +579,30 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings store.Settings
 		guid = "indexarr-" + release.DedupKey
 	}
 	b.WriteString(`<item>`)
-	fmt.Fprintf(b, `<title>%s</title>`, esc(release.Title))
-	fmt.Fprintf(b, `<guid isPermaLink="false">%s</guid>`, esc(guid))
-	fmt.Fprintf(b, `<link>%s</link>`, esc(link))
-	fmt.Fprintf(b, `<comments>%s/releases/%d</comments>`, esc(base), release.ID)
-	fmt.Fprintf(b, `<pubDate>%s</pubDate>`, published.Format(time.RFC1123Z))
-	fmt.Fprintf(b, `<size>%d</size>`, size)
-	fmt.Fprintf(b, `<category>%s</category>`, esc(category))
-	fmt.Fprintf(b, `<enclosure url="%s" length="%d" type="%s"/>`, esc(link), size, enclosureType)
-	fmt.Fprintf(b, `<torznab:attr name="category" value="%s"/>`, esc(category))
-	fmt.Fprintf(b, `<torznab:attr name="size" value="%d"/>`, size)
+	writeTag(b, "title", release.Title)
+	b.WriteString(`<guid isPermaLink="false">`)
+	writeEsc(b, guid)
+	b.WriteString(`</guid>`)
+	writeTag(b, "link", link)
+	b.WriteString(`<comments>`)
+	writeEsc(b, base)
+	b.WriteString(`/releases/`)
+	b.WriteString(id)
+	b.WriteString(`</comments>`)
+	b.WriteString(`<pubDate>`)
+	b.WriteString(published.Format(time.RFC1123Z))
+	b.WriteString(`</pubDate>`)
+	writeIntTag(b, "size", size)
+	writeTag(b, "category", category)
+	b.WriteString(`<enclosure url="`)
+	writeEsc(b, link)
+	b.WriteString(`" length="`)
+	writeInt(b, size)
+	b.WriteString(`" type="`)
+	b.WriteString(enclosureType)
+	b.WriteString(`"/>`)
+	writeAttr(b, "category", category)
+	writeAttrInt(b, "size", size)
 	// The release row is the fallback; provenance can be fresher because a
 	// single indexer may have reported a bigger swarm.
 	seeders, leechers := release.Seeders, release.Leechers
@@ -580,36 +613,37 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings store.Settings
 		leechers = provenance.Leechers
 	}
 	if seeders >= 0 {
-		fmt.Fprintf(b, `<torznab:attr name="seeders" value="%d"/>`, seeders)
+		writeAttrInt(b, "seeders", seeders)
 	}
 	if leechers >= 0 {
-		fmt.Fprintf(b, `<torznab:attr name="leechers" value="%d"/>`, leechers)
+		writeAttrInt(b, "leechers", leechers)
 	}
 	if seeders >= 0 && leechers >= 0 {
-		fmt.Fprintf(b, `<torznab:attr name="peers" value="%d"/>`, seeders+leechers)
+		writeAttrInt(b, "peers", seeders+leechers)
 	}
 	if provenance.Indexers > 1 {
 		// Additive attributes: *arr clients ignore unknown names, while a
 		// provenance-aware client can prefer a release seen by many indexers.
 		// download_ref and tracker URLs are never part of this output.
-		fmt.Fprintf(b, `<torznab:attr name="indexers" value="%d"/>`, provenance.Indexers)
-		fmt.Fprintf(b, `<torznab:attr name="provenance" value="%s"/>`,
-			esc(strings.Join(provenance.Names, "|")))
+		writeAttrInt(b, "indexers", int64(provenance.Indexers))
+		writeAttr(b, "provenance", strings.Join(provenance.Names, "|"))
 	}
 	if release.InfoHash != "" {
-		fmt.Fprintf(b, `<torznab:attr name="infohash" value="%s"/>`, esc(release.InfoHash))
+		writeAttr(b, "infohash", release.InfoHash)
 	}
 	if !usenet && release.Magnet != "" {
-		fmt.Fprintf(b, `<torznab:attr name="magneturl" value="%s"/>`, esc(release.Magnet))
+		writeAttr(b, "magneturl", release.Magnet)
 	}
 	if usenet {
-		fmt.Fprintf(b, `<torznab:attr name="protocol" value="usenet"/>`)
+		writeAttr(b, "protocol", "usenet")
 	}
 	if !published.IsZero() {
-		fmt.Fprintf(b, `<torznab:attr name="publishdate" value="%s"/>`, published.Format(time.RFC3339))
+		b.WriteString(`<torznab:attr name="publishdate" value="`)
+		b.WriteString(published.Format(time.RFC3339))
+		b.WriteString(`"/>`)
 	}
-	fmt.Fprintf(b, `<torznab:attr name="downloadvolumefactor" value="%d"/>`, settings.TorznabDownloadFactor)
-	fmt.Fprintf(b, `<torznab:attr name="uploadvolumefactor" value="%d"/>`, settings.TorznabUploadFactor)
+	writeAttrInt(b, "downloadvolumefactor", int64(settings.TorznabDownloadFactor))
+	writeAttrInt(b, "uploadvolumefactor", int64(settings.TorznabUploadFactor))
 	b.WriteString(`</item>`)
 }
 
@@ -711,8 +745,89 @@ func BaseURL(r *http.Request, settings store.Settings) string {
 
 func esc(text string) string {
 	var b bytes.Buffer
-	_ = xml.EscapeText(&b, []byte(text))
+	writeEsc(&b, text)
 	return b.String()
+}
+
+// writeEsc escapes XML text and double-quoted attribute values directly into
+// b. It matches xml.EscapeText byte for byte, but avoids the temporary buffer
+// and byte slice that xml.EscapeText needs for every attribute. Invalid UTF-8
+// falls back to the standard library, which substitutes U+FFFD.
+func writeEsc(b *bytes.Buffer, text string) {
+	if !utf8.ValidString(text) {
+		_ = xml.EscapeText(b, []byte(text))
+		return
+	}
+	last := 0
+	for i := 0; i < len(text); i++ {
+		var replacement string
+		switch text[i] {
+		case '&':
+			replacement = "&amp;"
+		case '<':
+			replacement = "&lt;"
+		case '>':
+			replacement = "&gt;"
+		case '"':
+			replacement = "&#34;"
+		case '\'':
+			replacement = "&#39;"
+		case '\t':
+			replacement = "&#x9;"
+		case '\n':
+			replacement = "&#xA;"
+		case '\r':
+			replacement = "&#xD;"
+		default:
+			continue
+		}
+		b.WriteString(text[last:i])
+		b.WriteString(replacement)
+		last = i + 1
+	}
+	b.WriteString(text[last:])
+}
+
+func writeTag(b *bytes.Buffer, name, text string) {
+	b.WriteByte('<')
+	b.WriteString(name)
+	b.WriteByte('>')
+	writeEsc(b, text)
+	b.WriteString(`</`)
+	b.WriteString(name)
+	b.WriteByte('>')
+}
+
+func writeIntTag(b *bytes.Buffer, name string, value int64) {
+	b.WriteByte('<')
+	b.WriteString(name)
+	b.WriteByte('>')
+	writeInt(b, value)
+	b.WriteString(`</`)
+	b.WriteString(name)
+	b.WriteByte('>')
+}
+
+// writeInt appends a decimal integer without allocating.
+func writeInt(b *bytes.Buffer, value int64) {
+	var scratch [20]byte
+	b.Write(strconv.AppendInt(scratch[:0], value, 10))
+}
+
+func writeAttr(b *bytes.Buffer, name, value string) {
+	b.WriteString(`<torznab:attr name="`)
+	b.WriteString(name)
+	b.WriteString(`" value="`)
+	writeEsc(b, value)
+	b.WriteString(`"/>`)
+}
+
+func writeAttrInt(b *bytes.Buffer, name string, value int64) {
+	b.WriteString(`<torznab:attr name="`)
+	b.WriteString(name)
+	b.WriteString(`" value="`)
+	writeInt(b, value)
+	b.WriteString(`"/>`)
 }
 
 func parseLimit(raw string) int {

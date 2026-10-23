@@ -86,7 +86,7 @@ func TestImportPageRenders(t *testing.T) {
 		t.Fatalf("GET /import = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"Importa", "Prowlarr", "Jackett", "Anteprima, nessuna modifica", "crea definizioni"} {
+	for _, want := range []string{"Import", "Prowlarr", "Jackett", "Preview, no changes", "does not create definitions"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("import page missing %q", want)
 		}
@@ -110,8 +110,8 @@ func TestImportProwlarrRendersPlanWithoutSecrets(t *testing.T) {
 	}
 	body := recorder.Body.String()
 	for _, want := range []string{
-		"Piano da prowlarr", "Alpha", "Bravo", "Torznab", "Newznab",
-		"torrent", "usenet", "Sonarr", "Radarr", "add-remove",
+		"Plan from prowlarr", "Alpha", "Bravo", "Torznab", "Newznab",
+		"torrent", "usenet", "Sonarr", "Radarr", "Add/remove only",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("plan missing %q", want)
@@ -173,7 +173,7 @@ func TestImportJackettRendersPlan(t *testing.T) {
 		t.Fatalf("import status = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"Piano da jackett", "Alpha Jackett", "Cardigann", "torrent", "2000"} {
+	for _, want := range []string{"Plan from jackett", "Alpha Jackett", "Cardigann", "torrent", "2000"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("plan missing %q", want)
 		}

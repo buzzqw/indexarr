@@ -1,0 +1,60 @@
+{
+  "releases": [
+    {
+      "key": "magnet",
+      "title": "Compat.Magnet.Show.S01E02.1080p",
+      "category": "5040",
+      "size": 1234567890,
+      "seeders": 12,
+      "leechers": 2,
+      "published": "2026-10-05T10:17:44Z",
+      "source": "alpha",
+      "infohash": "1111111111111111111111111111111111111111",
+      "magnet": "magnet:?xt=urn:btih:1111111111111111111111111111111111111111&dn=Compat.Magnet.Show.S01E02.1080p",
+      "tvdbid": "81189"
+    },
+    {
+      "key": "torrent",
+      "title": "Compat.Torrent.Movie.2026.2160p",
+      "category": "2040",
+      "size": 8000000000,
+      "seeders": 17,
+      "leechers": 3,
+      "published": "2026-10-04T09:00:00Z",
+      "source": "alpha",
+      "infohash": "2222222222222222222222222222222222222222",
+      "magnet": "magnet:?xt=urn:btih:2222222222222222222222222222222222222222&dn=Compat.Torrent.Movie.2026.2160p",
+      "torrent": "d4:infod4:name7:torrentee",
+      "imdbid": "tt0133093",
+      "tmdbid": "603"
+    },
+    {
+      "key": "nzb",
+      "title": "Compat.NZB.Album.2026.FLAC",
+      "category": "3040",
+      "size": 700000000,
+      "seeders": -1,
+      "leechers": -1,
+      "published": "2026-10-03T08:30:00Z",
+      "source": "beta",
+      "protocol": "usenet",
+      "guid": "compat-nzb-guid",
+      "payload": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><nzb xmlns=\"http://www.newzbin.com/DTD/2003/nzb\"><head><meta type=\"title\">Compat.NZB.Album.2026.FLAC</meta></head></nzb>",
+      "payload_type": "application/x-nzb"
+    },
+    {
+      "key": "multi",
+      "title": "Compat & <Multi> Show",
+      "category": "5040",
+      "size": 5000000000,
+      "seeders": 9,
+      "leechers": 1,
+      "published": "2026-10-02T07:15:00Z",
+      "source": "alpha",
+      "infohash": "4444444444444444444444444444444444444444",
+      "magnet": "magnet:?xt=urn:btih:4444444444444444444444444444444444444444&dn=Compat+%26+Multi+Show",
+      "torrent": "d4:infod4:name5:multie",
+      "multi": true
+    }
+  ]
+}

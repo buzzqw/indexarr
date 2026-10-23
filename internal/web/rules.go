@@ -21,7 +21,7 @@ func (s *Server) rulesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, "rules", rulesPage{
-		base:  s.newBase(r, "Rules", "rules"),
+		base:  s.newBase(r, "Regole", "rules"),
 		Rules: rules,
 	}, http.StatusOK)
 }

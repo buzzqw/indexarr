@@ -1,30 +1,28 @@
-{{define "content"}}
-<section class="page-head">
-  <div>
-    <h1>Runs</h1>
-    <p class="muted">Every scheduled or manual ingestion, with its outcome.</p>
-  </div>
-  <form method="post" action="/runs/clear" data-confirm="Delete runs older than 30 days?">
+{{define "runs_body"}}
+<div class="section-head">
+  <p class="muted">{{T "runs.subtitle"}}</p>
+  <form method="post" action="/runs/clear" data-confirm="{{T "runs.clearConfirm"}}">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <button class="btn" type="submit">Clear older than 30 days</button>
+    <button class="btn" type="submit">{{T "runs.clear"}}</button>
   </form>
-</section>
+</div>
 
-<form class="filters" method="get" action="/runs">
+<form class="filters" method="get" action="/activity">
+  <input type="hidden" name="tab" value="runs">
   <div class="field">
-    <label for="source">Source</label>
+    <label for="source">{{T "runs.source"}}</label>
     <select id="source" name="source">
-      <option value="0">All sources</option>
+      <option value="0">{{T "runs.allSources"}}</option>
       {{range .Sources}}<option value="{{.ID}}"{{if eq $.SourceID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
     </select>
   </div>
   <div class="field checkbox">
     <input id="errors" name="errors" type="checkbox" value="1"{{if .OnlyErrors}} checked{{end}}>
-    <label for="errors">Only failures</label>
+    <label for="errors">{{T "runs.onlyErrors"}}</label>
   </div>
   <div class="field actions-field">
-    <button class="btn primary" type="submit">Filter</button>
-    <a class="btn" href="/runs">Reset</a>
+    <button class="btn primary" type="submit">{{T "runs.filter"}}</button>
+    <a class="btn" href="/activity?tab=runs">{{T "runs.reset"}}</a>
   </div>
 </form>
 
@@ -33,16 +31,16 @@
     <table>
       <thead>
         <tr>
-          <th scope="col">Started</th>
-          <th scope="col">Source</th>
-          <th scope="col">Result</th>
-          <th scope="col">Seen</th>
-          <th scope="col">New</th>
-          <th scope="col">Updated</th>
-          <th scope="col">Blocked</th>
-          <th scope="col">Torrents</th>
-          <th scope="col">Duration</th>
-          <th scope="col">Error</th>
+          <th scope="col">{{T "runs.started"}}</th>
+          <th scope="col">{{T "runs.source"}}</th>
+          <th scope="col">{{T "runs.outcome"}}</th>
+          <th scope="col">{{T "runs.seen"}}</th>
+          <th scope="col">{{T "runs.new"}}</th>
+          <th scope="col">{{T "runs.updated"}}</th>
+          <th scope="col">{{T "runs.blocked"}}</th>
+          <th scope="col">{{T "runs.torrents"}}</th>
+          <th scope="col">{{T "runs.duration"}}</th>
+          <th scope="col">{{T "runs.error"}}</th>
         </tr>
       </thead>
       <tbody>
@@ -50,7 +48,7 @@
         <tr>
           <td class="nowrap"><a href="/runs/{{.ID}}">{{date .StartedAt}}</a><div class="sub">{{ago .StartedAt}}</div></td>
           <td>{{.SourceName}}</td>
-          <td>{{if eq .Status "error"}}<span class="chip danger">error</span>{{else if eq .Status "running"}}<span class="chip warn">running</span>{{else}}<span class="chip ok">ok</span>{{end}}</td>
+          <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "running"}}<span class="chip warn">{{T "common.running"}}</span>{{else}}<span class="chip ok">ok</span>{{end}}</td>
           <td>{{.ItemsSeen}}</td>
           <td>{{.ItemsNew}}</td>
           <td>{{.ItemsUpdated}}</td>
@@ -60,7 +58,7 @@
           <td class="error-cell">{{if .Error}}<span title="{{.Error}}">{{truncate .Error 90}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
         </tr>
         {{else}}
-        <tr><td colspan="10" class="empty">No runs match this filter.</td></tr>
+        <tr><td colspan="10" class="empty">{{T "runs.empty"}}</td></tr>
         {{end}}
       </tbody>
     </table>

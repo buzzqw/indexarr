@@ -217,7 +217,11 @@ reti private e metadata cloud salvo `allow_private`) e redirect rivalidati.
 | `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.torrent`/`.nzb` non ancora in cache |
 | `internal/importers` | Piano di import da Prowlarr e Jackett (indexer, applicazioni, proxy, categorie) |
 | `internal/legacyimport` | Anteprima, apply e revert della migrazione delle `sources` legacy verso un indexer Torznab nativo |
-| `internal/simmock`, `cmd/simmock`, `sim/` | Simulazione end-to-end deterministica: finti Torznab/Newznab, Prowlarr, Sonarr, client di download e tracker HTML; esecuzione locale e Docker |
+| `internal/cardigann` | Convertitore locale Cardigann → nativo v1, con family detection e warning; non è un runtime |
+| `cmd/indexarr-import` | Import di Jackett/Prowlarr in un DB indexarr usa-e-getta, senza modificare le istanze |
+| `internal/simmock`, `cmd/simmock`, `sim/` | Simulazione end-to-end deterministica: finti Torznab/Newznab, Prowlarr, Sonarr, client di download e tracker HTML; esecuzione locale, Docker e \*arr reali |
+| `internal/i18n` | Cataloghi UI incorporati (en/it/fr/de/es/zh/pl), negoziazione lingua, fallback inglese |
+| `internal/perf` | Generatore dataset e test di leak per benchmark; non linkato dal binario di produzione |
 | `internal/appsync` | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr (API Servarr) e Mylar3/LazyLibrarian, con livelli di sync |
 | `internal/downloadclient` | Invio a qBittorrent, Transmission, Deluge, rTorrent, SABnzbd e NZBGet |
 | `internal/deftool` | Logica testabile del CLI: validazione, formattazione, controllo fixture |

@@ -107,10 +107,47 @@ type rawLogin struct {
 }
 
 type rawCondition struct {
-	Selector string `yaml:"selector"`
-	Message  string `yaml:"message"`
-	Path     string `yaml:"path"`
-	Status   int    `yaml:"status"`
+	Selector string     `yaml:"selector"`
+	Message  rawMessage `yaml:"message"`
+	Path     string     `yaml:"path"`
+	Status   int        `yaml:"status"`
+}
+
+// rawMessage accepts both the plain message string and the mapping form with
+// a text (and optional selector) used by many real definitions.
+type rawMessage string
+
+func (m *rawMessage) UnmarshalYAML(value *yaml.Node) error {
+	if isNullNode(value) {
+		*m = ""
+		return nil
+	}
+	if value.Kind == yaml.AliasNode && value.Alias != nil {
+		value = value.Alias
+	}
+	if value.Kind == yaml.ScalarNode {
+		*m = rawMessage(scalarText(value))
+		return nil
+	}
+	if value.Kind == yaml.MappingNode {
+		text := ""
+		selector := ""
+		for i := 0; i+1 < len(value.Content); i += 2 {
+			switch strings.ToLower(scalarText(value.Content[i])) {
+			case "text":
+				text = scalarText(value.Content[i+1])
+			case "selector":
+				selector = scalarText(value.Content[i+1])
+			}
+		}
+		if text == "" {
+			text = selector
+		}
+		*m = rawMessage(text)
+		return nil
+	}
+	*m = rawMessage(scalarText(value))
+	return nil
 }
 
 // UnmarshalYAML accepts both a selector string and the fuller condition
@@ -200,6 +237,7 @@ type rawField struct {
 	Type      string              `yaml:"type"`
 	Path      string              `yaml:"path"`
 	Remove    string              `yaml:"remove"`
+	Text      string              `yaml:"text"`
 }
 
 // UnmarshalYAML also accepts the shorthand "a.title" (or a fallback list)

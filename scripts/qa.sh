@@ -83,23 +83,23 @@ check() {
 }
 
 echo "==> HTTP smoke tests"
-check / "Dashboard"
-check /releases "Releases"
-check /sources "Quick add"
+check / "Overview"
+check /releases "Release"
+check "/indexers?tab=legacy" "Legacy bridge"
+check /maintenance "Maintenance"
 check /maintenance "Database report"
-check /maintenance "Cleanup and retention"
-check /logs "Problems"
-check "/logs?component=indexer" "Origin"
+check "/activity?tab=logs" "Log"
+check "/activity?tab=logs&component=indexer" "Source"
 check /healthz '"status":"ok"'
 check /static/app.css "max-width: 720px"
 check /static/manifest.webmanifest '"name": "indexarr"'
 check /sw.js "indexarr-static"
-check /definitions "Definizioni"
-check /definitions/new "Nuova definizione"
-check /indexers "Indexer nativi"
-check /indexers/new "Nuovo indexer nativo"
-check /applications "Applicazioni"
-check /import "Importa"
+check /definitions "Definitions"
+check /definitions/new "New definition"
+check /indexers "Native"
+check /indexers/new "New native indexer"
+check /applications "Applications"
+check /import "Import"
 
 KEY="$(grep -o 'apikey=[0-9a-f]\{64\}' "$LOG" | head -n 1 | cut -d= -f2)"
 if [[ -z "$KEY" ]]; then
@@ -161,6 +161,17 @@ if [[ -z "$NATIVE_ID" ]]; then
   echo "$CREATE" >&2
   exit 1
 fi
+PER_INDEXER="$(curl -fsS "$BASE/torznab/qa-native/api?t=caps&apikey=$KEY")"
+if ! grep -q '<caps' <<<"$PER_INDEXER"; then
+  echo "FAIL /torznab/qa-native/api: no <caps>" >&2
+  exit 1
+fi
+JACKETT_ALIAS="$(curl -fsS "$BASE/api/v2.0/indexers/qa-native/results/torznab/api?t=caps&apikey=$KEY")"
+if ! grep -q '<caps' <<<"$JACKETT_ALIAS"; then
+  echo "FAIL Jackett per-indexer alias: no <caps>" >&2
+  exit 1
+fi
+echo "ok   per-indexer routes (torznab + Jackett alias)"
 curl -fsS -X DELETE "$BASE/api/v2/indexers/$NATIVE_ID?apikey=$KEY" >/dev/null
 echo "ok   /api/v2/indexers (vault create/delete)"
 

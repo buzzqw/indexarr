@@ -493,6 +493,8 @@ func TestMigrateAddsHTTPAuthColumns(t *testing.T) {
 	for _, index := range []string{
 		"releases_hidden", "releases_favorite",
 		"releases_visible_published", "releases_visible_seen",
+		"releases_visible_published_id", "releases_visible_seen_id",
+		"releases_visible_source_published", "releases_visible_category_published",
 	} {
 		if _, err := st.DB().Exec("DROP INDEX IF EXISTS " + index); err != nil {
 			t.Fatalf("drop index %s: %v", index, err)

@@ -17,6 +17,11 @@ vet:
 qa:
 	./scripts/qa.sh
 
+# UI route/link smoke test against a running instance (read-only, GET only).
+.PHONY: ui-smoke
+ui-smoke:
+	./scripts/ui-smoke.sh
+
 fmt:
 	gofmt -w .
 

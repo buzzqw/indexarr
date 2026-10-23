@@ -2,19 +2,19 @@
 <section class="page-head">
   <div>
     <h1>{{.Name}}</h1>
-    <p class="muted"><code>{{.Definition.ID}}</code>{{if .Builtin}} · voce del catalogo integrato{{end}}</p>
+    <p class="muted"><code>{{.Definition.ID}}</code>{{if .Builtin}} · {{T "definition.catalogEntry"}}{{end}}</p>
   </div>
   <div class="actions">
-    <a class="btn" href="/definitions">← Definizioni</a>
-    {{if not .Builtin}}<a class="btn" href="/indexers/new?definition={{.Definition.ID}}">Crea indexer</a>{{end}}
+    <a class="btn" href="/definitions">{{T "definition.back"}}</a>
+    {{if not .Builtin}}<a class="btn" href="/indexers/new?definition={{.Definition.ID}}" title="{{T "definition.createIndexerTitle"}}">{{T "definition.createIndexer"}}</a>{{end}}
   </div>
 </section>
 
 {{if .Problems}}
 <section class="panel">
-  <div class="panel-head"><h2>Problemi di validazione</h2></div>
+  <div class="panel-head"><h2>{{T "definition.problems"}}</h2></div>
   <div class="prose">
-    <p class="text-danger">La definizione non supera la validazione: gli indexer non possono usarla finché i problemi non sono corretti.</p>
+    <p class="text-danger">{{T "definition.problemsText"}}</p>
     <ul>
       {{range .Problems}}<li><code>{{.}}</code></li>{{end}}
     </ul>
@@ -23,29 +23,29 @@
 {{end}}
 
 <section class="panel">
-  <div class="panel-head"><h2>Metadati</h2></div>
+  <div class="panel-head"><h2>{{T "definition.metadata"}}</h2></div>
   <dl class="detail">
-    <dt>ID</dt><dd><code>{{.Definition.ID}}</code></dd>
-    <dt>Nome</dt><dd>{{.Name}}</dd>
-    <dt>Famiglia / connettore</dt><dd>{{if .Family}}{{.Family}}{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>Protocollo</dt><dd>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>Schema</dt><dd>{{.Definition.SchemaVersion}}</dd>
-    <dt>Stato</dt><dd><span class="chip {{stateClass .Definition.State}}">{{.Definition.State}}</span></dd>
-    <dt>Origine</dt><dd>{{if .Builtin}}catalogo integrato{{else}}{{.Definition.Origin}}{{end}}</dd>
-    <dt>Autore</dt><dd>{{if .Definition.Author}}{{.Definition.Author}}{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>Hash</dt><dd>{{if .HashShort}}<code title="{{.Definition.Hash}}">{{.HashShort}}</code>{{else}}<span class="muted">—</span>{{end}}</dd>
-    <dt>Aggiornata</dt><dd>{{date .Definition.UpdatedAt}}</dd>
-    <dt>Validazione</dt><dd>{{if .Problems}}<span class="chip danger">non valida</span>{{else}}<span class="chip ok">valida</span>{{end}}</dd>
+    <dt>{{T "common.id"}}</dt><dd><code>{{.Definition.ID}}</code></dd>
+    <dt>{{T "common.name"}}</dt><dd>{{.Name}}</dd>
+    <dt>{{T "definition.family"}}</dt><dd>{{if .Family}}{{.Family}}{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "common.protocol"}}</dt><dd>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "definition.schema"}}</dt><dd>{{.Definition.SchemaVersion}}</dd>
+    <dt>{{T "definition.state"}}</dt><dd><span class="chip {{stateClass .Definition.State}}">{{stateLabel .Definition.State}}</span></dd>
+    <dt>{{T "definition.origin"}}</dt><dd>{{if .Builtin}}{{T "definition.catalogOrigin"}}{{else}}{{.Definition.Origin}}{{end}}</dd>
+    <dt>{{T "definition.author"}}</dt><dd>{{if .Definition.Author}}{{.Definition.Author}}{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "definition.hash"}}</dt><dd>{{if .HashShort}}<code title="{{.Definition.Hash}}">{{.HashShort}}</code>{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "definition.updated"}}</dt><dd>{{date .Definition.UpdatedAt}}</dd>
+    <dt>{{T "definition.validation"}}</dt><dd>{{if .Problems}}<span class="chip danger">{{T "definition.invalid"}}</span>{{else}}<span class="chip ok">{{T "definition.valid"}}</span>{{end}}</dd>
   </dl>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Indexer che la usano</h2></div>
+  <div class="panel-head"><h2>{{T "definition.usedBy"}}</h2></div>
   {{if .Indexers}}
   <div class="table-scroll">
     <table>
       <thead>
-        <tr><th scope="col">Nome</th><th scope="col">Slug</th><th scope="col">Protocollo</th><th scope="col">Stato</th><th scope="col" class="right">Azioni</th></tr>
+        <tr><th scope="col">{{T "common.name"}}</th><th scope="col">{{T "common.slug"}}</th><th scope="col">{{T "common.protocol"}}</th><th scope="col">{{T "common.status"}}</th><th scope="col" class="right">{{T "common.actions"}}</th></tr>
       </thead>
       <tbody>
         {{range .Indexers}}
@@ -53,20 +53,20 @@
           <td><a href="/indexers/{{.ID}}">{{.Name}}</a></td>
           <td><code>{{.Slug}}</code></td>
           <td>{{.Protocol}}</td>
-          <td>{{if .Enabled}}<span class="chip ok">attivo</span>{{else}}<span class="chip">disattivato</span>{{end}}</td>
-          <td class="right nowrap"><a class="btn small" href="/indexers/{{.ID}}/edit">Modifica</a></td>
+          <td>{{if .Enabled}}<span class="chip ok">{{T "definition.active"}}</span>{{else}}<span class="chip">{{T "definition.inactive"}}</span>{{end}}</td>
+          <td class="right nowrap"><a class="btn small" href="/indexers/{{.ID}}/edit">{{T "common.edit"}}</a></td>
         </tr>
         {{end}}
       </tbody>
     </table>
   </div>
   {{else}}
-  <p class="muted" style="padding: 1rem 1.1rem;">Nessun indexer usa questa definizione.</p>
+  <p class="muted" style="padding: 1rem 1.1rem;">{{T "definition.notUsed"}}</p>
   {{end}}
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>YAML</h2></div>
+  <div class="panel-head"><h2>{{T "definitionForm.yaml"}}</h2></div>
   <pre class="yaml">{{.Body}}</pre>
 </section>
 {{end}}

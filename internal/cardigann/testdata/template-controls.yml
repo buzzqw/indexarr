@@ -1,0 +1,33 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-controls
+name: Synthetic Control Templates
+description: A made-up HTML tracker exercising control template approximations.
+type: private
+links:
+  - https://controls.example/
+settings:
+  - { name: freeleech, type: checkbox, label: Freeleech only, default: false }
+  - { name: sort, type: select, label: Sort, default: date, options: { date: date, seeders: seeders } }
+caps:
+  modes:
+    search: [q]
+    tv-search: [q, season, ep]
+search:
+  paths:
+    - path: "browse/{{ if .Keywords }}search/{{ .Keywords }}{{ else }}latest{{ end }}"
+      response:
+        type: html
+  inputs:
+    $raw: "{{ range .Categories }}&categories[]={{.}}{{end}}"
+    q: "{{ .Keywords }}"
+    joined: '{{ join .Categories "," }}'
+    freeleech: "{{ if .Config.freeleech }}1{{ else }}0{{ end }}"
+    search: "{{ if .Keywords }}{{ .Keywords }}{{ else }}{{ end }}"
+    filtered: "{{ if and (.Keywords) (eq .Config.sort \"date\") }}dated{{ else }}other{{ end }}"
+    imdb: "{{ .Query.IMDBIDShort }}"
+  rows:
+    selector: table.results tr
+  fields:
+    title: { selector: a.title, filters: [trim] }
+    link: { selector: a.download, attribute: href }
+    size: { selector: td.size }

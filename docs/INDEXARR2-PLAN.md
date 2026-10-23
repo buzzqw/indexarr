@@ -539,7 +539,12 @@ rimosse.
 | Apply/revert della migrazione legacy con vault e disattivazione della sorgente | `internal/legacyimport`, `internal/adminapi` | test + QA |
 | Provenance multi-indexer (`indexers`, `provenance`), seeders massimi, `StaleProvenance` | `internal/store`, `internal/torznabapi` | test + race |
 | Simulazione end-to-end locale e Docker (Torznab, Prowlarr, Sonarr, client, tracker HTML) | `internal/simmock`, `cmd/simmock`, `sim/` | test + `sim/run.sh` + Docker |
-| Conversione locale Cardigann → nativo v1 (sottoinsieme, warning espliciti) | `internal/cardigann`, `indexarr-def convert-cardigann` | test + race |
+| Conversione locale Cardigann → nativo v1 (sottoinsieme, warning espliciti) | `internal/cardigann`, `indexarr-def convert-cardigann` | test + race; 926/927 sul corpus reale |
+| Import Jackett/Prowlarr in un DB usa-e-getta | `cmd/indexarr-import`, `internal/importers` | test + prova su istanze reali |
+| UI ridisegnata: sidebar, Indexer unificato, Attività, Sistema, redirect legacy | `internal/web` | test + `scripts/ui-smoke.sh` (26 route, 444 link) |
+| i18n: inglese default + it/fr/de/es/zh/pl, 427 chiavi, selettore lingua | `internal/i18n`, `internal/web` | test parità + QA |
+| Prestazioni: indici, FTS, XML, pool SQLite | `internal/store`, `internal/torznabapi` | benchmark + `docs/PERFORMANCE.md` |
+| Simulazione con Prowlarr/Sonarr/Radarr reali | `sim/real/` | 62 asserzioni verdi |
 | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr e reconcile | `internal/appsync` | test + race |
 | CLI `indexarr-def`, esempi, documentazione | `cmd/indexarr-def`, `internal/deftool` | test + CI |
 | Alias Jackett/Newznab, routing per indexer, filtri aggregati, errori 100–900 | `internal/torznabapi` | test + QA |
@@ -567,21 +572,25 @@ rimosse.
 
 ### Prossimi passi (non ancora fatti)
 
-1. **Copertura siti**: le famiglie Gazelle/NexusPHP/TorrentTrader/Xbtit ci
-   sono ma sono `bozza`; servono verifica su siti reali, altri software minori,
-   applicazione dell'import Cardigann da UI/API e pacchetti di definizioni con
-   fixture e stato.
+1. **Copertura siti**: il convertitore copre il 99,9% del corpus Prowlarr e le
+   famiglie Gazelle/NexusPHP/TorrentTrader/Xbtit ci sono, ma restano `bozza`;
+   servono verifica su siti reali, altri software minori, applicazione
+   dell'import Cardigann da UI/API e pacchetti di definizioni con fixture.
 2. **Catalogo reale**: le definizioni built-in sono `bozza`; servono fixture
    osservate dai siti e health check live prima di dichiararle `verificate`.
 3. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
    (oggi `ErrUnsupported`), filtri per tag.
-4. **Import applicato**: endpoint/UI che creino definizioni e indexer dal piano
-   Prowlarr/Jackett, non solo l'anteprima.
+4. **Import applicato**: `cmd/indexarr-import` crea sorgenti ponte; manca
+   l'apply di definizioni/indexer nativi da UI/API.
 5. **FlareSolverr per indexer** (i proxy HTTP/SOCKS sono fatti), stato `blocked`
    per CAPTCHA, firma del catalogo remoto, studio delle definizioni, canary e
    rete di salute opt-in.
 6. **Provenance refresh**: il dato e gli attributi Torznab ci sono; manca il job
    periodico che usa `StaleProvenance` per aggiornare i seeders.
+7. **i18n delle pagine legacy**: estrarre le chiavi `T` per Release, Rules,
+   Settings, Maintenance e form sorgenti e tradurle nelle 7 lingue. Le pagine
+   nuove sono già coperte.
+8. **UI mobile**: paginazione per liste lunghe, touch target e tabelle larghe.
 
 ### Verifica
 

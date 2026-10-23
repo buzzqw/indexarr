@@ -155,7 +155,7 @@ func (c *converter) convertAuth() *definition.Auth {
 		if strings.TrimSpace(login.Test.Selector) != "" || login.Test.Status != 0 {
 			auth.Success = &definition.Condition{
 				Selector: strings.TrimSpace(login.Test.Selector),
-				Message:  strings.TrimSpace(login.Test.Message),
+				Message:  strings.TrimSpace(string(login.Test.Message)),
 				Status:   login.Test.Status,
 			}
 		} else {
@@ -177,7 +177,7 @@ func (c *converter) convertAuth() *definition.Auth {
 		}
 		auth.Failure = append(auth.Failure, definition.Condition{
 			Selector: strings.TrimSpace(condition.Selector),
-			Message:  strings.TrimSpace(condition.Message),
+			Message:  strings.TrimSpace(string(condition.Message)),
 			Status:   condition.Status,
 		})
 	}

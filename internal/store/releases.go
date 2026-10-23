@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -321,12 +324,7 @@ func (s *Store) SavePayload(ctx context.Context, id int64, body []byte, contentT
 
 // SearchReleases returns one page of releases and the total matching count.
 func (s *Store) SearchReleases(ctx context.Context, f Filter) ([]Release, int64, error) {
-	where, args := buildWhere(f)
-	countQuery := `SELECT COUNT(*) FROM releases` + where
-	var total int64
-	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
+	where := buildWhere(f)
 	limit := f.Limit
 	if limit <= 0 {
 		limit = 50
@@ -338,9 +336,31 @@ func (s *Store) SearchReleases(ctx context.Context, f Filter) ([]Release, int64,
 	if offset < 0 {
 		offset = 0
 	}
-	query := `SELECT ` + releaseColumns + ` FROM releases` + where +
+	if where.fts {
+		if releases, total, ok, err := s.searchTextFast(ctx, f, where, limit, offset); err != nil {
+			return nil, 0, err
+		} else if ok {
+			return releases, total, nil
+		}
+	}
+	total, err := s.countReleases(ctx, f, where)
+	if err != nil {
+		return nil, 0, err
+	}
+	// A text query is sorted in memory: selecting the page ids first keeps the
+	// wide columns (magnet and payload blobs) out of the sorter, then one
+	// primary-key lookup loads the page.
+	if where.fts {
+		ids, err := s.searchIDs(ctx, where, orderBy(f.Sort), limit, offset)
+		if err != nil {
+			return nil, 0, err
+		}
+		out, err := s.releasesByIDs(ctx, ids)
+		return out, total, err
+	}
+	query := `SELECT ` + releaseColumns + ` FROM releases` + where.sql +
 		` ORDER BY ` + orderBy(f.Sort) + ` LIMIT ? OFFSET ?`
-	rows, err := s.db.QueryContext(ctx, query, append(args, limit, offset)...)
+	rows, err := s.db.QueryContext(ctx, query, append(where.args, limit, offset)...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -354,6 +374,346 @@ func (s *Store) SearchReleases(ctx context.Context, f Filter) ([]Release, int64,
 		out = append(out, rel)
 	}
 	return out, total, rows.Err()
+}
+
+const (
+	// fastTextMinMatches is the point where the SQL join starts building a
+	// large ephemeral rowid index. Below it the regular query is already fast.
+	fastTextMinMatches = 2000
+	// fastTextMaxMatches bounds the rowids kept in memory for one request.
+	fastTextMaxMatches = 200_000
+)
+
+// searchTextFast serves an unselective text query by intersecting the FTS
+// rowids with the release ids in result order. The regular query materialises
+// every match into an ephemeral SQLite index (about 30 ms at 50k rows); here
+// the FTS index is read once and only a bounded prefix of the ordered table is
+// scanned. It reports ok=false whenever the regular path should run instead.
+func (s *Store) searchTextFast(ctx context.Context, f Filter, where whereClause, limit, offset int) ([]Release, int64, bool, error) {
+	// Only queries whose ORDER BY is backed by an index can scan a prefix; a
+	// sort of the whole table would be slower than the regular query. The id
+	// OR group (imdbid/tmdbid/tvdbid) changes the predicate shape, so it keeps
+	// the regular path too.
+	if !where.fts || where.hasIDs || f.IncludeHidden {
+		return nil, 0, false, nil
+	}
+	index, ok := orderedIndex(f.Sort)
+	if !ok {
+		// Only queries whose ORDER BY is backed by an index can scan a
+		// prefix; sorting the whole table would be slower than the regular
+		// query. The id OR group (imdbid/tmdbid/tvdbid) changes the predicate
+		// shape, so it keeps the regular path too.
+		return nil, 0, false, nil
+	}
+	ids, err := s.ftsRowIDs(ctx, where.ftsMatch, fastTextMaxMatches+1)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	raw := int64(len(ids))
+	if raw < fastTextMinMatches || raw > fastTextMaxMatches {
+		return nil, 0, false, nil
+	}
+	// FTS returns rowids in index order, which is (almost always) ascending,
+	// but the binary search below must not depend on that.
+	slices.Sort(ids)
+
+	nonText := buildWhereMode(f, false)
+	var (
+		total     int64
+		candidate int64 // size of the non-text set the prefix is drawn from
+	)
+	if where.pureText && !f.FavoritesOnly {
+		hidden, ok, err := s.hiddenMatches(ctx, ids)
+		if err != nil {
+			return nil, 0, false, err
+		}
+		if !ok {
+			return nil, 0, false, nil
+		}
+		total = raw - hidden
+		if err := s.db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM releases WHERE hidden = 0`).Scan(&candidate); err != nil {
+			return nil, 0, false, err
+		}
+	} else {
+		// Count the intersection once, without an ephemeral SQL IN index: the
+		// non-text ids are read in one aggregate and tested against the FTS set.
+		if err := s.db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM releases`+nonText.sql, nonText.args...).Scan(&candidate); err != nil {
+			return nil, 0, false, err
+		}
+		if candidate > fastTextMaxMatches {
+			// Keeping the ordered ids in memory is only worth it while the
+			// table is modest; a very large cache keeps the streaming SQL path.
+			return nil, 0, false, nil
+		}
+		if candidate > 0 {
+			all, err := s.idsForWhere(ctx, nonText)
+			if err != nil {
+				return nil, 0, false, err
+			}
+			total = countIntersection(ids, all)
+		}
+	}
+	if total == 0 || candidate == 0 {
+		return nil, 0, true, nil
+	}
+
+	need := int64(offset + limit)
+	// A prefix long enough to contain "need" matches under a uniform date
+	// distribution, with a safety margin for skewed data.
+	prefix := need * candidate / total * 2
+	if prefix < need+16 {
+		prefix = need + 16
+	}
+	if prefix > candidate {
+		prefix = candidate
+	}
+	order := orderBy(f.Sort)
+	candidates, err := s.orderedIDs(ctx, nonText, index, order, int(prefix))
+	if err != nil {
+		return nil, 0, false, err
+	}
+	page := intersectIDs(ids, candidates, offset, limit)
+	if len(page) < limit && int64(len(candidates)) < candidate {
+		// The prefix was too short (the newest rows did not contain enough
+		// matches): read the whole candidate set once. Still cheaper than the
+		// ephemeral index for the sizes this path accepts.
+		candidates, err = s.orderedIDs(ctx, nonText, index, order, int(candidate))
+		if err != nil {
+			return nil, 0, false, err
+		}
+		page = intersectIDs(ids, candidates, offset, limit)
+	}
+	releases, err := s.releasesByIDs(ctx, page)
+	return releases, total, true, err
+}
+
+// hiddenMatches counts how many of the given FTS matches are hidden. Reading
+// the hidden ids is cheap because curation is normally a small subset. The
+// second return value is false when curation is too large to hold in memory,
+// in which case the caller should use the regular query.
+func (s *Store) hiddenMatches(ctx context.Context, matched []int64) (int64, bool, error) {
+	where := whereClause{sql: " WHERE hidden = 1"}
+	hidden, err := s.idsForWhere(ctx, where)
+	if err != nil {
+		return 0, false, err
+	}
+	if len(hidden) > fastTextMaxMatches {
+		return 0, false, nil
+	}
+	return countIntersection(matched, hidden), true, nil
+}
+
+// ftsRowIDs returns at most limit matching release ids. The caller sorts them.
+// The rowids are concatenated in SQLite and parsed here: one row crossing the
+// driver is much cheaper than 20k+ individually scanned rows.
+func (s *Store) ftsRowIDs(ctx context.Context, match string, limit int) ([]int64, error) {
+	var joined sql.NullString
+	if err := s.db.QueryRowContext(ctx, `SELECT group_concat(rowid, ',') FROM (
+		SELECT rowid FROM releases_fts WHERE releases_fts MATCH ? LIMIT ?
+	)`, match, limit).Scan(&joined); err != nil {
+		return nil, err
+	}
+	return parseInts(joined)
+}
+
+// idsForWhere returns every id matching the predicate, in no particular order.
+func (s *Store) idsForWhere(ctx context.Context, where whereClause) ([]int64, error) {
+	var joined sql.NullString
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT group_concat(id, ',') FROM releases`+where.sql, where.args...).Scan(&joined); err != nil {
+		return nil, err
+	}
+	return parseInts(joined)
+}
+
+// orderedIDs reads the first limit ids in result order, forcing the index that
+// provides that order so SQLite cannot prefer a filter index and sort instead.
+func (s *Store) orderedIDs(ctx context.Context, where whereClause, index, order string, limit int) ([]int64, error) {
+	var joined sql.NullString
+	query := `SELECT group_concat(id, ',') FROM (
+		SELECT id FROM releases INDEXED BY ` + index + where.sql + ` ORDER BY ` + order + ` LIMIT ?
+	)`
+	if err := s.db.QueryRowContext(ctx, query, append(where.args, limit)...).Scan(&joined); err != nil {
+		return nil, err
+	}
+	return parseInts(joined)
+}
+
+func parseInts(joined sql.NullString) ([]int64, error) {
+	if !joined.Valid || joined.String == "" {
+		return nil, nil
+	}
+	raw := joined.String
+	ids := make([]int64, 0, len(raw)/7+1)
+	for i := 0; i < len(raw); {
+		end := strings.IndexByte(raw[i:], ',')
+		part := raw[i:]
+		if end >= 0 {
+			part = raw[i : i+end]
+			i += end + 1
+		} else {
+			i = len(raw)
+		}
+		id, err := strconv.ParseInt(part, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("parse rowid %q: %w", part, err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// countIntersection returns how many candidates appear in the sorted set.
+func countIntersection(sorted, candidates []int64) int64 {
+	var count int64
+	for _, id := range candidates {
+		i := sort.Search(len(sorted), func(i int) bool { return sorted[i] >= id })
+		if i < len(sorted) && sorted[i] == id {
+			count++
+		}
+	}
+	return count
+}
+
+// intersectIDs keeps the candidates that appear in the sorted set, applying
+// offset and limit.
+func intersectIDs(sorted, candidates []int64, offset, limit int) []int64 {
+	out := make([]int64, 0, limit)
+	matched := 0
+	for _, id := range candidates {
+		i := sort.Search(len(sorted), func(i int) bool { return sorted[i] >= id })
+		if i == len(sorted) || sorted[i] != id {
+			continue
+		}
+		if matched < offset {
+			matched++
+			continue
+		}
+		if len(out) == limit {
+			break
+		}
+		out = append(out, id)
+		matched++
+	}
+	return out
+}
+
+// orderedIndex names the index that provides the requested order.
+func orderedIndex(sort string) (string, bool) {
+	switch sort {
+	case "", "recent":
+		return "releases_visible_published_id", true
+	case "seen":
+		return "releases_visible_seen_id", true
+	default:
+		return "", false
+	}
+}
+
+// countReleases counts the matches. For a pure text query it reads the FTS
+// index alone (no row lookups) and subtracts the matches hidden by curation;
+// the general query has to visit every matching row.
+func (s *Store) countReleases(ctx context.Context, f Filter, where whereClause) (int64, error) {
+	if where.pureText {
+		var total int64
+		if err := s.db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM releases_fts WHERE releases_fts MATCH ?`, where.ftsMatch).
+			Scan(&total); err != nil {
+			return 0, err
+		}
+		if !f.IncludeHidden {
+			var hidden int64
+			if err := s.db.QueryRowContext(ctx, `
+				SELECT COUNT(*) FROM releases
+				WHERE hidden = 1
+				  AND id IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`,
+				where.ftsMatch).Scan(&hidden); err != nil {
+				return 0, err
+			}
+			total -= hidden
+		}
+		if f.FavoritesOnly {
+			var notFavorite int64
+			if err := s.db.QueryRowContext(ctx, `
+				SELECT COUNT(*) FROM releases
+				WHERE favorite = 0
+				  AND id IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`,
+				where.ftsMatch).Scan(&notFavorite); err != nil {
+				return 0, err
+			}
+			total -= notFavorite
+		}
+		if total < 0 {
+			total = 0
+		}
+		return total, nil
+	}
+	var total int64
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM releases`+where.sql, where.args...).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+// searchIDs returns one page of ids in result order.
+func (s *Store) searchIDs(ctx context.Context, where whereClause, order string, limit, offset int) ([]int64, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id FROM releases`+where.sql+` ORDER BY `+order+` LIMIT ? OFFSET ?`,
+		append(where.args, limit, offset)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// releasesByIDs loads a page of releases preserving the caller's id order.
+func (s *Store) releasesByIDs(ctx context.Context, ids []int64) ([]Release, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+releaseColumns+` FROM releases WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
+		args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	byID := make(map[int64]Release, len(ids))
+	for rows.Next() {
+		rel, err := scanRelease(rows)
+		if err != nil {
+			return nil, err
+		}
+		byID[rel.ID] = rel
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]Release, 0, len(ids))
+	for _, id := range ids {
+		if rel, ok := byID[id]; ok {
+			out = append(out, rel)
+		}
+	}
+	return out, nil
 }
 
 // ListRecentReleases returns the newest releases for the dashboard.
@@ -547,9 +907,30 @@ func (s *Store) LoadStats(ctx context.Context) (Stats, error) {
 	return out, nil
 }
 
-func buildWhere(f Filter) (string, []any) {
+// whereClause is a built SQL predicate. ftsMatch is the combined FTS5 MATCH
+// expression and pureText reports that the only predicates are that expression
+// plus the visibility filters, which allows counting from the index alone.
+type whereClause struct {
+	sql      string
+	args     []any
+	fts      bool
+	ftsMatch string
+	pureText bool
+	hasIDs   bool
+}
+
+func buildWhere(f Filter) whereClause {
+	return buildWhereMode(f, true)
+}
+
+// buildWhereMode builds the full predicate or, with withText=false, the same
+// predicate without the FTS term. The fast text path intersects the two sets.
+func buildWhereMode(f Filter, withText bool) whereClause {
 	var clauses []string
 	var args []any
+	// nonText is set by every predicate that needs a row lookup. A pure text
+	// query keeps it false so its total can be counted without touching rows.
+	nonText := false
 
 	var idClauses []string
 	if id := normalizeID(f.IMDbID); id != "" {
@@ -564,13 +945,20 @@ func buildWhere(f Filter) (string, []any) {
 		idClauses = append(idClauses, `tvdb_id = ?`)
 		args = append(args, id)
 	}
+	if len(idClauses) > 0 {
+		nonText = true
+	}
 	includes := f.Include
 	excludes := f.Exclude
 	if len(includes) == 0 && len(excludes) == 0 && strings.TrimSpace(f.Query) != "" {
 		includes = searchTokens(f.Query)
 	}
+	// Several FTS terms are combined into one MATCH expression: FTS evaluates
+	// them in a single index pass instead of one subquery per term.
+	var ftsPhrases []string
 	var includeClauses []string
 	if f.Regex {
+		nonText = true
 		for _, pattern := range includes {
 			includeClauses = append(includeClauses, `title REGEXP ?`)
 			args = append(args, pattern)
@@ -578,16 +966,23 @@ func buildWhere(f Filter) (string, []any) {
 	} else {
 		for _, token := range includes {
 			if phrase, ok := ftsPhrase(token); ok {
-				includeClauses = append(includeClauses,
-					`id IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`)
-				args = append(args, phrase)
+				if withText {
+					ftsPhrases = append(ftsPhrases, phrase)
+				}
 				continue
 			}
 			// The trigram tokenizer needs at least three characters; keep the
 			// old substring scan for shorter terms such as "4k" or "tv".
+			nonText = true
 			includeClauses = append(includeClauses, `search_title LIKE ? ESCAPE '\'`)
 			args = append(args, "%"+escapeLike(token)+"%")
 		}
+	}
+	ftsMatch := strings.Join(ftsPhrases, " AND ")
+	if len(ftsPhrases) > 0 {
+		includeClauses = append(includeClauses,
+			`id IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`)
+		args = append(args, ftsMatch)
 	}
 	switch {
 	case len(idClauses) > 0 && len(includeClauses) > 0:
@@ -599,12 +994,14 @@ func buildWhere(f Filter) (string, []any) {
 		clauses = append(clauses, "("+strings.Join(includeClauses, " AND ")+")")
 	}
 	if f.Regex {
+		nonText = true
 		for _, pattern := range excludes {
 			clauses = append(clauses, `title NOT REGEXP ?`)
 			args = append(args, pattern)
 		}
 	} else {
 		for _, token := range excludes {
+			nonText = true
 			if phrase, ok := ftsPhrase(token); ok {
 				clauses = append(clauses,
 					`id NOT IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`)
@@ -654,10 +1051,15 @@ func buildWhere(f Filter) (string, []any) {
 	case "eng":
 		clauses = append(clauses, `(search_title LIKE '%eng%' OR search_title LIKE '%english%')`)
 	}
+	if f.MinSeeders > 0 || f.MinSize > 0 || f.MaxSize > 0 ||
+		f.Quality != "" || f.SourceQuality != "" || f.Language != "" {
+		nonText = true
+	}
 
 	if f.SourceID > 0 {
 		clauses = append(clauses, `source_id = ?`)
 		args = append(args, f.SourceID)
+		nonText = true
 	} else if len(f.SourceIDs) > 0 {
 		placeholders := make([]string, 0, len(f.SourceIDs))
 		for _, id := range f.SourceIDs {
@@ -669,23 +1071,26 @@ func buildWhere(f Filter) (string, []any) {
 		}
 		if len(placeholders) > 0 {
 			clauses = append(clauses, `source_id IN (`+strings.Join(placeholders, ",")+`)`)
+			nonText = true
 		}
 	}
 	if len(f.Categories) > 0 {
 		var catClauses []string
 		for _, category := range f.Categories {
-			pattern := categoryPattern(category)
-			if pattern == "" {
+			clause, catArgs, ok := categoryClause(category)
+			if !ok {
 				continue
 			}
-			catClauses = append(catClauses, `category LIKE ? ESCAPE '\'`)
-			args = append(args, pattern)
+			catClauses = append(catClauses, clause)
+			args = append(args, catArgs...)
 		}
 		if len(catClauses) > 0 {
 			clauses = append(clauses, "("+strings.Join(catClauses, " OR ")+")")
+			nonText = true
 		}
 	}
 	if f.Season > 0 {
+		nonText = true
 		var patterns []string
 		if f.Episode > 0 {
 			patterns = []string{
@@ -703,9 +1108,16 @@ func buildWhere(f Filter) (string, []any) {
 		clauses = append(clauses, "("+strings.Join(seasonClauses, " OR ")+")")
 	}
 	if len(clauses) == 0 {
-		return "", nil
+		return whereClause{}
 	}
-	return " WHERE " + strings.Join(clauses, " AND "), args
+	return whereClause{
+		sql:      " WHERE " + strings.Join(clauses, " AND "),
+		args:     args,
+		fts:      len(ftsPhrases) > 0,
+		ftsMatch: ftsMatch,
+		pureText: len(ftsPhrases) > 0 && !nonText,
+		hasIDs:   len(idClauses) > 0,
+	}
 }
 
 func orderBy(sort string) string {
@@ -723,21 +1135,28 @@ func orderBy(sort string) string {
 	}
 }
 
-func categoryPattern(raw string) string {
+// categoryClause turns a Torznab category into an index-friendly predicate. A
+// top-level category (5000) selects its whole subtree and becomes a range on
+// the first digit; a leaf category is an exact match. Both forms let SQLite use
+// releases_visible_category_published, while the previous LIKE form always
+// scanned because LIKE is case-insensitive by default.
+func categoryClause(raw string) (string, []any, bool) {
 	category := strings.TrimSpace(raw)
 	if category == "" {
-		return ""
+		return "", nil, false
 	}
 	for _, r := range category {
 		if r < '0' || r > '9' {
-			return ""
+			return "", nil, false
 		}
 	}
 	// A top-level Torznab category (5000) selects its whole subtree (5xxx).
 	if len(category) == 4 && strings.HasSuffix(category, "000") {
-		return category[:1] + "%"
+		prefix := category[:1]
+		next := string(prefix[0] + 1)
+		return `(category >= ? AND category < ?)`, []any{prefix, next}, true
 	}
-	return category
+	return `category = ?`, []any{category}, true
 }
 
 // ftsPhrase turns one normalized search term into an FTS5 phrase. A phrase
@@ -784,13 +1203,13 @@ func scanRelease(scanner interface{ Scan(...any) error }) (Release, error) {
 	var sourceID sql.NullInt64
 	var torrent, payload []byte
 	var favorite, hidden int
-	err := scanner.Scan(&out.ID, &out.DedupKey, &out.InfoHash, &out.IMDbID, &out.TMDbID,
+	dest := []any{&out.ID, &out.DedupKey, &out.InfoHash, &out.IMDbID, &out.TMDbID,
 		&out.TVDbID, &out.Title, &out.SearchTitle, &out.Size, &out.Seeders,
 		&out.Leechers, &out.Category, &published, &sourceID, &out.SourceName,
 		&out.GUID, &out.Magnet, &torrent, &out.TorrentSize, &torrentFetched,
 		&firstSeen, &lastSeen, &out.TimesSeen, &favorite, &hidden,
-		&out.Protocol, &payload, &out.PayloadType)
-	if err != nil {
+		&out.Protocol, &payload, &out.PayloadType}
+	if err := scanner.Scan(dest...); err != nil {
 		return Release{}, err
 	}
 	out.PublishedAt = unixTime(published)

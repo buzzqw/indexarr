@@ -169,19 +169,19 @@ func TestNativePagesRender(t *testing.T) {
 		}
 	}
 	definitions := get(t, env.handler, "/definitions").Body.String()
-	for _, want := range []string{"Definizioni", "Test Native", "test-native", "Indexer nativi"} {
+	for _, want := range []string{"Definitions", "Built-in catalog", "Local definitions", "Test Native", "test-native"} {
 		if !strings.Contains(definitions, want) {
 			t.Errorf("definitions page missing %q", want)
 		}
 	}
 	detail := get(t, env.handler, "/definitions/test-native").Body.String()
-	for _, want := range []string{"Test Native", "connector: newznab", "bozza", "valida"} {
+	for _, want := range []string{"Test Native", "connector: newznab", "draft", "valid"} {
 		if !strings.Contains(detail, want) {
 			t.Errorf("definition detail missing %q", want)
 		}
 	}
 	form := get(t, env.handler, "/indexers/new?definition=test-native").Body.String()
-	for _, want := range []string{"Nuovo indexer nativo", "API key", "Flavore", "Consenti indirizzi privati"} {
+	for _, want := range []string{"New native indexer", "API key", "Flavore", "Allow private addresses"} {
 		if !strings.Contains(form, want) {
 			t.Errorf("indexer form missing %q", want)
 		}
@@ -237,7 +237,7 @@ func TestNativeIndexerLifecycle(t *testing.T) {
 	if strings.Contains(edit, "topsecretvalue") {
 		t.Fatal("the edit form leaked a secret value")
 	}
-	if !strings.Contains(edit, "configurato") || !strings.Contains(edit, "Rimuovi il segreto") {
+	if !strings.Contains(edit, "configured") || !strings.Contains(edit, "Remove the stored secret") {
 		t.Errorf("edit form does not show the secret key state")
 	}
 
@@ -246,7 +246,7 @@ func TestNativeIndexerLifecycle(t *testing.T) {
 	if strings.Contains(detail, "topsecretvalue") {
 		t.Fatal("the indexer page leaked a secret value")
 	}
-	if !strings.Contains(detail, "apikey") || !strings.Contains(detail, "Configurazione pubblica") {
+	if !strings.Contains(detail, "apikey") || !strings.Contains(detail, "Public configuration") {
 		t.Errorf("detail does not show the public configuration")
 	}
 
@@ -309,7 +309,7 @@ func TestNativeTestAndRun(t *testing.T) {
 		t.Fatalf("test status = %d: %s", testRecorder.Code, testRecorder.Body.String())
 	}
 	testBody := testRecorder.Body.String()
-	for _, want := range []string{"Risultato del test", "test superato", "reach", "caps", "search", "Durata"} {
+	for _, want := range []string{"Test result", "test passed", "reach", "caps", "search", "Duration"} {
 		if !strings.Contains(testBody, want) {
 			t.Errorf("test result missing %q:\n%s", want, testBody)
 		}
@@ -323,7 +323,7 @@ func TestNativeTestAndRun(t *testing.T) {
 		t.Fatalf("run status = %d: %s", runRecorder.Code, runRecorder.Body.String())
 	}
 	runBody := runRecorder.Body.String()
-	for _, want := range []string{"Risultato dell'esecuzione", "Visti", "Nuovi", "Example.Show.S02E03.1080p", "5040"} {
+	for _, want := range []string{"Run result", "Seen", "New", "Example.Show.S02E03.1080p", "5040"} {
 		if !strings.Contains(runBody, want) {
 			t.Errorf("run result missing %q:\n%s", want, runBody)
 		}
@@ -377,7 +377,7 @@ func TestNativePagesDegradeWithoutService(t *testing.T) {
 	env := newTestEnv(t)
 
 	page := get(t, env.handler, "/indexers")
-	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "non è configurato") {
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "not configured") {
 		t.Fatalf("indexers without service = %d: %s", page.Code, page.Body.String())
 	}
 	form := get(t, env.handler, "/indexers/new")
@@ -385,7 +385,7 @@ func TestNativePagesDegradeWithoutService(t *testing.T) {
 		t.Fatalf("new indexer without service = %d: %s", form.Code, form.Body.String())
 	}
 	definitions := get(t, env.handler, "/definitions")
-	if definitions.Code != http.StatusOK || !strings.Contains(definitions.Body.String(), "Definizioni") {
+	if definitions.Code != http.StatusOK || !strings.Contains(definitions.Body.String(), "Definitions") {
 		t.Fatalf("definitions without service = %d: %s", definitions.Code, definitions.Body.String())
 	}
 }

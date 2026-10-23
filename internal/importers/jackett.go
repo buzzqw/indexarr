@@ -207,11 +207,22 @@ func jackettHost(bind string) string {
 // import.
 func readJackettIndexer(path, base, apiKey string) (Indexer, string, string) {
 	object, err := readJSONObject(path)
+	fromFields := false
 	if err != nil {
-		return Indexer{}, "", fmt.Sprintf("jackett: indexer file %q: %s", filepath.Base(path), err.Error())
+		object, err = readJackettFieldObject(path)
+		if err != nil {
+			return Indexer{}, "", fmt.Sprintf("jackett: indexer file %q: %s", filepath.Base(path), err.Error())
+		}
+		fromFields = true
 	}
 
 	id := strings.TrimSpace(lookupString(object, "id", "Id", "ID"))
+	if fromFields {
+		// A real Jackett indexer file is an array of settings whose first
+		// "id" is "sitelink", not the indexer id. The file name is the id.
+		id = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		object["id"] = id
+	}
 	if id == "" {
 		return Indexer{}, "", fmt.Sprintf("jackett: indexer file %q has no id, skipped", filepath.Base(path))
 	}
@@ -224,7 +235,7 @@ func readJackettIndexer(path, base, apiKey string) (Indexer, string, string) {
 	if name == "" {
 		name = id
 	}
-	siteURL := lookupString(object, "site_link", "siteLink", "SiteLink", "url", "Url", "URL")
+	siteURL := lookupString(object, "site_link", "siteLink", "SiteLink", "sitelink", "url", "Url", "URL")
 	if siteURL == "" {
 		return Indexer{}, "", fmt.Sprintf("jackett: indexer %q has no URL, skipped", name)
 	}
@@ -247,6 +258,12 @@ func readJackettIndexer(path, base, apiKey string) (Indexer, string, string) {
 		fields["type"] = indexerType
 	}
 
+	categories := parseCategories(lookupValue(object, "categories", "Categories"))
+	if len(categories) == 0 {
+		// Real Jackett indexer files expose the selected categories as "tags".
+		categories = parseCategories(lookupValue(object, "tags", "Tags"))
+	}
+
 	return Indexer{
 		Name:           name,
 		Implementation: "Cardigann",
@@ -254,7 +271,7 @@ func readJackettIndexer(path, base, apiKey string) (Indexer, string, string) {
 		DefinitionHint: slugify(id),
 		BaseURL:        base + "/api/v2.0/indexers/" + url.PathEscape(id) + "/results/torznab/",
 		APIKey:         apiKey,
-		Categories:     parseCategories(lookupValue(object, "categories", "Categories")),
+		Categories:     categories,
 		Tags:           parseTags(lookupValue(object, "tags", "Tags")),
 		Priority:       25,
 		Enabled:        enabled,
@@ -294,7 +311,7 @@ func pathWithin(dir, path string) bool {
 func jackettProxy(config map[string]any) (*Proxy, string) {
 	proxyType := strings.TrimSpace(lookupString(config, "ProxyType", "proxyType"))
 	switch strings.ToLower(proxyType) {
-	case "", "disabled", "none":
+	case "", "disabled", "none", "-1":
 		return nil, ""
 	}
 	kind := strings.ToLower(proxyType)
@@ -376,4 +393,59 @@ func splitProxyCredentials(rawURL, username, password string) (string, string, s
 	}
 	parsed.User = nil
 	return parsed.String(), username, password
+}
+
+// jackettField is one element of a real Jackett Indexers/<id>.json file.
+// Jackett stores an array of settings, not an object: {"id","name","type","value"}.
+type jackettField struct {
+	ID    string          `json:"id"`
+	Name  string          `json:"name"`
+	Type  string          `json:"type"`
+	Value json.RawMessage `json:"value"`
+}
+
+// readJackettFieldObject converts the array form used by a real Jackett data
+// directory into the map form the rest of the importer understands. It is
+// deliberately separate from readJSONObject, which is used for
+// ServerConfig.json (an object).
+func readJackettFieldObject(path string) (map[string]any, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if info.Size() > jackettFileLimit {
+		return nil, fmt.Errorf("file is larger than %d bytes", jackettFileLimit)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var fields []jackettField
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	if len(fields) == 0 {
+		return nil, errors.New("expected a JSON object or an array of Jackett settings")
+	}
+	object := make(map[string]any, len(fields))
+	for _, field := range fields {
+		id := strings.TrimSpace(field.ID)
+		if id == "" {
+			continue
+		}
+		if len(field.Value) == 0 || string(field.Value) == "null" {
+			object[id] = ""
+			continue
+		}
+		var value any
+		if err := json.Unmarshal(field.Value, &value); err != nil {
+			object[id] = string(field.Value)
+			continue
+		}
+		object[id] = value
+	}
+	if len(object) == 0 {
+		return nil, errors.New("Jackett settings array has no usable entries")
+	}
+	return object, nil
 }

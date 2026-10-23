@@ -32,9 +32,9 @@ var applicationKindOptions = []applicationOption{
 // applicationSyncLevelOptions are the three levels accepted by the store. The
 // template explains what each one does.
 var applicationSyncLevelOptions = []applicationOption{
-	{"disabled", "Disabilitato"},
-	{"add-remove", "Solo aggiunta/rimozione"},
-	{"full", "Sincronizzazione completa"},
+	{"disabled", "Disabled"},
+	{"add-remove", "Add/remove only"},
+	{"full", "Full sync"},
 }
 
 func applicationKindLabel(kind string) string {
@@ -83,7 +83,7 @@ type applicationRow struct {
 type applicationsPage struct {
 	base
 	Rows        []applicationRow
-	Unavailable string
+	Unavailable bool
 }
 
 func (s *Server) applicationsPage(w http.ResponseWriter, r *http.Request) {
@@ -92,9 +92,9 @@ func (s *Server) applicationsPage(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	data := applicationsPage{base: s.newBase(r, "Applicazioni", "applications")}
+	data := applicationsPage{base: s.newBase(r, "Applications", "applications")}
 	if s.sync == nil {
-		data.Unavailable = "Il servizio di sincronizzazione non è configurato: le applicazioni restano modificabili, ma il pulsante Sync segnala l'errore."
+		data.Unavailable = true
 	}
 	for _, app := range apps {
 		data.Rows = append(data.Rows, applicationRow{
@@ -145,7 +145,7 @@ func (s *Server) newApplicationForm(r *http.Request, title string, current *stor
 }
 
 func (s *Server) applicationNew(w http.ResponseWriter, r *http.Request) {
-	data := s.newApplicationForm(r, "Nuova applicazione", nil, true)
+	data := s.newApplicationForm(r, "New application", nil, true)
 	s.render(w, r, "application_form", data, http.StatusOK)
 }
 
@@ -210,7 +210,7 @@ func (s *Server) applicationCreate(w http.ResponseWriter, r *http.Request) {
 		problems = append(problems, "La chiave API è obbligatoria.")
 	}
 
-	data := s.newApplicationForm(r, "Nuova applicazione", nil, true)
+	data := s.newApplicationForm(r, "New application", nil, true)
 	data.Kind = app.Kind
 	data.Name = app.Name
 	data.URL = strings.TrimSpace(r.FormValue("url"))
@@ -256,7 +256,7 @@ func (s *Server) applicationEdit(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, statusForApplicationError(err), applicationErrorMessage(err))
 		return
 	}
-	data := s.newApplicationForm(r, "Modifica "+current.Name, &current, false)
+	data := s.newApplicationForm(r, "Edit "+current.Name, &current, false)
 	s.render(w, r, "application_form", data, http.StatusOK)
 }
 
@@ -296,7 +296,7 @@ func (s *Server) applicationUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(problems) > 0 {
-		data := s.newApplicationForm(r, "Modifica "+current.Name, &current, false)
+		data := s.newApplicationForm(r, "Edit "+current.Name, &current, false)
 		data.Kind = app.Kind
 		data.Name = app.Name
 		data.URL = strings.TrimSpace(r.FormValue("url"))

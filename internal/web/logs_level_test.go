@@ -11,9 +11,9 @@ import (
 
 func TestRuntimeLogLevel(t *testing.T) {
 	env := newTestEnv(t)
-	token, cookie := csrfFrom(t, env.handler, "/logs")
-	page := get(t, env.handler, "/logs").Body.String()
-	if !strings.Contains(page, "runtime_level") || !strings.Contains(page, "Runtime verbosity") {
+	token, cookie := csrfFrom(t, env.handler, "/activity?tab=logs")
+	page := get(t, env.handler, "/activity?tab=logs").Body.String()
+	if !strings.Contains(page, "runtime_level") || !strings.Contains(page, "Log level") {
 		t.Fatal("runtime log level controls are missing")
 	}
 
@@ -33,7 +33,7 @@ func TestRuntimeLogLevel(t *testing.T) {
 	}
 
 	env.server.log.Debug("runtime debug probe")
-	body := get(t, env.handler, "/logs?level=debug").Body.String()
+	body := get(t, env.handler, "/activity?tab=logs&level=debug").Body.String()
 	if !strings.Contains(body, "runtime debug probe") {
 		t.Error("debug message not captured after changing level")
 	}

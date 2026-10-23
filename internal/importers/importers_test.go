@@ -659,3 +659,28 @@ func writeTestFile(t *testing.T, path, body string) {
 		t.Fatalf("write %s: %v", path, err)
 	}
 }
+
+func TestFromJackettArrayConfig(t *testing.T) {
+	plan, err := FromJackettConfig(context.Background(), "testdata/jackett-array")
+	if err != nil {
+		t.Fatalf("FromJackettConfig: %v", err)
+	}
+	if len(plan.Indexers) != 1 {
+		t.Fatalf("indexers = %d, want 1", len(plan.Indexers))
+	}
+	indexer := plan.Indexers[0]
+	if indexer.Name != "array-site" {
+		t.Errorf("name = %q", indexer.Name)
+	}
+	if indexer.BaseURL != "http://127.0.0.1:9117/api/v2.0/indexers/array-site/results/torznab/" {
+		t.Errorf("base URL = %q", indexer.BaseURL)
+	}
+	if len(indexer.Categories) == 0 || indexer.Categories[0] != 2000 {
+		t.Errorf("categories = %v", indexer.Categories)
+	}
+	for _, warning := range plan.Warnings {
+		if strings.Contains(warning, "proxy") {
+			t.Errorf("unexpected proxy warning: %q", warning)
+		}
+	}
+}

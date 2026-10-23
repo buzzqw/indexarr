@@ -1,33 +1,58 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>Indexer nativi</h1>
-    <p class="muted">Istanze configurate delle definizioni native: configurazione pubblica nel database, segreti nel vault.</p>
+    <h1>{{T "indexers.title"}}</h1>
+    <p class="muted">{{T "indexers.subtitle"}}</p>
   </div>
   <div class="actions">
-    <a class="btn primary" href="/indexers/new">Nuovo indexer</a>
-    <a class="btn" href="/definitions">Definizioni</a>
+    {{if eq .Tab "legacy"}}
+    <a class="btn primary" href="/sources/new">{{T "indexers.addLegacy"}}</a>
+    {{else}}
+    <a class="btn primary" href="/indexers/new">{{T "indexers.newNative"}}</a>
+    <a class="btn" href="/definitions">{{T "indexers.definitions"}}</a>
+    {{end}}
   </div>
 </section>
 
-{{if .Unavailable}}<p class="flash warn" role="status">{{.Unavailable}}</p>{{end}}
+<nav class="tabs" aria-label="{{T "indexers.tabsLabel"}}">
+  <a class="tab{{if eq .Tab "native"}} active{{end}}" href="/indexers?tab=native"{{if eq .Tab "native"}} aria-current="page"{{end}}>
+    {{T "indexers.native"}} <span class="chip">{{.NativeCount}}</span>
+  </a>
+  <a class="tab{{if eq .Tab "legacy"}} active{{end}}" href="/indexers?tab=legacy"{{if eq .Tab "legacy"}} aria-current="page"{{end}}>
+    {{T "indexers.legacy"}} <span class="chip">{{.LegacyCount}}</span>
+  </a>
+</nav>
+
+{{if eq .Tab "legacy"}}
+{{template "sources_body" .Legacy}}
+{{else}}
+{{template "native_body" .}}
+{{end}}
+{{end}}
+
+{{define "native_body"}}
+{{if .Unavailable}}<p class="flash warn" role="status">{{T "indexers.unavailable"}}</p>{{end}}
 
 <section class="panel">
+  <div class="panel-head">
+    <h2>{{T "indexers.nativeTitle"}} <span class="chip">{{.NativeCount}}</span></h2>
+    <span class="muted">{{T "indexers.vaultHint"}}</span>
+  </div>
   <div class="table-scroll">
     <table>
       <thead>
         <tr>
-          <th scope="col">Nome</th>
-          <th scope="col">Slug</th>
-          <th scope="col">Definizione</th>
-          <th scope="col">Protocollo</th>
-          <th scope="col">Stato</th>
-          <th scope="col">Priorità</th>
-          <th scope="col">Tag</th>
-          <th scope="col">Segreti</th>
-          <th scope="col">Ultimo errore</th>
-          <th scope="col">Ultima esecuzione</th>
-          <th scope="col" class="right">Azioni</th>
+          <th scope="col">{{T "common.name"}}</th>
+          <th scope="col">{{T "common.slug"}}</th>
+          <th scope="col">{{T "common.definition"}}</th>
+          <th scope="col">{{T "common.protocol"}}</th>
+          <th scope="col">{{T "common.status"}}</th>
+          <th scope="col">{{T "common.priority"}}</th>
+          <th scope="col">{{T "common.tags"}}</th>
+          <th scope="col">{{T "common.secrets"}}</th>
+          <th scope="col">{{T "common.lastError"}}</th>
+          <th scope="col">{{T "common.lastRun"}}</th>
+          <th scope="col" class="right">{{T "common.actions"}}</th>
         </tr>
       </thead>
       <tbody>
@@ -38,34 +63,34 @@
           <td><a href="/definitions/{{.Indexer.DefinitionID}}">{{.Definition}}</a><div class="sub"><code>{{.Indexer.DefinitionID}}</code></div></td>
           <td>{{.Indexer.Protocol}}</td>
           <td>
-            {{if not .Indexer.Enabled}}<span class="chip">disattivato</span>
-            {{else if .LastError}}<span class="chip danger">errore</span>
-            {{else if .LastRun}}<span class="chip ok">attivo</span>
-            {{else}}<span class="chip warn">in attesa</span>{{end}}
+            {{if not .Indexer.Enabled}}<span class="chip">{{T "indexers.inactive"}}</span>
+            {{else if .LastError}}<span class="chip danger">{{T "common.error"}}</span>
+            {{else if .LastRun}}<span class="chip ok">{{T "indexers.active"}}</span>
+            {{else}}<span class="chip warn">{{T "indexers.waiting"}}</span>{{end}}
           </td>
           <td>{{.Indexer.Priority}}</td>
           <td>{{if .Indexer.Tags}}{{.Indexer.Tags}}{{else}}<span class="muted">—</span>{{end}}</td>
           <td>{{if .HasSecrets}}<span class="chip ok">{{.SecretCount}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
           <td>{{if .LastError}}<span class="text-danger" title="{{.LastError}}">{{truncate .LastError 80}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
-          <td>{{if .LastRun}}{{ago .LastRun.StartedAt}}<div class="sub"><span class="chip {{if eq .LastRun.Status "ok"}}ok{{else if eq .LastRun.Status "error"}}danger{{else}}warn{{end}}">{{.LastRun.Status}}</span></div>{{else}}<span class="muted">mai</span>{{end}}</td>
+          <td>{{if .LastRun}}{{ago .LastRun.StartedAt}}<div class="sub"><span class="chip {{if eq .LastRun.Status "ok"}}ok{{else if eq .LastRun.Status "error"}}danger{{else}}warn{{end}}">{{statusLabel .LastRun.Status}}</span></div>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</td>
           <td class="right nowrap">
             <form method="post" action="/indexers/{{.Indexer.ID}}/run" style="display:inline">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small" type="submit">Esegui</button>
+              <button class="btn small" type="submit">{{T "common.run"}}</button>
             </form>
             <form method="post" action="/indexers/{{.Indexer.ID}}/test" style="display:inline">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small" type="submit">Test</button>
+              <button class="btn small" type="submit">{{T "common.test"}}</button>
             </form>
-            <a class="btn small" href="/indexers/{{.Indexer.ID}}/edit">Modifica</a>
-            <form method="post" action="/indexers/{{.Indexer.ID}}/delete" style="display:inline" data-confirm="Eliminare questo indexer? I segreti e lo stato vengono rimossi.">
+            <a class="btn small" href="/indexers/{{.Indexer.ID}}/edit">{{T "common.edit"}}</a>
+            <form method="post" action="/indexers/{{.Indexer.ID}}/delete" style="display:inline" data-confirm="{{T "indexers.deleteConfirm"}}">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small danger" type="submit">Elimina</button>
+              <button class="btn small danger" type="submit">{{T "common.delete"}}</button>
             </form>
           </td>
         </tr>
         {{else}}
-        <tr><td colspan="11" class="empty">Nessun indexer nativo configurato. Crea prima una definizione e poi un indexer.</td></tr>
+        <tr><td colspan="11" class="empty">{{T "indexers.empty"}}</td></tr>
         {{end}}
       </tbody>
     </table>

@@ -1,15 +1,15 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>{{if .IsNew}}Nuova applicazione{{else}}Modifica {{.Application.Name}}{{end}}</h1>
-    <p class="muted">{{if .IsNew}}Collega un'istanza Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3 o LazyLibrarian.{{else}}La chiave API non viene mai mostrata: lascia il campo vuoto per mantenere quella salvata.{{end}}</p>
+    <h1>{{if .IsNew}}{{T "application.new"}}{{else}}{{T "application.edit" .Application.Name}}{{end}}</h1>
+    <p class="muted">{{if .IsNew}}{{T "application.newSubtitle"}}{{else}}{{T "application.editSubtitle"}}{{end}}</p>
   </div>
-  <a class="btn" href="/applications">← Annulla</a>
+  <a class="btn" href="/applications">{{T "application.cancel"}}</a>
 </section>
 
 {{if .Problems}}
 <section class="panel">
-  <div class="panel-head"><h2>Problemi</h2></div>
+  <div class="panel-head"><h2>{{T "application.problems"}}</h2></div>
   <div class="prose">
     <ul>{{range .Problems}}<li>{{.}}</li>{{end}}</ul>
   </div>
@@ -21,53 +21,53 @@
 
   <div class="form-grid">
     <div class="field grow">
-      <label for="kind">Tipo</label>
+      <label for="kind">{{T "application.type"}}</label>
       <select id="kind" name="kind" required>
         {{range .Kinds}}<option value="{{.Value}}"{{if eq .Value $.Kind}} selected{{end}}>{{.Label}}</option>{{end}}
       </select>
     </div>
     <div class="field grow">
-      <label for="name">Nome</label>
-      <input id="name" name="name" type="text" required maxlength="100" value="{{.Name}}" placeholder="Sonarr principale">
+      <label for="name">{{T "application.name"}}</label>
+      <input id="name" name="name" type="text" required maxlength="100" value="{{.Name}}" placeholder="{{T "application.namePlaceholder"}}">
     </div>
   </div>
 
   <div class="form-grid">
     <div class="field grow">
-      <label for="url">URL</label>
-      <input id="url" name="url" type="url" required value="{{.URL}}" placeholder="http://sonarr:8989">
-      <p class="help">Indirizzo http:// o https:// dell'applicazione, senza percorso API.</p>
+      <label for="url">{{T "application.url"}}</label>
+      <input id="url" name="url" type="url" required value="{{.URL}}" placeholder="{{T "application.urlPlaceholder"}}">
+      <p class="help">{{T "application.urlHelp"}}</p>
     </div>
     <div class="field grow">
-      <label for="sync_level">Livello di sincronizzazione</label>
+      <label for="sync_level">{{T "application.syncLevel"}}</label>
       <select id="sync_level" name="sync_level" required>
-        {{range .SyncLevels}}<option value="{{.Value}}"{{if eq .Value $.SyncLevel}} selected{{end}}>{{.Label}}</option>{{end}}
+        {{range .SyncLevels}}<option value="{{.Value}}"{{if eq .Value $.SyncLevel}} selected{{end}}>{{syncLevelLabel .Value}}</option>{{end}}
       </select>
     </div>
   </div>
 
   <div class="field">
-    <label for="api_key">Chiave API{{if .IsNew}} *{{end}}</label>
-    <input id="api_key" name="api_key" type="password" value="" autocomplete="new-password" spellcheck="false"{{if .IsNew}} required{{end}} placeholder="{{if .HasKey}}•••••• (configurata, lascia vuoto per mantenere){{else}}incolla la chiave API dell'applicazione{{end}}">
-    <p class="help">La chiave viene cifrata con il vault e non viene mai restituita alla pagina.</p>
+    <label for="api_key">{{T "application.apiKey"}}{{if .IsNew}} *{{end}}</label>
+    <input id="api_key" name="api_key" type="password" value="" autocomplete="new-password" spellcheck="false"{{if .IsNew}} required{{end}} placeholder="{{if .HasKey}}{{T "application.apiKeyConfigured"}}{{else}}{{T "application.apiKeyPlaceholder"}}{{end}}">
+    <p class="help">{{T "application.apiKeyHelp"}}</p>
     {{if .HasKey}}
-    <label class="muted" style="font-size: 0.85rem;"><input type="checkbox" name="clear_api_key"> Rimuovi la chiave API memorizzata</label>
+    <label class="muted" style="font-size: 0.85rem;"><input type="checkbox" name="clear_api_key"> {{T "application.removeKey"}}</label>
     {{end}}
   </div>
 
   <div class="actions">
-    <button class="btn primary" type="submit">{{if .IsNew}}Crea applicazione{{else}}Salva applicazione{{end}}</button>
-    <a class="btn" href="/applications">Annulla</a>
+    <button class="btn primary" type="submit">{{if .IsNew}}{{T "application.create"}}{{else}}{{T "application.save"}}{{end}}</button>
+    <a class="btn" href="/applications">{{T "application.cancelAction"}}</a>
   </div>
 </form>
 
 {{if not .IsNew}}
 <section class="panel danger-zone">
-  <div class="panel-head"><h2>Zona pericolosa</h2></div>
+  <div class="panel-head"><h2>{{T "application.dangerZone"}}</h2></div>
   <div class="prose">
-    <form method="post" action="/applications/{{.Application.ID}}/delete" data-confirm="Eliminare questa applicazione? Gli indexer già presenti nell'app non vengono toccati.">
+    <form method="post" action="/applications/{{.Application.ID}}/delete" data-confirm="{{T "application.deleteConfirm"}}">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn danger" type="submit">Elimina applicazione</button>
+      <button class="btn danger" type="submit">{{T "application.delete"}}</button>
     </form>
   </div>
 </section>

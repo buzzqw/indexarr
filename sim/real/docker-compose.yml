@@ -1,0 +1,158 @@
+name: indexarr-real
+
+# Real-application compatibility simulation.
+#
+# indexarr and simmock are built from this repository; Prowlarr, Sonarr and
+# Radarr are the real LinuxServer.io containers. Every host port is isolated
+# from the host services (no 8484, no 9117): the *arr containers listen on
+# their normal internal ports and are published on 19xxx/18xxx host ports.
+
+services:
+  simmock:
+    build:
+      context: ../..
+      dockerfile: sim/Dockerfile.mock
+    image: indexarr-sim-mock:local
+    container_name: indexarr-real-mock
+    command:
+      - "-addr"
+      - ":19080"
+      - "-apikey"
+      - "demo-key"
+      - "-sonarr-key"
+      - "demo-sonarr"
+      - "-prowlarr-key"
+      - "demo-prowlarr"
+    ports:
+      - "19080:19080"
+    networks:
+      - realnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:19080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: "no"
+
+  # Prepares the SQLite database before indexarr starts: public_url must point
+  # at the Compose-visible hostname so Sonarr/Radarr can reach indexarr.
+  seed:
+    image: indexarr-sim-mock:local
+    container_name: indexarr-real-seed
+    entrypoint:
+      - "/usr/local/bin/seed"
+    command:
+      - "-db"
+      - "/data/indexarr.db"
+      - "-public-url"
+      - "http://indexarr:8484"
+    volumes:
+      - indexarr-data:/data
+    depends_on:
+      simmock:
+        condition: service_healthy
+    networks:
+      - realnet
+    restart: "no"
+
+  indexarr:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: indexarr-real:local
+    container_name: indexarr-real
+    environment:
+      INDEXARR_MASTER_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    # The image ENTRYPOINT already carries -config and -listen.
+    command:
+      - "-db"
+      - "/data/indexarr.db"
+    ports:
+      - "18484:8484"
+    volumes:
+      - indexarr-data:/data
+    depends_on:
+      simmock:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    networks:
+      - realnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8484/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: "no"
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: indexarr-real-prowlarr
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "Europe/Rome"
+    ports:
+      - "19696:9696"
+    volumes:
+      - ./.data/prowlarr:/config
+    networks:
+      - realnet
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9696/ping >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: "no"
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: indexarr-real-sonarr
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "Europe/Rome"
+    ports:
+      - "18989:8989"
+    volumes:
+      - ./.data/sonarr:/config
+    networks:
+      - realnet
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8989/ping >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: "no"
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: indexarr-real-radarr
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "Europe/Rome"
+    ports:
+      - "17878:7878"
+    volumes:
+      - ./.data/radarr:/config
+    networks:
+      - realnet
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:7878/ping >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: "no"
+
+networks:
+  realnet:
+    driver: bridge
+
+volumes:
+  indexarr-data:

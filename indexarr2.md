@@ -629,7 +629,8 @@ definizioni è descritto in [`docs/DEFINITIONS.md`](docs/DEFINITIONS.md).
 |---|---|---|
 | `internal/definition` | Formato nativo v1: parse YAML strict, validazione, `Fingerprint`, upgrader, JSON Schema incorporato | sì |
 | `internal/engine` | Contratti `Connector`/`Module`, pipeline a 9 stadi, transport (rate limit, breaker, SSRF), sessioni, template, estrazione HTML/JSON/XML, `DefinitionConnector` | sì |
-| `internal/family` | Connettori di famiglia UNIT3D, Newznab generico e Torznab generico, registrati nel registry | sì |
+| `internal/family` | Connettori di famiglia UNIT3D, Newznab, Torznab, Gazelle, NexusPHP, TorrentTrader, Xbtit, registrati nel registry | sì |
+| `internal/cardigann` | Convertitore locale Cardigann → nativo v1 (sottoinsieme, warning, family detection); non è un runtime | sì |
 | `internal/vault` | AES-256-GCM, chiave da `INDEXARR_MASTER_KEY` o file separato `0600` | sì |
 | `internal/store` | Tabelle §8, migrazioni numerate, backfill da `sources`, CRUD definizioni/indexer/segreti/stato/provenance/storico/app/proxy | sì |
 | `internal/catalog` | Catalogo built-in incorporato (`catalog.yaml` + `definitions/*.yaml`), validato e sincronizzabile | sì |
@@ -639,13 +640,14 @@ definizioni è descritto in [`docs/DEFINITIONS.md`](docs/DEFINITIONS.md).
 | `internal/indexersvc` | Servizio delle pagine native: crea/aggiorna/cancella indexer, separa segreti e config pubblica | sì |
 | `internal/syncjob` | Riconciliazione periodica con Sonarr/Radarr/Lidarr/Readarr/Whisparr; scrive `app_indexers` | sì |
 | `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.nzb`/`.torrent` su richiesta | sì |
-| `internal/importers` | Piano di import da Prowlarr e Jackett (definizioni, indexer, applicazioni, proxy) | sì |
+| `internal/importers` | Piano di import da Prowlarr e Jackett (definizioni, indexer, applicazioni, proxy); supporta il formato reale di Jackett | sì |
+| `cmd/indexarr-import` | Import in sola lettura da Jackett/Prowlarr in un DB indexarr usa-e-getta | sì |
 | `internal/legacyimport` | Anteprima, applicazione e rollback della migrazione delle `sources` legacy verso Torznab nativo | sì |
-| `internal/simmock`, `cmd/simmock`, `sim/` | Simulazione end-to-end: finti Torznab/Newznab, Prowlarr, Sonarr, SABnzbd, NZBGet, Deluge, rTorrent e tracker HTML; stack locale e Docker | sì |
+| `internal/simmock`, `cmd/simmock`, `sim/` | Simulazione end-to-end: finti Torznab/Newznab, Prowlarr, Sonarr, SABnzbd, NZBGet, Deluge, rTorrent e tracker HTML; stack locale, Docker e \*arr reali | sì |
 | `internal/torznabapi` | Distribuzione Torznab: alias Jackett, routing per indexer, filtri aggregati, errori 100–900 | sì |
 | `internal/appsync` | Client Servarr (Sonarr/Radarr/Lidarr/Readarr/Whisparr), Mylar3/LazyLibrarian per il test, reconcile puro | sì |
 | `internal/deftool`, `cmd/indexarr-def` | CLI `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` | sì |
-| `cmd/indexarr`, `internal/web` | Wiring nel binario, mount di `/api/v2`, health, QA | sì |
+| `cmd/indexarr`, `internal/web` | Wiring nel binario, UI ridisegnata (Indexer unificato, Attività, Sistema), mount `/api/v2`, `/torznab/{slug}/api` e `/api/v2.0`, health, QA | sì |
 
 `indexarr` continua a funzionare come prima: il percorso legacy (`sources` →
 `ingest` → Torznab) non è stato rimosso. Le novità si aggiungono.
@@ -678,10 +680,13 @@ All'avvio `cmd/indexarr`:
    restano allo scheduler legacy;
 5. avvia `syncjob`: dopo 2 secondi riconcilia le applicazioni \*arr e poi ogni
    15 minuti;
-6. monta `/api/v2` fuori dall'autenticazione Basic della UI, con auth a API key;
-7. monta le pagine native `/definitions` e `/indexers`, con form generati dai
-   `settings`, test per fase e run manuale; `/applications` e `/import`
-   coprono il sync \*arr e l'anteprima di import;
+6. monta `/api/v2` fuori dall'autenticazione Basic della UI, con auth a API key,
+   e le rotte Torznab per indexer `/torznab/{slug}/api` e
+   `/api/v2.0/indexers/{slug}/results/torznab/api`;
+7. monta la UI ridisegnata: `/indexers` unifica nativi e ponte legacy con tab,
+   `/definitions`, `/applications`, `/import`, `/activity` (Run/Log) e
+   “Sistema” (Regole/Impostazioni/Manutenzione); `/sources`, `/runs` e `/logs`
+   restano come redirect compatibili;
 8. applica i limiti query/grab per indexer e usa il proxy HTTP/SOCKS
    configurato per l'indexer;
 9. avvia il server HTTP e lo scheduler legacy.
@@ -765,6 +770,20 @@ download `.torrent` e `.nzb`, sync verso un Sonarr finto e invio ai client
 SABnzbd/NZBGet/Deluge/rTorrent. Lo stack Docker è stato costruito ed eseguito
 sulle porte isolate 18484/19080, senza toccare il Jackett già presente.
 
+Validazioni aggiuntive dell'ondata prodotto:
+
+- `./sim/real/run.sh`: **61 asserzioni verdi** con Prowlarr, Sonarr e Radarr
+  reali in container isolati. Verifica il ponte Prowlarr, l'app sync reale,
+  `baseUrl`/`apiPath`, categorie, protocollo e flag RSS/ricerca; ha scoperto e
+  fatto correggere il mount `/torznab/{slug}/api` e il doppio `/api/api`.
+- `./scripts/ui-smoke.sh`: 26 route e 29 link, nessun link rotto, `lang="it"`,
+  redirect legacy e tab Indexer/Attività.
+- `internal/cardigann` sul corpus reale di 927 definizioni Prowlarr:
+  **926 convertite**, 1 non convertibile (definizione senza titolo), con
+  rilevamento delle famiglie UNIT3D/Torznab/Newznab.
+- Import reale in sandbox: 7 indexer Jackett + 1 sorgente Prowlarr, 282
+  release scaricate dalle istanze attive **senza modificarle**.
+
 ### 15.7 Limiti noti e prossima ondata
 
 Ancora da fare, in ordine di valore:
@@ -797,19 +816,20 @@ Cosa esiste oggi:
 - connettori di famiglia `unit3d`, `newznab`, `torznab`, `gazelle`,
   `nexusphp`, `torrenttrader`, `xbtit`;
 - **convertitore Cardigann locale** (`internal/cardigann` + comando
-  `indexarr-def convert-cardigann`): legge le definizioni già installate
-  dall'utente e produce definizioni native v1 per il sottoinsieme supportato,
-  con warning espliciti per ciò che non è convertibile. Non è un runtime
-  Cardigann e non distribuisce definizioni copiate;
+  `indexarr-def convert-cardigann`): sul corpus reale di 927 definizioni
+  Prowlarr ne converte **926**, con rilevamento delle famiglie UNIT3D,
+  Torznab e Newznab; produce definizioni native v1 e warning espliciti. Non è
+  un runtime Cardigann e non distribuisce definizioni copiate;
 - ponte legacy: indexarr interroga l'endpoint Torznab di Jackett/Prowlarr, che
   resta la copertura "giorno uno";
 - `legacyimport`: converte le sorgenti Torznab dirette in indexer nativi, con
   anteprima, apply e revert;
-- `importers`: legge Prowlarr/Jackett e produce un piano (non applicato);
+- `importers` + `cmd/indexarr-import`: legge Jackett/Prowlarr reali e crea
+  sorgenti ponte in un DB usa-e-getta, senza modificare le istanze;
 - catalogo built-in: 7 definizioni `bozza` (esempio HTML, UNIT3D, Newznab,
   Gazelle, NexusPHP, TorrentTrader, Xbtit) + esempi. **Non sono ancora
-  centinaia**: i connettori di famiglia coprono molti siti, ma mancano le
-  definizioni/pacchetti che li istanziano.
+  centinaia di definizioni per sito**: i connettori di famiglia coprono molti
+  siti, ma mancano pacchetti e verifica live.
 
 Cosa serve per arrivare a centinaia di siti, in ordine di leva:
 
@@ -822,9 +842,12 @@ Cosa serve per arrivare a centinaia di siti, in ordine di leva:
    Ogni famiglia va verificata su almeno due siti/fixture reali prima di
    dichiararla `verificata`.
 2. **Import Cardigann applicato**:
-   - il convertitore esiste ed è usabile da CLI;
+   - il convertitore esiste, copre il 99,9% del corpus Prowlarr ed è usabile
+     da CLI;
+   - `cmd/indexarr-import` applica le sorgenti ponte Jackett/Prowlarr in un DB
+     indexarr, non ancora le definizioni native;
    - manca il collegamento a UI/API che, dopo l'anteprima, crei davvero
-     definizioni e indexer e lasci il resto al ponte;
+     definizioni e indexer nativi;
    - nessuna distribuzione di definizioni copiate: si convertono localmente i
      dati dell'utente, con tracciamento di autore/origine;
    - il runtime di indexarr continua a non eseguire Cardigann.
@@ -843,7 +866,7 @@ istanze degli utenti (inventario da `sources`, import Prowlarr/Jackett e
 statistiche anonime), poi la coda lunga. Non ha senso scrivere 500 definizioni
 singole se 20 famiglie coprono l'80% dell'uso reale.
 
-### 15.8 Come lavorare (per il prossimo agente)
+### 15.10 Come lavorare (per il prossimo agente)
 
 - Leggi prima `docs/INDEXARR2-PLAN.md` (contratti e stato) e
   `docs/DEFINITIONS.md` (formato). Questo documento è la visione, non il
@@ -859,3 +882,56 @@ singole se 20 famiglie coprono l'80% dell'uso reale.
 - Non copiare codice o definizioni di Jackett/Prowlarr. Le definizioni si
   scrivono osservando il sito e registrando autore, data e fixture.
 - Non fare commit di chiavi, database, backup o fixture con dati personali.
+
+### 15.11 UI, i18n e prestazioni (23 ottobre 2026)
+
+**Lingua.** L'inglese è la lingua di default e il fallback. Le lingue
+supportate sono: inglese, italiano, francese, tedesco, spagnolo, cinese
+semplificato e polacco. I cataloghi sono in `internal/i18n/locales/*.json`
+(427 chiavi ciascuno, parità verificata dai test). La lingua si sceglie dal
+selettore nella sidebar, con `?lang=<codice>` o con il cookie
+`indexarr_lang`; l'ordine di risoluzione è query → cookie → `Accept-Language`
+→ inglese. La rotta `GET /language/{codice}` salva il cookie e reindirizza.
+
+**Shell.** La UI usa una sidebar raggruppata in “Manage” e “System”, con
+drawer e overlay su mobile, ricerca release globale e selettore lingua nel
+footer. `/indexers` unifica **Native** e **Legacy bridge** in due tab; i
+nativi non compaiono nel tab legacy e definizioni `legacy-*` non sporcano
+“Definitions”. `/activity` unifica Run e Log; `/sources`, `/runs` e `/logs`
+restano redirect compatibili.
+
+**Copertura traduzioni.** Le pagine dello shell e le pagine nuove
+(Panoramica, Indexer, Definizioni, Applicazioni, Import, Attività, Log,
+form correlate) usano il catalogo. Le pagine legacy (`Release`, `Rules`,
+`Settings`, `Maintenance`, form sorgenti) sono state riportate in inglese ma
+non ancora migrate a chiavi `T`: è il prossimo lavoro i18n. Ogni nuova stringa
+deve essere aggiunta a **tutte** le 7 lingue e deve superare
+`go test ./internal/i18n` (parità chiavi e placeholder).
+
+**Prestazioni misurate** (`docs/PERFORMANCE.md`, Intel N97, 4 core):
+
+| Misura | Prima | Dopo |
+|---|---:|---:|
+| Ricerca testo 50k | 66,8 ms | **13,6 ms** (−80%) |
+| Ricerca con filtri 50k | 29,6 ms | **15,3 ms** (−48%) |
+| Torznab 100 item | 3,11 ms / 1,21 MB | **2,06 ms / 0,64 MB** |
+| Binario statico | — | **17,3 MiB** |
+| RSS a riposo | — | **32–37 MiB** (51 MiB dopo carico) |
+| Torznab p95 @50k | — | **20,2 ms** titolo, **22,7 ms** stress |
+| Goroutine/FD su 1000 ricerche | — | 3→3 / 10→10 |
+
+Ottimizzazioni: indici compositi con `id DESC`, categorie come predicati
+indicizzabili invece di `LIKE`, singolo `MATCH` FTS per più termini, percorso
+testo veloce con intersezione in Go e fallback, fetch in due fasi, XML con
+`writeEsc` allocation-free, pool SQLite a 4 connessioni WAL. I test di
+riferimento confrontano il percorso veloce con la scansione brute-force.
+
+**Verifiche finali.** `go test ./...`, `go test -race ./...`,
+`./scripts/qa.sh`, `./scripts/ui-smoke.sh` (26 route, 444 link, 0 errori),
+`./sim/run.sh`, `./sim/real/run.sh` (62 asserzioni con Prowlarr/Sonarr/Radarr
+reali) tutti verdi.
+
+**Cosa manca in questa area.** Migrare le pagine legacy alle chiavi `T`;
+aggiungere le traduzioni mancanti per quelle pagine; paginazione per liste
+lunghe (37 sorgenti legacy, 200 run); touch target più grandi su mobile;
+tradurre le stringhe di aiuto lunghe. Il resto dei punti aperti è in §15.7.

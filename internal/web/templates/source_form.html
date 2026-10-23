@@ -1,10 +1,10 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>{{if .IsNew}}New source{{else}}Edit source{{end}}</h1>
+    <h1>{{if .IsNew}}New legacy source{{else}}Edit legacy source{{end}}</h1>
     <p class="muted">{{if .IsNew}}Add a Torznab endpoint or an RSS feed.{{else}}{{.Source.Name}}{{end}}</p>
   </div>
-  <a class="btn" href="/sources">← Back to sources</a>
+  <a class="btn" href="/indexers?tab=legacy">← Legacy bridge</a>
 </section>
 
 <form class="panel form" method="post" action="{{if .IsNew}}/sources{{else}}/sources/{{.Source.ID}}{{end}}" data-source-form>
@@ -125,7 +125,7 @@
     <button class="btn primary" type="submit">{{if .IsNew}}Create source{{else}}Save source{{end}}</button>
     <button class="btn" type="submit" name="then" value="test">{{if .IsNew}}Create and test{{else}}Save and test{{end}}</button>
     <button class="btn" type="submit" name="then" value="run">{{if .IsNew}}Create and run{{else}}Save and run{{end}}</button>
-    <a class="btn" href="/sources">Cancel</a>
+    <a class="btn" href="/indexers?tab=legacy">Cancel</a>
   </div>
 </form>
 

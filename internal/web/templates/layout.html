@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{.Lang}}" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,42 +9,76 @@
   <link rel="apple-touch-icon" href="/static/icon-192.png">
   <link rel="manifest" href="/static/manifest.webmanifest">
   <meta name="theme-color" content="#0f172a">
+  <script>document.documentElement.classList.add("js");</script>
   <link rel="stylesheet" href="/static/app.css?v={{.AssetVersion}}">
   <script src="/static/app.js?v={{.AssetVersion}}" defer></script>
   {{if .AutoRefresh}}<meta http-equiv="refresh" content="{{.AutoRefresh}}">{{end}}
 </head>
-<body>
-  <a class="skip" href="#main">Skip to content</a>
-  <header class="topbar">
-    <div class="wrap topbar-inner">
-      <a class="brand" href="/"><span class="brand-dot" aria-hidden="true"></span>indexarr</a>
-      <nav aria-label="Main">
-        <a href="/"{{if eq .Section "dashboard"}} class="active" aria-current="page"{{end}}>Dashboard</a>
-        <a href="/releases"{{if eq .Section "releases"}} class="active" aria-current="page"{{end}}>Releases</a>
-        <a href="/sources"{{if eq .Section "sources"}} class="active" aria-current="page"{{end}}>Sources</a>
-        <a href="/definitions"{{if eq .Section "definitions"}} class="active" aria-current="page"{{end}}>Definizioni</a>
-        <a href="/indexers"{{if eq .Section "indexers"}} class="active" aria-current="page"{{end}}>Indexer nativi</a>
-        <a href="/applications"{{if eq .Section "applications"}} class="active" aria-current="page"{{end}}>Applicazioni</a>
-        <a href="/import"{{if eq .Section "import"}} class="active" aria-current="page"{{end}}>Importa</a>
-        <a href="/runs"{{if eq .Section "runs"}} class="active" aria-current="page"{{end}}>Runs</a>
-        <a href="/rules"{{if eq .Section "rules"}} class="active" aria-current="page"{{end}}>Rules</a>
-        <a href="/logs"{{if eq .Section "logs"}} class="active" aria-current="page"{{end}}>Logs</a>
-        <a href="/settings"{{if eq .Section "settings"}} class="active" aria-current="page"{{end}}>Settings</a>
-        <a href="/maintenance"{{if eq .Section "maintenance"}} class="active" aria-current="page"{{end}}>Maintenance</a>
+<body data-copy-done="{{T "common.copied"}}" data-copy-failed="{{T "common.copyFailed"}}">
+  <a class="skip" href="#main">{{T "shell.skip"}}</a>
+  <div class="app-shell">
+    <div class="nav-backdrop" data-nav-close aria-hidden="true"></div>
+
+    <aside class="sidebar" id="sidebar" data-sidebar aria-label="{{T "shell.primaryNav"}}">
+      <div class="sidebar-head">
+        <a class="brand" href="/"><span class="brand-dot" aria-hidden="true"></span>indexarr</a>
+        <button class="nav-close" type="button" data-nav-close aria-label="{{T "shell.closeMenu"}}">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+
+      <form class="global-search" role="search" action="/releases" method="get">
+        <label class="sr-only" for="global-search">{{T "shell.searchLabel"}}</label>
+        <input id="global-search" name="q" type="search" autocomplete="off" placeholder="{{T "shell.searchPlaceholder"}}">
+        <button class="btn small" type="submit">{{T "shell.searchButton"}}</button>
+      </form>
+
+      <nav class="sidebar-nav" aria-label="{{T "shell.primaryNav"}}">
+        <div class="nav-group">
+          <p class="nav-group-label">{{T "shell.manageNav"}}</p>
+          <a href="/"{{if eq .Section "dashboard"}} class="active" aria-current="page"{{end}}>{{T "shell.overview"}}</a>
+          <a href="/releases"{{if eq .Section "releases"}} class="active" aria-current="page"{{end}}>{{T "shell.releases"}}</a>
+          <a href="/indexers"{{if or (eq .Section "indexers") (eq .Section "sources")}} class="active" aria-current="page"{{end}}>{{T "shell.indexers"}}</a>
+          <a href="/definitions"{{if eq .Section "definitions"}} class="active" aria-current="page"{{end}}>{{T "shell.definitions"}}</a>
+          <a href="/applications"{{if eq .Section "applications"}} class="active" aria-current="page"{{end}}>{{T "shell.applications"}}</a>
+          <a href="/import"{{if eq .Section "import"}} class="active" aria-current="page"{{end}}>{{T "shell.import"}}</a>
+        </div>
+        <div class="nav-group">
+          <p class="nav-group-label">{{T "shell.systemNav"}}</p>
+          <a href="/activity"{{if or (eq .Section "activity") (eq .Section "runs") (eq .Section "logs")}} class="active" aria-current="page"{{end}}>{{T "shell.activity"}}</a>
+          <a href="/rules"{{if eq .Section "rules"}} class="active" aria-current="page"{{end}}>{{T "shell.rules"}}</a>
+          <a href="/settings"{{if eq .Section "settings"}} class="active" aria-current="page"{{end}}>{{T "shell.settings"}}</a>
+          <a href="/maintenance"{{if eq .Section "maintenance"}} class="active" aria-current="page"{{end}}>{{T "shell.maintenance"}}</a>
+        </div>
       </nav>
-      <span class="version" title="indexarr version">v{{.Version}}</span>
+
+      <div class="sidebar-foot">
+        <span class="version" title="{{T "shell.versionTitle"}}">v{{.Version}}</span>
+        <span class="endpoint">{{T "shell.torznab"}}: <code>{{.TorznabURL}}</code></span>
+        <nav class="lang-switch" aria-label="{{T "shell.languageAria"}}">
+          <span class="lang-label">{{T "shell.language"}}</span>
+          <span class="lang-links">
+            {{range .Languages}}<a href="/language/{{.Code}}" lang="{{.Code}}" hreflang="{{.Code}}"{{if .Active}} class="active" aria-current="true"{{end}}>{{.Name}}</a>{{end}}
+          </span>
+        </nav>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="mobile-bar">
+        <button class="nav-toggle" type="button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="{{T "shell.openMenu"}}">
+          <span aria-hidden="true">☰</span>
+        </button>
+        <a class="brand" href="/"><span class="brand-dot" aria-hidden="true"></span>indexarr</a>
+        <span class="version" title="{{T "shell.versionTitle"}}">v{{.Version}}</span>
+      </header>
+
+      <main id="main" class="content">
+        {{if .Message}}<p class="flash ok" role="status">{{.Message}}</p>{{end}}
+        {{if .Error}}<p class="flash err" role="alert">{{.Error}}</p>{{end}}
+        {{template "content" .}}
+      </main>
     </div>
-  </header>
-
-  <main id="main" class="wrap">
-    {{if .Message}}<p class="flash ok" role="status">{{.Message}}</p>{{end}}
-    {{if .Error}}<p class="flash err" role="alert">{{.Error}}</p>{{end}}
-    {{template "content" .}}
-  </main>
-
-  <footer class="wrap footer">
-    <span>indexarr {{.Version}} · up {{.Uptime}}</span>
-    <span>Torznab endpoint: <code>{{.TorznabURL}}</code></span>
-  </footer>
+  </div>
 </body>
 </html>

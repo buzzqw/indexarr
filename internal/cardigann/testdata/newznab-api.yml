@@ -1,0 +1,33 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-newznab-api
+name: Synthetic Newznab API
+description: A made-up Newznab Usenet API definition.
+type: private
+usenet: true
+links:
+  - https://newznab.example/
+caps:
+  categorymappings:
+    - { id: 2000, cat: Movies, desc: Movies }
+    - { id: 7000, cat: Books, desc: Books }
+  modes:
+    search: [q]
+    book-search: [q, author, title]
+settings:
+  - { name: apikey, type: text, label: API key }
+search:
+  paths:
+    - path: api
+      response:
+        type: xml
+  inputs:
+    apikey: "{{ .Config.apikey }}"
+    t: "{{ if .Keywords }}search{{ else }}caps{{ end }}"
+    q: "{{ .Keywords }}"
+    cat: "{{ join .Categories \",\" }}"
+  rows:
+    selector: rss > channel > item
+  fields:
+    title: { selector: title }
+    download: { selector: link }
+    size: { selector: size }

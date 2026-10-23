@@ -96,7 +96,7 @@ func TestDashboard(t *testing.T) {
 		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"Dashboard", "No sources yet", "Torznab endpoint", "indexarr"} {
+	for _, want := range []string{"Overview", "Configuration", "Status", "Torznab endpoint", "indexarr"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("dashboard missing %q", want)
 		}
@@ -157,7 +157,7 @@ func TestCreateSource(t *testing.T) {
 	if sources[0].Username != "feeduser" || sources[0].Password != "feedpass" {
 		t.Errorf("HTTP credentials not stored: %#v", sources[0])
 	}
-	if body := get(t, env.handler, "/sources").Body.String(); !strings.Contains(body, "My indexer") {
+	if body := get(t, env.handler, "/indexers?tab=legacy").Body.String(); !strings.Contains(body, "My indexer") {
 		t.Error("sources page does not list the new source")
 	}
 }

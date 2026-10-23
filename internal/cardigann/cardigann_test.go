@@ -966,3 +966,164 @@ func TestFilterMappingEdgeCases(t *testing.T) {
 		t.Errorf("unsupported = %v", c.result.Unsupported)
 	}
 }
+
+func TestConvertHeadersAndNestedResponse(t *testing.T) {
+	result := convertFixture(t, "headers-list.yml")
+	def := result.Definition
+
+	if def.Connector != "" {
+		t.Fatalf("connector = %q, want a native search definition", def.Connector)
+	}
+	if got := def.Search.Request.Headers["Authorization"]; got != "Bearer {{ settings.apikey }}" {
+		t.Errorf("Authorization = %q", got)
+	}
+	if got := def.Search.Request.Headers["X-Synthetic-Flags"]; got != "one, two" {
+		t.Errorf("X-Synthetic-Flags = %q", got)
+	}
+	if !containsSubstring(result.Warnings, "multiple values") {
+		t.Errorf("warnings = %v, want a list-header warning", result.Warnings)
+	}
+	if got := def.Search.Request.Params["imdb"]; got != "{{ query.imdbid }}" {
+		t.Errorf("imdb param = %q", got)
+	}
+	if def.Search.Response.Type != "json" {
+		t.Errorf("response type = %q", def.Search.Response.Type)
+	}
+	if def.Search.Response.Rows.Path != "data" {
+		t.Errorf("rows path = %q", def.Search.Response.Rows.Path)
+	}
+}
+
+func TestConvertUnit3DFamily(t *testing.T) {
+	result := convertFixture(t, "unit3d-api.yml")
+	def := result.Definition
+
+	if def.Connector != "unit3d" {
+		t.Fatalf("connector = %q, want unit3d", def.Connector)
+	}
+	if def.Search.Request.Get != "" || def.Search.Request.Post != "" || def.Auth != nil {
+		t.Errorf("family definition should not carry translated search/auth")
+	}
+	key := findSetting(t, def, "apikey")
+	if key.Type != "password" || !key.Required || key.Default != "" {
+		t.Errorf("apikey setting = %+v", key)
+	}
+	url := findSetting(t, def, "url")
+	if url.Default != "https://unit3d.example/" {
+		t.Errorf("url setting = %+v", url)
+	}
+	if !containsSubstring(result.Warnings, "unit3d family connector") {
+		t.Errorf("warnings = %v, want a family mapping warning", result.Warnings)
+	}
+	for _, setting := range def.Settings {
+		if strings.HasPrefix(strings.ToLower(setting.Name), "info-") {
+			t.Errorf("info setting %q should not be emitted", setting.Name)
+		}
+	}
+}
+
+func TestConvertTorznabAndNewznabFamilies(t *testing.T) {
+	torznab := convertFixture(t, "torznab-api.yml")
+	if torznab.Definition.Connector != "torznab" {
+		t.Fatalf("connector = %q, want torznab", torznab.Definition.Connector)
+	}
+	if torznab.Definition.Meta.Protocol != "torrent" {
+		t.Errorf("protocol = %q", torznab.Definition.Meta.Protocol)
+	}
+	newznab := convertFixture(t, "newznab-api.yml")
+	if newznab.Definition.Connector != "newznab" {
+		t.Fatalf("connector = %q, want newznab", newznab.Definition.Connector)
+	}
+	if newznab.Definition.Meta.Protocol != "usenet" {
+		t.Errorf("protocol = %q", newznab.Definition.Meta.Protocol)
+	}
+	for _, result := range []Result{torznab, newznab} {
+		key := findSetting(t, result.Definition, "apikey")
+		if key.Type != "password" || !key.Required {
+			t.Errorf("%s apikey setting = %+v", result.Definition.Connector, key)
+		}
+		if result.Definition.Search.Request.Get != "" {
+			t.Errorf("%s should not translate its search request", result.Definition.Connector)
+		}
+	}
+	if got := findSetting(t, torznab.Definition, "url").Default; got != "https://torznab.example/torznab/api" {
+		t.Errorf("torznab URL default = %q", got)
+	}
+	if got := findSetting(t, newznab.Definition, "url").Default; got != "https://newznab.example/api" {
+		t.Errorf("newznab URL default = %q", got)
+	}
+}
+
+func TestControlTemplateApproximations(t *testing.T) {
+	result := convertFixture(t, "template-controls.yml")
+	def := result.Definition
+	params := def.Search.Request.Params
+
+	if got := params["categories[]"]; got != "{{ categories }}" {
+		t.Errorf("categories[] = %q", got)
+	}
+	if got := params["joined"]; got != `{{ categories | join(",") }}` {
+		t.Errorf("joined = %q", got)
+	}
+	if got := params["freeleech"]; got != "0" {
+		t.Errorf("freeleech = %q, want the false-default branch", got)
+	}
+	if got := params["search"]; got != "{{ query.keywords }}" {
+		t.Errorf("search = %q", got)
+	}
+	if got := params["filtered"]; got != "dated" {
+		t.Errorf("filtered = %q", got)
+	}
+	if got := params["imdb"]; got != "{{ query.imdbid }}" {
+		t.Errorf("imdb = %q", got)
+	}
+	if got := def.Search.Request.Get; got != "browse/search/{{ query.keywords }}" {
+		t.Errorf("path = %q", got)
+	}
+	if def.Search.Response.Type != "html" {
+		t.Errorf("response type = %q", def.Search.Response.Type)
+	}
+	for _, want := range []string{"range over categories", "conditional"} {
+		if !containsSubstring(result.Warnings, want) {
+			t.Errorf("warnings = %v, want %q", result.Warnings, want)
+		}
+	}
+}
+
+func TestRepairYAMLEscapes(t *testing.T) {
+	body := []byte(`
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-escapes
+name: Synthetic Escape Repair
+type: public
+links:
+  - https://escapes.example/
+caps:
+  modes:
+    search: [q]
+search:
+  paths:
+    - path: browse
+  inputs:
+    q: "{{ .Keywords }}"
+  rows:
+    selector: table.results tr
+  fields:
+    title:
+      selector: a.title
+      filters:
+        - name: regexp
+          args: "torrent-(\d+)"
+    link: { selector: a.download, attribute: href }
+`)
+	result, err := Convert(body)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if !containsSubstring(result.Warnings, "invalid escapes") {
+		t.Errorf("warnings = %v, want an escape-repair warning", result.Warnings)
+	}
+	if _, err := definition.Parse(result.Body); err != nil {
+		t.Fatalf("definition.Parse: %v", err)
+	}
+}

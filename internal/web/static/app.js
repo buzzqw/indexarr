@@ -57,6 +57,11 @@ if ("serviceWorker" in navigator) {
     }
   };
 
+  // Language-dependent labels come from the layout, so the JavaScript never
+  // hardcodes a language.
+  const copiedLabel = document.body.dataset.copyDone || "Copied";
+  const copyFailedLabel = document.body.dataset.copyFailed || "Copy failed";
+
   document.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-copy]");
     if (!button) {
@@ -66,11 +71,62 @@ if ("serviceWorker" in navigator) {
     const text = button.getAttribute("data-copy") || "";
     const original = button.textContent;
     const ok = await copyText(text);
-    button.textContent = ok ? "Copied" : "Copy failed";
+    button.textContent = ok ? copiedLabel : copyFailedLabel;
     window.setTimeout(() => {
       button.textContent = original;
     }, 1500);
   });
+
+  // Off-canvas navigation on small screens. The CSS keeps the sidebar in the
+  // normal flow when JavaScript is unavailable, so this only enhances it.
+  const sidebar = document.querySelector("[data-sidebar]");
+  const navToggles = document.querySelectorAll("[data-nav-toggle]");
+  const navClosers = document.querySelectorAll("[data-nav-close]");
+  const setNavOpen = (open) => {
+    document.body.classList.toggle("nav-open", open);
+    navToggles.forEach((toggle) => toggle.setAttribute("aria-expanded", String(open)));
+    if (!sidebar) {
+      return;
+    }
+    if (open) {
+      const target = sidebar.querySelector("[data-nav-close]") || sidebar;
+      if (typeof target.focus === "function") {
+        target.focus({ preventScroll: true });
+      }
+    }
+  };
+
+  navToggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      setNavOpen(!document.body.classList.contains("nav-open"));
+    });
+  });
+  navClosers.forEach((closer) => {
+    closer.addEventListener("click", () => setNavOpen(false));
+  });
+  if (sidebar) {
+    sidebar.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => setNavOpen(false));
+    });
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && document.body.classList.contains("nav-open")) {
+      setNavOpen(false);
+    }
+  });
+
+  // Reset the drawer state if the viewport grows past the mobile breakpoint.
+  const desktop = window.matchMedia("(min-width: 901px)");
+  const handleViewportChange = (event) => {
+    if (event.matches) {
+      setNavOpen(false);
+    }
+  };
+  if (typeof desktop.addEventListener === "function") {
+    desktop.addEventListener("change", handleViewportChange);
+  } else if (typeof desktop.addListener === "function") {
+    desktop.addListener(handleViewportChange);
+  }
 
   document.addEventListener("submit", (event) => {
     const message = event.target.getAttribute("data-confirm");

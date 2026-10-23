@@ -13,37 +13,91 @@ const releasesPerPage = 50
 
 type dashboardPage struct {
 	base
-	Stats   store.Stats
-	Sources []store.Source
-	Running map[int64]bool
-	Runs    []store.Run
-	Recent  []store.Release
+	Stats          store.Stats
+	Sources        []store.Source
+	Indexers       []store.Indexer
+	Applications   []store.Application
+	Definitions    []store.Definition
+	Running        map[int64]bool
+	Runs           []store.Run
+	Recent         []store.Release
+	NativeErrors   int
+	LegacyErrors   int
+	NativeCount    int
+	LegacyCount    int
+	ApplicationNum int
 }
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
-	stats, err := s.store.LoadStats(r.Context())
+	ctx := r.Context()
+	stats, err := s.store.LoadStats(ctx)
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	sources, err := s.store.ListSources(r.Context())
+	sources, err := s.store.ListSources(ctx)
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	runs, _ := s.store.ListRuns(r.Context(), 0, false, 8)
-	recent, _ := s.store.ListRecentReleases(r.Context(), 10)
+	indexers, err := s.store.ListIndexers(ctx)
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	applications, err := s.store.ListApplications(ctx)
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	definitions, err := s.store.ListDefinitions(ctx)
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	runs, _ := s.store.ListRuns(ctx, 0, false, 6)
+	recent, _ := s.store.ListRecentReleases(ctx, 10)
 	running := map[int64]bool{}
+	legacyErrors := 0
 	for _, source := range sources {
-		running[source.ID] = s.engine.IsRunning(source.ID)
+		running[source.ID] = s.engine != nil && s.engine.IsRunning(source.ID)
+		if source.LastError != "" {
+			legacyErrors++
+		}
+	}
+	nativeIndexers := make([]store.Indexer, 0, len(indexers))
+	nativeErrors := 0
+	for _, in := range indexers {
+		if in.LegacySourceID > 0 {
+			continue
+		}
+		nativeIndexers = append(nativeIndexers, in)
+		if state, err := s.store.GetIndexerState(ctx, in.ID); err == nil && state.LastError != "" {
+			nativeErrors++
+		}
+	}
+	localDefinitions := make([]store.Definition, 0, len(definitions))
+	for _, def := range definitions {
+		if strings.HasPrefix(def.ID, "legacy-") {
+			continue
+		}
+		localDefinitions = append(localDefinitions, def)
 	}
 	s.render(w, r, "dashboard", dashboardPage{
-		base:    s.newBase(r, "Dashboard", "dashboard"),
-		Stats:   stats,
-		Sources: sources,
-		Running: running,
-		Runs:    runs,
-		Recent:  recent,
+		base:           s.newBase(r, "Overview", "dashboard"),
+		Stats:          stats,
+		Sources:        sources,
+		Indexers:       nativeIndexers,
+		Applications:   applications,
+		Definitions:    localDefinitions,
+		Running:        running,
+		Runs:           runs,
+		Recent:         recent,
+		NativeErrors:   nativeErrors,
+		LegacyErrors:   legacyErrors,
+		NativeCount:    len(nativeIndexers),
+		LegacyCount:    len(sources),
+		ApplicationNum: len(applications),
 	}, http.StatusOK)
 }
 
@@ -85,7 +139,7 @@ func (s *Server) renderReleases(w http.ResponseWriter, r *http.Request, partial 
 		return
 	}
 	if partial {
-		s.renderPartial(w, "releases_results", data)
+		s.renderPartial(w, r, "releases_results", data)
 		return
 	}
 	s.render(w, r, "releases", data, http.StatusOK)
@@ -123,7 +177,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	current := query
 	current.Del("page")
 	data := releasesPage{
-		base:          s.newBase(r, "Releases", "releases"),
+		base:          s.newBase(r, "Release", "releases"),
 		Sources:       sources,
 		Query:         searchQuery,
 		Source:        sourceID,

@@ -60,7 +60,7 @@ func TestFlareSolverrTestButtonEmptyURL(t *testing.T) {
 
 func TestTestAllSourcesWithoutSources(t *testing.T) {
 	env := newTestEnv(t)
-	token, cookie := csrfFrom(t, env.handler, "/sources")
+	token, cookie := csrfFrom(t, env.handler, "/indexers?tab=legacy")
 	recorder := postForm(t, env.handler, "/sources/test-all", url.Values{"csrf": {token}}, cookie)
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d", recorder.Code)

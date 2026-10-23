@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/categories"
+	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/ingest"
@@ -32,13 +33,27 @@ var templateFiles embed.FS
 //go:embed static
 var staticFiles embed.FS
 
-var templates = map[string]*template.Template{}
+// languageCookie stores the language chosen with GET /language/{code}.
+const (
+	languageCookie       = "indexarr_lang"
+	languageCookieMaxAge = 365 * 24 * 60 * 60
+)
+
+// templateSet holds the templates compiled for one language. The T function is
+// bound to the language at parse time, so {{T "key"}} resolves without any
+// per-execution plumbing.
+type templateSet struct {
+	pages    map[string]*template.Template
+	partials map[string]*template.Template
+}
+
+var templateSets = map[i18n.Language]*templateSet{}
 
 var pageNames = []string{
-	"dashboard", "releases", "release", "sources", "source_form", "source_bulk",
-	"runs", "run", "rules", "logs", "settings", "maintenance", "discover", "error",
+	"dashboard", "releases", "release", "source_form", "source_bulk",
+	"run", "rules", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
-	"applications", "application_form", "import",
+	"applications", "application_form", "import", "activity",
 }
 
 var templateFuncMap = template.FuncMap{
@@ -88,29 +103,67 @@ var templateFuncMap = template.FuncMap{
 	},
 }
 
-// partialTemplates are HTML fragments rendered without the layout, for live
-// updates (the releases search).
-var partialTemplates = map[string]*template.Template{}
-
+// init compiles one template set per language. The T function is bound to the
+// catalog so no runtime lookup or context plumbing is needed while executing.
 func init() {
-	for _, name := range pageNames {
-		files := []string{"templates/layout.html", "templates/" + name + ".html"}
-		if name == "releases" {
-			files = append(files, "templates/releases_results.html")
+	for _, lang := range i18n.Supported() {
+		funcs := make(template.FuncMap, len(templateFuncMap)+4)
+		for name, fn := range templateFuncMap {
+			funcs[name] = fn
 		}
-		tmpl := template.New("layout.html").Funcs(templateFuncMap)
-		tmpl = template.Must(tmpl.ParseFS(templateFiles, files...))
-		templates[name] = tmpl
+		funcs["T"] = func(key string, args ...any) string {
+			return i18n.T(lang, key, args...)
+		}
+		funcs["stateLabel"] = func(state string) string {
+			return stateLabel(lang, state)
+		}
+		funcs["statusLabel"] = func(status string) string {
+			return statusLabel(lang, status)
+		}
+		funcs["syncLevelLabel"] = func(level string) string {
+			return syncLevelLabel(lang, level)
+		}
+
+		set := &templateSet{
+			pages:    map[string]*template.Template{},
+			partials: map[string]*template.Template{},
+		}
+		for _, name := range pageNames {
+			files := []string{"templates/layout.html", "templates/" + name + ".html"}
+			switch name {
+			case "releases":
+				files = append(files, "templates/releases_results.html")
+			case "indexers":
+				// The unified page embeds the legacy sources panel.
+				files = append(files, "templates/sources.html")
+			case "activity":
+				// Activity embeds the Run and Log panels.
+				files = append(files, "templates/runs.html", "templates/logs.html")
+			}
+			tmpl := template.New("layout.html").Funcs(funcs)
+			tmpl = template.Must(tmpl.ParseFS(templateFiles, files...))
+			set.pages[name] = tmpl
+		}
+		set.partials["releases_results"] = template.Must(
+			template.New("releases_results").Funcs(funcs).
+				ParseFS(templateFiles, "templates/releases_results.html"))
+		templateSets[lang] = set
 	}
-	partialTemplates["releases_results"] = template.Must(
-		template.New("releases_results").Funcs(templateFuncMap).
-			ParseFS(templateFiles, "templates/releases_results.html"))
+}
+
+// languageOption is one entry of the language selector.
+type languageOption struct {
+	Code   string
+	Name   string
+	Active bool
 }
 
 // base is the data every page shares with the layout.
 type base struct {
 	Title        string
 	Section      string
+	Lang         string
+	Languages    []languageOption
 	Version      string
 	AssetVersion string
 	CSRF         string
@@ -119,6 +172,68 @@ type base struct {
 	TorznabURL   string
 	Uptime       string
 	AutoRefresh  int
+}
+
+func requestLanguage(r *http.Request) i18n.Language {
+	cookie := ""
+	if value, err := r.Cookie(languageCookie); err == nil {
+		cookie = value.Value
+	}
+	return i18n.Detect(r.Header.Get("Accept-Language"), cookie, r.URL.Query().Get("lang"))
+}
+
+func languageOptions(current i18n.Language) []languageOption {
+	langs := i18n.Supported()
+	out := make([]languageOption, 0, len(langs))
+	for _, lang := range langs {
+		out = append(out, languageOption{
+			Code:   lang.HTML(),
+			Name:   lang.Name(),
+			Active: lang == current,
+		})
+	}
+	return out
+}
+
+func stateLabel(lang i18n.Language, state string) string {
+	switch state {
+	case "bozza":
+		return i18n.T(lang, "state.draft")
+	case "verificata":
+		return i18n.T(lang, "state.verified")
+	case "stabile":
+		return i18n.T(lang, "state.stable")
+	case "degradata":
+		return i18n.T(lang, "state.degraded")
+	case "":
+		return i18n.T(lang, "state.unknown")
+	default:
+		return state
+	}
+}
+
+func statusLabel(lang i18n.Language, status string) string {
+	switch status {
+	case "ok":
+		return i18n.T(lang, "common.ok")
+	case "error":
+		return i18n.T(lang, "common.error")
+	case "running":
+		return i18n.T(lang, "common.running")
+	case "":
+		return i18n.T(lang, "common.waiting")
+	default:
+		return status
+	}
+}
+
+func syncLevelLabel(lang i18n.Language, level string) string {
+	switch level {
+	case "disabled", "add-remove", "full":
+		return i18n.T(lang, "applications.level."+level)
+	default:
+		return level
+	}
 }
 
 // Config wires the web interface to the rest of the application.
@@ -227,6 +342,7 @@ func New(cfg Config) *Server {
 func (s *Server) Handler() http.Handler {
 	ui := http.NewServeMux()
 	ui.HandleFunc("GET /{$}", s.dashboard)
+	ui.HandleFunc("GET /language/{code}", s.setLanguage)
 	ui.HandleFunc("GET /releases", s.releasesPage)
 	ui.HandleFunc("GET /releases/results", s.releasesResults)
 	ui.HandleFunc("POST /releases/saved", s.savedSearchAdd)
@@ -239,7 +355,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /releases/{id}/send", s.releaseSend)
 	ui.HandleFunc("POST /releases/{id}/delete", s.releaseDelete)
 	ui.HandleFunc("POST /releases/delete", s.releasesDelete)
-	ui.HandleFunc("GET /sources", s.sourcesPage)
+	ui.HandleFunc("GET /sources", s.sourcesRedirect)
 	ui.HandleFunc("GET /sources/new", s.sourceNew)
 	ui.HandleFunc("POST /sources/quick", s.sourcesQuickAdd)
 	ui.HandleFunc("GET /sources/discover", s.sourcesDiscover)
@@ -283,13 +399,14 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /import", s.importPage)
 	ui.HandleFunc("POST /import/prowlarr", s.importProwlarr)
 	ui.HandleFunc("POST /import/jackett", s.importJackett)
-	ui.HandleFunc("GET /runs", s.runsPage)
+	ui.HandleFunc("GET /activity", s.activityPage)
+	ui.HandleFunc("GET /runs", s.runsRedirect)
 	ui.HandleFunc("GET /runs/{id}", s.runPage)
 	ui.HandleFunc("POST /runs/clear", s.runsClear)
 	ui.HandleFunc("GET /rules", s.rulesPage)
 	ui.HandleFunc("POST /rules", s.rulesAdd)
 	ui.HandleFunc("POST /rules/{id}/delete", s.rulesDelete)
-	ui.HandleFunc("GET /logs", s.logsPage)
+	ui.HandleFunc("GET /logs", s.logsRedirect)
 	ui.HandleFunc("GET /logs/download", s.logsDownload)
 	ui.HandleFunc("POST /logs/clear", s.logsClear)
 	ui.HandleFunc("POST /logs/level", s.logsSetLevel)
@@ -311,8 +428,10 @@ func (s *Server) Handler() http.Handler {
 	// Torznab clients authenticate with their own API key: the UI's Basic
 	// authentication must not wrap these routes.
 	outer.Handle("/api", s.torznab)
+	outer.Handle("/api/v2.0/", s.torznab)
 	outer.Handle("/newznab/api", s.torznab)
 	outer.Handle("/torznab/api", s.torznab)
+	outer.Handle("/torznab/", s.torznab)
 	outer.Handle("/dl/", s.torznab)
 	if s.admin != nil {
 		outer.Handle("/api/v2/", s.admin)
@@ -432,10 +551,42 @@ func settingsFromContext(ctx context.Context) (store.Settings, bool) {
 	return settings, ok
 }
 
+// setLanguage stores the chosen language in a cookie and sends the browser
+// back to the page it came from. Unknown codes redirect to the dashboard
+// without touching the cookie.
+func (s *Server) setLanguage(w http.ResponseWriter, r *http.Request) {
+	lang, ok := i18n.Lookup(r.PathValue("code"))
+	if !ok {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     languageCookie,
+		Value:    string(lang),
+		Path:     "/",
+		MaxAge:   languageCookieMaxAge,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   requestIsHTTPS(r),
+	})
+	target := "/"
+	if referer := strings.TrimSpace(r.Header.Get("Referer")); referer != "" {
+		if parsed, err := url.Parse(referer); err == nil &&
+			parsed.Host == r.Host &&
+			(parsed.Scheme == "http" || parsed.Scheme == "https") &&
+			!strings.HasPrefix(parsed.Path, "/language/") {
+			target = parsed.RequestURI()
+		}
+	}
+	http.Redirect(w, r, target, http.StatusSeeOther)
+}
+
 func (s *Server) newBase(r *http.Request, title, section string) base {
+	lang := requestLanguage(r)
 	out := base{
 		Title:        title,
 		Section:      section,
+		Lang:         lang.HTML(),
+		Languages:    languageOptions(lang),
 		Version:      s.version,
 		AssetVersion: strconv.FormatInt(s.started.Unix(), 10),
 		CSRF:         csrfToken(r.Context()),
@@ -452,7 +603,11 @@ func (s *Server) newBase(r *http.Request, title, section string) base {
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, data any, status int) {
-	tmpl, ok := templates[name]
+	set, ok := templateSets[requestLanguage(r)]
+	if !ok {
+		set = templateSets[i18n.EN]
+	}
+	tmpl, ok := set.pages[name]
 	if !ok {
 		http.Error(w, "template not found", http.StatusInternalServerError)
 		return
@@ -482,8 +637,12 @@ func (s *Server) renderError(w http.ResponseWriter, r *http.Request, status int,
 
 // renderPartial writes one HTML fragment without the layout, used by the live
 // search to swap the results table.
-func (s *Server) renderPartial(w http.ResponseWriter, name string, data any) {
-	tmpl, ok := partialTemplates[name]
+func (s *Server) renderPartial(w http.ResponseWriter, r *http.Request, name string, data any) {
+	set, ok := templateSets[requestLanguage(r)]
+	if !ok {
+		set = templateSets[i18n.EN]
+	}
+	tmpl, ok := set.partials[name]
 	if !ok {
 		http.Error(w, "template not found", http.StatusInternalServerError)
 		return
@@ -515,6 +674,14 @@ func redirect(w http.ResponseWriter, r *http.Request, path, message, problem str
 		target += "?" + encoded
 	}
 	http.Redirect(w, r, target, http.StatusSeeOther)
+}
+
+// redirectTab sends a permanent-style 302 to a tabbed page, keeping the query
+// string (filters, flash messages) of the old URL.
+func redirectTab(w http.ResponseWriter, r *http.Request, path, tab string) {
+	values := r.URL.Query()
+	values.Set("tab", tab)
+	http.Redirect(w, r, path+"?"+values.Encode(), http.StatusFound)
 }
 
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {

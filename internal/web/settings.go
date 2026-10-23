@@ -34,7 +34,7 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
 	}
 	keys, _ := s.store.ListAPIKeys(r.Context())
 	s.render(w, r, "settings", settingsPage{
-		base:           s.newBase(r, "Settings", "settings"),
+		base:           s.newBase(r, "Impostazioni", "settings"),
 		Settings:       settings,
 		MaxTorrentMB:   settings.MaxTorrentBytes / (1 << 20),
 		TorznabFull:    torznabapi.BaseURL(r, settings) + "/api?apikey=" + url.QueryEscape(settings.APIKey),
@@ -54,7 +54,7 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	renderInvalid := func(message string) {
 		keys, _ := s.store.ListAPIKeys(r.Context())
 		page := settingsPage{
-			base:           s.newBase(r, "Settings", "settings"),
+			base:           s.newBase(r, "Impostazioni", "settings"),
 			Settings:       in,
 			MaxTorrentMB:   in.MaxTorrentBytes / (1 << 20),
 			TorznabFull:    torznabapi.BaseURL(r, in) + "/api?apikey=" + url.QueryEscape(in.APIKey),
@@ -307,22 +307,26 @@ type runsPage struct {
 	OnlyErrors bool
 }
 
-func (s *Server) runsPage(w http.ResponseWriter, r *http.Request) {
+// runsRedirect keeps /runs working and folds the old page into Attività.
+func (s *Server) runsRedirect(w http.ResponseWriter, r *http.Request) {
+	redirectTab(w, r, "/activity", "runs")
+}
+
+func (s *Server) runsData(r *http.Request) (runsPage, error) {
 	sourceID := int64Param(r.URL.Query().Get("source"), 0)
 	onlyErrors := r.URL.Query().Get("errors") == "1"
 	runs, err := s.store.ListRuns(r.Context(), sourceID, onlyErrors, 200)
 	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
+		return runsPage{}, err
 	}
 	sources, _ := s.store.ListSources(r.Context())
-	s.render(w, r, "runs", runsPage{
-		base:       s.newBase(r, "Runs", "runs"),
+	return runsPage{
+		base:       s.newBase(r, "Run", "activity"),
 		Runs:       runs,
 		Sources:    sources,
 		SourceID:   sourceID,
 		OnlyErrors: onlyErrors,
-	}, http.StatusOK)
+	}, nil
 }
 
 func (s *Server) runsClear(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +387,7 @@ func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
 	version := ""
 	_ = s.store.DB().QueryRowContext(r.Context(), "SELECT sqlite_version()").Scan(&version)
 	s.render(w, r, "maintenance", maintenancePage{
-		base:                s.newBase(r, "Maintenance", "maintenance"),
+		base:                s.newBase(r, "Manutenzione", "maintenance"),
 		Stats:               stats,
 		Report:              report,
 		DBPath:              s.store.Path(),

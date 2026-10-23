@@ -219,7 +219,7 @@ run_assertions() {
     local sonarr_remote
     sonarr_remote=$(curl -fsS -H 'X-Api-Key: demo-sonarr' "$mock/sonarr/api/v3/indexer")
     assert_contains "Sonarr ha l'indexer" "$sonarr_remote" 'indexarr · Sim Torznab'
-    assert_contains "Sonarr baseUrl indexarr" "$sonarr_remote" 'sim-torznab/api'
+    assert_contains "Sonarr baseUrl indexarr" "$sonarr_remote" 'torznab/sim-torznab'
 
     printf '\n== download client: SABnzbd, NZBGet, Deluge, rTorrent ==\n'
     local sab
