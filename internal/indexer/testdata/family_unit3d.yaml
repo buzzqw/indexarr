@@ -1,0 +1,8 @@
+schema: 1
+meta:
+  id: family-unit3d
+  name: Family UNIT3D
+  type: private
+  protocol: torrent
+  urls: ["https://unit3d.example/"]
+connector: unit3d

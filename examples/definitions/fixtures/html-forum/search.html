@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>HTML Forum &mdash; Indice</title>
+</head>
+<body>
+  <nav>
+    <a href="/index.php">Indice</a>
+    <a href="/logout.php">Logout</a>
+  </nav>
+  <h1>Torrent</h1>
+  <table class="torrents">
+    <thead>
+      <tr><th>Nome</th><th>Categoria</th><th>Dimensione</th><th>S</th><th>L</th><th>Data</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="name">
+          <a class="title" href="/details.php?id=101">Example.Show.S01E01.1080p.WEB-DL</a>
+          <a class="download" href="/download/101.torrent">Scarica</a>
+        </td>
+        <td><a class="cat" href="/torrents.php?cat=5">TV HD</a></td>
+        <td class="size">1.5 GB</td>
+        <td class="seeders">1,234</td>
+        <td class="leechers">12</td>
+        <td class="date">22-10-2026 18:30</td>
+      </tr>
+      <tr>
+        <td class="name">
+          <a class="title" href="/details.php?id=102">Example.Movie.2026.2160p.HDR</a>
+          <a class="download" href="/download/102.torrent">Scarica</a>
+        </td>
+        <td><a class="cat" href="/torrents.php?cat=12">Film HD</a></td>
+        <td class="size">18.4 GB</td>
+        <td class="seeders">87</td>
+        <td class="leechers">3</td>
+        <td class="date">21-10-2026 09:05</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

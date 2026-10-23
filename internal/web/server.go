@@ -110,6 +110,9 @@ type Config struct {
 	Version string
 	Started time.Time
 	Restart func()
+	// Admin is the versioned /api/v2 handler. It authenticates with the
+	// Torznab API key itself, so it is mounted outside the UI session.
+	Admin http.Handler
 }
 
 // Server serves the web interface, the Torznab API and the health endpoint.
@@ -124,6 +127,7 @@ type Server struct {
 	logs    *logbuffer.Buffer
 	level   *slog.LevelVar
 	restart func()
+	admin   http.Handler
 }
 
 // New builds the HTTP server.
@@ -156,6 +160,7 @@ func New(cfg Config) *Server {
 		logs:    logs,
 		level:   level,
 		restart: cfg.Restart,
+		admin:   cfg.Admin,
 	}
 	if cfg.Engine != nil {
 		srv.torznab.SetLiveSearch(cfg.Engine.SearchLive)
@@ -229,6 +234,9 @@ func (s *Server) Handler() http.Handler {
 	outer.Handle("/api", s.torznab)
 	outer.Handle("/torznab/api", s.torznab)
 	outer.Handle("/dl/", s.torznab)
+	if s.admin != nil {
+		outer.Handle("/api/v2/", s.admin)
+	}
 	outer.HandleFunc("GET /healthz", s.healthz)
 	outer.HandleFunc("GET /metrics", s.metrics)
 	outer.HandleFunc("GET /sw.js", s.serviceWorker)

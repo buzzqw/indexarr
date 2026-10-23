@@ -210,6 +210,24 @@ func (s *Store) migrate() error {
 	if err := s.migrateFTS(); err != nil {
 		return err
 	}
+	// Numbered migrations start here. The baseline above remains idempotent so
+	// databases created before schema_migrations keep working unchanged.
+	if err := s.applyMigration(context.Background(), indexarr2FoundationVersion,
+		"indexarr2 foundation", func(tx *sql.Tx) error {
+			for _, statement := range indexarr2FoundationSchema {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
+	// Existing installations are bridged automatically: every legacy source
+	// becomes a definition plus an indexer exactly once.
+	if _, err := s.BackfillLegacySources(context.Background()); err != nil {
+		return fmt.Errorf("backfill sources: %w", err)
+	}
 	return nil
 }
 

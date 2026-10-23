@@ -1,0 +1,21 @@
+schema: 1
+
+meta:
+  id: missing-urls
+  name: Missing URLs
+  type: public
+  protocol: torrent
+
+search:
+  request:
+    get: /search
+  response:
+    type: html
+    rows: "table.results tr"
+    fields:
+      title: { selector: "a.title" }
+      download: { selector: "a.download", attr: href, type: url }
+    required: [title, download]
+
+tests:
+  - { name: search, fixture: fixtures/missing-urls/search.html, expect: { min_rows: 1 } }

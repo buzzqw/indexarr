@@ -1,0 +1,41 @@
+schema: 1
+meta:
+  id: native-test
+  name: Native Test
+  type: private
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+
+settings:
+  - { name: apikey, type: password, required: true }
+
+categories:
+  - { site: "5", standard: 5040 }
+
+capabilities:
+  search: [q]
+
+auth:
+  strategy: none
+
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+      apikey: "{{ settings.apikey }}"
+      cat: "{{ categories | join(',') }}"
+  response:
+    type: html
+    rows: "table.results tr"
+    fields:
+      title: { selector: "td.name a", filters: [trim] }
+      details: { selector: "td.name a", attr: href, type: url }
+      download: { selector: "a.download", attr: href, type: url }
+      category: { selector: "a.cat", attr: href, filters: [{ query_param: cat }], type: category }
+      size: { selector: "td.size", type: size }
+      seeders: { selector: "td.seeders", type: int }
+      leechers: { selector: "td.leechers", type: int }
+      infohash: { selector: "td.hash" }
+      date: { selector: "td.date", type: date, layouts: ["02-01-2006 15:04"] }
+    required: [title, download, size]

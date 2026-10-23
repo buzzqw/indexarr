@@ -7,7 +7,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/subtle"
+	"database/sql"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -52,28 +54,30 @@ const (
 	defaultLimit = 50
 )
 
-// ServeHTTP routes the Torznab API, its alias and the torrent downloads.
+// ServeHTTP routes the Torznab API, its Jackett-compatible aliases and the
+// torrent downloads.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case r.URL.Path == pathAPI || r.URL.Path == pathTorznab:
-		s.handleAPI(w, r)
-	case strings.HasPrefix(r.URL.Path, pathDownload):
+	if strings.HasPrefix(r.URL.Path, pathDownload) {
 		s.handleDownload(w, r)
-	default:
-		http.NotFound(w, r)
+		return
 	}
+	if slug, ok := torznabPath(r.URL.Path); ok {
+		s.handleAPI(w, r, slug)
+		return
+	}
+	http.NotFound(w, r)
 }
 
-func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
-		s.writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		writeTorznabError(w, http.StatusMethodNotAllowed, torznabIncorrectParameter, "method not allowed")
 		return
 	}
 	settings, err := s.store.LoadSettings(r.Context())
 	if err != nil {
 		s.log.Error("torznab: load settings", "component", "indexarr", "subsystem", "torznab", "error", err)
-		s.writeError(w, http.StatusInternalServerError, "internal error")
+		writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
 		return
 	}
 	query := r.URL.Query()
@@ -81,41 +85,97 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 	if function == "" {
 		function = "search"
 	}
+	aggregate := isAggregateSlug(slug)
 	if function == "caps" {
+		if !aggregate {
+			if _, found, err := s.resolveIndexer(r.Context(), slug); err != nil {
+				s.log.Error("torznab: resolve indexer", "component", "indexarr", "subsystem", "torznab", "error", err)
+				writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
+				return
+			} else if !found {
+				writeTorznabError(w, http.StatusNotFound, torznabIncorrectParameter, "indexer not found: "+slug)
+				return
+			}
+		}
 		s.writeCaps(w, settings)
-		return
-	}
-	if function == "get" {
-		if _, ok := s.authorize(w, r, settings); !ok {
-			return
-		}
-		rawID := strings.TrimSpace(query.Get("id"))
-		if id, err := strconv.ParseInt(rawID, 10, 64); err == nil && id > 0 {
-			s.serveTorrentByID(w, r, id)
-			return
-		}
-		release, found, err := s.store.ReleaseByExternalID(r.Context(), rawID)
-		if err != nil {
-			s.log.Error("torznab: get by external id", "component", "indexarr", "subsystem", "torznab", "error", err)
-			s.writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		if !found {
-			s.writeError(w, http.StatusNotFound, "release not found")
-			return
-		}
-		s.serveTorrent(w, r, release)
 		return
 	}
 	apiKey, ok := s.authorize(w, r, settings)
 	if !ok {
 		return
 	}
+	if function == "get" {
+		if !aggregate {
+			if _, found, err := s.resolveIndexer(r.Context(), slug); err != nil {
+				s.log.Error("torznab: resolve indexer", "component", "indexarr", "subsystem", "torznab", "error", err)
+				writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
+				return
+			} else if !found {
+				writeTorznabError(w, http.StatusNotFound, torznabIncorrectParameter, "indexer not found: "+slug)
+				return
+			}
+		}
+		rawID := strings.TrimSpace(query.Get("id"))
+		if rawID == "" {
+			writeTorznabError(w, http.StatusBadRequest, torznabMissingParameter, "missing required parameter: id")
+			return
+		}
+		if id, err := strconv.ParseInt(rawID, 10, 64); err == nil {
+			if id <= 0 {
+				writeTorznabError(w, http.StatusBadRequest, torznabIncorrectParameter, "invalid release id")
+				return
+			}
+			s.serveTorrentByID(w, r, id)
+			return
+		}
+		release, found, err := s.store.ReleaseByExternalID(r.Context(), rawID)
+		if err != nil {
+			s.log.Error("torznab: get by external id", "component", "indexarr", "subsystem", "torznab", "error", err)
+			writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
+			return
+		}
+		if !found {
+			writeTorznabError(w, http.StatusNotFound, torznabIncorrectParameter, "release not found")
+			return
+		}
+		s.serveTorrent(w, r, release)
+		return
+	}
 	switch function {
 	case "search", "tvsearch", "movie", "music", "book":
 	default:
-		s.writeError(w, http.StatusBadRequest, "unsupported function "+function)
+		writeTorznabError(w, http.StatusBadRequest, torznabNoSuchFunction, "unsupported function: "+function)
 		return
+	}
+
+	var selection releaseSelection
+	var sqlSourceID int64
+	if aggregate {
+		filters := parseAggregateFilters(query)
+		selection, err = s.resolveAggregateSelection(r.Context(), filters)
+		if err != nil {
+			s.log.Error("torznab: resolve filters", "component", "indexarr", "subsystem", "torznab", "error", err)
+			writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
+			return
+		}
+	} else {
+		indexer, found, err := s.resolveIndexer(r.Context(), slug)
+		if err != nil {
+			s.log.Error("torznab: resolve indexer", "component", "indexarr", "subsystem", "torznab", "error", err)
+			writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
+			return
+		}
+		if !found {
+			writeTorznabError(w, http.StatusNotFound, torznabIncorrectParameter, "indexer not found: "+slug)
+			return
+		}
+		selection = selectionForIndexer(indexer)
+		sqlSourceID = indexer.LegacySourceID
+	}
+	if !selection.all && sqlSourceID == 0 && len(selection.ids) == 1 && len(selection.names) == 0 {
+		for id := range selection.ids {
+			sqlSourceID = id
+		}
 	}
 
 	filter := store.Filter{
@@ -132,12 +192,26 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 	if rawCategories := strings.TrimSpace(query.Get("cat")); rawCategories != "" {
 		filter.Categories = splitCategories(rawCategories)
 	}
+	base := s.baseURL(r, settings)
+	if selection.empty() {
+		s.writeSearch(w, base, settings, apiKey, nil, 0, filter.Offset)
+		return
+	}
+	if sqlSourceID > 0 {
+		filter.SourceID = sqlSourceID
+	} else if len(selection.ids) > 0 {
+		filter.SourceIDs = make([]int64, 0, len(selection.ids))
+		for id := range selection.ids {
+			filter.SourceIDs = append(filter.SourceIDs, id)
+		}
+	}
 	releases, total, err := s.store.SearchReleases(r.Context(), filter)
 	if err != nil {
 		s.log.Error("torznab: search", "component", "indexarr", "subsystem", "torznab", "error", err)
-		s.writeError(w, http.StatusInternalServerError, "internal error")
+		writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
 		return
 	}
+	releases, total = applySelection(selection, sqlSourceID, releases, total)
 	if total == 0 && settings.TorznabLiveSearch && s.liveSearch != nil &&
 		strings.TrimSpace(filter.Query) != "" {
 		timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
@@ -154,12 +228,12 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 			releases, total, err = s.store.SearchReleases(r.Context(), filter)
 			if err != nil {
 				s.log.Error("torznab: search after live", "component", "indexarr", "subsystem", "torznab", "error", err)
-				s.writeError(w, http.StatusInternalServerError, "internal error")
+				writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
 				return
 			}
+			releases, total = applySelection(selection, sqlSourceID, releases, total)
 		}
 	}
-	base := s.baseURL(r, settings)
 	s.writeSearch(w, base, settings, apiKey, releases, total, filter.Offset)
 }
 
@@ -167,7 +241,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 // key the client used so .torrent links keep working with that same key.
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request, settings store.Settings) (string, bool) {
 	if settings.APIKey == "" {
-		s.writeError(w, http.StatusServiceUnavailable, "API key not configured")
+		writeTorznabError(w, http.StatusServiceUnavailable, torznabInsufficientPrivileges, "API key not configured")
 		return "", false
 	}
 	provided := strings.TrimSpace(r.URL.Query().Get("apikey"))
@@ -175,7 +249,7 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request, settings stor
 		provided = strings.TrimSpace(r.Header.Get("X-Api-Key"))
 	}
 	if provided == "" {
-		s.writeError(w, http.StatusUnauthorized, "invalid API key")
+		writeTorznabError(w, http.StatusUnauthorized, torznabIncorrectAPIKey, "invalid API key")
 		return "", false
 	}
 	primary := subtle.ConstantTimeCompare([]byte(provided), []byte(settings.APIKey)) == 1
@@ -184,18 +258,18 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request, settings stor
 		key, found, err := s.store.LookupAPIKey(r.Context(), provided)
 		if err != nil {
 			s.log.Error("torznab: lookup API key", "component", "indexarr", "subsystem", "torznab", "error", err)
-			s.writeError(w, http.StatusInternalServerError, "internal error")
+			writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
 			return "", false
 		}
 		if !found {
-			s.writeError(w, http.StatusUnauthorized, "invalid API key")
+			writeTorznabError(w, http.StatusUnauthorized, torznabIncorrectAPIKey, "invalid API key")
 			return "", false
 		}
 		additional = key
 	}
 	if settings.APIRateLimit > 0 && !s.limits.allow(provided, settings.APIRateLimit, time.Now()) {
 		w.Header().Set("Retry-After", "60")
-		s.writeError(w, http.StatusTooManyRequests, "rate limit exceeded")
+		writeTorznabError(w, http.StatusTooManyRequests, torznabTooManyRequests, "rate limit exceeded")
 		return "", false
 	}
 	if !primary {
@@ -228,7 +302,12 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 func (s *Server) serveTorrentByID(w http.ResponseWriter, r *http.Request, id int64) {
 	release, err := s.store.GetRelease(r.Context(), id)
 	if err != nil {
-		s.writeError(w, http.StatusNotFound, "release not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			writeTorznabError(w, http.StatusNotFound, torznabIncorrectParameter, "release not found")
+			return
+		}
+		s.log.Error("torznab: get release", "component", "indexarr", "subsystem", "torznab", "error", err)
+		writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
 		return
 	}
 	s.serveTorrent(w, r, release)
@@ -364,15 +443,65 @@ func (s *Server) writeXML(w http.ResponseWriter, body []byte) {
 	}
 }
 
-func (s *Server) writeError(w http.ResponseWriter, status int, message string) {
+// Torznab/Newznab protocol error codes.
+const (
+	torznabIncorrectAPIKey        = 100
+	torznabInsufficientPrivileges = 101
+	torznabMissingParameter       = 200
+	torznabIncorrectParameter     = 201
+	torznabNoSuchFunction         = 300
+	torznabTooManyRequests        = 400
+	torznabInternalError          = 500
+	torznabUnknownError           = 900
+)
+
+// torznabError maps the semantic failure names used by the server to their
+// protocol codes.
+var torznabError = map[string]int{
+	"incorrect_api_key":       torznabIncorrectAPIKey,
+	"insufficient_privileges": torznabInsufficientPrivileges,
+	"missing_parameter":       torznabMissingParameter,
+	"incorrect_parameter":     torznabIncorrectParameter,
+	"no_such_function":        torznabNoSuchFunction,
+	"too_many_requests":       torznabTooManyRequests,
+	"internal_error":          torznabInternalError,
+	"unknown_error":           torznabUnknownError,
+}
+
+func torznabCodeForStatus(status int) int {
+	switch status {
+	case http.StatusUnauthorized:
+		return torznabError["incorrect_api_key"]
+	case http.StatusForbidden:
+		return torznabError["insufficient_privileges"]
+	case http.StatusBadRequest, http.StatusNotFound:
+		return torznabError["incorrect_parameter"]
+	case http.StatusTooManyRequests:
+		return torznabError["too_many_requests"]
+	case http.StatusInternalServerError:
+		return torznabError["internal_error"]
+	default:
+		return torznabError["unknown_error"]
+	}
+}
+
+// writeTorznabError writes the standard Torznab XML error document while
+// keeping the HTTP status the endpoint has always used.
+func writeTorznabError(w http.ResponseWriter, httpStatus int, code int, message string) {
 	var b bytes.Buffer
 	b.WriteString(xml.Header)
-	fmt.Fprintf(&b, `<error code="%d" description="%s"/>`, status, esc(message))
+	fmt.Fprintf(&b, `<error code="%d" description="%s"/>`, code, esc(message))
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(status)
+	w.WriteHeader(httpStatus)
 	_, _ = w.Write(b.Bytes())
+}
+
+// writeError is kept for the /dl proxy and maps the HTTP status to the closest
+// Torznab code.
+func (s *Server) writeError(w http.ResponseWriter, status int, message string) {
+	writeTorznabError(w, status, torznabCodeForStatus(status), message)
 }
 
 func (s *Server) baseURL(r *http.Request, settings store.Settings) string {

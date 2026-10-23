@@ -169,6 +169,97 @@ offre una deduplica esplicita che conserva la riga più vecchia e i dati miglior
 - PWA: manifest e icona negli asset, service worker che mette in cache solo
   `/static/*`; l'HTML resta di rete perché contiene CSRF e dati privati.
 
+## indexarr 2
+
+indexarr 2 è la generazione in sviluppo: motore a definizioni native, connettori
+di famiglia, vault dei segreti e catalogo. Convive con il percorso legacy
+descritto sopra: le sorgenti esistenti continuano a funzionare e vengono
+collegate automaticamente al nuovo modello dati.
+
+### Pipeline e connettori
+
+`internal/engine` definisce gli stadi:
+
+```text
+plan → request → fetch → extract → normalize → enrich → dedup → store → distribute
+```
+
+Ogni stadio è una catena di middleware (`Registry.Use`): il primo registrato è
+il più esterno, `Invoke` esegue il terminale dello stadio. Un `Job` trasporta
+`IndexerRef`, connettore, richiesta `Search`/`Latest`, risposta, `Item` e
+payload. Il contratto `Connector` espone `Capabilities`, `Search`, `Latest`,
+`Download` e `Test`.
+
+Il kernel definisce il contratto della pipeline; `internal/indexer.Run` oggi
+esegue direttamente il percorso fetch → normalizzazione → deduplica → store e
+usa il registry per costruire i connettori. L'orchestrazione completa degli
+altri stadi è il passo successivo.
+
+Il transport è unico per processo e condiviso dai connettori: limite della
+risposta (16 MiB di default), timeout, rate limit per host, rispetto di
+`Retry-After`, circuit breaker per indexer, blocco SSRF (loopback, link-local,
+reti private e metadata cloud salvo `allow_private`) e redirect rivalidati.
+
+### Package
+
+| Percorso | Responsabilità |
+|---|---|
+| `internal/definition` | Formato nativo v1: parsing YAML strict, validazione, `Fingerprint` SHA-256, catena di upgrader, JSON Schema incorporato |
+| `internal/engine` | Contratti connettore/pipeline, transport con guardie, sessioni cookie, template, estrazione HTML/JSON/XML, normalizzazione e `DefinitionConnector` |
+| `internal/family` | Connettori di famiglia `unit3d` e `newznab`, registrati come factory |
+| `internal/vault` | AES-256-GCM; chiave da `INDEXARR_MASTER_KEY` o file separato, mai nel database |
+| `internal/catalog` | Catalogo incorporato (`catalog.yaml` + `definitions/*.yaml`): manifest validato, definizioni parsate, sincronizzazione verso lo store |
+| `internal/indexer` | Costruisce e mette in cache il connettore da definizione + configurazione + segreti, esegue un indexer e registra storico e provenance |
+| `internal/appsync` | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr (API Servarr) e Mylar3/LazyLibrarian, con livelli di sync |
+| `internal/deftool` | Logica testabile del CLI: validazione, formattazione, controllo fixture |
+| `cmd/indexarr-def` | CLI `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` |
+
+Dipendenze: `definition` non importa nulla di indexarr; `engine` non importa
+`store`, `web` o `torznabapi`; `indexer` è il livello che collega definizioni,
+store, vault e connettori. `indexer.Run` non tocca mai la tabella legacy
+`sources`: un indice ancora ponteggiato verso `torznab`/`rss` restituisce
+`ErrLegacyConnector` e resta al percorso `ingest` finché non viene migrato.
+
+### Tabelle
+
+La migrazione numerata `1` (`indexarr2 foundation`) aggiunge:
+
+| Tabella | Contenuto |
+|---|---|
+| `definitions` | `id`, `schema_version`, `family`, stato (`bozza`/`verificata`/`stabile`/`degradata`), origine (`builtin`/`catalog`/`local`), autore, YAML, hash, `updated_at` |
+| `indexers` | Istanza configurata: `definition_id`, protocollo (`torrent`/`usenet`), slug unico, nome, priorità, `config_json` non segreto, proxy, tag, limiti, `legacy_source_id` |
+| `indexer_secrets` | Segreti cifrati per indexer (`key`, `nonce`, `ciphertext`) |
+| `indexer_state` | Cookie di sessione cifrati, ultimo login, stato del circuit breaker, `disabled_until`, ultimo errore |
+| `release_sources` | Provenance: quale indexer ha visto una release, prima/ultima osservazione, seeder/leecher, `download_ref` |
+| `indexer_history` | Storico di ricerche, latest, download e sync: query, stato, latenza, byte, errore |
+| `proxies` | Proxy in uscita e relativi segreti cifrati |
+| `applications` | Istanze \*arr collegate: tipo, URL, API key cifrata, livello di sync, esito |
+| `app_indexers` | Associazione application ↔ indexer con `remote_id` e hash sincronizzato |
+
+`schema_migrations` registra versione, nome e data di ogni migrazione numerata.
+La cache `releases` e `releases_fts` restano condivise: il protocollo vive
+sull'indexer, `release_sources` aggiunge la provenienza senza duplicare le
+release e il payload scaricato (`.torrent` o `.nzb`) usa il BLOB della cache
+esistente.
+
+### Migrazioni e backfill
+
+1. All'apertura lo schema legacy viene creato o aggiornato in modo idempotente
+   (non è numerato); `ensureSourceColumns`, `ensureReleaseColumns`,
+   `ensureRunColumns` e FTS5 restano invariati.
+2. `applyMigration` esegue la migrazione `1` in una transazione: se fallisce non
+   viene registrata e lo schema non resta a metà.
+3. `BackfillLegacySources` viene chiamato a ogni apertura ed è idempotente.
+   Per ogni riga di `sources` senza indexer ponteggiato crea, nella stessa
+   transazione, una definizione `legacy-<id>` e un indexer con
+   `legacy_source_id` univoco. Copia nome, tipo, manager, URL, categorie,
+   categoria predefinita, query e intervallo in `config_json`; **non copia mai**
+   `api_key`, username o password. Se la definizione esiste ma l'indexer è stato
+   cancellato non lo ricrea, per non resuscitare una rimozione volontaria.
+4. `catalog.Sync` scrive le definizioni incorporate solo come `builtin` e salta
+   quelle con origine `local`; riscrive una voce solo quando cambia l'hash.
+   Tutte le definizioni incorporate sono oggi in stato `bozza`.
+
 ## Scelte
 
 - **SQLite con FTS5 invece di un motore di ricerca esterno**: il volume tipico

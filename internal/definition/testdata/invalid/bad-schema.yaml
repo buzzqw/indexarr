@@ -1,0 +1,22 @@
+schema: 2
+
+meta:
+  id: bad-schema
+  name: Bad Schema
+  type: public
+  protocol: torrent
+  urls: [https://bad-schema.example/]
+
+search:
+  request:
+    get: /search
+  response:
+    type: html
+    rows: "table.results tr"
+    fields:
+      title: { selector: "a.title" }
+      download: { selector: "a.download", attr: href, type: url }
+    required: [title, download]
+
+tests:
+  - { name: search, fixture: fixtures/bad-schema/search.html, expect: { min_rows: 1 } }

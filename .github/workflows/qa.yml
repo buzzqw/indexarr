@@ -17,5 +17,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Validate definitions
+        run: make def-validate
+
       - name: Run QA
         run: make qa

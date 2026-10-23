@@ -1,0 +1,20 @@
+# indexarr native catalog manifest.
+#
+# Every definition listed here is embedded in the binary and validated when
+# the catalog is loaded. All entries are in state "bozza": they are written
+# from the documented format and offline fixtures only, have not been checked
+# against a live site, and must not be presented as production ready.
+schema: 1
+definitions:
+  - id: example-html
+    file: definitions/example-html.yaml
+    state: bozza
+    author: indexarr
+  - id: unit3d-generic
+    file: definitions/unit3d-generic.yaml
+    state: bozza
+    author: indexarr
+  - id: newznab-generic
+    file: definitions/newznab-generic.yaml
+    state: bozza
+    author: indexarr

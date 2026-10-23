@@ -1,0 +1,24 @@
+schema: 1
+meta:
+  id: basic-auth
+  name: Basic Auth
+  type: private
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+settings:
+  - { name: username, type: text, required: true }
+  - { name: password, type: password, required: true }
+capabilities:
+  search: [q]
+auth: { strategy: basic }
+search:
+  request:
+    get: /search
+    params: { q: "{{ query.keywords }}" }
+  response:
+    type: html
+    rows: { selector: "table.results tbody tr" }
+    fields:
+      title: { selector: "a.title" }
+      download: { selector: "a.download", attr: href, type: url }
+    required: [title, download]

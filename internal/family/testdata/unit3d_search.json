@@ -1,0 +1,42 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "download_link": "/dl/1.torrent",
+      "attributes": {
+        "name": "Example.Movie.2024.1080p.WEB-DL.x264-GROUP",
+        "info_hash": "ABC123",
+        "size": 1234567890,
+        "seeders": 12,
+        "leechers": "3",
+        "created_at": "2024-05-06T07:08:09.000000Z",
+        "category": {"id": 2040, "name": "Movies/HD"},
+        "tmdb_id": 12345,
+        "imdb_id": 67890,
+        "tvdb_id": 0
+      }
+    },
+    {
+      "id": "9",
+      "attributes": {
+        "name": "Example.Show.S02E03.720p",
+        "info_hash": "",
+        "size": "987654321",
+        "seeders": "5",
+        "leechers": 1,
+        "created_at": "2024-05-07 10:11:12",
+        "category": "5040",
+        "download_link": "/dl/9.torrent",
+        "magnet": "magnet:?xt=urn:btih:DEADBEEF&dn=Example"
+      }
+    },
+    {
+      "id": 3,
+      "attributes": {
+        "size": 1,
+        "category": "5000"
+      }
+    }
+  ],
+  "meta": {"current_page": 1, "last_page": 3}
+}

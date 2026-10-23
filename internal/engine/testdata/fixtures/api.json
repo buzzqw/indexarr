@@ -1,0 +1,20 @@
+{
+  "data": {
+    "items": [
+      {
+        "attributes": { "name": "  JSON   Release  " },
+        "files": [ { "url": "/files/1.nfo" } ],
+        "download": "/files/1.torrent",
+        "size": 1048576,
+        "seeders": 42,
+        "date": "2026-01-02T15:04:05Z",
+        "category": "tv",
+        "infohash": "dddddddddddddddddddddddddddddddddddddddd"
+      },
+      {
+        "attributes": { "name": "" },
+        "download": "/files/2.torrent"
+      }
+    ]
+  }
+}

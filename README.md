@@ -671,6 +671,28 @@ Suite di test e smoke test: [docs/QA.md](docs/QA.md).
 Audit operativo del 23/10/2026: [docs/AUDIT-2026-10-23.md](docs/AUDIT-2026-10-23.md).
 Evoluzione indexarr 2: [indexarr2.md](indexarr2.md).
 
+## indexarr 2 (in sviluppo)
+
+La prossima generazione dell'indexer (definizioni native, connettori di
+famiglia, vault e catalogo) è in sviluppo nello stesso repository. Il percorso
+legacy resta quello predefinito finché la migrazione non è completa.
+
+- [Piano di implementazione](docs/INDEXARR2-PLAN.md)
+- [Guida alle definizioni](docs/DEFINITIONS.md) — formato v1, fixture, sicurezza
+- [Architettura indexarr 2](docs/ARCHITECTURE.md#indexarr-2)
+- [Analisi e visione](indexarr2.md)
+
+Il CLI delle definizioni è `indexarr-def`:
+
+```bash
+go run ./cmd/indexarr-def validate examples/definitions
+go run ./cmd/indexarr-def check-fixtures examples/definitions/html-forum.yaml
+go run ./cmd/indexarr-def fmt -w examples/definitions/html-forum.yaml
+go run ./cmd/indexarr-def fingerprint examples/definitions/html-forum.yaml
+go run ./cmd/indexarr-def schema
+make def-validate   # definizioni di esempio e catalogo, se presente
+```
+
 ## Prossimi passi
 
 Funzioni ancora aperte, in ordine di valore:

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example feed</title>
+    <item>
+      <title>XML Release</title>
+      <link>/details/xml-1</link>
+      <enclosure url="/download/xml-1.torrent" length="1048576" type="application/x-bittorrent"/>
+      <category>5</category>
+      <size>1048576</size>
+      <pubDate>Fri, 02 Jan 2026 15:04:05 +0000</pubDate>
+      <infohash>eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee</infohash>
+    </item>
+  </channel>
+</rss>

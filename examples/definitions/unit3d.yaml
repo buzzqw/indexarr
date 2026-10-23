@@ -1,0 +1,31 @@
+schema: 1
+connector: unit3d
+meta:
+  id: unit3d-example
+  name: UNIT3D Example
+  language: en-US
+  type: private
+  protocol: torrent
+  author: indexarr examples
+  description: Esempio di tracker UNIT3D gestito dal connettore di famiglia.
+  urls:
+    - https://unit3d.example/
+  updated: "2026-10-23"
+
+settings:
+  - { name: url, type: text, label: Base URL, required: true }
+  - { name: apikey, type: password, label: API key, required: true }
+  - name: categories
+    type: text
+    label: Site category ids
+    help: "Lista separata da virgole; vuota usa le categorie predefinite."
+
+categories:
+  - { site: "1", standard: 2000, desc: "Movies" }
+  - { site: "2", standard: 5000, desc: "TV" }
+  - { site: "3", standard: 3000, desc: "Music" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep, imdbid, tvdbid, tmdbid]
+  movie-search: [q, imdbid, tmdbid, tvdbid]

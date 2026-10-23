@@ -1,0 +1,28 @@
+schema: 1
+meta:
+  id: xml-rss
+  name: XML RSS
+  type: public
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+categories:
+  - { site: "5", standard: 5040 }
+capabilities:
+  search: [q]
+search:
+  request:
+    get: /rss
+    params:
+      q: "{{ query.keywords }}"
+  response:
+    type: xml
+    rows: { path: "rss.channel.item" }
+    fields:
+      title: { path: "title.#text" }
+      details: { path: link, type: url }
+      download: { path: "enclosure@url", type: url }
+      category: { path: category, type: category }
+      size: { path: size, type: size }
+      date: { path: pubDate, type: date }
+      infohash: { path: infohash }
+    required: [title, download, size]

@@ -1,0 +1,25 @@
+schema: 1
+meta:
+  id: api-key-referenced
+  name: API Key Referenced
+  type: public
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+settings:
+  - { name: apikey, type: password, required: true }
+capabilities:
+  search: [q]
+auth: { strategy: api_key }
+search:
+  request:
+    get: /api
+    params:
+      q: "{{ query.keywords }}"
+      apikey: "{{ settings.apikey }}"
+  response:
+    type: html
+    rows: { selector: "table.results tbody tr" }
+    fields:
+      title: { selector: "a.title" }
+      download: { selector: "a.download", attr: href, type: url }
+    required: [title, download]

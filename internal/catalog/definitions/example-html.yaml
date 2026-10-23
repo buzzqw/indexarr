@@ -1,0 +1,86 @@
+# BOZZA (draft). Fictional example tracker for the native HTML search format.
+#
+# This definition is modeled on the §6.4 example but targets a site that does
+# not exist. Its selectors and fixtures are illustrative only: it has never
+# been verified against a live site and must not be advertised as production
+# ready. Promotion to "verificata" requires real fixtures and passing tests.
+schema: 1
+
+meta:
+  id: example-html
+  name: Example HTML Tracker
+  language: en-US
+  type: private
+  protocol: torrent
+  author: indexarr
+  description: Fictional HTML tracker used to exercise the v1 native format.
+  urls:
+    - https://tracker.example.invalid/
+  updated: "2026-10-23"
+
+settings:
+  - { name: username, type: text, label: Username, required: true }
+  - { name: password, type: password, label: Password, help: "Account password", required: true }
+
+categories:
+  - { site: "5", standard: 5040, desc: "TV HD" }
+  - { site: "12", standard: 2040, desc: "Movies HD" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep, imdbid]
+  movie-search: [q, imdbid, year]
+
+auth:
+  strategy: form
+  steps:
+    - get: /login.php
+      extract:
+        csrf: { selector: 'input[name="csrf_token"]', attr: value }
+    - post: /login.php
+      form:
+        username: "{{ settings.username }}"
+        password: "{{ settings.password }}"
+        csrf_token: "{{ csrf }}"
+  success: { selector: 'a[href="/logout.php"]' }
+  failure:
+    - { selector: "div.error", message: text }
+  refresh_after: 6h
+
+search:
+  request:
+    get: /torrents.php
+    params:
+      search: "{{ query.keywords }}"
+      cat: "{{ categories | join(',') }}"
+      page: "{{ page }}"
+  pagination: { type: page, start: 1, max_pages: 5, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.torrents > tbody > tr" }
+    fields:
+      title: { selector: ["a.title", "td.name a"], filters: [trim] }
+      details: { selector: ["a.title", "td.name a"], attr: href, type: url }
+      download: { selector: ["a.download", "a[href^='/download.php']"], attr: href, type: url }
+      category: { selector: "a.cat", attr: href, filters: [{ query_param: cat }], type: category }
+      size: { selector: "td.size", type: size }
+      seeders: { selector: "td.seeders", type: int }
+      leechers: { selector: "td.leechers", type: int }
+      date: { selector: "td.date", type: date, layouts: ["02-01-2006 15:04"] }
+    required: [title, download, size, category]
+
+health:
+  query: test
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/example-html/search.html
+    expect: { min_rows: 1, required: [title, download, size, category] }
+  - name: login-ok
+    fixture: fixtures/example-html/login-ok.html
+    expect: { authenticated: true }
+  - name: login-failed
+    fixture: fixtures/example-html/login-failed.html
+    expect: { authenticated: false }

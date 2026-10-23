@@ -108,4 +108,47 @@ if ! grep -q '<caps' <<<"$CAPS"; then
 fi
 echo "ok   /api?t=caps"
 
+echo "==> admin API v2"
+HEALTH="$(curl -fsS "$BASE/api/v2/health?apikey=$KEY")"
+if ! grep -q '"status":"ok"' <<<"$HEALTH"; then
+  echo "FAIL /api/v2/health: $HEALTH" >&2
+  exit 1
+fi
+echo "ok   /api/v2/health"
+
+DEFS="$(curl -fsS "$BASE/api/v2/definitions?apikey=$KEY")"
+if ! grep -q '"example-html"' <<<"$DEFS"; then
+  echo "FAIL /api/v2/definitions: built-in catalog missing" >&2
+  echo "$DEFS" >&2
+  exit 1
+fi
+echo "ok   /api/v2/definitions (catalog)"
+
+UNAUTH="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/v2/definitions")"
+if [[ "$UNAUTH" != "401" ]]; then
+  echo "FAIL /api/v2/definitions without key = $UNAUTH, want 401" >&2
+  exit 1
+fi
+echo "ok   /api/v2 auth"
+
+CREATE="$(curl -fsS -X POST "$BASE/api/v2/indexers?apikey=$KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"definition_id":"newznab-generic","name":"QA Native","settings":{"url":"http://127.0.0.1:1/api","apikey":"qa-secret-value"}}')"
+if ! grep -q '"has_secrets":true' <<<"$CREATE"; then
+  echo "FAIL /api/v2/indexers create: $CREATE" >&2
+  exit 1
+fi
+if grep -q 'qa-secret-value' <<<"$CREATE"; then
+  echo "FAIL /api/v2/indexers leaked the secret" >&2
+  exit 1
+fi
+NATIVE_ID="$(grep -o '"id":[0-9]*' <<<"$CREATE" | head -n 1 | cut -d: -f2)"
+if [[ -z "$NATIVE_ID" ]]; then
+  echo "FAIL /api/v2/indexers create: no id" >&2
+  echo "$CREATE" >&2
+  exit 1
+fi
+curl -fsS -X DELETE "$BASE/api/v2/indexers/$NATIVE_ID?apikey=$KEY" >/dev/null
+echo "ok   /api/v2/indexers (vault create/delete)"
+
 echo "QA passed"

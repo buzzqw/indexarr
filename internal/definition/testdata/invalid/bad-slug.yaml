@@ -1,0 +1,22 @@
+schema: 1
+
+meta:
+  id: Bad_Slug
+  name: Bad Slug
+  type: public
+  protocol: torrent
+  urls: [https://bad-slug.example/]
+
+search:
+  request:
+    get: /search
+  response:
+    type: html
+    rows: "table.results tr"
+    fields:
+      title: { selector: "a.title" }
+      download: { selector: "a.download", attr: href, type: url }
+    required: [title, download]
+
+tests:
+  - { name: search, fixture: fixtures/bad-slug/search.html, expect: { min_rows: 1 } }

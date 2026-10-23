@@ -1,0 +1,29 @@
+schema: 1
+meta:
+  id: json-api
+  name: JSON API
+  type: public
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+categories:
+  - { site: "tv", standard: 5040 }
+capabilities:
+  search: [q]
+search:
+  request:
+    get: /api/search
+    params:
+      q: "{{ query.keywords }}"
+  response:
+    type: json
+    rows: { path: "data.items" }
+    fields:
+      title: { path: "attributes.name", filters: [trim] }
+      details: { path: "files.0.url", type: url }
+      download: { path: "download", type: url }
+      size: { path: "size", type: size }
+      seeders: { path: "seeders", type: int }
+      date: { path: "date", type: date }
+      category: { path: "category", type: category }
+      infohash: { path: "infohash" }
+    required: [title, download]

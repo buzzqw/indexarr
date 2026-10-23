@@ -1,0 +1,33 @@
+schema: 1
+
+meta:
+  id: auth-token
+  name: Auth Token
+  type: private
+  protocol: usenet
+  urls: [https://auth-token.example/]
+
+settings:
+  - { name: username, type: text, required: true }
+
+auth:
+  strategy: token
+  steps:
+    - post: /token
+      form: { username: "{{ settings.username }}" }
+      extract:
+        token: { json: "$.token" }
+  refresh_after: 30m
+
+search:
+  request:
+    get: /search
+    headers: { Authorization: "Bearer {{ token }}" }
+    params: { q: "{{ query.keywords }}" }
+  response:
+    type: json
+    rows: { path: "$.results" }
+    fields:
+      title: { path: "$.title" }
+      download: { path: "$.url", type: url }
+    required: [title, download]

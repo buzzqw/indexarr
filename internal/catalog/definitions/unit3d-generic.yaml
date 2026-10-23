@@ -1,0 +1,43 @@
+# BOZZA (draft). Generic UNIT3D family definition.
+#
+# The unit3d family connector reads the URL, API key and categories from the
+# stored settings and talks to the site API directly; there is no HTML search
+# block here on purpose. The definition is a data-only fixture and has not
+# been verified against a live site, so it must not be presented as
+# production ready.
+schema: 1
+connector: unit3d
+
+meta:
+  id: unit3d-generic
+  name: UNIT3D (generic)
+  language: en-US
+  type: private
+  protocol: torrent
+  author: indexarr
+  description: Generic UNIT3D tracker; the family connector reads URL and API key.
+  urls:
+    - https://unit3d.example.invalid/
+  updated: "2026-10-23"
+
+# v1 setting names are slugs and cannot contain "_", so the API key is named
+# "apikey" here. The engine aliases "apikey" and "api_key", and the unit3d
+# family connector reads the canonical api_key setting.
+settings:
+  - { name: url, type: text, label: Base URL, help: "Tracker base URL, for example https://tracker.example/", required: true }
+  - { name: apikey, type: password, label: API key, help: "Personal API token from the tracker", required: true }
+
+categories:
+  - { site: "1", standard: 2000, desc: "Movies" }
+  - { site: "2", standard: 5000, desc: "TV" }
+  - { site: "3", standard: 3000, desc: "Audio" }
+  - { site: "4", standard: 7000, desc: "Books" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep, imdbid, tvdbid]
+  movie-search: [q, imdbid, tmdbid]
+
+health:
+  query: test
+  min_rows: 1

@@ -1,0 +1,34 @@
+schema: 1
+
+meta:
+  id: auth-cookie
+  name: Auth Cookie
+  type: private
+  protocol: torrent
+  urls: [https://auth-cookie.example/]
+
+settings:
+  - { name: cookie, type: password, required: true }
+
+auth:
+  strategy: cookie
+  steps:
+    - get: /login
+      extract:
+        session: { selector: "#session", attr: value }
+  success: { selector: "a.logout" }
+  failure:
+    - { selector: "div.error", message: text }
+  refresh_after: 30m
+
+search:
+  request:
+    get: /search
+    params: { q: "{{ query.keywords }}" }
+  response:
+    type: html
+    rows: { selector: "table.results tr" }
+    fields:
+      title: { selector: "a.title" }
+      download: { selector: "a.download", attr: href, type: url }
+    required: [title, download]

@@ -1,0 +1,51 @@
+schema: 1
+meta:
+  id: form-login
+  name: Form Login
+  type: private
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+settings:
+  - { name: username, type: text, required: true }
+  - { name: password, type: password, required: true }
+categories:
+  - { site: "5", standard: 5040, desc: "TV HD" }
+capabilities:
+  search: [q]
+auth:
+  strategy: form
+  steps:
+    - get: /login
+      extract:
+        csrf: { selector: 'input[name="csrf_token"]', attr: value }
+    - post: /login
+      form:
+        username: "{{ settings.username }}"
+        password: "{{ settings.password }}"
+        csrf_token: "{{ csrf }}"
+  success: { selector: "a.logout" }
+  failure:
+    - { selector: "div.error", message: text }
+  refresh_after: 1h
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+      cat: "{{ categories | join(',') }}"
+      page: "{{ page }}"
+      limit: "{{ limit }}"
+  pagination: { type: page, start: 1, step: 1, max_pages: 3, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.results tbody tr" }
+    fields:
+      title: { selector: ["a.missing", "a.title"], filters: [trim] }
+      download: { selector: "a.download", attr: href, type: url }
+      details: { selector: "a.title", attr: href, type: url }
+      category: { selector: "a.cat", attr: href, filters: [{ query_param: cat }], type: category }
+      size: { selector: "td.size", type: size }
+      seeders: { selector: "td.seeders", type: int }
+      date: { selector: "td.date", type: date, layouts: ["02-01-2006 15:04"] }
+    required: [title, download]
+health: { query: test, min_rows: 1 }

@@ -1,0 +1,32 @@
+schema: 1
+
+meta:
+  id: auth-api-key
+  name: Auth API Key
+  type: private
+  protocol: usenet
+  urls: [https://auth-api-key.example/]
+
+settings:
+  - { name: apikey, type: password, label: API key, required: true }
+
+auth:
+  strategy: api_key
+
+search:
+  request:
+    get: /api
+    params:
+      apikey: "{{ settings.apikey }}"
+      q: "{{ query.keywords }}"
+  response:
+    type: json
+    rows: { path: "$.results" }
+    fields:
+      title: { path: "$.title" }
+      size: { path: "$.size", type: size }
+      date: { path: "$.date", type: date, layouts: ["2006-01-02T15:04:05Z07:00"] }
+    required: [title, size]
+
+tests:
+  - { name: search, fixture: fixtures/auth-api-key/search.json, expect: { min_rows: 1 } }

@@ -9,3 +9,6 @@
 *.db-journal
 backup-*.db
 coverage.out
+
+# Chiavi del vault generate localmente
+*.key

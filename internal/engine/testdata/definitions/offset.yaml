@@ -1,0 +1,25 @@
+schema: 1
+meta:
+  id: offset
+  name: Offset
+  type: public
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+capabilities:
+  search: [q]
+search:
+  request:
+    get: /offset
+    params:
+      offset: "{{ offset }}"
+      page: "{{ page }}"
+      limit: "{{ limit }}"
+  pagination: { type: offset, start: 0, step: 2, max_pages: 3 }
+  response:
+    type: html
+    rows: { selector: "table.results tr.item" }
+    fields:
+      title: { selector: "a.title" }
+      infohash: { selector: "td.hash" }
+      download: { selector: "a.download", attr: href, type: url }
+    required: [title, download]

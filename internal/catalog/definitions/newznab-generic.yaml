@@ -1,0 +1,44 @@
+# BOZZA (draft). Generic Newznab definition.
+#
+# The newznab family connector reads the URL, API key and categories from the
+# stored settings and queries the Newznab API directly; no HTML search block
+# is needed. The definition has not been verified against a live site and
+# must not be presented as production ready.
+schema: 1
+connector: newznab
+
+meta:
+  id: newznab-generic
+  name: Newznab (generic)
+  language: en-US
+  type: private
+  protocol: usenet
+  author: indexarr
+  description: Generic Newznab indexer; the family connector reads URL and API key.
+  urls:
+    - https://newznab.example.invalid/
+  updated: "2026-10-23"
+
+# v1 setting names are slugs and cannot contain "_", so the API key is named
+# "apikey" here. The engine aliases "apikey" and "api_key", and the newznab
+# family connector reads the canonical api_key setting.
+settings:
+  - { name: url, type: text, label: Base URL, help: "Newznab API base URL", required: true }
+  - { name: apikey, type: password, label: API key, help: "Newznab API key", required: true }
+
+categories:
+  - { site: "2000", standard: 2000, desc: "Movies" }
+  - { site: "5000", standard: 5000, desc: "TV" }
+  - { site: "3000", standard: 3000, desc: "Audio" }
+  - { site: "7000", standard: 7000, desc: "Books" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep, imdbid, tvdbid]
+  movie-search: [q, imdbid, tmdbid, year]
+  music-search: [q, artist, album, year]
+  book-search: [q, author, title, year]
+
+health:
+  query: test
+  min_rows: 1

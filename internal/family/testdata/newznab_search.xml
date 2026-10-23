@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/">
+  <channel>
+    <title>Example Indexer</title>
+    <item>
+      <title>Example.Show.S02E03.1080p.WEB-DL</title>
+      <guid isPermaLink="false">abc123guid</guid>
+      <link>https://indexer.example/details/abc123</link>
+      <comments>https://indexer.example/details/abc123#comments</comments>
+      <pubDate>Mon, 06 May 2024 07:08:09 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <enclosure url="https://indexer.example/api?t=get&amp;id=abc123guid&amp;apikey=SECRET" length="1234567890" type="application/x-nzb"/>
+      <newznab:attr name="size" value="1234567890"/>
+      <newznab:attr name="seeders" value="12"/>
+      <newznab:attr name="leechers" value="3"/>
+      <newznab:attr name="infohash" value="should-not-be-used"/>
+      <newznab:attr name="category" value="5040"/>
+      <newznab:attr name="tvdbid" value="789"/>
+      <newznab:attr name="imdbid" value="tt1234567"/>
+      <newznab:attr name="tmdbid" value="456"/>
+    </item>
+    <item>
+      <title>Example.Movie.2024.2160p</title>
+      <guid>def456guid</guid>
+      <link>https://indexer.example/details/def456</link>
+      <pubDate>Tue, 07 May 2024 10:11:12 GMT</pubDate>
+      <category>2040</category>
+      <enclosure url="/api?t=get&amp;id=def456guid&amp;apikey=SECRET" length="987654321" type="application/x-nzb"/>
+      <newznab:attr name="category" value="2040"/>
+    </item>
+    <item>
+      <title>No identity</title>
+      <category>5000</category>
+    </item>
+    <item>
+      <guid>no-title-guid</guid>
+      <link>https://indexer.example/details/no-title</link>
+    </item>
+  </channel>
+</rss>

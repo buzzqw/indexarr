@@ -262,6 +262,8 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 		{"category group", Filter{Categories: []string{"5000"}}, 2},
 		{"category exact", Filter{Categories: []string{"5040"}}, 1},
 		{"source", Filter{SourceID: otherID}, 1},
+		{"sources", Filter{SourceIDs: []int64{sourceID, otherID}}, 3},
+		{"sources paginated", Filter{SourceIDs: []int64{sourceID, otherID}, Limit: 1, Offset: 1}, 3},
 		{"season and episode", Filter{Query: "show", Season: 1, Episode: 2}, 1},
 		{"another episode", Filter{Query: "show", Season: 2, Episode: 1}, 1},
 		{"missing episode", Filter{Query: "show", Season: 2, Episode: 9}, 1},

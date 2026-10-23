@@ -19,11 +19,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/adminapi"
 	"github.com/buzzqw/indexarr/internal/backup"
+	"github.com/buzzqw/indexarr/internal/catalog"
 	"github.com/buzzqw/indexarr/internal/config"
+	coreengine "github.com/buzzqw/indexarr/internal/engine"
+	"github.com/buzzqw/indexarr/internal/family"
+	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/ingest"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
+	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/store"
+	"github.com/buzzqw/indexarr/internal/vault"
 	"github.com/buzzqw/indexarr/internal/web"
 )
 
@@ -102,6 +109,74 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	settings, err := st.LoadSettings(ctx)
+	if err != nil {
+		logger.Warn("cannot load settings; using defaults", "error", err)
+		settings = store.DefaultSettings()
+	}
+
+	// The vault protects indexer secrets in the database and in backups. A
+	// missing key never blocks the legacy sources: only native indexers that
+	// actually have secrets become unavailable.
+	secretVault, vaultErr := vault.FromEnvOrFile("INDEXARR_MASTER_KEY", cfg.DBPath+".key")
+	if vaultErr != nil {
+		logger.Warn("secrets vault unavailable; native indexers with secrets are disabled", "error", vaultErr)
+	}
+	if written, syncErr := catalog.Sync(ctx, st); syncErr != nil {
+		logger.Warn("cannot sync the built-in catalog", "error", syncErr)
+	} else if written > 0 {
+		logger.Info("built-in catalog synchronized", "definitions", written)
+	}
+
+	transport := coreengine.NewTransport(coreengine.TransportConfig{
+		Timeout:   settings.FetchTimeout(),
+		UserAgent: settings.UserAgent,
+	})
+	registry := coreengine.NewRegistry()
+	if err := family.Register(registry); err != nil {
+		logger.Warn("cannot register family connectors", "error", err)
+	}
+	indexerManager, err := indexer.New(indexer.Config{
+		Store:             st,
+		Vault:             secretVault,
+		Registry:          registry,
+		Transport:         transport,
+		Logger:            logger,
+		MaxTorrentsPerRun: settings.MaxTorrentsPerRun,
+	})
+	if err != nil {
+		logger.Error("native indexer runtime disabled", "error", err)
+		indexerManager = nil
+	}
+
+	var nativeRunner *native.Runner
+	if indexerManager != nil {
+		nativeRunner, err = native.New(native.Config{
+			Store:    st,
+			Manager:  indexerManager,
+			Logger:   logger,
+			Interval: settings.DefaultInterval(),
+			Workers:  settings.Workers,
+		})
+		if err != nil {
+			logger.Warn("native scheduler disabled", "error", err)
+			nativeRunner = nil
+		} else {
+			nativeRunner.Start(ctx)
+		}
+	}
+
+	var adminHandler http.Handler
+	adminServer, err := adminapi.New(adminapi.Config{
+		Store: st, Vault: secretVault, Manager: indexerManager,
+		Logger: logger, Version: version,
+	})
+	if err != nil {
+		logger.Warn("admin API disabled", "error", err)
+	} else {
+		adminHandler = adminServer.Handler()
+	}
+
 	engine := ingest.New(st, logger)
 	engine.Start(ctx)
 
@@ -109,7 +184,7 @@ func main() {
 		Addr: cfg.Listen,
 		Handler: web.New(web.Config{
 			Store: st, Engine: engine, Logger: logger, Logs: logBuffer, Level: levelVar,
-			Version: version, Started: time.Now(),
+			Version: version, Started: time.Now(), Admin: adminHandler,
 			Restart: func() {
 				if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
 					logger.Error("cannot restart for restore", "error", err)
@@ -137,6 +212,9 @@ func main() {
 		logger.Warn("HTTP shutdown", "error", err)
 	}
 	engine.Wait()
+	if nativeRunner != nil {
+		nativeRunner.Wait()
+	}
 	logger.Info("stopped")
 }
 

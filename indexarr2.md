@@ -1,1038 +1,770 @@
-# indexarr 2 — Analisi di evoluzione
+# indexarr 2 — Visione e architettura
 
-**Da client di Jackett/Prowlarr a indexer autonomo, moderno e compatibile**
+**Un indexer che parte con il 100% di ciò che serve e cresce di continuo**
 
-Data: 23 ottobre 2026  
-Stato: documento di analisi e direzione tecnica  
-Ambito: architettura, motore delle definizioni, ricerca, distribuzione, sicurezza, migrazione
-
----
-
-## 1. Sintesi esecutiva
-
-indexarr oggi è un **aggregatore con cache**: sa parlare Torznab, RSS, alcuni
-listing HTML e le API di Jackett/Prowlarr, ma per la maggior parte dei tracker
-dipende da un traduttore esterno. La sua forza è il modello "un solo binario,
-SQLite, cache interrogabile, scheduling, UI e Torznab"; il suo limite è che la
-conoscenza dei singoli siti vive fuori da indexarr.
-
-L'evoluzione proposta — **indexarr 2** — è trasformarlo in una piattaforma di
-indicizzazione autonoma:
-
-- **sostituisce Jackett e Prowlarr** per la gestione e l'interrogazione degli
-  indexer torrent;
-- porta dentro il motore le **definizioni dei siti** e i connettori nativi;
-- continua a **cercare, salvare e distribuire** le release, con cache SQLite e
-  FTS5;
-- mantiene la compatibilità Torznab con Sonarr/Radarr/Lidarr e aggiunge
-  compatibilità Jackett/Prowlarr dove serve;
-- supera i limiti tipici di Jackett con un motore più moderno: definizioni
-  tipizzate, sessioni e cookie gestiti, rate limit adattivi, circuit breaker,
-  estrazione HTML/JSON/XML, supporto browser opzionale, test riproducibili.
-
-> Quello che nel messaggio è stato chiamato “cardigan” è **Cardigann**, il
-> formato YAML di definizioni usato da Jackett e Prowlarr. La compatibilità con
-> Cardigann è il ponte per ereditare l'ecosistema esistente; il passo successivo
-> è un formato più espressivo e verificabile.
-
-La raccomandazione è **non riscrivere indexarr da zero**. Conviene evolvere
-l'attuale base Go/SQLite introducendo un livello `indexer` sopra l'attuale
-`source`, mantenendo in funzione il percorso Torznab e la cache. Un MVP
-credibile richiede circa 8–12 settimane di lavoro esperto; la parità funzionale
-con Prowlarr (app sync, Usenet, catalogo ampio) è un percorso di 4–6 mesi.
+Data: 23 ottobre 2026
+Stato: documento di direzione tecnica (sostituisce la prima analisi di evoluzione)
+Ambito: obiettivi, parità con Jackett/Prowlarr, architettura, formato delle
+definizioni, catalogo nativo, roadmap
 
 ---
 
-## 2. Dove siamo: stato attuale e limiti
+## 1. Obiettivo
 
-### 2.1 Cosa fa già bene indexarr
+indexarr 2 è **il nuovo indexer**: sostituisce Jackett e Prowlarr e ne supera i
+limiti. Il progetto è indexarr stesso, che evolve; non nasce un repository
+separato.
 
-- **Scheduler e worker** con intervalli per sorgente, backoff dopo errore,
-  auto-disable, trigger manuale, coda limitata.
-- **Cache SQLite** con deduplica per infohash/GUID/titolo, magnet, BLOB
-  `.torrent`, cronologia run, blocklist, preferiti/nascosti.
-- **Ricerca FTS5** con tokenizer trigram, trigger di sincronizzazione e fallback
-  `LIKE` per i termini corti.
-- **Torznab server** completo: caps, search, tvsearch, movie, get, download,
-  paginazione, filtri, API key multiple, rate limit.
-- **UI SSR** con dashboard, sorgenti, release, regole, log, impostazioni,
-  manutenzione, backup e PWA.
-- **Operatività**: singolo binario Go, SQLite senza CGO, backup, metriche,
-  notifiche, FlareSolverr, invio ai client torrent.
-- **Compatibilità già acquisita**: Jackett, Prowlarr, MirCrew, Torznab diretto,
-  RSS/Atom, ExtTo, TorrentGalaxy, Corsaro.
+Tre principi guidano tutto il resto:
 
-### 2.2 Cosa manca per sostituire davvero Jackett e Prowlarr
+1. **Parità al 100% al giorno uno.** La 1.0 esce solo quando tutto ciò che un
+   utente di Jackett o Prowlarr usa davvero funziona. La parità è una
+   checklist verificabile (§3), non un'impressione.
+2. **Le nostre funzioni si innestano di continuo.** Il nucleo espone contratti
+   stabili; ogni funzione nuova è un modulo che si aggancia a uno stadio della
+   pipeline senza toccare il resto (§5).
+3. **Cardigann è il passato.** indexarr non lo usa. Tutte le definizioni
+   sono riscritte in un formato nativo più robusto, con API e connettori di
+   famiglia prima dello scraping (§6, §7).
 
-| Area | Stato attuale | Gap per indexarr 2 |
-|---|---|---|
-| Definizioni per sito | Parser compilati per 3 siti HTML + client per protocolli | Motore generico di definizioni e connettori nativi |
-| Login e sessioni | HTTP Basic, API key, qualche cookie non persistito | Form login, CSRF, cookie jar, token, refresh, logout |
-| Estrazione dati | RSS/Torznab + parser HTML dedicati | CSS selector, XPath, JSONPath, regex, template, filtri tipizzati |
-| Paginazione | Dipende dall'endpoint | Paginazione dichiarativa (page/offset/cursor) con stop condition |
-| Categorie | Mapping numerico per sorgente | Mapping per definizione, caps per indexer, categorie aggregate |
-| Rate limit | Backoff globale per sorgente | Token bucket per host, Retry-After, circuit breaker, jitter |
-| Sfide anti-bot | FlareSolverr per RSS/Torznab | Rilevamento challenge, browser opzionale, stato “blocked” esplicito |
-| Ricerca | Cache; live search solo su Torznab e solo cache miss | Fan-out pianificato, cache+live, budget e risultati parziali |
-| Distribuzione | Un solo endpoint Torznab aggregato | Endpoint per indexer, alias Jackett, app sync verso *arr |
-| Catalogo | Sorgenti configurate a mano | Catalogo definizioni, versioni, import/export, aggiornamenti |
-| Credenziali | API key/password in chiaro nel DB | Vault cifrato, chiave esterna, rotazione, redazione |
-| Diagnostica | Log e run history | Metriche per indexer, latenza, 429, cache hit, stato sessione |
-| Test | Test Go per parser e HTTP | Fixture, record/replay, golden Torznab, test di definizione |
-
-### 2.3 Limiti di Jackett che indexarr 2 può superare
-
-Jackett è maturo e ha un catalogo enorme, ma:
-
-- molte definizioni sono HTML scraping fragile; ogni cambio layout rompe il
-  parser;
-- il runtime .NET e la gestione per-indexer hanno un costo di memoria e startup
-  non trascurabile;
-- l'aggregazione è pensata per un uso “da *arr”, non per una cache persistente
-  con ricerca full-text;
-- rate limit, login e challenge sono gestiti in modo eterogeneo tra definizioni;
-- non esiste un percorso nativo per API JSON/GraphQL o per siti con auth
-  particolare, se non scrivendo una definizione o un indexer C#;
-- testare una definizione richiede spesso un'istanza reale e un sito raggiungibile.
-
-### 2.4 Limiti di Prowlarr che indexarr 2 può superare
-
-Prowlarr è il riferimento per la gestione centralizzata e l'app sync, ma:
-
-- interroga gli indexer **live**: non è una cache di release;
-- non è pensato per servire una ricerca full-text locale a bassa latenza;
-- dipende da FlareSolverr per le challenge;
-- l'app sync è prezioso ma è un livello separato dal motore di ricerca;
-- il modello di definizioni è lo stesso Cardigann, con gli stessi compromessi.
-
-La tesi di indexarr 2 è: **unire il catalogo/definizioni di Jackett, l'app sync
-di Prowlarr e la cache/ricerca di indexarr**, in un solo processo Go.
+Contratto verso l'esterno: **compatibilità 100% con le \*arr**, per torrent e
+Usenet. Torznab e Newznab possono crescere ma non si rompono mai.
 
 ---
 
-## 3. Che cosa significa “sostituire” Jackett e Prowlarr
+## 2. Decisioni
 
-“Sostituire” non significa solo accettare un URL Torznab in più. Significa
-coprire quattro livelli:
+### 2.1 Prese
 
-1. **Conoscenza del sito**: sapere come cercare, autenticarsi, impaginare,
-   estrarre campi, risolvere il download.
-2. **Esecuzione**: fare richieste in modo efficiente, educato e resiliente,
-   con sessioni, rate limit, proxy e gestione degli errori.
-3. **Memoria**: normalizzare, deduplicare, conservare e cercare le release.
-4. **Distribuzione**: esporre Torznab, compatibilità Jackett/Prowlarr e app
-   sync verso Sonarr/Radarr/Lidarr.
-
-### 3.1 Matrice funzionale obiettivo
-
-| Funzione | Jackett | Prowlarr | indexarr 2 (obiettivo) |
-|---|---|---|---|
-| Catalogo definizioni | Ampio (Cardigann) | Ampio (Cardigann esteso) | Import Cardigann + definizioni native |
-| Ricerca live | Sì | Sì | Sì, con cache e budget |
-| Cache release persistente | Limitata | No | Sì, SQLite + FTS5 |
-| Login/sessioni | Per definizione | Per indexer | Motore sessioni unico |
-| App sync *arr | No | Sì | Sì (fase 3) |
-| Torznab aggregato | Sì | Sì | Sì |
-| Endpoint per indexer | Sì | Sì | Sì |
-| API compatibile Jackett | — | Parziale | Da valutare, utile per migrazione |
-| Interfaccia web | Sì | Sì | Sì, già esistente |
-| Metriche/storico | Base | Buono | Per indexer, latenza, errori, cache |
-| Test definizioni | Limitato | Limitato | Fixture + golden + CI |
-| Runtime | .NET | .NET | Go, binario statico |
-| Credenziali | File/config | DB | Vault cifrato |
-
-### 3.2 Compatibilità da non rompere
-
-- **Sonarr/Radarr/Lidarr**: continuano a usare Torznab; l'endpoint aggregato
-  attuale deve restare stabile.
-- **API key**: quelle esistenti devono continuare a funzionare.
-- **Download**: `/dl/{id}.torrent` e `t=get` (id numerico, GUID, infohash).
-- **Caps**: categorie e parametri supportati.
-- **Import**: le sorgenti attuali (`kind`, `manager`, URL, credenziali) devono
-  essere migrabili senza perdere release o cronologia.
-- **Convivenza**: durante la transizione indexarr deve poter ancora usare
-  Jackett/Prowlarr come sorgenti, per poi dichiararli opzionali.
-
----
-
-## 4. Architettura proposta
-
-### 4.1 Principi
-
-1. **Un solo binario**: niente plugin Go caricati dinamicamente; definizioni
-   dati + motore compilato.
-2. **Definizioni per il lungo tail, connettori nativi per i siti importanti**:
-   non tutto deve essere YAML.
-3. **Sicurezza per default**: nessun codice arbitrario nelle definizioni;
-   Starlark/WASM solo in sandbox.
-4. **Osservabilità**: ogni richiesta e ogni indexer devono essere misurabili.
-5. **Compatibilità prima delle mode**: Torznab e *arr restano il contratto.
-6. **Crescita incrementale**: la cache e il server Torznab attuali non si
-   riscrivono; si aggiunge un livello sotto.
-
-### 4.2 Diagramma dei componenti
-
-```text
-                         ┌──────────────────────────────┐
-                         │            UI / API          │
-                         │  dashboard, indexers, test   │
-                         └──────────────┬───────────────┘
-                                        │
-        ┌───────────────────────────────┼────────────────────────────────┐
-        │                               │                                │
-┌───────▼────────┐            ┌─────────▼─────────┐            ┌─────────▼─────────┐
-│  Distribution  │            │      Search       │            │    Operations     │
-│ Torznab        │            │ planner, fan-out  │            │ scheduler, backup │
-│ Jackett compat │            │ merge, ranking    │            │ metrics, logs     │
-│ app sync       │            │ cache+live        │            │ rate limits       │
-└───────┬────────┘            └─────────┬─────────┘            └─────────┬─────────┘
-        │                               │                                │
-        │                    ┌──────────▼──────────┐                     │
-        │                    │        Cache        │                     │
-        │                    │ SQLite + FTS5       │                     │
-        │                    │ releases, sources   │                     │
-        │                    └──────────┬──────────┘                     │
-        │                               │                                │
-        │                    ┌──────────▼──────────┐                     │
-        │                    │   Connector layer   │                     │
-        │                    │ HTTP, auth, cookie  │◄────────────────────┘
-        │                    │ pagination, extract │
-        │                    └──────────┬──────────┘
-        │                               │
-        │                    ┌──────────▼──────────┐
-        │                    │ Definition engine   │
-        │                    │ schema, validation  │
-        │                    │ Cardigann importer  │
-        │                    │ native connectors   │
-        │                    └─────────────────────┘
-        │
-        └────────────────► Sonarr / Radarr / Lidarr
-```
-
-### 4.3 Nuovo modello di indexer
-
-L'attuale `store.Source` è pensato per un endpoint generico:
-
-```text
-kind        torznab | rss
-manager     auto | jackett | prowlarr | mircrew | torznab
-url, api_key, username, password
-categories, query, interval
-```
-
-indexarr 2 deve separare **definizione**, **configurazione** e **stato**:
-
-```text
-Definition   → come si parla con il sito (nome, capabilities, auth, request, extract)
-Indexer      → istanza configurata (URL/credenziali, categorie, intervallo, enable)
-IndexerState → cookie, token, ultimo login, circuit breaker, statistiche
-Release      → risultato normalizzato, con provenance multi-indexer
-```
-
-Questo permette:
-
-- la stessa definizione con più istanze (es. due account/URL);
-- l'aggiornamento della definizione senza toccare le credenziali;
-- l'import/export di una configurazione senza segreti;
-- la migrazione dall'attuale `sources` senza perdere release.
-
----
-
-## 5. Motore delle definizioni
-
-### 5.1 Perché non solo Cardigann
-
-Cardigann è un ottimo punto di partenza, ma è nato per HTML scraping e ha un
-linguaggio di trasformazione limitato. indexarr 2 deve supportare:
-
-- **HTML** con CSS selector (e, dove serve, XPath);
-- **JSON** con JSONPath o selettori tipizzati;
-- **XML/RSS/Torznab**;
-- **API proprietarie** con header, firma, token, POST;
-- **download resolution**: dalla riga al dettaglio al magnet/`.torrent`;
-- **paginazione** e stop condition;
-- **categorie** con mapping per sito;
-- **filtri** di normalizzazione: trim, lower, replace, regex capture, date, size,
-  entity decode, URL resolve, coalesce, default;
-- **test** dichiarativi con fixture.
-
-La compatibilità Cardigann resta un **importer**, non il formato interno
-definitivo. Le definizioni importate vengono validate e, se usano costrutti non
-supportati, producono un report invece di fallire in silenzio.
-
-| Concetto Cardigann | Equivalente indexarr 2 |
+| Tema | Decisione |
 |---|---|
-| `id`, `name`, `description` | metadati della definizione |
-| `type`, `language` | metadati e default |
-| `caps` | `capabilities` + mapping categorie |
-| `login` | `auth` con strategie esplicite |
-| `search.paths` | `request.search` / `request.latest` |
-| `search.rows.selector` | `response.rows.selector` |
-| `search.fields` | `response.fields` + filtri |
-| `search.inputs` | `request.params` |
-| `download` | `download` + `resolve` |
-| `ratio`, `limits` | `limits`, rate limit e circuit breaker |
+| Progetto | indexarr è il nuovo progetto; evolve, non si riscrive da zero |
+| Compatibilità \*arr | 100%: tutte le applicazioni che Prowlarr sincronizza |
+| Cardigann | Non usato: tutte le definizioni sono riscritte nel formato nativo |
+| Protocolli | Torrent **e Usenet** (Newznab) nella 1.0, come Prowlarr |
+| Distribuzione | Un solo binario Go, SQLite, nessun runtime esterno obbligatorio |
 
-L'importer deve produrre anche un **compatibility report**: campi mappati,
-campi ignorati, filtri non supportati, stima di copertura e test mancanti.
+### 2.2 Aperte
 
-### 5.2 Schema di definizione (bozza)
+| Tema | Stato | Raccomandazione |
+|---|---|---|
+| **Licenza** | Libera, da scegliere | Codice e catalogo sono interamente nostri grazie alla scrittura pulita (§6.6); resta da scegliere quale licenza libera |
 
-```yaml
-schema: 2
-id: example-tracker
-name: Example Tracker
-description: Esempio di definizione indexarr 2
-language: it-IT
-type: private                 # public | semi-private | private
-base_url: https://tracker.example
-capabilities: [search, tvsearch, movie, latest]
-categories:
-  tv: [5000, 5040]
-  movies: [2000, 2040]
-  music: [3000]
-  books: [7000]
+---
 
-auth:
-  type: form                  # none | api_key | basic | form | cookie | oauth
-  login:
-    path: /login.php
-    method: POST
-    fields:
-      username: "{{ .username }}"
-      password: "{{ .password }}"
-      csrf_token: "{{ .csrf }}"
-  csrf:
-    selector: 'input[name="csrf_token"]'
-    attr: value
-  success:
-    selector: 'a[href="/logout.php"]'
-  session:
-    cookie_jar: true
-    refresh_after: 6h
+## 3. Checklist di parità (contratto della 1.0)
 
-request:
-  search:
-    path: /torrents.php
-    method: GET
-    params:
-      search: "{{ .query }}"
-      cat: "{{ .categories }}"
-      page: "{{ .page }}"
-    headers:
-      Accept-Language: it-IT,it;q=0.9
-  latest:
-    path: /torrents.php
-    params:
-      search: ""
-      page: "{{ .page }}"
+Ogni voce ha un criterio di verifica. La 1.0 esce quando sono tutte verdi.
 
-pagination:
-  type: page                  # none | page | offset | cursor
-  start: 0
-  step: 1
-  max_pages: 10
-  stop_when: empty_rows
+### 3.1 Distribuzione verso le \*arr
 
-response:
-  type: html                  # html | json | xml | rss
-  rows:
-    selector: "table.torrents > tbody > tr"
-  fields:
-    title:
-      selector: "a.title"
-      text: true
-      filters: [trim, html_unescape]
-    details:
-      selector: "a.title"
-      attr: href
-      filters: [url_resolve]
-    size:
-      selector: "td.size"
-      text: true
-      parse: size
-    seeders:
-      selector: "td.seeders"
-      text: true
-      parse: int
-    leechers:
-      selector: "td.leechers"
-      text: true
-      parse: int
-    published:
-      selector: "td.date"
-      text: true
-      parse: date
-      layouts: ["02-01-2006 15:04", "2006-01-02"]
-    category:
-      selector: "td.category"
-      text: true
-      map: categories
-    download:
-      selector: "a.download"
-      attr: href
-    magnet:
-      selector: 'a[href^="magnet:"]'
-      attr: href
-    infohash:
-      from: magnet
-      parse: infohash
+| Voce | Verifica |
+|---|---|
+| Torznab `caps` aggregato e per indexer | Golden test sull'XML; le \*arr importano le caps senza errori |
+| `search`, `tvsearch`, `movie`, `music`, `book` | Test per modalità con tutti i parametri |
+| Parametri id: `imdbid`, `tvdbid`, `tmdbid`, `tvmazeid`, `rid`, `season`, `ep`, `artist`, `album`, `author`, `title` | Mappati verso le definizioni che li supportano; ignorati in modo pulito dove non supportati |
+| `limit`/`offset`, `cat`, `extended`, attributi Torznab | Golden test |
+| Download tramite proxy (`/dl/...`) con API key; nessun passkey esposto | Test: il link restituito non contiene mai URL del tracker |
+| Endpoint aggregato, per indexer e **aggregato filtrato** (tag, lingua, tipo, stato), come i filtri di Jackett | Test di routing |
+| Newznab per indexer Usenet: stesse modalità e parametri, `t=get` che restituisce `.nzb` tramite proxy | Golden test; le \*arr aggiungono l'indexer come Newznab |
+| URL in stile Jackett (`/api/v2.0/indexers/{id}/results/torznab/api`) | Alias per chi migra da Jackett senza toccare le \*arr |
+| Errori Torznab standard (codici 100–900) | Le \*arr mostrano l'errore giusto (API key errata, limite raggiunto, indexer giù) |
 
-download:
-  resolve: details
-  timeout: 30s
-  max_bytes: 8MiB
-  extract:
-    magnet: 'a[href^="magnet:"]::attr(href)'
-    torrent: 'a.download::attr(href)'
+### 3.2 App sync (sostituzione di Prowlarr)
 
-limits:
-  requests_per_minute: 10
-  max_concurrent: 1
-  retry:
-    attempts: 2
-    backoff: exponential
-    retry_on: [429, 502, 503, 504]
-  respect_retry_after: true
+| Voce | Verifica |
+|---|---|
+| Applicazioni: Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian | Test di integrazione contro le versioni supportate di ciascuna |
+| Livelli di sync: disabilitato, solo aggiunta/rimozione, sync completo | Test sul ciclo completo |
+| Indexer sincronizzati con il protocollo giusto: Torznab per i torrent, Newznab per Usenet | Test con indexer misti |
+| Campi sincronizzati: nome, URL, API key, categorie, priorità, tag, seeders minimi, seed ratio, seed time, season pack seed time, abilitazione RSS/ricerca automatica/interattiva | Confronto con ciò che Prowlarr scrive nell'app |
+| Riconciliazione: rileva modifiche manuali nell'app e indexer orfani | Test con stato divergente |
 
-tests:
-  - name: search
-    fixture: fixtures/search.html
-    query: "show"
-    expect:
-      count: 20
-      first_title: "Example Show S01E01"
-  - name: login
-    fixture: fixtures/login.html
-    expect:
-      authenticated: true
+Nota: Readarr è stato ritirato dal team Servarr, ma ha ancora installazioni
+attive; resta in lista finché esistono utenti.
+
+### 3.3 Gestione degli indexer
+
+| Voce | Verifica |
+|---|---|
+| Aggiunta da catalogo con form generato dai `settings` della definizione | Test UI su definizioni di ciascun tipo di login |
+| Test indexer (login, ricerca, download) con esito strutturato | Esito per fase, non solo "ok/errore" |
+| Proxy per indexer: HTTP, SOCKS4/5, FlareSolverr | Test con proxy simulati |
+| Limiti per indexer: query/giorno, grab/giorno | Le \*arr ricevono l'errore Torznab corretto al superamento |
+| Priorità, tag, abilitazione, redirect del download | Test |
+| Storico query e grab, statistiche per indexer | Visibili in UI e API |
+| Health: indexer falliti, disabilitati temporaneamente, motivo | Stato visibile e notificabile |
+| Ricerca manuale dalla UI e invio ai client di download: qBittorrent e Transmission (esistenti), più Deluge e rTorrent; SABnzbd e NZBGet per Usenet | Test end-to-end con client simulato |
+| Notifiche (health, grab, aggiornamenti) | Test sui canali supportati |
+| Backup/restore di DB, configurazione e definizioni | Restore su istanza pulita |
+
+### 3.4 Motore e catalogo
+
+| Voce | Verifica |
+|---|---|
+| Motore: login di ogni tipo (form, CSRF, cookie, token, API key, Basic), flussi a più passi, paginazione, HTML/JSON/XML, categorie, errori del sito, download a più passaggi, mirror | Suite di test del motore con fixture per ogni funzione |
+| Connettori di famiglia per i software di tracker più diffusi | Ogni famiglia testata su fixture di almeno due siti |
+| Catalogo nativo che copre l'inventario prioritario (§7.3) | 100% dell'inventario prioritario `verificato` |
+| Ponte verso Jackett/Prowlarr per i siti non ancora riscritti (§7.4) | Ogni indexer importato funziona, nativo o tramite ponte |
+| Connettore Newznab generico con preset per gli indexer Usenet noti (come i preset di Prowlarr) | Caps importate dall'indexer; test su fixture Newznab |
+
+La parità del catalogo si misura così: **100% dei siti dell'utente
+funzionanti al giorno uno** (nativi o tramite ponte) e **quota nativa** in
+crescita continua fino al 100%.
+
+---
+
+## 4. Oltre la parità: cosa supera Jackett e Prowlarr
+
+Queste sono le funzioni che si innestano sopra il nucleo. Alcune esistono già
+in indexarr.
+
+| Funzione | Limite superato | Stato |
+|---|---|---|
+| Cache persistente SQLite + FTS5 | Prowlarr interroga sempre live; Jackett ha solo una cache breve | Esiste |
+| Ricerca `cache+live` con budget e risultati parziali | Latenza e carico sugli indexer | Da fare |
+| Provenance multi-indexer ("visto da 3 indexer") con scelta del link migliore | Duplicati e perdita di informazione | Da fare |
+| Rate limit per host (token bucket) + circuit breaker + `Retry-After` | Comportamento eterogeneo tra definizioni | Da fare |
+| Definizioni testate offline con fixture e record/replay | Test che richiedono il sito vivo | Da fare |
+| Connettori di famiglia e API prima dello scraping (§6) | Definizioni fragili copiate sito per sito | Da fare |
+| Definizioni tipizzate con fallback, mirror e health integrato (§6.4) | Definizioni che si rompono al primo cambio di layout | Da fare |
+| Seeders aggiornati: TTL e refresh dei risultati restituiti dalla cache | Seeders vecchi che falsano le scelte delle \*arr | Da fare |
+| Vault per credenziali e cookie | Credenziali in chiaro | Da fare |
+| Metriche per indexer e per richiesta (latenza, 429, challenge) | Diagnosi difficile | Parziale |
+| Footprint: ~30 MiB RSS a riposo oggi (vedi audit) | Runtime .NET | Esiste |
+
+---
+
+## 5. Architettura per aggiunte continue
+
+### 5.1 Pipeline a stadi
+
+Ogni ricerca o acquisizione attraversa la stessa pipeline:
+
+```text
+plan → request → fetch → extract → normalize → enrich → dedup → store → distribute
 ```
 
-### 5.3 Estrazione e trasformazioni
+| Stadio | Responsabilità |
+|---|---|
+| `plan` | Sceglie gli indexer per capability, categoria, stato, budget |
+| `request` | Costruisce la richiesta dalla definizione (template, input, paginazione) |
+| `fetch` | HTTP con sessione, proxy, rate limit, challenge solver, limiti di dimensione |
+| `extract` | Righe e campi da HTML/JSON/XML secondo la definizione |
+| `normalize` | Titolo, size, date, categorie Torznab, infohash |
+| `enrich` | Dati aggiuntivi (id esterni, qualità, lingua) |
+| `dedup` | Chiave infohash/GUID; provenance |
+| `store` | Cache SQLite + FTS5 |
+| `distribute` | Torznab, API, UI, app sync, notifiche |
 
-Tipi di campo da supportare:
+Ogni stadio ha un'interfaccia Go stabile e accetta **middleware** prima e dopo.
+Una funzione nuova (per esempio un filtro di qualità o un arricchimento con
+TMDB) è un modulo che registra un middleware: non tocca gli altri stadi.
 
-- testo, attributo, HTML interno, valore assoluto, template;
-- `from`: derivare da un altro campo (magnet → infohash, details → base URL);
-- coalesce di più selettori;
-- parse di size (`1.2 GB`), date (formati multipli), categoria, booleani;
-- normalizzazione titolo, rimozione entità HTML, URL relativi;
-- regex capture numerate;
-- mapping categorie per sito.
+### 5.2 Moduli
 
-Per i casi davvero complessi (firma HMAC, token a più passi, payload JSON
-dinamico) si può usare **Starlark** in sandbox, con accesso solo a input
-dichiarati e nessuna rete/filesystem. In alternativa, un connettore Go nativo
-compilato nel binario. La regola è: **nessun codice arbitrario scaricato dalla
-rete**.
+- Registrati a compile time (nessun plugin dinamico): un solo binario.
+- Ogni modulo dichiara stadi, impostazioni, migrazioni del DB e feature flag.
+- Un modulo spento non ha effetti, nemmeno sullo schema delle risposte
+  Torznab.
 
-### 5.4 Connettori nativi
+```go
+type Module interface {
+    Name() string
+    Migrations() []Migration
+    Register(r *Registry) // middleware, endpoint, job, impostazioni
+}
+```
 
-Le definizioni non bastano per siti con:
+### 5.3 Connettori
 
-- API JSON/GraphQL non standard;
-- login OAuth o token refresh;
-- più passaggi (login → CSRF → ricerca → dettaglio → download);
-- rate limit molto aggressivi o anti-bot;
-- formati di risposta proprietari.
-
-Per questi si scrive un connettore Go nel repository, testato con fixture. Il
-connettore espone la stessa interfaccia della definizione:
+Definizione YAML interpretata e connettore Go nativo espongono la stessa
+interfaccia:
 
 ```go
 type Connector interface {
     Capabilities() Capabilities
     Search(ctx context.Context, req SearchRequest) ([]Item, error)
     Latest(ctx context.Context, req LatestRequest) ([]Item, error)
-    Resolve(ctx context.Context, item Item) (Item, error)
+    Download(ctx context.Context, item Item) (Payload, error)
     Test(ctx context.Context) (TestResult, error)
 }
 ```
 
-La differenza è solo l'implementazione: YAML interpretato o Go compilato.
+### 5.4 Tutto è versionato
 
-### 5.5 Catalogo e versioning
+| Elemento | Meccanismo |
+|---|---|
+| Schema del DB | Migrazioni numerate, testate su copie di DB reali |
+| Formato delle definizioni | Catena di upgrader v0 → vN (§6) |
+| API Torznab | Solo aggiunte compatibili |
+| API amministrativa | `/api/v2/...` versionata |
 
-- Definizioni built-in versionate nel repository, con hash e changelog.
-- Import da file/local folder/URL firmato (opzionale).
-- `schema_version` e migrazione automatica delle definizioni.
-- Validazione all'import: errori bloccanti e warning separati.
-- Dry-run: “questa definizione è compatibile al 70%, mancano X/Y”.
-- Backup delle definizioni e rollback all'ultima versione funzionante.
+Questa è la condizione che permette di aggiungere funzioni di continuo senza
+rompere installazioni esistenti.
 
-### 5.6 Test harness delle definizioni
+---
 
-Ogni definizione dovrebbe poter essere testata senza rete:
+## 6. Formato nativo e connettori di famiglia
 
-```bash
-indexarr indexer test \
-  --definition definitions/example.yml \
-  --fixture testdata/example-search.html \
-  --query "show" \
-  --expect-count 20
+### 6.1 Perché non Cardigann
+
+indexarr **non usa Cardigann**, né come formato interno né come formato di
+ingresso. Tutte le definizioni vengono riscritte. Il motivo è funzionale:
+
+- Cardigann nasce per lo scraping HTML: ogni cambio di layout rompe la
+  definizione, anche quando il sito offre un'API stabile;
+- i siti che usano lo stesso software (stesso codice, stesse API) hanno
+  definizioni copiate e mantenute una per una;
+- la logica è scritta in template testuali senza tipi: gli errori emergono
+  solo a runtime, sul sito vero;
+- non esistono test offline né un modo standard per dire "questa definizione
+  funziona";
+- flussi a più passi, paginazione, mirror e fallback sono gestiti in modo
+  diverso da definizione a definizione.
+
+### 6.2 Gerarchia delle fonti
+
+Per ogni sito si usa la fonte più stabile disponibile, in quest'ordine:
+
+| Priorità | Fonte | Perché |
+|---|---|---|
+| 1 | **API ufficiale** del sito (JSON, con API key o token) | Contratto stabile, dati strutturati, meno carico sul sito |
+| 2 | **Feed standard** esposti dal sito (Torznab, Newznab, RSS) | Formato noto, già supportato |
+| 3 | **Connettore di famiglia** (§6.3) | Un solo connettore per tutti i siti con lo stesso software |
+| 4 | **Definizione** HTML/JSON nel formato nativo (§6.4) | Per i siti con software proprietario |
+| 5 | **Connettore Go dedicato** | Per i casi che il formato non esprime |
+
+Lo scraping HTML è l'ultima scelta, non la prima.
+
+### 6.3 Connettori di famiglia
+
+Molti tracker usano lo stesso software (per esempio UNIT3D o Gazelle e i suoi
+derivati). Per ciascuna famiglia si scrive **un** connettore, che usa le API
+del software quando esistono:
+
+- aggiungere un sito della famiglia richiede solo URL, nome, categorie e le
+  eventuali differenze dichiarate (`family: unit3d` + opzioni);
+- una correzione al connettore ripara tutti i siti della famiglia;
+- l'elenco delle famiglie da coprire esce dall'inventario dei siti (§7.3).
+
+### 6.4 Formato delle definizioni
+
+```yaml
+schema: 1
+meta:
+  id: example-tracker
+  name: Example Tracker
+  language: it-IT
+  type: private               # public | semi-private | private
+  protocol: torrent           # torrent | usenet
+  urls:                       # il primo è il principale, gli altri mirror
+    - https://tracker.example/
+    - https://tracker-mirror.example/
+
+settings:
+  - { name: username, type: text, required: true }
+  - { name: password, type: password, required: true }
+
+categories:                   # id del sito → categoria Torznab/Newznab
+  - { site: "5",  standard: 5040, desc: "TV HD" }
+  - { site: "12", standard: 2040, desc: "Film HD" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep, imdbid]
+  movie-search: [q, imdbid]
+
+auth:
+  strategy: form              # none | api_key | basic | form | cookie | token
+  steps:                      # flusso esplicito, passo per passo
+    - get: /login.php
+      extract:
+        csrf: { selector: 'input[name="csrf_token"]', attr: value }
+    - post: /login.php
+      form:
+        username: "{{ settings.username }}"
+        password: "{{ settings.password }}"
+        csrf_token: "{{ csrf }}"
+  success: { selector: 'a[href="/logout.php"]' }
+  failure:
+    - { selector: "div.error", message: text }
+  refresh_after: 6h
+
+search:
+  request:
+    get: /torrents.php
+    params:
+      search: "{{ query.keywords }}"
+      cat: "{{ categories | join(',') }}"
+      page: "{{ page }}"
+  pagination: { type: page, start: 1, max_pages: 5, stop_when: empty_rows }
+  response:
+    type: html                # html | json | xml
+    rows: { selector: "table.torrents > tbody > tr" }
+    fields:
+      title:    { selector: ["a.title", "td.name a"], filters: [trim] }   # fallback in ordine
+      details:  { selector: "a.title", attr: href, type: url }
+      download: { selector: "a.download", attr: href, type: url }
+      category: { selector: "a.cat", attr: href, filters: [{ query_param: cat }], type: category }
+      size:     { selector: "td.size", type: size }
+      seeders:  { selector: "td.seeders", type: int }
+      leechers: { selector: "td.leechers", type: int }
+      date:     { selector: "td.date", type: date, layouts: ["02-01-2006 15:04"] }
+    required: [title, download, size]
+
+health:
+  query: "test"               # ricerca usata dai controlli periodici
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/example/search.html
+    expect: { min_rows: 1, required: [title, download, size, category] }
+  - name: login-ok
+    fixture: fixtures/example/login-ok.html
+    expect: { authenticated: true }
 ```
 
-Il test harness deve coprire: login, ricerca, parsing, paginazione, download,
-mapping categorie, errori HTTP, rate limit. Le fixture possono essere registrate
-una volta e rigiocate in CI (record/replay), con dati sensibili rimossi.
+Cosa rende il formato più funzionante:
 
----
-
-## 6. Runtime dei connettori
-
-### 6.1 HTTP e sessioni
-
-Un client per indexer, non un client globale condiviso in modo indiscriminato:
-
-- cookie jar persistente e cifrato;
-- User-Agent, Accept-Language, Referer configurabili;
-- proxy per indexer;
-- TLS e redirect controllati;
-- timeout di connessione e di risposta separati;
-- limite dimensione risposta (es. 32 MiB feed, 8 MiB torrent);
-- decompressione e charset;
-- gestione 429 con `Retry-After`;
-- niente retry su POST di login o su download non idempotenti.
-
-### 6.2 Autenticazione
-
-Strategie minime:
-
-- API key in query/header;
-- HTTP Basic;
-- form login con CSRF;
-- cookie/token preesistente;
-- OAuth2 (opzionale, per siti che lo offrono);
-- passkey/2FA: richiede interazione umana, non automatizzabile in modo sicuro.
-
-Lo stato di sessione va conservato per indexer, con scadenza e refresh. Un login
-fallito non deve martellare il sito: si passa a `blocked`/`degraded` e si
-riprova con backoff.
-
-### 6.3 Rate limit e circuit breaker
-
-- Token bucket **per host**, non solo per indexer: due definizioni sullo stesso
-  host devono condividere il budget.
-- Limite globale di concorrenza e limite per indexer.
-- Circuit breaker: `closed → open → half-open` con soglie di errori/timeout.
-- Backoff esponenziale con jitter.
-- Rispetto di `Retry-After`.
-- Metriche per 429, 403, challenge, timeout, latenza.
-
-### 6.4 Cloudflare, browser e anti-bot
-
-Tre livelli:
-
-1. **HTTP diretto** con header realistici e cookie.
-2. **FlareSolverr** (già presente) per challenge Cloudflare.
-3. **Browser opzionale** (CDP/Playwright esterno) per JS pesante.
-
-indexarr non deve incorporare Chromium nel binario: sarebbe enorme e fragile.
-Meglio un servizio browser esterno opzionale, con allowlist e timeout. Non si
-automatizza la risoluzione di CAPTCHA; si segnala il sito come `blocked` e si
-richiede intervento umano.
-
----
-
-## 7. Ricerca e cache
-
-### 7.1 Modalità di ricerca
-
-| Modalità | Uso | Comportamento |
-|---|---|---|
-| `cache` | UI e *arr di default | Cerca solo in SQLite/FTS5, latenza bassa |
-| `live` | “Cerca ora” / Torznab miss | Interroga gli indexer, salva, restituisce |
-| `cache+live` | Configurabile per *arr | Cache subito; se pochi risultati, fan-out live con budget |
-| `latest` | Scheduler | Acquisisce le ultime release per indexer |
-
-La modalità `cache+live` è il compromesso più utile: risposta veloce quando la
-cache basta, aggiornamento mirato quando serve.
-
-### 7.2 Pianificazione del fan-out
-
-Per una ricerca:
-
-1. parse della query (termini, esclusioni, regex, stagione/episodio, id esterni);
-2. selezione degli indexer per capability, categoria, stato, rate budget;
-3. fan-out concorrente con limite globale e per host;
-4. timeout per indexer e deadline complessiva;
-5. normalizzazione e deduplica;
-6. merge dei risultati e ranking;
-7. scrittura in cache;
-8. risposta con eventuali warning parziali.
-
-Non tutti gli indexer devono essere interrogati per ogni ricerca: un planner
-basato su capability/categorie/qualità riduce latenza e carico.
-
-### 7.3 Deduplica e provenance
-
-La chiave primaria resta l'infohash; in assenza, GUID/URL/titolo. Per la
-provenance multi-indexer serve una tabella `release_sources`:
-
-- quale indexer ha visto la release;
-- quando l'ha vista la prima/ultima volta;
-- seeders/leechers per indexer;
-- link di download specifici;
-- qualità del dato.
-
-Questo permette di mostrare “visto da 3 indexer” e di scegliere il link
-migliore, senza duplicare le release.
-
-### 7.4 Ranking
-
-Il ranking deve restare prevedibile per Torznab:
-
-- ordinamento richiesto dal client (`published_at`, `seeders`, `size`, `title`);
-- rilevanza testuale per la UI;
-- qualità dell'indexer e freschezza come tie-break;
-- mai mescolare risultati non pertinenti solo per riempire la pagina.
-
-### 7.5 Cache e scala
-
-SQLite + FTS5 è adeguato per decine/centinaia di migliaia di release. Oltre:
-
-- valutare partizionamento per anno o per categoria;
-- archiviare i BLOB `.torrent` fuori dal DB (filesystem content-addressed) e
-  tenere nel DB solo il riferimento;
-- compressione dei magnet/titoli;
-- job di retention e vacuum;
-- metriche su dimensione DB, WAL, freelist, latenza query.
-
-Non serve un database esterno per il target “self-hosted personale/medio”. Un
-adapter PostgreSQL può essere valutato solo se nasce un requisito multi-utente o
-multi-nodo.
-
----
-
-## 8. Distribuzione e compatibilità
-
-### 8.1 Superfici API
-
-| Endpoint | Scopo |
+| Caratteristica | Effetto |
 |---|---|
-| `GET /api` e `/torznab/api` | Torznab aggregato attuale (compatibile *arr) |
-| `GET /indexers/{slug}/api` | Torznab del singolo indexer |
-| `GET /api/v2.0/indexers` | Elenco compatibile Jackett |
-| `GET /api/v2.0/indexers/{id}/results/torznab/api` | Ricerca compatibile Jackett |
-| `GET /api/v2.0/indexers/all/results/torznab/api` | Aggregato compatibile Jackett |
-| `GET /api/v2/indexers` | API amministrativa indexarr 2 |
-| `GET /api/v2/definitions` | Catalogo definizioni |
-| `POST /api/v2/indexers/{id}/test` | Test con risultato strutturato |
+| **Campi tipizzati** (`size`, `date`, `int`, `url`, `category`) | Parsing e validazione centralizzati, niente filtri ripetuti in ogni definizione |
+| **Selettori con fallback** | Un piccolo cambio di layout non rompe la definizione |
+| **Mirror dichiarati** | Failover automatico tra domini |
+| **Flussi a passi espliciti** (`steps`) | Login, CSRF, token e download a più passaggi leggibili e testabili |
+| **Campi obbligatori** (`required`) | Una riga incompleta viene scartata e segnalata, non pubblicata come rotta |
+| **`health` integrato** | Ogni definizione sa come controllarsi da sola |
+| **Test obbligatori** | Nessuna definizione entra nel catalogo senza fixture e test |
+| **JSON Schema pubblicato** | Autocompletamento e validazione negli editor e nello studio |
+| **Template con funzioni dichiarate** | Nessun codice arbitrario; errori rilevati alla validazione |
 
-La compatibilità Jackett è utile per migrare client e strumenti che oggi
-puntano a Jackett; non deve diventare il modello interno.
+Ciò che il formato non esprime va in un connettore Go (§5.3), non in
+estensioni ad hoc del formato.
 
-### 8.2 App sync verso Sonarr/Radarr/Lidarr
+### 6.5 Evoluzione del formato
 
-Per sostituire Prowlarr serve un livello “applications”:
+Il formato è versionato (`schema: 1`, `2`, …). Per ogni nuova versione si
+scrive un upgrader vN → vN+1; il motore esegue solo la versione corrente e le
+definizioni vecchie vengono aggiornate automaticamente al caricamento e nel
+catalogo.
 
-- registrare un'app (URL, API key cifrata, tipo);
-- creare/aggiornare/rimuovere un indexer Torznab nell'app;
-- sincronizzare categorie e caps;
-- gestire conflitti e rollback;
-- mostrare stato e ultimo sync.
+### 6.6 Scrittura pulita
 
-Questo è un progetto nel progetto: l'API delle *arr è ben documentata ma cambia
-tra versioni. Va affrontato dopo che il motore di ricerca e gli endpoint per
-indexer sono stabili.
-
-### 8.3 Compatibilità Torznab
-
-Mantenere:
-
-- `caps` con categorie e parametri;
-- `search`, `tvsearch`, `movie`, `music`, `book`;
-- `get` per id numerico, GUID e infohash;
-- download `.torrent` con API key;
-- `newznab:response` e attributi Torznab;
-- API key in query e `X-Api-Key`;
-- rate limit per chiave.
-
-Aggiungere:
-
-- caps per singolo indexer;
-- `limit`/`offset` coerenti con il fan-out;
-- risultati parziali con warning strutturati;
-- header di rate limit (`X-RateLimit-*`, `Retry-After`).
-
-### 8.4 Newznab/Usenet
-
-Fuori scope per indexarr 2 nella prima fase. Le release Usenet non hanno
-`.torrent` e richiedono un modello dati e client diversi. Se in futuro si
-vorrà sostituire Prowlarr anche su Usenet, sarà un modulo separato.
+Le definizioni e i connettori si scrivono **osservando il sito** (pagine,
+risposte, documentazione delle API), non copiando file o codice di Jackett e
+Prowlarr. Ogni definizione registra autore, data e le fixture da cui è stata
+scritta. Questo garantisce che il catalogo sia interamente nostro e
+distribuibile con la licenza che scegliamo.
 
 ---
 
-## 9. Dati e persistenza
+## 7. Catalogo
 
-### 9.1 Schema proposto (aggiunte)
+### 7.1 Stati
+
+```text
+bozza ──► verificata ──► stabile
+              ▲             │
+              └── degradata ◄┘  (health check fallito; torna verificata dopo la correzione)
+```
+
+| Stato | Significato |
+|---|---|
+| `bozza` | Scritta, test su fixture non ancora completi |
+| `verificata` | Passa tutti i test su fixture |
+| `stabile` | Verificata e con health check live riuscito di recente |
+| `degradata` | Health check fallito: risultati parziali o errori |
+
+La UI e l'API mostrano sempre lo stato.
+
+### 7.2 Requisiti per entrare nel catalogo
+
+- validazione dello schema senza errori;
+- fixture per ricerca e, se privato, login riuscito e fallito;
+- test con invarianti (`min_rows`, campi obbligatori);
+- query di `health` definita;
+- dati sensibili rimossi dalle fixture (passkey, cookie, nomi utente).
+
+### 7.3 Cosa scrivere prima
+
+Il catalogo si scrive in ordine di valore, non in ordine alfabetico:
+
+1. **Inventario dei siti**: quelli configurati nelle istanze reali, quelli
+   presenti nelle configurazioni importate da Jackett/Prowlarr (§10) e, con
+   consenso, le statistiche anonime di quali siti vengono richiesti.
+2. **Famiglie prima dei siti**: un connettore di famiglia copre molti siti con
+   un solo lavoro.
+3. **Siti più usati**, poi la coda lunga.
+
+### 7.4 Il ponte: nessun sito perso durante la riscrittura
+
+Riscrivere il catalogo richiede tempo. Perché l'utente abbia il 100% dei suoi
+siti al giorno uno:
+
+- i siti che non hanno ancora una definizione nativa continuano a funzionare
+  tramite il Jackett o il Prowlarr dell'utente, usati come sorgente Torznab
+  (supporto già esistente in indexarr);
+- la UI mostra quali indexer passano dal ponte e avvisa quando è disponibile
+  la definizione nativa, con migrazione in un clic;
+- il ponte si svuota sito per sito; quando è vuoto, Jackett e Prowlarr si
+  possono spegnere.
+
+Il ponte è un meccanismo di transizione: indexarr non legge né esegue
+definizioni Cardigann, interroga solo l'endpoint Torznab di un servizio già
+installato dall'utente.
+
+### 7.5 Verifica continua
+
+- **CI**: tutte le definizioni testate sulle fixture a ogni modifica del motore
+  o del catalogo; una regressione blocca la build.
+- **Canary**: health check periodici sui siti pubblici dall'infrastruttura del
+  progetto.
+- **Rete di salute (opt-in)**: le istanze segnalano in modo anonimo l'esito
+  degli health check per definizione e versione; un sito rotto si scopre in
+  minuti.
+- **Distribuzione**: il catalogo si aggiorna come pacchetto di dati firmato,
+  senza aggiornare il binario.
+
+### 7.6 Manutenzione
+
+- **Studio delle definizioni**: scrittura guidata dalla UI, selezionando i
+  campi sulla pagina del sito, con anteprima e fixture generate.
+- **Riparazione assistita**: quando un sito cambia layout, il motore confronta
+  la pagina nuova con l'ultima fixture valida e propone i nuovi selettori.
+
+---
+
+## 8. Modello dati
+
+Separazione tra definizione, istanza, segreti e stato. Il protocollo è un
+campo di primo livello: release torrent e Usenet convivono nella stessa cache.
+Per Usenet la chiave di deduplica è il GUID (non esiste infohash) e il payload
+salvato è il `.nzb` invece del `.torrent`.
 
 ```sql
--- Definizioni (built-in e importate)
 definitions (
-  id            TEXT PRIMARY KEY,
-  schema_version INTEGER NOT NULL,
-  name          TEXT NOT NULL,
-  version       TEXT NOT NULL,
-  source        TEXT NOT NULL,       -- builtin | import | url
-  hash          TEXT NOT NULL,
-  yaml          TEXT NOT NULL,
-  enabled       INTEGER NOT NULL DEFAULT 1,
-  created_at    INTEGER NOT NULL
+  id TEXT PRIMARY KEY, schema_version INTEGER NOT NULL,
+  family TEXT,                    -- connettore di famiglia, se usato
+  state TEXT NOT NULL,            -- bozza | verificata | stabile | degradata
+  origin TEXT NOT NULL,           -- builtin | catalog | local
+  author TEXT, body TEXT NOT NULL, hash TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
 )
 
--- Istanza configurata
 indexers (
-  id            INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY,
   definition_id TEXT NOT NULL REFERENCES definitions(id),
-  slug          TEXT NOT NULL UNIQUE,
-  name          TEXT NOT NULL,
-  enabled       INTEGER NOT NULL DEFAULT 1,
-  config_json   TEXT NOT NULL DEFAULT '{}',
-  categories    TEXT NOT NULL DEFAULT '',
-  interval_seconds INTEGER NOT NULL DEFAULT 0,
-  created_at    INTEGER NOT NULL,
-  updated_at    INTEGER NOT NULL
+  protocol TEXT NOT NULL,         -- torrent | usenet
+  slug TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1, priority INTEGER NOT NULL DEFAULT 25,
+  config_json TEXT NOT NULL DEFAULT '{}',   -- impostazioni non segrete
+  proxy_id INTEGER, tags TEXT NOT NULL DEFAULT '',
+  query_limit INTEGER, grab_limit INTEGER,
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
 )
 
--- Segreti cifrati (non nel record indexer)
-indexer_secrets (
-  indexer_id    INTEGER NOT NULL REFERENCES indexers(id) ON DELETE CASCADE,
-  key           TEXT NOT NULL,
-  nonce         BLOB NOT NULL,
-  ciphertext    BLOB NOT NULL,
-  PRIMARY KEY (indexer_id, key)
-)
-
--- Stato volatile/persistente della sessione
-indexer_state (
-  indexer_id    INTEGER PRIMARY KEY REFERENCES indexers(id) ON DELETE CASCADE,
-  cookies       BLOB,
-  last_login_at INTEGER NOT NULL DEFAULT 0,
-  circuit       TEXT NOT NULL DEFAULT 'closed',
-  last_error    TEXT NOT NULL DEFAULT '',
-  updated_at    INTEGER NOT NULL
-)
-
--- Provenance multi-indexer
-release_sources (
-  release_id    INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
-  indexer_id    INTEGER NOT NULL REFERENCES indexers(id) ON DELETE CASCADE,
-  first_seen_at INTEGER NOT NULL,
-  last_seen_at  INTEGER NOT NULL,
-  seeders       INTEGER NOT NULL DEFAULT -1,
-  leechers      INTEGER NOT NULL DEFAULT -1,
-  download_url  TEXT NOT NULL DEFAULT '',
-  PRIMARY KEY (release_id, indexer_id)
-)
-
--- Statistiche per richiesta/indexer (retention)
-indexer_requests (
-  id            INTEGER PRIMARY KEY,
-  indexer_id    INTEGER NOT NULL,
-  kind          TEXT NOT NULL,       -- search | latest | login | download | test
-  query         TEXT NOT NULL DEFAULT '',
-  status        INTEGER NOT NULL,
-  latency_ms    INTEGER NOT NULL,
-  bytes         INTEGER NOT NULL,
-  error         TEXT NOT NULL DEFAULT '',
-  started_at    INTEGER NOT NULL
-)
-
--- App sync
-applications (
-  id            INTEGER PRIMARY KEY,
-  kind          TEXT NOT NULL,       -- sonarr | radarr | lidarr
-  name          TEXT NOT NULL,
-  url           TEXT NOT NULL,
-  api_key_enc   BLOB NOT NULL,
-  enabled       INTEGER NOT NULL DEFAULT 1,
-  last_sync_at  INTEGER NOT NULL DEFAULT 0,
-  last_error    TEXT NOT NULL DEFAULT ''
-)
+indexer_secrets (indexer_id, key, nonce, ciphertext)      -- vault
+indexer_state   (indexer_id, cookies_enc, last_login_at,
+                 circuit, disabled_until, last_error, updated_at)
+release_sources (release_id, indexer_id, first_seen_at, last_seen_at,
+                 seeders, leechers, download_ref)          -- provenance
+indexer_history (id, indexer_id, kind, query, status,
+                 latency_ms, bytes, error, app, started_at)
+applications    (id, kind, name, url, api_key_enc, sync_level,
+                 last_sync_at, last_error)
+app_indexers    (application_id, indexer_id, remote_id, synced_hash)
+proxies         (id, kind, url, secrets_enc)
 ```
 
-La tabella `releases` e `releases_fts` restano. `release_sources` aggiunge la
-provenance; `sources` può essere migrata a `indexers` con una vista di
-compatibilità durante la transizione.
-
-### 9.2 Migrazione dallo schema attuale
-
-1. creare `definitions` con le definizioni built-in e i parser nativi;
-2. creare `indexers` da `sources`, mappando `kind`/`manager` su una definizione
-   o su un connettore nativo;
-3. copiare `api_key`/`username`/`password` nel vault cifrato;
-4. mantenere `sources` come vista/tabella legacy per una release;
-5. popolare `release_sources` con l'indexer corrente delle release esistenti;
-6. scrivere test di migrazione da un DB reale (copia) e rollback.
+`download_ref` è un riferimento interno: l'URL reale del tracker (con passkey)
+resta cifrato e non esce mai dalle API.
 
 ---
 
-### 9.3 Impatto sui pacchetti attuali
+## 9. Sicurezza
 
-| Pacchetto | Evoluzione |
+- **Passkey e API key degli indexer**: i link verso le \*arr passano sempre
+  dal proxy `/dl/` (`.torrent` e `.nzb`); nessuna risposta API contiene URL
+  del tracker o l'API key dell'indexer Newznab.
+- **Vault**: AES-GCM con chiave esterna (`INDEXARR_MASTER_KEY` o file
+  separato). Protegge backup e copie del DB, **non** chi ha accesso completo
+  all'host: va detto chiaramente nella documentazione.
+- **Definizioni = dati**: nessun codice eseguibile scaricato. Il catalogo
+  remoto è firmato.
+- **SSRF**: solo `http`/`https`; loopback, link-local, metadata cloud e reti
+  private bloccati salvo opt-in per indexer locale; redirect rivalidati;
+  limiti di dimensione e timeout.
+- **CAPTCHA**: nessuna risoluzione automatica; l'indexer va in stato `blocked`
+  e si chiede intervento umano.
+- **API e UI**: API key multiple e revocabili, CSRF, Basic auth opzionale,
+  audit log delle modifiche a indexer e credenziali.
+
+indexarr indicizza e non scarica contenuti; le definizioni rispettano i limiti
+di richiesta dei siti.
+
+---
+
+## 10. Da indexarr a indexarr 2
+
+Il codice attuale è la base: è in produzione e misurato (vedi
+`docs/AUDIT-2026-10-23.md`).
+
+| Pacchetto | Destino |
 |---|---|
-| `internal/feed` | Estrarre i parser puri; aggiungere `internal/indexer` per definizioni, connettori, sessioni, rate limit. `feed.Client` resta come adapter legacy verso Torznab/Jackett/Prowlarr durante la migrazione. |
-| `internal/ingest` | `RunSource` diventa `RunIndexer`; lo scheduler usa il nuovo modello; il fan-out di ricerca si sposta in `internal/search`. |
-| `internal/store` | Nuove tabelle `definitions`, `indexers`, `indexer_secrets`, `indexer_state`, `release_sources`, `indexer_requests`, `applications`; migrazione da `sources`; FTS5 resta. |
-| `internal/torznabapi` | Routing per indexer, caps per indexer, alias Jackett; l'app sync va in `internal/appsync`. |
-| `internal/web` | UI catalogo definizioni, editor indexer, test con fixture, stato sessioni/circuit breaker, metriche. |
-| `internal/flaresolverr` | Astrazione `ChallengeSolver` con implementazioni FlareSolverr e, opzionale, browser CDP. |
-| `internal/downloadclient` | Nessuna modifica sostanziale; resta il livello di invio ai client torrent. |
-| `internal/backup` | Backup di DB + definizioni/config; restore con migrazione e rebuild FTS. |
-| `cmd/indexarr` | Sottocomandi: `serve`, `indexer test`, `definition import`, `db migrate`, `db check`. |
+| `internal/store` | Resta; nuove tabelle (§8); `sources` migrata a `indexers` |
+| `internal/torznabapi` | Resta come stadio `distribute`; routing per indexer, filtri, alias Jackett, errori Torznab completi |
+| `internal/ingest` | Diventa scheduler + pipeline (§5.1) |
+| `internal/feed` | Parser HTML attuali → prime definizioni native (primi casi di test del motore); client Torznab/RSS → connettori nativi; client Jackett/Prowlarr → ponte (§7.4) |
+| `internal/flaresolverr` | Diventa un'implementazione di `ChallengeSolver` dentro `fetch` |
+| `internal/downloadclient` | Resta; aggiunge Deluge, rTorrent, SABnzbd, NZBGet |
+| `internal/backup`, `internal/web` | Restano ed estendono |
+| nuovi | `internal/definition` (formato, validazione, upgrader), `internal/engine` (motore), `internal/family` (connettori di famiglia), `internal/appsync`, `internal/vault` |
 
-## 10. Sicurezza
+Migrazione dei dati esistenti:
 
-### 10.1 Credenziali
+1. ogni `source` diventa un `indexer` con una definizione nativa o un
+   connettore (Torznab, RSS, oppure ponte Jackett/Prowlarr);
+2. credenziali spostate nel vault;
+3. `release_sources` popolata dalle release esistenti;
+4. API key e URL Torznab attuali continuano a funzionare;
+5. test di migrazione su copia del DB reale, con rollback.
 
-Oggi le credenziali delle sorgenti sono nel DB in chiaro. Per un servizio che
-gestisce decine di account privati è un debito da chiudere:
-
-- cifratura AES-GCM con chiave esterna (`INDEXARR_MASTER_KEY` o keyring);
-- non scrivere mai segreti nei log (già fatto in parte);
-- mascherare i campi nella UI e nell'export;
-- rotazione e backup della chiave;
-- import/export cifrato.
-
-### 10.2 Definizioni non fidate
-
-- Schema validato; niente codice arbitrario.
-- Starlark in sandbox, senza rete/filesystem, con limiti di CPU/memoria.
-- Firma opzionale delle definizioni importate.
-- Dry-run e report prima dell'attivazione.
-
-### 10.3 SSRF e URL non fidati
-
-Le definizioni e i listing HTML possono contenere URL arbitrari. Regole:
-
-- solo `http`/`https`;
-- blocco di loopback, link-local, metadata cloud e reti private, salvo opt-in
-  esplicito per un indexer locale;
-- redirect limitati e rivalidati;
-- limite dimensione e timeout;
-- niente `file://`, `gopher://`, `ftp://`.
-
-### 10.4 API e UI
-
-- API key multiple, rate limit, revoca;
-- Basic auth opzionale già presente;
-- CSRF già presente;
-- header di sicurezza;
-- pprof solo opt-in e solo su localhost (già introdotto);
-- audit log per modifiche a indexer e credenziali.
-
-### 10.5 Aspetti legali/etici
-
-indexarr non scarica contenuti e non aggira paywall/DRM. Le definizioni devono
-rispettare i termini dei siti e i limiti di richiesta. L'utente resta
-responsabile dell'uso. Il documento non propone bypass di CAPTCHA o accessi non
-autorizzati.
+Jackett e Prowlarr restano utilizzabili come sorgenti durante la transizione.
 
 ---
 
-## 11. Operatività e affidabilità
+## 11. Dipendenze
 
-- **Scheduler** con jitter per non colpire tutti gli indexer allo stesso secondo.
-- **Intervalli adattivi**: più frequenti per indexer che producono novità, più
-  radi per quelli stabili; rispetto dei rate limit.
-- **Circuit breaker** e stato `blocked` visibile in UI.
-- **Metriche**: richieste, errori, 429, latenza p50/p95, cache hit, login,
-  dimensione risposta, item nuovi.
-- **Log strutturati**: `component`, `indexer`, `request_id`, `stage`; buffer
-  limitato.
-- **Backup** già presente; aggiungere backup delle definizioni/config.
-- **Ripristino** testato con DB contenente FTS5 e definizioni.
-- **Limiti risorse**: worker globali, semafori per host, cap risposta, pprof
-  opt-in, soak test 24h.
+Oggi `go.mod` ha una sola dipendenza diretta (SQLite). Il motore richiede
+almeno:
 
-### SLO indicativi
+- selettori CSS su `x/net/html` (es. cascadia/goquery);
+- parser YAML;
+- selettori JSON (percorsi semplici, senza un linguaggio di query completo).
 
-| Metrica | Obiettivo |
-|---|---|
-| Ricerca cache p95 | < 100 ms su 100k release |
-| Fan-out live p95 (10 indexer) | < 8 s |
-| Memoria a riposo | < 150 MiB |
-| CPU a riposo | < 1% |
-| Error rate per indexer | < 5% (esclusi blocchi esterni) |
-| Recupero dopo 429 | rispetto `Retry-After`, nessun retry storm |
-| Disponibilità | riavvio automatico, stato coerente |
+Regola: poche dipendenze, mature, senza CGO; ogni nuova dipendenza va
+motivata.
 
 ---
 
-## 12. Confronto sintetico
+## 12. Roadmap
 
-| Dimensione | Jackett | Prowlarr | indexarr 2 |
-|---|---|---|---|
-| Runtime | .NET | .NET | Go statico |
-| Definizioni | Cardigann | Cardigann esteso | Schema v2 + import Cardigann |
-| Cache release | Limitata | No | SQLite + FTS5 |
-| Ricerca full-text | No | No | Sì |
-| App sync | No | Sì | Sì (fase 3) |
-| Endpoint per indexer | Sì | Sì | Sì |
-| Compatibilità Torznab | Sì | Sì | Sì |
-| Compatibilità Jackett API | — | Parziale | Sì (migrazione) |
-| Sessioni/login | Per definizione | Per indexer | Motore unico |
-| Rate limit per host | Variabile | Variabile | Token bucket + circuit breaker |
-| Browser/JS | FlareSolverr | FlareSolverr | FlareSolverr + browser opzionale |
-| Test definizioni | Limitato | Limitato | Fixture + golden + CI |
-| Credenziali | Config | DB | Vault cifrato |
-| Metriche | Base | Buone | Per indexer/richiesta |
-| Single binary | Sì (.NET self-contained) | Sì (.NET) | Sì |
+Le fasi sono milestone, non date. La 1.0 coincide con la checklist del §3
+tutta verde.
 
----
-
-## 13. Roadmap consigliata
-
-### Fase 0 — Fondamenta (2–3 settimane)
-
-- schema definizioni v2 e validatore;
-- motore di estrazione HTML/JSON/XML con CSS/JSONPath/regex;
-- importer Cardigann per un sottoinsieme;
-- 5–10 definizioni reali;
-- test harness con fixture;
-- interfaccia `Connector`.
-
-**Exit criteria**: una definizione HTML e una JSON producono Item normalizzati
-senza toccare il codice Go.
-
-### Fase 1 — Connettori e sessioni (3–4 settimane)
-
-- login form/CSRF/cookie jar;
-- Basic/API key/OAuth (base);
-- paginazione;
-- rate limit per host;
-- download resolution e cache;
-- 20–30 definizioni, inclusi i siti oggi hardcoded;
-- migrazione delle sorgenti attuali.
-
-**Exit criteria**: i siti ExtTo/TorrentGalaxy/Corsaro e almeno 10 tracker
-funzionano tramite definizione/connettore, con test.
-
-### Fase 2 — Ricerca e distribuzione (3–4 settimane)
-
-- planner e fan-out;
-- cache+live;
-- endpoint Torznab per indexer;
-- provenance multi-indexer;
-- metriche e stato;
-- compatibilità Torznab con *arr.
-
-**Exit criteria**: Sonarr/Radarr/Lidarr possono usare l'aggregato e i singoli
-endpoint; latenza e errori misurati.
-
-### Fase 3 — Sostituzione Prowlarr (2–3 settimane)
-
-- app sync Sonarr/Radarr/Lidarr;
-- UI applicazioni;
-- compatibilità Jackett API;
-- catalogo/import/export definizioni;
-- vault credenziali.
-
-**Exit criteria**: un'installazione può rimuovere Prowlarr e Jackett, usando
-indexarr come unico provider Torznab, con sync automatico.
-
-### Fase 4 — Rifinitura continua
-
-- browser opzionale;
-- rate limit adattivi;
-- definizioni community e aggiornamenti;
-- test di carico/soak 24h;
-- metriche SLO;
-- documentazione per chi scrive definizioni.
-
-**Stima complessiva**: 8–12 settimane per un MVP usable; 4–6 mesi per una
-sostituzione completa e affidabile di Prowlarr nei casi reali.
-
----
-
-## 14. Rischi e decisioni aperte
-
-| Rischio | Impatto | Mitigazione |
+| Milestone | Contenuto | Uscita |
 |---|---|---|
-| Definizioni fragili | Ricerche rotte | Fixture, dry-run, stato degraded, aggiornamenti |
-| Anti-bot/CAPTCHA | Siti inutilizzabili | FlareSolverr/browser, stato blocked, rispetto limiti |
-| Credenziali | Sicurezza | Vault cifrato, redazione, audit |
-| Complessità app sync | Scope | Fase separata, test con versioni *arr |
-| Cardigann incompleto | Import parziale | Report di compatibilità, connettori nativi |
-| SQLite oltre scala | Performance | Indici, FTS5, retention, adapter futuro |
-| Codice nelle definizioni | Sicurezza | Sandbox Starlark/WASM, no rete |
-| Licenze definizioni | Legale | Verifica licenza, import solo consentito |
-| Manutenzione | Costo | Catalogo versionato, test automatici, priorità ai siti usati |
+| **M0 — Fondamenta** | Modello dati §8, migrazione da `sources`, vault, pipeline a stadi, interfacce `Connector` e `Module` | indexarr funziona come oggi sul nuovo modello |
+| **M1 — Motore** | Formato v1, motore HTML/JSON/XML, sessioni, login, paginazione, rate limit per host, circuit breaker | I tre parser HTML attuali sostituiti da definizioni |
+| **M2 — Catalogo** | Inventario dei siti, connettori di famiglia, prime definizioni, studio delle definizioni, CI del catalogo, ponte | Siti propri tutti funzionanti (nativi o ponte) |
+| **Alpha interna** | Inventario prioritario riscritto e verificato | Uso quotidiano su istanza propria |
+| **M3 — Distribuzione** | Endpoint per indexer e filtrati, alias Jackett, errori Torznab, limiti query/grab, proxy | \*arr collegate senza Jackett/Prowlarr |
+| **M4 — App sync** | Tutte le applicazioni del §3.2, livelli di sync, riconciliazione | Prowlarr rimovibile |
+| **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita, ponte in svuotamento |
+| **M6 — Usenet** | Connettore Newznab e preset, endpoint Newznab, proxy `.nzb`, SABnzbd/NZBGet, sync Newznab verso le \*arr | Indexer Usenet gestiti come in Prowlarr |
+| **Beta** | Health check opt-in; documentazione per chi scrive definizioni | Checklist §3 quasi completa |
+| **1.0** | Checklist §3 verde | Rilascio pubblico |
+| **Dopo la 1.0** | Funzioni del §4 e nuove, come moduli | Continuo |
 
-### Decisioni da prendere
-
-1. **Ambito**: solo torrent o anche Usenet? (raccomandazione: torrent prima).
-2. **App sync**: priorità alta o dopo il motore? (raccomandazione: dopo).
-3. **Compatibilità Jackett API**: necessaria per i client o basta Torznab?
-4. **Definizioni**: solo built-in o anche community/import da URL?
-5. **Browser**: esterno opzionale o plugin incluso?
-6. **Multi-utente**: single-user o autenticazione multi-account?
-7. **Licenza del catalogo definizioni**: compatibilità con l'ecosistema.
+Le funzioni del §4 già presenti (cache, FTS5) restano attive in tutte le
+milestone.
 
 ---
 
-### Cosa non fare
+## 13. Rischi
 
-- Non incorporare Chromium nel binario: megabyte, superficie di attacco e
-  manutenzione sproporzionati. Meglio un servizio browser opzionale.
-- Non eseguire definizioni come codice arbitrario: niente script con accesso a
-  rete/filesystem.
-- Non promettere “tutti i siti di Jackett” al giorno uno: il catalogo va
-  prioritizzato sui siti realmente usati.
-- Non eliminare subito `sources`/Torznab attuali: la compatibilità è il valore
-  principale durante la migrazione.
-- Non trasformare indexarr in un client BitTorrent: il confine “indice, non
-  download” va mantenuto.
-
-## 15. Raccomandazione finale
-
-La strada giusta non è “riscrivere Jackett in Go” né “copiare Prowlarr”. È
-costruire un **motore di definizioni e connettori** che:
-
-- importi Cardigann per non perdere il catalogo esistente;
-- sia più espressivo e testabile del Cardigann classico;
-- usi connettori nativi per i siti che contano;
-- sfrutti la cache, FTS5 e il server Torznab già presenti;
-- aggiunga sessioni, rate limit e observability moderni;
-- esponga endpoint per indexer e, in una fase successiva, app sync.
-
-Il primo traguardo concreto è **sostituire i tre parser HTML compilati con
-definizioni**, poi importare 20–30 siti usati davvero, quindi aggiungere il
-fan-out live e gli endpoint per indexer. Solo dopo ha senso promettere la
-sostituzione completa di Prowlarr.
-
-indexarr ha già il pezzo più difficile di un indexer moderno: la cache, la
-deduplica, il server Torznab e un'operatività a 24 ore. indexarr 2 deve
-aggiungere il pezzo che oggi manca — la **conoscenza dei siti** — senza perdere
-quelle garanzie.
+| Rischio | Mitigazione |
+|---|---|
+| Volume di definizioni da riscrivere | Famiglie prima dei siti, studio delle definizioni, contributi della community, ponte per i siti mancanti |
+| Siti senza API e con layout instabile | Selettori con fallback, health check, riparazione assistita |
+| Contaminazione di licenza | Regole di scrittura pulita (§6.6) e tracciamento dell'origine di ogni definizione |
+| Cambi di API tra versioni delle \*arr | Test di integrazione per versione, matrice di compatibilità |
+| Manutenzione da parte di una sola persona | Automazione (CI del catalogo, test), moduli indipendenti, contributi della community allo studio |
+| Tempo fino alla 1.0 | Alpha interna presto; la 1.0 non si anticipa riducendo la checklist |
 
 ---
 
-## Appendice A — Glossario
+## 14. Cosa non fare
 
-- **Cardigann**: formato YAML di definizioni per indexer, usato da Jackett e
-  Prowlarr.
-- **Torznab**: estensione Torznab/Newznab per i torrent; è il contratto con
-  Sonarr/Radarr/Lidarr.
-- **Caps**: descrizione delle capacità e categorie di un indexer.
-- **Provenance**: traccia di quale indexer ha visto una release e quando.
-- **Circuit breaker**: stato che sospende temporaneamente un indexer che sta
-  fallendo.
+- Non usare Cardigann e non copiare definizioni o codice di Jackett/Prowlarr.
+- Non scegliere lo scraping HTML quando il sito offre un'API o un feed.
+- Non eseguire codice scaricato dalla rete.
+- Non incorporare Chromium; solo servizi esterni opzionali per le challenge.
+- Non esporre passkey o URL dei tracker nelle API.
+- Non rompere Torznab, le API key o gli URL esistenti.
+- Non trasformare indexarr in un client di download (né torrent né Usenet).
+
+---
+
+## Appendice — Glossario
+
+- **Cardigann**: formato YAML delle definizioni di Jackett e Prowlarr;
+  indexarr non lo usa.
+- **Connettore di famiglia**: connettore unico per tutti i siti che usano lo
+  stesso software di tracker.
+- **Ponte**: uso temporaneo del Jackett/Prowlarr dell'utente come sorgente
+  Torznab per i siti non ancora riscritti.
+- **Torznab**: estensione del protocollo Newznab per i torrent; è il contratto
+  con le \*arr.
+- **Newznab**: protocollo di ricerca per indexer Usenet.
+- **Provenance**: traccia di quali indexer hanno visto una release e quando.
+- **Circuit breaker**: sospende temporaneamente un indexer che fallisce.
 - **Token bucket**: algoritmo di rate limiting.
-- **Starlark**: linguaggio di configurazione sandboxato, adatto a trasformazioni
-  complesse senza codice arbitrario.
-- **SSRF**: server-side request forgery; rischio di far fetchare a indexarr URL
-  interni.
+- **SSRF**: server-side request forgery; far fetchare a indexarr URL interni.
 
-## Appendice B — Domande guida per il prossimo passo
+---
 
-1. Quali sono i 10 siti che oggi funzionano peggio con Jackett?
-2. Quali usano login, 2FA, Cloudflare o API proprietarie?
-3. Quanti client *arr e quante istanze?
-4. Quante release al giorno e quanta retention serve?
-5. Si vuole mantenere l'import da Jackett/Prowlarr o solo esportare?
-6. Qual è il budget di manutenzione per le definizioni?
-7. Serve il supporto Usenet nel breve periodo?
+## 15. Diario di implementazione — 23 ottobre 2026
 
-Le risposte cambiano l'ordine delle fasi, non l'architettura di fondo.
+Questa sezione è il punto di ingresso per chi continua il lavoro. La visione
+resta questo documento; i contratti Go, lo stato dettagliato e i prossimi passi
+sono in [`docs/INDEXARR2-PLAN.md`](docs/INDEXARR2-PLAN.md). Il formato delle
+definizioni è descritto in [`docs/DEFINITIONS.md`](docs/DEFINITIONS.md).
+
+### 15.1 Cosa esiste oggi nel repository
+
+| Package | Ruolo | Test |
+|---|---|---|
+| `internal/definition` | Formato nativo v1: parse YAML strict, validazione, `Fingerprint`, upgrader, JSON Schema incorporato | sì |
+| `internal/engine` | Contratti `Connector`/`Module`, pipeline a 9 stadi, transport (rate limit, breaker, SSRF), sessioni, template, estrazione HTML/JSON/XML, `DefinitionConnector` | sì |
+| `internal/family` | Connettori di famiglia UNIT3D e Newznab generico, registrati nel registry | sì |
+| `internal/vault` | AES-256-GCM, chiave da `INDEXARR_MASTER_KEY` o file separato `0600` | sì |
+| `internal/store` | Tabelle §8, migrazioni numerate, backfill da `sources`, CRUD definizioni/indexer/segreti/stato/provenance/storico/app/proxy | sì |
+| `internal/catalog` | Catalogo built-in incorporato (`catalog.yaml` + `definitions/*.yaml`), validato e sincronizzabile | sì |
+| `internal/indexer` | Costruisce e mette in cache il connettore da definizione + config + segreti; esegue un indexer; salva release, provenance, storico e stato | sì |
+| `internal/native` | Scheduler degli indexer nativi; salta il ponte legacy; worker limitati | sì |
+| `internal/adminapi` | API `/api/v2`: definizioni, catalogo, indexer, segreti nel vault, test/search/run | sì |
+| `internal/torznabapi` | Distribuzione Torznab: alias Jackett, routing per indexer, filtri aggregati, errori 100–900 | sì |
+| `internal/appsync` | Client Servarr (Sonarr/Radarr/Lidarr/Readarr/Whisparr), Mylar3/LazyLibrarian per il test, reconcile puro | sì |
+| `internal/deftool`, `cmd/indexarr-def` | CLI `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` | sì |
+| `cmd/indexarr`, `internal/web` | Wiring nel binario, mount di `/api/v2`, health, QA | sì |
+
+`indexarr` continua a funzionare come prima: il percorso legacy (`sources` →
+`ingest` → Torznab) non è stato rimosso. Le novità si aggiungono.
+
+### 15.2 Modello dati e migrazione
+
+- `schema_migrations` registra le migrazioni numerate; la prima è
+  `indexarr2 foundation`.
+- Nuove tabelle: `definitions`, `indexers`, `indexer_secrets`,
+  `indexer_state`, `release_sources`, `indexer_history`, `applications`,
+  `app_indexers`, `proxies`.
+- Ogni riga di `sources` viene collegata una volta sola a un indexer con
+  `legacy_source_id` e a una definizione `legacy-<id>` con
+  `connector: torznab|rss`. I segreti **non** vengono copiati.
+- Il backfill è idempotente. Se un indexer ponte viene cancellato, non viene
+  ricreato al riavvio: la definizione legacy resta come marcatore.
+- Su una copia del database reale: 37 `sources` → 37 `indexers`, 2.175
+  release preservate, `PRAGMA integrity_check` = `ok`.
+
+### 15.3 Flusso nel binario
+
+All'avvio `cmd/indexarr`:
+
+1. apre il vault (`INDEXARR_MASTER_KEY` oppure `<db>.key`, creato `0600`);
+2. sincronizza il catalogo built-in nel DB;
+3. costruisce un transport condiviso, il registry delle famiglie e
+   `indexer.Manager`;
+4. avvia `native.Runner`: esegue subito gli indexer nativi e poi ogni
+   `default_interval`; gli indexer ponte (`torznab`/`rss`) vengono saltati e
+   restano allo scheduler legacy;
+5. monta `/api/v2` fuori dall'autenticazione Basic della UI, con auth a API key;
+6. avvia il server HTTP e lo scheduler legacy.
+
+Un indexer nativo creato da `/api/v2` viene eseguito al giro successivo (o
+subito con `POST /api/v2/indexers/{id}/run`). Non serve riavviare.
+
+### 15.4 API amministrativa `/api/v2`
+
+Autenticazione: `apikey` in query, `X-Api-Key` o `Authorization: Bearer`.
+Nessun cookie, nessun CSRF. Errori JSON.
+
+| Metodo | Percorso |
+|---|---|
+| GET | `/api/v2/health` |
+| GET/POST | `/api/v2/definitions` |
+| POST | `/api/v2/definitions/validate` |
+| GET/PUT/DELETE | `/api/v2/definitions/{id}` |
+| GET | `/api/v2/catalog` |
+| POST | `/api/v2/catalog/sync` |
+| GET/POST | `/api/v2/indexers` |
+| GET/PUT/DELETE | `/api/v2/indexers/{id}` |
+| POST | `/api/v2/indexers/{id}/test` |
+| POST | `/api/v2/indexers/{id}/search` |
+| POST | `/api/v2/indexers/{id}/run` |
+
+Le risposte non contengono mai `api_key`, password, cookie o URL del tracker.
+La ricerca restituisce solo titolo, GUID, dimensione, seeders/leechers,
+categorie, data, infohash e magnet: `DownloadURL` e `DetailsURL` sono rimossi.
+
+### 15.5 Invarianti da non rompere
+
+- **Nessun Cardigann**: non si leggono né eseguono definizioni Jackett/Prowlarr.
+  Il ponte usa solo il loro endpoint Torznab.
+- **Nessun codice scaricato**: le definizioni sono dati; il catalogo remoto, in
+  futuro, sarà firmato.
+- **Nessun segreto nelle API**, nei log, negli errori o nelle fixture.
+- **SSRF**: solo `http`/`https`; loopback, reti private, link-local e metadata
+  cloud bloccati salvo `allow_private` esplicito per un indexer locale.
+- **Torznab non si rompe**: alias, API key esistenti e URL continuano a
+  funzionare; le aggiunte sono compatibili.
+- **Il percorso legacy resta operativo** finché il ponte non è vuoto.
+- **Le definizioni built-in sono `bozza`** finché non hanno fixture osservate
+  da un sito reale e un health check live riuscito.
+- **Un modulo spento non ha effetti**, nemmeno sullo schema delle risposte.
+
+### 15.6 Verifiche eseguite
+
+```sh
+go build ./...
+go vet ./...
+go test ./...
+go test -race ./...
+make def-validate          # 6 definizioni: 3 esempi + 3 built-in
+./scripts/qa.sh            # HTTP, Torznab, /api/v2, vault create/delete
+```
+
+Risultato: tutto verde. Il QA reale crea e cancella un indexer Newznab via
+`/api/v2`, verifica che il segreto non compaia nella risposta e che il vault
+lo possa decifrare. Il runner nativo, su una copia del DB reale, salta 37
+indexer ponte su 37 e non tocca il percorso legacy.
+
+### 15.7 Limiti noti e prossima ondata
+
+Ancora da fare, in ordine di valore:
+
+1. **UI web** per definizioni e indexer nativi (la API c'è, le pagine no):
+   catalogo, form generato dai `settings`, test per fase, migrazione dal ponte.
+2. **App sync cablato**: i client esistono; mancano job, persistenza
+   `applications`/`app_indexers`, riconciliazione periodica e rollback.
+3. **Proxy download completo**: `download_ref` opaco per indexer senza
+   `.torrent`, proxy `.nzb` Newznab, limiti query/grab applicati davvero,
+   proxy HTTP/SOCKS/FlareSolverr per indexer.
+4. **Client di download mancanti**: Deluge, rTorrent, SABnzbd, NZBGet.
+5. **Catalogo reale**: sostituire le definizioni `bozza` con definizioni
+   `verificate` su fixture osservate; health check live e canary.
+6. **Credenziali legacy → vault** e svuotamento progressivo del ponte.
+7. **Provenance in uscita**: “visto su N indexer”, scelta del link migliore,
+   refresh dei seeders con TTL.
+8. **Sicurezza e manutenzione**: firma del catalogo remoto, studio delle
+   definizioni, riparazione assistita, stato `blocked` per CAPTCHA, rete di
+   salute opt-in.
+
+### 15.8 Come lavorare (per il prossimo agente)
+
+- Leggi prima `docs/INDEXARR2-PLAN.md` (contratti e stato) e
+  `docs/DEFINITIONS.md` (formato). Questo documento è la visione, non il
+  contratto dei package.
+- Un package per volta, dipendenze verso il basso, nessun ciclo:
+  `definition` non importa nulla di indexarr; `engine` non importa `store`,
+  `web` o `torznabapi`; `indexer` è il livello di collegamento.
+- Ogni modifica al motore o al catalogo passa da fixture e test offline. Niente
+  rete nei test: `httptest`, fixture su disco, clock iniettabile.
+- `gofmt`, `go vet`, `go test` del package e `go test -race ./...` prima di
+  dichiarare finito. `make def-validate` e `./scripts/qa.sh` per la verifica
+  end-to-end.
+- Non copiare codice o definizioni di Jackett/Prowlarr. Le definizioni si
+  scrivono osservando il sito e registrando autore, data e fixture.
+- Non fare commit di chiavi, database, backup o fixture con dati personali.

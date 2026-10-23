@@ -1,0 +1,8 @@
+schema: 1
+meta:
+  id: family-newznab
+  name: Family Newznab
+  type: private
+  protocol: usenet
+  urls: ["https://newznab.example/"]
+connector: newznab

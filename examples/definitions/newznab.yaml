@@ -1,0 +1,34 @@
+schema: 1
+connector: newznab
+meta:
+  id: newznab-example
+  name: Newznab Example
+  language: en-US
+  type: private
+  protocol: usenet
+  author: indexarr examples
+  description: Esempio di indexer Usenet con API Newznab compatibile.
+  urls:
+    - https://newznab.example/
+  updated: "2026-10-23"
+
+settings:
+  - { name: url, type: text, label: API URL, required: true }
+  - { name: apikey, type: password, label: API key, required: true }
+  - name: categories
+    type: text
+    label: Newznab category ids
+    help: "Lista separata da virgole; vuota usa le categorie predefinite."
+
+categories:
+  - { site: "2000", standard: 2000, desc: "Movies" }
+  - { site: "5000", standard: 5000, desc: "TV" }
+  - { site: "3000", standard: 3000, desc: "Music" }
+  - { site: "7000", standard: 7000, desc: "Books" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep, tvdbid]
+  movie-search: [q, imdbid, tmdbid]
+  music-search: [q, artist, album]
+  book-search: [q, author, title]

@@ -2,7 +2,7 @@ BINARY  := bin/indexarr
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build test vet fmt run clean qa
+.PHONY: build test vet fmt run clean qa def-validate
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/indexarr
@@ -25,6 +25,11 @@ run:
 
 clean:
 	rm -rf bin
+
+# Validate the example definitions and, when present, the bundled catalog.
+# The fallback keeps the target useful while internal/catalog is being built.
+def-validate:
+	go run ./cmd/indexarr-def validate examples/definitions internal/catalog/definitions 2>/dev/null || go run ./cmd/indexarr-def validate examples/definitions
 
 # Cross-compiled standalone binaries (the SQLite driver is pure Go).
 .PHONY: release

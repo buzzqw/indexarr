@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>HTML Forum &mdash; Accesso negato</title>
+</head>
+<body>
+  <main class="login-box">
+    <h1>Accedi</h1>
+    <div class="error">Username o password non validi.</div>
+    <form method="post" action="/login.php">
+      <input type="hidden" name="csrf_token" value="synthetic-csrf-token-2">
+      <label>Username <input type="text" name="username"></label>
+      <label>Password <input type="password" name="password"></label>
+      <button type="submit">Entra</button>
+    </form>
+  </main>
+</body>
+</html>

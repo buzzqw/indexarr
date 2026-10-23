@@ -1,0 +1,90 @@
+schema: 1
+meta:
+  id: html-forum
+  name: HTML Forum
+  language: it-IT
+  type: private
+  protocol: torrent
+  author: indexarr examples
+  description: Esempio realistico di tracker con forum, login a form, CSRF e tabella HTML.
+  urls:
+    - https://forum.example/
+    - https://forum-mirror.example/
+  updated: "2026-10-23"
+
+settings:
+  - { name: username, type: text, label: Username, required: true }
+  - { name: password, type: password, label: Password, required: true }
+  - name: sort
+    type: select
+    label: Ordinamento
+    default: seeders
+    options: [seeders, leechers, date]
+
+categories:
+  - { site: "5", standard: 5040, desc: "TV HD" }
+  - { site: "12", standard: 2040, desc: "Film HD" }
+  - { site: "33", standard: 1000, desc: "Console" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep, imdbid]
+  movie-search: [q, imdbid]
+
+auth:
+  strategy: form
+  steps:
+    - get: /login.php
+      extract:
+        csrf: { selector: 'input[name="csrf_token"]', attr: value }
+    - post: /login.php
+      form:
+        username: "{{ settings.username }}"
+        password: "{{ settings.password }}"
+        csrf_token: "{{ csrf }}"
+  success: { selector: 'a[href="/logout.php"]' }
+  failure:
+    - { selector: "div.error", message: text }
+  refresh_after: 6h
+
+search:
+  request:
+    get: /torrents.php
+    params:
+      search: "{{ query.keywords }}"
+      cat: "{{ categories | join(',') }}"
+      page: "{{ page }}"
+      sort: "{{ settings.sort }}"
+  pagination: { type: page, start: 1, step: 1, max_pages: 5, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.torrents > tbody > tr" }
+    fields:
+      title: { selector: ["a.title", "td.name a"], filters: [trim] }
+      details: { selector: "a.title", attr: href, type: url }
+      download: { selector: "a.download", attr: href, type: url }
+      category:
+        selector: "a.cat"
+        attr: href
+        filters: [{ query_param: cat }]
+        type: category
+      size: { selector: "td.size", type: size }
+      seeders: { selector: "td.seeders", type: int }
+      leechers: { selector: "td.leechers", type: int }
+      date: { selector: "td.date", type: date, layouts: ["02-01-2006 15:04"] }
+    required: [title, download, size]
+
+health:
+  query: test
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/html-forum/search.html
+    expect: { min_rows: 2, required: [title, download, size, category] }
+  - name: login-ok
+    fixture: fixtures/html-forum/login-ok.html
+    expect: { authenticated: true }
+  - name: login-failed
+    fixture: fixtures/html-forum/login-failed.html
+    expect: { authenticated: false }

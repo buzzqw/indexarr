@@ -49,6 +49,7 @@ type Filter struct {
 	Exclude       []string // parsed exclude terms, applied with NOT
 	Regex         bool
 	SourceID      int64
+	SourceIDs     []int64 // multi-indexer selection (aggregate filters); takes effect when SourceID is zero
 	Categories    []string
 	Season        int
 	Episode       int
@@ -551,6 +552,18 @@ func buildWhere(f Filter) (string, []any) {
 	if f.SourceID > 0 {
 		clauses = append(clauses, `source_id = ?`)
 		args = append(args, f.SourceID)
+	} else if len(f.SourceIDs) > 0 {
+		placeholders := make([]string, 0, len(f.SourceIDs))
+		for _, id := range f.SourceIDs {
+			if id <= 0 {
+				continue
+			}
+			placeholders = append(placeholders, "?")
+			args = append(args, id)
+		}
+		if len(placeholders) > 0 {
+			clauses = append(clauses, `source_id IN (`+strings.Join(placeholders, ",")+`)`)
+		}
 	}
 	if len(f.Categories) > 0 {
 		var catClauses []string

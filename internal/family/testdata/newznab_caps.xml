@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<caps>
+  <server version="1.0" title="Example Indexer"/>
+  <limits max="10000" default="50"/>
+  <searching>
+    <search available="yes" supportedParams="q,group"/>
+    <tv-search available="yes" supportedParams="q,season,ep,imdbid,tvdbid,tvmazeid,cat"/>
+    <movie-search available="yes" supportedParams="q,imdbid,tmdbid"/>
+    <music-search available="no" supportedParams="q,artist,album,rid"/>
+    <book-search available="yes" supportedParams="q,author,title"/>
+  </searching>
+  <categories>
+    <category id="2000" name="Movies">
+      <subcat id="2040" name="Movies/HD"/>
+      <subcat id="2045" name="Movies/UHD"/>
+    </category>
+    <category id="5000" name="TV">
+      <subcat id="5040" name="TV/HD"/>
+    </category>
+  </categories>
+</caps>

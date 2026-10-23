@@ -1,0 +1,503 @@
+// Package indexer is the integration layer of indexarr 2: it turns a stored
+// definition plus one configured indexer plus its vault secrets into a live
+// engine.Connector, caches the result, and runs one indexer into the release
+// cache.
+//
+// The package deliberately knows nothing about the legacy sources table. A
+// bridged indexer whose definition still asks for the Torznab or RSS
+// connector is reported with ErrLegacyConnector and left to the legacy ingest
+// path until it is migrated.
+package indexer
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"strconv"
+	"strings"
+	"sync"
+
+	"github.com/buzzqw/indexarr/internal/definition"
+	"github.com/buzzqw/indexarr/internal/engine"
+	"github.com/buzzqw/indexarr/internal/family"
+	"github.com/buzzqw/indexarr/internal/store"
+	"github.com/buzzqw/indexarr/internal/vault"
+)
+
+// DefaultMaxTorrentsPerRun bounds how many .torrent payloads one run fetches.
+const DefaultMaxTorrentsPerRun = 30
+
+// maxRunItems bounds the engine items kept in RunStats for the admin UI.
+const maxRunItems = 100
+
+var (
+	// ErrLegacyConnector marks a definition that still names the legacy
+	// torznab or rss connector. Those sources keep working through the legacy
+	// ingest path until they are migrated to a native definition.
+	ErrLegacyConnector = errors.New("indexer: legacy bridged connector must be handled by the legacy ingest path")
+
+	// ErrVaultRequired is returned when an indexer has sealed secrets but the
+	// Manager was built without a vault.
+	ErrVaultRequired = errors.New("indexer: vault required for indexer secrets")
+
+	// ErrStoreRequired is returned by New without a store.
+	ErrStoreRequired = errors.New("indexer: store is required")
+)
+
+// LegacyConnectorError is the typed error returned for a definition whose
+// connector is torznab or rss and has no factory in the registry. It unwraps
+// to ErrLegacyConnector, so errors.Is keeps working.
+type LegacyConnectorError struct {
+	Name string
+}
+
+// Error implements error.
+func (e *LegacyConnectorError) Error() string {
+	return fmt.Sprintf("indexer: connector %q: %v", e.Name, ErrLegacyConnector)
+}
+
+// Unwrap returns ErrLegacyConnector.
+func (e *LegacyConnectorError) Unwrap() error {
+	return ErrLegacyConnector
+}
+
+// Config configures a Manager. Store is required; every other field has a
+// usable default.
+type Config struct {
+	Store             *store.Store
+	Vault             *vault.Vault      // nil => indexers with secrets cannot be built
+	Registry          *engine.Registry  // nil => built with family.Register
+	Transport         *engine.Transport // nil => NewTransport(TransportConfig{})
+	Logger            *slog.Logger
+	MaxTorrentsPerRun int // 0 => 30
+}
+
+// Manager builds and caches connectors and runs indexers into the store.
+type Manager struct {
+	store       *store.Store
+	vault       *vault.Vault
+	registry    *engine.Registry
+	transport   *engine.Transport
+	logger      *slog.Logger
+	maxTorrents int
+
+	mu    sync.Mutex
+	cache map[int64]cachedConnector
+}
+
+type cachedConnector struct {
+	key       string
+	connector engine.Connector
+	secrets   []string
+}
+
+// RunStats is what one Run did. Items is capped to keep memory bounded.
+type RunStats struct {
+	Seen     int
+	New      int
+	Updated  int
+	Blocked  int
+	Skipped  int
+	Torrents int
+	Items    []engine.Item
+}
+
+// New builds a Manager.
+func New(cfg Config) (*Manager, error) {
+	if cfg.Store == nil {
+		return nil, ErrStoreRequired
+	}
+	registry := cfg.Registry
+	if registry == nil {
+		registry = engine.NewRegistry()
+		if err := family.Register(registry); err != nil {
+			return nil, fmt.Errorf("indexer: register family connectors: %w", err)
+		}
+	}
+	transport := cfg.Transport
+	if transport == nil {
+		transport = engine.NewTransport(engine.TransportConfig{})
+	}
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+	maxTorrents := cfg.MaxTorrentsPerRun
+	if maxTorrents <= 0 {
+		maxTorrents = DefaultMaxTorrentsPerRun
+	}
+	return &Manager{
+		store:       cfg.Store,
+		vault:       cfg.Vault,
+		registry:    registry,
+		transport:   transport,
+		logger:      logger,
+		maxTorrents: maxTorrents,
+		cache:       make(map[int64]cachedConnector),
+	}, nil
+}
+
+// Connector returns the live connector for one indexer together with the
+// indexer row it was built from. Connectors are cached per indexer and rebuilt
+// when the definition body, the definition timestamp or the indexer row
+// changes.
+func (m *Manager) Connector(ctx context.Context, indexerID int64) (engine.Connector, store.Indexer, error) {
+	indexer, err := m.store.GetIndexer(ctx, indexerID)
+	if err != nil {
+		return nil, store.Indexer{}, fmt.Errorf("indexer %d: %w", indexerID, err)
+	}
+	connector, err := m.connectorFor(ctx, indexer)
+	if err != nil {
+		return nil, indexer, err
+	}
+	return connector, indexer, nil
+}
+
+// Invalidate drops the cached connector of one indexer.
+func (m *Manager) Invalidate(indexerID int64) {
+	m.mu.Lock()
+	delete(m.cache, indexerID)
+	m.mu.Unlock()
+}
+
+// InvalidateAll drops every cached connector.
+func (m *Manager) InvalidateAll() {
+	m.mu.Lock()
+	m.cache = make(map[int64]cachedConnector)
+	m.mu.Unlock()
+}
+
+// connectorFor loads the definition, builds the settings map and returns the
+// cached or freshly built connector.
+func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engine.Connector, error) {
+	def, err := m.store.GetDefinition(ctx, indexer.DefinitionID)
+	if err != nil {
+		return nil, fmt.Errorf("indexer %s: load definition %q: %w", indexer.Slug, indexer.DefinitionID, err)
+	}
+	parsed, err := definition.Parse([]byte(def.Body))
+	if err != nil {
+		return nil, fmt.Errorf("indexer %s: parse definition %q: %w", indexer.Slug, def.ID, err)
+	}
+
+	key := connectorKey(def, indexer)
+	m.mu.Lock()
+	if entry, ok := m.cache[indexer.ID]; ok && entry.key == key {
+		m.mu.Unlock()
+		return entry.connector, nil
+	}
+	m.mu.Unlock()
+
+	config, err := decodeConfig(indexer.ConfigJSON)
+	if err != nil {
+		return nil, fmt.Errorf("indexer %s: parse config_json: %w", indexer.Slug, err)
+	}
+	settings := settingsFromConfig(config)
+	secretValues, err := m.applySecrets(ctx, indexer.ID, settings)
+	if err != nil {
+		return nil, err
+	}
+	applyDefaults(indexer, parsed, settings)
+
+	protocol := engine.Protocol(strings.TrimSpace(indexer.Protocol))
+	if !protocol.Valid() {
+		protocol = engine.ProtocolTorrent
+	}
+	ref := engine.IndexerRef{
+		ID:       indexer.ID,
+		Slug:     indexer.Slug,
+		Name:     indexer.Name,
+		Protocol: protocol,
+	}
+
+	// A local indexer is an explicit opt-in: it gets its own guarded
+	// transport with private addresses allowed, never the shared public one.
+	transport := m.transport
+	if settingBool(settings["allow_private"]) {
+		transport = engine.NewTransport(engine.TransportConfig{AllowPrivate: true})
+	}
+
+	name := connectorName(parsed, def)
+	var connector engine.Connector
+	switch name {
+	case "", "definition":
+		connector, err = engine.NewDefinitionConnector(engine.DefinitionConfig{
+			Indexer:    ref,
+			Definition: parsed,
+			Settings:   settings,
+			Transport:  transport,
+		})
+		if err != nil {
+			return nil, redactError(fmt.Errorf("indexer %s: build definition connector: %w", indexer.Slug, err), secretValues)
+		}
+	default:
+		if _, ok := m.registry.Factory(name); !ok {
+			if name == "torznab" || name == "rss" {
+				return nil, &LegacyConnectorError{Name: name}
+			}
+			return nil, fmt.Errorf("indexer %s: connector %q is not registered", indexer.Slug, name)
+		}
+		connector, err = m.registry.NewConnector(name, engine.Config{
+			Indexer:   ref,
+			Settings:  settings,
+			Transport: transport,
+		})
+		if err != nil {
+			return nil, redactError(fmt.Errorf("indexer %s: build connector %q: %w", indexer.Slug, name, err), secretValues)
+		}
+	}
+
+	entry := cachedConnector{key: key, connector: connector, secrets: secretValues}
+	m.mu.Lock()
+	// A concurrent build may have won the race. Reuse it so callers always
+	// observe one cached connector per indexer.
+	if existing, ok := m.cache[indexer.ID]; ok && existing.key == key {
+		m.mu.Unlock()
+		return existing.connector, nil
+	}
+	m.cache[indexer.ID] = entry
+	m.mu.Unlock()
+	return connector, nil
+}
+
+// connectorName applies the precedence fixed by the plan: the YAML
+// connector, then the definitions.family column, then the native definition
+// interpreter.
+func connectorName(parsed *definition.Definition, def store.Definition) string {
+	if name := strings.ToLower(strings.TrimSpace(parsed.Connector)); name != "" {
+		return name
+	}
+	if name := strings.ToLower(strings.TrimSpace(def.Family)); name != "" {
+		return name
+	}
+	return "definition"
+}
+
+func connectorKey(def store.Definition, indexer store.Indexer) string {
+	var b strings.Builder
+	b.WriteString(definition.Fingerprint([]byte(def.Body)))
+	b.WriteByte('|')
+	b.WriteString(strconv.FormatInt(def.UpdatedAt.UnixNano(), 10))
+	b.WriteByte('|')
+	b.WriteString(strconv.FormatInt(indexer.UpdatedAt.UnixNano(), 10))
+	b.WriteByte('|')
+	b.WriteString(indexer.ConfigJSON)
+	b.WriteByte('|')
+	b.WriteString(indexer.Name)
+	b.WriteByte('|')
+	b.WriteString(indexer.Slug)
+	b.WriteByte('|')
+	b.WriteString(indexer.Protocol)
+	return b.String()
+}
+
+// applySecrets decrypts every secret of the indexer into settings and returns
+// the plaintext values so errors can be redacted. Values never appear in
+// returned errors or logs.
+func (m *Manager) applySecrets(ctx context.Context, indexerID int64, settings map[string]string) ([]string, error) {
+	secrets, err := m.store.ListSecrets(ctx, indexerID)
+	if err != nil {
+		return nil, fmt.Errorf("indexer %d: list secrets: %w", indexerID, err)
+	}
+	if len(secrets) == 0 {
+		return nil, nil
+	}
+	if m.vault == nil {
+		return nil, fmt.Errorf("indexer %d: %w", indexerID, ErrVaultRequired)
+	}
+	values := make([]string, 0, len(secrets))
+	for _, secret := range secrets {
+		value, err := m.vault.Open(secret.Nonce, secret.Ciphertext)
+		if err != nil {
+			return nil, fmt.Errorf("indexer %d: decrypt secret %q: %w", indexerID, secret.Key, err)
+		}
+		settings[secret.Key] = value
+		if value != "" {
+			values = append(values, value)
+		}
+	}
+	return values, nil
+}
+
+// applyDefaults gives family connectors the settings they read and exposes the
+// indexer identity to definitions. An explicitly configured value always wins.
+func applyDefaults(indexer store.Indexer, parsed *definition.Definition, settings map[string]string) {
+	if strings.TrimSpace(settings["base_url"]) == "" {
+		if url := strings.TrimSpace(settings["url"]); url != "" {
+			settings["base_url"] = url
+		} else if parsed != nil && len(parsed.Meta.URLs) > 0 {
+			settings["base_url"] = parsed.Meta.URLs[0]
+		}
+	}
+	if strings.TrimSpace(settings["url"]) == "" {
+		settings["url"] = settings["base_url"]
+	}
+	if strings.TrimSpace(settings["name"]) == "" {
+		settings["name"] = indexer.Name
+	}
+	if strings.TrimSpace(settings["slug"]) == "" {
+		settings["slug"] = indexer.Slug
+	}
+	if strings.TrimSpace(settings["protocol"]) == "" {
+		settings["protocol"] = indexer.Protocol
+	}
+}
+
+// decodeConfig parses config_json into a generic object. Numbers stay exact by
+// using json.Number.
+func decodeConfig(raw string) (map[string]any, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "null" {
+		return map[string]any{}, nil
+	}
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.UseNumber()
+	var out map[string]any
+	if err := decoder.Decode(&out); err != nil {
+		return nil, err
+	}
+	if out == nil {
+		out = map[string]any{}
+	}
+	return out, nil
+}
+
+// settingsFromConfig flattens config_json into the string map connectors
+// receive. Arrays become comma-separated lists.
+func settingsFromConfig(config map[string]any) map[string]string {
+	out := make(map[string]string, len(config))
+	for key, value := range config {
+		out[key] = settingString(value)
+	}
+	return out
+}
+
+func settingString(value any) string {
+	switch typed := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return typed
+	case bool:
+		return strconv.FormatBool(typed)
+	case json.Number:
+		return typed.String()
+	case float64:
+		return strconv.FormatFloat(typed, 'f', -1, 64)
+	case []any:
+		parts := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if text := settingString(item); text != "" {
+				parts = append(parts, text)
+			}
+		}
+		return strings.Join(parts, ",")
+	case map[string]any:
+		encoded, err := json.Marshal(typed)
+		if err != nil {
+			return ""
+		}
+		return string(encoded)
+	default:
+		return fmt.Sprint(typed)
+	}
+}
+
+// queryFromConfig returns the configured run query, if any.
+func queryFromConfig(config map[string]any) string {
+	value, ok := config["query"]
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(settingString(value))
+}
+
+// categoriesFromValue accepts an array or a comma-separated string.
+func categoriesFromValue(value any) []int {
+	switch typed := value.(type) {
+	case nil:
+		return nil
+	case []int:
+		return append([]int(nil), typed...)
+	case []any:
+		out := make([]int, 0, len(typed))
+		for _, item := range typed {
+			out = appendCategories(out, settingString(item))
+		}
+		return dedupeCategories(out)
+	case string:
+		return dedupeCategories(appendCategories(nil, typed))
+	default:
+		return dedupeCategories(appendCategories(nil, settingString(typed)))
+	}
+}
+
+func appendCategories(out []int, raw string) []int {
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, err := strconv.Atoi(part)
+		if err != nil || id <= 0 {
+			continue
+		}
+		out = append(out, id)
+	}
+	return out
+}
+
+func settingBool(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func dedupeCategories(in []int) []int {
+	if len(in) == 0 {
+		return nil
+	}
+	seen := make(map[int]struct{}, len(in))
+	out := make([]int, 0, len(in))
+	for _, id := range in {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
+}
+
+// redact removes every known secret value of the indexer and the usual
+// credential query parameters from text. It is safe to call at any time.
+func (m *Manager) redact(indexerID int64, text string) string {
+	m.mu.Lock()
+	var secrets []string
+	if entry, ok := m.cache[indexerID]; ok {
+		secrets = append(secrets, entry.secrets...)
+	}
+	m.mu.Unlock()
+
+	return redactValues(text, secrets)
+}
+
+func errorText(err error) string {
+	text := strings.TrimSpace(err.Error())
+	text = strings.ReplaceAll(text, "\n", " ")
+	if len(text) > 500 {
+		text = text[:500] + "…"
+	}
+	return text
+}
+
+func hashText(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
+}
