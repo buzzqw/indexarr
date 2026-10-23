@@ -10,6 +10,12 @@ Questo documento descrive il formato `schema: 1` accettato da
 `indexarr-def`. Per il contesto e le scelte di prodotto:
 [`indexarr2.md`](../indexarr2.md) §6 e [`INDEXARR2-PLAN.md`](INDEXARR2-PLAN.md).
 
+Accanto alle definizioni complete il catalogo ha uno strato di **voci leggere**
+generate dai metadati di Jackett/Prowlarr (nome, URL, tipo, lingua, categorie,
+famiglia). Non sono definizioni e non importano Cardigann: vedi
+[`CATALOG.md`](CATALOG.md) per stati, famiglie, lista italiana e comandi di
+rigenerazione.
+
 ## Struttura di un file
 
 ```yaml

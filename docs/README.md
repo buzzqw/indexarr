@@ -6,6 +6,7 @@
 - [Vault](VAULT.md) — chiave maestra, ordine di risoluzione, comandi CLI, backup e Docker secrets.
 - [Definizioni](DEFINITIONS.md) — formato nativo v1, sicurezza, fixture e CLI `indexarr-def`.
 - [MirCrew](MIRCREW.md) — ponte Torznab, definizione nativa, sessione FlareSolverr e policy dei ringraziamenti.
+- [Catalogo dei siti](CATALOG.md) — voci leggere dai manager, famiglie, italiani, stati e prove live.
 - [Mappa UI](UI-MAP.md) — route dell'interfaccia, redirect e smoke test.
 - [Revisione UI](UI-REVIEW.md) — audit dell'interfaccia vecchia/nuova e checklist di redesign.
 - [Guida al redesign dell'interfaccia](UI-GUIDE.md) — regole, struttura a 6 voci, specifica pagina per pagina e fasi per gli agenti.
