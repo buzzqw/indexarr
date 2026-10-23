@@ -30,8 +30,10 @@ func run(args []string) int {
 	flags := flag.NewFlagSet("indexarr-import", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	jackettDir := flags.String("jackett", "", "Jackett data directory or ServerConfig.json")
+	jackettURL := flags.String("jackett-url", "", "live Jackett base URL, overrides the copied ServerConfig.json")
+	jackettKey := flags.String("jackett-key", os.Getenv("INDEXARR_JACKETT_KEY"), "Jackett API key (default: INDEXARR_JACKETT_KEY)")
 	prowlarrURL := flags.String("prowlarr", "", "Prowlarr base URL, e.g. http://127.0.0.1:9696")
-	prowlarrKey := flags.String("prowlarr-key", "", "Prowlarr API key")
+	prowlarrKey := flags.String("prowlarr-key", os.Getenv("INDEXARR_PROWLARR_KEY"), "Prowlarr API key (default: INDEXARR_PROWLARR_KEY)")
 	dbPath := flags.String("db", "", "target indexarr SQLite database for -apply")
 	configPath := flags.String("config", "", "indexarr JSON configuration (optional, used for vault_key_path)")
 	apply := flags.Bool("apply", false, "write native indexers into -db (default: print the plan)")
@@ -51,8 +53,10 @@ configuration directory. Secrets are sealed before they touch the database.
 
 flags:
   -jackett DIR        Jackett data directory or ServerConfig.json
+  -jackett-url URL    live Jackett base URL (default: from the copied config)
+  -jackett-key KEY    Jackett API key (default: INDEXARR_JACKETT_KEY)
   -prowlarr URL       Prowlarr base URL
-  -prowlarr-key KEY   Prowlarr API key
+  -prowlarr-key KEY   Prowlarr API key (default: INDEXARR_PROWLARR_KEY)
   -db PATH            target indexarr SQLite database
   -config PATH        indexarr JSON configuration (optional)
   -apply              write native indexers (otherwise only print the plan)
@@ -75,6 +79,9 @@ flags:
 	switch {
 	case *jackettDir != "":
 		plan, err = importers.FromJackettConfig(ctx, *jackettDir)
+		if err == nil && (strings.TrimSpace(*jackettURL) != "" || strings.TrimSpace(*jackettKey) != "") {
+			plan, err = importers.OverrideManagerEndpoint(plan, *jackettURL, *jackettKey)
+		}
 	case *prowlarrURL != "":
 		if strings.TrimSpace(*prowlarrKey) == "" {
 			fmt.Fprintln(os.Stderr, "indexarr-import: -prowlarr-key is required with -prowlarr")

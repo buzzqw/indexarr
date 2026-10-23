@@ -149,7 +149,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP5 | `download.resolve`: magnet/torrent dalla pagina di dettaglio | fatto | `4e429e5` |
 | WP6 | Famiglia RSS/Atom nativa | fatto | `4e429e5` |
 | WP7 | Prime definizioni native verificate (ExtTo, TorrentGalaxy, Corsaro, Knaben, TorrentLeech RSS) | fatto (4/5 verificati; TorrentLeech bozza) | `4e429e5` |
-| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; passo 5 (scambio produzione) pronto, da eseguire | `d0b32e0` |
+| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–5 fatti; `scripts/fresh-start.sh` provato su copia (apply + rollback); scambio produzione da eseguire | questo commit |
 | WP9 | Health check e transizioni di stato del catalogo | da fare | |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
@@ -160,7 +160,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
 | WP16 | Rimozione del percorso legacy | fatto | `4a11fb8` |
 | WP17 | Vedere i dati che nutrono indexarr | fatto (metriche, campioni, scheda Dati, Prova come Sonarr, Attività) | `f296d69` |
-| WP18 | I siti che l'utente usa davvero (fase 1) | fase 1 fatta (5 pubblici verificati, 3 in prova, MirCrew via Torznab) | `9c8ebae` |
+| WP18 | I siti che l'utente usa davvero (fase 1) | fase 1 fatta (5 pubblici verificati, 3 in prova, MirCrew via Torznab); prova generale fresh-start su copia fatta | `9c8ebae` |
 | WP19 | Elenco dei siti come Jackett/Prowlarr | fatto (indice a build time, elenco filtrabile, aggiunta rapida) | |
 
 ---
@@ -734,6 +734,16 @@ Questa procedura **non è stata eseguita** dall'agente: tocca `:8484`, `data/`
 e il servizio systemd. Eseguirla solo con il coordinatore presente. Il
 database attuale è usa e getta, ma `data.old-<data>/` si conserva per una
 settimana come rete di sicurezza.
+
+**Stato (23/10):** `scripts/fresh-start.sh` implementa il passo 5 (dry-run
+predefinito, `--apply`, `--rollback`, override `--data-dir`, `--unit`,
+`--binary`, `--listen`/`--port`, `--no-systemd`, `--jackett`, `--prowlarr`,
+`--jackett-copy`, `--skip-import`, `--yes`). La prova generale è stata fatta
+su una copia del DB con porta `18510` e processo locale: apply, tre cicli di
+aggiornamento, ricerca per indexer e rollback. I risultati sono nel corpo del
+commit `Add the fresh-start script and record the dress rehearsal`. Per il
+giorno dello scambio restano validi i comandi qui sotto; con `--no-systemd`
+lo script usa un PID file e non tocca systemd.
 
 Prerequisiti: il binario nuovo è già compilato e installato come
 `bin/indexarr` (fuori da questa procedura); Jackett/Prowlarr sono raggiungibili

@@ -221,6 +221,24 @@ func TestTargetKeepsUpstreamMetadata(t *testing.T) {
 	}
 }
 
+func TestBridgeToLocalManagerAllowsPrivateAddress(t *testing.T) {
+	entries := builtinEntries(t)
+	target := Target("prowlarr", "http://192.168.1.161:9696", "manager-key-SECRET", Indexer{
+		Name: "Local", DefinitionHint: "unknown-local-site", RemoteID: "7",
+		SiteURL: "http://192.168.1.161:9696/7", Protocol: ProtocolTorrent, Enabled: true,
+	}, entries)
+	if target.Config["allow_private"] != "true" {
+		t.Fatalf("bridge to a LAN manager did not opt into private addresses: %+v", target.Config)
+	}
+	public := Target("prowlarr", "https://prowlarr.example.invalid", "manager-key-SECRET", Indexer{
+		Name: "Public", DefinitionHint: "unknown-public-site", RemoteID: "8",
+		SiteURL: "https://tracker.example.invalid/", Protocol: ProtocolTorrent, Enabled: true,
+	}, entries)
+	if _, ok := public.Config["allow_private"]; ok {
+		t.Fatalf("public manager should not opt into private addresses: %+v", public.Config)
+	}
+}
+
 func TestTargetFallsBackWithoutVerifiedDefinition(t *testing.T) {
 	entries := builtinEntries(t)
 	cases := []struct {

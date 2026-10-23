@@ -16,6 +16,7 @@ package importers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/url"
 	"sort"
 	"strconv"
@@ -91,6 +92,48 @@ type Plan struct {
 	Applications  []Application
 	Proxies       []Proxy
 	Warnings      []string
+}
+
+// OverrideManagerEndpoint replaces the manager base URL and API key of a
+// Jackett plan. The coordinator imports from a copy of the Jackett data
+// directory, but the copy may be stale and may name a bind address that is not
+// reachable. The live URL and the key read from the old indexarr database win;
+// the imported bridge indexers then point at the running instance.
+//
+// baseURL may be empty to keep the URL from the copied ServerConfig.json. The
+// returned errors never include the API key.
+func OverrideManagerEndpoint(plan Plan, baseURL, apiKey string) (Plan, error) {
+	apiKey = strings.TrimSpace(apiKey)
+	rawURL := strings.TrimSpace(baseURL)
+	if rawURL != "" {
+		parsed, err := url.Parse(rawURL)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+			return Plan{}, errors.New("importers: manager URL must be http(s) with a host")
+		}
+		parsed.User = nil
+		parsed.RawQuery = ""
+		parsed.Fragment = ""
+		parsed.Path = strings.TrimRight(parsed.Path, "/")
+		plan.ManagerURL = strings.TrimRight(parsed.String(), "/")
+	}
+	if apiKey != "" {
+		plan.ManagerAPIKey = apiKey
+	}
+	if plan.ManagerURL == "" {
+		return Plan{}, errors.New("importers: manager URL is empty")
+	}
+	if rawURL != "" || apiKey != "" {
+		for i := range plan.Indexers {
+			if plan.Source == "jackett" && plan.Indexers[i].RemoteID != "" {
+				plan.Indexers[i].BaseURL = plan.ManagerURL + "/api/v2.0/indexers/" +
+					url.PathEscape(plan.Indexers[i].RemoteID) + "/results/torznab/"
+			}
+			if apiKey != "" {
+				plan.Indexers[i].APIKey = apiKey
+			}
+		}
+	}
+	return plan, nil
 }
 
 // indexerRecord keeps the source id for deterministic ordering without

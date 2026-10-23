@@ -345,6 +345,67 @@ func TestFromProwlarrInvalidBaseURL(t *testing.T) {
 	requireSecretsAbsent(t, err.Error(), prowlarrAPIKey)
 }
 
+func TestOverrideManagerEndpoint(t *testing.T) {
+	plan := Plan{
+		Source:        "jackett",
+		ManagerURL:    "http://127.0.0.1:9117",
+		ManagerAPIKey: "stale-key-SECRET",
+		Indexers: []Indexer{
+			{RemoteID: "limetorrents", BaseURL: "http://127.0.0.1:9117/api/v2.0/indexers/limetorrents/results/torznab/", APIKey: "stale-key-SECRET"},
+			{RemoteID: "torrentgalaxy", BaseURL: "http://127.0.0.1:9117/api/v2.0/indexers/torrentgalaxy/results/torznab/", APIKey: "stale-key-SECRET"},
+		},
+	}
+	updated, err := OverrideManagerEndpoint(plan, "http://192.168.1.161:9117/", "live-key-SECRET")
+	if err != nil {
+		t.Fatalf("OverrideManagerEndpoint: %v", err)
+	}
+	if updated.ManagerURL != "http://192.168.1.161:9117" {
+		t.Fatalf("manager URL = %q", updated.ManagerURL)
+	}
+	if updated.ManagerAPIKey != "live-key-SECRET" {
+		t.Fatalf("manager key was not replaced")
+	}
+	for _, indexer := range updated.Indexers {
+		want := updated.ManagerURL + "/api/v2.0/indexers/" + indexer.RemoteID + "/results/torznab/"
+		if indexer.BaseURL != want {
+			t.Errorf("BaseURL for %s = %q, want %q", indexer.RemoteID, indexer.BaseURL, want)
+		}
+		if indexer.APIKey != "live-key-SECRET" {
+			t.Errorf("APIKey for %s was not replaced", indexer.RemoteID)
+		}
+	}
+}
+
+func TestOverrideManagerEndpointKeepsURLWithoutOverride(t *testing.T) {
+	plan := Plan{
+		Source:        "jackett",
+		ManagerURL:    "http://127.0.0.1:9117",
+		ManagerAPIKey: "stale-key-SECRET",
+		Indexers:      []Indexer{{RemoteID: "limetorrents", BaseURL: "http://127.0.0.1:9117/api/v2.0/indexers/limetorrents/results/torznab/"}},
+	}
+	updated, err := OverrideManagerEndpoint(plan, "", "live-key-SECRET")
+	if err != nil {
+		t.Fatalf("OverrideManagerEndpoint: %v", err)
+	}
+	if updated.ManagerURL != plan.ManagerURL {
+		t.Fatalf("manager URL changed to %q", updated.ManagerURL)
+	}
+	if updated.Indexers[0].APIKey != "live-key-SECRET" {
+		t.Fatal("the key was not replaced")
+	}
+}
+
+func TestOverrideManagerEndpointRejectsBadURLWithoutLeakingKey(t *testing.T) {
+	const secret = "never-print-this-key"
+	_, err := OverrideManagerEndpoint(Plan{Source: "jackett"}, "ftp://example.invalid", secret)
+	if err == nil {
+		t.Fatal("expected an error for a non-http URL")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("error leaked the key: %v", err)
+	}
+}
+
 func TestFromJackettConfigDirectory(t *testing.T) {
 	plan, err := FromJackettConfig(context.Background(), filepath.Join("testdata", "jackett"))
 	if err != nil {

@@ -2,6 +2,7 @@ package importers
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"sort"
 	"strings"
@@ -84,6 +85,25 @@ func Target(source, managerURL, managerAPIKey string, indexer Indexer, entries [
 		return catalogTarget(entry, indexer)
 	}
 	return bridgeTarget(source, managerURL, managerAPIKey, indexer)
+}
+
+// managerIsPrivate reports whether the manager URL points at a loopback,
+// private or unspecified address. Only those bridge indexers opt into the
+// private-address policy; public managers stay behind the default SSRF guard.
+func managerIsPrivate(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Hostname() == "" {
+		return false
+	}
+	host := strings.ToLower(parsed.Hostname())
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified()
 }
 
 // verifiedState reports whether a catalog entry may be used to create a
@@ -218,6 +238,13 @@ func bridgeTarget(source, managerURL, managerAPIKey string, indexer Indexer) Nat
 	endpoint := managerEndpoint(manager, managerURL, indexer)
 
 	config := map[string]string{"url": endpoint}
+	// Jackett and Prowlarr commonly run on the LAN. The SSRF guard blocks
+	// private addresses by default, so a bridge to a local manager must opt in
+	// explicitly. The setting is not a secret: it only widens the guard for
+	// this one indexer.
+	if managerIsPrivate(managerURL) {
+		config["allow_private"] = "true"
+	}
 	if categories := joinInts(indexer.Categories); categories != "" {
 		config["categories"] = categories
 	}

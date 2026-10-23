@@ -567,6 +567,38 @@ Senza `--linger` il servizio parte con la sessione utente e si ferma al logout;
 `--linger` lo mantiene attivo (su molte distribuzioni richiede autorizzazione una
 volta sola).
 
+### Ripartenza pulita (nuovo database)
+
+`scripts/fresh-start.sh` prepara lo scambio a un database nuovo senza perdere
+la API key Torznab. Di default **non tocca nulla**: stampa i controlli e i passi.
+
+```bash
+./scripts/fresh-start.sh                 # dry-run
+./scripts/fresh-start.sh --apply --yes   # sposta data/ in data.old-<data>/ e riparte
+./scripts/fresh-start.sh --rollback --yes
+```
+
+Con `--apply` ferma il servizio, sposta `data/` in `data.old-<timestamp>/`,
+crea un database nuovo, conserva la stessa API key Torznab e importa gli
+indexer da Jackett/Prowlarr in sola lettura (le chiavi sono lette dal vecchio
+database e passate all'importer tramite l'ambiente). Se qualcosa fallisce
+dopo lo spostamento, ripristina automaticamente `data.old-*`.
+
+Per una prova su una copia usare `--data-dir`, `--port`, `--no-systemd` e un
+binario temporaneo, per esempio:
+
+```bash
+./scripts/fresh-start.sh --apply --yes --no-systemd \
+  --data-dir /tmp/prova/data --binary /tmp/prova/indexarr \
+  --importer /tmp/prova/indexarr-import --port 18510 \
+  --prowlarr http://127.0.0.1:9696 \
+  --jackett http://127.0.0.1:9117 --jackett-copy /copia/Jackett
+```
+
+`--jackett-copy` è una **copia** della directory dati di Jackett, mai quella
+viva; `--jackett` serve solo per la verifica GET. Il test offline dello script
+è `./scripts/fresh-start_test.sh`.
+
 ### Servizio systemd di sistema
 
 Se preferisci un servizio globale, usa l'esempio
