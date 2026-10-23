@@ -43,6 +43,7 @@ type appSearchView struct {
 	App         string
 	Mode        string
 	Query       string
+	Params      string
 	Indexers    string
 	ResultRows  []appSearchResult
 	Live        []appSearchLiveView
@@ -189,6 +190,7 @@ func (s *Server) activitySearches(r *http.Request) (*activitySearchesView, error
 			App:       search.App,
 			Mode:      search.Mode,
 			Query:     search.Query,
+			Params:    search.Params,
 			Indexers:  strings.Join(search.IndexerNames, ", "),
 			Total:     search.TotalResults,
 			Error:     search.Error,

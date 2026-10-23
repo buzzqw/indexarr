@@ -66,10 +66,10 @@ func TestNextStateTransitions(t *testing.T) {
 			FieldTotal: 10, FieldSize: 10, FieldSeeders: 5,
 			FieldCategory: 10, FieldDate: 10, FieldHash: 10,
 		}}, CatalogVerified},
-		{"completeness below threshold degrades", CatalogVerified, []Outcome{lowCompleteness()}, CatalogDegraded},
+		{"completeness below threshold is neutral", CatalogVerified, []Outcome{lowCompleteness()}, CatalogVerified},
 		{"a clean outcome recovers a degraded site", CatalogDegraded, []Outcome{clean(5)}, CatalogVerified},
 		{"an empty outcome does not recover", CatalogDegraded, []Outcome{emptyOutcome()}, CatalogDegraded},
-		{"a dirty outcome does not recover", CatalogDegraded, []Outcome{lowCompleteness()}, CatalogDegraded},
+		{"a low-completeness outcome does not keep a site degraded", CatalogDegraded, []Outcome{lowCompleteness()}, CatalogVerified},
 		{"three clean outcomes make it stable", CatalogVerified, []Outcome{clean(5), clean(5), clean(5)}, CatalogStable},
 		{"two clean outcomes are not enough for stable", CatalogVerified, []Outcome{clean(5), clean(5)}, CatalogVerified},
 	}
@@ -110,11 +110,19 @@ func TestAssessUsesOneModel(t *testing.T) {
 		t.Errorf("repeated zero = %#v", degraded)
 	}
 	low := Assess(Input{Enabled: true, Outcomes: []Outcome{lowCompleteness()}}, thresholds)
-	if low.State != StateDegraded || low.Completeness != 10 {
-		t.Errorf("low completeness = %#v", low)
+	if low.State != StateOK || low.Completeness != 10 || len(low.Reasons) != 0 {
+		t.Errorf("low completeness must be neutral = %#v", low)
 	}
-	if len(low.Reasons) != 1 || low.Reasons[0].Code != ReasonCompleteness || low.Reasons[0].Field != "seeders" {
-		t.Errorf("completeness reason = %#v", low.Reasons)
+	searchZeros := []Outcome{
+		{Kind: "search", Status: "ok", HasSeen: true},
+		{Kind: "search", Status: "ok", HasSeen: true},
+		{Kind: "search", Status: "ok", HasSeen: true},
+	}
+	if got := Assess(Input{Enabled: true, Outcomes: searchZeros}, thresholds); got.State != StateOK || got.ZeroResults != 0 {
+		t.Errorf("search zeros degraded a site = %#v", got)
+	}
+	if got := Assess(Input{Enabled: true, FeedOnly: true, Outcomes: []Outcome{emptyOutcome(), emptyOutcome(), emptyOutcome()}}, thresholds); got.State != StateOK {
+		t.Errorf("feed-only zero degraded a site = %#v", got)
 	}
 }
 

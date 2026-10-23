@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -20,6 +21,7 @@ const (
 	indexarr2LiveSearchVersion      = 6
 	indexarr2DownloadClientsVersion = 7
 	indexarr2PairChannelsVersion    = 8
+	indexarr2Cycle6Version          = 9
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -265,6 +267,72 @@ func pairChannelsMigration(tx *sql.Tx) error {
 			item.config["channel"] = "search"
 			item.config["latest"] = "false"
 		}
+		encoded, err := json.Marshal(item.config)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`UPDATE indexers SET config_json = ?, updated_at = ? WHERE id = ?`,
+			string(encoded), time.Now().Unix(), item.id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func cycle6Migration(tx *sql.Tx) error {
+	if _, err := tx.Exec(`ALTER TABLE app_searches ADD COLUMN params TEXT NOT NULL DEFAULT ''`); err != nil {
+		return err
+	}
+	rows, err := tx.Query(`SELECT id, config_json FROM indexers`)
+	if err != nil {
+		return err
+	}
+	type change struct {
+		id     int64
+		config map[string]string
+	}
+	var changes []change
+	for rows.Next() {
+		var item change
+		var raw string
+		if err := rows.Scan(&item.id, &raw); err != nil {
+			rows.Close()
+			return err
+		}
+		item.config = map[string]string{}
+		if strings.TrimSpace(raw) != "" {
+			if err := json.Unmarshal([]byte(raw), &item.config); err != nil {
+				rows.Close()
+				return fmt.Errorf("indexer %d config: %w", item.id, err)
+			}
+		}
+		changes = append(changes, item)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, item := range changes {
+		raw := item.config["categories"]
+		if raw == "" {
+			continue
+		}
+		kept := make([]string, 0, 8)
+		for _, part := range strings.Split(raw, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			value, err := strconv.Atoi(part)
+			if err != nil || value >= 100000 {
+				continue
+			}
+			kept = append(kept, part)
+		}
+		if len(kept) == len(strings.Split(raw, ",")) {
+			continue
+		}
+		item.config["categories"] = strings.Join(kept, ",")
 		encoded, err := json.Marshal(item.config)
 		if err != nil {
 			return err

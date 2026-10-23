@@ -2,10 +2,12 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/health"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -20,6 +22,11 @@ type indexerHealthView struct {
 	History    []store.IndexerHistory
 	LastRun    *store.IndexerHistory
 	Assessment health.Assessment
+	// FeedOnly means the definition has no remote query endpoint. Its search
+	// zeroes are normal and must not drive the health badge.
+	FeedOnly bool
+	// Latest reports whether the definition publishes periodic latest runs.
+	Latest bool
 }
 
 func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer) indexerHealthView {
@@ -37,13 +44,43 @@ func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer) indexe
 			}
 		}
 	}
+	view.Latest = true
+	if def, err := s.store.GetDefinition(ctx, in.DefinitionID); err == nil {
+		if parsed, parseErr := definition.Parse([]byte(def.Body)); parseErr == nil {
+			view.FeedOnly = strings.EqualFold(strings.TrimSpace(parsed.Connector), "rss")
+			view.Latest = parsed.Meta.HasLatest()
+		}
+	}
+	if value, ok := indexerConfigLatest(in.ConfigJSON); ok {
+		view.Latest = value
+	}
 	view.Assessment = health.Assess(health.Input{
 		Enabled:   in.Enabled,
 		Circuit:   view.State.Circuit,
 		LastError: view.State.LastError,
 		History:   view.History,
+		FeedOnly:  view.FeedOnly,
 	}, health.DefaultThresholds())
 	return view
+}
+
+func indexerConfigLatest(configJSON string) (bool, bool) {
+	if strings.TrimSpace(configJSON) == "" {
+		return false, false
+	}
+	var values map[string]string
+	if err := json.Unmarshal([]byte(configJSON), &values); err != nil {
+		return false, false
+	}
+	raw, ok := values["latest"]
+	if !ok {
+		return false, false
+	}
+	value, err := strconv.ParseBool(strings.TrimSpace(raw))
+	if err != nil {
+		return false, false
+	}
+	return value, true
 }
 
 // dotState maps the model to the status-dot scale of UI-GUIDE §5. A degraded
@@ -126,12 +163,6 @@ func (s *Server) healthProblems(r *http.Request, view indexerHealthView) []uiPro
 			out = append(out, uiProblem{
 				Text:        s.translate(r, "idx.problem.zero", reason.Count),
 				ActionLabel: s.translate(r, "idx.problem.zeroAction"),
-				ActionURL:   edit,
-			})
-		case health.ReasonCompleteness:
-			out = append(out, uiProblem{
-				Text:        s.missingFieldPhrase(r, reason.Field),
-				ActionLabel: s.translate(r, "common.edit"),
 				ActionURL:   edit,
 			})
 		}

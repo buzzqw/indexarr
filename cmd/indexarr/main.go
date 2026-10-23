@@ -159,6 +159,11 @@ func main() {
 	} else if written > 0 {
 		logger.Info("built-in catalog synchronized", "definitions", written)
 	}
+	if paired, pairErr := catalog.PairKnownChannels(ctx, st); pairErr != nil {
+		logger.Warn("cannot pair known feed/search channels", "error", pairErr)
+	} else if paired > 0 {
+		logger.Info("paired feed/search channels", "indexers", paired)
+	}
 
 	// One per-host budget is shared by the native transport and the legacy
 	// RSS/HTML/Torznab client, so a host never receives the rate twice.

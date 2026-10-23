@@ -40,6 +40,7 @@
   </div>
 
   {{if .Rows}}
+  <p class="help bulk-hint">{{T "idx.bulkHint"}}</p>
   <ul class="indexer-list">
     {{range .Rows}}
     <li class="indexer-row" data-state="{{.Status.State}}">
@@ -52,8 +53,9 @@
           {{if .FiltersLabel}}<span class="badge soft">{{.FiltersLabel}}</span>{{end}}
         </div>
         {{if .Problem}}{{template "problem" .Problem}}{{end}}
+        {{if .Channels}}<details class="channel-menu"><summary>{{T "idx.channelCount" (len .Channels)}}</summary><ul>{{range .Channels}}<li><a href="/indexers/{{.ID}}">{{.Name}} · {{if eq .Label "latest"}}{{T "idx.channelLatest"}}{{else if eq .Label "search"}}{{T "idx.channelSearch"}}{{else}}{{.Label}}{{end}}</a></li>{{end}}</ul></details>{{end}}
       </div>
-      <div class="indexer-updated">{{if .LastUpdate}}{{ago .LastUpdate}}{{else}}{{T "idx.neverUpdated"}}{{end}}</div>
+      <div class="indexer-updated">{{if .SearchOnly}}{{T "idx.searchOnlyNoUpdate"}}{{else if .LastUpdate}}{{ago .LastUpdate}}{{else}}{{T "idx.neverUpdated"}}{{end}}</div>
       <details class="row-menu">
         <summary aria-label="{{T "idx.menu" .Indexer.Name}}">⋯</summary>
         <div class="row-menu-list">

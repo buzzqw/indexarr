@@ -66,6 +66,18 @@ func appFromRequest(r *http.Request) string {
 // recordAppSearch writes one row of the Activity → Searches view. It runs
 // outside the request cancellation so a timeout is still auditable, and it
 // never changes the response: a store failure is only logged.
+// sanitizedParams records exactly what the app sent, minus the credentials.
+// It is the evidence needed to diagnose an ID-only or alternate-title request.
+func sanitizedParams(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	values := r.URL.Query()
+	values.Del("apikey")
+	values.Del("api_key")
+	return values.Encode()
+}
+
 func (s *Server) recordAppSearch(ctx context.Context, r *http.Request, mode string, out searchOutcome, started time.Time) {
 	results := make(map[string]int64)
 	for _, release := range out.Releases {
@@ -90,6 +102,7 @@ func (s *Server) recordAppSearch(ctx context.Context, r *http.Request, mode stri
 	if len(query) > 500 {
 		query = query[:500]
 	}
+	params := sanitizedParams(r)
 	live := make([]store.AppSearchLive, 0, len(out.Live))
 	names := make([]string, 0, len(out.Live))
 	ids := make([]int64, 0, len(out.Live))
@@ -123,6 +136,7 @@ func (s *Server) recordAppSearch(ctx context.Context, r *http.Request, mode stri
 		App:          appFromRequest(r),
 		Mode:         mode,
 		Query:        query,
+		Params:       params,
 		IndexerIDs:   indexerIDs,
 		IndexerNames: indexerNames,
 		Results:      results,

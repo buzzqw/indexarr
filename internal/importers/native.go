@@ -564,6 +564,12 @@ func joinInts(values []int) string {
 	sort.Ints(sorted)
 	parts := make([]string, 0, len(sorted))
 	for _, value := range sorted {
+		// Custom manager categories (Prowlarr uses ids >= 100000) are not
+		// Newznab categories and become a wall of meaningless chips. Drop
+		// them at the import boundary; the standard parent remains.
+		if value >= 100000 {
+			continue
+		}
 		parts = append(parts, fmt.Sprint(value))
 	}
 	return strings.Join(parts, ",")

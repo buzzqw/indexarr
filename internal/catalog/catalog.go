@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -275,4 +276,64 @@ func validDefinitionFile(raw string) bool {
 		return false
 	}
 	return true
+}
+
+// PairKnownChannels repairs the built-in sites that have both a native latest
+// feed and a search channel. It is idempotent and only adds the missing
+// channel; it never deletes data. Today the only such pair is Knaben, whose
+// historical definition was a feed imported before the search definition
+// existed.
+func PairKnownChannels(ctx context.Context, st *store.Store) (int, error) {
+	indexers, err := st.ListIndexers(ctx)
+	if err != nil {
+		return 0, err
+	}
+	bySlug := make(map[string]store.Indexer, len(indexers))
+	for _, in := range indexers {
+		bySlug[in.Slug] = in
+	}
+	feed, ok := bySlug["knaben"]
+	if !ok || feed.DefinitionID != "knaben" {
+		return 0, nil
+	}
+	if _, exists := bySlug["knaben-search"]; exists {
+		return 0, nil
+	}
+	if _, err := st.GetDefinition(ctx, "knaben-search"); err != nil {
+		return 0, nil
+	}
+	feedConfig := map[string]string{}
+	if strings.TrimSpace(feed.ConfigJSON) != "" {
+		_ = json.Unmarshal([]byte(feed.ConfigJSON), &feedConfig)
+	}
+	feedConfig["site"] = "knaben.org"
+	feedConfig["channel"] = "latest"
+	feedConfig["latest"] = "true"
+	if strings.TrimSpace(feedConfig["url"]) == "" {
+		feedConfig["url"] = "https://rss.knaben.org/ita"
+	}
+	encoded, err := json.Marshal(feedConfig)
+	if err != nil {
+		return 0, err
+	}
+	feed.ConfigJSON = string(encoded)
+	if err := st.UpdateIndexer(ctx, feed); err != nil {
+		return 0, err
+	}
+	searchConfig, _ := json.Marshal(map[string]string{
+		"site": "knaben.org", "channel": "search", "latest": "false",
+	})
+	_, err = st.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "knaben-search",
+		Protocol:     "torrent",
+		Slug:         "knaben-search",
+		Name:         "Knaben (search)",
+		Enabled:      true,
+		Priority:     feed.Priority,
+		ConfigJSON:   string(searchConfig),
+	})
+	if err != nil {
+		return 0, err
+	}
+	return 1, nil
 }

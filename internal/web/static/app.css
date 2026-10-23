@@ -136,6 +136,8 @@ body {
 .nav-close:hover,
 .nav-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
+.nav-close { display: none; }
+
 .global-search {
   display: flex;
   gap: 0.35rem;
@@ -307,6 +309,18 @@ h2 { font-size: 1.02rem; margin: 0; letter-spacing: -0.01em; }
   gap: 0.5rem;
   flex-wrap: wrap;
 }
+
+.actions .btn,
+.actions select,
+.actions .readonly-value {
+  min-height: 2.4rem;
+}
+
+.actions .btn { display: inline-flex; align-items: center; justify-content: center; }
+.form-actions { justify-content: flex-end; }
+.readonly-value { margin: 0; padding: 0.55rem 0.65rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+.advanced-inline { grid-column: 1 / -1; border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.7rem; }
+.advanced-inline summary { cursor: pointer; font-weight: 700; }
 
 .cards {
   display: grid;
@@ -875,6 +889,7 @@ pre.yaml {
   }
 
   .js .mobile-bar { display: flex; }
+  .js .nav-close { display: inline-flex; }
   .js .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
@@ -1004,6 +1019,9 @@ pre.yaml {
   .page-head { margin-bottom: 1rem; }
   .page-head .actions { width: 100%; }
   .page-head .actions .btn { flex: 1 1 auto; }
+  .form-actions { flex-direction: column-reverse; align-items: stretch; }
+  .form-actions .btn { width: 100%; }
+  .next-step-panel .btn { margin-inline: 0; }
 
   .tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.1rem; }
   .tab { flex: 0 0 auto; min-height: 44px; }
@@ -1318,7 +1336,7 @@ pre.yaml {
 .indexer-name { font-weight: 700; color: var(--text); text-decoration: none; }
 .indexer-name:hover { color: var(--accent); }
 .indexer-main .badges { margin-top: 0.15rem; }
-.indexer-updated { color: var(--muted); font-size: 0.8rem; text-align: right; white-space: nowrap; }
+.indexer-updated { color: var(--muted); font-size: 0.8rem; text-align: right; white-space: normal; max-width: 12rem; line-height: 1.25; }
 
 .row-menu { position: relative; justify-self: end; }
 .row-menu > summary {
@@ -1388,7 +1406,7 @@ pre.yaml {
   .indexer-row .bulk-check { grid-area: check; }
   .indexer-row .status-dot { grid-area: dot; margin-top: 0.15rem; }
   .indexer-row .indexer-main { grid-area: main; }
-  .indexer-row .indexer-updated { grid-area: updated; text-align: left; }
+  .indexer-row .indexer-updated { grid-area: updated; text-align: left; max-width: none; width: 100%; overflow-wrap: anywhere; }
   .indexer-row .row-menu { grid-area: menu; }
   .site-search { flex-direction: column; }
   .site-link { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
@@ -1575,13 +1593,15 @@ pre.yaml {
 .status-line strong { font-size: 1.02rem; }
 .home-problems { list-style: none; margin: 0.65rem 0 0; padding: 0; display: grid; gap: 0.35rem; }
 .home-problems .problem { margin: 0; }
-.connect-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.35rem 1.2rem; }
+.connect-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem 1.2rem; padding: 1rem 1.1rem; }
 .connect-grid .field:first-child { grid-column: 1 / -1; }
 .home-numbers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; margin: 0; padding: 1rem 1.15rem; }
 .home-numbers div { padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2); }
 .home-numbers dt { color: var(--muted); font-size: 0.8rem; }
 .home-numbers dd { margin: 0.15rem 0 0; font-size: 1.45rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.next-step-panel { padding-bottom: 1rem; }
 .next-step-panel p { margin: 0 0 0.9rem; }
+.next-step-panel .btn { margin-inline: 1.1rem; }
 
 .settings-layout { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 1.2rem; align-items: start; }
 .settings-nav {
@@ -1663,3 +1683,12 @@ pre.yaml {
   .home-numbers { grid-template-columns: minmax(0, 1fr); }
   .copy-field { flex-wrap: wrap; }
 }
+
+
+/* One site, two channels: the list keeps one expandable row. */
+.channel-menu { margin-top: 0.35rem; font-size: 0.78rem; }
+.channel-menu summary { cursor: pointer; color: var(--muted); }
+.channel-menu ul { list-style: none; margin: 0.35rem 0 0; padding: 0; display: grid; gap: 0.2rem; }
+.channel-menu a { color: var(--accent); text-decoration: none; }
+.site-domain { margin: 0.2rem 0; font-size: 0.82rem; overflow-wrap: anywhere; }
+.site-mirrors { margin: 0.15rem 0; overflow-wrap: anywhere; }

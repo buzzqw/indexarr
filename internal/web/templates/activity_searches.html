@@ -24,7 +24,7 @@
         {{range .Searches}}
         <tr>
           <td><strong>{{textOrDash .App}}</strong><div class="sub">{{.Mode}}</div></td>
-          <td>{{if .Query}}{{truncate .Query 70}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td>{{if .Query}}{{truncate .Query 70}}{{else}}<span class="muted">—</span>{{end}}{{if .Params}}<div class="sub"><code>{{truncate .Params 100}}</code></div>{{end}}</td>
           <td>{{if .Indexers}}{{.Indexers}}{{else}}<span class="muted">—</span>{{end}}</td>
           <td class="app-live">
             {{range .Live}}

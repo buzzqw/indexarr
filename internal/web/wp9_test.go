@@ -44,35 +44,25 @@ func TestDegradedStateComesFromTheSameModelEverywhere(t *testing.T) {
 	})
 
 	status := env.server.HomeStatus(context.Background())
-	if status.Level != "warn" || status.ProblemIndexers != 1 || len(status.Problems) != 1 {
-		t.Fatalf("HomeStatus = %#v", status)
-	}
-	if status.Problems[0].Code != "home.problem.completeness" {
-		t.Errorf("home problem code = %q", status.Problems[0].Code)
+	if status.Level != "ok" || status.ProblemIndexers != 0 || len(status.Problems) != 0 {
+		t.Fatalf("low completeness must be neutral: HomeStatus = %#v", status)
 	}
 
 	home := get(t, env.handler, "/").Body.String()
-	for _, want := range []string{"1 indexers have problems", "WP9 Low", "Some fields are missing"} {
-		if !strings.Contains(home, want) {
-			t.Errorf("home missing %q", want)
-		}
+	if strings.Contains(home, "Some fields are missing") || strings.Contains(home, "indexers have problems") {
+		t.Errorf("complete fields became a home alarm: %s", home)
 	}
 
 	list := get(t, env.handler, "/indexers").Body.String()
-	for _, want := range []string{"Degraded", "WP9 Low", "This site does not provide seeders"} {
-		if !strings.Contains(list, want) {
-			t.Errorf("indexer list missing %q", want)
-		}
+	if strings.Contains(list, "Degraded") || strings.Contains(list, "This site does not provide seeders") {
+		t.Errorf("site characteristic shown as a problem in the list: %s", list)
 	}
-	if !strings.Contains(list, `data-state="degraded"`) {
-		t.Error("the list row does not carry the degraded state")
+	if !strings.Contains(list, `data-state="ok"`) {
+		t.Error("the healthy list row does not carry the ok state")
 	}
 
 	detail := get(t, env.handler, "/indexers/"+strconv.FormatInt(indexerID, 10)).Body.String()
-	for _, want := range []string{
-		"Degraded", "Catalog state", "verified",
-		"This site does not provide seeders", "10% of the fields present",
-	} {
+	for _, want := range []string{"Catalog state", "verified", "What this site provides", "10% of the fields present"} {
 		if !strings.Contains(detail, want) {
 			t.Errorf("indexer detail missing %q", want)
 		}
@@ -166,9 +156,12 @@ func TestDegradedPageUsesTheRequestedLanguage(t *testing.T) {
 		t.Fatalf("status = %d", recorder.Code)
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"Degradato", "Stato del catalogo", "Questo sito non fornisce i seeders"} {
+	for _, want := range []string{"Cosa fornisce questo sito", "Stato del catalogo", "10% dei campi presenti"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("italian detail missing %q", want)
 		}
+	}
+	if strings.Contains(body, "Degradato") {
+		t.Error("completeness still degrades the Italian detail")
 	}
 }

@@ -16,22 +16,36 @@
       <label for="try-query">{{T "idx.try.query"}}</label>
       <input id="try-query" name="q" type="text" value="{{if .Try}}{{.Try.Query}}{{end}}" placeholder="{{T "idx.try.queryPlaceholder"}}" autocomplete="off">
     </div>
+    {{if eq .Try.Mode "tvsearch"}}
     <div class="field">
       <label for="try-season">{{T "idx.try.season"}}</label>
-      <input id="try-season" name="season" type="number" min="0" value="{{if .Try}}{{.Try.Season}}{{end}}">
+      <input id="try-season" name="season" type="number" min="1" value="{{if .Try.Season}}{{.Try.Season}}{{end}}">
     </div>
     <div class="field">
       <label for="try-episode">{{T "idx.try.episode"}}</label>
-      <input id="try-episode" name="ep" type="number" min="0" value="{{if .Try}}{{.Try.Episode}}{{end}}">
+      <input id="try-episode" name="ep" type="number" min="1" value="{{if .Try.Episode}}{{.Try.Episode}}{{end}}">
     </div>
-    <div class="field">
-      <label for="try-imdb">{{T "idx.try.imdb"}}</label>
-      <input id="try-imdb" name="imdbid" type="text" value="{{if .Try}}{{.Try.IMDbID}}{{end}}" inputmode="numeric" autocomplete="off">
-    </div>
-    <div class="field">
-      <label for="try-tvdb">{{T "idx.try.tvdb"}}</label>
-      <input id="try-tvdb" name="tvdbid" type="text" value="{{if .Try}}{{.Try.TVDbID}}{{end}}" inputmode="numeric" autocomplete="off">
-    </div>
+    {{end}}
+    {{if or (eq .Try.Mode "tvsearch") (eq .Try.Mode "movie")}}
+    <details class="advanced-inline">
+      <summary>{{T "component.advanced"}}</summary>
+      {{if eq .Try.Mode "tvsearch"}}
+      <div class="field">
+        <label for="try-imdb">{{T "idx.try.imdb"}}</label>
+        <input id="try-imdb" name="imdbid" type="text" value="{{if .Try}}{{.Try.IMDbID}}{{end}}" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="try-tvdb">{{T "idx.try.tvdb"}}</label>
+        <input id="try-tvdb" name="tvdbid" type="text" value="{{if .Try}}{{.Try.TVDbID}}{{end}}" inputmode="numeric" autocomplete="off">
+      </div>
+      {{else}}
+      <div class="field">
+        <label for="try-imdb">{{T "idx.try.imdb"}}</label>
+        <input id="try-imdb" name="imdbid" type="text" value="{{if .Try}}{{.Try.IMDbID}}{{end}}" inputmode="numeric" autocomplete="off">
+      </div>
+      {{end}}
+    </details>
+    {{end}}
     <div class="field actions-field">
       <button class="btn primary" type="submit">{{T "idx.try.submit"}}</button>
     </div>

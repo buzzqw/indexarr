@@ -171,36 +171,60 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (LiveResult, er
 	for _, target := range targets {
 		pending[target.ID] = target
 	}
+	completed, stored := 0, 0
+	softTimer := time.NewTimer(600 * time.Millisecond)
+	defer softTimer.Stop()
+	softFired := false
+
+	finishPartial := func() LiveResult {
+		// Drain whatever completed in the same instant, then report the rest
+		// as timed out. Workers continue under workCtx and cache their result
+		// for the next request.
+		for {
+			select {
+			case outcome := <-results:
+				delete(pending, outcome.IndexerID)
+				result.Indexers = append(result.Indexers, outcome)
+				result.Stored += outcome.Results
+			default:
+				goto drained
+			}
+		}
+	drained:
+		for id, indexer := range pending {
+			result.Indexers = append(result.Indexers, LiveIndexerResult{
+				IndexerID: id,
+				Name:      indexer.Name,
+				Mode:      requestedMode(req),
+				TimedOut:  true,
+			})
+		}
+		m.cacheLive(cacheKey, cacheTTL, result)
+		return result
+	}
+
 	for len(pending) > 0 {
 		select {
 		case outcome := <-results:
 			delete(pending, outcome.IndexerID)
 			result.Indexers = append(result.Indexers, outcome)
 			result.Stored += outcome.Results
+			completed++
+			stored += outcome.Results
+			if softFired && stored == 0 && completed >= 5 {
+				return finishPartial(), nil
+			}
+		case <-softTimer.C:
+			// Adaptive wait: a query that is finding nothing anywhere can
+			// return as soon as the fast indexers have answered; a query with
+			// results waits for the full configured window so late sites can
+			// contribute.
+			softFired = true
+			if stored == 0 && completed >= 5 {
+				return finishPartial(), nil
+			}
 		case <-ctx.Done():
-			// Drain whatever completed in the same instant, then report the
-			// rest as timed out. Workers continue under workCtx.
-			for {
-				select {
-				case outcome := <-results:
-					delete(pending, outcome.IndexerID)
-					result.Indexers = append(result.Indexers, outcome)
-					result.Stored += outcome.Results
-				default:
-					goto timedOut
-				}
-			}
-		timedOut:
-			for id, indexer := range pending {
-				result.Indexers = append(result.Indexers, LiveIndexerResult{
-					IndexerID: id,
-					Name:      indexer.Name,
-					Mode:      requestedMode(req),
-					TimedOut:  true,
-				})
-			}
-			m.cacheLive(cacheKey, cacheTTL, result)
-			return result, nil
+			return finishPartial(), nil
 		}
 	}
 	m.cacheLive(cacheKey, cacheTTL, result)

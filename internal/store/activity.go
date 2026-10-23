@@ -95,10 +95,13 @@ type IndexerSample struct {
 
 // AppSearch is one search request received from a Torznab/Newznab client.
 type AppSearch struct {
-	ID           int64
-	App          string
-	Mode         string
-	Query        string
+	ID    int64
+	App   string
+	Mode  string
+	Query string
+	// Params is the sanitized Torznab query string. The API key is removed
+	// before storing it, so it is safe to show in Activity.
+	Params       string
 	IndexerIDs   []int64
 	IndexerNames []string
 	Results      map[string]int64
@@ -503,11 +506,11 @@ func (s *Store) RecordAppSearch(ctx context.Context, in AppSearch) (int64, error
 	}
 	var id int64
 	err = s.db.QueryRowContext(ctx, `
-		INSERT INTO app_searches(app, mode, query, indexer_ids, indexer_names,
+		INSERT INTO app_searches(app, mode, query, params, indexer_ids, indexer_names,
 			results_json, total_results, duration_ms, error, live_json, created_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
-		strings.TrimSpace(in.App), in.Mode, in.Query, string(ids),
+		strings.TrimSpace(in.App), in.Mode, in.Query, in.Params, string(ids),
 		string(names), string(encodedResults), in.TotalResults, in.DurationMS,
 		in.Error, string(encodedLive), in.CreatedAt.Unix()).Scan(&id)
 	if err != nil {
@@ -528,7 +531,7 @@ func (s *Store) ListAppSearches(ctx context.Context, limit, offset int) ([]AppSe
 		offset = 0
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, app, mode, query, indexer_ids, indexer_names, results_json,
+		SELECT id, app, mode, query, params, indexer_ids, indexer_names, results_json,
 			total_results, duration_ms, error, live_json, created_at
 		FROM app_searches ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,
 		limit, offset)
@@ -541,7 +544,7 @@ func (s *Store) ListAppSearches(ctx context.Context, limit, offset int) ([]AppSe
 		var item AppSearch
 		var ids, names, results, live string
 		var created int64
-		if err := rows.Scan(&item.ID, &item.App, &item.Mode, &item.Query,
+		if err := rows.Scan(&item.ID, &item.App, &item.Mode, &item.Query, &item.Params,
 			&ids, &names, &results, &item.TotalResults, &item.DurationMS,
 			&item.Error, &live, &created); err != nil {
 			return nil, fmt.Errorf("scan app search: %w", err)

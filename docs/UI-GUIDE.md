@@ -61,6 +61,20 @@ da solo V3, V5 e metà di V2: per questo le fasi 2–3 vengono dopo WP16.
    "Mostra" o "Copia"). Mai nei link, nei title, negli URL di esempio.
 10. **Ogni flusso finisce con il passo successivo** (messaggio di conferma +
     pulsante verso la cosa che verosimilmente serve dopo).
+11. **Problema ≠ caratteristica.** Rosso, triangoli e "Problemi" solo per
+    errori, login scaduto, sito irraggiungibile o zero risultati quando il
+    sito dovrebbe averne. Data, dimensione, seeders, magnet o infohash
+    mancanti sono caratteristiche del sito: stanno in una sezione neutra
+    "Cosa fornisce questo sito", mai nella Home o nel badge.
+12. **Categorie per nome.** L'utente non vede mai "Category N" o un ID nudo:
+    le categorie standard si mostrano raggruppate per famiglia con nome, e il
+    numero solo sotto "Avanzate"; gli ID custom dei manager si scartano o si
+    mappano sul padre standard.
+13. **Una barra azioni.** Nelle schede e nei form i bottoni stanno sulla stessa
+    linea di base; l'azione primaria è a destra, le secondarie a sinistra;
+    sotto 600 px vanno in colonna a tutta larghezza. Nelle tabelle le azioni
+    hanno una colonna allineata. Bottoni, link-bottone e select usano un solo
+    token di altezza.
 
 Regole di testo:
 
@@ -397,7 +411,8 @@ test che li renderizza:
 | `advanced` | `<details>` "Avanzate" | chiuso di default; aperto se contiene un errore di validazione |
 | `empty` | stato vuoto | titolo, una frase, un pulsante |
 | `next-step` | messaggio dopo un'azione | flash con pulsante |
-| `category-picker` | categorie | caselle con nomi localizzati, mai ID |
+| `category-picker` | categorie | caselle con nomi localizzati, mai ID; Adulti non spuntato di default |
+| `action-bar` | azioni di form e schede | primaria a destra, secondarie a sinistra, stessa altezza; colonna sotto 600 px |
 | `site-picker` | ricerca sito (§4.3) | SSR + piccolo JS di filtro; funziona anche senza JS (lista completa) |
 | `confirm` | azioni distruttive | dice cosa si perde ("Elimina ExtTo e 312 release?") |
 | `.skip` | link "Salta al contenuto" | visibile solo al focus (V1) |

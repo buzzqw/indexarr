@@ -124,7 +124,7 @@ func TestIndexerDataTabShowsMetricsCompletenessAndRedactedSample(t *testing.T) {
 		"New and discarded per run",
 		`<svg class="run-chart"`,
 		"Field completeness",
-		"This site does not provide seeders",
+		"Seeders",
 		"Last sample",
 		"Raw response",
 		"First normalized items",

@@ -388,6 +388,26 @@
     ]
   },
   {
+    "id": "knaben-search",
+    "name": "Knaben (search)",
+    "description": "Public Knaben meta-search with magnet links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "knaben.org"
+    ]
+  },
+  {
     "id": "librivox",
     "name": "LibriVox",
     "description": "Public LibriVox audiobook catalogue (exact title) with archive torrents.",

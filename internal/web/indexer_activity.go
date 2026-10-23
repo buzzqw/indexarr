@@ -126,16 +126,6 @@ func (s *Server) buildIndexerData(r *http.Request, indexerID int64) (*indexerDat
 	if metrics != nil {
 		data.HasMetrics = true
 		data.Completeness = s.completeness(r, *metrics)
-		for _, field := range data.Completeness {
-			if !field.Missing {
-				continue
-			}
-			data.Problems = append(data.Problems, uiProblem{
-				Text:        s.missingFieldPhrase(r, field.Key),
-				ActionLabel: s.translate(r, "common.edit"),
-				ActionURL:   "/indexers/" + strconv.FormatInt(indexerID, 10) + "/edit",
-			})
-		}
 	}
 
 	sample, found, err := s.store.GetIndexerSample(r.Context(), indexerID)

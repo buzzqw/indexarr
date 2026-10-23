@@ -167,7 +167,7 @@ func TestDashboardQuickActions(t *testing.T) {
 			t.Errorf("home missing %q", want)
 		}
 	}
-	for _, unwanted := range []string{"Errors (24h)", "Database size", "169"} {
+	for _, unwanted := range []string{"Errors (24h)", "Database size"} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("home still shows the technical counter %q", unwanted)
 		}

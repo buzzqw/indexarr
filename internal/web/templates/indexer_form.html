@@ -7,7 +7,6 @@
     <h1>{{.Title}}</h1>
     <p class="muted">{{if .IsNew}}{{T "idx.formSubtitle"}}{{else}}{{.DefinitionName}}{{end}}</p>
   </div>
-  <a class="btn" href="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">{{T "idx.cancel"}}</a>
 </section>
 
 {{if .Problems}}
@@ -43,6 +42,16 @@
   <input type="hidden" name="url" value="{{.URLValue}}">
   {{end}}
 
+  {{if gt (len .URLChoices) 1}}
+  <div class="field">
+    <label for="url">{{T "idx.siteAddress"}}</label>
+    <select id="url" name="url">
+      {{range .URLChoices}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <p class="help">{{T "indexerForm.urlChoicesHelp"}}</p>
+  </div>
+  {{end}}
+
   {{if .Categories}}{{template "category-picker" .}}{{end}}
 
   {{range .RequiredFields}}
@@ -71,10 +80,16 @@
     <div class="form-grid">
       <div class="field">
         <label for="protocol">{{T "idx.protocol"}}</label>
+        {{if .ProtocolKnown}}
+        <input type="hidden" name="protocol" value="{{.Protocol}}">
+        <p class="readonly-value">{{.ProtocolLabel}}</p>
+        {{else}}
         <select id="protocol" name="protocol">
-          <option value="torrent"{{if eq .Protocol "torrent"}} selected{{end}}>torrent</option>
-          <option value="usenet"{{if eq .Protocol "usenet"}} selected{{end}}>usenet</option>
+          <option value="torrent"{{if eq .Protocol "torrent"}} selected{{end}}>{{T "idx.protocolTorrentMagnet"}}</option>
+          <option value="usenet"{{if eq .Protocol "usenet"}} selected{{end}}>{{T "idx.protocolUsenet"}}</option>
         </select>
+        {{end}}
+        <p class="help">{{T "idx.protocolHelp"}}</p>
       </div>
       <div class="field">
         <label for="slug">{{T "idx.slug"}}</label>
@@ -109,18 +124,13 @@
       </div>
       <div class="field">
         <label for="default_category">{{T "idx.defaultCategory"}}</label>
-        <input id="default_category" name="default_category" type="text" value="{{.DefaultCategory}}" placeholder="{{T "indexerForm.defaultCategoryPlaceholder"}}">
+        <select id="default_category" name="default_category">
+          {{range .CategoryGroups}}<optgroup label="{{.Label}}">{{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</optgroup>{{end}}
+        </select>
+        <p class="help">{{T "idx.defaultCategoryHelp"}}</p>
       </div>
     </div>
 
-    {{if gt (len .URLChoices) 1}}
-    <div class="field">
-      <label for="url">{{T "idx.siteAddress"}}</label>
-      <select id="url" name="url">
-        {{range .URLChoices}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
-      </select>
-    </div>
-    {{end}}
 
     {{range .AdvancedFields}}
     <div class="field{{if eq .Type "checkbox"}} checkbox{{end}}">
@@ -182,10 +192,11 @@
     </div>
   {{template "advanced-close"}}
 
-  <div class="actions">
+  <div class="actions form-actions">
+    <a class="btn" href="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">{{T "idx.cancel"}}</a>
     {{if .IsNew}}
-    <button class="btn primary" type="submit" name="test" value="1">{{T "idx.addAndTest"}}</button>
     <button class="btn" type="submit" name="save" value="1">{{T "idx.addWithoutTest"}}</button>
+    <button class="btn primary" type="submit" name="test" value="1">{{T "idx.addAndTest"}}</button>
     {{else}}
     <button class="btn primary" type="submit">{{T "indexerForm.save"}}</button>
     {{end}}

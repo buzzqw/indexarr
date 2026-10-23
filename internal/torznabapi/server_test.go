@@ -433,3 +433,16 @@ func TestCapsUseRealIndexerCapabilities(t *testing.T) {
 	check("/api?t=caps")
 	check("/api/v2.0/indexers/tracker/results/torznab/api?t=caps")
 }
+
+func TestSanitizedParamsRemovesCredentials(t *testing.T) {
+	r := httptest.NewRequest("GET", "/api?t=tvsearch&q=Show&season=1&ep=2&apikey=SECRET&api_key=SECRET2", nil)
+	got := sanitizedParams(r)
+	for _, want := range []string{"t=tvsearch", "q=Show", "season=1", "ep=2"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("params %q missing %q", got, want)
+		}
+	}
+	if strings.Contains(got, "SECRET") {
+		t.Fatalf("credentials leaked into params: %q", got)
+	}
+}

@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -120,8 +121,6 @@ func homeProblemCode(view indexerHealthView) (string, int) {
 			return "home.problem.errors", reason.Count
 		case health.ReasonZeroResults:
 			return "home.problem.zero", reason.Count
-		case health.ReasonCompleteness:
-			return "home.problem.completeness", 0
 		}
 	}
 	return "home.problem.unknown", 0
@@ -193,7 +192,48 @@ func suggestedPublicURL(r *http.Request) string {
 	if host == "" {
 		return ""
 	}
+	// A browser on the same machine sees 127.0.0.1, but Sonarr/Radarr in
+	// Docker cannot reach that address. Propose the LAN address instead; the
+	// help text explains when host.docker.internal is needed.
+	hostname, port, err := net.SplitHostPort(host)
+	if err == nil && (hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1") {
+		if lan := lanIPv4(); lan != "" {
+			host = net.JoinHostPort(lan, port)
+		}
+	}
 	return scheme + "://" + host
+}
+
+func lanIPv4() string {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return ""
+	}
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch value := addr.(type) {
+			case *net.IPNet:
+				ip = value.IP
+			case *net.IPAddr:
+				ip = value.IP
+			}
+			if ip == nil || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.To4() == nil {
+				continue
+			}
+			if ip.IsPrivate() {
+				return ip.String()
+			}
+		}
+	}
+	return ""
 }
 
 // backupEver reports whether at least one backup file exists.

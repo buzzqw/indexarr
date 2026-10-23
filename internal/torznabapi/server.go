@@ -323,7 +323,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		}
 		wait := time.Duration(settings.TorznabLiveWait) * time.Second
 		if wait <= 0 {
-			wait = 2 * time.Second
+			wait = 1 * time.Second
 		}
 		if wait > timeout {
 			wait = timeout

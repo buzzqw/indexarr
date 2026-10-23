@@ -140,7 +140,7 @@ func TestDashboardPublicURLWarning(t *testing.T) {
 	for _, want := range []string{
 		"Use this address",
 		"http://example.com/api",
-		"Check that your apps can reach it",
+		"host.docker.internal",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing suggested address %q", want)

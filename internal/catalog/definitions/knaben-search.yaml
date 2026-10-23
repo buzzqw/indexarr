@@ -1,0 +1,59 @@
+# VERIFICATA (verified). Knaben public HTML search.
+#
+# The feed at rss.knaben.org/ita is the latest channel (definition `knaben`);
+# this definition is the search channel. The public search page carries the
+# magnet directly and also exposes the infohash, size, date and seeders.
+schema: 1
+
+meta:
+  id: knaben-search
+  name: Knaben (search)
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Knaben meta-search with magnet links.
+  urls:
+    - https://knaben.org/
+  updated: "2026-10-23"
+  latest: false
+
+categories:
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "Audio", standard: 3000, desc: "Audio" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: "/search/{{ query.keywords }}/"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table tbody tr[data-id]" }
+    fields:
+      title:    { selector: 'td.text-wrap a[title]', attr: title }
+      magnet:   { selector: 'td.text-wrap a[href^="magnet:"]', attr: href }
+      infohash: { selector: "span[data-copy-to-clipboard-content]", attr: data-copy-to-clipboard-content }
+      size:     { selector: 'td[title$="Bytes"]', type: size }
+      date:     { selector: "td:nth-of-type(4)", attr: title, type: date, layouts: ["2006-01-02 15:04:05"] }
+      seeders:  { selector: "td:nth-of-type(5)", type: int }
+      leechers: { selector: "td:nth-of-type(6)", type: int }
+      category: { selector: "td:nth-of-type(1) a", type: category }
+    required: [title, magnet, size]
+
+health:
+  query: "Stranger Things"
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/knaben-search/listing.html
+    expect: { min_rows: 1, required: [title, magnet, infohash, size] }

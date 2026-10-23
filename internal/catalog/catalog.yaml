@@ -67,6 +67,11 @@ definitions:
     state: verificata
     author: indexarr
 
+  - id: knaben-search
+    file: definitions/knaben-search.yaml
+    state: verificata
+    author: indexarr
+
   - id: torrentleech
     file: definitions/torrentleech.yaml
     state: bozza

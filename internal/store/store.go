@@ -320,6 +320,13 @@ func (s *Store) migrate() error {
 		"pair latest and search channels", pairChannelsMigration); err != nil {
 		return err
 	}
+	// Migration 9 records the sanitized Torznab query parameters for app
+	// searches and drops custom manager categories (ids >= 100000) from the
+	// existing indexer configurations. It is additive and non-destructive.
+	if err := s.applyMigration(context.Background(), indexarr2Cycle6Version,
+		"app search params and standard categories", cycle6Migration); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

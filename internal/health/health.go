@@ -131,6 +131,9 @@ type Input struct {
 	// Outcomes bypasses History for the pure table tests and for callers that
 	// already have the compact form.
 	Outcomes []Outcome
+	// FeedOnly marks an indexer that only publishes a latest feed. A zero-row
+	// search is not a fault for it: the feed has no query endpoint.
+	FeedOnly bool
 }
 
 // Assessment is one indexer's health picture.
@@ -245,14 +248,9 @@ func Assess(in Input, thresholds Thresholds) Assessment {
 		}
 		assessment.Reasons = append(assessment.Reasons, Reason{Code: ReasonErrors, Count: count})
 	}
-	if signals.zeroResults >= thresholds.ConsecutiveZeroResults {
+	if !in.FeedOnly && signals.zeroResults >= thresholds.ConsecutiveZeroResults {
 		assessment.Reasons = append(assessment.Reasons, Reason{
 			Code: ReasonZeroResults, Count: signals.zeroResults,
-		})
-	}
-	if signals.completeness >= 0 && signals.completeness < thresholds.MinFieldPercent {
-		assessment.Reasons = append(assessment.Reasons, Reason{
-			Code: ReasonCompleteness, Field: signals.field, Percent: signals.completeness,
 		})
 	}
 
@@ -286,8 +284,7 @@ func NextState(current string, recent []Outcome, thresholds Thresholds) string {
 	}
 	signals := analyse(recent, thresholds)
 	degraded := signals.failures >= thresholds.ConsecutiveFailures ||
-		signals.zeroResults >= thresholds.ConsecutiveZeroResults ||
-		(signals.completeness >= 0 && signals.completeness < thresholds.MinFieldPercent)
+		signals.zeroResults >= thresholds.ConsecutiveZeroResults
 	latestClean := len(recent) > 0 && !outcomeFailed(recent[0]) && !outcomeCanceled(recent[0]) &&
 		(!recent[0].HasSeen || recent[0].Seen > 0)
 
@@ -390,6 +387,13 @@ func consecutiveClean(outcomes []Outcome) int {
 func consecutiveZero(outcomes []Outcome) int {
 	count := 0
 	for _, outcome := range outcomes {
+		// Only a scheduled latest run tells us that a site should have
+		// returned something. Sonarr/Radarr searches are user queries: an
+		// alternate title that legitimately finds nothing must not turn the
+		// indexer red.
+		if !strings.EqualFold(strings.TrimSpace(outcome.Kind), "run") {
+			continue
+		}
 		if outcomeFailed(outcome) || outcomeCanceled(outcome) {
 			break
 		}

@@ -83,6 +83,20 @@ type indexerRowView struct {
 	FiltersLabel string
 	LastUpdate   time.Time
 	Problem      *uiProblem
+	// SearchOnly means the definition has no periodic latest run. The list
+	// must say that instead of "never updated".
+	SearchOnly bool
+	FeedOnly   bool
+	// Channels groups the latest/search rows of one site in a single row.
+	Channels []indexerChannelView
+}
+
+type indexerChannelView struct {
+	ID     int64
+	Name   string
+	Label  string
+	State  string
+	Active bool
 }
 
 type indexersListView struct {
@@ -153,6 +167,7 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 		}
 		data.Rows = append(data.Rows, view)
 	}
+	data.Rows = groupIndexerRows(data.Rows)
 	if data.Total > 0 && len(data.Rows) == 0 {
 		data.Empty = uiEmpty{
 			Title:       s.translate(r, "idx.noMatchTitle"),
@@ -222,14 +237,25 @@ func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[stri
 	}
 	if row.Filters == 1 {
 		row.FiltersLabel = s.translate(r, "idx.filtersOne")
+		if detail := filterSummary(indexerFilterValues(in)); detail != "" {
+			row.FiltersLabel += ": " + detail
+		}
 	} else if row.Filters > 1 {
 		row.FiltersLabel = s.translate(r, "idx.filters", row.Filters)
+		if detail := filterSummary(indexerFilterValues(in)); detail != "" {
+			row.FiltersLabel += ": " + detail
+		}
 	}
 	state := s.loadIndexerHealth(r.Context(), in)
+	row.SearchOnly = !state.Latest
+	row.FeedOnly = state.FeedOnly
 	if state.LastRun != nil {
 		row.LastUpdate = state.LastRun.StartedAt
 	}
 	row.Status = s.statusDotFor(r, state)
+	if row.SearchOnly && row.Status.State == "testing" {
+		row.Status = statusDot{State: "ok", Label: s.translate(r, "idx.statusSearchOnly")}
+	}
 	if row.Status.State == "problem" || row.Status.State == "degraded" || row.Status.State == "blocked" {
 		row.Problem = s.healthProblem(r, state)
 		if row.Problem == nil {
@@ -237,6 +263,60 @@ func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[stri
 		}
 	}
 	return row
+}
+
+// groupIndexerRows keeps the latest/search channels of one site on a single
+// row. The row links to the primary indexer and expands the other channel.
+func groupIndexerRows(rows []indexerRowView) []indexerRowView {
+	groups := make(map[string][]indexerRowView)
+	order := make([]string, 0, len(rows))
+	for _, row := range rows {
+		key := ""
+		if config := publicConfigMap(row.Indexer.ConfigJSON); config != nil {
+			key = strings.TrimSpace(config["site"])
+		}
+		if key == "" {
+			key = "indexer:" + strconv.FormatInt(row.Indexer.ID, 10)
+		}
+		if _, ok := groups[key]; !ok {
+			order = append(order, key)
+		}
+		groups[key] = append(groups[key], row)
+	}
+	out := make([]indexerRowView, 0, len(order))
+	for _, key := range order {
+		group := groups[key]
+		primary := group[0]
+		if len(group) > 1 {
+			primary.Channels = make([]indexerChannelView, 0, len(group))
+			for _, channel := range group {
+				label := ""
+				if config := publicConfigMap(channel.Indexer.ConfigJSON); config != nil {
+					switch strings.ToLower(strings.TrimSpace(config["channel"])) {
+					case "latest":
+						label = "latest"
+					case "search":
+						label = "search"
+					}
+				}
+				if label == "" {
+					label = channel.Status.Label
+				}
+				if label == "latest" {
+					primary.SearchOnly = false
+					if primary.LastUpdate.IsZero() && !channel.LastUpdate.IsZero() {
+						primary.LastUpdate = channel.LastUpdate
+					}
+				}
+				primary.Channels = append(primary.Channels, indexerChannelView{
+					ID: channel.Indexer.ID, Name: channel.Indexer.Name,
+					Label: label, State: channel.Status.State, Active: channel.Indexer.Enabled,
+				})
+			}
+		}
+		out = append(out, primary)
+	}
+	return out
 }
 
 func (s *Server) indexerStatus(r *http.Request, in store.Indexer, state store.IndexerState, hasState bool, lastRun *store.IndexerHistory) statusDot {
@@ -393,6 +473,21 @@ func looksProwlarrEndpoint(raw string) bool {
 	return false
 }
 
+func filterSummary(values map[string]string) string {
+	keys := make([]string, 0, len(values))
+	for key, value := range values {
+		if strings.TrimSpace(value) != "" {
+			if key == "filter" {
+				keys = append(keys, value)
+			} else {
+				keys = append(keys, key+"="+value)
+			}
+		}
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, ", ")
+}
+
 // indexerFilterValues lists the user-configured filter values of an indexer.
 func indexerFilterValues(in store.Indexer) map[string]string {
 	out := map[string]string{}
@@ -400,7 +495,7 @@ func indexerFilterValues(in store.Indexer) map[string]string {
 	for key, value := range config {
 		switch key {
 		case "url", "categories", "query", "user_agent", "allow_private", "default_category",
-			"challenge", "flaresolverr_url", "flaresolverr_timeout":
+			"challenge", "flaresolverr_url", "flaresolverr_timeout", "site", "channel", "latest":
 			continue
 		}
 		if strings.TrimSpace(value) != "" {
@@ -441,6 +536,10 @@ type siteChoice struct {
 	StateLabel    string
 	Categories    []string
 	AccessLabel   string
+	URL           string
+	Mirrors       []string
+	Italian       bool
+	Usage         int
 	QuickAdd      bool
 	Added         bool
 	AddedID       int64
@@ -778,6 +877,13 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 		filtered = append(filtered, entry)
 	}
 	sort.SliceStable(filtered, func(i, j int) bool {
+		if q.Sort == "used" {
+			_, leftUsed := added[filtered[i].ID]
+			_, rightUsed := added[filtered[j].ID]
+			if leftUsed != rightUsed {
+				return leftUsed
+			}
+		}
 		left, right := strings.ToLower(filtered[i].Name), strings.ToLower(filtered[j].Name)
 		if left == right {
 			return filtered[i].ID < filtered[j].ID
@@ -809,7 +915,11 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 		offset = total
 	}
 	for _, entry := range filtered[offset:end] {
-		view.Sites = append(view.Sites, s.siteChoice(r, entry, added[entry.ID]))
+		choice := s.siteChoice(r, entry, added[entry.ID])
+		if _, ok := added[entry.ID]; ok {
+			choice.Usage = 1
+		}
+		view.Sites = append(view.Sites, choice)
 	}
 	view.Pager = newPager(r, "/indexers/new", int64(total), limit, offset)
 	view.NotFound = len(filtered) == 0
@@ -841,12 +951,34 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		Categories:    s.catalogCategoryLabels(r, entry.Categories),
 		AccessLabel:   s.catalogAccessLabel(r, entry.Required),
 		QuickAdd:      catalogQuickAdd(entry),
+		Italian:       strings.HasPrefix(strings.ToLower(entry.Language), "it"),
 	}
+	if len(entry.Hosts) > 0 {
+		choice.URL = "https://" + entry.Hosts[0] + "/"
+		for _, host := range entry.Hosts[1:] {
+			choice.Mirrors = append(choice.Mirrors, "https://"+host+"/")
+		}
+	}
+	choice.Description = s.catalogDescription(r, entry, choice.Categories)
 	if added.ID != 0 {
 		choice.Added = true
 		choice.AddedID = added.ID
 	}
 	return choice
+}
+
+func (s *Server) catalogDescription(r *http.Request, entry catalog.IndexEntry, categories []string) string {
+	key := "idx.catalog.descPublic"
+	switch strings.ToLower(strings.TrimSpace(entry.Type)) {
+	case "private":
+		key = "idx.catalog.descPrivate"
+	case "semi-private":
+		key = "idx.catalog.descSemiPrivate"
+	}
+	if len(categories) > 0 {
+		return s.translate(r, key, strings.Join(categories, ", "))
+	}
+	return s.translate(r, key, s.translate(r, "idx.catalog.descGeneric"))
 }
 
 func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry, current catalogQuery) []siteFilterGroup {
@@ -859,12 +991,27 @@ func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry
 				{Label: s.translate(r, "idx.badgePrivate"), URL: catalogFilterURL(r, "type", "private"), Active: current.Type == "private"},
 			},
 		},
+		{
+			Label: s.translate(r, "idx.catalog.quickFilters"),
+			Chips: []siteFilterChip{
+				{Label: s.translate(r, "idx.catalog.italian"), URL: catalogFilterURL(r, "language", "it"), Active: current.Language == "it"},
+				{Label: s.translate(r, "idx.catalog.mostUsed"), URL: catalogFilterURL(r, "sort", "used"), Active: current.Sort == "used"},
+			},
+		},
 	}
 	if languages := catalogLanguages(index); len(languages) > 0 {
 		group := siteFilterGroup{Label: s.translate(r, "idx.catalog.language")}
+		names := map[string]int{}
 		for _, language := range languages {
+			names[catalogLanguageName(language)]++
+		}
+		for _, language := range languages {
+			label := catalogLanguageName(language)
+			if names[label] > 1 && strings.HasPrefix(strings.ToLower(language), "zh") {
+				label += " (" + catalogLanguageBadge(language) + ")"
+			}
 			group.Chips = append(group.Chips, siteFilterChip{
-				Label:  catalogLanguageName(language),
+				Label:  label,
 				URL:    catalogFilterURL(r, "language", language),
 				Active: strings.EqualFold(current.Language, language),
 			})
@@ -961,9 +1108,6 @@ func catalogLanguageBadge(raw string) string {
 	if raw == "" {
 		return ""
 	}
-	if index := strings.IndexAny(raw, "-_"); index > 0 {
-		raw = raw[:index]
-	}
 	return strings.ToUpper(raw)
 }
 
@@ -1008,6 +1152,7 @@ type catalogQuery struct {
 	Category string
 	Protocol string
 	State    string
+	Sort     string
 	Page     int
 }
 
@@ -1015,6 +1160,7 @@ var catalogFilterValues = map[string]map[string]bool{
 	"type":  {"public": true, "semi-private": true, "private": true},
 	"proto": {"torrent": true, "usenet": true},
 	"state": {"verified": true, "testing": true},
+	"sort":  {"used": true, "name": true},
 	"cat": {
 		"movies": true, "tv": true, "music": true, "books": true,
 		"anime": true, "games": true, "software": true, "xxx": true,
@@ -1029,6 +1175,7 @@ func parseCatalogQuery(r *http.Request) catalogQuery {
 		Category: catalogFilterValue(values.Get("cat"), "cat"),
 		Protocol: catalogFilterValue(values.Get("proto"), "proto"),
 		State:    catalogFilterValue(values.Get("state"), "state"),
+		Sort:     catalogFilterValue(values.Get("sort"), "sort"),
 		Page:     intParam(values.Get("page"), 1),
 	}
 	return out
@@ -1228,17 +1375,61 @@ func (s *Server) definitionCategoryLabels(r *http.Request, ids []int) []string {
 	return out
 }
 
+func isAdultCategory(id int) bool {
+	return id >= 6000 && id < 7000
+}
+
+func (s *Server) defaultCategoryGroups(r *http.Request, selected string) []categoryOptionGroup {
+	selected = strings.TrimSpace(selected)
+	groups := make([]categoryOptionGroup, 0, len(categories.Groups()))
+	for _, group := range categories.Groups() {
+		item := categoryOptionGroup{Label: s.categoryLabel(r, group.Top.ID)}
+		item.Options = append(item.Options, indexerSettingOption{
+			Value:    strconv.Itoa(group.Top.ID),
+			Label:    strconv.Itoa(group.Top.ID) + " · " + s.categoryLabel(r, group.Top.ID),
+			Selected: selected == strconv.Itoa(group.Top.ID),
+		})
+		for _, child := range group.Children {
+			item.Options = append(item.Options, indexerSettingOption{
+				Value:    strconv.Itoa(child.ID),
+				Label:    strconv.Itoa(child.ID) + " · " + s.categoryLabel(r, child.ID),
+				Selected: selected == strconv.Itoa(child.ID),
+			})
+		}
+		groups = append(groups, item)
+	}
+	return groups
+}
+
+func (s *Server) protocolLabel(r *http.Request, protocol string) string {
+	if strings.EqualFold(strings.TrimSpace(protocol), "usenet") {
+		return s.translate(r, "idx.protocolUsenet")
+	}
+	return s.translate(r, "idx.protocolTorrentMagnet")
+}
+
 func (s *Server) categoryLabel(r *http.Request, id int) string {
 	key := "category." + strconv.Itoa(id)
 	lang := requestLanguage(r)
 	label := i18n.T(lang, key)
 	if label == key || strings.TrimSpace(label) == "" {
-		return categories.Name(strconv.Itoa(id))
+		name := categories.Name(strconv.Itoa(id))
+		if strings.HasPrefix(strings.ToLower(name), "category ") {
+			if parent := categories.Parent(id); parent != 0 && parent != id {
+				return categories.Name(strconv.Itoa(parent))
+			}
+		}
+		return name
 	}
 	return label
 }
 
 // ------------------------------------------------------------- compact form
+
+type categoryOptionGroup struct {
+	Label   string
+	Options []indexerSettingOption
+}
 
 type compactFormView struct {
 	base
@@ -1251,11 +1442,14 @@ type compactFormView struct {
 	Derived             bool
 	Name                string
 	Protocol            string
+	ProtocolKnown       bool
+	ProtocolLabel       string
 	Slug                string
 	Priority            int
 	Tags                string
 	Query               string
 	DefaultCategory     string
+	CategoryGroups      []categoryOptionGroup
 	UserAgent           string
 	AllowPrivate        bool
 	Challenge           string
@@ -1349,6 +1543,12 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	if data.Protocol == "" {
 		data.Protocol = "torrent"
 	}
+	switch strings.ToLower(strings.TrimSpace(defID)) {
+	case "torznab-generic", "newznab-generic", "rss":
+	default:
+		data.ProtocolKnown = parsed.Meta.Protocol != ""
+	}
+	data.ProtocolLabel = s.protocolLabel(r, data.Protocol)
 
 	config := map[string]string{}
 	secretKeys := map[string]bool{}
@@ -1372,6 +1572,20 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	}
 	data.Query = value("query")
 	data.DefaultCategory = value("default_category")
+	if current == nil && in == nil && strings.TrimSpace(data.DefaultCategory) == "" {
+		for _, setting := range parsed.Settings {
+			if setting.Name == "default-category" {
+				data.DefaultCategory = strings.TrimSpace(setting.Default)
+				break
+			}
+		}
+	}
+	if strings.TrimSpace(data.DefaultCategory) == "" {
+		if ids := definitionCategoryIDs(parsed); len(ids) > 0 {
+			data.DefaultCategory = strconv.Itoa(ids[0])
+		}
+	}
+	data.CategoryGroups = s.defaultCategoryGroups(r, data.DefaultCategory)
 	data.UserAgent = value("user_agent")
 	data.AllowPrivate = truthy(value("allow_private"))
 	data.Challenge = strings.ToLower(strings.TrimSpace(value("challenge")))
@@ -1453,8 +1667,18 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		}
 	}
 	if !definitionHasURL {
-		// Definitions that take the address from meta.urls need no URL field.
-		data.URLValue = ""
+		// Definitions that take the address from meta.urls need no URL field,
+		// but when several mirrors exist the user still picks one.
+		if len(parsed.Meta.URLs) > 1 {
+			if data.URLValue == "" {
+				data.URLValue = parsed.Meta.URLs[0]
+			}
+			for _, raw := range parsed.Meta.URLs {
+				data.URLChoices = append(data.URLChoices, indexerSettingOption{
+					Value: raw, Label: raw, Selected: raw == data.URLValue,
+				})
+			}
+		}
 	}
 
 	selected := splitCategoryList(value("categories"))
@@ -1468,7 +1692,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		data.Categories = append(data.Categories, categoryChoice{
 			ID:      value,
 			Label:   s.categoryLabel(r, id),
-			Checked: checked[value] || defaultChecked,
+			Checked: checked[value] || (defaultChecked && !isAdultCategory(id)),
 		})
 	}
 	data.CategoryHelp = s.translate(r, "idx.categoriesHelp")
@@ -1570,9 +1794,14 @@ func (s *Server) settingHelp(r *http.Request, name, fallback string) string {
 func splitCategoryList(raw string) []string {
 	out := []string{}
 	for _, part := range strings.Split(raw, ",") {
-		if part = strings.TrimSpace(part); part != "" {
-			out = append(out, part)
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
 		}
+		if value, err := strconv.Atoi(part); err != nil || value >= 100000 {
+			continue
+		}
+		out = append(out, part)
 	}
 	return out
 }

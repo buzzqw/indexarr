@@ -69,11 +69,20 @@
 </section>
 {{end}}
 
+<section class="panel" id="features">
+  <div class="panel-head"><h2>{{T "idx.featuresTitle"}}</h2></div>
+  <div class="panel-body">
+    <p class="help">{{T "idx.featuresHelp"}}</p>
+    {{if ge .Health.Completeness 0}}<p>{{T "idx.detail.completeness" .Health.Completeness}}</p>{{end}}
+    <p><a class="link" href="/indexers/{{.Indexer.ID}}?tab=data">{{T "idx.detail.data"}}</a></p>
+  </div>
+</section>
+
 <section class="panel">
   <div class="panel-head"><h2>{{T "idx.detail.status"}}</h2></div>
   <dl class="detail detail-grid">
     <dt>{{T "idx.detail.catalogState"}}</dt>
-    <dd><span class="state state-{{stateClass .CatalogState}}">{{stateLabel .CatalogState}}</span>{{if ge .Health.Completeness 0}} <span class="muted">· {{T "idx.detail.completeness" .Health.Completeness}}</span>{{end}}</dd>
+    <dd><span class="state state-{{stateClass .CatalogState}}">{{stateLabel .CatalogState}}</span></dd>
     <dt>{{T "idx.detail.lastUpdate"}}</dt>
     <dd>{{if .LastRun}}{{date .LastRun.StartedAt}} <span class="muted">({{ago .LastRun.StartedAt}})</span>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</dd>
     <dt>{{T "idx.detail.nextUpdate"}}</dt>

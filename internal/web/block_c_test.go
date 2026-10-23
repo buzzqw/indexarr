@@ -120,7 +120,7 @@ func TestHomeNextStepIsSingleAndOrdered(t *testing.T) {
 func TestHomeHasNoTechnicalCounters(t *testing.T) {
 	env := newTestEnv(t)
 	body := get(t, env.handler, "/").Body.String()
-	for _, unwanted := range []string{"Errors (24h)", "169", "Database size", "Definitions"} {
+	for _, unwanted := range []string{"Errors (24h)", "Database size", "Definitions"} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("home still shows %q", unwanted)
 		}

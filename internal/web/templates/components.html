@@ -56,6 +56,8 @@
       </div>
       <div class="catalog-main">
         {{if .Added}}<a class="site-name" href="/indexers/{{.AddedID}}">{{.Name}}</a>{{else}}<a class="site-name" href="/indexers/new?definition={{.ID}}">{{.Name}}</a>{{end}}
+        {{if .URL}}<p class="site-domain"><a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.URL}}</a></p>{{end}}
+        {{if .Mirrors}}<p class="site-mirrors sub">{{T "idx.otherAddresses"}}: {{range $i, $m := .Mirrors}}{{if $i}} · {{end}}<a href="{{$m}}" target="_blank" rel="noopener noreferrer">{{$m}}</a>{{end}}</p>{{end}}
         {{if .Description}}<p class="site-description muted">{{.Description}}</p>{{end}}
         <div class="site-meta">
           <span class="badge badge-type-{{.Type}}">{{.TypeLabel}}</span>
