@@ -187,11 +187,13 @@ func TestCatalogBulkAddIsIdempotentAndSkipsRequiredSettings(t *testing.T) {
 		t.Errorf("indexers after second add = %d, want still 2", len(afterSecond))
 	}
 
-	body := get(t, env.handler, "/indexers/new").Body.String()
-	if !strings.Contains(body, "Already added") {
-		t.Error("the page does not mark configured sites")
-	}
 	for _, in := range afterSecond {
+		// The catalog is paged, so query the row by name before checking its
+		// "Already added" badge and detail link.
+		body := get(t, env.handler, "/indexers/new?q="+url.QueryEscape(in.Name)).Body.String()
+		if !strings.Contains(body, "Already added") {
+			t.Errorf("the page does not mark %q as configured", in.Name)
+		}
 		if !strings.Contains(body, fmt.Sprintf(`href="/indexers/%d"`, in.ID)) {
 			t.Errorf("no link to the detail of indexer %d", in.ID)
 		}
@@ -226,7 +228,7 @@ func TestCatalogAlreadyAddedMatchesBridgeHost(t *testing.T) {
 	seedDefinition(t, env.store, "torznab-generic", "torznab", phase2Definition("torznab-generic", "torznab", "private", []string{"https://bridge.example/"}, "", ""))
 	id := seedPhase2Indexer(t, env.store, "torznab-generic", "extto-bridge", true, `{"url":"https://extto.org/api"}`)
 
-	body := get(t, env.handler, "/indexers/new").Body.String()
+	body := get(t, env.handler, "/indexers/new?q=ExtTo").Body.String()
 	if !strings.Contains(body, "Already added") {
 		t.Error("the bridge host did not mark the catalog site as added")
 	}

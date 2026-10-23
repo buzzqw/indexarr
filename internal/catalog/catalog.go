@@ -11,6 +11,12 @@
 // equivalence test against the legacy parsers. Entries still in state
 // "bozza" are drafts and must not be presented as production ready.
 //
+// Beside the definitions, sites.yaml carries lightweight rows generated from
+// manager metadata (Jackett/Prowlarr): name, URL, type, language, categories
+// and, when the site itself proves it, the software family. They are not
+// definitions and are never produced from Cardigann data. See sites.go and
+// docs/CATALOG.md.
+//
 // Definitions produced by a conversion tool (meta.derived_from, or the
 // Cardigann converter's author) are rejected: derived drafts are local writing
 // aids and never enter the distributed catalog.
@@ -35,7 +41,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
-//go:embed catalog.yaml definitions/*.yaml
+//go:embed catalog.yaml definitions/*.yaml sites.yaml
 var builtinFS embed.FS
 
 const (
@@ -67,6 +73,10 @@ type Entry struct {
 	Body       []byte
 	Definition *definition.Definition
 	Hash       string
+	Family     string
+	Italian    bool
+	Usage      int
+	Note       string
 }
 
 type manifest struct {
@@ -75,10 +85,14 @@ type manifest struct {
 }
 
 type manifestEntry struct {
-	ID     string `yaml:"id"`
-	File   string `yaml:"file"`
-	State  string `yaml:"state"`
-	Author string `yaml:"author"`
+	ID      string `yaml:"id"`
+	File    string `yaml:"file"`
+	State   string `yaml:"state"`
+	Author  string `yaml:"author"`
+	Family  string `yaml:"family,omitempty"`
+	Italian bool   `yaml:"italian,omitempty"`
+	Usage   int    `yaml:"usage,omitempty"`
+	Note    string `yaml:"note,omitempty"`
 }
 
 // Builtins parses the embedded manifest and definitions, validates every
@@ -204,6 +218,10 @@ func load(fsys fs.FS) ([]Entry, error) {
 			Body:       defBody,
 			Definition: def,
 			Hash:       definition.Fingerprint(defBody),
+			Family:     item.Family,
+			Italian:    item.Italian,
+			Usage:      item.Usage,
+			Note:       item.Note,
 		})
 	}
 	return entries, nil

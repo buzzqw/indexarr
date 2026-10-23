@@ -23,7 +23,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "genindex: load catalog: %v\n", err)
 		os.Exit(1)
 	}
-	body, err := json.MarshalIndent(catalog.BuildIndex(entries), "", "  ")
+	sites, err := catalog.Sites()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "genindex: load sites: %v\n", err)
+		os.Exit(1)
+	}
+	body, err := json.MarshalIndent(catalog.BuildFullIndex(entries, sites), "", "  ")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "genindex: encode index: %v\n", err)
 		os.Exit(1)

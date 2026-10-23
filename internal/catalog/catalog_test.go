@@ -140,7 +140,11 @@ func TestIndexMatchesDefinitions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	want, err := json.MarshalIndent(BuildIndex(entries), "", "  ")
+	sites, err := Sites()
+	if err != nil {
+		t.Fatalf("Sites: %v", err)
+	}
+	want, err := json.MarshalIndent(BuildFullIndex(entries, sites), "", "  ")
 	if err != nil {
 		t.Fatalf("encode index: %v", err)
 	}
@@ -158,8 +162,16 @@ func TestIndexShapeIsStable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Index: %v", err)
 	}
-	if len(index) != 50 {
-		t.Fatalf("len(Index()) = %d, want 50", len(index))
+	entries, err := Builtins()
+	if err != nil {
+		t.Fatalf("Builtins: %v", err)
+	}
+	sites, err := Sites()
+	if err != nil {
+		t.Fatalf("Sites: %v", err)
+	}
+	if len(index) != len(entries)+len(sites) {
+		t.Fatalf("len(Index()) = %d, want %d", len(index), len(entries)+len(sites))
 	}
 	for i := 1; i < len(index); i++ {
 		if index[i-1].ID >= index[i].ID {
@@ -197,6 +209,12 @@ func TestIndexShapeIsStable(t *testing.T) {
 	}
 	if last := index[len(index)-1].ID; last != "yts" {
 		t.Errorf("last index id = %q, want yts", last)
+	}
+	if !extto.Italian || extto.Family != "custom" {
+		t.Errorf("extto metadata = family %q italian %v", extto.Family, extto.Italian)
+	}
+	if !corsaro.Italian || corsaro.Family != "xbtit" {
+		t.Errorf("corsaro metadata = family %q italian %v", corsaro.Family, corsaro.Italian)
 	}
 }
 

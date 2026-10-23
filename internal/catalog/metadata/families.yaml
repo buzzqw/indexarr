@@ -1,0 +1,195 @@
+# Curated tracker-family evidence for manager catalog rows.
+#
+# A family is recorded only when the site itself shows it or the manager's
+# own name says so. It is never inferred from a Cardigann definition: this
+# repository does not import Cardigann. "confidence: probable" means the
+# software is visible in the API/login shape but the literal product name is
+# absent. "evidence" is the public GET that supports the claim.
+schema: 1
+updated: "2026-10-23"
+families:
+  # UNIT3D
+  hdtorrentsit:
+    family: unit3d
+    confidence: confirmed
+    evidence: "GET https://hdtorrents.eu/login -> 200, page contains unit3d; GET /api/torrents -> 401 JSON"
+  shareisland-api:
+    family: unit3d
+    confidence: confirmed
+    evidence: "GET https://shareisland.org/login -> 200, page contains unit3d; GET /api/torrents -> 401 JSON"
+  itatorrents:
+    family: unit3d
+    confidence: probable
+    evidence: "GET https://itatorrents.xyz/login -> 200 Laravel login; GET /api/torrents -> 401 JSON, same UNIT3D API shape; literal unit3d marker absent"
+  jme-reunit3d-api:
+    family: unit3d
+    confidence: confirmed
+    evidence: "Jackett name JME-REUNIT3D; GET https://jme-reunit3d.de/ -> 503 UNIT3D maintenance page"
+  hd-unit3d-api:
+    family: unit3d
+    confidence: confirmed
+    evidence: "Jackett name HD-UNiT3D; GET https://hd-united.vn/ -> 401 JSON, /api/torrents -> 401"
+
+  # Gazelle
+  gazellegamesapi:
+    family: gazelle
+    confidence: confirmed
+    evidence: "GET https://gazellegames.net/login.php -> 200, page contains gazelle"
+
+  # TorrentTrader
+  torrenttrader:
+    family: torrenttrader
+    confidence: confirmed
+    evidence: "GET https://the-torrent-trader.com/login.php -> 200, logo 'Torrent Trader', form posts to takelogin.php"
+
+  # XBTIT / BtiTracker
+  ilcorsaroblu:
+    family: xbtit
+    confidence: confirmed
+    evidence: "GET https://ilcorsaroblu.org/ -> 200, loads /jscript/xbtit.js"
+  arabafenice:
+    family: xbtit
+    confidence: confirmed
+    evidence: "GET https://www.arabafenice.me/sbg_login_classic.php -> 200, footer 'xbtitFM v1.16'"
+  girotorrent:
+    family: xbtit
+    confidence: confirmed
+    evidence: "GET https://girotorrent.org/ -> 200, author meta xbtitFM and footer 'xbtitFM v4.2.14'"
+  fenyarnyek-tracker:
+    family: xbtit
+    confidence: confirmed
+    evidence: "GET http://tracker.fenyarnyek.com/ -> 200, loads /jscript/xbtit.js"
+
+  # NexusPHP. All are private; no account was used, so they stay "da provvi".
+  sewerpt:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://sewerpt.com/login.php -> 200, title 'Powered by NexusPHP'"
+  putao:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://pt.sjtu.edu.cn/login.php -> 200, NexusPHP login form"
+  hdu:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET http://pt.upxin.net/login.php -> 200, NexusPHP login form"
+  hhanclub:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://hhanclub.net/login.php -> 200, title 'Powered by NexusPHP'"
+  ptzone:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://ptzone.xyz/login.php -> 200, title 'Powered by NexusPHP'"
+  keepfriends:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://pt.keepfrds.com/login.php -> 200, NexusPHP markers"
+  pttime:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://www.pttime.org/login.php -> 200, NexusPHP login form"
+  discfan:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://discfan.net/login.php -> 200, title 'Powered by NexusPHP'"
+  u2:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://u2.dmhy.org/portal.php -> 200, NexusPHP portal"
+  hdkylin:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://na.hdkylin.com/login.php -> 200, title 'Powered by NexusPHP'"
+  opencd:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://open.cd/login.php -> 200, NexusPHP login form"
+  haidan:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://www.haidan.cc/login.php -> 200, title 'Powered by NexusPHP'"
+  tlfbits:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://pt.eastgame.org/login.php -> 200, title 'Powered by NexusPHP'"
+  wintersakura:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://wintersakura.net/login.php -> 200, title 'Powered by NexusPHP'"
+  soulvoice:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://pt.soulvoice.club/login.php -> 200, title 'Powered by NexusPHP'"
+  pttey:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://pt.tey.cc/login.php -> 200, title 'Powered by NexusPHP'"
+  13city:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://13city.org/login.php -> 200, title 'Powered by NexusPHP'"
+  tjupt:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://tjupt.org/login.php -> 200, NexusPHP login form"
+  totheglory:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://totheglory.im/login.php -> 200, NexusPHP login form"
+  springsunday:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://springsunday.net/login.php -> 200, NexusPHP login form"
+  btschool:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://pt.btschool.club/login.php -> 200, title 'Powered by NexusPHP'"
+  carpt:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://carpt.net/login.php -> 200, title 'Powered by NexusPHP'"
+  ggpt:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://www.gamegamept.com/login.php -> 200, title 'Powered by NexusPHP'"
+  ptlgs:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://ptlgs.org/login.php -> 200, NexusPHP login form"
+  okpt:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://www.okpt.net/login.php -> 200, title 'Powered by NexusPHP'"
+  hdsky:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://hdsky.me/login.php -> 200, title 'Powered by NexusPHP'"
+  hdfans:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://hdfans.org/login.php -> 200, title 'Powered by NexusPHP'"
+  chdbits:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://ptchdbits.co/login.php -> 200, title 'Powered by NexusPHP'"
+  hdhome:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET http://hdhome.org/login.php -> 200, title 'Powered by NexusPHP'"
+  hdtime:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://hdtime.org/login.php -> 200, title 'Powered by NexusPHP'"
+  pterclub:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://pterclub.net/login.php -> 200, NexusPHP login form"
+  panda:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://pandapt.net/login.php -> 200, NexusPHP login form"
+  xingtan:
+    family: nexusphp
+    confidence: confirmed
+    evidence: "GET https://xingtan.one/login.php -> 200, title 'Powered by NexusPHP'"

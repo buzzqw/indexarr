@@ -20,7 +20,11 @@
     "hosts": [
       "1337x.to",
       "1337x.tube"
-    ]
+    ],
+    "url": "https://1337x.tube/",
+    "usage": 1,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "academictorrents",
@@ -35,7 +39,10 @@
     "state": "verificata",
     "hosts": [
       "academictorrents.com"
-    ]
+    ],
+    "url": "https://academictorrents.com/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "acgnx",
@@ -55,7 +62,10 @@
     "state": "verificata",
     "hosts": [
       "share.acgnx.se"
-    ]
+    ],
+    "url": "https://share.acgnx.se/rss.xml",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "animetosho",
@@ -70,7 +80,10 @@
     "state": "verificata",
     "hosts": [
       "animetosho.org"
-    ]
+    ],
+    "url": "https://animetosho.org/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "anirena",
@@ -88,7 +101,10 @@
     "state": "verificata",
     "hosts": [
       "anirena.com"
-    ]
+    ],
+    "url": "https://www.anirena.com/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "audiobookbay",
@@ -103,7 +119,10 @@
     "state": "verificata",
     "hosts": [
       "audiobookbay.lu"
-    ]
+    ],
+    "url": "https://audiobookbay.lu/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "bangumimoe",
@@ -118,7 +137,10 @@
     "state": "verificata",
     "hosts": [
       "bangumi.moe"
-    ]
+    ],
+    "url": "https://bangumi.moe/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "bitsearch",
@@ -140,7 +162,10 @@
     "state": "verificata",
     "hosts": [
       "bitsearch.eu"
-    ]
+    ],
+    "url": "https://bitsearch.eu/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "bt4g",
@@ -159,7 +184,10 @@
     "state": "verificata",
     "hosts": [
       "bt4gprx.com"
-    ]
+    ],
+    "url": "https://bt4gprx.com/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "btdig",
@@ -171,7 +199,10 @@
     "state": "verificata",
     "hosts": [
       "btdig.com"
-    ]
+    ],
+    "url": "https://btdig.com/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "corsaro",
@@ -187,7 +218,12 @@
     "state": "verificata",
     "hosts": [
       "ilcorsaroblu.org"
-    ]
+    ],
+    "url": "https://ilcorsaroblu.org/",
+    "family": "xbtit",
+    "italian": true,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "corsaro-account",
@@ -206,7 +242,10 @@
     "state": "bozza",
     "hosts": [
       "ilcorsaroblu.org"
-    ]
+    ],
+    "url": "https://ilcorsaroblu.org/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "example-html",
@@ -226,7 +265,10 @@
     "state": "bozza",
     "hosts": [
       "tracker.example.invalid"
-    ]
+    ],
+    "url": "https://tracker.example.invalid/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "extto",
@@ -251,7 +293,12 @@
     "state": "verificata",
     "hosts": [
       "extto.org"
-    ]
+    ],
+    "url": "https://extto.org/",
+    "family": "custom",
+    "italian": true,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "eztv",
@@ -270,7 +317,10 @@
     "hosts": [
       "eztvx.to",
       "myrss.org"
-    ]
+    ],
+    "url": "https://eztvx.to/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "fosstorrents",
@@ -286,7 +336,10 @@
     "state": "verificata",
     "hosts": [
       "fosstorrents.com"
-    ]
+    ],
+    "url": "https://fosstorrents.com/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "gazelle-generic",
@@ -305,7 +358,11 @@
     "state": "bozza",
     "hosts": [
       "gazelle.example.invalid"
-    ]
+    ],
+    "url": "https://gazelle.example.invalid/",
+    "family": "gazelle",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "ildragonegro",
@@ -320,7 +377,12 @@
     "state": "bozza",
     "hosts": [
       "ildragonero2.info"
-    ]
+    ],
+    "url": "https://www.ildragonero2.info/",
+    "family": "custom",
+    "italian": true,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "internetarchive",
@@ -339,7 +401,4459 @@
     "state": "verificata",
     "hosts": [
       "archive.org"
-    ]
+    ],
+    "url": "https://archive.org/",
+    "source": "native",
+    "proposable": true
+  },
+  {
+    "id": "jk-0magnet",
+    "name": "0Magnet",
+    "description": "ØMagnet is a CHINESE Public tracker for Asian 3X (JAV)",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "16mag.net"
+    ],
+    "url": "https://16mag.net/",
+    "source": "jackett",
+    "evidence": "GET https://16mag.net/ -\u003e HTTP 200, 2445 bytes, title \"ØMagnet - Torrent Sharing Made Easy\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-13city",
+    "name": "13City",
+    "description": "13City is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "13city.org"
+    ],
+    "url": "https://13city.org/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://13city.org/login.php -\u003e HTTP 200, 26277 bytes, title \"13City :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-52bt",
+    "name": "52BT",
+    "description": "52BT is a Public tracker for MOVIES / TV / MUSIC / GENERAL",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "edoqsc3t.529075.xyz"
+    ],
+    "url": "https://edoqsc3t.529075.xyz/",
+    "source": "jackett",
+    "evidence": "GET https://edoqsc3t.529075.xyz/ -\u003e HTTP 200, 106881 bytes, title \"52BT - Discover and share resources faster\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-acgrip",
+    "name": "ACG.RIP",
+    "description": "ACG.RIP is a CHINESE Public torrent tracker for the latest anime and Japanese related torrents",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "acg.rip"
+    ],
+    "url": "https://acg.rip/",
+    "source": "jackett",
+    "evidence": "GET https://acg.rip/ -\u003e HTTP 200, 26813 bytes, title \"ACG.RIP\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-anibt",
+    "name": "Anibt",
+    "description": "Anibt is a CHINESE Public aggregate indexer for ANIME\"",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "anibt.net"
+    ],
+    "url": "https://anibt.net/",
+    "source": "jackett",
+    "evidence": "GET https://anibt.net/ -\u003e HTTP 200, 262144 bytes, title \"AniBT · 动画字幕组与新番分享平台\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-anidub",
+    "name": "AniDUB",
+    "description": "AniDUB is a RUSSIAN Semi-Private tracker and release group for Anime",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "tr.anidub.com"
+    ],
+    "url": "https://tr.anidub.com/",
+    "source": "jackett",
+    "evidence": "GET https://tr.anidub.com/ -\u003e HTTP 200, 137143 bytes, title \"AniDUB Tracker Скачать аниме бесплатно на торрент трекер Анидаб\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-anilibria",
+    "name": "Anilibria",
+    "description": "Anilibria is a russian-language anime distribution platform",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "aniliberty.top"
+    ],
+    "url": "https://aniliberty.top/",
+    "source": "jackett",
+    "evidence": "GET https://aniliberty.top/ -\u003e HTTP 200, 231806 bytes, title \"AniLiberty — так звучит аниме!\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-animebybelka",
+    "name": "Anime by Belka",
+    "description": "Anime by Belka (Аниме от Белки) is a RUSSIAN Semi-Private Torrent Tracker for ANIME",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "anibelka.com"
+    ],
+    "url": "https://anibelka.com/",
+    "source": "jackett",
+    "evidence": "GET https://anibelka.com/ -\u003e HTTP 200, 140033 bytes, title \"Аниме от Белки. Главная\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-animelayer",
+    "name": "AnimeLayer",
+    "description": "AnimeLayer is a RUSSIAN Semi-Private Torrent Tracker for ANIME",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "animelayer.ru"
+    ],
+    "url": "https://animelayer.ru/",
+    "source": "jackett",
+    "evidence": "GET https://animelayer.ru/ -\u003e HTTP 200, 71342 bytes, title \"Animelayer - популярный аниме трекер\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-animetosho-xyz",
+    "name": "Anime Tosho",
+    "description": "Anime Tosho is a Public Torrent Tracker for ANIME",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "animetosho.net"
+    ],
+    "url": "https://animetosho.net/",
+    "source": "jackett",
+    "evidence": "GET https://animetosho.net/ -\u003e HTTP 200, 213113 bytes, title \"Anime Tosho\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-anisource",
+    "name": "AniSource",
+    "description": "AniSource is a Public site for HD Anime raws.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "morta",
+    "hosts": [
+      "asnet.pw"
+    ],
+    "url": "https://asnet.pw/",
+    "source": "jackett",
+    "evidence": "GET https://asnet.pw/ -\u003e dial tcp [2001:470:1f1d:2e7::ffff]:443: connect: network is unreachable, checked 2026-10-23",
+    "proposable": false
+  },
+  {
+    "id": "jk-arabafenice",
+    "name": "ArabaFenice",
+    "description": "Araba Fenice (Phoenix) is an ITALIAN Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "arabafenice.me"
+    ],
+    "url": "https://www.arabafenice.me/",
+    "family": "xbtit",
+    "italian": true,
+    "source": "jackett",
+    "evidence": "GET https://www.arabafenice.me/sbg_login_classic.php -\u003e HTTP 200, 12354 bytes, title \"ArabaFenice\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-best-torrents",
+    "name": "Best-Torrents",
+    "description": "Best-Torrents is a POLISH Semi-Private PAY2DL Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "pl-PL",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "best-torrents.com"
+    ],
+    "url": "https://best-torrents.com/",
+    "source": "jackett",
+    "evidence": "GET https://best-torrents.com/ -\u003e HTTP 200, 55373 bytes, title \"Best-Torrents.com - NAJLEPSZA BAZA TORRENTOW\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-bigfangroup",
+    "name": "BigFANGroup",
+    "description": "BigFANGroup is a RUSSIAN Public Torrent Tracker for MOVIES / TV",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "bigfangroup.org"
+    ],
+    "url": "https://bigfangroup.org/",
+    "source": "jackett",
+    "evidence": "GET https://bigfangroup.org/ -\u003e HTTP 200, 24390 bytes, title \"\\xc3\\xeb\\xe0\\xe2\\xed\\xe0\\xff BigFANGroup.org - \\xf1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc \\xe1\\xe5\\xe7 \\xf0\\xe5\\xe3\\xe8\\xf1\\xf2\\xf0\\xe0\\xf6\\xe8\\xe8\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-blueroms",
+    "name": "BlueRoms",
+    "description": "BlueRoms is a Public Torrent Tracker for ROMS",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "blueroms.ws"
+    ],
+    "url": "https://www.blueroms.ws/",
+    "source": "jackett",
+    "evidence": "GET https://www.blueroms.ws/ -\u003e HTTP 200, 21157 bytes, title \"BlueRoms: Download Game ROMs and ISOs\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-booktracker",
+    "name": "BookTracker",
+    "description": "BookTracker is a RUSSIAN Semi-Private Torrent Tracker for EBOOKS",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "booktracker.org"
+    ],
+    "url": "https://booktracker.org/",
+    "source": "jackett",
+    "evidence": "GET https://booktracker.org/ -\u003e HTTP 200, 262144 bytes, title \"Книжный трекер\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-bootytape",
+    "name": "BootyTape",
+    "description": "BootyTape is a Semi-Private Torrent Tracker for 3X",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "ssl.bootytape.com"
+    ],
+    "url": "https://ssl.bootytape.com/",
+    "source": "jackett",
+    "evidence": "GET https://ssl.bootytape.com/ -\u003e HTTP 200, 17340 bytes, title \"Free Porn Sex Torrents Black Homemade Amateur - BootyTapeBTapes\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-btdirectory",
+    "name": "BTdirectory",
+    "description": "BTdirectory (BT目录) is a Public DHT Crawler",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "btmulu.live"
+    ],
+    "url": "https://btmulu.live/",
+    "source": "jackett",
+    "evidence": "GET https://btmulu.live/ -\u003e HTTP 403, 5569 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-btetree",
+    "name": "BT.etree",
+    "description": "BT.etree is a Public Tracker dedicated to Bootleg FLAC MUSIC",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "bt.etree.org"
+    ],
+    "url": "https://bt.etree.org/",
+    "source": "jackett",
+    "evidence": "GET https://bt.etree.org/ -\u003e HTTP 403, 5605 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-btschool",
+    "name": "BTSCHOOL",
+    "description": "BTSCHOOL is a CHINESE Private Torrent Tracker for HD MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pt.btschool.club"
+    ],
+    "url": "https://pt.btschool.club/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://pt.btschool.club/login.php -\u003e HTTP 200, 5766 bytes, title \"BTSCHOOL :: 登录 比特校园PT小乐园 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-byrutor",
+    "name": "Byrutor",
+    "description": "Byrutor is a RUSSIAN Public Torrent Tracker for GAMES",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "byrutgame.org"
+    ],
+    "url": "https://byrutgame.org/",
+    "source": "jackett",
+    "evidence": "GET https://byrutgame.org/ -\u003e HTTP 200, 262144 bytes, title \"Скачать игры на ПК \u0026#91;последние версии 2026\u0026#93; через торрент бесплатно\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-carpt",
+    "name": "CarPT",
+    "description": "CarPT is a CHINESE Private Torrent Tracker for HD MOVIES / TV / MUSIC",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "carpt.net"
+    ],
+    "url": "https://carpt.net/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://carpt.net/login.php -\u003e HTTP 200, 10122 bytes, title \"CarPT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-catorrent",
+    "name": "Catorrent",
+    "description": "Catorrent is a RUSSIAN Public Torrent Tracker for GAMES",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "catorrent.net"
+    ],
+    "url": "https://catorrent.net/",
+    "source": "jackett",
+    "evidence": "GET https://catorrent.net/ -\u003e HTTP 200, 43363 bytes, title \"Скачать игры через торрент бесплатно - Крупная база игр от Catorrent.net\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-chdbits",
+    "name": "CHDBits",
+    "description": "CHDBits is a CHINESE Private Torrent Tracker for HD MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "ptchdbits.co"
+    ],
+    "url": "https://ptchdbits.co/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://ptchdbits.co/login.php -\u003e HTTP 200, 6234 bytes, title \"CHDBits :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-comicat",
+    "name": "comicat",
+    "description": "comicat is a CHINESE Semi-Private tracker for Anime / Hentai / Manga",
+    "language": "zh-CN",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "comicat.org"
+    ],
+    "url": "https://www.comicat.org/",
+    "source": "jackett",
+    "evidence": "GET https://www.comicat.org/public/html/start/ -\u003e HTTP 200, 1132 bytes, title \"(no title)\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-crackingpatching",
+    "name": "CrackingPatching",
+    "description": "CrackingPatching is a Public tracker for Software and Apps",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "crackingpatching.com"
+    ],
+    "url": "https://crackingpatching.com/",
+    "source": "jackett",
+    "evidence": "GET https://crackingpatching.com/ -\u003e HTTP 200, 82558 bytes, title \"CrackingPatching - Believe us we can do it!\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-damagnet",
+    "name": "DaMagNet",
+    "description": "DaMagNet is a Public DHT Crawler",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "damag.net"
+    ],
+    "url": "https://damag.net/",
+    "source": "jackett",
+    "evidence": "GET https://damag.net/ -\u003e HTTP 200, 8994 bytes, title \"Da MagNet: Home\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-deildu",
+    "name": "Deildu",
+    "description": "Deildu is an ICELANDIC Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "is-IS",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "deildu.net"
+    ],
+    "url": "https://deildu.net/",
+    "source": "jackett",
+    "evidence": "GET https://deildu.net/login.php?returnto=%2F -\u003e HTTP 200, 2565 bytes, title \"Deildu.net \u0026rsaquo; Innskr\\xe1ning\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-devil-torrents",
+    "name": "Devil-Torrents",
+    "description": "Devil-Torrents is a POLISH Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "pl-PL",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "devil-torrents.pl"
+    ],
+    "url": "https://devil-torrents.pl/",
+    "source": "jackett",
+    "evidence": "GET https://devil-torrents.pl/ -\u003e HTTP 200, 209367 bytes, title \"Torrenty - darmowe torrenty , nowe torrenty\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-discfan",
+    "name": "DiscFan",
+    "description": "DiscFan is a CHINESE Private Torrent Tracker for MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "discfan.net"
+    ],
+    "url": "https://discfan.net/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://discfan.net/login.php -\u003e HTTP 200, 13379 bytes, title \"DiscFan :: 登錄 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-divxtotal",
+    "name": "DivxTotal",
+    "description": "DivxTotal is a SPANISH site for Movies, TV series and Software",
+    "language": "es-ES",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "divxtotal.foo"
+    ],
+    "url": "https://divxtotal.foo/",
+    "source": "jackett",
+    "evidence": "GET https://divxtotal.foo/ -\u003e HTTP 200, 91387 bytes, title \"DivxTotaL - Descargar Torrent Peliculas Series Programas gratis\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-dmhy",
+    "name": "dmhy",
+    "description": "dmhy is a TAIWANESE Public magnet tracker for ANIME",
+    "language": "zh-TW",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "share.dmhy.org"
+    ],
+    "url": "https://share.dmhy.org/",
+    "source": "jackett",
+    "evidence": "GET https://share.dmhy.org/ -\u003e HTTP 200, 262144 bytes, title \"首頁 - 動漫花園資源網 - 動漫愛好者的自由交流平台\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-dontorrent",
+    "name": "DonTorrent",
+    "description": "DonTorrent is a SPANISH Public tracker for MOVIES / TV / GENERAL",
+    "language": "es-ES",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "dontorrent.channel"
+    ],
+    "url": "https://dontorrent.channel/",
+    "source": "jackett",
+    "evidence": "GET https://dontorrent.channel/ -\u003e HTTP 200, 38172 bytes, title \"Descargar Películas y Series Torrent Gratis en Español - DonTorrent\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-draupnirr",
+    "name": "Draupnirr",
+    "description": "Draupnirr (Yggrasil) is a FRENCH Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "fr-FR",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "draupnirr.xyz"
+    ],
+    "url": "https://draupnirr.xyz/",
+    "source": "jackett",
+    "evidence": "GET https://draupnirr.xyz/login -\u003e HTTP 200, 9907 bytes, title \"Connexion — Draupnirr\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-dreamingtree",
+    "name": "DreamingTree",
+    "description": "DreamingTree is a Semi-Private Torrent Tracker for DAVE MATHEWS MUSIC / BOOTLEGS",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "dreamingtree.org"
+    ],
+    "url": "https://dreamingtree.org/",
+    "source": "jackett",
+    "evidence": "GET https://dreamingtree.org/ -\u003e HTTP 200, 1795 bytes, title \"dreamingtree\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-dxp",
+    "name": "DXP",
+    "description": "Deaf Experts (DXP) is a RUSSIAN Semi-Private Torrent Tracker for MOVIES / TV with Russian Subtitles",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "dxp.ru"
+    ],
+    "url": "https://dxp.ru/",
+    "source": "jackett",
+    "evidence": "GET https://dxp.ru/login.php -\u003e HTTP 200, 8752 bytes, title \"Галактика ДХП\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-ebookbay",
+    "name": "EBookBay",
+    "description": "EBook Bay (EBB) is a Public Torrent Tracker for E-BOOKS",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "ebb.la"
+    ],
+    "url": "https://ebb.la/",
+    "source": "jackett",
+    "evidence": "GET https://ebb.la/ -\u003e HTTP 200, 48142 bytes, title \"Ebook Online Download, Free Book Torrent on EBook Bay (EBB)\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-ehentai",
+    "name": "E-Hentai",
+    "description": "E-Hentai is a Public site for Hentai doujinshi, manga.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "e-hentai.org"
+    ],
+    "url": "https://e-hentai.org/",
+    "source": "jackett",
+    "evidence": "GET https://e-hentai.org/ -\u003e HTTP 200, 62366 bytes, title \"E-Hentai Galleries - The Free Hentai Doujinshi, Manga and Image Gallery System\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-electro-torrent",
+    "name": "Electro-Torrent",
+    "description": "Electro-Torrent is a POLISH Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "pl-PL",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "electro-torrent.pl"
+    ],
+    "url": "https://electro-torrent.pl/",
+    "source": "jackett",
+    "evidence": "GET https://electro-torrent.pl/ -\u003e HTTP 200, 262144 bytes, title \"Electro-Torrent.pl\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-epublibre",
+    "name": "EpubLibre",
+    "description": "EpubLibre is a Public site. Más libros, Más libres",
+    "language": "es-ES",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "epublibre.org"
+    ],
+    "url": "https://www.epublibre.org/",
+    "source": "jackett",
+    "evidence": "GET https://www.epublibre.org/ -\u003e HTTP 200, 76339 bytes, title \"epublibre - inicio\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-erai-raws",
+    "name": "Erai-Raws",
+    "description": "Erai-Raws is a Semi-Private team release site for Anime subtitles.",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "erai-raws.info"
+    ],
+    "url": "https://www.erai-raws.info/",
+    "source": "jackett",
+    "evidence": "GET https://www.erai-raws.info/ -\u003e HTTP 200, 172237 bytes, title \"Erai-raws\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-ex-torrenty",
+    "name": "Ex-torrenty",
+    "description": "Ex-torrenty is a POLISH Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "pl-PL",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "ex-torrenty.org"
+    ],
+    "url": "https://ex-torrenty.org/",
+    "source": "jackett",
+    "evidence": "GET https://ex-torrenty.org/ -\u003e HTTP 200, 29965 bytes, title \"Ex-torrenty.org - NAJLEPSZA BAZA TORRENTOW\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-exkinoray",
+    "name": "ExKinoRay",
+    "description": "ExKinoRay is a RUSSIAN Semi-Private Torrent Tracker for MOVIES / TV",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "exkinoray.ru"
+    ],
+    "url": "https://exkinoray.ru/",
+    "source": "jackett",
+    "evidence": "GET https://exkinoray.ru/login.php?returnto= -\u003e HTTP 200, 14296 bytes, title \"ExKinoRay.ru :: Вход\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-extratorrent-st",
+    "name": "ExtraTorrent.st",
+    "description": "ExtraTorrent.st is a Public tracker for MOVIE / TV / GENERAL magnets",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "extratorrent.st"
+    ],
+    "url": "https://extratorrent.st/",
+    "source": "jackett",
+    "evidence": "GET https://extratorrent.st/ -\u003e HTTP 403, 5480 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-fenyarnyek-tracker",
+    "name": "Fenyarnyek-Tracker",
+    "description": "Fenyarnyek-Tracker is a HUNGARIAN Semi-Private site for TV / MOVIES / GENERAL",
+    "language": "hu-HU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "tracker.fenyarnyek.com"
+    ],
+    "url": "http://tracker.fenyarnyek.com/",
+    "family": "xbtit",
+    "source": "jackett",
+    "evidence": "GET http://tracker.fenyarnyek.com/ -\u003e HTTP 200, 7529 bytes, title \"Fenyarnyek-Tracker .::. Index\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-file-tracker",
+    "name": "File-Tracker",
+    "description": "File Tracker is a RUSSIAN Semi-Private Torrent Tracker for MOVIES / GENERAL",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "file-tracker.net"
+    ],
+    "url": "https://file-tracker.net/",
+    "source": "jackett",
+    "evidence": "GET https://file-tracker.net/ -\u003e HTTP 522, 7247 bytes, title \"file-tracker.net | 522: Connection timed out\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-filemood",
+    "name": "FileMood",
+    "description": "FileMood is a Public BitTorrent DHT search engine.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "filemood.com"
+    ],
+    "url": "https://filemood.com/",
+    "source": "jackett",
+    "evidence": "GET https://filemood.com/ -\u003e HTTP 429, 3288 bytes, title \"One moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-freejavtorrent",
+    "name": "Free JAV Torrent",
+    "description": "Free JAV Torrent is a Public tracker for Asian 3X (JAV)",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "freejavtorrent.com"
+    ],
+    "url": "https://www.freejavtorrent.com/",
+    "source": "jackett",
+    "evidence": "GET https://www.freejavtorrent.com/ -\u003e HTTP 200, 56958 bytes, title \"Free JAV Torrent | Best Free Japanese HD Porn Movies Download\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-futuretorrent",
+    "name": "FutureTorrent",
+    "description": "FutureTorrent is an ITALIAN Private PAY2DL Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "futuretorrent.org"
+    ],
+    "url": "https://futuretorrent.org/",
+    "italian": true,
+    "source": "jackett",
+    "evidence": "no live probe",
+    "proposable": true
+  },
+  {
+    "id": "jk-gay-torrents",
+    "name": "Gay-Torrents.net",
+    "description": "Gay-Torrents.net is a Private Torrent Tracker for GAY 3X",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "gay-torrents.net"
+    ],
+    "url": "https://www.gay-torrents.net/",
+    "source": "jackett",
+    "evidence": "GET https://www.gay-torrents.net/ -\u003e HTTP 200, 4507 bytes, title \"Gay Torrents Live Free - Your Free Gay Torrent Site ;) -\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-gazellegamesapi",
+    "name": "GazelleGames (API)",
+    "description": "GazelleGames is a Private gaming tracker",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "apikey"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "gazellegames.net"
+    ],
+    "url": "https://gazellegames.net/",
+    "family": "gazelle",
+    "source": "jackett",
+    "evidence": "GET https://gazellegames.net/login.php -\u003e HTTP 200, 7698 bytes, title \"Login :: GazelleGames.net\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-ggpt",
+    "name": "GGPT",
+    "description": "GGPT is a CHINESE Private Torrent Tracker for GAMES",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "gamegamept.com"
+    ],
+    "url": "https://www.gamegamept.com/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://www.gamegamept.com/login.php -\u003e HTTP 200, 16319 bytes, title \"GGPT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-girotorrent",
+    "name": "Girotorrent",
+    "description": "Girotorrent is an ITALIAN Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "girotorrent.org"
+    ],
+    "url": "https://girotorrent.org/",
+    "family": "xbtit",
+    "italian": true,
+    "source": "jackett",
+    "evidence": "GET https://girotorrent.org/ -\u003e HTTP 200, 15533 bytes, title \"Girotorrent.org .::. Index\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-haidan",
+    "name": "HaiDan",
+    "description": "HaiDan is a CHINESE Private Torrent Tracker for HD MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "haidan.cc"
+    ],
+    "url": "https://www.haidan.cc/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://www.haidan.cc/login.php -\u003e HTTP 200, 6489 bytes, title \"HAIDAN :: 登录 海胆之家 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-hd-unit3d-api",
+    "name": "HD-UNiT3D (API)",
+    "description": "HD-UNiT3D is a Private Torrent Tracker for HD MOVIES / TV",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music"
+    ],
+    "required": [
+      "apikey"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "hd-united.vn"
+    ],
+    "url": "https://hd-united.vn/",
+    "family": "unit3d",
+    "source": "jackett",
+    "evidence": "GET https://hd-united.vn/login -\u003e HTTP 200, 5581 bytes, title \"Login - HD-UNiT3D\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-hdfans",
+    "name": "HDFans",
+    "description": "HDFans is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "hdfans.org"
+    ],
+    "url": "https://hdfans.org/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://hdfans.org/login.php -\u003e HTTP 200, 13592 bytes, title \"HDFans :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-hdgalaktik",
+    "name": "HDGalaKtik",
+    "description": "HDGalaKtik is a RUSSIAN Semi-Private tracker for MOVIES / TV / GENERAL",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "trackerpmr.com"
+    ],
+    "url": "https://www.trackerpmr.com/",
+    "source": "jackett",
+    "evidence": "GET https://www.trackerpmr.com/ -\u003e HTTP 200, 32707 bytes, title \"Главная\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-hdhome",
+    "name": "HDHome",
+    "description": "HDHome is a CHINESE Private Torrent Tracker for HD MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "hdhome.org"
+    ],
+    "url": "https://hdhome.org/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET http://hdhome.org/login.php -\u003e HTTP 200, 7048 bytes, title \"HDHome :: 登录 高清家园 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-hdkylin",
+    "name": "HDKylin (麒麟)",
+    "description": "HDKylin (麒麟) is a CHINESE Private tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "na.hdkylin.com"
+    ],
+    "url": "https://na.hdkylin.com/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://na.hdkylin.com/login.php -\u003e HTTP 200, 6104 bytes, title \"HDKylin - 麒麟 :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-hdrtorrent",
+    "name": "HDRTorrent",
+    "description": "HDRTorrent is a Public Torrent Tracker for Movies and TV Shows dubbed in Brazilian Portuguese",
+    "language": "pt-BR",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "hdrtorrents.net"
+    ],
+    "url": "https://hdrtorrents.net/",
+    "source": "jackett",
+    "evidence": "GET https://hdrtorrents.net/ -\u003e HTTP 200, 66753 bytes, title \"HDR Torrents - Filmes e Séries Torrent em Alta Definição 2026\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-hdsky",
+    "name": "HDSky",
+    "description": "HDSky is a CHINESE Private Torrent Tracker for HD MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "hdsky.me"
+    ],
+    "url": "https://hdsky.me/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://hdsky.me/login.php -\u003e HTTP 200, 7889 bytes, title \"HDSky :: 登录 高清视界|高清天空|高清发烧友的后花园 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-hdtime",
+    "name": "HDtime",
+    "description": "HDtime is a CHINESE Private Torrent Tracker for HD MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "hdtime.org"
+    ],
+    "url": "https://hdtime.org/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://hdtime.org/login.php -\u003e HTTP 200, 9853 bytes, title \"HDTIME :: 登录 高清时间 | pt｜下载｜10bit |HDTimePT - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-hdtorrentsit",
+    "name": "HDTorrents.it (API)",
+    "description": "HDTorrents.it is an ITALIAN Private PAY2DL site for MOVIES / TV",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "games",
+      "software"
+    ],
+    "required": [
+      "apikey"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "hdtorrents.eu"
+    ],
+    "url": "https://hdtorrents.eu/",
+    "family": "unit3d",
+    "italian": true,
+    "source": "jackett",
+    "evidence": "GET https://hdtorrents.eu/login -\u003e HTTP 200, 5432 bytes, title \"Login - HD Torrents\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-hdu",
+    "name": "HDU",
+    "description": "HDU is a CHINESE Private Torrent Tracker for HD MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pt.upxin.net"
+    ],
+    "url": "https://pt.upxin.net/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET http://pt.upxin.net/login.php -\u003e HTTP 200, 18873 bytes, title \"HDU :: 登录(Z For A)-High Definition In Upxin|Privte Torrents\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-helltorrents",
+    "name": "HellTorrents",
+    "description": "HellTorrents is a POLISH Semi-Private PAY2DL Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "pl-PL",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "helltorrents.com"
+    ],
+    "url": "https://helltorrents.com/",
+    "source": "jackett",
+    "evidence": "GET https://helltorrents.com/ -\u003e HTTP 403, 5481 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-hhanclub",
+    "name": "HHanClub",
+    "description": "HHanClub is a CHINESE Private Torrent Tracker for HD MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "hhanclub.net"
+    ],
+    "url": "https://hhanclub.net/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://hhanclub.net/login.php -\u003e HTTP 200, 14130 bytes, title \"HHCLUB :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-huntorrent",
+    "name": "HunTorrent",
+    "description": "HunTorrent is a HUNGARIAN Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "hu-HU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "huntorrent.org"
+    ],
+    "url": "https://huntorrent.org/",
+    "source": "jackett",
+    "evidence": "GET https://huntorrent.org/ -\u003e HTTP 200, 68880 bytes, title \"HunTorrent | Bejelentkezés\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-itatorrents",
+    "name": "ItaTorrents",
+    "description": "ItaTorrents is an ITALIAN Private tracker for MOVIES / TV / GENERAL",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "apikey"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "itatorrents.xyz"
+    ],
+    "url": "https://itatorrents.xyz/",
+    "family": "unit3d",
+    "italian": true,
+    "source": "jackett",
+    "evidence": "GET https://itatorrents.xyz/login -\u003e HTTP 200, 6237 bytes, title \"Login - ItaTorrents\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-jme-reunit3d-api",
+    "name": "JME-REUNIT3D (API)",
+    "description": "JME-REUNIT3D is a GERMAN Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "de-DE",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "apikey"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "jme-reunit3d.de"
+    ],
+    "url": "https://jme-reunit3d.de/",
+    "family": "unit3d",
+    "source": "jackett",
+    "evidence": "GET https://jme-reunit3d.de/ -\u003e HTTP 503, 1139 bytes, title \"JME Maintenance Page\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-keepfriends",
+    "name": "Keep Friends",
+    "description": "Keep Friends (FRDS-PT) is a CHINESE Private Torrent Tracker for HD MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pt.keepfrds.com"
+    ],
+    "url": "https://pt.keepfrds.com/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://pt.keepfrds.com/login.php -\u003e HTTP 200, 5925 bytes, title \"Starship\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-kickasstorrents-to",
+    "name": "kickasstorrents.to",
+    "description": "kickasstorrents.to is a Public KickAssTorrent clone for MOVIES / TV / GENERAL",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "kickass.torrentbay.st"
+    ],
+    "url": "https://kickass.torrentbay.st/",
+    "source": "jackett",
+    "evidence": "GET https://kickass.torrentbay.st/ -\u003e HTTP 403, 5636 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-kickasstorrents-ws",
+    "name": "kickasstorrents.ws",
+    "description": "kickasstorrents.ws is a Public KickAssTorrent clone for MOVIES / TV / GENERAL",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "kickass.ws"
+    ],
+    "url": "https://kickass.ws/",
+    "source": "jackett",
+    "evidence": "GET https://kickass.ws/ -\u003e HTTP 403, 5475 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-kinorun",
+    "name": "Kinorun",
+    "description": "Kinorun is a RUSSIAN Semi-Private Torrent Tracker for 3X",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "kinorun.top"
+    ],
+    "url": "http://kinorun.top/",
+    "source": "jackett",
+    "evidence": "GET http://kinorun.top/ -\u003e HTTP 200, 14390 bytes, title \"\\xdd\\xea\\xf1\\xea\\xeb\\xfe\\xe7\\xe8\\xe2\\xed\\xee\\xe5 \\xef\\xee\\xf0\\xed\\xee \\xf1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc, \\xef\\xee\\xf0\\xed\\xee\\xe2\\xe8\\xe4\\xe5\\xee KINORUN \\xed\\xe0 \\xca\\xe8\\xed\\xee\\xf0\\xf3\\xed.\\xee\\xed\\xeb\\xe0\\xe9\\xed\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-kinozal",
+    "name": "Kinozal",
+    "description": "Kinozal is a RUSSIAN Semi-Private Torrent Tracker for MOVIES / TV / MUSIC. This indexer uses torrents.",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "kinozal.me"
+    ],
+    "url": "https://kinozal.me/",
+    "source": "jackett",
+    "evidence": "GET https://kinozal.me/ -\u003e HTTP 200, 34553 bytes, title \"\\xd2\\xee\\xf0\\xf0\\xe5\\xed\\xf2 \\xf2\\xf0\\xe5\\xea\\xe5\\xf0 \\xca\\xe8\\xed\\xee\\xe7\\xe0\\xeb.\\xcc\\xc5\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-lostfilm",
+    "name": "LostFilm.tv",
+    "description": "LostFilm is a RUSSIAN Semi-Private site. Unique portal for foreign series",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "lostfilm.tv"
+    ],
+    "url": "https://www.lostfilm.tv/",
+    "source": "jackett",
+    "evidence": "GET https://www.lostfilm.tv/ -\u003e HTTP 200, 70848 bytes, title \"LostFilm.TV. Лучшие сериалы. Официальный сайт Лостфильм - уникальный ресурс о зарубежных сер\\xd0\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-mactorrentsdownload",
+    "name": "Mac Torrents Download",
+    "description": "Mac Torrents Download is a Public tracker for Mac software",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentmac.net"
+    ],
+    "url": "https://www.torrentmac.net/",
+    "source": "jackett",
+    "evidence": "GET https://www.torrentmac.net/ -\u003e HTTP 200, 119679 bytes, title \"Mac Torrents | Torrent Download Apple, Mac OSX Apps \u0026amp; Games Download\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-magnetcat",
+    "name": "Magnet Cat",
+    "description": "Magnet Cat is a Public Tracker for MOVIES / TV / GENERAL",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "magnetcatcat.com"
+    ],
+    "url": "https://magnetcatcat.com/",
+    "source": "jackett",
+    "evidence": "GET https://magnetcatcat.com/ -\u003e HTTP 403, 5574 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-magnetdownload",
+    "name": "MagnetDownload",
+    "description": "MagnetDownload is a Public DHT Crawler",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "magnetdownload.com"
+    ],
+    "url": "https://www.magnetdownload.com/",
+    "source": "jackett",
+    "evidence": "GET https://www.magnetdownload.com/ -\u003e HTTP 200, 8230 bytes, title \"MagnetDownload.COM - A Torrent \u0026 Magnet Links Search Engine based on DHT\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-magnetz",
+    "name": "Magnetz",
+    "description": "Magnetz is a Semi-Private torrent meta-search engine",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "magnetz.eu"
+    ],
+    "url": "https://magnetz.eu/",
+    "source": "jackett",
+    "evidence": "GET https://magnetz.eu/login -\u003e HTTP 200, 5270 bytes, title \"Magnetz\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-marinetracker",
+    "name": "Marine Tracker",
+    "description": "Marine Tracker is a RUSSIAN Semi-Private Torrent Tracker for MARITIME E-LEARNING",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "seatracker.org"
+    ],
+    "url": "https://seatracker.org/",
+    "source": "jackett",
+    "evidence": "GET https://seatracker.org/ -\u003e HTTP 403, 5479 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-mazepa",
+    "name": "Mazepa",
+    "description": "Mazepa is an UKRAINIAN Semi-Private Torrent Tracker for Videos with Ukrainian soundtracks",
+    "language": "uk-UA",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "mazepa.to"
+    ],
+    "url": "https://mazepa.to/",
+    "source": "jackett",
+    "evidence": "GET https://mazepa.to/ -\u003e HTTP 200, 86233 bytes, title \"Головна - Мазепа Торент - Українське озвучення\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-megapeer",
+    "name": "MegaPeer",
+    "description": "MegaPeer is a RUSSIAN Public Torrent Tracker for MOVIES / TV",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "megapeer.vip"
+    ],
+    "url": "https://megapeer.vip/",
+    "source": "jackett",
+    "evidence": "GET https://megapeer.vip/ -\u003e HTTP 200, 83404 bytes, title \"\\xce\\xf2\\xea\\xf0\\xfb\\xf2\\xfb\\xe9 \\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2-\\xf2\\xf0\\xe5\\xea\\xe5\\xf0 :: MegaPeer.vip\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-mejortorrent",
+    "name": "MejorTorrent",
+    "description": "MejorTorrent is a Public site - Hay veces que un torrent viene mejor! :)",
+    "language": "es-ES",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "www47.mejortorrent.eu"
+    ],
+    "url": "https://www47.mejortorrent.eu/",
+    "source": "jackett",
+    "evidence": "GET https://www47.mejortorrent.eu/ -\u003e HTTP 403, 5614 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-metaltracker",
+    "name": "Metal Tracker",
+    "description": "Metal Tracker is a Semi-Private Torrent Tracker dedicated to HEAVY METAL MUSIC. This definition is for the English site.",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "en.metal-tracker.com"
+    ],
+    "url": "https://en.metal-tracker.com/",
+    "source": "jackett",
+    "evidence": "GET https://en.metal-tracker.com/ -\u003e HTTP 200, 58011 bytes, title \"Metal Download, Rock, Heavy music for free! | Metal Torrent Tracker\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-miobt",
+    "name": "MioBT",
+    "description": "MioBT is a CHINESE Semi-Private torrent index",
+    "language": "zh-CN",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "miobt.com"
+    ],
+    "url": "https://miobt.com/",
+    "source": "jackett",
+    "evidence": "GET https://miobt.com/public/html/start/ -\u003e HTTP 200, 1132 bytes, title \"(no title)\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-mixtapetorrent",
+    "name": "MixtapeTorrent",
+    "description": "MixtapeTorrent is a Public Music site for MixTapes",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "mixtapetorrent.com"
+    ],
+    "url": "http://www.mixtapetorrent.com/",
+    "source": "jackett",
+    "evidence": "GET http://www.mixtapetorrent.com/ -\u003e HTTP 200, 48634 bytes, title \"MixtapeTorrent.com | The Latest Mixtape Downloads, Mixtape News, \u0026 Independent Music Promotion\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-musebootlegs",
+    "name": "MuseBootlegs",
+    "description": "MuseBootlegs (MB) is a Semi-Private Torrent Tracker for MUSE MUSIC / BOOTLEGS",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "musebootlegs.com"
+    ],
+    "url": "https://musebootlegs.com/",
+    "source": "jackett",
+    "evidence": "GET https://musebootlegs.com/ -\u003e HTTP 403, 5481 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-mvgroupforum",
+    "name": "MVGroup Forum",
+    "description": "MVGroup is a Semi-Private Torrent Tracker dedicated to UK TV and DOCUMENTARIES. This definition is for the Forum Tracker site.",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "forums.mvgroup.org"
+    ],
+    "url": "https://forums.mvgroup.org/",
+    "source": "jackett",
+    "evidence": "GET https://forums.mvgroup.org/ -\u003e HTTP 403, 5505 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-mypornclub",
+    "name": "MyPornClub",
+    "description": "MyPornClub is a Public Torrent Tracker for 3X",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "myporn.club"
+    ],
+    "url": "https://myporn.club/",
+    "source": "jackett",
+    "evidence": "GET https://myporn.club/ -\u003e HTTP 200, 136781 bytes, title \"My Porn Club - Free Sharing Site\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-nekobt",
+    "name": "nekoBT",
+    "description": "nekoBT is a Public Torrent Tracker for ANIME",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "nekobt.to"
+    ],
+    "url": "https://nekobt.to/",
+    "source": "jackett",
+    "evidence": "GET https://nekobt.to/ -\u003e HTTP 200, 262144 bytes, title \"Home - nekoBT\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-nethd",
+    "name": "NetHD",
+    "description": "NetHD (VietTorrent) is a VIETNAMESE Semi-Private Torrent Tracker for HD MOVIES / TV",
+    "language": "vi-VN",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "nethd.org"
+    ],
+    "url": "https://nethd.org/",
+    "source": "jackett",
+    "evidence": "GET https://nethd.org/login.php?returnto= -\u003e HTTP 200, 6005 bytes, title \"Đăng nhập\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-new-team",
+    "name": "New-Team",
+    "description": "New-Team is a RUSSIAN Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "new-team.org"
+    ],
+    "url": "https://new-team.org/",
+    "source": "jackett",
+    "evidence": "GET https://new-team.org:443/login.php -\u003e HTTP 200, 12389 bytes, title \"Вход • new-team.org\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-newstudiol",
+    "name": "NewStudioL",
+    "description": "NewStudio is a RUSSIAN Public site for TV. This supports login.",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "morta",
+    "hosts": [
+      "newstudio.tv"
+    ],
+    "url": "https://newstudio.tv/",
+    "source": "jackett",
+    "evidence": "GET https://newstudio.tv/ -\u003e context deadline exceeded (Client.Timeout exceeded while awaiting headers), checked 2026-10-23",
+    "proposable": false
+  },
+  {
+    "id": "jk-nipponsei",
+    "name": "Nipponsei",
+    "description": "Nipponsei is a Public site for MUSIC fresh from JAPAN",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "nipponsei.minglong.org"
+    ],
+    "url": "https://nipponsei.minglong.org/",
+    "source": "jackett",
+    "evidence": "GET https://nipponsei.minglong.org/ -\u003e HTTP 200, 16165 bytes, title \"Nipponsei - Music Fresh From Japan\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-noname-clubl",
+    "name": "NoNaMe ClubL",
+    "description": "This is the NoNaMe Club indexer with Login enabled in the config.",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "nnmclub.to"
+    ],
+    "url": "https://nnmclub.to/",
+    "source": "jackett",
+    "evidence": "GET https://nnmclub.to/ -\u003e HTTP 200, 148414 bytes, title \"\\xd2\\xee\\xf0\\xf0\\xe5\\xed\\xf2-\\xf2\\xf0\\xe5\\xea\\xe5\\xf0 :: NNM-Club\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-okpt",
+    "name": "OKPT",
+    "description": "OKPT is a CHINESE Private Torrent Tracker for MOVIES / TV / MUSIC / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "okpt.net"
+    ],
+    "url": "https://www.okpt.net/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://www.okpt.net/login.php -\u003e HTTP 200, 14506 bytes, title \"OKPT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-onejav",
+    "name": "OneJAV",
+    "description": "OneJAV is a Public tracker for ASIAN 3X (JAV)",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "onejav.com"
+    ],
+    "url": "https://onejav.com/",
+    "source": "jackett",
+    "evidence": "GET https://onejav.com/ -\u003e HTTP 200, 82848 bytes, title \"OneJAV.com - Free JAV Torrents\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-opencd",
+    "name": "OpenCD",
+    "description": "OpenCD is a CHINESE Private Torrent Tracker for LOSSLESS ASIAN MUSIC",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "open.cd"
+    ],
+    "url": "https://open.cd/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://open.cd/login.php -\u003e HTTP 200, 7026 bytes, title \"OpenCD :: 登錄\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-opensharing",
+    "name": "OpenSharing",
+    "description": "OpenSharing is a RUSSIAN Public Torrent Tracker for 3X",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "opensharing.org"
+    ],
+    "url": "https://opensharing.org/",
+    "source": "jackett",
+    "evidence": "GET https://opensharing.org/ -\u003e HTTP 200, 55748 bytes, title \"\u0026bull; Портал\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-panda",
+    "name": "Panda",
+    "description": "Panda is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pandapt.net"
+    ],
+    "url": "https://pandapt.net/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://pandapt.net/login.php -\u003e HTTP 200, 8175 bytes, title \"PANDA :: 登录 熊猫高清\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-pandacd",
+    "name": "PandaCD",
+    "description": "PandaCD is a Public Tracker for MUSIC (Creative Commons and artist-permitted content)",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "pandacd.io"
+    ],
+    "url": "https://pandacd.io/",
+    "source": "jackett",
+    "evidence": "GET https://pandacd.io/ -\u003e HTTP 200, 193658 bytes, title \"PandaCD\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-pctorrent",
+    "name": "PC-torrent",
+    "description": "PC-torrent is a RUSSIAN Public Torrent Tracker for Games",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "pc-torrents.games"
+    ],
+    "url": "https://pc-torrents.games/",
+    "source": "jackett",
+    "evidence": "GET https://pc-torrents.games/ -\u003e HTTP 200, 24928 bytes, title \"\\xd1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc \\xe8\\xe3\\xf0\\xfb \\xf7\\xe5\\xf0\\xe5\\xe7 \\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-plugintorrent",
+    "name": "plugintorrent",
+    "description": "plugintorrent is a Public site for AUDIO apps, plugins and samples",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "plugintorrent.com"
+    ],
+    "url": "https://plugintorrent.com/",
+    "source": "jackett",
+    "evidence": "GET https://plugintorrent.com/ -\u003e HTTP 200, 237450 bytes, title \"Plugintorrent.com - Free Torrent source for VST Plugin, Audio Sample, Library, Preset, DAW, and Audio Software since 2015\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-pornolab",
+    "name": "PornoLab",
+    "description": "PornoLab is a Semi-Private Russian site for 3X",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pornolab.net"
+    ],
+    "url": "https://pornolab.net/",
+    "source": "jackett",
+    "evidence": "GET https://pornolab.net/ -\u003e HTTP 200, 516 bytes, title \"\\xc1\\xe8\\xf2\\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2 \\xf2\\xf0\\xe5\\xea\\xe5\\xf0 PornoLab.Net. \\xc4\\xe5\\xeb\\xe8\\xf2\\xe5\\xf1\\xfc \\xf3\\xe4\\xee\\xe2\\xee\\xeb\\xfc\\xf1\\xf2\\xe2\\xe8\\xff\\xec\\xe8!\", checked 2026-10-23; page too small to trust",
+    "proposable": true
+  },
+  {
+    "id": "jk-pornotorrent",
+    "name": "PornoTorrent",
+    "description": "PornoTorrent is a BRAZILIAN Public Torrent Tracker for 3X",
+    "language": "pt-BR",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pornotorrent.com.br"
+    ],
+    "url": "https://pornotorrent.com.br/",
+    "source": "jackett",
+    "evidence": "GET https://pornotorrent.com.br/ -\u003e HTTP 502, 6432 bytes, title \"pornotorrent.com.br | 502: Bad gateway\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-pornrips",
+    "name": "PornRips",
+    "description": "PornRips is a Public site for 3X",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "pornrips.to"
+    ],
+    "url": "https://pornrips.to/",
+    "source": "jackett",
+    "evidence": "GET https://pornrips.to/ -\u003e HTTP 200, 160836 bytes, title \"PornRips.To \u0026#8211; Home of PRT 1080p \u0026amp; 720p HEVC x265 Porn XXX Releases\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-pornxlab",
+    "name": "PornXLab",
+    "description": "PornXLab is a Public tracker for 3X",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "pornxlab.com"
+    ],
+    "url": "https://www.pornxlab.com/",
+    "source": "jackett",
+    "evidence": "GET https://www.pornxlab.com/ -\u003e HTTP 200, 55797 bytes, title \"PornXLab - Free Porn Studio Movie Torrents\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-postman-api",
+    "name": "Postman (API)",
+    "description": "Postman is a Semi-Private I2P Torrent Tracker for MOVIES / TV / GENERAL. This indexer uses the API for login.",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "morta",
+    "hosts": [
+      "tracker2.postman.i2p"
+    ],
+    "url": "http://tracker2.postman.i2p/",
+    "source": "jackett",
+    "evidence": "GET http://tracker2.postman.i2p/ -\u003e dial tcp: lookup tracker2.postman.i2p on 9.9.9.9:53: no such host, checked 2026-10-23",
+    "proposable": false
+  },
+  {
+    "id": "jk-proporno",
+    "name": "ProPorno",
+    "description": "ProPorno is a RUSSIAN Semi-Private tracker for 3X",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "proporno.org"
+    ],
+    "url": "https://proporno.org/",
+    "source": "jackett",
+    "evidence": "GET https://proporno.org/ -\u003e HTTP 200, 69180 bytes, title \"скачать порно торренты на proporno\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-pterclub",
+    "name": "PTerClub (PT之友俱乐部)",
+    "description": "PTerClub (PT之友俱乐部) is a CHINESE Private Torrent Tracker for HD MUSIC VIDEOS / MOVIES / TV / ANIME",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pterclub.net"
+    ],
+    "url": "https://pterclub.net/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://pterclub.net/login.php -\u003e HTTP 200, 31527 bytes, title \"ＰＴ之友俱乐部 :: 登录 PTerClub\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-ptlgs",
+    "name": "PTLGS",
+    "description": "PTLGS is a CHINESE Private Torrent Tracker for MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "ptlgs.org"
+    ],
+    "url": "https://ptlgs.org/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://ptlgs.org/login.php -\u003e HTTP 200, 11598 bytes, title \"PTLGS :: 登录\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-pttey",
+    "name": "PTTey",
+    "description": "PTTey is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pt.tey.cc"
+    ],
+    "url": "https://pt.tey.cc/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://pt.tey.cc/login.php -\u003e HTTP 200, 13257 bytes, title \"Tey :: 登录 太乙|Tey - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-pttime",
+    "name": "PTTime",
+    "description": "PTTime is a ratioless CHINESE Private Torrent Tracker for HD MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pttime.org"
+    ],
+    "url": "https://www.pttime.org/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://www.pttime.org/login.php?returnto= -\u003e HTTP 200, 21443 bytes, title \"PTT :: 登录 - 分享你所爱，他所求，得我所愿！\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-ptzone",
+    "name": "PTzone",
+    "description": "PTzone is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "ptzone.xyz"
+    ],
+    "url": "https://ptzone.xyz/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://ptzone.xyz/login.php -\u003e HTTP 200, 12950 bytes, title \"PTzone :: 登錄 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-pussytorrents",
+    "name": "PussyTorrents",
+    "description": "PussyTorrents is a Semi-Private Torrent Tracker for 3X",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pussytorrents.org"
+    ],
+    "url": "https://pussytorrents.org/",
+    "source": "jackett",
+    "evidence": "GET https://pussytorrents.org/ -\u003e HTTP 200, 16556 bytes, title \"Login :: Pussytorrents.org\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-putao",
+    "name": "PuTao (葡萄)",
+    "description": "PuTao (葡萄) is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pt.sjtu.edu.cn"
+    ],
+    "url": "https://pt.sjtu.edu.cn/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://pt.sjtu.edu.cn/login.php -\u003e HTTP 200, 8885 bytes, title \"葡萄 :: 登录\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-rainbowtracker",
+    "name": "Rainbow Tracker",
+    "description": "Rainbow Tracker is a RUSSIAN Semi-Private Torrent Tracker for LGBTQ MOVIES / TV",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "gaytracker.ru"
+    ],
+    "url": "https://gaytracker.ru/",
+    "source": "jackett",
+    "evidence": "GET https://gaytracker.ru/forum/login.php -\u003e HTTP 200, 9027 bytes, title \"Вход :: Радужный трекер\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-rgfootball",
+    "name": "RGFootball",
+    "description": "RGFootball is a RUSSIAN Sports torrent tracker.",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "rgfootball.net"
+    ],
+    "url": "https://rgfootball.net/",
+    "source": "jackett",
+    "evidence": "GET https://rgfootball.net/ -\u003e HTTP 200, 262144 bytes, title \"Спортивный торрент-трекер RGFootball.net. Футбол Онлайн\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-rintor",
+    "name": "RinTor",
+    "description": "RinTor is a Semi-Private Tracker for 3X",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "rintor.org"
+    ],
+    "url": "https://rintor.org/",
+    "source": "jackett",
+    "evidence": "GET https://rintor.org/ -\u003e HTTP 200, 113996 bytes, title \"RinTor.Org - Порно торрент трекер Скачать бесплатно порнофильмы русское порно\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-rintornet",
+    "name": "RinTor.NeT",
+    "description": "RinTor.NeT is a RUSSIAN Public tracker for 3X",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "rintor.net"
+    ],
+    "url": "https://www.rintor.net/",
+    "source": "jackett",
+    "evidence": "GET https://www.rintor.net/ -\u003e HTTP 200, 96786 bytes, title \"RinTor.NeT - Открытый порно торрент трекер без регистрации | Скачать порно\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-riperam",
+    "name": "RiperAM",
+    "description": "RiperAM is a RUSSIAN Semi-Private Torrent Tracker for MOVIES / TV",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "riperam.org"
+    ],
+    "url": "https://riperam.org/",
+    "source": "jackett",
+    "evidence": "GET https://riperam.org/ -\u003e HTTP 200, 210146 bytes, title \"Riper.AM - Торрент трекер.Скачать торрент.Смотреть онлайн. Фильмы, сериалы, музыка, игры , со\\xd1\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-rudub",
+    "name": "RUDUB",
+    "description": "RUDUB (ex-BaibaKoTV) is a RUSSIAN Semi-Private Torrent Tracker for TV",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "r4.rudub.world"
+    ],
+    "url": "https://r4.rudub.world/",
+    "source": "jackett",
+    "evidence": "GET https://r4.rudub.world/ -\u003e HTTP 200, 41738 bytes, title \"\\xd1\\xec\\xee\\xf2\\xf0\\xe5\\xf2\\xfc \\xf1\\xe5\\xf0\\xe8\\xe0\\xeb\\xfb \\xee\\xed\\xeb\\xe0\\xe9\\xed \\xe1\\xe5\\xf1\\xef\\xeb\\xe0\\xf2\\xed\\xee, \\xed\\xee\\xe2\\xe8\\xed\\xea\\xe8 \\xf1\\xe5\\xf0\\xe8\\xe0\\xeb\\xee\\xe2 2026, \\xef\\xe5\\xf0\\xe5\\xe2\\xee\\xe4 \\xe8 \\xee\\xe7\\xe2\\xf3\\xf7\\xe8\\xe2\\xe0\\xed\\xe8\\xe5 RuDub \\xed\\xe0 RuDub.TV\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-rustorka",
+    "name": "Rustorka",
+    "description": "Rustorka is a RUSSIAN Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "rustorka.com"
+    ],
+    "url": "https://rustorka.com/",
+    "source": "jackett",
+    "evidence": "GET https://rustorka.com/forum/index.php -\u003e HTTP 403, 5567 bytes, title \"Каптча\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-rutor",
+    "name": "RuTor",
+    "description": "RuTor is a RUSSIAN Public site for MOVIES / TV / GENERAL",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "rutor.info"
+    ],
+    "url": "https://rutor.info/",
+    "source": "jackett",
+    "evidence": "GET https://rutor.info/ -\u003e HTTP 200, 179582 bytes, title \"rutor.info :: Свободный торрент трекер\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-rutracker",
+    "name": "RuTracker.org",
+    "description": "RuTracker.org is a RUSSIAN Semi-Private site with a thriving file-sharing community",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "rutracker.org"
+    ],
+    "url": "https://rutracker.org/",
+    "source": "jackett",
+    "evidence": "GET https://rutracker.org/forum/index.php -\u003e HTTP 200, 96767 bytes, title \"RuTracker.org\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-rutracker-ru",
+    "name": "RuTracker.RU",
+    "description": "RuTracker.RU is a RUSSIAN Public Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "rutracker.ru"
+    ],
+    "url": "http://rutracker.ru/",
+    "source": "jackett",
+    "evidence": "GET http://rutracker.ru/ -\u003e HTTP 200, 218447 bytes, title \"Home :: RuTracker.RU - Свободный торрент трекер\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-selezen",
+    "name": "seleZen",
+    "description": "seleZen is a RUSSIAN Semi-Private Torrent Tracker for MOVIES",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "use.selezen.club"
+    ],
+    "url": "https://use.selezen.club/",
+    "source": "jackett",
+    "evidence": "GET https://use.selezen.club/ -\u003e HTTP 200, 12560 bytes, title \"Поиск фильмов - online.selezen.net\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-sewerpt",
+    "name": "SewerPT",
+    "description": "SewerPT (下水道) is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "sewerpt.com"
+    ],
+    "url": "https://sewerpt.com/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://sewerpt.com/login.php -\u003e HTTP 200, 13665 bytes, title \"下水道PT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-sexypics",
+    "name": "Sexy-Pics",
+    "description": "Sexy-Pics is a Public Magnet Links site for 3X MP4",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "sexy-pics.us"
+    ],
+    "url": "https://www.sexy-pics.us/",
+    "source": "jackett",
+    "evidence": "GET https://www.sexy-pics.us/ -\u003e HTTP 200, 41800 bytes, title \"Download XXX (385,750 Torrent Files) Page 1 - Sexy-Pics\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-shareisland-api",
+    "name": "Shareisland (API)",
+    "description": "Shareisland is a ITALIAN Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "apikey"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "shareisland.org"
+    ],
+    "url": "https://shareisland.org/",
+    "family": "unit3d",
+    "italian": true,
+    "source": "jackett",
+    "evidence": "GET https://shareisland.org/login -\u003e HTTP 200, 5404 bytes, title \"Login - ShareIsland\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-skidrowrepack",
+    "name": "SkidrowRepack",
+    "description": "SkidrowRepack is a Public Torrent Tracker for GAMES",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "skidrowrepack.com"
+    ],
+    "url": "https://skidrowrepack.com/",
+    "source": "jackett",
+    "evidence": "GET https://skidrowrepack.com/ -\u003e HTTP 200, 41147 bytes, title \"Games torrent free download - SkidrowRepack.com\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-sktorrent",
+    "name": "Sk-CzTorrent",
+    "description": "Sk-CzTorrent is a CZECH/SLOVAK Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "cs-CZ",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "sktorrent.eu"
+    ],
+    "url": "https://sktorrent.eu/",
+    "source": "jackett",
+    "evidence": "GET https://sktorrent.eu/torrent/torrents_v2.php?active=0 -\u003e HTTP 200, 50014 bytes, title \"Sk-CzTorrent | stiahni si HD Filmy online - Torrents\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-sktorrent-org",
+    "name": "SkTorrent.org",
+    "description": "SkTorrent.org is a Semi-Private torrent site for MOVIES / TV/ GENERAL",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "sktorrent.org"
+    ],
+    "url": "https://sktorrent.org/",
+    "source": "jackett",
+    "evidence": "GET https://sktorrent.org/ -\u003e HTTP 200, 11916 bytes, title \"Sktorrent - Torrent Search Engine\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-sosulki",
+    "name": "sosulki",
+    "description": "sosulki is a RUSSIAN Public Torrent Tracker for 3X",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "sosulki.bosk.cc"
+    ],
+    "url": "https://sosulki.bosk.cc/",
+    "source": "jackett",
+    "evidence": "GET https://sosulki.bosk.cc/ -\u003e HTTP 200, 68468 bytes, title \"Порно торрент трекер XXX sosulki.bosk.cc\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-soulvoice",
+    "name": "SoulVoice (聆音Club)",
+    "description": "SoulVoice (聆音Club) is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pt.soulvoice.club"
+    ],
+    "url": "https://pt.soulvoice.club/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://pt.soulvoice.club/login.php -\u003e HTTP 200, 12082 bytes, title \"聆音Club :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-springsunday",
+    "name": "SpringSunday",
+    "description": "SpringSunday (SSD) is a CHINESE Private Torrent Tracker for HD MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "springsunday.net"
+    ],
+    "url": "https://springsunday.net/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://springsunday.net/login.php -\u003e HTTP 200, 4743 bytes, title \"SSD :: 登录\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-sukebeinyaasi",
+    "name": "sukebei.nyaa.si",
+    "description": "sukebei.nyaa is a Public torrent site focused on adult Eastern ASIAN media including anime, manga, games and JAV",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "sukebei.nyaa.si"
+    ],
+    "url": "https://sukebei.nyaa.si/",
+    "source": "jackett",
+    "evidence": "GET https://sukebei.nyaa.si/ -\u003e HTTP 200, 147640 bytes, title \"Browse :: Sukebei\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-themixingbowl",
+    "name": "themixingbowl",
+    "description": "themixingbowl (TMB) is a Semi-Private Torrent Tracker for DJ Music mixes",
+    "language": "en-US",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "tmb.dj"
+    ],
+    "url": "https://tmb.dj/",
+    "source": "jackett",
+    "evidence": "GET https://tmb.dj/ -\u003e HTTP 503, 1932 bytes, title \"themixingbowl.org :: Site Maintenance\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-therarbg",
+    "name": "TheRARBG",
+    "description": "TheRARBG is a Public site inspired by RARBG.to for MOVIES / TV / GENERAL",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "therarbg.to"
+    ],
+    "url": "https://therarbg.to/",
+    "source": "jackett",
+    "evidence": "GET https://therarbg.to/ -\u003e HTTP 200, 183345 bytes, title \"Download Latest Top Torrents in Multiple Categories The RarBg\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-tjupt",
+    "name": "TJUPT (北洋园PT)",
+    "description": "TJUPT (北洋园PT) is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "tjupt.org"
+    ],
+    "url": "https://tjupt.org/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://tjupt.org/login.php -\u003e HTTP 200, 6956 bytes, title \"北洋园PT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-tlfbits",
+    "name": "TLFBits",
+    "description": "TLFBits is a CHINESE Private Torrent Tracker for HD MOVIES / TV",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pt.eastgame.org"
+    ],
+    "url": "https://pt.eastgame.org/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://pt.eastgame.org/login.php -\u003e HTTP 200, 6311 bytes, title \"TLFBits :: 登录 简单的分享，简单的快乐 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-toloka",
+    "name": "Toloka.to",
+    "description": "Toloka is a UKRAINIAN Semi-Private site with a thriving file-sharing community",
+    "language": "uk-UA",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "toloka.to"
+    ],
+    "url": "https://toloka.to/",
+    "source": "jackett",
+    "evidence": "GET https://toloka.to/ -\u003e HTTP 200, 23292 bytes, title \"Гуртом — торрент-толока\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrent-pirat",
+    "name": "torrent-pirat",
+    "description": "torrent-pirat is a RUSSIAN Public Torrent Tracker for 3X",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrent-pirat.com"
+    ],
+    "url": "http://www.torrent-pirat.com/",
+    "source": "jackett",
+    "evidence": "GET http://www.torrent-pirat.com/ -\u003e HTTP 200, 55001 bytes, title \"\u0026bull; Портал\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrentby",
+    "name": "torrent.by",
+    "description": "torrent.by is a BELARUSIAN Public Torrent Tracker",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrent.by"
+    ],
+    "url": "https://torrent.by/",
+    "source": "jackett",
+    "evidence": "GET https://torrent.by/ -\u003e HTTP 200, 262144 bytes, title \"Торрент трекер - torrent.by\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrentbyte",
+    "name": "TorrentByte",
+    "description": "TorrentByte is a Public DHT Crawler",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "torrentbyte.cc"
+    ],
+    "url": "https://torrentbyte.cc/",
+    "source": "jackett",
+    "evidence": "GET https://torrentbyte.cc/ -\u003e HTTP 403, 5479 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrentcore",
+    "name": "Torrent[CORE]",
+    "description": "Torrent[CORE] is a Public DHT Crawler",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "torrentcore.xyz"
+    ],
+    "url": "https://torrentcore.xyz/",
+    "source": "jackett",
+    "evidence": "GET https://torrentcore.xyz/ -\u003e HTTP 403, 5480 bytes, title \"Just a moment...\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrentdownload",
+    "name": "TorrentDownload",
+    "description": "TorrentDownload is a Public torrent meta-search engine",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentdownload.info"
+    ],
+    "url": "https://www.torrentdownload.info/",
+    "source": "jackett",
+    "evidence": "GET https://www.torrentdownload.info/ -\u003e HTTP 200, 40781 bytes, title \"TorrentDownload - Free Torrents Download\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrentkitty",
+    "name": "TorrentKitty",
+    "description": "TorrentKitty is a Public torrent indexer",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentkitty.cam"
+    ],
+    "url": "https://www.torrentkitty.cam/",
+    "source": "jackett",
+    "evidence": "GET https://www.torrentkitty.cam/ -\u003e HTTP 200, 28977 bytes, title \"Torrent Kitty - Free Torrent To Magnet Link Conversion Service\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrentmasters",
+    "name": "TorrentMasters",
+    "description": "TorrentMasters is a HUNGARIAN semi-private tracker for MOVIES / TV / GENERAL",
+    "language": "hu-HU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "torrentmasters.org"
+    ],
+    "url": "https://torrentmasters.org/",
+    "source": "jackett",
+    "evidence": "GET https://torrentmasters.org/login/index/?url=%2F -\u003e HTTP 200, 8105 bytes, title \"TorrentMasters | Bejelentkezés\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrentproject2",
+    "name": "TorrentProject2",
+    "description": "TorrentProject2 is a Public torrent meta-search engine",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentproject.cc"
+    ],
+    "url": "https://torrentproject.cc/",
+    "source": "jackett",
+    "evidence": "GET https://torrentproject.cc/ -\u003e HTTP 200, 11284 bytes, title \"TorrentProject - Torrent Search Engine\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrentsome",
+    "name": "Torrentsome",
+    "description": "Torrentsome is a KOREAN Public tracker for Korean media.",
+    "language": "ko-KR",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentsome269.com"
+    ],
+    "url": "https://torrentsome269.com/",
+    "source": "jackett",
+    "evidence": "GET https://torrentsome269.com/ -\u003e HTTP 200, 109090 bytes, title \"토렌트썸-TORRENTSOME\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrenttip",
+    "name": "Torrenttip",
+    "description": "Torrenttip (토렌트팁) is a Public KOREAN tracker for Korean media.",
+    "language": "ko-KR",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrenttip249.top"
+    ],
+    "url": "https://torrenttip249.top/",
+    "source": "jackett",
+    "evidence": "GET https://torrenttip249.top/ -\u003e HTTP 200, 109720 bytes, title \"Home - 토렌트팁::torrenttip\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-torrenttrader",
+    "name": "Torrent Trader",
+    "description": "Torrent Trader is a GERMAN Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "de-DE",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "the-torrent-trader.com"
+    ],
+    "url": "https://the-torrent-trader.com/",
+    "family": "torrenttrader",
+    "source": "jackett",
+    "evidence": "GET https://the-torrent-trader.com/login.php?returnto=%2F -\u003e HTTP 200, 5044 bytes, title \"(no title)\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-totheglory",
+    "name": "ToTheGlory",
+    "description": "ToTheGlory (TTG) is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "totheglory.im"
+    ],
+    "url": "https://totheglory.im/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://totheglory.im/login.php -\u003e HTTP 200, 27024 bytes, title \"TTG :: 用户登录\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-tr4ker",
+    "name": "TR4KER",
+    "description": "TR4KER is a FRENCH Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "fr-FR",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "tr4ker.net"
+    ],
+    "url": "https://tr4ker.net/",
+    "source": "jackett",
+    "evidence": "GET https://tr4ker.net/ -\u003e HTTP 200, 790 bytes, title \"TR4KER\", checked 2026-10-23; page too small to trust",
+    "proposable": true
+  },
+  {
+    "id": "jk-trackerzero",
+    "name": "TrackerZero",
+    "description": "TrackerZero is an ITALIAN Private PAY2DL Torrent Tracker for MOVIES / TV / MUSIC / SOFTWARE",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "trackerzero.it"
+    ],
+    "url": "https://trackerzero.it/",
+    "italian": true,
+    "source": "jackett",
+    "evidence": "no live probe",
+    "proposable": true
+  },
+  {
+    "id": "jk-traht",
+    "name": "TrahT",
+    "description": "TrahT is a RUSSIAN Semi-Private Torrent Tracker for 3X",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "traht.org"
+    ],
+    "url": "https://traht.org/",
+    "source": "jackett",
+    "evidence": "GET https://traht.org/ -\u003e HTTP 200, 34053 bytes, title \"\\xc3\\xeb\\xe0\\xe2\\xed\\xe0\\xff | TrahT.org - \\xd2\\xee\\xf0\\xf0\\xe5\\xed\\xf2 \\xf2\\xf0\\xe5\\xea\\xe5\\xf0 \\xe4\\xeb\\xff \\xe2\\xe7\\xf0\\xee\\xf1\\xeb\\xfb\\xf5!\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-tribalmixes",
+    "name": "TribalMixes",
+    "description": "TribalMixes is a Semi-Private Torrent Tracker for DJ MIXES",
+    "language": "en-GB",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "tribalmixes.com"
+    ],
+    "url": "https://www.tribalmixes.com/",
+    "source": "jackett",
+    "evidence": "GET https://www.tribalmixes.com/ -\u003e HTTP 200, 34490 bytes, title \"DJ Mixes, Livesets, Club Mixes, Track-Lists | TribalMixes\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-u2",
+    "name": "U2",
+    "description": "U2 (U2分享園@動漫花園) is a CHINESE Private Torrent Tracker for ANIME",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "u2.dmhy.org"
+    ],
+    "url": "https://u2.dmhy.org/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://u2.dmhy.org/portal.php -\u003e HTTP 200, 30055 bytes, title \"Access Point :: U2\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-u3c3",
+    "name": "U3C3",
+    "description": "U3C3 is a CHINESE Public tracker focused on 3X Eastern Asian media",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "u3c3.com"
+    ],
+    "url": "https://u3c3.com/",
+    "source": "jackett",
+    "evidence": "GET https://u3c3.com/ -\u003e HTTP 200, 153394 bytes, title \"U3C3\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-uindex",
+    "name": "Uindex",
+    "description": "Uindex is a Public Torrent Tracker for MOVIES / TV / MUSIC / GENERAL",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "uindex.org"
+    ],
+    "url": "https://uindex.org/",
+    "source": "jackett",
+    "evidence": "GET https://uindex.org/ -\u003e HTTP 200, 186605 bytes, title \"UIndex – The Index of Everything You Need!\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-unionfansub",
+    "name": "Union Fansub",
+    "description": "Union Fansub is a SPANISH Semi-Private torrent site focused on ANIME",
+    "language": "es-ES",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrent.unionfansub.com"
+    ],
+    "url": "https://torrent.unionfansub.com/",
+    "source": "jackett",
+    "evidence": "GET https://torrent.unionfansub.com/ -\u003e HTTP 200, 2550 bytes, title \"Torrent ‹ Unión Fansub\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-uniotaku",
+    "name": "UniOtaku",
+    "description": "UniOtaku is a BRAZILIAN Semi-Private Torrent Tracker for ANIME",
+    "language": "pt-BR",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "tracker.uniotaku.com"
+    ],
+    "url": "https://tracker.uniotaku.com/",
+    "source": "jackett",
+    "evidence": "GET https://tracker.uniotaku.com/ -\u003e HTTP 200, 6047 bytes, title \"UniOtaku - União dos Otakus\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-uztracker",
+    "name": "UzTracker",
+    "description": "UzTracker is an UZBEK Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "ru-RU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "uztracker.me"
+    ],
+    "url": "https://uztracker.me/",
+    "source": "jackett",
+    "evidence": "GET https://uztracker.me/ -\u003e HTTP 200, 210563 bytes, title \"Главная :: UzTracker.me Трекер для всех\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-vsthouse",
+    "name": "VSTHouse",
+    "description": "VSTHouse is a RUSSIAN Public site for AUDIO apps, plugins and samples",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "vsthouse.ru"
+    ],
+    "url": "https://vsthouse.ru/",
+    "source": "jackett",
+    "evidence": "GET https://vsthouse.ru/ -\u003e HTTP 200, 158116 bytes, title \"VSTi инструменты, VST плагины, программы - Все для создания музыки\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-vstorrent",
+    "name": "VSTorrent",
+    "description": "VSTorrent is a Public site for AUDIO apps, plugins and samples",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "vstorrent.org"
+    ],
+    "url": "https://vstorrent.org/",
+    "source": "jackett",
+    "evidence": "GET https://vstorrent.org/ -\u003e HTTP 200, 246080 bytes, title \"VSTorrent - Torrent Resource For Your Creativity\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-vsttorrents",
+    "name": "VST Torrentz",
+    "description": "VST Torrentz is a Public site for AUDIO apps, plugins and samples",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "vsttorrentz.net"
+    ],
+    "url": "https://vsttorrentz.net/",
+    "source": "jackett",
+    "evidence": "GET https://vsttorrentz.net/ -\u003e HTTP 200, 121137 bytes, title \"VST Torrent | Download Free Latest VST Plugins\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-wintersakura",
+    "name": "WinterSakura",
+    "description": "WinterSakura is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "wintersakura.net"
+    ],
+    "url": "https://wintersakura.net/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://wintersakura.net/login.php -\u003e HTTP 200, 12118 bytes, title \"WinterSakura :: 登录 A little Private Sharing Website. - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-world-torrent",
+    "name": "World-torrent",
+    "description": "World-torrent is a FRENCH Public site for MOVIES / TV / GENERAL",
+    "language": "fr-FR",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "ww2-darkfox.officiel.cc"
+    ],
+    "url": "https://ww2-darkfox.officiel.cc/",
+    "source": "jackett",
+    "evidence": "GET https://ww2-darkfox.officiel.cc/ -\u003e HTTP 200, 262144 bytes, title \"(no title)\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-xingtan",
+    "name": "Xingtan (杏坛)",
+    "description": "Xingtan (杏坛) is a CHINESE Torrent Tracker focusing on Medical Resources EBOOKS",
+    "language": "zh-CN",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "books"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "xingtan.one"
+    ],
+    "url": "https://xingtan.one/",
+    "family": "nexusphp",
+    "source": "jackett",
+    "evidence": "GET https://xingtan.one/login.php -\u003e HTTP 200, 8942 bytes, title \"杏坛 :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
+    "proposable": true
+  },
+  {
+    "id": "jk-xxxclub",
+    "name": "XXXClub",
+    "description": "XXXClub is a Public torrent site for 3X",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "xxxclub.to"
+    ],
+    "url": "https://xxxclub.to/",
+    "source": "jackett",
+    "evidence": "GET https://xxxclub.to/ -\u003e HTTP 200, 35263 bytes, title \"XXXClub : Adult , Porn , XXX , Videos , Download , Torrents\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-xxxtor",
+    "name": "xxxtor",
+    "description": "xxxtor is a RUSSIAN Public Torrent Tracker for 3X",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "xxxtor.com"
+    ],
+    "url": "https://xxxtor.com/",
+    "source": "jackett",
+    "evidence": "GET https://xxxtor.com/ -\u003e HTTP 200, 93183 bytes, title \"XXXTor.Com - Порно Бесплатно и Без Регистрации!\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-zamundalife",
+    "name": "Zamunda LIFE",
+    "description": "Zamunda LIFE is a BULGARIAN Public Torrent Archive for MOVIES / TV / GENERAL",
+    "language": "bg-BG",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "zamunda.life"
+    ],
+    "url": "https://zamunda.life/",
+    "source": "jackett",
+    "evidence": "GET https://zamunda.life/ -\u003e HTTP 200, 6382 bytes, title \"Zamunda.LIFE - Търсачка за магнитни линкове от Zamunda, ArenaBG и Zelka\", checked 2026-10-23",
+    "proposable": true
+  },
+  {
+    "id": "jk-ztracker",
+    "name": "Ztracker",
+    "description": "Ztracker is a HUNGARIAN Semi-Private Torrent Tracker for 0DAY / GENERAL",
+    "language": "hu-HU",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "ztracker.cc"
+    ],
+    "url": "https://ztracker.cc/",
+    "source": "jackett",
+    "evidence": "GET https://ztracker.cc/login.php -\u003e HTTP 200, 23023 bytes, title \"Ztracker.cc :: Bejelentkez\\xe9s\", checked 2026-10-23; login or anti-bot page",
+    "proposable": true
   },
   {
     "id": "kickasstorrents",
@@ -362,7 +4876,10 @@
     "mirror": "unofficial",
     "hosts": [
       "thekat.info"
-    ]
+    ],
+    "url": "https://thekat.info/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "knaben",
@@ -385,7 +4902,11 @@
     "state": "verificata",
     "hosts": [
       "rss.knaben.org"
-    ]
+    ],
+    "url": "https://rss.knaben.org/ita",
+    "usage": 1,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "knaben-search",
@@ -420,7 +4941,10 @@
     "state": "verificata",
     "hosts": [
       "librivox.org"
-    ]
+    ],
+    "url": "https://librivox.org/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "limetorrents",
@@ -443,7 +4967,11 @@
     "hosts": [
       "limetorrents.fun",
       "limetorrents.zone"
-    ]
+    ],
+    "url": "https://www.limetorrents.fun/",
+    "usage": 1,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "linuxtracker",
@@ -459,7 +4987,10 @@
     "state": "verificata",
     "hosts": [
       "linuxtracker.org"
-    ]
+    ],
+    "url": "https://linuxtracker.org/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "mikan",
@@ -474,7 +5005,35 @@
     "state": "verificata",
     "hosts": [
       "mikanani.me"
-    ]
+    ],
+    "url": "https://mikanani.me/",
+    "source": "native",
+    "proposable": true
+  },
+  {
+    "id": "mircrew",
+    "name": "MirCrew",
+    "description": "Local MirCrew Torznab bridge (block B), not a public tracker.",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "localhost"
+    ],
+    "url": "http://localhost:9118/",
+    "family": "torznab",
+    "italian": true,
+    "source": "manual",
+    "evidence": "GET http://localhost:9118/ -\u003e HTTP 200, 2264 bytes, title \"Login\", checked 2026-10-23; private, no account used",
+    "proposable": true
   },
   {
     "id": "mircrew",
@@ -516,7 +5075,10 @@
     "state": "bozza",
     "hosts": [
       "newznab.example.invalid"
-    ]
+    ],
+    "url": "https://newznab.example.invalid/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "nexusphp-generic",
@@ -539,7 +5101,11 @@
     "state": "bozza",
     "hosts": [
       "nexusphp.example.invalid"
-    ]
+    ],
+    "url": "https://nexusphp.example.invalid/",
+    "family": "nexusphp",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "nyaa",
@@ -559,7 +5125,39 @@
     "state": "verificata",
     "hosts": [
       "nyaa.si"
-    ]
+    ],
+    "url": "https://nyaa.si/",
+    "source": "native",
+    "proposable": true
+  },
+  {
+    "id": "pr-12",
+    "name": "Knaben",
+    "description": "Knaben is a Public torrent meta-search engine",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "knaben.eu",
+      "knaben.org"
+    ],
+    "url": "https://knaben.org/",
+    "source": "prowlarr",
+    "evidence": "GET https://knaben.org/ -\u003e HTTP 200, 95306 bytes, title \"Knaben Database\", checked 2026-10-23",
+    "proposable": true
   },
   {
     "id": "shanaproject",
@@ -574,7 +5172,10 @@
     "state": "verificata",
     "hosts": [
       "shanaproject.com"
-    ]
+    ],
+    "url": "https://www.shanaproject.com/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "showrss",
@@ -592,7 +5193,11 @@
     "state": "verificata",
     "hosts": [
       "showrss.info"
-    ]
+    ],
+    "url": "https://showrss.info/",
+    "usage": 1,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "solidtorrents",
@@ -614,7 +5219,10 @@
     "state": "verificata",
     "hosts": [
       "solidtorrents.eu"
-    ]
+    ],
+    "url": "https://solidtorrents.eu/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "subsplease",
@@ -632,7 +5240,10 @@
     "state": "verificata",
     "hosts": [
       "subsplease.org"
-    ]
+    ],
+    "url": "https://subsplease.org/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "thepiratebay",
@@ -654,7 +5265,11 @@
     "hosts": [
       "apibay.org",
       "thepiratebay.org"
-    ]
+    ],
+    "url": "https://apibay.org/",
+    "usage": 1,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "tokyotosho",
@@ -672,7 +5287,10 @@
     "state": "verificata",
     "hosts": [
       "tokyotosho.info"
-    ]
+    ],
+    "url": "https://www.tokyotosho.info/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torlock",
@@ -697,7 +5315,11 @@
     "state": "verificata",
     "hosts": [
       "torlock.com"
-    ]
+    ],
+    "url": "https://www.torlock.com/",
+    "family": "torznab",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torrent9",
@@ -718,7 +5340,10 @@
     "hosts": [
       "torrent9.to",
       "www7.torrent9.to"
-    ]
+    ],
+    "url": "https://www7.torrent9.to/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torrentdownloads",
@@ -740,7 +5365,10 @@
     "hosts": [
       "torrentdownloads.me",
       "torrentdownloads.pro"
-    ]
+    ],
+    "url": "https://www.torrentdownloads.pro/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torrentfunk",
@@ -765,7 +5393,11 @@
     "state": "verificata",
     "hosts": [
       "torrentfunk.com"
-    ]
+    ],
+    "url": "https://www.torrentfunk.com/",
+    "family": "torznab",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torrentgalaxy",
@@ -788,7 +5420,10 @@
     "state": "verificata",
     "hosts": [
       "torrentgalaxy.one"
-    ]
+    ],
+    "url": "https://torrentgalaxy.one/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torrentgalaxyclone",
@@ -811,7 +5446,11 @@
     "hosts": [
       "torrentgalaxy.info",
       "torrentgalaxy.one"
-    ]
+    ],
+    "url": "https://torrentgalaxy.one/",
+    "usage": 1,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torrentleech",
@@ -835,7 +5474,11 @@
     "state": "bozza",
     "hosts": [
       "torrentleech.org"
-    ]
+    ],
+    "url": "https://www.torrentleech.org/",
+    "usage": 1,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torrentleech-rss",
@@ -858,7 +5501,11 @@
     "state": "bozza",
     "hosts": [
       "rss.torrentleech.org"
-    ]
+    ],
+    "url": "https://rss.torrentleech.org/",
+    "usage": 1,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torrentscsv",
@@ -870,7 +5517,10 @@
     "state": "verificata",
     "hosts": [
       "torrents-csv.com"
-    ]
+    ],
+    "url": "https://torrents-csv.com/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torrenttrader-generic",
@@ -893,7 +5543,11 @@
     "state": "bozza",
     "hosts": [
       "torrenttrader.example.invalid"
-    ]
+    ],
+    "url": "https://torrenttrader.example.invalid/",
+    "family": "torrenttrader",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "torznab-generic",
@@ -915,7 +5569,11 @@
     "state": "bozza",
     "hosts": [
       "torznab.example.invalid"
-    ]
+    ],
+    "url": "https://torznab.example.invalid/",
+    "family": "torznab",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "unit3d-generic",
@@ -937,7 +5595,11 @@
     "state": "bozza",
     "hosts": [
       "unit3d.example.invalid"
-    ]
+    ],
+    "url": "https://unit3d.example.invalid/",
+    "family": "unit3d",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "xbtit-generic",
@@ -960,7 +5622,11 @@
     "state": "bozza",
     "hosts": [
       "xbtit.example.invalid"
-    ]
+    ],
+    "url": "https://xbtit.example.invalid/",
+    "family": "xbtit",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "yts",
@@ -979,6 +5645,9 @@
       "yts.am",
       "yts.gg",
       "yts.lt"
-    ]
+    ],
+    "url": "https://yts.gg/",
+    "source": "native",
+    "proposable": true
   }
 ]

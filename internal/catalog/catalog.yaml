@@ -51,6 +51,9 @@ definitions:
     file: definitions/extto.yaml
     state: verificata
     author: indexarr
+    family: custom
+    italian: true
+    note: "Italian priority; public HTML listing, verified natively."
 
   - id: torrentgalaxy
     file: definitions/torrentgalaxy.yaml
@@ -61,11 +64,16 @@ definitions:
     file: definitions/corsaro.yaml
     state: verificata
     author: indexarr
+    family: xbtit
+    italian: true
+    note: "Italian priority; XBTIT family confirmed from /jscript/xbtit.js; guest listing verified."
 
   - id: knaben
     file: definitions/knaben.yaml
     state: verificata
     author: indexarr
+    usage: 1
+    note: "Enabled in the coordinator production instance on 2026-10-23."
 
   - id: knaben-search
     file: definitions/knaben-search.yaml
@@ -76,26 +84,36 @@ definitions:
     file: definitions/torrentleech.yaml
     state: bozza
     author: indexarr
+    usage: 1
+    note: "Enabled in the coordinator production instance on 2026-10-23."
 
   - id: torrentleech-rss
     file: definitions/torrentleech-rss.yaml
     state: bozza
     author: indexarr
+    usage: 1
+    note: "Enabled in the coordinator production instance on 2026-10-23."
 
   - id: torrentgalaxyclone
     file: definitions/torrentgalaxyclone.yaml
     state: verificata
     author: indexarr
+    usage: 1
+    note: "Enabled in the coordinator production instance on 2026-10-23."
 
   - id: limetorrents
     file: definitions/limetorrents.yaml
     state: verificata
     author: indexarr
+    usage: 1
+    note: "Enabled in the coordinator production instance on 2026-10-23."
 
   - id: thepiratebay
     file: definitions/thepiratebay.yaml
     state: verificata
     author: indexarr
+    usage: 1
+    note: "Enabled in the coordinator production instance on 2026-10-23."
 
   - id: torrentscsv
     file: definitions/torrentscsv.yaml
@@ -106,6 +124,8 @@ definitions:
     file: definitions/showrss.yaml
     state: verificata
     author: indexarr
+    usage: 1
+    note: "Enabled in the coordinator production instance on 2026-10-23."
 
   - id: corsaro-account
     file: definitions/corsaro-account.yaml
@@ -116,6 +136,9 @@ definitions:
     file: definitions/ildragonegro.yaml
     state: bozza
     author: indexarr
+    family: custom
+    italian: true
+    note: "Italian priority; phpBB forum, private without an account (da provvi)."
 
   - id: mircrew
     file: definitions/mircrew.yaml
@@ -126,6 +149,8 @@ definitions:
     file: definitions/1337x.yaml
     state: verificata
     author: indexarr
+    usage: 1
+    note: "Enabled in the coordinator production instance on 2026-10-23."
 
   - id: animetosho
     file: definitions/animetosho.yaml

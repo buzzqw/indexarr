@@ -154,9 +154,16 @@ func TestPasteExtToURLOpensExtTo(t *testing.T) {
 func TestSiteChooserListsStatesAndLocalizedCategories(t *testing.T) {
 	env := newNativeEnv(t)
 	body := get(t, env.handler, "/indexers/new").Body.String()
-	for _, want := range []string{"Supported sites", "Verified", "Testing", "ExtTo", "Corsaro", "Torznab (generic)"} {
+	for _, want := range []string{"Supported sites", "Verified", "Testing", "Torznab (generic)"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("site chooser missing %q", want)
+		}
+	}
+	// The catalog is paged at 50 rows. Use the search box, as a user would,
+	// instead of assuming a specific site lands on the first page.
+	for _, query := range []string{"ExtTo", "Corsaro"} {
+		if page := get(t, env.handler, "/indexers/new?q="+url.QueryEscape(query)).Body.String(); !strings.Contains(page, query) {
+			t.Errorf("site chooser search %q did not find it", query)
 		}
 	}
 	italian := get(t, env.handler, "/indexers/new?definition=corsaro&lang=it").Body.String()

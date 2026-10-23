@@ -80,7 +80,7 @@ func FromJackettAPI(ctx context.Context, baseURL, apiKey string, client *http.Cl
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 30 * time.Second}
 	}
-	document, err := fetchJackettIndexers(ctx, httpClient, root, apiKey)
+	document, err := fetchJackettIndexers(ctx, httpClient, root, apiKey, "true")
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return Plan{}, fmt.Errorf("%s: %w", op, ctxErr)
@@ -171,13 +171,13 @@ func normalizeManagerBase(raw string) (string, error) {
 	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
-func fetchJackettIndexers(ctx context.Context, client *http.Client, root, apiKey string) (jackettIndexersDocument, error) {
+func fetchJackettIndexers(ctx context.Context, client *http.Client, root, apiKey, configured string) (jackettIndexersDocument, error) {
 	// Jackett authenticates the Torznab API with ?apikey=; an X-Api-Key header
 	// alone is rejected with <error code="100" description="Invalid API Key">.
 	// The URL never reaches a warning or an error: sanitizeURL drops the query.
 	query := url.Values{}
 	query.Set("t", "indexers")
-	query.Set("configured", "true")
+	query.Set("configured", configured)
 	if apiKey != "" {
 		query.Set("apikey", apiKey)
 	}

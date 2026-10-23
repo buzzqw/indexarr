@@ -1,0 +1,18 @@
+# Sites that are part of the priority list but are not in either manager's
+# inventory. They are small, explicit rows; no Cardigann data is used.
+schema: 1
+updated: "2026-10-23"
+sites:
+  - id: mircrew
+    name: MirCrew
+    description: Local MirCrew Torznab bridge (block B), not a public tracker.
+    url: http://localhost:9118/
+    type: private
+    language: it-IT
+    family: torznab
+    categories: [tv, movies]
+    state: da-provvi
+    italian: true
+    required: [url]
+    source: manual
+    note: "Block B bridge; needs the local mircrew-indexer service and forum credentials."

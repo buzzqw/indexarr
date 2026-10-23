@@ -23,6 +23,7 @@ import (
 // The catalog test compares the file with BuildIndex(Builtins()) and fails
 // when it is stale, so a forgotten regeneration cannot ship.
 
+//go:generate go run ./gensites
 //go:generate go run ./genindex
 
 //go:embed index.json
@@ -43,6 +44,29 @@ type IndexEntry struct {
 	State       string   `json:"state"`
 	Mirror      string   `json:"mirror,omitempty"`
 	Hosts       []string `json:"hosts,omitempty"`
+
+	// URL is the primary site address. Native entries use the first meta URL;
+	// lightweight entries use the manager's link. It lets the UI show the
+	// address without parsing a definition and lets the "Prova" action hit the
+	// site directly.
+	URL string `json:"url,omitempty"`
+	// Family is the tracker software family (unit3d, gazelle, nexusphp,
+	// torrenttrader, xbtit, torznab, custom). It is empty when the metadata
+	// does not support a claim.
+	Family string `json:"family,omitempty"`
+	// Italian marks the coordinator's Italian priority list, independently of
+	// the site language. It drives the quick "Italiani" filter.
+	Italian bool `json:"italian,omitempty"`
+	// Usage is the observed manager-configuration count. The UI can sort by it
+	// without a second database read.
+	Usage int `json:"usage,omitempty"`
+	// Source is "native", "jackett" or "prowlarr".
+	Source string `json:"source,omitempty"`
+	// Evidence is the short live-test result for a lightweight entry.
+	Evidence string `json:"evidence,omitempty"`
+	// Proposable is false for dead rows, so a client can hide them without
+	// memorising the state vocabulary.
+	Proposable bool `json:"proposable"`
 }
 
 // Index returns the embedded catalog index. The slice is a copy: callers may
@@ -86,6 +110,10 @@ func BuildIndex(entries []Entry) []IndexEntry {
 		if def == nil {
 			continue
 		}
+		family := strings.TrimSpace(entry.Family)
+		if family == "" && validFamilies[def.Connector] {
+			family = def.Connector
+		}
 		item := IndexEntry{
 			ID:          entry.ID,
 			Name:        def.Meta.Name,
@@ -98,6 +126,12 @@ func BuildIndex(entries []Entry) []IndexEntry {
 			State:       entry.State,
 			Mirror:      strings.TrimSpace(def.Meta.Mirror),
 			Hosts:       indexHosts(def.Meta.URLs),
+			URL:         firstURL(def.Meta.URLs),
+			Family:      family,
+			Italian:     entry.Italian,
+			Usage:       entry.Usage,
+			Source:      "native",
+			Proposable:  entry.State != "degradata",
 		}
 		out = append(out, item)
 	}
@@ -169,6 +203,15 @@ func indexRequired(settings []definition.Setting) []string {
 	return out
 }
 
+func firstURL(urls []string) string {
+	for _, raw := range urls {
+		if parsed, err := url.Parse(strings.TrimSpace(raw)); err == nil && parsed.Scheme != "" && parsed.Host != "" {
+			return strings.TrimSpace(raw)
+		}
+	}
+	return ""
+}
+
 func indexHosts(urls []string) []string {
 	seen := map[string]bool{}
 	for _, raw := range urls {
@@ -191,5 +234,27 @@ func indexHosts(urls []string) []string {
 		out = append(out, host)
 	}
 	sort.Strings(out)
+	return out
+}
+
+// CategoryGroups maps the standard Torznab ids found in manager metadata to
+// the small set of groups the UI filters by. It is exported for the catalog
+// generator; BuildIndex uses the same rule for native definitions.
+func CategoryGroups(ids []int) []string {
+	seen := map[string]bool{}
+	for _, id := range ids {
+		for _, group := range categoryGroups(id) {
+			seen[group] = true
+		}
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(seen))
+	for _, group := range indexCategoryOrder {
+		if seen[group] {
+			out = append(out, group)
+		}
+	}
 	return out
 }
