@@ -15,9 +15,11 @@ var templatePattern = regexp.MustCompile(`\{\{\s*(.*?)\s*\}\}`)
 // queryVariableNames lists the normalized query variables available to
 // templates. Optional values render as an empty string when unset.
 var queryVariableNames = []string{
-	"keywords", "season", "ep", "imdbid", "tvdbid", "tmdbid",
+	"keywords", "keywords_raw", "season", "ep", "imdbid", "tvdbid", "tmdbid",
 	"tvmazeid", "rid", "artist", "album", "author", "title", "year",
 }
+
+var queryEpisodeTag = regexp.MustCompile(`(?i)\bs\d{1,2}(?:[ ._-]?e\d{1,3})?\b|\b\d{1,2}x\d{1,3}\b`)
 
 // templateValues is the data a definition's templates can read. settings is
 // the effective map (defaults applied); declared records setting names so a
@@ -187,9 +189,14 @@ func unquoteTemplateArg(raw string) string {
 }
 
 // queryTemplateMap builds the query.* variables for a SearchRequest.
-func queryTemplateMap(req SearchRequest) map[string]string {
+// keywords is the effective text sent to the site: for a TV search it carries
+// the episode marker in the format chosen by the definition. keywords_raw is
+// always the original query, and season/ep stay available for definitions that
+// prefer separate parameters.
+func queryTemplateMap(req SearchRequest, keywordsFormat string) map[string]string {
 	out := make(map[string]string, len(queryVariableNames))
-	out["keywords"] = req.Query
+	out["keywords"] = effectiveKeywords(req, keywordsFormat)
+	out["keywords_raw"] = req.Query
 	out["season"] = optionalInt(req.Season)
 	out["ep"] = optionalInt(req.Episode)
 	out["imdbid"] = req.IMDbID
@@ -203,6 +210,50 @@ func queryTemplateMap(req SearchRequest) map[string]string {
 	out["title"] = req.Title
 	out["year"] = optionalInt(req.Year)
 	return out
+}
+
+func effectiveKeywords(req SearchRequest, keywordsFormat string) string {
+	raw := strings.TrimSpace(req.Query)
+	if raw == "" {
+		return raw
+	}
+	if req.Mode == ModeMovie && req.Year > 0 && !queryEpisodeTag.MatchString(raw) {
+		year := strconv.Itoa(req.Year)
+		found := false
+		for _, field := range strings.Fields(raw) {
+			if field == year {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return strings.TrimSpace(raw + " " + year)
+		}
+		return raw
+	}
+	if req.Mode != ModeTV || req.Season <= 0 {
+		return raw
+	}
+	// A query that already carries a season/episode marker is left untouched,
+	// exactly like the fallback in Jackett/Prowlarr.
+	if queryEpisodeTag.MatchString(raw) {
+		return raw
+	}
+	switch strings.ToLower(strings.TrimSpace(keywordsFormat)) {
+	case "separate":
+		return raw
+	case "1x05":
+		if req.Episode > 0 {
+			return fmt.Sprintf("%s %dx%02d", raw, req.Season, req.Episode)
+		}
+		return fmt.Sprintf("%s S%02d", raw, req.Season)
+	default:
+		tag := fmt.Sprintf("S%02d", req.Season)
+		if req.Episode > 0 {
+			tag += fmt.Sprintf("E%02d", req.Episode)
+		}
+		return strings.TrimSpace(raw + " " + tag)
+	}
 }
 
 func optionalInt(value int) string {

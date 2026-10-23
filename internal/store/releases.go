@@ -1091,11 +1091,19 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 		if f.Episode > 0 {
 			patterns = []string{
 				fmt.Sprintf("%%s%02de%02d%%", f.Season, f.Episode),
+				fmt.Sprintf("%%s%02d e%02d%%", f.Season, f.Episode),
 				fmt.Sprintf("%%%dx%02d%%", f.Season, f.Episode),
 			}
 		}
-		// A season pack satisfies an episode request too.
-		patterns = append(patterns, fmt.Sprintf("%%s%02d%%", f.Season))
+		// A season pack satisfies an episode request too. Titles are stored
+		// normalized (punctuation becomes a space), so both S04 and Season 4
+		// are accepted.
+		patterns = append(patterns,
+			fmt.Sprintf("%%s%02d%%", f.Season),
+			fmt.Sprintf("%%season %d%%", f.Season),
+			fmt.Sprintf("%%season %02d%%", f.Season),
+			fmt.Sprintf("%%%dx%%", f.Season),
+		)
 		var seasonClauses []string
 		for _, pattern := range patterns {
 			seasonClauses = append(seasonClauses, `search_title LIKE ? ESCAPE '\'`)

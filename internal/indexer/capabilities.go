@@ -2,11 +2,49 @@ package indexer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/buzzqw/indexarr/internal/definition"
+	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/store"
 )
+
+// CapabilitiesFor returns the real capabilities of the selected indexers. An
+// empty id list means every enabled indexer. Indexers that cannot build a
+// connector are skipped: caps must never take the whole API down because one
+// definition is temporarily unusable.
+func (m *Manager) CapabilitiesFor(ctx context.Context, ids []int64) (map[int64]engine.Capabilities, error) {
+	out := make(map[int64]engine.Capabilities)
+	selected := make(map[int64]struct{}, len(ids))
+	for _, id := range ids {
+		if id > 0 {
+			selected[id] = struct{}{}
+		}
+	}
+	indexers, err := m.store.ListIndexers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, indexer := range indexers {
+		if !indexer.Enabled {
+			continue
+		}
+		if len(selected) > 0 {
+			if _, ok := selected[indexer.ID]; !ok {
+				continue
+			}
+		}
+		connector, _, err := m.Connector(ctx, indexer.ID)
+		if err != nil {
+			continue
+		}
+		out[indexer.ID] = connector.Capabilities()
+	}
+	return out, nil
+}
 
 // LatestIndexerIDs returns the enabled indexers that publish a list of new
 // releases. The *arr RSS path uses it to read only those caches: a search-only
@@ -47,5 +85,27 @@ func (m *Manager) LatestSupported(ctx context.Context, indexer store.Indexer) (b
 		return false, fmt.Errorf("indexer %s: parse definition %q: %w",
 			indexer.Slug, def.ID, err)
 	}
+	if value, ok := indexerConfigBool(indexer.ConfigJSON, "latest"); ok {
+		return value, nil
+	}
 	return parsed.Meta.HasLatest(), nil
+}
+
+func indexerConfigBool(configJSON, key string) (bool, bool) {
+	if strings.TrimSpace(configJSON) == "" {
+		return false, false
+	}
+	var values map[string]string
+	if err := json.Unmarshal([]byte(configJSON), &values); err != nil {
+		return false, false
+	}
+	raw, ok := values[key]
+	if !ok {
+		return false, false
+	}
+	value, err := strconv.ParseBool(strings.TrimSpace(raw))
+	if err != nil {
+		return false, false
+	}
+	return value, true
 }

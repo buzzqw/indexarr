@@ -26,6 +26,7 @@ type resolvedDownload struct {
 	Magnet      string
 	DownloadURL string
 	InfoHash    string
+	Title       string
 }
 
 func (r resolvedDownload) empty() bool {
@@ -225,6 +226,9 @@ func applyResolvedDownload(item *Item, result resolvedDownload) {
 	if item == nil {
 		return
 	}
+	if strings.TrimSpace(result.Title) != "" {
+		item.Title = strings.TrimSpace(result.Title)
+	}
 	if result.Magnet != "" {
 		item.Magnet = result.Magnet
 		if result.InfoHash != "" {
@@ -303,12 +307,19 @@ func (c *DefinitionConnector) fetchDetailsDownload(ctx context.Context, target *
 		return resolvedDownload{}, fmt.Errorf("download: details returned HTTP %d", response.Status)
 	}
 
+	title := ""
+	if c.def.Download.Title != nil {
+		if value, err := c.extractDetailField(response, *c.def.Download.Title); err == nil {
+			title = strings.TrimSpace(value)
+		}
+	}
 	for _, extractor := range c.def.Download.Extract {
 		result, ok, err := c.extractDownloadTarget(response, extractor)
 		if err != nil {
 			return resolvedDownload{}, errors.New("download: details extractor failed")
 		}
 		if ok && !result.empty() {
+			result.Title = title
 			return result, nil
 		}
 	}

@@ -267,6 +267,12 @@ func validateSearch(search Search, add func(string, ...any)) {
 		add("search.pagination.type: must be one of none, page, offset, cursor")
 	}
 
+	switch strings.ToLower(strings.TrimSpace(search.KeywordsFormat)) {
+	case "", "sxxeyy", "1x05", "separate":
+	default:
+		add("search.keywords_format: must be one of sxxeyy, 1x05, separate")
+	}
+
 	fieldNames := make([]string, 0, len(search.Response.Fields))
 	for name := range search.Response.Fields {
 		fieldNames = append(fieldNames, name)
@@ -311,6 +317,9 @@ func validateDownload(download *Download, d *Definition, add func(string, ...any
 		add("download.from: field %q is not declared in search.response.fields", from)
 	}
 
+	if download.Title != nil {
+		validateDownloadField("download.title", *download.Title, add)
+	}
 	if len(download.Extract) == 0 {
 		add("download.extract: at least one target is required")
 	}

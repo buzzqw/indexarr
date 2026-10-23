@@ -120,8 +120,9 @@ func NewRSS(cfg RSSConfig) (*RSS, error) {
 // only free-text search is advertised and it is done client-side.
 func (r *RSS) Capabilities() engine.Capabilities {
 	return engine.Capabilities{
-		Protocol: engine.ProtocolTorrent,
-		Modes:    []engine.Mode{engine.ModeSearch},
+		Protocol:  engine.ProtocolTorrent,
+		LocalOnly: true,
+		Modes:     []engine.Mode{engine.ModeSearch},
 		Params: map[engine.Mode][]string{
 			engine.ModeSearch: {engine.ParamQuery},
 		},

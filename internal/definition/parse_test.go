@@ -341,3 +341,31 @@ capabilities:
 		})
 	}
 }
+
+func TestKeywordsFormat(t *testing.T) {
+	base := `schema: 1
+meta:
+  id: keywords
+  name: Keywords
+  type: public
+  protocol: torrent
+  urls: ["https://keywords.example/"]
+capabilities:
+  search: [q]
+search:
+  request: { get: /search }
+  response: { type: html, rows: { selector: "tr" }, fields: { title: { selector: "a" } } }
+`
+	for _, format := range []string{"", "sxxeyy", "1x05", "separate"} {
+		body := base
+		if format != "" {
+			body += "  keywords_format: " + format + "\n"
+		}
+		if _, err := Parse([]byte(body)); err != nil {
+			t.Errorf("format %q rejected: %v", format, err)
+		}
+	}
+	if _, err := Parse([]byte(base + "  keywords_format: episode\n")); err == nil {
+		t.Error("invalid keywords_format accepted")
+	}
+}

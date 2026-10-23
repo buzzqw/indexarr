@@ -282,4 +282,47 @@ func TestPlanLiveSearchFallbacks(t *testing.T) {
 		plan.mode != engine.ModeTV || plan.fallback {
 		t.Errorf("declared tv-search = %+v ok=%v", plan, ok)
 	}
+	if _, ok, reason := planLiveSearch(engine.Capabilities{LocalOnly: true}, LiveQuery{Mode: "search", Query: "Show"}); ok || reason == "" {
+		t.Errorf("feed-only indexer joined the live fan-out: ok=%v reason=%q", ok, reason)
+	}
+}
+
+func TestSearchLiveResponseCache(t *testing.T) {
+	var hits atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		_, _ = w.Write([]byte(liveHTML(liveRow("Cached Search Show S01E01", "/details/1", liveHashCached))))
+	}))
+	defer server.Close()
+
+	st := newTestStore(t)
+	manager := newTestManager(t, st, newTestVault(t, 3))
+	seedDefinition(t, st, "cache", "", liveDefinition("cache", server.URL, "  search: [q]", ""))
+	createIndexer(t, st, "cache", "cache", "Cache", "torrent", fmt.Sprintf(`{"url":%q}`, server.URL))
+
+	ctx := context.Background()
+	req := LiveQuery{Mode: "search", Query: "Show", Limit: 50}
+	first, err := manager.SearchLive(ctx, req)
+	if err != nil || first.Stored == 0 {
+		t.Fatalf("first search = %+v, %v", first, err)
+	}
+	second, err := manager.SearchLive(ctx, req)
+	if err != nil || second.Stored == 0 {
+		t.Fatalf("second search = %+v, %v", second, err)
+	}
+	if hits.Load() != 1 {
+		t.Fatalf("HTTP hits after warm request = %d, want 1", hits.Load())
+	}
+
+	settings, _ := st.LoadSettings(ctx)
+	settings.TorznabLiveCache = 0
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SearchLive(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	if hits.Load() != 2 {
+		t.Fatalf("HTTP hits with cache disabled = %d, want 2", hits.Load())
+	}
 }

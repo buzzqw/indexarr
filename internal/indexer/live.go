@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,7 +23,7 @@ const (
 	// per-host limiter of the shared transport still applies underneath, so
 	// eight sites are queried at a time while one host never exceeds its own
 	// rate.
-	liveGlobalConcurrency = 8
+	liveGlobalConcurrency = 16
 
 	// liveBackgroundTimeout is the safety limit for an indexer that missed the
 	// request deadline. It keeps working in the background so its result is
@@ -132,6 +133,24 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (LiveResult, er
 		return result, nil
 	}
 
+	// A short-lived response cache absorbs Sonarr/Radarr repetitions and the
+	// offset pages that follow the first one. It is keyed by the effective
+	// query and the selected indexers, so a different request never reuses it.
+	cacheTTL := 5 * time.Minute
+	if settings, settingsErr := m.store.LoadSettings(ctx); settingsErr == nil {
+		if settings.TorznabLiveCache <= 0 {
+			cacheTTL = 0
+		} else {
+			cacheTTL = time.Duration(settings.TorznabLiveCache) * time.Second
+		}
+	}
+	cacheKey := liveCacheKey(req, targets)
+	if cacheTTL > 0 {
+		if cached, ok := m.cachedLive(cacheKey); ok {
+			return cached, nil
+		}
+	}
+
 	results := make(chan LiveIndexerResult, len(targets))
 	var wg sync.WaitGroup
 	done = make(chan struct{})
@@ -180,10 +199,83 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (LiveResult, er
 					TimedOut:  true,
 				})
 			}
+			m.cacheLive(cacheKey, cacheTTL, result)
 			return result, nil
 		}
 	}
+	m.cacheLive(cacheKey, cacheTTL, result)
 	return result, nil
+}
+
+// liveCacheKey normalizes the fields that change a fan-out response.
+func liveCacheKey(req LiveQuery, targets []store.Indexer) string {
+	ids := make([]int64, 0, len(targets))
+	for _, target := range targets {
+		ids = append(ids, target.ID)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	categories := append([]int(nil), req.Categories...)
+	sort.Ints(categories)
+	return strings.Join([]string{
+		strings.ToLower(strings.TrimSpace(req.Mode)),
+		textutil.NormalizeTitle(req.Query),
+		strconv.Itoa(req.Season),
+		strconv.Itoa(req.Episode),
+		strconv.Itoa(req.Year),
+		strings.ToLower(strings.TrimSpace(req.IMDbID)),
+		strings.ToLower(strings.TrimSpace(req.TMDbID)),
+		strings.ToLower(strings.TrimSpace(req.TVDbID)),
+		fmt.Sprint(ids),
+		fmt.Sprint(categories),
+		strconv.Itoa(req.Limit),
+	}, "|")
+}
+
+func (m *Manager) cachedLive(key string) (LiveResult, bool) {
+	m.liveCacheMu.Lock()
+	defer m.liveCacheMu.Unlock()
+	entry, ok := m.liveCache[key]
+	if !ok {
+		return LiveResult{}, false
+	}
+	if time.Now().After(entry.expires) {
+		delete(m.liveCache, key)
+		return LiveResult{}, false
+	}
+	out := entry.result
+	out.Indexers = append([]LiveIndexerResult(nil), entry.result.Indexers...)
+	return out, true
+}
+
+func (m *Manager) cacheLive(key string, ttl time.Duration, result LiveResult) {
+	if ttl <= 0 || key == "" {
+		return
+	}
+	m.liveCacheMu.Lock()
+	defer m.liveCacheMu.Unlock()
+	now := time.Now()
+	for storedKey, entry := range m.liveCache {
+		if now.After(entry.expires) {
+			delete(m.liveCache, storedKey)
+		}
+	}
+	if len(m.liveCache) >= liveCacheMaxEntries {
+		var oldestKey string
+		var oldest time.Time
+		for storedKey, entry := range m.liveCache {
+			if oldestKey == "" || entry.created.Before(oldest) {
+				oldestKey, oldest = storedKey, entry.created
+			}
+		}
+		if oldestKey != "" {
+			delete(m.liveCache, oldestKey)
+		}
+	}
+	m.liveCache[key] = liveCacheEntry{
+		result:  result,
+		expires: now.Add(ttl),
+		created: now,
+	}
 }
 
 // liveOne runs one indexer. It is deliberately independent of the request
@@ -254,6 +346,9 @@ type livePlan struct {
 // support becomes a text search for "SxxEyy", a movie search appends the year,
 // and an ID-only request is skipped instead of inventing a query.
 func planLiveSearch(caps engine.Capabilities, req LiveQuery) (livePlan, bool, string) {
+	if caps.LocalOnly {
+		return livePlan{}, false, "feed-only indexer: cache only"
+	}
 	mode := engine.Mode(strings.ToLower(strings.TrimSpace(req.Mode)))
 	if mode == "" {
 		mode = engine.ModeSearch

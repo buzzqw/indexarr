@@ -72,9 +72,22 @@ type Manager struct {
 	mu    sync.Mutex
 	cache map[int64]cachedConnector
 
+	// liveCache keeps recent fan-out results so Sonarr/Radarr repetitions and
+	// pagination do not hit every site again. It is bounded and expires.
+	liveCacheMu sync.Mutex
+	liveCache   map[string]liveCacheEntry
+
 	// liveSem is the global fan-out limit shared by every Torznab request.
 	liveSem chan struct{}
 }
+
+type liveCacheEntry struct {
+	result  LiveResult
+	expires time.Time
+	created time.Time
+}
+
+const liveCacheMaxEntries = 256
 
 type cachedConnector struct {
 	key       string
@@ -148,6 +161,7 @@ func New(cfg Config) (*Manager, error) {
 		logger:      logger,
 		maxTorrents: maxTorrents,
 		cache:       make(map[int64]cachedConnector),
+		liveCache:   make(map[string]liveCacheEntry),
 		liveSem:     make(chan struct{}, liveGlobalConcurrency),
 	}, nil
 }
@@ -173,6 +187,9 @@ func (m *Manager) Invalidate(indexerID int64) {
 	m.mu.Lock()
 	delete(m.cache, indexerID)
 	m.mu.Unlock()
+	m.liveCacheMu.Lock()
+	m.liveCache = make(map[string]liveCacheEntry)
+	m.liveCacheMu.Unlock()
 }
 
 // InvalidateAll drops every cached connector.
@@ -180,6 +197,9 @@ func (m *Manager) InvalidateAll() {
 	m.mu.Lock()
 	m.cache = make(map[int64]cachedConnector)
 	m.mu.Unlock()
+	m.liveCacheMu.Lock()
+	m.liveCache = make(map[string]liveCacheEntry)
+	m.liveCacheMu.Unlock()
 }
 
 // connectorFor loads the definition, builds the settings map and returns the

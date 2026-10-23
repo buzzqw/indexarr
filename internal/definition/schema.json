@@ -378,6 +378,15 @@
         },
         "response": {
           "$ref": "#/$defs/response"
+        },
+        "keywords_format": {
+          "enum": [
+            "sxxeyy",
+            "1x05",
+            "separate"
+          ],
+          "default": "sxxeyy",
+          "description": "How the TV episode marker is appended to query.keywords; separate leaves query.season and query.ep to the template."
         }
       }
     },
@@ -415,6 +424,10 @@
           "items": {
             "$ref": "#/$defs/downloadTarget"
           }
+        },
+        "title": {
+          "$ref": "#/$defs/field",
+          "description": "Optional full title extracted from the details page."
         }
       }
     },

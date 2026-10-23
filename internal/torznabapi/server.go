@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/buzzqw/indexarr/internal/categories"
+	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -34,6 +35,9 @@ type Server struct {
 	started    time.Time
 	limits     *minuteLimiter
 	liveSearch func(context.Context, indexer.LiveQuery) (indexer.LiveResult, error)
+	// indexerCaps returns the real capabilities of the selected indexers. Nil
+	// falls back to the historical fixed caps document.
+	indexerCaps func(context.Context, []int64) (map[int64]engine.Capabilities, error)
 	// latestIndexers restricts the *arr RSS path to the sites that publish a
 	// latest list. Nil means no restriction (the historical cache response).
 	latestIndexers func(context.Context) ([]int64, error)
@@ -58,6 +62,13 @@ func (s *Server) SetGrabGuard(check func(context.Context, int64) error, record f
 // every search that carries a query, not only when the cache is empty.
 func (s *Server) SetLiveSearch(fn func(context.Context, indexer.LiveQuery) (indexer.LiveResult, error)) {
 	s.liveSearch = fn
+}
+
+// SetCapabilities installs the callback that returns the real capabilities of
+// the selected indexers. The aggregate endpoint intersects them; a per-indexer
+// endpoint exposes that indexer's own document.
+func (s *Server) SetCapabilities(fn func(context.Context, []int64) (map[int64]engine.Capabilities, error)) {
+	s.indexerCaps = fn
 }
 
 // SetLatestIndexers installs the list used by the *arr RSS path. Only the
@@ -124,17 +135,34 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 	}
 	aggregate := isAggregateSlug(slug)
 	if function == "caps" {
+		var ids []int64
 		if !aggregate {
-			if _, found, err := s.resolveIndexer(r.Context(), slug); err != nil {
+			indexer, found, err := s.resolveIndexer(r.Context(), slug)
+			if err != nil {
 				s.log.Error("torznab: resolve indexer", "component", "indexarr", "subsystem", "torznab", "error", err)
 				writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
 				return
-			} else if !found {
+			}
+			if !found {
 				writeTorznabError(w, http.StatusNotFound, torznabIncorrectParameter, "indexer not found: "+slug)
 				return
 			}
+			ids = []int64{indexer.ID}
+		} else if selection, err := s.resolveAggregateSelection(r.Context(), parseAggregateFilters(query)); err == nil && !selection.all {
+			for id := range selection.ids {
+				ids = append(ids, id)
+			}
+			sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 		}
-		s.writeCaps(w, settings)
+		caps, ok := engine.Capabilities{}, false
+		if s.indexerCaps != nil {
+			if byID, err := s.indexerCaps(r.Context(), ids); err != nil {
+				s.log.Warn("torznab: load caps", "component", "indexarr", "subsystem", "torznab", "error", err)
+			} else if len(byID) > 0 {
+				caps, ok = mergeCapabilities(byID), true
+			}
+		}
+		s.writeCaps(w, settings, caps, ok)
 		return
 	}
 	apiKey, ok := s.authorize(w, r, settings)
@@ -288,12 +316,19 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	// The live fan-out runs on every request that carries a query. The cache
 	// is not replaced: what came back in time is stored, then the same cache
 	// query runs again and provenance deduplicates the union.
-	if settings.TorznabLiveSearch && s.liveSearch != nil && liveQueryEligible(mode, filter) {
+	if filter.Offset == 0 && settings.TorznabLiveSearch && s.liveSearch != nil && liveQueryEligible(mode, filter) {
 		timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
 		if timeout <= 0 {
 			timeout = 20 * time.Second
 		}
-		liveCtx, cancel := context.WithTimeout(ctx, timeout)
+		wait := time.Duration(settings.TorznabLiveWait) * time.Second
+		if wait <= 0 {
+			wait = 2 * time.Second
+		}
+		if wait > timeout {
+			wait = timeout
+		}
+		liveCtx, cancel := context.WithTimeout(ctx, wait)
 		liveResult, liveErr := s.liveSearch(liveCtx, indexer.LiveQuery{
 			Mode:       mode,
 			Query:      filter.Query,
@@ -696,7 +731,121 @@ func isUsenetRelease(release store.Release) bool {
 	return strings.Contains(strings.ToLower(release.PayloadType), "nzb")
 }
 
-func (s *Server) writeCaps(w http.ResponseWriter, settings store.Settings) {
+// capsModes is the ordered list of Torznab search functions and their XML
+// element names.
+var capsModes = []struct {
+	mode engine.Mode
+	tag  string
+}{
+	{engine.ModeSearch, "search"},
+	{engine.ModeTV, "tv-search"},
+	{engine.ModeMovie, "movie-search"},
+	{engine.ModeMusic, "music-search"},
+	{engine.ModeBook, "book-search"},
+}
+
+// mergeCapabilities intersects the parameters of every indexer that supports a
+// mode, so the aggregate caps document never promises an ID that only one
+// private site understands. Categories are the union of the selected indexers.
+func mergeCapabilities(byID map[int64]engine.Capabilities) engine.Capabilities {
+	ids := make([]int64, 0, len(byID))
+	for id := range byID {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	var list []engine.Capabilities
+	for _, id := range ids {
+		list = append(list, byID[id])
+	}
+	if len(list) == 0 {
+		return engine.Capabilities{}
+	}
+	out := engine.Capabilities{Params: make(map[engine.Mode][]string)}
+	seenCategories := make(map[int]struct{})
+	for _, caps := range list {
+		for _, category := range caps.Categories {
+			if _, ok := seenCategories[category]; ok {
+				continue
+			}
+			seenCategories[category] = struct{}{}
+			out.Categories = append(out.Categories, category)
+		}
+	}
+	sort.Ints(out.Categories)
+	for _, definition := range capsModes {
+		var common []string
+		found := false
+		for _, caps := range list {
+			if !caps.Supports(definition.mode) {
+				continue
+			}
+			params := append([]string(nil), caps.Params[definition.mode]...)
+			if !found {
+				common = params
+				found = true
+				continue
+			}
+			common = intersectParams(common, params)
+		}
+		if !found {
+			continue
+		}
+		out.Modes = append(out.Modes, definition.mode)
+		out.Params[definition.mode] = common
+	}
+	return out
+}
+
+func intersectParams(left, right []string) []string {
+	rightSet := make(map[string]struct{}, len(right))
+	for _, param := range right {
+		rightSet[param] = struct{}{}
+	}
+	out := make([]string, 0, len(left))
+	for _, param := range left {
+		if _, ok := rightSet[param]; ok {
+			out = append(out, param)
+		}
+	}
+	return out
+}
+
+// torznabCapabilities reflects what indexarr itself can accept, not only what
+// the remote site declares. The TV fan-out turns season/ep into the SxxEyy
+// keyword for definitions that only declare q, so both parameters are safe to
+// advertise for every TV-capable connector. IDs remain untouched: they are
+// advertised only when the underlying definitions really support them.
+func torznabCapabilities(caps engine.Capabilities) engine.Capabilities {
+	if !caps.Supports(engine.ModeTV) {
+		return caps
+	}
+	hasQuery := false
+	for _, param := range caps.Params[engine.ModeTV] {
+		if param == engine.ParamQuery {
+			hasQuery = true
+			break
+		}
+	}
+	if !hasQuery {
+		return caps
+	}
+	params := []string{engine.ParamQuery, engine.ParamSeason, engine.ParamEpisode}
+	for _, param := range caps.Params[engine.ModeTV] {
+		switch param {
+		case engine.ParamQuery, engine.ParamSeason, engine.ParamEpisode:
+			continue
+		default:
+			params = append(params, param)
+		}
+	}
+	if caps.Params == nil {
+		caps.Params = make(map[engine.Mode][]string)
+	}
+	caps.Params[engine.ModeTV] = params
+	return caps
+}
+
+func (s *Server) writeCaps(w http.ResponseWriter, settings store.Settings, caps engine.Capabilities, haveCaps bool) {
 	var b bytes.Buffer
 	b.Grow(4096)
 	b.WriteString(xml.Header)
@@ -707,29 +856,84 @@ func (s *Server) writeCaps(w http.ResponseWriter, settings store.Settings) {
 	b.WriteString(`<limits max="100" default="50"/>`)
 	b.WriteString(`<registration available="no" open="no"/>`)
 	b.WriteString(`<searching>`)
-	b.WriteString(`<search available="yes" supportedParams="q"/>`)
-	b.WriteString(`<tv-search available="yes" supportedParams="q,season,ep,imdbid,tvdbid,tmdbid"/>`)
-	b.WriteString(`<movie-search available="yes" supportedParams="q,imdbid,tmdbid"/>`)
-	b.WriteString(`<music-search available="yes" supportedParams="q"/>`)
-	b.WriteString(`<book-search available="yes" supportedParams="q"/>`)
+	if !haveCaps || len(caps.Modes) == 0 {
+		// Fresh installation or a definition that could not be built: keep the
+		// historical document so app setup is never blocked by one indexer.
+		caps = legacyCapabilities()
+	}
+	caps = torznabCapabilities(caps)
+	for _, definition := range capsModes {
+		params := caps.Params[definition.mode]
+		if !caps.Supports(definition.mode) {
+			b.WriteString(`<` + definition.tag + ` available="no"/>`)
+			continue
+		}
+		b.WriteString(`<` + definition.tag + ` available="yes" supportedParams="`)
+		writeEsc(&b, strings.Join(params, ","))
+		b.WriteString(`"/>`)
+	}
 	b.WriteString(`</searching><categories>`)
+	writeCapsCategories(&b, caps.Categories)
+	b.WriteString(`</categories></caps>`)
+	s.writeXML(w, b.Bytes())
+}
+
+func legacyCapabilities() engine.Capabilities {
+	return engine.Capabilities{
+		Modes: []engine.Mode{engine.ModeSearch, engine.ModeTV, engine.ModeMovie, engine.ModeMusic, engine.ModeBook},
+		Params: map[engine.Mode][]string{
+			engine.ModeSearch: {engine.ParamQuery},
+			engine.ModeTV:     {engine.ParamQuery, engine.ParamSeason, engine.ParamEpisode, engine.ParamIMDbID, engine.ParamTVDbID, engine.ParamTMDbID},
+			engine.ModeMovie:  {engine.ParamQuery, engine.ParamIMDbID, engine.ParamTMDbID},
+			engine.ModeMusic:  {engine.ParamQuery},
+			engine.ModeBook:   {engine.ParamQuery},
+		},
+	}
+}
+
+func writeCapsCategories(b *bytes.Buffer, only []int) {
+	selected := make(map[int]struct{}, len(only))
+	for _, id := range only {
+		selected[id] = struct{}{}
+	}
+	filter := len(selected) > 0
 	for _, group := range categories.Groups() {
-		b.WriteString(`<category id="`)
-		writeInt(&b, int64(group.Top.ID))
-		b.WriteString(`" name="`)
-		writeEsc(&b, group.Top.Name)
-		b.WriteString(`">`)
+		_, topSelected := selected[group.Top.ID]
+		if !filter {
+			topSelected = true
+		}
+		children := make([]struct {
+			id   int
+			name string
+		}, 0, len(group.Children))
 		for _, child := range group.Children {
+			if filter && !topSelected {
+				if _, ok := selected[child.ID]; !ok {
+					continue
+				}
+			}
+			children = append(children, struct {
+				id   int
+				name string
+			}{child.ID, child.Name})
+		}
+		if filter && !topSelected && len(children) == 0 {
+			continue
+		}
+		b.WriteString(`<category id="`)
+		writeInt(b, int64(group.Top.ID))
+		b.WriteString(`" name="`)
+		writeEsc(b, group.Top.Name)
+		b.WriteString(`">`)
+		for _, child := range children {
 			b.WriteString(`<subcat id="`)
-			writeInt(&b, int64(child.ID))
+			writeInt(b, int64(child.id))
 			b.WriteString(`" name="`)
-			writeEsc(&b, child.Name)
+			writeEsc(b, child.name)
 			b.WriteString(`"/>`)
 		}
 		b.WriteString(`</category>`)
 	}
-	b.WriteString(`</categories></caps>`)
-	s.writeXML(w, b.Bytes())
 }
 
 // pageProvenance loads the aggregated provenance of one result page with a

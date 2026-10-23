@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -384,4 +385,51 @@ func TestRSSRequestsNeverSynthesizeAQuery(t *testing.T) {
 	if calls != 1 {
 		t.Errorf("query search calls = %d, want 1", calls)
 	}
+}
+
+func TestCapsUseRealIndexerCapabilities(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	if err := st.UpsertDefinition(ctx, store.Definition{
+		ID: "fake", SchemaVersion: 1, Family: "html", State: "verificata",
+		Origin: "local", Author: "test", Body: "schema: 1", Hash: "hash",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	id, err := st.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "fake", Slug: "tracker", Name: "Tracker", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api.SetCapabilities(func(context.Context, []int64) (map[int64]engine.Capabilities, error) {
+		return map[int64]engine.Capabilities{
+			id: {
+				Modes: []engine.Mode{engine.ModeSearch, engine.ModeTV},
+				Params: map[engine.Mode][]string{
+					engine.ModeSearch: {engine.ParamQuery},
+					engine.ModeTV:     {engine.ParamQuery, engine.ParamSeason, engine.ParamEpisode},
+				},
+				Categories: []int{5000, 5040, 2000},
+			},
+		}, nil
+	})
+
+	check := func(path string) {
+		body := do(t, api, path).Body.String()
+		for _, want := range []string{
+			`<search available="yes" supportedParams="q"/>`,
+			`<tv-search available="yes" supportedParams="q,season,ep"/>`,
+			`<movie-search available="no"/>`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s missing %q\n%s", path, want, body)
+			}
+		}
+		if strings.Contains(body, `imdbid`) {
+			t.Errorf("%s still advertises imdbid", path)
+		}
+	}
+	check("/api?t=caps")
+	check("/api/v2.0/indexers/tracker/results/torznab/api?t=caps")
 }

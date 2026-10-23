@@ -152,6 +152,10 @@ type Search struct {
 	Request    Request    `yaml:"request,omitempty" json:"request,omitempty"`
 	Pagination Pagination `yaml:"pagination,omitempty" json:"pagination,omitempty"`
 	Response   Response   `yaml:"response,omitempty" json:"response,omitempty"`
+	// KeywordsFormat selects how the TV episode marker is appended to
+	// {{ query.keywords }}: "sxxeyy" (default), "1x05" or "separate". With
+	// "separate" the template can use query.season and query.ep itself.
+	KeywordsFormat string `yaml:"keywords_format,omitempty" json:"keywords_format,omitempty"`
 }
 
 // Request is the HTTP request template for a search.
@@ -196,6 +200,9 @@ type Download struct {
 	// MaxConcurrent caps the details requests in flight. Zero means the
 	// default of 2; the engine clamps the effective value to 1..8.
 	MaxConcurrent int `yaml:"max_concurrent,omitempty" json:"max_concurrent,omitempty"`
+	// Title optionally replaces the truncated title from a listing with the
+	// full title found on the details page.
+	Title *Field `yaml:"title,omitempty" json:"title,omitempty"`
 	// Extract lists the targets to try, in order. The first target that
 	// yields a value wins.
 	Extract []DownloadTarget `yaml:"extract" json:"extract"`

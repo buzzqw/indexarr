@@ -116,6 +116,10 @@ type Capabilities struct {
 	Modes      []Mode
 	Params     map[Mode][]string
 	Categories []int
+	// LocalOnly marks a connector that has no remote query endpoint (an RSS
+	// feed). It can answer from its cached feed but must not join the live
+	// fan-out.
+	LocalOnly bool
 }
 
 // Supports reports whether mode is declared in the capabilities.

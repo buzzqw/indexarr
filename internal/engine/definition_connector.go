@@ -724,7 +724,7 @@ func (c *DefinitionConnector) templateValues(req SearchRequest, pageValue, offse
 	values := newTemplateValues()
 	values.settings = c.settings
 	values.declaredSettings = c.declared
-	values.query = queryTemplateMap(req)
+	values.query = queryTemplateMap(req, c.def.Search.KeywordsFormat)
 	values.extracted = c.session.Values()
 	values.categories = c.siteCategoryIDs(req.Categories)
 	values.scalars["page"] = strconv.Itoa(pageValue)

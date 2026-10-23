@@ -47,7 +47,14 @@ search:
     type: html
     rows: { selector: "table.table2 tr" }
     fields:
-      title:    { selector: 'div.tt-name a[href*="-torrent-"]', filters: [trim] }
+      # The visible anchor is truncated ("..") for long names; the details URL
+      # slug carries the complete name and is stable in the fixture too.
+      title:
+        selector: 'div.tt-name a[href*="-torrent-"]'
+        attr: href
+        filters:
+          - { regex: '/([^/]+)-torrent-[0-9]+\.html' }
+          - { replace: "-: " }
       details:  { selector: 'div.tt-name a[href*="-torrent-"]', attr: href, type: url }
       category: { selector: "td:nth-of-type(2)", filters: [{ regex: " in ([A-Za-z]+)" }], type: category }
       size:     { selector: "td:nth-of-type(3)", type: size }
@@ -59,6 +66,9 @@ download:
   resolve_on: search
   from: details
   max_concurrent: 2
+  # The listing truncates long titles with ".."; the details page has the
+  # complete title in its h1.
+  title: { selector: "h1", filters: [trim] }
   extract:
     - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
     - torrent: { selector: 'a[href*=".torrent"]', attr: href, type: url }

@@ -443,7 +443,7 @@ func TestTemplateRendering(t *testing.T) {
 	values := newTemplateValues()
 	values.settings["username"] = "alice"
 	values.declaredSettings["username"] = struct{}{}
-	values.query = queryTemplateMap(SearchRequest{Query: "ubuntu", Year: 2026})
+	values.query = queryTemplateMap(SearchRequest{Query: "ubuntu", Year: 2026}, "")
 	values.categories = []string{"5", "12"}
 	values.scalars["page"] = "2"
 

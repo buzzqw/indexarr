@@ -238,6 +238,38 @@ Variabili disponibili:
 L'unico filtro è `join(<separatore>)`, applicabile a `categories`. Un nome
 sconosciuto o un filtro sconosciuto è un errore, non una stringa vuota.
 
+### Formato delle keywords TV
+
+Per una ricerca TV, `query.keywords` contiene la query con il marcatore di
+stagione/episodio, sul modello di Jackett/Prowlarr:
+
+- `q + " S04E01"` quando ci sono stagione ed episodio;
+- `q + " S04"` quando c'è solo la stagione;
+- la query originale se il marcatore è già presente o se la modalità non è TV.
+
+`query.keywords_raw` contiene sempre il testo originale. Il formato si sceglie
+con un campo additivo di `search`, default `sxxeyy`:
+
+```yaml
+search:
+  keywords_format: sxxeyy   # default: S04E01
+  # keywords_format: 1x05   # S04E01 -> 4x01
+  # keywords_format: separate  # keywords resta la query; usa query.season/query.ep
+```
+
+Con `separate` la definizione deve passare stagione ed episodio con parametri
+dedicati, per esempio:
+
+```yaml
+params:
+  q: "{{ query.keywords }}"
+  season: "{{ query.season }}"
+  ep: "{{ query.ep }}"
+```
+
+Il campo è additivo: le definizioni esistenti senza `keywords_format`
+continuano a funzionare e ricevono il formato `sxxeyy`.
+
 ## `search`
 
 Obbligatorio quando `connector` è assente. Se `connector` è presente e `search`
