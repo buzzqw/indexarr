@@ -605,7 +605,8 @@ Questi punti integrano i contratti dei §3 e vanno considerati vincolanti:
 - **Download dalla pagina di dettaglio.** `Definition.Download *Download`
   (`resolve_on`, `from`, `max_concurrent`, `extract` con target
   magnet/torrent). È opzionale, schema 1 invariato; il motore risolve durante
-  la ricerca o al grab, con concorrenza e cache.
+  la ricerca (solo dopo deduplica e limite) o al grab, con concorrenza e cache.
+  `resolve_on` assente vale `grab`: la ricerca non apre i dettagli.
 - **Famiglia RSS.** Il connettore `rss` è nativo e usa i parser puri di
   `internal/feed` attraverso il transport. Un indexer `rss` è ponte legacy
   **solo** se `LegacySourceID > 0`, come per Torznab.

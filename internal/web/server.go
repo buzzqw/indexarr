@@ -17,6 +17,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/categories"
 	"github.com/buzzqw/indexarr/internal/engine"
+	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
@@ -104,6 +105,9 @@ var templateFuncMap = template.FuncMap{
 		}
 		return string(runes[:max]) + "…"
 	},
+	// redactURL hides userinfo, the query and secret-like path segments of a
+	// source URL. The legacy pages use it so an rsskey never reaches the HTML.
+	"redactURL":      feed.RedactURL,
 	"categoryGroups": categories.Groups,
 	"stateClass": func(state string) string {
 		switch state {

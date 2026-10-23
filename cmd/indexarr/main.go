@@ -336,7 +336,7 @@ func main() {
 			GrabGuard: grabGuard, GrabRecord: grabRecord,
 			Politeness: politeness,
 			Restart: func() {
-				if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
+				if err := restartProcess(stop); err != nil {
 					logger.Error("cannot restart for restore", "error", err)
 				}
 			},

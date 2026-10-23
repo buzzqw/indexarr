@@ -284,7 +284,7 @@ func validateSearch(search Search, add func(string, ...any)) {
 func validateDownload(download *Download, d *Definition, add func(string, ...any)) {
 	resolveOn := strings.TrimSpace(download.ResolveOn)
 	if resolveOn == "" {
-		resolveOn = "search"
+		resolveOn = "grab"
 	}
 	if !allowedResolveOn[resolveOn] {
 		add("download.resolve_on: must be one of search, grab")

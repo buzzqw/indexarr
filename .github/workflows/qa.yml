@@ -43,20 +43,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # TODO(WP12): cmd/indexarr calls syscall.Kill/SIGTERM in its restart
-      # hook, which does not exist on Windows and makes `go test ./...` fail
-      # to compile the command on windows-latest. A build-tagged restart
-      # helper is a Go change outside WP12's scope, so the Windows leg is
-      # advisory for now: it runs and reports, but does not turn CI red.
-      # Remove continue-on-error as soon as the helper lands.
       - name: Run tests
         run: go test ./...
-        continue-on-error: ${{ matrix.os == 'windows' }}
-
-      - name: Note the known Windows limitation
-        if: matrix.os == 'windows'
-        shell: bash
-        run: echo "::warning title=Windows test known failure::cmd/indexarr does not compile on Windows yet (syscall.Kill/SIGTERM). See the test job comment in .github/workflows/qa.yml; TODO(WP12)."
 
   # The race detector needs cgo (it links against the C runtime), so this is
   # the only job that forces CGO_ENABLED=1. It runs on the default toolchain
@@ -82,9 +70,8 @@ jobs:
 
   # One job per target so a broken target does not hide the others.
   # scripts/build-matrix.sh builds ./cmd/indexarr and ./cmd/indexarr-def and
-  # attempts ./cmd/simmock, skipping it where the tool is unsupported. The
-  # Windows indexarr build is currently a known, reported failure (see the
-  # script header) and only becomes fatal with --strict after the Go fix.
+  # attempts ./cmd/simmock, skipping it where the tool is unsupported. Every
+  # indexarr/indexarr-def build failure is fatal.
   build-matrix:
     name: Build (${{ matrix.target }})
     runs-on: ubuntu-latest

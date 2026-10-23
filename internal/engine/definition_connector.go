@@ -385,12 +385,15 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 		}
 	}
 
-	if err := c.resolveSearchDetails(ctx, items); err != nil {
-		return nil, err
-	}
+	// Details pages are opened only for the rows that survive deduplication
+	// and the caller's limit: a search for 10 results must never cost 50
+	// details requests.
 	items = dedupeItems(items)
 	if req.Limit > 0 && len(items) > req.Limit {
 		items = items[:req.Limit]
+	}
+	if err := c.resolveSearchDetails(ctx, items); err != nil {
+		return nil, err
 	}
 	return items, nil
 }

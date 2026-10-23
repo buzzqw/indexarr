@@ -376,8 +376,8 @@
             "search",
             "grab"
           ],
-          "default": "search",
-          "description": "search opens details pages while searching; grab waits until Download."
+          "default": "grab",
+          "description": "search opens details pages while searching; grab (the default) waits until Download."
         },
         "from": {
           "type": "string",

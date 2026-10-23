@@ -41,7 +41,7 @@ func (t rewriteTransport) RoundTrip(request *http.Request) (*http.Response, erro
 
 func serveFile(t *testing.T, w http.ResponseWriter, name string) {
 	t.Helper()
-	body, err := os.ReadFile(filepath.Join("fixtures", name))
+	body, err := os.ReadFile(filepath.Join("definitions", "fixtures", name))
 	if err != nil {
 		t.Errorf("read fixture %s: %v", name, err)
 		http.Error(w, "missing fixture", http.StatusInternalServerError)
@@ -305,7 +305,7 @@ func TestRSSDefinitionsComparison(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.id, func(t *testing.T) {
-			body, err := os.ReadFile(filepath.Join("fixtures", tc.fixture))
+			body, err := os.ReadFile(filepath.Join("definitions", "fixtures", tc.fixture))
 			if err != nil {
 				t.Fatalf("read fixture: %v", err)
 			}

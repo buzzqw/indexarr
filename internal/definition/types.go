@@ -165,9 +165,10 @@ type Response struct {
 // details page. It is optional: definitions that already expose magnets or
 // direct download links in their listing keep working unchanged.
 type Download struct {
-	// ResolveOn selects when details pages are opened: "search" (default)
-	// resolves them while searching so the infohash is available; "grab"
-	// leaves the details page untouched until Download is called.
+	// ResolveOn selects when details pages are opened: "search" resolves them
+	// while searching so the infohash is available; "grab" (the default when
+	// the field is empty) leaves the details page untouched until Download is
+	// called.
 	ResolveOn string `yaml:"resolve_on,omitempty" json:"resolve_on,omitempty"`
 	// From is the search field that holds the details URL. Empty means
 	// "details".

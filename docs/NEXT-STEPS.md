@@ -138,10 +138,10 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP9 | Health check e transizioni di stato del catalogo | da fare | |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
-| WP12 | CI multipiattaforma e budget di risorse | fatto (Windows noto; budget CI 80 MiB fino a WP3) | `4e429e5` |
+| WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI 80 MiB fino a WP3) | `4e429e5` |
 | WP13 | Parità residua | da fare | |
 | WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1 fatta; 1b subito; 2–5 dopo WP16 | `4e429e5` |
-| WP-R | Correzioni dalla revisione del checkpoint | da fare | |
+| WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | |
 | WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
 | WP16 | Rimozione del percorso legacy | da fare | |
 
@@ -571,7 +571,7 @@ parser HTML attuali sostituiti da definizioni").
 
 1. Per ogni sito: catturare dal sito **reale** una pagina listing e una di
    dettaglio, ripulirle (nessun cookie, passkey, nome utente non pubblico) e
-   salvarle in `internal/catalog/fixtures/<id>/`.
+   salvarle in `internal/catalog/definitions/fixtures/<id>/`.
 2. Scrivere la definizione **osservando le pagine**, non i parser legacy: i
    parser legacy servono solo come oracolo di confronto. Settings per il
    filtro (`uploader`, `category`, `language`) così che le 18+13 sorgenti

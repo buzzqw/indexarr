@@ -127,11 +127,14 @@ func (c *DefinitionConnector) downloadDetailsField() string {
 	return from
 }
 
+// resolvesOnSearch reports whether the search resolves details pages eagerly.
+// Only an explicit resolve_on: search does so; an absent value means grab, so
+// the site receives no extra requests until the user asks for a download.
 func (c *DefinitionConnector) resolvesOnSearch() bool {
 	if c == nil || c.def == nil || c.def.Download == nil {
 		return false
 	}
-	return !strings.EqualFold(strings.TrimSpace(c.def.Download.ResolveOn), "grab")
+	return strings.EqualFold(strings.TrimSpace(c.def.Download.ResolveOn), "search")
 }
 
 func (c *DefinitionConnector) maxConcurrentDownloads() int {
@@ -152,9 +155,11 @@ func (c *DefinitionConnector) maxConcurrentDownloads() int {
 }
 
 // resolveSearchDetails opens the details pages of the items that have neither
-// a magnet nor a direct download URL. Items are resolved concurrently, at most
-// max_concurrent at a time, and a failing page never aborts the whole result:
-// the item is left as it was and the failure is counted.
+// a magnet nor a direct download URL. The caller passes only the rows that
+// survived deduplication and the requested limit. Items are resolved
+// concurrently, at most max_concurrent at a time, and a failing page never
+// aborts the whole result: the item is left as it was and the failure is
+// counted.
 func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []Item) error {
 	if !c.resolvesOnSearch() {
 		return nil

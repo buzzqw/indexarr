@@ -340,7 +340,7 @@ cambiano e `schema` resta 1.
 
 ```yaml
 download:
-  resolve_on: search          # search (default) | grab
+  resolve_on: grab            # search | grab (default)
   from: details               # campo della ricerca, default details
   max_concurrent: 2           # 1..8, default 2
   extract:
@@ -350,7 +350,7 @@ download:
 
 | Campo | Obbligatorio | Regole |
 |---|---|---|
-| `resolve_on` | no | `search` (default) oppure `grab` |
+| `resolve_on` | no | `search` oppure `grab` (default) |
 | `from` | no | nome di un campo dichiarato in `search.response.fields`; vuoto = `details` |
 | `max_concurrent` | no | da 1 a 8; `0` o assente = 2. Valori fuori intervallo sono rifiutati |
 | `extract` | sì | almeno un estrattore; ogni voce ha **solo** `magnet` o **solo** `torrent` |
@@ -363,16 +363,17 @@ per `magnet` deve essere un URI `magnet:`.
 
 ### Semantica
 
-- **`resolve_on: search`** — durante la ricerca, per ogni riga con il campo
-  `from` valorizzato e senza magnet né link di download, il motore apre la
-  pagina di dettaglio con lo stesso transport, la stessa sessione e la stessa
-  autenticazione della ricerca. Applica gli estrattori **nell'ordine
-  dichiarato**: il primo che produce un valore vince. Imposta `Magnet` e
-  `InfoHash` normalizzato, oppure `DownloadURL` per un `.torrent`. Le righe che
-  hanno già un magnet o un torrent non vengono aperte.
-- **`resolve_on: grab`** — la ricerca non apre i dettagli; `Download` li apre
-  al momento del grab. Meno richieste al sito, infohash disponibile solo dopo
-  il download.
+- **`resolve_on: search`** — durante la ricerca, **dopo deduplica e limite**,
+  per ogni riga con il campo `from` valorizzato e senza magnet né link di
+  download, il motore apre la pagina di dettaglio con lo stesso transport, la
+  stessa sessione e la stessa autenticazione della ricerca. Applica gli
+  estrattori **nell'ordine dichiarato**: il primo che produce un valore vince.
+  Imposta `Magnet` e `InfoHash` normalizzato, oppure `DownloadURL` per un
+  `.torrent`. Le righe che hanno già un magnet o un torrent non vengono aperte.
+  Con 50 righe e `limit: 10` vengono aperte al massimo 10 pagine di dettaglio.
+- **`resolve_on: grab`** (default quando il campo è assente) — la ricerca non
+  apre i dettagli; `Download` li apre al momento del grab. Meno richieste al
+  sito, infohash disponibile solo dopo il download.
 - **`Download`** preferisce un magnet già presente, poi un URL di download
   diretto, poi la pagina di dettaglio risolta con questa sezione. Un redirect
   della pagina (o del link) verso `magnet:` viene restituito come

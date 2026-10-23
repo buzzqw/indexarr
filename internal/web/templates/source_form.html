@@ -58,16 +58,16 @@
   <div class="form-grid">
     <div class="field grow">
       <label for="url">URL</label>
-      <input id="url" name="url" type="url" required value="{{.Source.URL}}" placeholder="http://192.168.1.10:9696">
-      <p class="help" data-url-help>Base URL for Jackett/Prowlarr, or the full Torznab/RSS endpoint. ExtTo, TorrentGalaxy and Corsaro pages are recognised by host.</p>
+      <input id="url" name="url" type="url" {{if .IsNew}}required{{end}} value="{{if .IsNew}}{{.Source.URL}}{{end}}" placeholder="{{if .IsNew}}http://192.168.1.10:9696{{else}}{{redactURL .Source.URL}}{{end}}">
+      <p class="help" data-url-help>Base URL for Jackett/Prowlarr, or the full Torznab/RSS endpoint. ExtTo, TorrentGalaxy and Corsaro pages are recognised by host.{{if not .IsNew}} Leave empty to keep the current address.{{end}}</p>
       <div class="actions">
         <button class="btn small" type="button" data-detect-kind>Detect type from URL</button>
       </div>
     </div>
     <div class="field">
       <label for="api_key">API key</label>
-      <input id="api_key" name="api_key" type="text" value="{{.Source.APIKey}}" autocomplete="off" spellcheck="false" placeholder="optional for RSS">
-      <p class="help">Sent as <code>apikey</code> and as the <code>X-Api-Key</code> header. It is also appended to .torrent downloads when missing.</p>
+      <input id="api_key" name="api_key" type="password" value="" autocomplete="off" spellcheck="false" placeholder="{{if .IsNew}}optional for RSS{{else}}unchanged{{end}}">
+      <p class="help">Sent as <code>apikey</code> and as the <code>X-Api-Key</code> header. It is also appended to .torrent downloads when missing.{{if not .IsNew}} Leave empty to keep the current key.{{end}}</p>
     </div>
   </div>
 
@@ -79,8 +79,8 @@
     </div>
     <div class="field">
       <label for="password">HTTP password</label>
-      <input id="password" name="password" type="password" value="{{.Source.Password}}" autocomplete="new-password">
-      <p class="help">Stored in the local SQLite database.</p>
+      <input id="password" name="password" type="password" value="" autocomplete="new-password" placeholder="{{if .IsNew}}optional{{else}}unchanged{{end}}">
+      <p class="help">Stored in the local SQLite database.{{if not .IsNew}} Leave empty to keep the current password.{{end}}</p>
     </div>
   </div>
 

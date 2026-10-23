@@ -2,7 +2,7 @@
 #
 # Every definition listed here is embedded in the binary and validated when
 # the catalog is loaded. A "verificata" entry was written from real public
-# pages captured into internal/catalog/fixtures/ and passes the offline
+# pages captured into internal/catalog/definitions/fixtures/ and passes the offline
 # equivalence test; a "bozza" entry has not. Do not present a bozza as
 # production ready.
 schema: 1

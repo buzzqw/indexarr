@@ -7,7 +7,7 @@
 // their content hash changes.
 //
 // Definitions in state "verificata" were written from real public pages or
-// feeds captured into internal/catalog/fixtures/ and pass the offline
+// feeds captured into internal/catalog/definitions/fixtures/ and pass the offline
 // equivalence test against the legacy parsers. Entries still in state
 // "bozza" are drafts and must not be presented as production ready.
 //

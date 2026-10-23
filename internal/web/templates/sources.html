@@ -86,7 +86,7 @@
             <td class="check"><input type="checkbox" name="ids" value="{{.ID}}" aria-label="Select {{.Name}}"></td>
             <td>
               <a href="/sources/{{.ID}}/edit">{{.Name}}</a>
-              <div class="sub">{{truncate .URL 72}}</div>
+              <div class="sub">{{truncate (redactURL .URL) 72}}</div>
               {{if .LastError}}<div class="sub text-danger" title="{{.LastError}}">{{truncate .LastError 100}}</div>{{end}}
             </td>
             <td><span class="chip">{{.Kind}}</span>{{if and (eq .Kind "torznab") .Manager}}<div class="sub">{{.Manager}}</div>{{end}}</td>

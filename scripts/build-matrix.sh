@@ -8,22 +8,14 @@
 #   windows/amd64 windows/arm64 darwin/amd64 darwin/arm64
 #   freebsd/amd64 freebsd/arm64
 #
-# Every target must build ./cmd/indexarr and ./cmd/indexarr-def. ./cmd/simmock
-# is a development-only tool: it is attempted for every target and skipped with
-# a warning where it does not compile.
+# Every target must build ./cmd/indexarr and ./cmd/indexarr-def: a failure in
+# either is fatal, on every operating system. ./cmd/simmock is a
+# development-only tool: it is attempted for every target and skipped with a
+# warning where it does not compile.
 #
-# Known failure: cmd/indexarr currently calls syscall.Kill/SIGTERM in its
-# restart hook, which does not exist on Windows. Until a build-tagged restart
-# helper lands (a Go change outside WP12's file scope) the Windows indexarr
-# build is reported as a KNOWN failure and does not fail the job, so the
-# existing CI stays green. Run with --strict (or INDEXARR_MATRIX_STRICT=1) to
-# make it fatal; that is the mode to use once the Go fix is in. TODO(WP12):
-# remove this exception and the strict switch.
-#
-# Usage: scripts/build-matrix.sh [--target GOOS/GOARCH[/GOARM]] [--out DIR] [--strict]
+# Usage: scripts/build-matrix.sh [--target GOOS/GOARCH[/GOARM]] [--out DIR]
 #   --target   build a single matrix entry (used by the CI matrix job)
 #   --out      output directory (default: ${INDEXARR_MATRIX_OUT:-bin/matrix})
-#   --strict   treat known failures as errors
 #
 # Output lives under bin/matrix/ (git-ignored) and is intentionally ephemeral:
 # CI does not upload the binaries.
@@ -49,7 +41,6 @@ TARGETS=(
 )
 
 OUT="${INDEXARR_MATRIX_OUT:-bin/matrix}"
-STRICT="${INDEXARR_MATRIX_STRICT:-0}"
 ONLY_TARGET=""
 
 while [[ $# -gt 0 ]]; do
@@ -64,12 +55,8 @@ while [[ $# -gt 0 ]]; do
       OUT="$2"
       shift 2
       ;;
-    --strict)
-      STRICT=1
-      shift
-      ;;
     -h|--help)
-      sed -n '2,30p' "$0"
+      sed -n '2,24p' "$0"
       exit 0
       ;;
     *)
@@ -87,9 +74,7 @@ fi
 
 mkdir -p "$OUT"
 
-# build BIN GOOS GOARCH GOARM OUTDIR EXT: returns 0 on success, 1 on a hard
-# failure. The compiler output is kept in a temp file so the caller can decide
-# whether a failure is known.
+# build BIN GOOS GOARCH GOARM OUTDIR EXT: returns 0 on success, 1 on failure.
 build_one() {
   local bin="$1" goos="$2" goarch="$3" goarm="$4" outdir="$5" ext="$6"
   local err="$outdir/$bin.error"
@@ -102,25 +87,7 @@ build_one() {
   return 1
 }
 
-# is_known_windows_failure OUTDIR: true when the only compiler errors are the
-# missing Unix process-signalling primitives in cmd/indexarr. A different
-# failure in the same build must still fail the job.
-is_known_windows_failure() {
-  local err="$1/indexarr.error"
-  [[ -s "$err" ]] || return 1
-  awk '
-    /^# / { next }
-    /^cmd\/indexarr\/main\.go:[0-9]+:[0-9]+: undefined: syscall\.(Kill|SIGTERM)$/ {
-      known = 1
-      next
-    }
-    { other = 1 }
-    END { exit !(known && !other) }
-  ' "$err"
-}
-
 HARD_FAILURES=0
-KNOWN_FAILURES=0
 SKIPPED=0
 BUILT=0
 ROWS=()
@@ -140,9 +107,6 @@ for target in "${TARGETS[@]}"; do
 
   if build_one "indexarr" "$goos" "$goarch" "$goarm" "$dir" "$ext"; then
     BUILT=$((BUILT + 1))
-  elif [[ "$goos" == "windows" ]] && is_known_windows_failure "$dir"; then
-    status="known"
-    KNOWN_FAILURES=$((KNOWN_FAILURES + 1))
   else
     status="FAIL"
     HARD_FAILURES=$((HARD_FAILURES + 1))
@@ -172,10 +136,6 @@ for target in "${TARGETS[@]}"; do
   ROWS+=("$target|$status")
 done
 
-if [[ "$KNOWN_FAILURES" -gt 0 ]]; then
-  echo "::warning title=Windows build known failure::cmd/indexarr uses syscall.Kill/SIGTERM, unavailable on Windows; see scripts/build-matrix.sh. TODO(WP12): fix with a build-tagged restart helper."
-fi
-
 echo
 echo "cross-compile matrix (CGO_ENABLED=0, -trimpath -s -w)"
 printf '%-22s %-10s %s\n' "target" "status" "output"
@@ -188,14 +148,10 @@ for row in "${ROWS[@]}"; do
   printf '%-22s %-10s %s\n' "$target" "$status" "$dir"
 done
 echo
-echo "built ${BUILT} binaries, ${SKIPPED} simmock target(s) skipped, ${KNOWN_FAILURES} known failure(s), ${HARD_FAILURES} failure(s)"
+echo "built ${BUILT} binaries, ${SKIPPED} simmock target(s) skipped, ${HARD_FAILURES} failure(s)"
 
 if [[ "$HARD_FAILURES" -gt 0 ]]; then
   echo "build-matrix: FAILED" >&2
-  exit 1
-fi
-if [[ "$KNOWN_FAILURES" -gt 0 && "$STRICT" == "1" ]]; then
-  echo "build-matrix: FAILED (strict mode: known failures are fatal)" >&2
   exit 1
 fi
 echo "build-matrix: OK"

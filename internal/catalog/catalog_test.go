@@ -181,16 +181,13 @@ func TestVerifiedEntriesHaveHealthAndTests(t *testing.T) {
 
 func TestDeclaredFixturesExist(t *testing.T) {
 	// tests[].fixture is relative to the definition file. The catalog keeps
-	// fixtures in internal/catalog/fixtures/ and exposes them next to the
-	// definitions through the definitions/fixtures link.
+	// fixtures in a real directory, internal/catalog/definitions/fixtures/, so
+	// the tree also works on Windows checkouts (core.symlinks=false).
 	entries, err := Builtins()
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
 	for _, entry := range entries {
-		if entry.State != "verificata" {
-			continue // draft fixtures are not part of this work package
-		}
 		for _, test := range entry.Definition.Tests {
 			name := filepath.Join("definitions", filepath.FromSlash(test.Fixture))
 			info, err := os.Stat(name)

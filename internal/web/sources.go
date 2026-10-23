@@ -104,7 +104,7 @@ func (s *Server) sourceEdit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) sourceCreate(w http.ResponseWriter, r *http.Request) {
-	source, err := parseSourceForm(r, 0)
+	source, err := parseSourceForm(r, nil)
 	if err != nil {
 		s.renderSourceFormError(w, r, source, true, err)
 		return
@@ -154,7 +154,12 @@ func (s *Server) sourceUpdate(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/sources", "", "invalid source id")
 		return
 	}
-	source, err := parseSourceForm(r, id)
+	existing, err := s.store.GetSource(r.Context(), id)
+	if err != nil {
+		redirect(w, r, "/sources", "", "source not found")
+		return
+	}
+	source, err := parseSourceForm(r, &existing)
 	if err != nil {
 		s.renderSourceFormError(w, r, source, false, err)
 		return
@@ -252,10 +257,14 @@ func (s *Server) sourcesTestAll(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("Testing %d source(s) in the background; results in Logs", count), "")
 }
 
-// parseSourceForm validates and normalises the source form. id is 0 for a new
-// source.
-func parseSourceForm(r *http.Request, id int64) (store.Source, error) {
-	source := store.Source{ID: id}
+// parseSourceForm validates and normalises the source form. existing is nil
+// for a new source; when editing, empty secret or URL fields mean "unchanged"
+// because the pages never render their current value.
+func parseSourceForm(r *http.Request, existing *store.Source) (store.Source, error) {
+	source := store.Source{}
+	if existing != nil {
+		source = *existing
+	}
 	source.Name = strings.TrimSpace(r.FormValue("name"))
 	source.Kind = strings.ToLower(strings.TrimSpace(r.FormValue("kind")))
 	if source.Kind == "" {
@@ -274,6 +283,9 @@ func parseSourceForm(r *http.Request, id int64) (store.Source, error) {
 		return source, errors.New("Manager must be auto, jackett, prowlarr, mircrew or torznab")
 	}
 	source.URL = strings.TrimSpace(r.FormValue("url"))
+	if source.URL == "" && existing != nil {
+		source.URL = existing.URL
+	}
 	if source.URL == "" {
 		return source, errors.New("URL is required")
 	}
@@ -282,8 +294,14 @@ func parseSourceForm(r *http.Request, id int64) (store.Source, error) {
 		return source, errors.New("URL must be an absolute http:// or https:// address")
 	}
 	source.APIKey = strings.TrimSpace(r.FormValue("api_key"))
+	if source.APIKey == "" && existing != nil {
+		source.APIKey = existing.APIKey
+	}
 	source.Username = strings.TrimSpace(r.FormValue("username"))
 	source.Password = r.FormValue("password")
+	if source.Password == "" && existing != nil {
+		source.Password = existing.Password
+	}
 	source.Query = strings.TrimSpace(r.FormValue("query"))
 	source.IntervalSeconds = intParam(r.FormValue("interval_seconds"), 0)
 	if source.IntervalSeconds != 0 && (source.IntervalSeconds < 60 || source.IntervalSeconds > 30*24*3600) {

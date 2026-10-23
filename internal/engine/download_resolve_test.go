@@ -257,6 +257,92 @@ func TestDefinitionDownloadMagnetRedirect(t *testing.T) {
 	}
 }
 
+func TestDefinitionDownloadResolveOnlyAfterLimit(t *testing.T) {
+	var detailRequests atomic.Int32
+
+	var listing strings.Builder
+	listing.WriteString(`<html><body><table class="results"><tbody>`)
+	for i := 0; i < 50; i++ {
+		fmt.Fprintf(&listing, `<tr><td><a class="title" href="/details/limit/%d">Row %d</a></td></tr>`, i, i)
+	}
+	listing.WriteString(`</tbody></table></body></html>`)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/search" {
+			writeBody(t, w, []byte(listing.String()))
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, "/details/limit/") {
+			detailRequests.Add(1)
+			writeBody(t, w, fixture(t, "download_details_magnet.html"))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	def := loadTestDefinition(t, "download_resolve.yaml", server.URL)
+	def.Download.ResolveOn = "search"
+	connector := newConnectorFromDefinition(t, def, newDefinitionClock())
+
+	items, err := connector.Search(context.Background(), SearchRequest{Mode: ModeSearch, Limit: 10})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 10 {
+		t.Fatalf("items = %d, want 10", len(items))
+	}
+	if got := detailRequests.Load(); got != 10 {
+		t.Errorf("details requests = %d, want 10: resolution must run after limit and dedup", got)
+	}
+}
+
+func TestDefinitionDownloadDefaultResolveOnIsGrab(t *testing.T) {
+	var detailRequests atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/search":
+			writeBody(t, w, fixture(t, "download_list.html"))
+		case "/details/1":
+			detailRequests.Add(1)
+			writeBody(t, w, fixture(t, "download_details_magnet.html"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	def := loadTestDefinition(t, "download_resolve.yaml", server.URL)
+	def.Download.ResolveOn = "" // absent in the definition: grab is the default
+	connector := newConnectorFromDefinition(t, def, newDefinitionClock())
+
+	items, err := connector.Search(context.Background(), SearchRequest{Mode: ModeSearch})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) == 0 {
+		t.Fatal("items = 0, want the listing rows")
+	}
+	if got := detailRequests.Load(); got != 0 {
+		t.Errorf("details requests during search = %d, want 0 without resolve_on: search", got)
+	}
+	if items[0].Magnet != "" || items[0].DownloadURL != "" {
+		t.Errorf("search resolved a details page early: %+v", items[0])
+	}
+
+	payload, err := connector.Download(context.Background(), items[0])
+	if err != nil {
+		t.Fatalf("Download: %v", err)
+	}
+	if !strings.HasPrefix(payload.Magnet, "magnet:?xt=urn:btih:") {
+		t.Errorf("grab magnet = %q", payload.Magnet)
+	}
+	if got := detailRequests.Load(); got != 1 {
+		t.Errorf("details requests after Download = %d, want 1", got)
+	}
+}
+
 func TestDefinitionDownloadCacheAndTTL(t *testing.T) {
 	const listing = `<html><body><table class="results"><tbody>
 <tr><td><a class="title" href="/details/cache">Cached One</a></td></tr>
