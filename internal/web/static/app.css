@@ -311,6 +311,7 @@ td.error-cell { max-width: 26rem; overflow-wrap: anywhere; }
   justify-content: center;
   gap: 0.35rem;
   padding: 0.48rem 0.85rem;
+  touch-action: manipulation;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
@@ -552,12 +553,170 @@ code {
   overflow-wrap: anywhere;
 }
 
+/* Mobile layout: one horizontally scrollable nav row and tables rendered as
+   stacked cards. Labels for the cards come from the <th> cells via app.js;
+   without JavaScript the tables keep their normal horizontal scroll. */
+@media (max-width: 720px) {
+  .topbar-inner {
+    gap: 0.35rem 0.6rem;
+    padding-block: 0.45rem;
+  }
+
+  nav {
+    order: 3;
+    flex: 1 0 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-inline: -1rem;
+    padding-inline: 1rem;
+  }
+  nav::-webkit-scrollbar { display: none; }
+  nav a {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0.45rem 0.7rem;
+    touch-action: manipulation;
+  }
+
+  main { padding-top: 1rem; }
+
+  .table-scroll { overflow: visible; }
+  .table-scroll table,
+  .table-scroll tbody,
+  .table-scroll tr,
+  .table-scroll td { display: block; width: 100%; }
+  .table-scroll thead { display: none; }
+  .table-scroll tbody { padding: 0.65rem; }
+  .table-scroll tr {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 0.65rem;
+    overflow: hidden;
+  }
+  .table-scroll tr:last-child { margin-bottom: 0; }
+  .table-scroll tbody tr:hover { background: transparent; }
+  .table-scroll td {
+    border-bottom: 1px solid var(--border);
+    padding: 0.55rem 0.75rem;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .table-scroll td:last-child { border-bottom: 0; }
+  .table-scroll td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.1rem;
+    color: var(--muted);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .table-scroll td.right { text-align: left; }
+  .table-scroll td.check {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
+    width: auto;
+    border-bottom: 0;
+    padding: 0.55rem 0.7rem;
+  }
+  .table-scroll td.check + td { padding-right: 2.8rem; }
+  .table-scroll td.check::before,
+  .table-scroll td.empty::before { display: none; }
+
+  /* Keep "select all" reachable even though the table header is hidden. */
+  .table-scroll table.has-check thead { display: block; padding: 0.65rem 0.65rem 0; }
+  .table-scroll table.has-check thead tr {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0 0.1rem;
+    border: 0;
+  }
+  .table-scroll table.has-check thead th { display: none; }
+  .table-scroll table.has-check thead th.check {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  .table-scroll table.has-check thead th.check::after {
+    content: "Select all";
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .table-scroll td.empty { padding: 1.25rem 0.75rem; text-align: center; }
+  .table-scroll td > form { display: inline-block; margin: 0 0.25rem 0.25rem 0; }
+  .table-scroll td .btn { margin-bottom: 0.25rem; }
+
+  .panel-head,
+  .panel-foot { padding: 0.75rem 0.9rem; }
+  .panel > .detail,
+  .panel > .prose,
+  .panel > .field,
+  .panel > .actions,
+  .panel > .action-grid,
+  .panel > p,
+  .panel > form,
+  .panel.form { padding: 0.9rem; }
+  .panel.form .panel-head { padding-inline: 0; }
+}
+
 @media (max-width: 640px) {
+  body { font-size: 16px; }
+  h1 { font-size: 1.35rem; }
+
   .detail { grid-template-columns: 1fr; gap: 0.15rem; }
   .detail dd { margin-bottom: 0.55rem; }
   .two-col { grid-template-columns: 1fr; }
   .version { display: none; }
-  .filters .field, .filters .field.grow { flex: 1 1 100%; }
+
+  .page-head { margin-bottom: 1rem; }
+  .page-head .actions { width: 100%; }
+  .page-head .actions .btn { flex: 1 1 auto; }
+
+  .filters { padding: 0.8rem; gap: 0.7rem; }
+  .filters .field,
+  .filters .field.grow,
+  .filters .field.small { flex: 1 1 100%; }
+  .filters .actions-field { width: 100%; }
+  .filters .actions-field .btn { flex: 1 1 0; }
+  .filter-advanced .field,
+  .filter-advanced .field.small { flex: 1 1 100%; }
+
+  /* 16px avoids the iOS zoom on focus; 44px is the minimum touch target. */
+  input, select, textarea { font-size: 1rem; min-height: 44px; }
+  textarea { min-height: 8rem; }
+  input[type="checkbox"] { width: 1.15rem; height: 1.15rem; min-height: 0; }
+  .btn { min-height: 44px; padding: 0.6rem 0.9rem; }
+  .btn.small { min-height: 38px; padding: 0.4rem 0.65rem; font-size: 0.82rem; }
+
+  .copy-row { flex-wrap: wrap; }
+  .copy-row .btn { width: 100%; }
+  .bulk-bar { gap: 0.45rem; }
+  .bulk-bar input { width: 100%; min-width: 0; }
+  .bulk-bar .btn { flex: 1 1 auto; }
+  .saved-search-form input[type="text"] { width: 100%; min-width: 0; }
+  .saved-search-form .btn { flex: 1 1 auto; }
+
+  .pagination { justify-content: center; text-align: center; }
+  .footer { flex-direction: column; gap: 0.25rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

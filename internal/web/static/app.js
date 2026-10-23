@@ -5,6 +5,35 @@ if ("serviceWorker" in navigator) {
 }
 
 (() => {
+  // The mobile stylesheet turns tables into stacked cards and uses
+  // data-label as the visible field name. Deriving it from <thead> keeps the
+  // markup clean and also covers tables swapped in by the live search.
+  const labelTables = (root = document) => {
+    root.querySelectorAll("table").forEach((table) => {
+      const headers = Array.from(table.querySelectorAll("thead th")).map((th) =>
+        th.textContent.trim()
+      );
+      if (!headers.length) {
+        return;
+      }
+      table.classList.toggle("has-check", Boolean(table.querySelector("thead th.check")));
+      table.querySelectorAll("tbody tr").forEach((row) => {
+        Array.from(row.children).forEach((cell, index) => {
+          if (cell.tagName !== "TD" || cell.hasAttribute("colspan")) {
+            return;
+          }
+          const header = headers[index] || "";
+          if (!header || header.toLowerCase() === "actions") {
+            cell.removeAttribute("data-label");
+            return;
+          }
+          cell.setAttribute("data-label", header);
+        });
+      });
+    });
+  };
+  labelTables();
+
   const copyText = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -148,6 +177,7 @@ if ("serviceWorker" in navigator) {
           throw new Error("HTTP " + response.status);
         }
         liveResults.innerHTML = await response.text();
+        labelTables(liveResults);
         liveResults.setAttribute("aria-busy", "false");
         history.replaceState(null, "", "/releases?" + params.toString());
         const savedQuery = document.getElementById("saved-query");
