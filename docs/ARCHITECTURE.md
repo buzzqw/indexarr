@@ -62,7 +62,7 @@ esterni obbligatori: l'unica dipendenza è il driver SQLite puro Go
 | `internal/config` | File JSON minimo, creazione al primo avvio, path del DB |
 | `internal/store` | Schema, migrazioni numerate, impostazioni, indexer, release, provenance, storico, blocklist, ricerche salvate, manutenzione |
 | `internal/definition` | Formato nativo v1: parsing YAML strict, validazione, `Fingerprint` SHA-256, catena di upgrader, JSON Schema incorporato |
-| `internal/engine` | Contratti connettore/pipeline, transport con guardie e proxy, sessioni cookie, template, estrazione HTML/JSON/XML, normalizzazione e `DefinitionConnector` |
+| `internal/engine` | Contratti connettore/pipeline, transport con guardie e proxy, sessioni cookie, sessione FlareSolverr persistente per definizione (`session`), template, estrazione HTML/JSON/XML, normalizzazione, `download.before` e scelta magnet per stagione/episodio |
 | `internal/family` | Connettori di famiglia `torznab`, `newznab`, `rss`, `unit3d`, `gazelle`, `nexusphp`, `torrenttrader`, `xbtit` |
 | `internal/indexer` | Costruisce e mette in cache il connettore da definizione + configurazione + segreti, esegue un indexer torrent/Usenet, registra storico e provenance, offre la ricerca live |
 | `internal/indexersvc` | Servizio delle pagine indexer: validazione, creazione/aggiornamento/cancellazione, separazione tra config pubblica e segreti nel vault |
@@ -231,10 +231,13 @@ quelle con origine `local`; riscrive una voce solo quando cambia l'hash.
 - **XML tollerante**: i feed scraped contengono `&` grezzi ed entità HTML; una
   sanitizzazione prima del decoder evita che un carattere renda illeggibile
   l'intera risposta.
-- **FlareSolverr su challenge**: il solver viene chiamato solo quando la risposta
-  è riconoscibile come challenge Cloudflare, mai per un errore di autenticazione
-  o per un indirizzo LAN. È stateless: una richiesta risolta alla volta, senza
-  sessioni persistenti.
+- **FlareSolverr su challenge**: il solver a una richiesta viene chiamato solo
+  quando la risposta è riconoscibile come challenge Cloudflare, mai per un errore
+  di autenticazione o per un indirizzo LAN. È stateless: una richiesta risolta
+  alla volta, senza sessioni persistenti. Un indexer che protegge **tutte** le
+  pagine (per esempio MirCrew) dichiara invece `session` e usa una sessione
+  browser persistente, con login, riciclo a 12 ore e pulizia per prefisso; vedi
+  [DEFINITIONS.md](DEFINITIONS.md#session) e [MIRCREW.md](MIRCREW.md).
 - **Ricerca live opt-in**: costa tempo al client, quindi è spenta per default e
   limitata agli indexer Torznab; una ricerca con soli id esterni non la attiva.
 - **Backup e ripristino**: il backup è un file SQLite autonomo; il ripristino non

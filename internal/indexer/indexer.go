@@ -286,10 +286,12 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 	switch name {
 	case "", "definition":
 		connector, err = engine.NewDefinitionConnector(engine.DefinitionConfig{
-			Indexer:    ref,
-			Definition: parsed,
-			Settings:   settings,
-			Transport:  transport,
+			Indexer:         ref,
+			Definition:      parsed,
+			Settings:        settings,
+			Transport:       transport,
+			SessionEndpoint: network.FlareSolverrURL,
+			SessionTimeout:  time.Duration(network.FlareSolverrTimeoutSeconds) * time.Second,
 		})
 		if err != nil {
 			return nil, redactError(fmt.Errorf("indexer %s: build definition connector: %w", indexer.Slug, err), secretValues)

@@ -123,6 +123,33 @@ func extractHTMLValue(body []byte, selector, attr string) (string, error) {
 	return htmlAttr(node, attr), nil
 }
 
+// extractHTMLValues returns every value matched by selector, in document
+// order. It is used by a download target with all: true.
+func extractHTMLValues(body []byte, selector, attr string) ([]string, error) {
+	document, err := html.Parse(bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("html: parse response: %w", err)
+	}
+	compiled, err := cascadia.Compile(selector)
+	if err != nil {
+		return nil, fmt.Errorf("html: invalid selector %q: %w", selector, err)
+	}
+	nodes := cascadia.QueryAll(document, compiled)
+	out := make([]string, 0, len(nodes))
+	for _, node := range nodes {
+		value := ""
+		if attr == "" || strings.EqualFold(attr, "text") {
+			value = nodeText(node)
+		} else {
+			value = htmlAttr(node, attr)
+		}
+		if strings.TrimSpace(value) != "" {
+			out = append(out, value)
+		}
+	}
+	return out, nil
+}
+
 // htmlSelectorPresent reports whether selector matches at least one node.
 func htmlSelectorPresent(body []byte, selector string) (bool, error) {
 	document, err := html.Parse(bytes.NewReader(body))

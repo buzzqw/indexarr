@@ -328,6 +328,18 @@ func (c *DefinitionConnector) normalizeRow(raw map[string]string, responseURL *u
 		TMDbID:     strings.TrimSpace(raw["tmdbid"]),
 		TVDbID:     strings.TrimSpace(raw["tvdbid"]),
 	}
+	if season := strings.TrimSpace(raw["season"]); season != "" {
+		if item.Attributes == nil {
+			item.Attributes = make(map[string]string)
+		}
+		item.Attributes["season"] = season
+	}
+	if episode := strings.TrimSpace(raw["episode"]); episode != "" {
+		if item.Attributes == nil {
+			item.Attributes = make(map[string]string)
+		}
+		item.Attributes["episode"] = episode
+	}
 
 	download := strings.TrimSpace(raw["download"])
 	if strings.HasPrefix(strings.ToLower(download), "magnet:") {
@@ -375,6 +387,27 @@ func (c *DefinitionConnector) normalizeRow(raw map[string]string, responseURL *u
 		return Item{}, false, nil
 	}
 	return item, true, nil
+}
+
+// annotateQuery carries the requested season and episode into the item. The
+// download reference sealed by a live search keeps this small map, so a grab
+// can choose the right magnet without another search.
+func annotateQuery(item *Item, req SearchRequest) {
+	if item == nil {
+		return
+	}
+	if req.Season <= 0 && req.Episode <= 0 {
+		return
+	}
+	if item.Attributes == nil {
+		item.Attributes = make(map[string]string)
+	}
+	if req.Season > 0 {
+		item.Attributes["season"] = strconv.Itoa(req.Season)
+	}
+	if req.Episode > 0 {
+		item.Attributes["episode"] = strconv.Itoa(req.Episode)
+	}
 }
 
 // dedupeItems removes duplicates in one Search. Infohash wins, then GUID,

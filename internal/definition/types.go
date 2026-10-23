@@ -26,6 +26,7 @@ type Definition struct {
 	Categories   []Category   `yaml:"categories,omitempty" json:"categories,omitempty"`
 	Capabilities Capabilities `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
 	Auth         *Auth        `yaml:"auth,omitempty" json:"auth,omitempty"`
+	Session      *Session     `yaml:"session,omitempty" json:"session,omitempty"`
 	Search       Search       `yaml:"search,omitempty" json:"search,omitempty"`
 	Download     *Download    `yaml:"download,omitempty" json:"download,omitempty"`
 	Health       *Health      `yaml:"health,omitempty" json:"health,omitempty"`
@@ -123,6 +124,34 @@ type Auth struct {
 	RefreshAfter Duration    `yaml:"refresh_after,omitempty" json:"refresh_after,omitempty"`
 }
 
+// Session selects a persistent browser session for every request of an
+// indexer. It is additive: definitions without a session section keep using
+// the ordinary HTTP transport plus the one-shot challenge solver.
+//
+// A FlareSolverr session is created with sessions.create and every request,
+// login included, is sent through request.get/request.post in that session.
+// This is what a site that protects every page with Cloudflare needs: the
+// ordinary solver can only replay a GET and loses the browser state between
+// requests.
+type Session struct {
+	// Mode is "flaresolverr". Empty is treated as "flaresolverr" so a minimal
+	// session section is enough.
+	Mode string `yaml:"mode,omitempty" json:"mode,omitempty"`
+	// Endpoint is the FlareSolverr base URL or /v1 URL. It may be a template
+	// such as "{{ settings.flaresolverr_url }}". When empty, the engine uses
+	// the endpoint injected by the indexer manager (the global setting).
+	Endpoint string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
+	// NamePrefix is the ownership prefix of the created sessions. Orphaned
+	// sessions with this prefix are destroyed before the first request. Empty
+	// means "indexarr-<definition id>".
+	NamePrefix string `yaml:"name_prefix,omitempty" json:"name_prefix,omitempty"`
+	// MaxAge recycles the browser session after this duration. Zero means the
+	// engine default of 12 hours.
+	MaxAge Duration `yaml:"max_age,omitempty" json:"max_age,omitempty"`
+	// Timeout bounds one FlareSolverr command. Zero means 60 seconds.
+	Timeout Duration `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+}
+
 // AuthStep is one explicit step of a login flow.
 type AuthStep struct {
 	Get     string               `yaml:"get,omitempty" json:"get,omitempty"`
@@ -203,17 +232,43 @@ type Download struct {
 	// Title optionally replaces the truncated title from a listing with the
 	// full title found on the details page.
 	Title *Field `yaml:"title,omitempty" json:"title,omitempty"`
+	// Select chooses among multiple extracted targets. Empty keeps the
+	// historical behaviour (the first target that yields a value wins).
+	// "season_episode" matches the requested season/episode carried by the
+	// search item against each target's display name (a magnet's dn).
+	Select string `yaml:"select,omitempty" json:"select,omitempty"`
+	// Before is a general pre-download action. It runs only on grab: it opens
+	// the topic, and when no magnet is visible it performs the declared action
+	// (typically a thank POST), reopens the page and extracts the magnet.
+	Before *DownloadBefore `yaml:"before,omitempty" json:"before,omitempty"`
 	// Extract lists the targets to try, in order. The first target that
 	// yields a value wins.
 	Extract []DownloadTarget `yaml:"extract" json:"extract"`
 }
 
+// DownloadBefore describes an engagement action that unlocks the download
+// links of a topic. It never runs during a search: the connector only executes
+// it from Download, after the client has chosen a release.
+type DownloadBefore struct {
+	// Wait pauses before reopening the topic, giving the forum time to publish
+	// the unlocked links. Empty means no wait.
+	Wait Duration `yaml:"wait,omitempty" json:"wait,omitempty"`
+	// Extract reads values from the topic page before the action, for example
+	// the CSRF token or the thank URL. They are available as {{ name }} in the
+	// action templates, together with {{ item.* }} values.
+	Extract map[string]Extractor `yaml:"extract,omitempty" json:"extract,omitempty"`
+	// Action is the request that unlocks the magnets (a thank link or form).
+	Action Request `yaml:"action" json:"action"`
+}
+
 // DownloadTarget is one extractor on a details page. Exactly one of Magnet
 // and Torrent must be set: Magnet yields a magnet: URI, Torrent yields a URL
-// to a .torrent file.
+// to a .torrent file. All collects every match of the first target instead of
+// only the first one; it is used together with Download.Select.
 type DownloadTarget struct {
 	Magnet  *Field `yaml:"magnet,omitempty" json:"magnet,omitempty"`
 	Torrent *Field `yaml:"torrent,omitempty" json:"torrent,omitempty"`
+	All     bool   `yaml:"all,omitempty" json:"all,omitempty"`
 }
 
 // Field describes how to extract one value from a row.

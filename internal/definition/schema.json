@@ -39,6 +39,9 @@
     "auth": {
       "$ref": "#/$defs/auth"
     },
+    "session": {
+      "$ref": "#/$defs/session"
+    },
     "search": {
       "$ref": "#/$defs/search"
     },
@@ -273,8 +276,40 @@
         }
       }
     },
-    "authStep": {
+    "session": {
       "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "",
+            "flaresolverr"
+          ],
+          "default": "flaresolverr",
+          "description": "Persistent browser session for every request of the indexer."
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "FlareSolverr base URL or /v1 URL, or a template such as {{ settings.flaresolverr_url }}. Empty uses the global setting."
+        },
+        "name_prefix": {
+          "type": "string",
+          "pattern": "^$|^[a-z0-9][a-z0-9-]*$",
+          "description": "Ownership prefix for orphaned-session cleanup."
+        },
+        "max_age": {
+          "type": "string",
+          "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "Recycle the browser session after this Go duration; default 12h."
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "Per-command FlareSolverr timeout; default 60s."
+        }
+      }
+    },
+    "authStep": {      "type": "object",
       "additionalProperties": false,
       "properties": {
         "get": {
@@ -417,6 +452,16 @@
           "default": 2,
           "description": "Maximum details requests in flight; 0 uses the default of 2."
         },
+        "select": {
+          "enum": [
+            "",
+            "season_episode"
+          ],
+          "description": "Choose among multiple targets by the season and episode of the grab request."
+        },
+        "before": {
+          "$ref": "#/$defs/downloadBefore"
+        },
         "extract": {
           "type": "array",
           "minItems": 1,
@@ -431,6 +476,30 @@
         }
       }
     },
+    "downloadBefore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action"
+      ],
+      "properties": {
+        "wait": {
+          "type": "string",
+          "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "Pause before reopening the topic."
+        },
+        "extract": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/extractor"
+          },
+          "description": "Values read from the topic page before the action."
+        },
+        "action": {
+          "$ref": "#/$defs/request"
+        }
+      }
+    },
     "downloadTarget": {
       "type": "object",
       "additionalProperties": false,
@@ -440,6 +509,10 @@
         },
         "torrent": {
           "$ref": "#/$defs/field"
+        },
+        "all": {
+          "type": "boolean",
+          "description": "Collect every match of this target instead of only the first."
         }
       },
       "oneOf": [

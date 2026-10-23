@@ -20,6 +20,7 @@ settings: []
 categories: []
 capabilities: {}
 auth: {}               # opzionale
+session: {}            # opzionale: sessione browser persistente (FlareSolverr)
 search: {}             # obbligatorio se connector è assente
 download: {}           # opzionale: magnet/torrent dalla pagina di dettaglio
 health: {}             # opzionale
@@ -213,6 +214,54 @@ I cookie `Set-Cookie` sono catturati automaticamente; non vanno dichiarati.
 I valori estratti e le impostazioni sono disponibili nei template; le password
 non compaiono mai nei messaggi restituiti.
 
+## `session`
+
+La sezione è **opzionale** e additiva. Serve per i siti che proteggono **tutte**
+le pagine con Cloudflare e mantengono lo stato in un browser: MirCrew è il caso
+di riferimento. Con una sessione persistente ogni richiesta dell'indexer —
+login, ricerca, pagina di dettaglio e download — passa da FlareSolverr con
+`sessions.create` + `request.get`/`request.post`, non dal transport HTTP
+ordinario. Il solver a una richiesta del ciclo 4 resta per i siti che hanno solo
+un controllo occasionale: non conserva cookie né sessione e non può ripetere un
+POST.
+
+```yaml
+session:
+  mode: flaresolverr
+  endpoint: "{{ settings.flaresolverr }}"
+  name_prefix: mircrew-idx
+  max_age: 12h
+  timeout: 60s
+```
+
+| Campo | Obbligatorio | Regole |
+|---|---|---|
+| `mode` | no | vuoto oppure `flaresolverr` (vuoto vale `flaresolverr`) |
+| `endpoint` | no | URL `http`/`https` di FlareSolverr oppure template; vuoto usa l'URL globale delle impostazioni di rete |
+| `name_prefix` | no | slug usato per il possesso delle sessioni; vuoto = `indexarr-<id>` |
+| `max_age` | no | durata Go; oltre questo tempo la sessione viene chiusa e ricreata. Default 12h |
+| `timeout` | no | durata Go per un comando FlareSolverr. Default 60s |
+
+Comportamento:
+
+- **Tutte** le richieste del connettore usano la sessione, compreso il POST del
+  login. Una sessione FlareSolverr serve una richiesta alla volta, quindi il
+  connettore le serializza.
+- Se un comando fallisce (tab in crash, browser chiuso, verifica non risolta)
+  la sessione viene distrutta, ne viene creata una nuova e la richiesta viene
+  ripetuta **una volta**. Il browser nuovo non ha i cookie: il login lazy
+  successivo li ricrea.
+- Dopo `max_age` la sessione viene riciclata allo stesso modo.
+- Alla prima richiesta vengono chiuse le sessioni orfane che iniziano con
+  `name_prefix + "-"`; quelle di altri programmi non vengono toccate. La pulizia
+  è quindi limitata al prefisso dichiarato.
+- Le richieste usano `disableMedia: true`, come il servizio Python: le pagine
+  del forum contengono immagini e media lenti che farebbero scadere il timeout.
+
+La modalità sessione non cambia il formato degli altri campi: `auth.steps`,
+`search` e `download` restano gli stessi. Una definizione senza `session` si
+comporta esattamente come prima e `schema` resta `1`.
+
 ## Template
 
 I template sono deliberatamente minimi:
@@ -233,7 +282,10 @@ Variabili disponibili:
   `query.album`, `query.author`, `query.title`, `query.year`;
 - i valori estratti durante il login (`{{ csrf }}`, `{{ token }}`, …);
 - `categories` — id del sito corrispondenti alle categorie richieste;
-- `page`, `offset`, `limit` — valori scalari della paginazione.
+- `page`, `offset`, `limit` — valori scalari della paginazione;
+- `item.title`, `item.guid`, `item.details`, `item.download`, `item.season`,
+  `item.episode` — solo in `download.before`: la release scelta dal client. La
+  stagione e l'episodio arrivano dalla ricerca (o dai parametri del link).
 
 L'unico filtro è `join(<separatore>)`, applicabile a `categories`. Un nome
 sconosciuto o un filtro sconosciuto è un errore, non una stringa vuota.
@@ -418,6 +470,8 @@ download:
 | `resolve_on` | no | `search` oppure `grab` (default) |
 | `from` | no | nome di un campo dichiarato in `search.response.fields`; vuoto = `details` |
 | `max_concurrent` | no | da 1 a 8; `0` o assente = 2. Valori fuori intervallo sono rifiutati |
+| `select` | no | vuoto oppure `season_episode`: sceglie fra più estrattori quello della stagione/episodio richiesti |
+| `before` | no | azione generale prima del download (per esempio il «grazie» di un forum); richiede `resolve_on: grab` |
 | `extract` | sì | almeno un estrattore; ogni voce ha **solo** `magnet` o **solo** `torrent` |
 
 Ogni estrattore è un `Field` con le stesse regole dei campi di ricerca:
@@ -425,6 +479,61 @@ Ogni estrattore è un `Field` con le stesse regole dei campi di ricerca:
 `type` (`text`, `int`, `size`, `date`, `url`, `category`) e `filters`. Per
 `torrent` il valore viene risolto come URL relativo alla pagina di dettaglio;
 per `magnet` deve essere un URI `magnet:`.
+
+Un estrattore può aggiungere `all: true` (additivo): raccoglie **tutti** i
+valori che il primo selettore trova invece del solo primo. Serve quando un
+topic contiene molti magnet. In quel caso `select: season_episode` confronta il
+nome di ogni magnet (parametro `dn`) con stagione ed episodio della richiesta:
+
+- stagione + episodio: sceglie la release che contiene quell'episodio; a parità
+  preferisce l'intervallo più stretto (episodio singolo prima del pack);
+- solo stagione: preferisce il pack della stagione, poi una release qualsiasi
+  della stessa stagione;
+- nessuna stagione/episodio: resta valido il primo valore, come prima.
+
+La stagione e l'episodio vengono conservati nell'item della ricerca e viaggiano
+nel riferimento di download cifrato; una definizione può anche ripeterli come
+parametri `season` ed `ep` nel link di dettaglio.
+
+### `download.before`
+
+`before` è un'azione **generale** da eseguire solo al grab, mai durante una
+ricerca. Nasce dal caso MirCrew (i magnet sono nascosti finché non si ringrazia
+il primo post) ma vale per ogni forum con la stessa logica:
+
+```yaml
+download:
+  resolve_on: grab
+  from: details
+  select: season_episode
+  before:
+    wait: 2s
+    extract:
+      thanks: { selector: 'a[href*="thanks="]', attr: href }
+    action:
+      get: "{{ thanks }}"
+  extract:
+    - magnet: { selector: 'a.magnetBtn[href^="magnet:"]', attr: href }
+      all: true
+```
+
+Sequenza al grab:
+
+1. apre la pagina di dettaglio (`from`);
+2. se un estrattore di `download.extract` trova già un magnet o un torrent, li
+   usa e **non esegue l'azione**;
+3. altrimenti estrae i valori dichiarati in `before.extract` dalla pagina;
+4. esegue `before.action` (`get` oppure `post`, con `params`/`form`/`headers`
+   templati);
+5. attende `before.wait` e riapre la pagina;
+6. estrae di nuovo e sceglie il magnet con `select`.
+
+Se dopo l'azione non compare alcun magnet il grab fallisce con un errore; non
+viene ritentato in loop. Il vincolo «solo al grab» è validato: `before` con
+`resolve_on: search` è rifiutato, e il motore ha comunque una guardia difensiva
+che salta la risoluzione anticipata. I valori `{{ item.* }}` e quelli estratti
+sono disponibili nell'azione.
+
 
 ### Semantica
 
@@ -443,6 +552,10 @@ per `magnet` deve essere un URI `magnet:`.
   diretto, poi la pagina di dettaglio risolta con questa sezione. Un redirect
   della pagina (o del link) verso `magnet:` viene restituito come
   `Payload.Magnet`.
+- **`download.before`** viene eseguito solo da `Download`, dopo che il client ha
+  scelto la release; una ricerca non apre la pagina di dettaglio e non ringrazia.
+- Con `select: season_episode` la scelta usa la stagione e l'episodio della
+  richiesta, non il primo magnet del topic.
 - La concorrenza è limitata da `max_concurrent` (default 2, massimo 8). Le
   risoluzioni riuscite sono tenute in una cache in memoria per indexer
   (256 voci, TTL 10 minuti); righe con lo stesso URL di dettaglio condividono
@@ -456,6 +569,10 @@ per `magnet` deve essere un URI `magnet:`.
 - `resolve_on` deve essere `search` o `grab`;
 - `from` (dopo il default `details`) deve esistere in
   `search.response.fields`;
+- `select` deve essere vuoto o `season_episode`;
+- `before` richiede `resolve_on: grab`; `action` deve avere `get` oppure
+  `post`, mai entrambi, e ogni estrattore deve avere `selector`, `json` o
+  `regex` valido;
 - `extract` non può essere vuoto;
 - ogni voce deve avere esattamente uno tra `magnet` e `torrent`;
 - ogni campo deve avere `selector` o `path` non vuoti, un `type` ammesso e
@@ -649,9 +766,9 @@ impostazioni che l'utente compila e che il vault cifra.
   I template leggono solo le variabili elencate e l'unico filtro è `join`.
 - Non esistono richieste implicite oltre a quelle dichiarate in `auth.steps`,
   `search.request`, `download.extract` (la pagina di dettaglio del campo
-  `from`) e ai link di download restituiti dal sito; il transport applica
-  timeout, limite di dimensione, rate limit per host, circuit breaker e blocco
-  SSRF.
+  `from`) e `download.before` (l'azione dichiarata, solo al grab); il transport
+  applica timeout, limite di dimensione, rate limit per host, circuit breaker e
+  blocco SSRF.
 - I segreti (password, token, API key, cookie) sono redatti negli errori; gli URL
   di download possono contenere una passkey e non escono dalle API.
 - **Nessuna passkey, cookie o credenziale nelle fixture.** Le fixture sono

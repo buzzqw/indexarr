@@ -71,6 +71,14 @@ var (
 		"search": true,
 		"grab":   true,
 	}
+	allowedDownloadSelect = map[string]bool{
+		"":               true,
+		"season_episode": true,
+	}
+	allowedSessionModes = map[string]bool{
+		"":             true,
+		"flaresolverr": true,
+	}
 	allowedFilterNames = map[string]bool{
 		"trim":        true,
 		"lower":       true,
@@ -192,6 +200,9 @@ func (d *Definition) Validate() error {
 	if d.Auth != nil {
 		validateAuth(d.Auth, add)
 	}
+	if d.Session != nil {
+		validateSession(d.Session, add)
+	}
 
 	searchConfigured := !reflect.DeepEqual(d.Search, Search{})
 	if d.Connector == "" || searchConfigured {
@@ -250,6 +261,27 @@ func validateAuth(auth *Auth, add func(string, ...any)) {
 	}
 }
 
+func validateSession(session *Session, add func(string, ...any)) {
+	if !allowedSessionModes[session.Mode] {
+		add("session.mode: must be empty or flaresolverr")
+	}
+	if endpoint := strings.TrimSpace(session.Endpoint); endpoint != "" &&
+		!strings.Contains(endpoint, "{{") && !isHTTPURL(endpoint) {
+		add("session.endpoint: must be an http or https URL or a template")
+	}
+	if prefix := strings.TrimSpace(session.NamePrefix); prefix != "" {
+		if !slugPattern.MatchString(prefix) {
+			add("session.name_prefix: must be a slug matching %s", slugPattern.String())
+		}
+	}
+	if session.MaxAge < 0 {
+		add("session.max_age: must not be negative")
+	}
+	if session.Timeout < 0 {
+		add("session.timeout: must not be negative")
+	}
+}
+
 func validateSearch(search Search, add func(string, ...any)) {
 	if search.Request.Get != "" && search.Request.Post != "" {
 		add("search.request: get and post are mutually exclusive")
@@ -304,6 +336,12 @@ func validateDownload(download *Download, d *Definition, add func(string, ...any
 	if !allowedResolveOn[resolveOn] {
 		add("download.resolve_on: must be one of search, grab")
 	}
+	if !allowedDownloadSelect[strings.TrimSpace(download.Select)] {
+		add("download.select: must be empty or season_episode")
+	}
+	if download.Before != nil && resolveOn != "grab" {
+		add("download.before: requires resolve_on grab (a thank must never run during a search)")
+	}
 
 	if download.MaxConcurrent < 0 || download.MaxConcurrent > 8 {
 		add("download.max_concurrent: must be between 1 and 8 (0 uses the default 2)")
@@ -333,6 +371,39 @@ func validateDownload(download *Download, d *Definition, add func(string, ...any
 			validateDownloadField(fmt.Sprintf("download.extract[%d].magnet", i), *target.Magnet, add)
 		default:
 			validateDownloadField(fmt.Sprintf("download.extract[%d].torrent", i), *target.Torrent, add)
+		}
+	}
+	if download.Before != nil {
+		validateDownloadBefore(download.Before, add)
+	}
+}
+
+func validateDownloadBefore(before *DownloadBefore, add func(string, ...any)) {
+	if before.Wait < 0 {
+		add("download.before.wait: must not be negative")
+	}
+	for name, extractor := range before.Extract {
+		if strings.TrimSpace(name) == "" {
+			add("download.before.extract: name must not be empty")
+		}
+		if extractor.Selector == "" && extractor.JSON == "" && extractor.Regex == "" {
+			add("download.before.extract.%s: needs selector, json or regex", name)
+		}
+		if extractor.Regex != "" {
+			if _, err := regexp.Compile(extractor.Regex); err != nil {
+				add("download.before.extract.%s: invalid regex", name)
+			}
+		}
+	}
+	action := before.Action
+	if action.Get != "" && action.Post != "" {
+		add("download.before.action: get and post are mutually exclusive")
+	} else if action.Get == "" && action.Post == "" {
+		add("download.before.action: must have get or post")
+	}
+	for name, value := range action.Headers {
+		if strings.TrimSpace(name) == "" || strings.TrimSpace(value) == "" {
+			add("download.before.action.headers: name and value must not be empty")
 		}
 	}
 }

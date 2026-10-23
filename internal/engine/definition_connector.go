@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -27,6 +28,13 @@ type DefinitionConfig struct {
 	Definition *definition.Definition
 	Settings   map[string]string
 	Transport  *Transport
+	// SessionEndpoint is the FlareSolverr URL injected by the caller (the
+	// global network setting). It is used when the definition's session
+	// section has no endpoint or names a setting that is empty.
+	SessionEndpoint string
+	// SessionTimeout is the global FlareSolverr timeout. Zero keeps the
+	// definition/default value.
+	SessionTimeout time.Duration
 }
 
 var _ Connector = (*DefinitionConnector)(nil)
@@ -50,6 +58,7 @@ type DefinitionConnector struct {
 
 	downloadCache   *downloadCache
 	resolveFailures atomic.Int64
+	flare           *flareSessionState
 }
 
 // NewDefinitionConnector validates the definition's settings and prepares the
@@ -140,6 +149,11 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 	connector.secrets = secretSettingValues(def, settings)
 	connector.secrets = append(connector.secrets, settings["api_key"], settings["apikey"], settings["token"], settings["password"])
 	sort.Slice(connector.secrets, func(i, j int) bool { return len(connector.secrets[i]) > len(connector.secrets[j]) })
+	if def.Session != nil {
+		if err := connector.configureSession(cfg); err != nil {
+			return nil, err
+		}
+	}
 	return connector, nil
 }
 
@@ -183,6 +197,12 @@ func (c *DefinitionConnector) Latest(ctx context.Context, req LatestRequest) ([]
 func (c *DefinitionConnector) Download(ctx context.Context, item Item) (Payload, error) {
 	if strings.TrimSpace(item.Magnet) != "" {
 		return Payload{Magnet: item.Magnet}, nil
+	}
+	if c.def.Download != nil && c.def.Download.Before != nil && strings.TrimSpace(item.DetailsURL) != "" {
+		payload, handled, err := c.downloadWithBefore(ctx, item)
+		if handled {
+			return payload, err
+		}
 	}
 	if strings.TrimSpace(item.DownloadURL) != "" {
 		return c.downloadURL(ctx, item.DownloadURL, item.Title)
@@ -374,6 +394,7 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 			}
 			observeNormalize(ctx, NormalizeObservation{OK: ok})
 			if ok {
+				annotateQuery(&item, req)
 				items = append(items, item)
 			}
 		}
@@ -664,6 +685,9 @@ func (c *DefinitionConnector) newRequest(ctx context.Context, method string, tar
 }
 
 func (c *DefinitionConnector) do(ctx context.Context, request *http.Request) (*Response, error) {
+	if c.flare != nil {
+		return c.doSession(ctx, request)
+	}
 	response, err := c.transport.Do(ctx, c.breakerKey(), request)
 	if err != nil {
 		return nil, c.requestError(err)
@@ -1019,7 +1043,15 @@ func joinURLPath(basePath, relative string) string {
 		relative = "/" + relative
 	}
 	prefix := strings.TrimSuffix(basePath, "/")
-	return prefix + relative
+	joined := prefix + relative
+	if joined == "" {
+		return "/"
+	}
+	cleaned := path.Clean(joined)
+	if strings.HasSuffix(relative, "/") && !strings.HasSuffix(cleaned, "/") {
+		cleaned += "/"
+	}
+	return cleaned
 }
 
 func (c *DefinitionConnector) buildCapabilities() Capabilities {

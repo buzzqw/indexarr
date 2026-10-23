@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"strings"
@@ -165,6 +166,12 @@ func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []
 	if !c.resolvesOnSearch() {
 		return nil
 	}
+	// A pre-download engagement action must never run while searching. The
+	// validator already rejects before + resolve_on: search; this guard keeps
+	// a hand-built Definition safe too.
+	if c.def.Download != nil && c.def.Download.Before != nil {
+		return nil
+	}
 
 	// Group items by details URL so repeated rows cost one request.
 	groups := make(map[string][]int)
@@ -208,7 +215,7 @@ func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []
 			case <-ctx.Done():
 				return
 			}
-			result, err := c.resolveDetailsCached(ctx, rawURL)
+			result, err := c.resolveDetailsCached(ctx, rawURL, 0, 0)
 			if err != nil || result.empty() {
 				c.resolveFailures.Add(1)
 				return
@@ -246,7 +253,7 @@ func applyResolvedDownload(item *Item, result resolvedDownload) {
 // resolveDetailsCached returns the download target of one details page. The
 // page body is cached by URL with a TTL; the connector clock makes expiry
 // deterministic in tests.
-func (c *DefinitionConnector) resolveDetailsCached(ctx context.Context, rawURL string) (resolvedDownload, error) {
+func (c *DefinitionConnector) resolveDetailsCached(ctx context.Context, rawURL string, season, episode int) (resolvedDownload, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
 		return resolvedDownload{}, errors.New("download: invalid details URL")
@@ -266,6 +273,9 @@ func (c *DefinitionConnector) resolveDetailsCached(ctx context.Context, rawURL s
 	}
 
 	key := target.String()
+	if strings.EqualFold(strings.TrimSpace(c.def.Download.Select), "season_episode") {
+		key += fmt.Sprintf("#season=%d&episode=%d", season, episode)
+	}
 	now := c.now()
 	if c.downloadCache != nil {
 		if result, ok := c.downloadCache.get(key, now); ok {
@@ -273,7 +283,7 @@ func (c *DefinitionConnector) resolveDetailsCached(ctx context.Context, rawURL s
 		}
 	}
 
-	result, err := c.fetchDetailsDownload(ctx, target)
+	result, err := c.fetchDetailsDownload(ctx, target, season, episode)
 	if err != nil {
 		return resolvedDownload{}, err
 	}
@@ -283,28 +293,10 @@ func (c *DefinitionConnector) resolveDetailsCached(ctx context.Context, rawURL s
 	return result, nil
 }
 
-func (c *DefinitionConnector) fetchDetailsDownload(ctx context.Context, target *url.URL) (resolvedDownload, error) {
-	request, err := c.newRequest(ctx, http.MethodGet, target, nil)
+func (c *DefinitionConnector) fetchDetailsDownload(ctx context.Context, target *url.URL, season, episode int) (resolvedDownload, error) {
+	response, err := c.fetchDetailsPage(ctx, target)
 	if err != nil {
-		return resolvedDownload{}, errors.New("download: build details request failed")
-	}
-	response, err := c.do(ctx, request)
-	if err != nil {
-		return resolvedDownload{}, c.requestError(err)
-	}
-
-	if response.Status >= 300 && response.Status < 400 {
-		location := strings.TrimSpace(response.Header.Get("Location"))
-		if strings.HasPrefix(strings.ToLower(location), "magnet:") {
-			return resolvedDownload{
-				Magnet:   location,
-				InfoHash: normalizeInfoHash(location),
-			}, nil
-		}
-		return resolvedDownload{}, errors.New("download: unexpected redirect from details page")
-	}
-	if response.Status < 200 || response.Status >= 400 {
-		return resolvedDownload{}, fmt.Errorf("download: details returned HTTP %d", response.Status)
+		return resolvedDownload{}, err
 	}
 
 	title := ""
@@ -313,96 +305,196 @@ func (c *DefinitionConnector) fetchDetailsDownload(ctx context.Context, target *
 			title = strings.TrimSpace(value)
 		}
 	}
-	for _, extractor := range c.def.Download.Extract {
-		result, ok, err := c.extractDownloadTarget(response, extractor)
-		if err != nil {
-			return resolvedDownload{}, errors.New("download: details extractor failed")
+	candidates, err := c.extractDownloadCandidates(response)
+	if err != nil {
+		return resolvedDownload{}, err
+	}
+	if len(candidates) == 0 {
+		return resolvedDownload{}, errors.New("download: no download target on details page")
+	}
+	result, ok := c.chooseCandidate(title, candidates, season, episode)
+	if !ok {
+		return resolvedDownload{}, errors.New("download: no magnet matches the requested season and episode")
+	}
+	result.Title = title
+	return result, nil
+}
+
+// fetchDetailsPage issues the GET for a details page and applies the same
+// redirect and status rules as every other download request.
+func (c *DefinitionConnector) fetchDetailsPage(ctx context.Context, target *url.URL) (*Response, error) {
+	request, err := c.newRequest(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return nil, errors.New("download: build details request failed")
+	}
+	response, err := c.do(ctx, request)
+	if err != nil {
+		return nil, c.requestError(err)
+	}
+
+	if response.Status >= 300 && response.Status < 400 {
+		location := strings.TrimSpace(response.Header.Get("Location"))
+		if strings.HasPrefix(strings.ToLower(location), "magnet:") {
+			return &Response{
+				Status: http.StatusOK,
+				Header: make(http.Header),
+				Body:   []byte(`<html><body><a href="` + html.EscapeString(location) + `">magnet</a></body></html>`),
+				URL:    response.URL,
+			}, nil
 		}
-		if ok && !result.empty() {
-			result.Title = title
-			return result, nil
+		return nil, errors.New("download: unexpected redirect from details page")
+	}
+	if response.Status < 200 || response.Status >= 400 {
+		return nil, fmt.Errorf("download: details returned HTTP %d", response.Status)
+	}
+	return response, nil
+}
+
+func (c *DefinitionConnector) extractDownloadCandidates(response *Response) ([]resolvedDownload, error) {
+	for _, target := range c.def.Download.Extract {
+		results, ok, err := c.extractDownloadTargets(response, target)
+		if err != nil {
+			return nil, errors.New("download: details extractor failed")
+		}
+		if ok && len(results) > 0 {
+			return results, nil
 		}
 	}
-	return resolvedDownload{}, errors.New("download: no download target on details page")
+	return nil, nil
 }
 
 func (c *DefinitionConnector) extractDownloadTarget(response *Response, target definition.DownloadTarget) (resolvedDownload, bool, error) {
-	if target.Magnet != nil {
-		value, err := c.extractDetailField(response, *target.Magnet)
-		if err != nil {
-			return resolvedDownload{}, false, err
-		}
-		if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(value)), "magnet:") {
-			return resolvedDownload{}, false, nil
-		}
-		value = strings.TrimSpace(value)
-		return resolvedDownload{
-			Magnet:   value,
-			InfoHash: normalizeInfoHash(value),
-		}, true, nil
+	results, ok, err := c.extractDownloadTargets(response, target)
+	if err != nil || !ok || len(results) == 0 {
+		return resolvedDownload{}, ok, err
 	}
-	if target.Torrent != nil {
-		value, err := c.extractDetailField(response, *target.Torrent)
+	return results[0], true, nil
+}
+
+func (c *DefinitionConnector) extractDownloadTargets(response *Response, target definition.DownloadTarget) ([]resolvedDownload, bool, error) {
+	if target.Magnet != nil {
+		values, err := c.extractDetailFields(response, *target.Magnet, target.All)
 		if err != nil {
-			return resolvedDownload{}, false, err
+			return nil, false, err
 		}
-		value = strings.TrimSpace(value)
-		if value == "" {
-			return resolvedDownload{}, false, nil
-		}
-		if strings.HasPrefix(strings.ToLower(value), "magnet:") {
-			return resolvedDownload{
+		var out []resolvedDownload
+		for _, value := range values {
+			value = strings.TrimSpace(value)
+			if !strings.HasPrefix(strings.ToLower(value), "magnet:") {
+				continue
+			}
+			out = append(out, resolvedDownload{
 				Magnet:   value,
 				InfoHash: normalizeInfoHash(value),
-			}, true, nil
+			})
+		}
+		return out, len(out) > 0, nil
+	}
+	if target.Torrent != nil {
+		values, err := c.extractDetailFields(response, *target.Torrent, target.All)
+		if err != nil {
+			return nil, false, err
 		}
 		base := response.URL
 		if base == nil {
 			base = c.baseURL
 		}
-		resolved := resolveURL(value, base, c.baseURL)
-		if resolved == "" {
-			return resolvedDownload{}, false, nil
+		var out []resolvedDownload
+		for _, value := range values {
+			value = strings.TrimSpace(value)
+			if value == "" {
+				continue
+			}
+			if strings.HasPrefix(strings.ToLower(value), "magnet:") {
+				out = append(out, resolvedDownload{
+					Magnet:   value,
+					InfoHash: normalizeInfoHash(value),
+				})
+				continue
+			}
+			resolved := resolveURL(value, base, c.baseURL)
+			if resolved == "" {
+				continue
+			}
+			parsed, err := url.Parse(resolved)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+				continue
+			}
+			out = append(out, resolvedDownload{DownloadURL: resolved})
 		}
-		parsed, err := url.Parse(resolved)
-		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-			return resolvedDownload{}, false, nil
-		}
-		return resolvedDownload{DownloadURL: resolved}, true, nil
+		return out, len(out) > 0, nil
 	}
-	return resolvedDownload{}, false, nil
+	return nil, false, nil
 }
 
-// extractDetailField applies one Field to a whole details response. Each
-// selector is a fallback; path reads a JSON document.
-func (c *DefinitionConnector) extractDetailField(response *Response, field definition.Field) (string, error) {
-	var (
-		value string
-		err   error
-	)
+// extractDetailFields applies one Field to a whole details response and
+// returns every value when all is true, otherwise only the first non-empty
+// one. Each selector is a fallback; path reads a JSON document.
+func (c *DefinitionConnector) extractDetailFields(response *Response, field definition.Field, all bool) ([]string, error) {
 	if strings.TrimSpace(field.Path) != "" {
-		var root any
-		root, err = decodeJSON(response.Body)
+		root, err := decodeJSON(response.Body)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		value = jsonValueString(walkJSONPath(root, field.Path))
-	} else {
-		for _, selector := range field.Selector {
-			value, err = extractHTMLValue(response.Body, selector, field.Attr)
+		value, err := applyFilters(jsonValueString(walkJSONPath(root, field.Path)), field.Filters)
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(value) == "" {
+			return nil, nil
+		}
+		return []string{value}, nil
+	}
+
+	var out []string
+	for _, selector := range field.Selector {
+		if all {
+			values, err := extractHTMLValues(response.Body, selector, field.Attr)
 			if err != nil {
-				return "", err
+				return nil, err
 			}
-			if strings.TrimSpace(value) != "" {
+			for _, value := range values {
+				filtered, err := applyFilters(value, field.Filters)
+				if err != nil {
+					return nil, err
+				}
+				if strings.TrimSpace(filtered) != "" {
+					out = append(out, filtered)
+				}
+			}
+			if len(out) > 0 {
 				break
 			}
+			continue
+		}
+		value, err := extractHTMLValue(response.Body, selector, field.Attr)
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(value) == "" {
+			continue
+		}
+		value, err = applyFilters(value, field.Filters)
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(value) != "" {
+			out = append(out, value)
+		}
+		if len(out) > 0 {
+			break
 		}
 	}
-	value, err = applyFilters(value, field.Filters)
-	if err != nil {
+	return out, nil
+}
+
+// extractDetailField keeps the historical single-value helper.
+func (c *DefinitionConnector) extractDetailField(response *Response, field definition.Field) (string, error) {
+	values, err := c.extractDetailFields(response, field, false)
+	if err != nil || len(values) == 0 {
 		return "", err
 	}
-	return value, nil
+	return values[0], nil
 }
 
 // downloadFromSection resolves a details page at grab time using the
@@ -412,7 +504,8 @@ func (c *DefinitionConnector) downloadFromSection(ctx context.Context, item Item
 	if rawURL == "" {
 		return Payload{}, errors.New("download: invalid details URL")
 	}
-	result, err := c.resolveDetailsCached(ctx, rawURL)
+	season, episode := c.requestedSeasonEpisode(item)
+	result, err := c.resolveDetailsCached(ctx, rawURL, season, episode)
 	if err != nil {
 		return Payload{}, err
 	}
