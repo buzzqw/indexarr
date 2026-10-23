@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/base32"
 	"encoding/hex"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -120,5 +121,22 @@ func TestFetchTorrentRejectsHTML(t *testing.T) {
 	_, _, err := FetchTorrent(context.Background(), server.Client(), server.URL, TorrentRequest{MaxBytes: 1 << 20})
 	if err == nil {
 		t.Fatal("expected a non-torrent body to be rejected")
+	}
+}
+
+func TestFetchTorrentMagnetRedirect(t *testing.T) {
+	magnet := "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Show"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, magnet, http.StatusFound)
+	}))
+	defer server.Close()
+
+	_, _, err := FetchTorrent(context.Background(), server.Client(), server.URL, TorrentRequest{})
+	var magnetErr *MagnetRedirectError
+	if !errors.As(err, &magnetErr) {
+		t.Fatalf("FetchTorrent error = %v, want MagnetRedirectError", err)
+	}
+	if magnetErr.Magnet != magnet {
+		t.Errorf("magnet = %q", magnetErr.Magnet)
 	}
 }

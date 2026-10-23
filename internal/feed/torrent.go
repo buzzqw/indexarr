@@ -118,6 +118,17 @@ type TorrentRequest struct {
 
 // FetchTorrent downloads a .torrent file with a hard size limit and returns
 // its bytes together with the infohash.
+// MagnetRedirectError means the download URL answered with a redirect to a
+// magnet link instead of a .torrent file. Prowlarr and some trackers expose
+// such proxy URLs; the caller can store the magnet directly.
+type MagnetRedirectError struct {
+	Magnet string
+}
+
+func (e *MagnetRedirectError) Error() string {
+	return "torrent URL redirected to a magnet link"
+}
+
 func FetchTorrent(ctx context.Context, client *http.Client, rawURL string, opts TorrentRequest) ([]byte, string, error) {
 	if client == nil {
 		client = http.DefaultClient
@@ -145,11 +156,28 @@ func FetchTorrent(ctx context.Context, client *http.Client, rawURL string, opts 
 	if err != nil {
 		return nil, "", err
 	}
-	response, err := client.Do(request)
+	// A download proxy may redirect to a magnet link. Stop before the transport
+	// rejects the non-HTTP scheme and report the magnet to the caller.
+	probe := *client
+	magnetRedirect := ""
+	probe.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if strings.HasPrefix(strings.ToLower(req.URL.String()), "magnet:") {
+			magnetRedirect = req.URL.String()
+			return http.ErrUseLastResponse
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	response, err := probe.Do(request)
 	if err != nil {
 		return nil, "", fmt.Errorf("%s", redactSecrets(err.Error()))
 	}
 	defer response.Body.Close()
+	if magnetRedirect != "" {
+		return nil, "", &MagnetRedirectError{Magnet: magnetRedirect}
+	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(response.Body, 64<<10))
 		return nil, "", describeHTTPError(response.StatusCode, body)

@@ -529,3 +529,54 @@ func TestRunFailureLogsSourceContext(t *testing.T) {
 		}
 	}
 }
+
+func TestRunSourceStoresMagnetOnTorrentRedirect(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(t.TempDir() + "/magnet-redirect.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	hash := "0123456789abcdef0123456789abcdef01234567"
+	magnet := "magnet:?xt=urn:btih:" + hash + "&dn=Redirect+Show"
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api":
+			w.Header().Set("Content-Type", "application/xml")
+			_, _ = io.WriteString(w, fmt.Sprintf(`<rss version="2.0" xmlns:torznab="http://torznab.com/schemas/2015/feed"><channel>
+				<item><title>Redirect Show 1080p</title><guid>redirect-1</guid>
+					<link>%s/download/1</link>
+					<enclosure url="%s/download/1" type="application/x-bittorrent" length="10"/>
+				</item></channel></rss>`, server.URL, server.URL))
+		case "/download/1":
+			http.Redirect(w, r, magnet, http.StatusFound)
+		default:
+			t.Errorf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	sourceID, err := st.CreateSource(ctx, store.Source{
+		Name: "Redirect", Kind: "torznab", Manager: "torznab", URL: server.URL, Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine := New(st, testLogger())
+	result, err := engine.RunSource(ctx, sourceID)
+	if err != nil {
+		t.Fatalf("RunSource: %v", err)
+	}
+	if result.New != 1 || result.Torrents != 0 {
+		t.Errorf("result = %#v", result)
+	}
+	release, found, err := st.ReleaseByInfoHash(ctx, hash)
+	if err != nil || !found {
+		t.Fatalf("ReleaseByInfoHash = %v, %v", found, err)
+	}
+	if release.Magnet != magnet || len(release.Torrent) != 0 {
+		t.Errorf("release = magnet %q, torrent %d bytes", release.Magnet, len(release.Torrent))
+	}
+}

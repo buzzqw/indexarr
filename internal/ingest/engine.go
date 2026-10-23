@@ -456,8 +456,14 @@ func (e *Engine) saveItem(ctx context.Context, source store.Source, settings sto
 				MaxBytes:  settings.MaxTorrentBytes,
 			})
 			if err != nil {
-				e.log.Warn("torrent download failed", sourceLogArgs(source,
-					"title", textutil.Truncate(title, 80), "error", err.Error())...)
+				var magnetErr *feed.MagnetRedirectError
+				if errors.As(err, &magnetErr) {
+					magnet = magnetErr.Magnet
+					hash = feed.MagnetHash(magnet)
+				} else {
+					e.log.Warn("torrent download failed", sourceLogArgs(source,
+						"title", textutil.Truncate(title, 80), "error", err.Error())...)
+				}
 			} else {
 				torrent = blob
 				hash = fetchedHash
