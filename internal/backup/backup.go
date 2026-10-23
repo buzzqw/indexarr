@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -101,6 +102,13 @@ func Create(ctx context.Context, st *store.Store, dbPath string) (Info, error) {
 	if err := st.BackupTo(ctx, target); err != nil {
 		return Info{}, err
 	}
+	// VACUUM INTO materialises a full copy of the database in the process and
+	// leaves the pages behind in the Go heap until the next scavenge. A 10 MiB
+	// database costs about 9 MiB of RSS that way, and the process keeps it for
+	// many minutes. Returning it to the OS right after the copy keeps the
+	// backup feature without the permanent footprint. The backup file is
+	// already complete at this point, so this only releases memory.
+	debug.FreeOSMemory()
 	info, err := os.Stat(target)
 	if err != nil {
 		return Info{}, err

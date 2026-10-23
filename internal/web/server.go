@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/categories"
@@ -49,7 +50,56 @@ type templateSet struct {
 	partials map[string]*template.Template
 }
 
-var templateSets = map[i18n.Language]*templateSet{}
+// templateCache compiles the page templates lazily, one language at a time.
+// English is compiled at startup because it is the default and the fallback for
+// every unknown tag; the other catalogs are parsed on first use and then
+// reused. An installation that only uses one language therefore pays for one
+// set of parse trees instead of seven (the parse trees used to be about 80% of
+// the live heap).
+type templateCache struct {
+	// sets is written only by newTemplateCache and never modified afterwards,
+	// so concurrent reads are safe without a lock.
+	sets map[i18n.Language]*lazyTemplateSet
+}
+
+// lazyTemplateSet compiles one language at most once, even under concurrent
+// first requests. Each language has its own Once, so requests in Italian and
+// French do not serialise behind the same lock.
+type lazyTemplateSet struct {
+	lang i18n.Language
+	once sync.Once
+	set  *templateSet
+}
+
+// get returns the compiled set for lang, compiling it on first use. Unknown
+// languages fall back to English, matching i18n.Detect.
+func (l *lazyTemplateSet) get() *templateSet {
+	l.once.Do(func() {
+		l.set = compileTemplateSet(l.lang)
+	})
+	return l.set
+}
+
+func newTemplateCache() *templateCache {
+	langs := i18n.Supported()
+	cache := &templateCache{sets: make(map[i18n.Language]*lazyTemplateSet, len(langs))}
+	for _, lang := range langs {
+		cache.sets[lang] = &lazyTemplateSet{lang: lang}
+	}
+	// English is both the default and the fallback: compile it eagerly so the
+	// first request never pays for the whole UI and every fallback is ready.
+	cache.get(i18n.EN)
+	return cache
+}
+
+func (c *templateCache) get(lang i18n.Language) *templateSet {
+	if entry, ok := c.sets[lang]; ok {
+		return entry.get()
+	}
+	return c.sets[i18n.EN].get()
+}
+
+var templateSets = newTemplateCache()
 
 var pageNames = []string{
 	"dashboard", "releases", "release",
@@ -138,69 +188,67 @@ var templateFuncMap = template.FuncMap{
 	},
 }
 
-// init compiles one template set per language. The T function is bound to the
-// catalog so no runtime lookup or context plumbing is needed while executing.
-func init() {
-	for _, lang := range i18n.Supported() {
-		funcs := make(template.FuncMap, len(templateFuncMap)+4)
-		for name, fn := range templateFuncMap {
-			funcs[name] = fn
-		}
-		funcs["T"] = func(key string, args ...any) string {
-			return i18n.T(lang, key, args...)
-		}
-		funcs["stateLabel"] = func(state string) string {
-			return stateLabel(lang, state)
-		}
-		funcs["phaseLabel"] = func(name string) string {
-			return phaseLabel(lang, name)
-		}
-		funcs["phaseMessage"] = func(message string) string {
-			switch strings.ToLower(strings.TrimSpace(message)) {
-			case "not required":
-				return i18n.T(lang, "idx.phase.notRequired")
-			case "skipped":
-				return i18n.T(lang, "idx.phase.skipped")
-			default:
-				return message
-			}
-		}
-		funcs["advanced"] = advancedSection
-		funcs["statusLabel"] = func(status string) string {
-			return statusLabel(lang, status)
-		}
-		funcs["syncLevelLabel"] = func(level string) string {
-			return syncLevelLabel(lang, level)
-		}
-		funcs["ago"] = func(value time.Time) string {
-			return humanAgoLang(lang, value)
-		}
-		funcs["until"] = func(value time.Time) string {
-			return humanUntilLang(lang, value)
-		}
-
-		set := &templateSet{
-			pages:    map[string]*template.Template{},
-			partials: map[string]*template.Template{},
-		}
-		for _, name := range pageNames {
-			files := []string{"templates/layout.html", "templates/components.html", "templates/" + name + ".html"}
-			switch name {
-			case "releases":
-				files = append(files, "templates/releases_results.html")
-			case "activity":
-				// Activity embeds the Run and Log panels.
-				files = append(files, "templates/runs.html", "templates/logs.html")
-			}
-			tmpl := template.New("layout.html").Funcs(funcs)
-			tmpl = template.Must(tmpl.ParseFS(templateFiles, files...))
-			set.pages[name] = tmpl
-		}
-		set.partials["releases_results"] = template.Must(
-			template.New("releases_results").Funcs(funcs).
-				ParseFS(templateFiles, "templates/releases_results.html"))
-		templateSets[lang] = set
+// compileTemplateSet parses the page and partial templates for one language.
+// It is called at most once per language by lazyTemplateSet.get.
+func compileTemplateSet(lang i18n.Language) *templateSet {
+	funcs := make(template.FuncMap, len(templateFuncMap)+10)
+	for name, fn := range templateFuncMap {
+		funcs[name] = fn
 	}
+	funcs["T"] = func(key string, args ...any) string {
+		return i18n.T(lang, key, args...)
+	}
+	funcs["stateLabel"] = func(state string) string {
+		return stateLabel(lang, state)
+	}
+	funcs["phaseLabel"] = func(name string) string {
+		return phaseLabel(lang, name)
+	}
+	funcs["phaseMessage"] = func(message string) string {
+		switch strings.ToLower(strings.TrimSpace(message)) {
+		case "not required":
+			return i18n.T(lang, "idx.phase.notRequired")
+		case "skipped":
+			return i18n.T(lang, "idx.phase.skipped")
+		default:
+			return message
+		}
+	}
+	funcs["advanced"] = advancedSection
+	funcs["statusLabel"] = func(status string) string {
+		return statusLabel(lang, status)
+	}
+	funcs["syncLevelLabel"] = func(level string) string {
+		return syncLevelLabel(lang, level)
+	}
+	funcs["ago"] = func(value time.Time) string {
+		return humanAgoLang(lang, value)
+	}
+	funcs["until"] = func(value time.Time) string {
+		return humanUntilLang(lang, value)
+	}
+
+	set := &templateSet{
+		pages:    map[string]*template.Template{},
+		partials: map[string]*template.Template{},
+	}
+	for _, name := range pageNames {
+		files := []string{"templates/layout.html", "templates/components.html", "templates/" + name + ".html"}
+		switch name {
+		case "releases":
+			files = append(files, "templates/releases_results.html")
+		case "activity":
+			// Activity embeds the Run and Log panels.
+			files = append(files, "templates/runs.html", "templates/logs.html")
+		}
+		tmpl := template.New("layout.html").Funcs(funcs)
+		tmpl = template.Must(tmpl.ParseFS(templateFiles, files...))
+		set.pages[name] = tmpl
+	}
+	set.partials["releases_results"] = template.Must(
+		template.New("releases_results").Funcs(funcs).
+			ParseFS(templateFiles, "templates/releases_results.html"))
+	return set
 }
 
 // languageOption is one entry of the language selector.
@@ -691,10 +739,7 @@ func (s *Server) translate(r *http.Request, key string, args ...any) string {
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, data any, status int) {
-	set, ok := templateSets[requestLanguage(r)]
-	if !ok {
-		set = templateSets[i18n.EN]
-	}
+	set := templateSets.get(requestLanguage(r))
 	tmpl, ok := set.pages[name]
 	if !ok {
 		http.Error(w, "template not found", http.StatusInternalServerError)
@@ -726,10 +771,7 @@ func (s *Server) renderError(w http.ResponseWriter, r *http.Request, status int,
 // renderPartial writes one HTML fragment without the layout, used by the live
 // search to swap the results table.
 func (s *Server) renderPartial(w http.ResponseWriter, r *http.Request, name string, data any) {
-	set, ok := templateSets[requestLanguage(r)]
-	if !ok {
-		set = templateSets[i18n.EN]
-	}
+	set := templateSets.get(requestLanguage(r))
 	tmpl, ok := set.partials[name]
 	if !ok {
 		http.Error(w, "template not found", http.StatusInternalServerError)

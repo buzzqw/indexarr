@@ -338,7 +338,7 @@ search:
 }
 
 func TestComponentsRender(t *testing.T) {
-	tmpl := templateSets[i18n.EN].pages["indexer"]
+	tmpl := templateSets.get(i18n.EN).pages["indexer"]
 	render := func(name string, data any) string {
 		t.Helper()
 		var b strings.Builder
