@@ -43,6 +43,27 @@ l'agente adatta nomi e dettagli al codice reale e lo verifica con i test.
 >   configurazione attuale (WP8 passo 5) e si abilitano i siti presenti oggi
 >   in Jackett e Prowlarr.
 
+> **In produzione (23/10, 21:12, build `a09bc5a`).** Il coordinatore ha
+> lanciato `fresh-start.sh --apply --build`.
+> - Risultato: 9 indexer importati, API key Torznab preservata.
+> - Backup: `data.old-20261023-211231` e
+>   `bin/indexarr.old-20261023-211231`, da conservare una settimana.
+>
+> Da qui in poi la produzione contiene dati inseriti a mano, quindi
+> `fresh-start.sh --apply` non si usa più. Gli aggiornamenti passano dallo
+> script di upgrade, con backup e ripristino automatico. Le migrazioni sono
+> solo in avanti e non distruttive.
+>
+> Banco di prova *arr: Sonarr su `127.0.0.1:18989` e Radarr su `:17878`, in
+> container, con gli script in `~/indexarr-arrtest/tools/`.
+>
+> La prima prova reale ha trovato questi divari, da chiudere nel ciclo 5
+> (`comunicazioni8.md`):
+> - gli episodi perdono `SxxEyy` verso i siti che dichiarano `tv-search`;
+> - `caps` dichiara ID che quasi nessun indexer gestisce;
+> - Knaben risponde 0 senza interrogare il sito;
+> - le ricerche richiedono 5–21 s, senza cache delle risposte live.
+
 ---
 
 ## 0. Stato reale (base della revisione)
