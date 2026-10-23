@@ -62,6 +62,67 @@ if ("serviceWorker" in navigator) {
   const copiedLabel = document.body.dataset.copyDone || "Copied";
   const copyFailedLabel = document.body.dataset.copyFailed || "Copy failed";
 
+  // Secrets are never part of the initial HTML. They are fetched only after
+  // an explicit Show/Copy action, with a same-origin marker the server checks.
+  const fetchSecret = async (field) => {
+    const url = field.getAttribute("data-secret-url") || "";
+    if (!url) {
+      throw new Error("missing secret URL");
+    }
+    const response = await fetch(url, {
+      headers: { "X-Requested-With": "fetch", Accept: "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+    const payload = await response.json();
+    return String(payload.value || "");
+  };
+
+  document.addEventListener("click", async (event) => {
+    const show = event.target.closest("[data-secret-show]");
+    if (show) {
+      event.preventDefault();
+      const field = show.closest("[data-secret-field]");
+      const input = field && field.querySelector("input");
+      if (!field || !input) {
+        return;
+      }
+      if (input.type === "text") {
+        input.type = "password";
+        input.value = "";
+        show.textContent = show.dataset.showLabel || "Show";
+        return;
+      }
+      const original = show.textContent;
+      try {
+        input.value = await fetchSecret(field);
+        input.type = "text";
+        show.textContent = show.dataset.hideLabel || "Hide";
+      } catch {
+        show.textContent = copiedLabel;
+        window.setTimeout(() => { show.textContent = original; }, 1500);
+      }
+      return;
+    }
+    const secretCopy = event.target.closest("[data-secret-copy]");
+    if (secretCopy) {
+      event.preventDefault();
+      const field = secretCopy.closest("[data-secret-field]");
+      const original = secretCopy.textContent;
+      try {
+        const value = await fetchSecret(field);
+        const ok = await copyText(value);
+        secretCopy.textContent = ok ? copiedLabel : copyFailedLabel;
+      } catch {
+        secretCopy.textContent = copyFailedLabel;
+      }
+      window.setTimeout(() => { secretCopy.textContent = original; }, 1500);
+    }
+  });
+
   document.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-copy]");
     if (!button) {

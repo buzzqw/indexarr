@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -17,13 +18,49 @@ import (
 	"github.com/buzzqw/indexarr/internal/torznabapi"
 )
 
+type settingsAPIKey struct {
+	ID         int64
+	Name       string
+	Masked     string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	Requests   int64
+}
+
 type settingsPage struct {
 	base
 	Settings       store.Settings
 	MaxTorrentMB   int64
-	TorznabFull    string
-	AdditionalKeys []store.APIKey
+	TorznabBase    string
+	TorznabMasked  string
+	AdditionalKeys []settingsAPIKey
 	BackupDir      string
+}
+
+// settingsData builds the page model without the API key: the key is only
+// available through /settings/secrets/* after an explicit fetch. The masked
+// URL contains no secret either.
+func (s *Server) settingsData(r *http.Request, settings store.Settings) settingsPage {
+	keys, _ := s.store.ListAPIKeys(r.Context())
+	views := make([]settingsAPIKey, 0, len(keys))
+	for _, key := range keys {
+		views = append(views, settingsAPIKey{
+			ID: key.ID, Name: key.Name, Masked: "••••••••",
+			CreatedAt: key.CreatedAt, LastUsedAt: key.LastUsedAt, Requests: key.Requests,
+		})
+	}
+	baseURL := torznabapi.BaseURL(r, settings) + "/api"
+	public := settings
+	public.APIKey = ""
+	return settingsPage{
+		base:           s.newBaseT(r, "shell.settings", "settings"),
+		Settings:       public,
+		MaxTorrentMB:   settings.MaxTorrentBytes / (1 << 20),
+		TorznabBase:    baseURL,
+		TorznabMasked:  baseURL + "?apikey=••••••",
+		AdditionalKeys: views,
+		BackupDir:      backup.Dir(s.store.Path()),
+	}
 }
 
 func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
@@ -32,15 +69,7 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	keys, _ := s.store.ListAPIKeys(r.Context())
-	s.render(w, r, "settings", settingsPage{
-		base:           s.newBase(r, "Impostazioni", "settings"),
-		Settings:       settings,
-		MaxTorrentMB:   settings.MaxTorrentBytes / (1 << 20),
-		TorznabFull:    torznabapi.BaseURL(r, settings) + "/api?apikey=" + url.QueryEscape(settings.APIKey),
-		AdditionalKeys: keys,
-		BackupDir:      backup.Dir(s.store.Path()),
-	}, http.StatusOK)
+	s.render(w, r, "settings", s.settingsData(r, settings), http.StatusOK)
 }
 
 func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
@@ -52,15 +81,7 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	in := current
 	var parseErr error
 	renderInvalid := func(message string) {
-		keys, _ := s.store.ListAPIKeys(r.Context())
-		page := settingsPage{
-			base:           s.newBase(r, "Impostazioni", "settings"),
-			Settings:       in,
-			MaxTorrentMB:   in.MaxTorrentBytes / (1 << 20),
-			TorznabFull:    torznabapi.BaseURL(r, in) + "/api?apikey=" + url.QueryEscape(in.APIKey),
-			AdditionalKeys: keys,
-			BackupDir:      backup.Dir(s.store.Path()),
-		}
+		page := s.settingsData(r, in)
 		page.Error = message
 		s.render(w, r, "settings", page, http.StatusBadRequest)
 	}
@@ -69,7 +90,7 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	if in.PublicURL != "" {
 		parsed, err := url.Parse(in.PublicURL)
 		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-			renderInvalid("Public URL must be an absolute http:// or https:// address, or empty")
+			renderInvalid(s.translate(r, "settings.error.publicURL"))
 			return
 		}
 	}
@@ -77,7 +98,7 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	if in.FlareSolverrURL != "" {
 		parsed, err := url.Parse(in.FlareSolverrURL)
 		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-			renderInvalid("FlareSolverr URL must be an absolute http:// or https:// address, or empty")
+			renderInvalid(s.translate(r, "settings.error.flaresolverrURL"))
 			return
 		}
 	}
@@ -140,14 +161,14 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	if in.NotifyWebhookURL != "" {
 		parsed, err := url.Parse(in.NotifyWebhookURL)
 		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-			renderInvalid("Webhook URL must be an absolute http:// or https:// address, or empty")
+			renderInvalid(s.translate(r, "settings.error.webhookURL"))
 			return
 		}
 	}
 	in.NotifyTelegramToken = strings.TrimSpace(r.FormValue("notify_telegram_token"))
 	in.NotifyTelegramChatID = strings.TrimSpace(r.FormValue("notify_telegram_chat_id"))
 	if (in.NotifyTelegramToken == "") != (in.NotifyTelegramChatID == "") {
-		renderInvalid("Set both the Telegram token and chat ID, or neither")
+		renderInvalid(s.translate(r, "settings.error.telegramPair"))
 		return
 	}
 	in.NotifyNewReleases = r.FormValue("notify_new_releases") != ""
@@ -180,14 +201,14 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		in.DownloadClient = "none"
 	case "qbittorrent", "transmission":
 	default:
-		renderInvalid("Download client must be none, qbittorrent or transmission")
+		renderInvalid(s.translate(r, "settings.error.downloadClient"))
 		return
 	}
 	in.DownloadClientURL = strings.TrimRight(strings.TrimSpace(r.FormValue("download_client_url")), "/")
 	if in.DownloadClient != "none" {
 		parsed, err := url.Parse(in.DownloadClientURL)
 		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-			renderInvalid("Download client URL must be an absolute http:// or https:// address")
+			renderInvalid(s.translate(r, "settings.error.downloadClientURL"))
 			return
 		}
 	}
@@ -202,16 +223,16 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	confirm := r.FormValue("ui_password_confirm")
 	switch {
 	case password != "" && user == "":
-		renderInvalid("Set a user name together with the password")
+		renderInvalid(s.translate(r, "settings.error.userRequired"))
 		return
 	case password != "" && len(password) < 8:
-		renderInvalid("The password must be at least 8 characters")
+		renderInvalid(s.translate(r, "settings.error.passwordShort"))
 		return
 	case password != "" && password != confirm:
-		renderInvalid("The two passwords do not match")
+		renderInvalid(s.translate(r, "settings.error.passwordMismatch"))
 		return
 	case password == "" && user != "" && in.UIPasswordHash == "":
-		renderInvalid("Set a password for the web interface, or leave the user empty to disable authentication")
+		renderInvalid(s.translate(r, "settings.error.passwordRequired"))
 		return
 	}
 	if password != "" {
@@ -231,7 +252,7 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		renderInvalid(err.Error())
 		return
 	}
-	redirect(w, r, "/settings", "Settings saved", "")
+	redirect(w, r, "/settings", s.translate(r, "settings.saved"), "")
 }
 
 func (s *Server) settingsRegenerateKey(w http.ResponseWriter, r *http.Request) {
@@ -244,7 +265,7 @@ func (s *Server) settingsRegenerateKey(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/settings", "", err.Error())
 		return
 	}
-	redirect(w, r, "/settings", "New API key generated: update every Torznab client", "")
+	redirect(w, r, "/settings", s.translate(r, "settings.keyRegenerated"), "")
 }
 
 func (s *Server) settingsAPIKeyAdd(w http.ResponseWriter, r *http.Request) {
@@ -255,31 +276,31 @@ func (s *Server) settingsAPIKeyAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("additional API key created", "name", key.Name)
-	redirect(w, r, "/settings", "API key created for "+key.Name, "")
+	redirect(w, r, "/settings", s.translate(r, "settings.keyCreated", key.Name), "")
 }
 
 func (s *Server) settingsAPIKeyDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/settings", "", "invalid API key id")
+		redirect(w, r, "/settings", "", s.translate(r, "settings.error.invalidKeyID"))
 		return
 	}
 	if _, err := s.store.DeleteAPIKey(r.Context(), id); err != nil {
 		redirect(w, r, "/settings", "", err.Error())
 		return
 	}
-	redirect(w, r, "/settings", "API key revoked", "")
+	redirect(w, r, "/settings", s.translate(r, "settings.keyRevoked"), "")
 }
 
 func (s *Server) settingsTestFlareSolverr(w http.ResponseWriter, r *http.Request) {
 	endpoint := strings.TrimRight(strings.TrimSpace(r.FormValue("flaresolverr_url")), "/")
 	if endpoint == "" {
-		redirect(w, r, "/settings", "", "FlareSolverr URL is empty")
+		redirect(w, r, "/settings", "", s.translate(r, "settings.error.flaresolverrEmpty"))
 		return
 	}
 	parsed, err := url.Parse(endpoint)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		redirect(w, r, "/settings", "", "FlareSolverr URL must be an absolute http:// or https:// address")
+		redirect(w, r, "/settings", "", s.translate(r, "settings.error.flaresolverrInvalid"))
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 100*time.Second)
@@ -288,16 +309,16 @@ func (s *Server) settingsTestFlareSolverr(w http.ResponseWriter, r *http.Request
 	body, status, err := flaresolverr.Get(ctx, client, endpoint, "https://example.com/", flaresolverr.DefaultTimeout)
 	if err != nil {
 		s.log.Warn("FlareSolverr test failed", "component", "indexarr", "subsystem", "flaresolverr", "endpoint", endpoint, "error", err)
-		redirect(w, r, "/settings", "", "FlareSolverr test failed: "+err.Error())
+		redirect(w, r, "/settings", "", s.translate(r, "settings.flaresolverrTestFailed", err.Error()))
 		return
 	}
 	if status != http.StatusOK {
 		s.log.Warn("FlareSolverr test returned an HTTP error", "component", "indexarr", "subsystem", "flaresolverr", "endpoint", endpoint, "status", status)
-		redirect(w, r, "/settings", "", fmt.Sprintf("FlareSolverr solved the page but returned HTTP %d", status))
+		redirect(w, r, "/settings", "", s.translate(r, "settings.flaresolverrHTTP", status))
 		return
 	}
 	s.log.Info("FlareSolverr test ok", "endpoint", endpoint, "bytes", len(body))
-	redirect(w, r, "/settings", fmt.Sprintf("FlareSolverr OK: solved %d bytes; press Save settings to keep the URL", len(body)), "")
+	redirect(w, r, "/settings", s.translate(r, "settings.flaresolverrOK", len(body)), "")
 }
 
 func formInt(r *http.Request, key string, fallback, min, max int) (int, error) {
@@ -671,4 +692,66 @@ func intInRange(raw string, fallback, max int) (int, error) {
 		return 0, fmt.Errorf("enter a number between 1 and %d", max)
 	}
 	return value, nil
+}
+
+// settingsSecret returns a secret only after an explicit same-origin fetch.
+// The value is never part of the server-rendered settings HTML.
+func (s *Server) settingsSecret(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if strings.TrimSpace(r.Header.Get("X-Requested-With")) != "fetch" {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	settings, err := s.store.LoadSettings(r.Context())
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	name := strings.TrimSpace(r.PathValue("name"))
+	idValue := strings.TrimSpace(r.PathValue("id"))
+	var value string
+	switch {
+	case name == "apikey":
+		value = settings.APIKey
+	case name == "torznab":
+		if settings.APIKey == "" {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		value = torznabapi.BaseURL(r, settings) + "/api?apikey=" + url.QueryEscape(settings.APIKey)
+	case name == "key" || idValue != "":
+		id, parseErr := strconv.ParseInt(idValue, 10, 64)
+		if parseErr != nil || id <= 0 {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		keys, listErr := s.store.ListAPIKeys(r.Context())
+		if listErr != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		for _, key := range keys {
+			if key.ID == id {
+				value = key.Key
+				break
+			}
+		}
+	default:
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	if value == "" {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_ = json.NewEncoder(w).Encode(struct {
+		Value string `json:"value"`
+	}{Value: value})
 }

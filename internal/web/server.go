@@ -69,6 +69,24 @@ var templateFuncMap = template.FuncMap{
 		}
 		return strconv.FormatInt(value, 10)
 	},
+	"sizeOrDash": func(value int64) string {
+		if value <= 0 {
+			return "—"
+		}
+		return humanBytes(value)
+	},
+	"numOrDash": func(value int64) string {
+		if value < 0 {
+			return "—"
+		}
+		return strconv.FormatInt(value, 10)
+	},
+	"textOrDash": func(value string) string {
+		if strings.TrimSpace(value) == "" {
+			return "—"
+		}
+		return value
+	},
 	"add":  func(a, b int) int { return a + b },
 	"sub":  func(a, b int) int { return a - b },
 	"mulf": func(a float64, b float64) float64 { return a * b },
@@ -167,6 +185,7 @@ type base struct {
 	Title        string
 	Section      string
 	Lang         string
+	LanguageName string
 	Languages    []languageOption
 	Version      string
 	AssetVersion string
@@ -422,6 +441,8 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /logs/clear", s.logsClear)
 	ui.HandleFunc("POST /logs/level", s.logsSetLevel)
 	ui.HandleFunc("GET /settings", s.settingsPage)
+	ui.HandleFunc("GET /settings/secrets/{name}", s.settingsSecret)
+	ui.HandleFunc("GET /settings/secrets/key/{id}", s.settingsSecret)
 	ui.HandleFunc("POST /settings", s.settingsSave)
 	ui.HandleFunc("POST /settings/apikey", s.settingsRegenerateKey)
 	ui.HandleFunc("POST /settings/apikeys", s.settingsAPIKeyAdd)
@@ -597,6 +618,7 @@ func (s *Server) newBase(r *http.Request, title, section string) base {
 		Title:        title,
 		Section:      section,
 		Lang:         lang.HTML(),
+		LanguageName: lang.Name(),
 		Languages:    languageOptions(lang),
 		Version:      s.version,
 		AssetVersion: strconv.FormatInt(s.started.Unix(), 10),

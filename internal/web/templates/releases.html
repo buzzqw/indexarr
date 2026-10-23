@@ -1,35 +1,36 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>Release</h1>
-    <p class="muted">Cerca nella cache SQLite. I risultati si aggiornano mentre digiti; gli stessi dati vengono serviti ai client Torznab.</p>
+    <h1>{{T "releases.title"}}</h1>
+    <p class="muted">{{T "releases.subtitle"}}</p>
   </div>
 </section>
 
 <form class="filters" id="release-filters" method="get" action="/releases" data-live-search role="search">
   <div class="field grow">
-    <label for="q">Search</label>
-    <input id="q" name="q" type="search" value="{{.Query}}" placeholder="title, -excluded, regex…" autocomplete="off" spellcheck="false">
+    <label for="q">{{T "releases.searchLabel"}}</label>
+    <input id="q" name="q" type="search" value="{{.Query}}" placeholder="{{T "releases.searchPlaceholder"}}" autocomplete="off" spellcheck="false">
     <label class="inline-check" for="regex">
       <input id="regex" name="regex" type="checkbox" value="1"{{if .Regex}} checked{{end}}>
-      Regex
+      {{T "releases.regex"}}
     </label>
     <p class="help">
-      Use <code>-word</code> to exclude it. Regex mode: one case-insensitive pattern per term;
-      quotes keep spaces (<code>"the show"</code>); <code>-pattern</code> excludes a pattern.
+      {{T "releases.searchHelpExclude"}} <code>{{T "releases.exampleExclude"}}</code>.
+      {{T "releases.searchHelpQuotes"}} <code>{{T "releases.exampleQuotes"}}</code>.
+      {{T "releases.searchHelpPattern"}} <code>{{T "releases.examplePattern"}}</code>.
     </p>
   </div>
   <div class="field">
-    <label for="source">Source</label>
+    <label for="source">{{T "releases.indexer"}}</label>
     <select id="source" name="source">
-      <option value="0">All sources</option>
+      <option value="0">{{T "releases.allSources"}}</option>
       {{range .Sources}}<option value="{{.ID}}"{{if eq $.Source .ID}} selected{{end}}>{{.Name}}</option>{{end}}
     </select>
   </div>
   <div class="field">
-    <label for="cat">Category</label>
+    <label for="cat">{{T "releases.category"}}</label>
     <select id="cat" name="cat">
-      <option value="">All categories</option>
+      <option value="">{{T "releases.allCategories"}}</option>
       {{range categoryGroups}}
       <optgroup label="{{.Top.Name}}">
         <option value="{{.Top.ID}}"{{if eq $.Category (printf "%d" .Top.ID)}} selected{{end}}>{{.Top.Name}}</option>
@@ -39,79 +40,79 @@
     </select>
   </div>
   <div class="field">
-    <label for="sort">Sort</label>
+    <label for="sort">{{T "releases.sort"}}</label>
     <select id="sort" name="sort">
-      <option value="recent"{{if or (eq .Sort "") (eq .Sort "recent")}} selected{{end}}>Newest first</option>
-      <option value="seen"{{if eq .Sort "seen"}} selected{{end}}>Recently seen</option>
-      <option value="seeders"{{if eq .Sort "seeders"}} selected{{end}}>Most seeders</option>
-      <option value="size"{{if eq .Sort "size"}} selected{{end}}>Largest</option>
-      <option value="title"{{if eq .Sort "title"}} selected{{end}}>Title A–Z</option>
+      <option value="recent"{{if or (eq .Sort "") (eq .Sort "recent")}} selected{{end}}>{{T "releases.sortRecent"}}</option>
+      <option value="seen"{{if eq .Sort "seen"}} selected{{end}}>{{T "releases.sortSeen"}}</option>
+      <option value="seeders"{{if eq .Sort "seeders"}} selected{{end}}>{{T "releases.sortSeeders"}}</option>
+      <option value="size"{{if eq .Sort "size"}} selected{{end}}>{{T "releases.sortSize"}}</option>
+      <option value="title"{{if eq .Sort "title"}} selected{{end}}>{{T "releases.sortTitle"}}</option>
     </select>
   </div>
   <div class="field actions-field">
-    <button class="btn primary" type="submit">Search</button>
-    <a class="btn" href="/releases">Reset</a>
+    <button class="btn primary" type="submit">{{T "shell.searchButton"}}</button>
+    <a class="btn" href="/releases">{{T "common.reset"}}</a>
   </div>
   <div class="filter-advanced">
     <div class="field">
-      <label for="quality">Resolution</label>
+      <label for="quality">{{T "releases.resolution"}}</label>
       <select id="quality" name="quality">
-        <option value=""{{if eq .Quality ""}} selected{{end}}>Any</option>
-        <option value="2160p"{{if eq .Quality "2160p"}} selected{{end}}>2160p / 4K</option>
-        <option value="1080p"{{if eq .Quality "1080p"}} selected{{end}}>1080p</option>
-        <option value="720p"{{if eq .Quality "720p"}} selected{{end}}>720p</option>
-        <option value="480p"{{if eq .Quality "480p"}} selected{{end}}>480p</option>
+        <option value=""{{if eq .Quality ""}} selected{{end}}>{{T "releases.anyQuality"}}</option>
+        <option value="2160p"{{if eq .Quality "2160p"}} selected{{end}}>{{T "releases.quality2160"}}</option>
+        <option value="1080p"{{if eq .Quality "1080p"}} selected{{end}}>{{T "releases.quality1080"}}</option>
+        <option value="720p"{{if eq .Quality "720p"}} selected{{end}}>{{T "releases.quality720"}}</option>
+        <option value="480p"{{if eq .Quality "480p"}} selected{{end}}>{{T "releases.quality480"}}</option>
       </select>
     </div>
     <div class="field">
-      <label for="source_quality">Source</label>
+      <label for="source_quality">{{T "releases.releaseType"}}</label>
       <select id="source_quality" name="source_quality">
-        <option value=""{{if eq .SourceQuality ""}} selected{{end}}>Any</option>
-        <option value="webdl"{{if eq .SourceQuality "webdl"}} selected{{end}}>WEB-DL</option>
-        <option value="bluray"{{if eq .SourceQuality "bluray"}} selected{{end}}>BluRay</option>
-        <option value="hdtv"{{if eq .SourceQuality "hdtv"}} selected{{end}}>HDTV</option>
+        <option value=""{{if eq .SourceQuality ""}} selected{{end}}>{{T "releases.anyType"}}</option>
+        <option value="webdl"{{if eq .SourceQuality "webdl"}} selected{{end}}>{{T "releases.webdl"}}</option>
+        <option value="bluray"{{if eq .SourceQuality "bluray"}} selected{{end}}>{{T "releases.bluray"}}</option>
+        <option value="hdtv"{{if eq .SourceQuality "hdtv"}} selected{{end}}>{{T "releases.hdtv"}}</option>
       </select>
     </div>
     <div class="field">
-      <label for="language">Language</label>
+      <label for="language">{{T "releases.languageFilter"}}</label>
       <select id="language" name="language">
-        <option value=""{{if eq .Language ""}} selected{{end}}>Any</option>
-        <option value="ita"{{if eq .Language "ita"}} selected{{end}}>Italian</option>
-        <option value="eng"{{if eq .Language "eng"}} selected{{end}}>English</option>
+        <option value=""{{if eq .Language ""}} selected{{end}}>{{T "releases.anyLanguage"}}</option>
+        <option value="ita"{{if eq .Language "ita"}} selected{{end}}>{{T "releases.langItalian"}}</option>
+        <option value="eng"{{if eq .Language "eng"}} selected{{end}}>{{T "releases.langEnglish"}}</option>
       </select>
     </div>
     <div class="field small">
-      <label for="min_seeders">Min seeders</label>
+      <label for="min_seeders">{{T "releases.minSeeders"}}</label>
       <input id="min_seeders" name="min_seeders" type="number" min="0" value="{{.MinSeeders}}">
     </div>
     <div class="field small">
-      <label for="min_size_mb">Min size (MB)</label>
+      <label for="min_size_mb">{{T "releases.minSize"}}</label>
       <input id="min_size_mb" name="min_size_mb" type="number" min="0" value="{{.MinSizeMB}}">
     </div>
     <div class="field small">
-      <label for="max_size_mb">Max size (MB)</label>
+      <label for="max_size_mb">{{T "releases.maxSize"}}</label>
       <input id="max_size_mb" name="max_size_mb" type="number" min="0" value="{{.MaxSizeMB}}">
     </div>
     <div class="field checkbox">
       <input id="favorites" name="favorites" type="checkbox" value="1"{{if .FavoritesOnly}} checked{{end}}>
-      <label for="favorites">Favorites</label>
+      <label for="favorites">{{T "releases.favorites"}}</label>
     </div>
     <div class="field checkbox">
       <input id="hidden" name="hidden" type="checkbox" value="1"{{if .ShowHidden}} checked{{end}}>
-      <label for="hidden">Show hidden</label>
+      <label for="hidden">{{T "releases.showHidden"}}</label>
     </div>
   </div>
 </form>
 
 {{if .SavedSearches}}
-<div class="saved-searches" aria-label="Saved searches">
-  <span class="muted">Saved:</span>
+<div class="saved-searches" aria-label="{{T "releases.savedSearches"}}">
+  <span class="muted">{{T "releases.saved"}}</span>
   {{range .SavedSearches}}
   <div class="saved-search-chip">
     <a href="/releases?{{.Query}}">{{.Name}}</a>
     <form method="post" action="/releases/saved/{{.ID}}/delete">
       <input type="hidden" name="csrf" value="{{$.CSRF}}">
-      <button class="link danger" type="submit" aria-label="Delete saved search {{.Name}}">×</button>
+      <button class="link danger" type="submit" aria-label="{{T "releases.deleteSavedSearch" .Name}}">×</button>
     </form>
   </div>
   {{end}}
@@ -121,9 +122,9 @@
 <form class="saved-search-form" method="post" action="/releases/saved">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <input type="hidden" id="saved-query" name="query" value="{{.CurrentQuery}}">
-  <label for="saved-name">Save this search as</label>
-  <input id="saved-name" name="name" type="text" maxlength="60" required placeholder="e.g. TV 1080p ITA">
-  <button class="btn small" type="submit">Save</button>
+  <label for="saved-name">{{T "releases.saveSearchAs"}}</label>
+  <input id="saved-name" name="name" type="text" maxlength="60" required placeholder="{{T "releases.savedNamePlaceholder"}}">
+  <button class="btn small" type="submit">{{T "common.save"}}</button>
 </form>
 
 <div id="releases-results" aria-busy="false">

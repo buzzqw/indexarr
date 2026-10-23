@@ -55,12 +55,13 @@
       <div class="sidebar-foot">
         <span class="version" title="{{T "shell.versionTitle"}}">v{{.Version}}</span>
         <span class="endpoint">{{T "shell.torznab"}}: <code>{{.TorznabURL}}</code>{{if not .PublicURLSet}} <a class="text-danger" href="/settings" title="{{T "shell.publicURLMissing"}}">{{T "shell.publicURLSet"}}</a>{{end}}</span>
-        <nav class="lang-switch" aria-label="{{T "shell.languageAria"}}">
-          <span class="lang-label">{{T "shell.language"}}</span>
-          <span class="lang-links">
+        <details class="lang-menu">
+          <span class="sr-only">{{T "shell.language"}}</span>
+          <summary aria-label="{{T "shell.languageAria"}}">{{.LanguageName}}</summary>
+          <div class="lang-menu-list">
             {{range .Languages}}<a href="/language/{{.Code}}" lang="{{.Code}}" hreflang="{{.Code}}"{{if .Active}} class="active" aria-current="true"{{end}}>{{.Name}}</a>{{end}}
-          </span>
-        </nav>
+          </div>
+        </details>
       </div>
     </aside>
 

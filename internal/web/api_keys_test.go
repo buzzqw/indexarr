@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -24,8 +25,19 @@ func TestAdditionalAPIKeys(t *testing.T) {
 		t.Fatalf("keys = %#v, %v", keys, err)
 	}
 	page := get(t, env.handler, "/settings").Body.String()
-	if !strings.Contains(page, "Sonarr") || !strings.Contains(page, keys[0].Key) {
-		t.Error("additional key not listed")
+	if !strings.Contains(page, "Sonarr") || !strings.Contains(page, "••••••••") {
+		t.Error("additional key name/mask not listed")
+	}
+	if strings.Contains(page, keys[0].Key) {
+		t.Fatal("additional API key is present in the initial settings HTML")
+	}
+	secretRequest := httptest.NewRequest(http.MethodGet,
+		"/settings/secrets/key/"+strconvI(keys[0].ID), nil)
+	secretRequest.Header.Set("X-Requested-With", "fetch")
+	secretRecorder := httptest.NewRecorder()
+	env.handler.ServeHTTP(secretRecorder, secretRequest)
+	if secretRecorder.Code != http.StatusOK || !strings.Contains(secretRecorder.Body.String(), keys[0].Key) {
+		t.Fatalf("secret endpoint = %d: %s", secretRecorder.Code, secretRecorder.Body.String())
 	}
 
 	deleted := postForm(t, env.handler, "/settings/apikeys/"+strconvI(keys[0].ID)+"/delete",

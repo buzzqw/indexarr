@@ -12,6 +12,22 @@ Questo è il documento operativo da cui partono gli agenti. Ogni work package
 stub indicano forma e confini, non sono codice da incollare alla cieca:
 l'agente adatta nomi e dettagli al codice reale e lo verifica con i test.
 
+> **Decisione del coordinatore (23/10, dopo il checkpoint `4e429e5`).** Il
+> database di produzione attuale (`data/indexarr.db`) **non va preservato**: si
+> può buttare e rifare. I dati di partenza si ricopiano dalle istanze Jackett
+> (192.168.1.161:9117) e Prowlarr (:9696) **in sola lettura**: nessuna
+> scrittura, nessuna modifica di configurazione, nessun riavvio su quelle
+> istanze. Conseguenze:
+>
+> - niente migrazione dei dati né rollback del vault: WP8 diventa
+>   **ripartenza pulita**;
+> - il percorso legacy (`sources`, ponte `legacy-*`, `legacyimport`, tab
+>   Nativi/Legacy) non deve più sopravvivere per proteggere dati esistenti:
+>   si rimuove in **WP16**, dopo WP8;
+> - la compatibilità con installazioni precedenti non è un vincolo di
+>   sviluppo; resta un vincolo solo il formato delle definizioni v1 e i
+>   contratti Torznab/Newznab verso le *arr.
+
 ---
 
 ## 0. Stato reale (base della revisione)
@@ -91,27 +107,43 @@ Priorità se c'è un solo agente: WP0 → WP14 fase 1 → WP1 → WP2 → WP5 �
 WP7 → WP8 → WP14 fasi 2–3 → WP3 → WP4 → WP9 → WP10 → WP11 → WP12 → WP13 →
 WP14 fasi 4–5.
 
+**Ordine aggiornato dopo il checkpoint `4e429e5`** (WP0, WP1, WP2, WP5, WP6,
+WP7, WP12, WP14 fase 1 fatti):
+
+```text
+WP-R correzioni ─► WP8 ripartenza pulita ─► WP16 rimozione legacy ─► WP14 fasi 2–3
+                   (parallelo: WP3 memoria, WP15 parametri condizionali)
+poi: WP4 → WP9 → WP10 → WP11 → WP13 → WP14 fasi 4–5
+```
+
+WP16 viene prima delle fasi 2–3 di WP14 perché metà dell'"ostico" della UI
+(tab Nativi/Legacy, definizioni `legacy-*`, pagine sorgenti) sparisce con il
+codice legacy: inutile riprogettare schermate destinate a sparire.
+
 ---
 
 ## 3. Tabella di avanzamento
 
 | WP | Titolo | Stato | Commit |
 |---|---|---|---|
-| WP0 | Convertitore solo come aiuto alla scrittura | fatto | |
-| WP1 | Vault: chiave fuori dai dati, backup chiave, segreti legacy cifrati | fatto (backend; riquadro UI in WP14) | |
-| WP2 | Rate limit di default e percorso legacy sul transport educato | fatto | |
+| WP0 | Convertitore solo come aiuto alla scrittura | fatto | `4e429e5` |
+| WP1 | Vault: chiave fuori dai dati, backup chiave, segreti legacy cifrati | fatto (backend; riquadro UI in WP14) | `4e429e5` |
+| WP2 | Rate limit di default e percorso legacy sul transport educato | fatto | `4e429e5` |
 | WP3 | Memoria: tornare sotto 40 MiB a riposo | da fare | |
 | WP4 | Pipeline a stadi e moduli collegati a runtime | da fare | |
-| WP5 | `download.resolve`: magnet/torrent dalla pagina di dettaglio | fatto | |
-| WP6 | Famiglia RSS/Atom nativa | fatto | |
-| WP7 | Prime definizioni native verificate (ExtTo, TorrentGalaxy, Corsaro, Knaben, TorrentLeech RSS) | fatto (4/5 verificati; TorrentLeech bozza) | |
-| WP8 | Dogfooding: migrazione della produzione al runtime nativo | da fare | |
+| WP5 | `download.resolve`: magnet/torrent dalla pagina di dettaglio | fatto | `4e429e5` |
+| WP6 | Famiglia RSS/Atom nativa | fatto | `4e429e5` |
+| WP7 | Prime definizioni native verificate (ExtTo, TorrentGalaxy, Corsaro, Knaben, TorrentLeech RSS) | fatto (4/5 verificati; TorrentLeech bozza) | `4e429e5` |
+| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | da fare | |
 | WP9 | Health check e transizioni di stato del catalogo | da fare | |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
-| WP12 | CI multipiattaforma e budget di risorse | fatto (Windows noto; budget CI 80 MiB fino a WP3) | |
+| WP12 | CI multipiattaforma e budget di risorse | fatto (Windows noto; budget CI 80 MiB fino a WP3) | `4e429e5` |
 | WP13 | Parità residua | da fare | |
-| WP14 | Interfaccia: da pannello tecnico a prodotto semplice | fase 1 fatta; fasi 2–5 aperte | |
+| WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1 fatta; 1b subito; 2–5 dopo WP16 | `4e429e5` |
+| WP-R | Correzioni dalla revisione del checkpoint | da fare | |
+| WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
+| WP16 | Rimozione del percorso legacy | da fare | |
 
 ---
 
@@ -610,34 +642,145 @@ committare pagine con dati personali.
 
 ---
 
-## WP8 — Dogfooding: migrazione della produzione al runtime nativo
+## WP8 — Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr
 
-**Prerequisiti:** WP1, WP2, WP5, WP6, WP7. **Richiede conferma del
-coordinatore** prima di ogni passo sul servizio reale.
+**Prerequisiti:** WP-R. **Decisione:** il DB attuale non si migra (vedi la
+decisione in testa al documento). **Richiede il coordinatore presente** solo
+per lo scambio del servizio su :8484 (passo 5).
 
-**Procedura.**
+**Regola assoluta su Jackett e Prowlarr: sola lettura.** Solo richieste `GET`
+(l'importer Prowlarr in `internal/importers/prowlarr.go` usa già solo
+`http.MethodGet`); per Jackett si legge una **copia** della directory dati
+(`ServerConfig.json`, `Indexers/*.json`) presa dal coordinatore, mai la
+directory viva. Nessuna API di scrittura, nessun salvataggio di configurazione,
+nessun riavvio.
 
-1. Backup: `data/indexarr.db` → `data/backups/pre-native-<data>.db` e copia
-   della chiave del vault in un luogo separato.
-2. Prova completa su **copia** del DB con un'istanza su porta diversa
-   (`-listen :18484 -db /tmp/...`): applicare i passi 3–5, confrontare per 24 h
-   numero di release nuove per sito tra legacy e nativo.
-3. `POST /api/v2/legacy/apply` per i 3 Torznab (Jackett, Prowlarr, MirCrew):
-   diventano indexer nativi `torznab` (sempre verso Jackett/Prowlarr: il ponte
-   continua, ma sul runtime nativo).
-4. Creare gli indexer nativi da catalogo: 1 ExtTo per ogni filtro attuale, 1
-   TorrentGalaxy per uploader, Corsaro, Knaben, TorrentLeech (RSS con URL nel
-   vault). Disattivare (non cancellare) le `sources` corrispondenti.
-5. Popolare `release_sources` per le release esistenti (job una tantum).
-6. Se ci sono Sonarr/Radarr in rete (non su questo host: porte 8989/7878
-   chiuse), configurarli in Applicazioni con sync "solo aggiunta/rimozione".
-7. Criterio di rollback: se in 24 h il nativo produce meno del 90% delle
-   release del legacy per un sito, `legacy/revert` per quel sito e apertura di
-   un difetto sul WP7.
+**Cosa fare.**
 
-**Accettazione.** In produzione: 0 sorgenti legacy attive tranne quelle
-esplicitamente lasciate al ponte; `release_sources` popolata; Torznab e API key
-invariati per i client; nessun aumento di errori 429/403 per host.
+1. `internal/importers` produce oggi sorgenti ponte (`-apply` crea `sources`).
+   Cambiarlo perché crei **indexer nativi**:
+   - se `DefinitionHint` corrisponde a una definizione `verificata` del catalogo
+     (extto, torrentgalaxy, corsaro, knaben, …) → indexer nativo da quella
+     definizione, con i segreti nel vault;
+   - altrimenti → indexer nativo della famiglia `torznab` che punta
+     all'endpoint Torznab **per singolo indexer** di Jackett/Prowlarr
+     (`/api/v2.0/indexers/<id>/results/torznab/`, `/<id>/api`), con l'API key
+     nel vault: è il "ponte", ma sul runtime nativo, senza `LegacySourceID`;
+   - indexer disattivati a monte → importati disattivati.
+2. Stessa logica nella UI (`/import`): anteprima → "Importa" (oggi è un
+   vicolo cieco, evidenza U7 di WP14).
+3. MirCrew (:9118/api) e i feed RSS (Knaben, TorrentLeech): creati come
+   indexer nativi `torznab`/`rss`/da catalogo, dall'utente o da un file di
+   import, non da `sources`.
+4. Prova su DB nuovo e porta diversa (`-listen :18484 -db <scratch>/new.db`):
+   import, 24 h di funzionamento, confronto del numero di release per sito
+   con quelle del servizio attuale (lettura del DB attuale in sola lettura con
+   `sqlite3 -readonly`).
+5. Scambio (con il coordinatore): fermare :8484, spostare `data/` in
+   `data.old-<data>/` (non cancellarlo finché la nuova istanza non ha girato
+   una settimana), avviare il nuovo binario con DB vuoto, rifare l'import,
+   **mantenere la stessa API key Torznab** (impostarla nel nuovo DB) così i
+   client non vanno riconfigurati.
+
+**Stub.**
+
+```go
+// internal/importers/plan_native.go
+// NativeTarget decides how an imported indexer is recreated: from a verified
+// catalog definition, or as a torznab indexer pointing at the source manager.
+type NativeTarget struct {
+	DefinitionID string // "extto", … or "torznab-generic"
+	ViaManager   string // "jackett" | "prowlarr" | "" (direct)
+	BaseURL      string // per-indexer Torznab endpoint when ViaManager != ""
+	Secrets      map[string]string // sealed by the caller, never logged
+	Enabled      bool
+}
+
+func Target(ix Indexer, cat *catalog.Catalog) NativeTarget
+```
+
+**Accettazione.** Test offline con le fixture di `internal/importers/testdata`
+(Jackett dir e risposta Prowlarr): nessuna riga in `sources`, nessun indexer
+con `legacy_source_id`; indexer verificati creati dalla definizione di
+catalogo; gli altri come `torznab` verso il manager; segreti solo nel vault;
+`httptest` che fallisce il test se riceve un metodo diverso da `GET`. In
+produzione: stessa API key Torznab, nessun errore nuovo in Sonarr/Radarr,
+`data.old-*` conservato.
+
+**Non fare.** Non scrivere su Jackett/Prowlarr, non copiare i loro file
+Cardigann, non cancellare `data/` (si sposta).
+
+---
+
+## WP-R — Correzioni dalla revisione del checkpoint `4e429e5`
+
+1. **WP5:** la risoluzione dei dettagli avviene dopo limit e dedup; con
+   `resolve_on` assente vale `grab`. Test: 50 righe, limit 10 → al massimo 10
+   richieste di dettaglio.
+2. **Fixture senza symlink:** `internal/catalog/definitions/fixtures ->
+   ../fixtures` diventa un file di testo in un checkout Windows. Directory vera
+   o percorsi `../fixtures/...`.
+3. **Windows:** `syscall.Kill` in `cmd/indexarr/main.go` → helper con build tag
+   unix/windows; `GOOS=windows go build ./...` verde e build Windows bloccante
+   in CI.
+4. **Nessun URL di sorgente in chiaro** nella UI legacy (`sources.html`,
+   `source_form.html`) né copiato in chiaro da backfill/legacyimport. Se WP16 è
+   imminente basta la redazione nella UI: il resto sparisce con WP16.
+5. ~~Rollback del vault~~ — non serve: il DB attuale è usa e getta.
+6. `example-html.yaml`: nessuna fixture dichiarata che non esiste.
+
+**Non fare:** `make build` verso `bin/` o riavvio di :8484.
+
+---
+
+## WP15 — Parametri condizionali nelle definizioni (v1.1)
+
+**Perché.** ExtTo e TorrentGalaxy scelgono la sezione del sito in base alla
+categoria (`c=TV`, `c=Movies`), all'uploader o al tag. v1 non lo esprime, quindi
+oggi un'impostazione testuale contiene l'espressione intera: l'utente deve
+sapere cosa scrivere (problema "ostico" di WP14).
+
+**Cosa fare.** Progettare da zero (senza riprendere il templating Cardigann)
+un meccanismo dichiarativo, per esempio una mappa categoria → parametri:
+
+```yaml
+search:
+  paths:
+    - path: /browse
+      params:
+        c: { from_category: true }   # valore preso dalla mappatura categories[].site
+        u: { setting: uploader, omit_if_empty: true }
+```
+
+Nuovo `schema: 1` compatibile (campi opzionali) o `schema: 2` con upgrader
+v1→v2; JSON Schema, validazione stretta, `indexarr-def test` con casi per ogni
+ramo. Poi ExtTo e TorrentGalaxy perdono l'impostazione `filter` libera.
+
+**Accettazione.** Una ricerca Sonarr (cat 5000) su ExtTo produce `c=TV` senza
+impostazioni manuali; test di equivalenza di WP7 ancora verdi.
+
+---
+
+## WP16 — Rimozione del percorso legacy
+
+**Prerequisiti:** WP8 completato in produzione da almeno una settimana.
+
+**Perché.** Con il DB usa e getta il doppio modello `sources` + `indexers`
+non protegge più nulla e costa: due scheduler, due client HTTP, tab
+Nativi/Legacy, 37 definizioni `legacy-*`, `legacyimport`, pagine sorgenti,
+cifratura dei segreti legacy.
+
+**Cosa fare.** Rimuovere: tabella `sources` (migrazione che la elimina),
+`internal/ingest` nella parte sorgenti, connettore ponte con `LegacySourceID`,
+`internal/legacyimport`, route `/sources*` (redirect a `/indexers`),
+`legacy/apply|revert` in `adminapi`, tab Nativi/Legacy, chiavi i18n inutili,
+`SealLegacySecrets`. Le famiglie restano l'unico modo di raggiungere un sito;
+il "ponte" è un indexer `torznab` verso Jackett/Prowlarr.
+
+**Accettazione.** `grep -rn 'LegacySourceID\|legacy-' --include=*.go` vuoto
+(salvo migrazioni storiche); `scripts/ui-smoke.sh` verde; `./sim/run.sh`
+verde; RSS a riposo misurata e confrontata con WP3; documentazione (UI-MAP,
+ARCHITECTURE, indexarr2.md) senza il percorso legacy.
 
 ---
 
@@ -756,6 +899,11 @@ Da fare dopo il gruppo C, ognuno come WP separato quando si arriva lì:
 ---
 
 ## WP14 — Interfaccia: da pannello tecnico a prodotto semplice
+
+> **Specifica di riferimento: [UI-GUIDE.md](UI-GUIDE.md)** (23/10, dopo il
+> checkpoint `4e429e5`): regole, struttura a 6 voci, pagina per pagina,
+> componenti e fasi 1b–5 allineate a WP16. Questa sezione resta la diagnosi
+> originale; in caso di conflitto vale UI-GUIDE.
 
 Analisi fatta il 23/10/2026 leggendo le pagine servite dall'istanza reale
 (`:8484`, build `384e541`, sola lettura). Le revisioni precedenti

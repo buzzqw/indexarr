@@ -7,6 +7,7 @@
 - [Definizioni](DEFINITIONS.md) — formato nativo v1, sicurezza, fixture e CLI `indexarr-def`.
 - [Mappa UI](UI-MAP.md) — route legacy/native, redirect e smoke test dell'interfaccia.
 - [Revisione UI](UI-REVIEW.md) — audit dell'interfaccia vecchia/nuova e checklist di redesign.
+- [Guida al redesign dell'interfaccia](UI-GUIDE.md) — regole, struttura a 6 voci, specifica pagina per pagina e fasi per gli agenti.
 - [Revisione UI dopo il redesign](UI-REVIEW-AFTER.md) — verifica visiva desktop/mobile e problemi residui.
 - [Prestazioni](PERFORMANCE.md) — benchmark, memoria, latenza e ottimizzazioni.
 - [Compatibilità](COMPATIBILITY.md) — Jackett, Prowlarr, MirCrew e altri indexer.

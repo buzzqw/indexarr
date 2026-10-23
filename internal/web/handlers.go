@@ -197,7 +197,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	current := query
 	current.Del("page")
 	data := releasesPage{
-		base:          s.newBase(r, "Release", "releases"),
+		base:          s.newBaseT(r, "releases.title", "releases"),
 		Sources:       sources,
 		Query:         searchQuery,
 		Source:        sourceID,
@@ -260,12 +260,12 @@ type releasePage struct {
 func (s *Server) releasePage(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, "invalid release id")
+		s.renderError(w, r, http.StatusBadRequest, s.translate(r, "releases.error.invalidID"))
 		return
 	}
 	release, err := s.store.GetRelease(r.Context(), id)
 	if err != nil {
-		s.renderError(w, r, http.StatusNotFound, "release not found")
+		s.renderError(w, r, http.StatusNotFound, s.translate(r, "releases.error.notFound"))
 		return
 	}
 	clientName := ""
@@ -278,7 +278,7 @@ func (s *Server) releasePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.render(w, r, "release", releasePage{
-		base:           s.newBase(r, "Release", "releases"),
+		base:           s.newBaseT(r, "releases.title", "releases"),
 		Release:        release,
 		TorrentURL:     fmt.Sprintf("/releases/%d/torrent", release.ID),
 		DownloadClient: clientName,
@@ -288,16 +288,16 @@ func (s *Server) releasePage(w http.ResponseWriter, r *http.Request) {
 func (s *Server) releaseTorrent(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, "invalid release id")
+		s.renderError(w, r, http.StatusBadRequest, s.translate(r, "releases.error.invalidID"))
 		return
 	}
 	release, err := s.store.GetRelease(r.Context(), id)
 	if err != nil {
-		s.renderError(w, r, http.StatusNotFound, "release not found")
+		s.renderError(w, r, http.StatusNotFound, s.translate(r, "releases.error.notFound"))
 		return
 	}
 	if len(release.Torrent) == 0 {
-		s.renderError(w, r, http.StatusNotFound, "no .torrent stored for this release; use the magnet link")
+		s.renderError(w, r, http.StatusNotFound, s.translate(r, "releases.error.noTorrent"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/x-bittorrent")
@@ -310,7 +310,7 @@ func (s *Server) releaseTorrent(w http.ResponseWriter, r *http.Request) {
 func (s *Server) releaseDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/releases", "", "invalid release id")
+		redirect(w, r, "/releases", "", s.translate(r, "releases.error.invalidID"))
 		return
 	}
 	deleted, err := s.store.DeleteRelease(r.Context(), id)
@@ -319,10 +319,10 @@ func (s *Server) releaseDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !deleted {
-		redirect(w, r, "/releases", "", "release not found")
+		redirect(w, r, "/releases", "", s.translate(r, "releases.error.notFound"))
 		return
 	}
-	redirect(w, r, "/releases", "Release deleted", "")
+	redirect(w, r, "/releases", s.translate(r, "releases.deleted"), "")
 }
 
 func (s *Server) releasesDelete(w http.ResponseWriter, r *http.Request) {
@@ -334,7 +334,7 @@ func (s *Server) releasesDelete(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(ids) == 0 {
-		redirect(w, r, "/releases", "", "No releases selected")
+		redirect(w, r, "/releases", "", s.translate(r, "releases.noneSelected"))
 		return
 	}
 	removed, err := s.store.DeleteReleases(r.Context(), ids)
@@ -342,7 +342,7 @@ func (s *Server) releasesDelete(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/releases", "", err.Error())
 		return
 	}
-	redirect(w, r, "/releases", fmt.Sprintf("%d release(s) deleted", removed), "")
+	redirect(w, r, "/releases", s.translate(r, "releases.deletedCount", removed), "")
 }
 
 func pathID(r *http.Request) (int64, error) {

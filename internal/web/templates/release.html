@@ -4,82 +4,82 @@
     <h1>{{.Release.Title}}</h1>
     <p class="muted">{{.Release.SourceName}}{{if .Release.Category}} · {{catName .Release.Category}}{{end}} · {{date .Release.PublishedAt}}</p>
   </div>
-  <a class="btn" href="/releases">← Back to releases</a>
+  <a class="btn" href="/releases">{{T "release.back"}}</a>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Metadata</h2></div>
+  <div class="panel-head"><h2>{{T "release.metadata"}}</h2></div>
   <dl class="detail">
-    <dt>Size</dt><dd>{{bytes .Release.Size}}</dd>
-    <dt>Category</dt><dd>{{catName .Release.Category}} <span class="muted">({{.Release.Category}})</span></dd>
-    <dt>Seeders / leechers</dt><dd>{{num .Release.Seeders}} / {{num .Release.Leechers}}</dd>
-    <dt>Infohash</dt><dd>{{if .Release.InfoHash}}<code>{{.Release.InfoHash}}</code>{{else}}<span class="muted">unknown</span>{{end}}</dd>
-    <dt>External ids</dt><dd>{{if .Release.IMDbID}}IMDb {{.Release.IMDbID}} {{end}}{{if .Release.TMDbID}}TMDB {{.Release.TMDbID}} {{end}}{{if .Release.TVDbID}}TVDB {{.Release.TVDbID}}{{end}}{{if not (or .Release.IMDbID .Release.TMDbID .Release.TVDbID)}}<span class="muted">none</span>{{end}}</dd>
-    <dt>First seen</dt><dd>{{date .Release.FirstSeenAt}} <span class="muted">({{ago .Release.FirstSeenAt}})</span></dd>
-    <dt>Last seen</dt><dd>{{date .Release.LastSeenAt}} <span class="muted">({{ago .Release.LastSeenAt}})</span></dd>
-    <dt>Times seen</dt><dd>{{.Release.TimesSeen}}</dd>
-    <dt>GUID</dt><dd>{{if .Release.GUID}}<code>{{.Release.GUID}}</code>{{else}}<span class="muted">none</span>{{end}}</dd>
-    <dt>Torrent file</dt>
+    <dt>{{T "releases.colSize"}}</dt><dd>{{sizeOrDash .Release.Size}}</dd>
+    <dt>{{T "releases.category"}}</dt><dd>{{if .Release.Category}}{{catName .Release.Category}} <span class="muted">({{.Release.Category}})</span>{{else}}—{{end}}</dd>
+    <dt>{{T "release.seedersLeechers"}}</dt><dd>{{numOrDash .Release.Seeders}} / {{numOrDash .Release.Leechers}}</dd>
+    <dt>{{T "release.infohash"}}</dt><dd>{{if .Release.InfoHash}}<code>{{.Release.InfoHash}}</code>{{else}}<span class="muted">{{T "release.unknown"}}</span>{{end}}</dd>
+    <dt>{{T "release.externalIDs"}}</dt><dd>{{if .Release.IMDbID}}{{T "release.imdb"}} {{.Release.IMDbID}} {{end}}{{if .Release.TMDbID}}{{T "release.tmdb"}} {{.Release.TMDbID}} {{end}}{{if .Release.TVDbID}}{{T "release.tvdb"}} {{.Release.TVDbID}}{{end}}{{if not (or .Release.IMDbID .Release.TMDbID .Release.TVDbID)}}<span class="muted">{{T "common.none"}}</span>{{end}}</dd>
+    <dt>{{T "release.firstSeen"}}</dt><dd>{{date .Release.FirstSeenAt}} <span class="muted">({{ago .Release.FirstSeenAt}})</span></dd>
+    <dt>{{T "release.lastSeen"}}</dt><dd>{{date .Release.LastSeenAt}} <span class="muted">({{ago .Release.LastSeenAt}})</span></dd>
+    <dt>{{T "release.timesSeen"}}</dt><dd>{{.Release.TimesSeen}}</dd>
+    <dt>{{T "release.guid"}}</dt><dd>{{if .Release.GUID}}<code>{{.Release.GUID}}</code>{{else}}<span class="muted">{{T "common.none"}}</span>{{end}}</dd>
+    <dt>{{T "release.torrentFile"}}</dt>
     <dd>
       {{if .Release.Torrent}}
-        {{bytes .Release.TorrentSize}} stored · <a class="link" href="{{.TorrentURL}}">download .torrent</a>
+        {{bytes .Release.TorrentSize}} {{T "release.stored"}} · <a class="link" href="{{.TorrentURL}}">{{T "release.downloadTorrent"}}</a>
       {{else}}
-        <span class="muted">not stored (magnet only)</span>
+        <span class="muted">{{T "release.notStored"}}</span>
       {{end}}
     </dd>
   </dl>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Magnet</h2></div>
+  <div class="panel-head"><h2>{{T "release.magnetTitle"}}</h2></div>
   {{if .Release.Magnet}}
     <div class="field">
-      <label for="magnet">Magnet link</label>
+      <label for="magnet">{{T "releases.magnetLink"}}</label>
       <textarea id="magnet" rows="3" readonly>{{.Release.Magnet}}</textarea>
     </div>
     <div class="actions">
-      <button class="btn" type="button" data-copy="{{.Release.Magnet}}">Copy magnet</button>
-      <a class="btn" href="{{.Release.Magnet}}">Open in torrent client</a>
+      <button class="btn" type="button" data-copy="{{.Release.Magnet}}">{{T "release.copyMagnet"}}</button>
+      <a class="btn" href="{{.Release.Magnet}}">{{T "release.openInClient"}}</a>
     </div>
   {{else}}
-    <p class="muted">This release has no magnet link; use the stored .torrent file.</p>
+    <p class="muted">{{T "release.noMagnet"}}</p>
   {{end}}
 </section>
 
 {{if .DownloadClient}}
 <section class="panel">
-  <div class="panel-head"><h2>Download client</h2></div>
-  <p class="help">Send this release to {{.DownloadClient}} using the stored .torrent, or the magnet when no file is stored.</p>
+  <div class="panel-head"><h2>{{T "release.downloadClient"}}</h2></div>
+  <p class="help">{{T "release.sendHelp" .DownloadClient}}</p>
   <form method="post" action="/releases/{{.Release.ID}}/send">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <button class="btn primary" type="submit">Send to {{.DownloadClient}}</button>
+    <button class="btn primary" type="submit">{{T "release.sendTo" .DownloadClient}}</button>
   </form>
 </section>
 {{end}}
 
 <section class="panel">
-  <div class="panel-head"><h2>Curation</h2></div>
+  <div class="panel-head"><h2>{{T "release.curation"}}</h2></div>
   <div class="actions">
     <form method="post" action="/releases/{{.Release.ID}}/favorite">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn" type="submit">{{if .Release.Favorite}}Remove favorite{{else}}Favorite{{end}}</button>
+      <button class="btn" type="submit">{{if .Release.Favorite}}{{T "release.removeFavorite"}}{{else}}{{T "releases.favorite"}}{{end}}</button>
     </form>
     <form method="post" action="/releases/{{.Release.ID}}/hidden">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn" type="submit">{{if .Release.Hidden}}Show release{{else}}Hide release{{end}}</button>
+      <button class="btn" type="submit">{{if .Release.Hidden}}{{T "release.showRelease"}}{{else}}{{T "release.hideRelease"}}{{end}}</button>
     </form>
     <form method="post" action="/releases/{{.Release.ID}}/block"
-      data-confirm="Block this release? It will be hidden and every future run will skip it.">
+      data-confirm="{{T "release.blockConfirm"}}">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn danger" type="submit">Block release</button>
+      <button class="btn danger" type="submit">{{T "release.block"}}</button>
     </form>
-    {{if .Release.Favorite}}<span class="chip ok">★ favorite</span>{{end}}
-    {{if .Release.Hidden}}<span class="chip warn">hidden</span>{{end}}
+    {{if .Release.Favorite}}<span class="chip ok">{{T "release.favoriteChip"}}</span>{{end}}
+    {{if .Release.Hidden}}<span class="chip warn">{{T "release.hiddenChip"}}</span>{{end}}
   </div>
 </section>
 
-<form method="post" action="/releases/{{.Release.ID}}/delete" data-confirm="Delete this release from the cache?">
+<form method="post" action="/releases/{{.Release.ID}}/delete" data-confirm="{{T "release.deleteConfirm"}}">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <button class="btn danger" type="submit">Delete release</button>
+  <button class="btn danger" type="submit">{{T "release.delete"}}</button>
 </form>
 {{end}}
