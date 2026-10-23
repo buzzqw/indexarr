@@ -10,11 +10,17 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"log/slog"
 )
 
-const DefaultMaxEntries = 2000
+const (
+	DefaultMaxEntries = 2000
+	// maxFieldLen bounds one message or attribute. A failing proxy can echo a
+	// multi-megabyte URL; keeping 2000 of those alive would waste memory.
+	maxFieldLen = 4096
+)
 
 // Attr is one rendered log attribute.
 type Attr struct {
@@ -259,7 +265,7 @@ func (h *handler) Handle(ctx context.Context, record slog.Record) error {
 	h.buffer.Add(Entry{
 		Time:    record.Time,
 		Level:   record.Level,
-		Message: redact(record.Message),
+		Message: clamp(redact(record.Message)),
 		Attrs:   attrs,
 	})
 	return h.base.Handle(ctx, record)
@@ -301,7 +307,7 @@ func appendAttr(out []Attr, groups []string, attr slog.Attr) []Attr {
 	if sensitiveKey(attr.Key) {
 		value = "***"
 	} else {
-		value = redact(value)
+		value = clamp(redact(value))
 	}
 	key := attr.Key
 	if len(groups) > 0 {
@@ -318,6 +324,18 @@ var (
 func redact(text string) string {
 	text = secretPattern.ReplaceAllString(text, "$1=***")
 	return basicPattern.ReplaceAllString(text, "$1***@")
+}
+
+// clamp bounds a message or attribute and keeps the string valid UTF-8.
+func clamp(text string) string {
+	if len(text) <= maxFieldLen {
+		return text
+	}
+	cut := maxFieldLen
+	for cut > 0 && !utf8.RuneStart(text[cut]) {
+		cut--
+	}
+	return text[:cut] + "…"
 }
 
 func sensitiveKey(key string) bool {

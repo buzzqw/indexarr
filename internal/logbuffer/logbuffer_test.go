@@ -117,3 +117,21 @@ func TestComponentFilter(t *testing.T) {
 		t.Errorf("component dump = %q", dump)
 	}
 }
+
+func TestClampsHugeFields(t *testing.T) {
+	buffer := New(10)
+	logger := testLogger(buffer)
+	huge := strings.Repeat("x", maxFieldLen*3)
+	logger.Error(huge, "error", huge)
+
+	entry := buffer.Snapshot(1, slog.LevelError, "")[0]
+	if len(entry.Message) > maxFieldLen+4 {
+		t.Errorf("message length = %d", len(entry.Message))
+	}
+	if len(entry.Attrs[0].Value) > maxFieldLen+4 {
+		t.Errorf("attr length = %d", len(entry.Attrs[0].Value))
+	}
+	if !strings.HasSuffix(entry.Message, "…") || !strings.HasSuffix(entry.Attrs[0].Value, "…") {
+		t.Error("clamped values are not marked")
+	}
+}
