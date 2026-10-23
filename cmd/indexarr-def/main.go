@@ -64,14 +64,20 @@ commands:
   fmt [-w] <file>                   print or rewrite canonical YAML
   fingerprint <file>                print the SHA-256 of the raw file
   check-fixtures <file>             verify tests[].fixture files exist
-  convert-cardigann [flags] <path>  convert local Cardigann YAML to native v1
+  convert-cardigann [flags] <path>  convert local Cardigann YAML to a native draft
 
 flags:
-  -json      validate: emit a machine-readable array
-  -w         fmt: rewrite the file in place
-  -o <dir>   convert-cardigann: output directory (default stdout for one file)
-  -author    convert-cardigann: author recorded in the native definition
-  -version   print the version and exit
+  -json             validate: emit a machine-readable array
+  -catalog          validate: reject derived drafts (for internal/catalog/definitions)
+  -reject-derived   validate: alias of -catalog
+  -w                fmt: rewrite the file in place
+  -o <dir>          convert-cardigann: output directory (default stdout for one file)
+  -author           convert-cardigann: author recorded in the native definition
+  -version          print the version and exit
+
+convert-cardigann is a writing aid, not a migration or import path. Every
+converted draft carries meta.derived_from: cardigann, stays local and is never
+a catalog entry or an API/UI import: rewrite it by observing the site.
 `)
 }
 
@@ -79,8 +85,10 @@ func runValidate(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("validate", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	asJSON := flags.Bool("json", false, "emit a machine-readable JSON array")
+	catalogMode := flags.Bool("catalog", false, "reject derived drafts, as required for internal/catalog/definitions")
+	rejectDerived := flags.Bool("reject-derived", false, "alias of -catalog")
 	flags.Usage = func() {
-		fmt.Fprintln(stderr, "usage: indexarr-def validate [-json] <file-or-dir>...")
+		fmt.Fprintln(stderr, "usage: indexarr-def validate [-json] [-catalog|-reject-derived] <file-or-dir>...")
 	}
 	if err := flags.Parse(args); err != nil {
 		return 2
@@ -90,7 +98,9 @@ func runValidate(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	results := deftool.ValidatePaths(flags.Args())
+	results := deftool.ValidatePathsWithOptions(flags.Args(), deftool.ValidateOptions{
+		RejectDerived: *catalogMode || *rejectDerived,
+	})
 	failed := false
 	for _, result := range results {
 		if !result.OK {
@@ -233,8 +243,10 @@ func runCheckFixtures(args []string, stdout, stderr io.Writer) int {
 }
 
 // runConvertCardigann converts local Cardigann YAML (Jackett/Prowlarr) into
-// native v1 definitions. This is a local migration tool: indexarr never
-// executes Cardigann at runtime and never ships converted definitions.
+// native v1 drafts. This is a local writing aid, not a migration or import
+// path: indexarr never executes Cardigann at runtime, the API and UI never
+// import these drafts, and the built-in catalog rejects them. The drafts must
+// be rewritten by observing the site before they can become catalog entries.
 func runConvertCardigann(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("convert-cardigann", flag.ContinueOnError)
 	flags.SetOutput(stderr)

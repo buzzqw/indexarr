@@ -3,15 +3,18 @@ package web
 import (
 	"net/http"
 	"strings"
+
+	"github.com/buzzqw/indexarr/internal/engine"
 )
 
 // activityPage unifies the run history and the in-memory log in one tabbed
 // page. The two data sets keep their existing loaders.
 type activityPage struct {
 	base
-	Tab  string
-	Runs runsPage
-	Logs logsPage
+	Tab         string
+	Runs        runsPage
+	Logs        logsPage
+	HostMetrics []engine.HostMetric
 }
 
 func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
@@ -26,10 +29,11 @@ func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
 	}
 	logs := s.logsData(r)
 	data := activityPage{
-		base: s.newBase(r, "Activity", "activity"),
-		Tab:  tab,
-		Runs: runs,
-		Logs: logs,
+		base:        s.newBaseT(r, "activity.title", "activity"),
+		Tab:         tab,
+		Runs:        runs,
+		Logs:        logs,
+		HostMetrics: s.polite.HostMetrics(),
 	}
 	if tab == "logs" {
 		data.AutoRefresh = logs.AutoRefresh

@@ -10,9 +10,10 @@
 // the API key in the vault and only then disables the legacy source. Revert
 // restores the legacy-<id> bridge and re-enables the source. Every failure is
 // compensated so a broken migration never loses a working bridge. RSS sources
-// stay on the bridge until a native RSS family exists, and Torznab sources
-// with HTTP Basic credentials are skipped because the Torznab family
-// connector does not send them.
+// whose URL is a plain feed are proposed as native candidates; recognized HTML
+// listings (ExtTo, TorrentGalaxy, Corsaro) stay on the bridge until they have a
+// native definition. Torznab sources with HTTP Basic credentials are skipped
+// because the Torznab family connector does not send them.
 package legacyimport
 
 import (
@@ -86,7 +87,16 @@ func Preview(ctx context.Context, st *store.Store) ([]Candidate, error) {
 			}
 			candidate.Native = true
 		case kind == "rss":
-			candidate.Reason = "RSS sources have no native family yet"
+			if err := nativeURL(source.URL); err != nil {
+				candidate.Reason = err.Error()
+				break
+			}
+			if site := htmlListingSite(source.URL); site != "" {
+				candidate.Reason = fmt.Sprintf(
+					"%s is an HTML listing, not an RSS/Atom feed; it needs a native definition", site)
+				break
+			}
+			candidate.Native = true
 		case kind == "":
 			candidate.Reason = "source has no kind"
 		default:
@@ -107,6 +117,27 @@ func Counts(candidates []Candidate) (native, skipped int) {
 		skipped++
 	}
 	return native, skipped
+}
+
+// htmlListingSite names the hosts that the legacy ingest path reads with a
+// dedicated HTML listing parser. Their pages are not plain RSS/Atom feeds, so a
+// legacy source pointing at one is not a native RSS candidate yet.
+func htmlListingSite(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return ""
+	}
+	host := strings.ToLower(parsed.Hostname())
+	switch {
+	case strings.Contains(host, "extto"), strings.Contains(host, "ext.to"):
+		return "ExtTo"
+	case strings.Contains(host, "torrentgalaxy"):
+		return "TorrentGalaxy"
+	case strings.Contains(host, "corsaro"):
+		return "Corsaro"
+	default:
+		return ""
+	}
 }
 
 // nativeURL validates that raw is an http or https URL with a host.

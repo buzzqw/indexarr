@@ -1,0 +1,58 @@
+# BOZZA (draft). TorrentLeech RSS feed.
+#
+# The feed address embeds a personal rsskey and no release is public without
+# one, so only the channel envelope and the invalid-key error were observed on
+# 2026-10-23 (fixtures/torrentleech/feed-invalid-key.xml). The item fixture is
+# synthetic and preserves that envelope; see fixtures/torrentleech/README.md.
+# Promotion to "verificata" requires a real, sanitized feed capture and the
+# equivalence test on it.
+schema: 1
+connector: rss
+
+meta:
+  id: torrentleech
+  name: TorrentLeech
+  language: en-US
+  type: private
+  protocol: torrent
+  author: indexarr
+  description: Private TorrentLeech RSS feed; the URL contains a personal rsskey.
+  urls:
+    - https://rss.torrentleech.org/
+  updated: "2026-10-23"
+
+settings:
+  - name: url
+    type: password
+    label: "Personal RSS feed URL"
+    help: "https://rss.torrentleech.org/<your-rsskey>; the key is stored by the vault as a secret setting."
+    required: true
+  - name: default-category
+    type: text
+    label: "Default category"
+    help: "Standard Torznab category used when the feed has only text categories."
+    default: "8000"
+  - name: query
+    type: text
+    label: "Title filter (optional)"
+    help: "Keep only feed items whose title contains these words."
+
+categories:
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "Music", standard: 3000, desc: "Audio" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: ""
+  min_rows: 1
+
+tests:
+  - name: feed
+    fixture: fixtures/torrentleech/feed.xml
+    expect: { min_rows: 3, required: [title, download] }

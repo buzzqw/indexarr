@@ -130,6 +130,53 @@ func TestValidatePathsReportsInvalidFilesInDirectory(t *testing.T) {
 	}
 }
 
+func TestValidateOptionsRejectDerived(t *testing.T) {
+	dir := t.TempDir()
+	replaceMeta := func(extra string) string {
+		t.Helper()
+		updated := strings.Replace(validDefinition, "  urls: [https://sample.example/]\n",
+			"  urls: [https://sample.example/]\n"+extra, 1)
+		if updated == validDefinition {
+			t.Fatal("could not extend meta in the test definition")
+		}
+		return updated
+	}
+
+	derivedPath := filepath.Join(dir, "derived.yaml")
+	authorPath := filepath.Join(dir, "author.yaml")
+	writeFile(t, derivedPath, replaceMeta("  derived_from: cardigann\n"))
+	writeFile(t, authorPath, replaceMeta("  author: Cardigann-Import\n"))
+
+	// Normal validation still accepts local derived drafts: the converter
+	// documents `indexarr-def validate ./native`.
+	for _, result := range ValidatePaths([]string{dir}) {
+		if !result.OK {
+			t.Errorf("normal validate rejected %s: %v", result.Path, result.Err)
+		}
+	}
+
+	results := ValidatePathsWithOptions([]string{dir}, ValidateOptions{RejectDerived: true})
+	if len(results) != 2 {
+		t.Fatalf("got %d results, want 2", len(results))
+	}
+	for _, result := range results {
+		if result.OK {
+			t.Errorf("RejectDerived accepted %s", result.Path)
+			continue
+		}
+		if result.ID == "" {
+			t.Errorf("%s: ID is empty after a policy failure", result.Path)
+		}
+		if !strings.Contains(result.Err.Error(), "derived draft") {
+			t.Errorf("%s: error = %v, want a derived-draft explanation", result.Path, result.Err)
+		}
+	}
+
+	if result := ValidateFileWithOptions(derivedPath, ValidateOptions{RejectDerived: true}); result.OK || result.Err == nil {
+		t.Errorf("ValidateFileWithOptions accepted a derived draft: %+v", result)
+	}
+}
+
 func TestResultsAreJSONable(t *testing.T) {
 	results := []Result{
 		{Path: "good.yaml", ID: "sample", OK: true},

@@ -1,9 +1,12 @@
 package catalog
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"io/fs"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -29,10 +32,16 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 7 {
-		t.Fatalf("len(Builtins()) = %d, want 7", len(entries))
+	if len(entries) != 12 {
+		t.Fatalf("len(Builtins()) = %d, want 12", len(entries))
 	}
 
+	verified := map[string]bool{
+		"extto":         true,
+		"torrentgalaxy": true,
+		"corsaro":       true,
+		"knaben":        true,
+	}
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
 		if seen[entry.ID] {
@@ -46,8 +55,12 @@ func TestBuiltinsValid(t *testing.T) {
 		if entry.Definition.Meta.ID != entry.ID {
 			t.Errorf("%s: meta.id = %q", entry.ID, entry.Definition.Meta.ID)
 		}
-		if entry.State != "bozza" {
-			t.Errorf("%s: state = %q, want bozza", entry.ID, entry.State)
+		wantState := "bozza"
+		if verified[entry.ID] {
+			wantState = "verificata"
+		}
+		if entry.State != wantState {
+			t.Errorf("%s: state = %q, want %q", entry.ID, entry.State, wantState)
 		}
 		if entry.Author == "" {
 			t.Errorf("%s: author is empty", entry.ID)
@@ -90,7 +103,11 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	want := []string{"example-html", "unit3d-generic", "newznab-generic", "gazelle-generic", "nexusphp-generic", "torrenttrader-generic", "xbtit-generic"}
+	want := []string{
+		"example-html", "unit3d-generic", "newznab-generic", "gazelle-generic",
+		"nexusphp-generic", "torrenttrader-generic", "xbtit-generic",
+		"extto", "torrentgalaxy", "corsaro", "knaben", "torrentleech",
+	}
 	if len(entries) != len(want) {
 		t.Fatalf("len(Builtins()) = %d, want %d", len(entries), len(want))
 	}
@@ -110,8 +127,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 7 {
-		t.Fatalf("manifest has %d definitions, want 7", len(items))
+	if len(items) != 12 {
+		t.Fatalf("manifest has %d definitions, want 12", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")
@@ -132,6 +149,58 @@ func TestEveryDefinitionHasLanguage(t *testing.T) {
 	for _, entry := range entries {
 		if strings.TrimSpace(entry.Definition.Meta.Language) == "" {
 			t.Errorf("%s: meta.language is required", entry.ID)
+		}
+	}
+}
+
+func TestVerifiedEntriesHaveHealthAndTests(t *testing.T) {
+	// A catalog entry may only be "verificata" when it declares a health query
+	// and at least one offline test; the equivalence test exercises the
+	// fixtures themselves.
+	entries, err := Builtins()
+	if err != nil {
+		t.Fatalf("Builtins: %v", err)
+	}
+	verified := 0
+	for _, entry := range entries {
+		if entry.State != "verificata" {
+			continue
+		}
+		verified++
+		if entry.Definition.Health == nil {
+			t.Errorf("%s: verificata but has no health section", entry.ID)
+		}
+		if len(entry.Definition.Tests) == 0 {
+			t.Errorf("%s: verificata but declares no tests", entry.ID)
+		}
+	}
+	if verified == 0 {
+		t.Fatal("catalog has no verificata entry")
+	}
+}
+
+func TestDeclaredFixturesExist(t *testing.T) {
+	// tests[].fixture is relative to the definition file. The catalog keeps
+	// fixtures in internal/catalog/fixtures/ and exposes them next to the
+	// definitions through the definitions/fixtures link.
+	entries, err := Builtins()
+	if err != nil {
+		t.Fatalf("Builtins: %v", err)
+	}
+	for _, entry := range entries {
+		if entry.State != "verificata" {
+			continue // draft fixtures are not part of this work package
+		}
+		for _, test := range entry.Definition.Tests {
+			name := filepath.Join("definitions", filepath.FromSlash(test.Fixture))
+			info, err := os.Stat(name)
+			if err != nil {
+				t.Errorf("%s: fixture %q: %v", entry.ID, test.Fixture, err)
+				continue
+			}
+			if !info.Mode().IsRegular() || info.Size() == 0 {
+				t.Errorf("%s: fixture %q is not a non-empty regular file", entry.ID, test.Fixture)
+			}
 		}
 	}
 }
@@ -250,12 +319,16 @@ func TestSyncNeverOverwritesLocal(t *testing.T) {
 		t.Fatalf("UpsertDefinition(local): %v", err)
 	}
 
+	entries, err := Builtins()
+	if err != nil {
+		t.Fatalf("Builtins: %v", err)
+	}
 	n, err := Sync(ctx, st)
 	if err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	if n != 6 {
-		t.Fatalf("Sync wrote %d, want 6 (the local entry must be skipped)", n)
+	if want := len(entries) - 1; n != want {
+		t.Fatalf("Sync wrote %d, want %d (the local entry must be skipped)", n, want)
 	}
 
 	got, err := st.GetDefinition(ctx, local.ID)
@@ -317,6 +390,96 @@ func TestLoadRejectsInvalidDefinition(t *testing.T) {
 			}
 			if _, err := load(fsys); err == nil {
 				t.Fatal("load accepted an invalid definition")
+			}
+		})
+	}
+}
+
+func TestBuiltinsAreNotDerived(t *testing.T) {
+	entries, err := Builtins()
+	if err != nil {
+		t.Fatalf("Builtins: %v", err)
+	}
+	for _, entry := range entries {
+		if entry.Definition.IsDerived() {
+			t.Errorf("%s: built-in catalog entry is a derived draft (derived_from=%q, author=%q)",
+				entry.ID, entry.Definition.Meta.DerivedFrom, entry.Definition.Meta.Author)
+		}
+	}
+}
+
+// TestLoadRejectsDerivedDraftInCatalog copies the real embedded catalog into a
+// temporary directory, marks one definition as derived and checks that the
+// loader refuses it. This is the same path catalog.Builtins uses.
+func TestLoadRejectsDerivedDraftInCatalog(t *testing.T) {
+	dir := t.TempDir()
+	manifestBody, err := builtinFS.ReadFile(manifestFile)
+	if err != nil {
+		t.Fatalf("read embedded manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, manifestFile), manifestBody, 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "definitions"), 0o755); err != nil {
+		t.Fatalf("mkdir definitions: %v", err)
+	}
+	files, err := fs.Glob(builtinFS, "definitions/*.yaml")
+	if err != nil {
+		t.Fatalf("glob definitions: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("embedded catalog has no definitions")
+	}
+	for _, name := range files {
+		body, err := builtinFS.ReadFile(name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(name)), body, 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	target := filepath.Join(dir, "definitions", "example-html.yaml")
+	body, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("read %s: %v", target, err)
+	}
+	derived := bytes.Replace(body, []byte("  author: indexarr\n"),
+		[]byte("  author: indexarr\n  derived_from: cardigann\n"), 1)
+	if bytes.Equal(derived, body) {
+		t.Fatal("could not inject derived_from into the temp catalog fixture")
+	}
+	if err := os.WriteFile(target, derived, 0o644); err != nil {
+		t.Fatalf("write %s: %v", target, err)
+	}
+
+	_, err = load(os.DirFS(dir))
+	if err == nil {
+		t.Fatal("load accepted a catalog entry with derived_from")
+	}
+	if !strings.Contains(err.Error(), "derived") || !strings.Contains(err.Error(), "derived_from") {
+		t.Errorf("error does not explain the derived-draft rejection: %v", err)
+	}
+}
+
+// TestLoadRejectsCardigannAuthor guards the second marker written by the
+// converter: the author is compared case-insensitively and after trimming.
+func TestLoadRejectsCardigannAuthor(t *testing.T) {
+	manifestBody := "schema: 1\ndefinitions:\n  - id: draft\n    file: definitions/draft.yaml\n    state: bozza\n    author: indexarr\n"
+	for _, author := range []string{"cardigann-import", "Cardigann-Import", "CARDIGANN-IMPORT", "  cardigann-import  "} {
+		t.Run(strings.TrimSpace(author), func(t *testing.T) {
+			defBody := "schema: 1\nconnector: torznab\nmeta:\n  id: draft\n  name: Draft\n  type: public\n  protocol: torrent\n  urls: [https://draft.example/]\n  author: \"" + author + "\"\n"
+			fsys := fstest.MapFS{
+				manifestFile:             &fstest.MapFile{Data: []byte(manifestBody)},
+				"definitions/draft.yaml": &fstest.MapFile{Data: []byte(defBody)},
+			}
+			_, err := load(fsys)
+			if err == nil {
+				t.Fatalf("load accepted author %q", author)
+			}
+			if !strings.Contains(err.Error(), "derived") {
+				t.Errorf("error does not explain the derived-draft rejection: %v", err)
 			}
 		})
 	}

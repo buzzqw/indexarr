@@ -54,7 +54,7 @@
 
       <div class="sidebar-foot">
         <span class="version" title="{{T "shell.versionTitle"}}">v{{.Version}}</span>
-        <span class="endpoint">{{T "shell.torznab"}}: <code>{{.TorznabURL}}</code></span>
+        <span class="endpoint">{{T "shell.torznab"}}: <code>{{.TorznabURL}}</code>{{if not .PublicURLSet}} <a class="text-danger" href="/settings" title="{{T "shell.publicURLMissing"}}">{{T "shell.publicURLSet"}}</a>{{end}}</span>
         <nav class="lang-switch" aria-label="{{T "shell.languageAria"}}">
           <span class="lang-label">{{T "shell.language"}}</span>
           <span class="lang-links">

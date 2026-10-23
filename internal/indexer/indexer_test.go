@@ -335,6 +335,68 @@ func TestLegacyConnector(t *testing.T) {
 	}
 }
 
+func TestRSSBridgeOnlyWithLegacySource(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/rss" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`<?xml version="1.0"?>
+<rss version="2.0"><channel>
+<item><title>Native RSS Release</title><guid>rss-1</guid>
+<link>magnet:?xt=urn:btih:cccccccccccccccccccccccccccccccccccccccc&amp;dn=RSS</link>
+</item>
+</channel></rss>`))
+	}))
+	t.Cleanup(server.Close)
+	manager := newTestManager(t, st, v)
+
+	body := readTestdata(t, "legacy_torznab.yaml")
+	body = strings.ReplaceAll(body, "id: legacy-torznab", "id: native-rss")
+	body = strings.ReplaceAll(body, "name: Legacy Torznab", "name: Native RSS")
+	body = strings.ReplaceAll(body, "connector: torznab", "connector: rss")
+	seedDefinition(t, st, "native-rss", "rss", body)
+	config := fmt.Sprintf(`{"url":%q}`, server.URL+"/rss")
+	id := createIndexer(t, st, "native-rss", "native-rss", "Native RSS", "torrent", config)
+
+	connector, _, err := manager.Connector(context.Background(), id)
+	if err != nil {
+		t.Fatalf("Connector(native rss): %v", err)
+	}
+	rss, ok := connector.(*family.RSS)
+	if !ok {
+		t.Fatalf("connector = %T, want *family.RSS", connector)
+	}
+	items, err := rss.Search(context.Background(), engine.SearchRequest{Query: "native"})
+	if err != nil {
+		t.Fatalf("Search(native rss): %v", err)
+	}
+	if len(items) != 1 || items[0].Title != "Native RSS Release" {
+		t.Fatalf("items = %+v", items)
+	}
+
+	// The same definition with legacy_source_id is a bridge: it must stay on
+	// the legacy ingest path even though the family factory exists.
+	if err := st.UpdateIndexer(context.Background(), store.Indexer{
+		ID: id, DefinitionID: "native-rss", Slug: "native-rss",
+		Name: "Native RSS", Protocol: "torrent", Enabled: true,
+		Priority: 25, ConfigJSON: config, LegacySourceID: 11,
+	}); err != nil {
+		t.Fatalf("UpdateIndexer: %v", err)
+	}
+	manager.Invalidate(id)
+	_, _, err = manager.Connector(context.Background(), id)
+	if !errors.Is(err, ErrLegacyConnector) {
+		t.Fatalf("error = %v, want ErrLegacyConnector", err)
+	}
+	var legacy *LegacyConnectorError
+	if !errors.As(err, &legacy) {
+		t.Fatalf("error = %T, want *LegacyConnectorError", err)
+	}
+}
+
 func TestConnectorCacheAndInvalidation(t *testing.T) {
 	st := newTestStore(t)
 	v := newTestVault(t, 1)

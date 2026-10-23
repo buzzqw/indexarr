@@ -8,6 +8,7 @@
 
 <nav class="subnav" aria-label="Sezioni delle impostazioni">
   <a href="#api-torznab">API e Torznab</a>
+  <a href="#rete">{{T "settings.networkNav"}}</a>
   <a href="#client-download">Client di download</a>
   <a href="#notifiche">Notifiche</a>
   <a href="#backup-manutenzione">Backup and maintenance</a>
@@ -121,6 +122,30 @@
   <div class="field">
     <label for="user_agent">User agent</label>
     <input id="user_agent" name="user_agent" type="text" value="{{.Settings.UserAgent}}">
+  </div>
+
+  <div class="panel-head"><h2 id="rete">{{T "settings.networkTitle"}}</h2></div>
+  <div class="form-grid">
+    <div class="field">
+      <label for="host_rate">{{T "settings.hostRate"}}</label>
+      <input id="host_rate" name="host_rate" type="number" min="0" max="100" step="0.1" required value="{{.Settings.HostRate}}">
+      <p class="help">{{T "settings.hostRateHelp"}}</p>
+    </div>
+    <div class="field">
+      <label for="host_burst">{{T "settings.hostBurst"}}</label>
+      <input id="host_burst" name="host_burst" type="number" min="1" max="100" required value="{{.Settings.HostBurst}}">
+      <p class="help">{{T "settings.hostBurstHelp"}}</p>
+    </div>
+    <div class="field">
+      <label for="breaker_threshold">{{T "settings.breakerThreshold"}}</label>
+      <input id="breaker_threshold" name="breaker_threshold" type="number" min="1" max="100" required value="{{.Settings.BreakerThreshold}}">
+      <p class="help">{{T "settings.breakerThresholdHelp"}}</p>
+    </div>
+    <div class="field">
+      <label for="breaker_cooldown">{{T "settings.breakerCooldown"}}</label>
+      <input id="breaker_cooldown" name="breaker_cooldown" type="number" min="1" max="3600" required value="{{.Settings.BreakerCooldownSeconds}}">
+      <p class="help">{{T "settings.breakerCooldownHelp"}}</p>
+    </div>
   </div>
 
   <div class="panel-head"><h2>Cloudflare / FlareSolverr</h2></div>

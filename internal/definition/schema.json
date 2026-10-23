@@ -42,6 +42,9 @@
     "search": {
       "$ref": "#/$defs/search"
     },
+    "download": {
+      "$ref": "#/$defs/download"
+    },
     "health": {
       "$ref": "#/$defs/health"
     },
@@ -109,6 +112,11 @@
         "updated": {
           "type": "string",
           "description": "Free-form date of the last definition update."
+        },
+        "derived_from": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Conversion tool that produced this draft, for example cardigann. Derived drafts are writing aids, stay local and are rejected by the built-in catalog."
         }
       }
     },
@@ -355,6 +363,77 @@
           "$ref": "#/$defs/response"
         }
       }
+    },
+    "download": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extract"
+      ],
+      "properties": {
+        "resolve_on": {
+          "enum": [
+            "search",
+            "grab"
+          ],
+          "default": "search",
+          "description": "search opens details pages while searching; grab waits until Download."
+        },
+        "from": {
+          "type": "string",
+          "default": "details",
+          "description": "Search field that holds the details URL; empty means details."
+        },
+        "max_concurrent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8,
+          "default": 2,
+          "description": "Maximum details requests in flight; 0 uses the default of 2."
+        },
+        "extract": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Extractors tried in order; the first match wins.",
+          "items": {
+            "$ref": "#/$defs/downloadTarget"
+          }
+        }
+      }
+    },
+    "downloadTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "magnet": {
+          "$ref": "#/$defs/field"
+        },
+        "torrent": {
+          "$ref": "#/$defs/field"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "magnet"
+          ],
+          "not": {
+            "required": [
+              "torrent"
+            ]
+          }
+        },
+        {
+          "required": [
+            "torrent"
+          ],
+          "not": {
+            "required": [
+              "magnet"
+            ]
+          }
+        }
+      ]
     },
     "request": {
       "type": "object",

@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/definition"
@@ -46,6 +47,9 @@ type DefinitionConnector struct {
 	refresh   time.Duration
 	appendKey bool
 	secrets   []string
+
+	downloadCache   *downloadCache
+	resolveFailures atomic.Int64
 }
 
 // NewDefinitionConnector validates the definition's settings and prepares the
@@ -130,6 +134,9 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 		appendKey: strategy == "api_key" && !definitionUsesAnySetting(def, "api_key", "apikey"),
 	}
 	connector.caps = connector.buildCapabilities()
+	if def.Download != nil {
+		connector.downloadCache = newDownloadCache(defaultDownloadCacheEntries, defaultDownloadCacheTTL)
+	}
 	connector.secrets = secretSettingValues(def, settings)
 	connector.secrets = append(connector.secrets, settings["api_key"], settings["apikey"], settings["token"], settings["password"])
 	sort.Slice(connector.secrets, func(i, j int) bool { return len(connector.secrets[i]) > len(connector.secrets[j]) })
@@ -181,6 +188,9 @@ func (c *DefinitionConnector) Download(ctx context.Context, item Item) (Payload,
 		return c.downloadURL(ctx, item.DownloadURL, item.Title)
 	}
 	if strings.TrimSpace(item.DetailsURL) != "" {
+		if c.def.Download != nil {
+			return c.downloadFromSection(ctx, item)
+		}
 		return c.downloadFromDetails(ctx, item)
 	}
 	return Payload{}, errors.New("download: item has no magnet, download URL or details URL")
@@ -375,6 +385,9 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 		}
 	}
 
+	if err := c.resolveSearchDetails(ctx, items); err != nil {
+		return nil, err
+	}
 	items = dedupeItems(items)
 	if req.Limit > 0 && len(items) > req.Limit {
 		items = items[:req.Limit]

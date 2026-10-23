@@ -207,7 +207,7 @@ reti private e metadata cloud salvo `allow_private`) e redirect rivalidati.
 | `internal/definition` | Formato nativo v1: parsing YAML strict, validazione, `Fingerprint` SHA-256, catena di upgrader, JSON Schema incorporato |
 | `internal/engine` | Contratti connettore/pipeline, transport con guardie e proxy, sessioni cookie, template, estrazione HTML/JSON/XML, normalizzazione e `DefinitionConnector` |
 | `internal/family` | Connettori di famiglia `unit3d`, `newznab` e `torznab`, registrati come factory |
-| `internal/vault` | AES-256-GCM; chiave da `INDEXARR_MASTER_KEY` o file separato, mai nel database |
+| `internal/vault` | AES-256-GCM; chiave da `INDEXARR_MASTER_KEY`, `INDEXARR_MASTER_KEY_FILE`, `vault_key_path`, `<db>.key` legacy o directory utente, mai nel database (vedi [VAULT.md](VAULT.md)) |
 | `internal/catalog` | Catalogo incorporato (`catalog.yaml` + `definitions/*.yaml`): manifest validato, definizioni parsate, sincronizzazione verso lo store |
 | `internal/indexer` | Costruisce e mette in cache il connettore da definizione + configurazione + segreti, esegue un indexer torrent/Usenet, registra storico e provenance |
 | `internal/indexersvc` | Servizio delle pagine native: validazione, creazione/aggiornamento/cancellazione indexer, separazione tra config pubblica e segreti nel vault |

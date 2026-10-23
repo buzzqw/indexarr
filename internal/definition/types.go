@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -26,6 +27,7 @@ type Definition struct {
 	Capabilities Capabilities `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
 	Auth         *Auth        `yaml:"auth,omitempty" json:"auth,omitempty"`
 	Search       Search       `yaml:"search,omitempty" json:"search,omitempty"`
+	Download     *Download    `yaml:"download,omitempty" json:"download,omitempty"`
 	Health       *Health      `yaml:"health,omitempty" json:"health,omitempty"`
 	Tests        []Test       `yaml:"tests,omitempty" json:"tests,omitempty"`
 }
@@ -41,6 +43,28 @@ type Meta struct {
 	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
 	URLs        []string `yaml:"urls" json:"urls"`
 	Updated     string   `yaml:"updated,omitempty" json:"updated,omitempty"`
+	// DerivedFrom marks a draft produced by a conversion tool. Derived drafts
+	// are writing aids: they stay local and the built-in catalog rejects them.
+	DerivedFrom string `yaml:"derived_from,omitempty" json:"derived_from,omitempty"`
+}
+
+// cardigannImportAuthor is the default author written by the Cardigann
+// converter. A definition carrying it is a derived draft even when the
+// derived_from marker is missing.
+const cardigannImportAuthor = "cardigann-import"
+
+// IsDerived reports whether the definition is a draft produced by a
+// conversion tool such as the Cardigann converter. Derived drafts are writing
+// aids: they stay local, are never imported by the API and never enter the
+// built-in catalog.
+func (d *Definition) IsDerived() bool {
+	if d == nil {
+		return false
+	}
+	if strings.TrimSpace(d.Meta.DerivedFrom) != "" {
+		return true
+	}
+	return strings.EqualFold(strings.TrimSpace(d.Meta.Author), cardigannImportAuthor)
 }
 
 // Setting is a user-configurable value rendered as a form field.
@@ -135,6 +159,33 @@ type Response struct {
 	Rows     RowSelector      `yaml:"rows,omitempty" json:"rows,omitempty"`
 	Fields   map[string]Field `yaml:"fields,omitempty" json:"fields,omitempty"`
 	Required []string         `yaml:"required,omitempty" json:"required,omitempty"`
+}
+
+// Download describes how to obtain a magnet link or torrent URL from a
+// details page. It is optional: definitions that already expose magnets or
+// direct download links in their listing keep working unchanged.
+type Download struct {
+	// ResolveOn selects when details pages are opened: "search" (default)
+	// resolves them while searching so the infohash is available; "grab"
+	// leaves the details page untouched until Download is called.
+	ResolveOn string `yaml:"resolve_on,omitempty" json:"resolve_on,omitempty"`
+	// From is the search field that holds the details URL. Empty means
+	// "details".
+	From string `yaml:"from,omitempty" json:"from,omitempty"`
+	// MaxConcurrent caps the details requests in flight. Zero means the
+	// default of 2; the engine clamps the effective value to 1..8.
+	MaxConcurrent int `yaml:"max_concurrent,omitempty" json:"max_concurrent,omitempty"`
+	// Extract lists the targets to try, in order. The first target that
+	// yields a value wins.
+	Extract []DownloadTarget `yaml:"extract" json:"extract"`
+}
+
+// DownloadTarget is one extractor on a details page. Exactly one of Magnet
+// and Torrent must be set: Magnet yields a magnet: URI, Torrent yields a URL
+// to a .torrent file.
+type DownloadTarget struct {
+	Magnet  *Field `yaml:"magnet,omitempty" json:"magnet,omitempty"`
+	Torrent *Field `yaml:"torrent,omitempty" json:"torrent,omitempty"`
 }
 
 // Field describes how to extract one value from a row.

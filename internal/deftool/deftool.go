@@ -67,11 +67,25 @@ func (r FixtureResult) MarshalJSON() ([]byte, error) {
 	}{Path: r.Path, OK: r.OK, Size: r.Size, Error: message})
 }
 
+// ValidateOptions controls the extra checks applied while validating.
+type ValidateOptions struct {
+	// RejectDerived fails drafts produced by a conversion tool such as the
+	// Cardigann converter. The built-in catalog uses it for
+	// internal/catalog/definitions: derived drafts are writing aids and never
+	// ship with the binary.
+	RejectDerived bool
+}
+
 // ValidatePaths validates every YAML definition under the given files and
 // directories. Directories are walked recursively in sorted order; hidden
 // directories are skipped. Invalid definitions are reported as results, not
 // as an error: callers decide how to present them.
 func ValidatePaths(paths []string) []Result {
+	return ValidatePathsWithOptions(paths, ValidateOptions{})
+}
+
+// ValidatePathsWithOptions is ValidatePaths with additional policy checks.
+func ValidatePathsWithOptions(paths []string, opts ValidateOptions) []Result {
 	var out []Result
 	for _, target := range paths {
 		info, err := os.Stat(target)
@@ -80,7 +94,7 @@ func ValidatePaths(paths []string) []Result {
 			continue
 		}
 		if !info.IsDir() {
-			out = append(out, ValidateFile(target))
+			out = append(out, ValidateFileWithOptions(target, opts))
 			continue
 		}
 		files, err := definitionFiles(target)
@@ -93,7 +107,7 @@ func ValidatePaths(paths []string) []Result {
 			continue
 		}
 		for _, file := range files {
-			out = append(out, ValidateFile(file))
+			out = append(out, ValidateFileWithOptions(file, opts))
 		}
 	}
 	return out
@@ -101,6 +115,11 @@ func ValidatePaths(paths []string) []Result {
 
 // ValidateFile parses and validates one definition file.
 func ValidateFile(path string) Result {
+	return ValidateFileWithOptions(path, ValidateOptions{})
+}
+
+// ValidateFileWithOptions is ValidateFile with additional policy checks.
+func ValidateFileWithOptions(path string, opts ValidateOptions) Result {
 	result := Result{Path: path}
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -113,6 +132,11 @@ func ValidateFile(path string) Result {
 		return result
 	}
 	result.ID = def.Meta.ID
+	if opts.RejectDerived && def.IsDerived() {
+		result.Err = fmt.Errorf("derived draft (derived_from=%q, author=%q) cannot be in the catalog; rewrite it from observed fixtures",
+			def.Meta.DerivedFrom, def.Meta.Author)
+		return result
+	}
 	result.OK = true
 	return result
 }

@@ -16,19 +16,9 @@
 </section>
 {{end}}
 
-<section class="panel">
-  <div class="panel-head"><h2>{{T "indexerForm.definition"}}</h2></div>
-  <form class="inline-form" method="get" action="/indexers/new">
-    <div class="field grow">
-      <label for="definition_choice">{{T "indexerForm.loadFields"}}</label>
-      <select id="definition_choice" name="definition">
-        {{range .Definitions}}<option value="{{.ID}}"{{if eq .ID $.DefinitionID}} selected{{end}}>{{.Name}} · {{.ID}}{{if not .Installed}} {{T "indexerForm.catalog"}}{{end}}</option>{{end}}
-      </select>
-      <p class="help">{{T "indexerForm.definitionHelp"}}</p>
-    </div>
-    <div class="actions"><button class="btn" type="submit">{{T "indexerForm.load"}}</button></div>
-  </form>
-</section>
+{{if .Derived}}
+<p class="flash warn" role="alert">{{T "indexerForm.derivedWarning"}}</p>
+{{end}}
 
 <form class="panel form" method="post" action="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -36,9 +26,10 @@
   <div class="form-grid">
     <div class="field grow">
       <label for="definition_id">{{T "indexerForm.definition"}}</label>
-      <select id="definition_id" name="definition_id" required>
+      <select id="definition_id" name="definition_id" required{{if .IsNew}} data-definition-select{{end}}>
         {{range .Definitions}}<option value="{{.ID}}"{{if eq .ID $.DefinitionID}} selected{{end}}>{{.Name}} · {{.ID}}{{if not .Installed}} {{T "indexerForm.catalog"}}{{end}}</option>{{end}}
       </select>
+      <p class="help">{{T "indexerForm.definitionHelp"}}</p>
       {{if .DefinitionName}}<p class="help">{{T "indexerForm.generated" .DefinitionName}}</p>{{end}}
     </div>
     <div class="field">

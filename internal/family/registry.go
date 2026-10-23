@@ -22,7 +22,8 @@ const (
 // Register adds the native family connector factories to r. Settings
 // understood by all factories are base_url (or url), categories, user_agent
 // and allow_private. Gazelle additionally reads api_key (or apikey); NexusPHP
-// reads username, password and passkey.
+// reads username, password and passkey. RSS reads url (or base_url),
+// default_category and query.
 func Register(r *engine.Registry) error {
 	if r == nil {
 		return fmt.Errorf("family: nil registry")
@@ -48,7 +49,27 @@ func Register(r *engine.Registry) error {
 	if err := r.RegisterConnector(ConnectorXbtit, XbtitFactory); err != nil {
 		return fmt.Errorf("family: register %q: %w", ConnectorXbtit, err)
 	}
+	if err := r.RegisterConnector(ConnectorRSS, rssFactory); err != nil {
+		return fmt.Errorf("family: register %q: %w", ConnectorRSS, err)
+	}
 	return nil
+}
+
+func rssFactory(cfg engine.Config) (engine.Connector, error) {
+	settings := cfg.Settings
+	categories, err := parseCategoryList(settings["categories"])
+	if err != nil {
+		return nil, fmt.Errorf("rss: categories: %w", err)
+	}
+	return NewRSS(RSSConfig{
+		Indexer:         cfg.Indexer,
+		URL:             firstNonEmpty(settings["url"], settings["base_url"]),
+		DefaultCategory: firstNonEmpty(settings["default_category"], settings["default-category"]),
+		Query:           settings["query"],
+		Transport:       transportFromSettings(cfg.Transport, settings),
+		UserAgent:       firstNonEmpty(settings["user_agent"], settings["user-agent"]),
+		Categories:      categories,
+	})
 }
 
 func gazelleFactory(cfg engine.Config) (engine.Connector, error) {

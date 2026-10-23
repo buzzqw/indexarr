@@ -929,6 +929,17 @@ func (s *Store) BackfillLegacySources(ctx context.Context) (int, error) {
 			return 0, fmt.Errorf("scan source for backfill: %w", err)
 		}
 		src.enabled = enabled != 0
+		if strings.HasPrefix(src.url, sealedPrefix) {
+			// Legacy source URLs are sealed at rest. The numbered migration
+			// runs before a codec is installed, so a sealed row can only be
+			// bridged after start-up has resolved the vault; deferring it is
+			// safer than copying ciphertext into a definition.
+			opened, openErr := s.openField(src.url)
+			if openErr != nil {
+				continue
+			}
+			src.url = opened
+		}
 		pending = append(pending, src)
 	}
 	if err := rows.Err(); err != nil {

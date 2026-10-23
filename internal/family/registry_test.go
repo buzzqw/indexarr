@@ -18,6 +18,7 @@ func TestRegister(t *testing.T) {
 		ConnectorTorznab,
 		ConnectorGazelle,
 		ConnectorNexusPHP,
+		ConnectorRSS,
 	} {
 		if _, ok := registry.Factory(name); !ok {
 			t.Errorf("factory %q was not registered", name)

@@ -93,6 +93,22 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		renderInvalid(parseErr.Error())
 		return
 	}
+	if in.HostRate, parseErr = formFloat(r, "host_rate", 1, 0, 100); parseErr != nil {
+		renderInvalid(parseErr.Error())
+		return
+	}
+	if in.HostBurst, parseErr = formInt(r, "host_burst", 4, 1, 100); parseErr != nil {
+		renderInvalid(parseErr.Error())
+		return
+	}
+	if in.BreakerThreshold, parseErr = formInt(r, "breaker_threshold", 5, 1, 100); parseErr != nil {
+		renderInvalid(parseErr.Error())
+		return
+	}
+	if in.BreakerCooldownSeconds, parseErr = formInt(r, "breaker_cooldown", 60, 1, 3600); parseErr != nil {
+		renderInvalid(parseErr.Error())
+		return
+	}
 	if in.Workers, parseErr = formInt(r, "workers", 2, 1, 16); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
@@ -295,6 +311,21 @@ func formInt(r *http.Request, key string, fallback, min, max int) (int, error) {
 	}
 	if value < min || value > max {
 		return 0, fmt.Errorf("%s must be between %d and %d", key, min, max)
+	}
+	return value, nil
+}
+
+func formFloat(r *http.Request, key string, fallback, min, max float64) (float64, error) {
+	raw := strings.TrimSpace(r.FormValue(key))
+	if raw == "" {
+		return fallback, nil
+	}
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a number", key)
+	}
+	if value < min || value > max {
+		return 0, fmt.Errorf("%s must be between %g and %g", key, min, max)
 	}
 	return value, nil
 }

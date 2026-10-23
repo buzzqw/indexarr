@@ -4,9 +4,10 @@
 // cache.
 //
 // The package deliberately knows nothing about the legacy sources table. A
-// bridged indexer whose definition still asks for the Torznab or RSS
-// connector is reported with ErrLegacyConnector and left to the legacy ingest
-// path until it is migrated.
+// bridged indexer (legacy_source_id set) whose definition asks for the Torznab
+// or RSS connector is reported with ErrLegacyConnector and left to the legacy
+// ingest path until it is migrated. A new native Torznab or RSS indexer uses
+// the corresponding family connector.
 package indexer
 
 import (
@@ -36,9 +37,10 @@ const DefaultMaxTorrentsPerRun = 30
 const maxRunItems = 100
 
 var (
-	// ErrLegacyConnector marks a definition that still names the legacy
-	// torznab or rss connector. Those sources keep working through the legacy
-	// ingest path until they are migrated to a native definition.
+	// ErrLegacyConnector marks a bridged definition (legacy_source_id > 0)
+	// that still names the torznab or rss connector. Those sources keep
+	// working through the legacy ingest path until they are migrated to a
+	// native definition.
 	ErrLegacyConnector = errors.New("indexer: legacy bridged connector must be handled by the legacy ingest path")
 
 	// ErrVaultRequired is returned when an indexer has sealed secrets but the
@@ -57,11 +59,11 @@ var (
 	ErrGrabLimit = errors.New("indexer: daily grab limit reached")
 )
 
-// LegacyConnectorError is the typed error returned for a definition whose
-// connector is torznab or rss. The bridge stays on the legacy ingest path even
-// when a family factory with the same name is registered, so those sources keep
-// working until they are rewritten. It unwraps to ErrLegacyConnector, so
-// errors.Is keeps working.
+// LegacyConnectorError is the typed error returned for a bridged indexer
+// (legacy_source_id > 0) whose connector is torznab or rss. The bridge stays on
+// the legacy ingest path even when a family factory with the same name is
+// registered, so those sources keep working until they are rewritten. It
+// unwraps to ErrLegacyConnector, so errors.Is keeps working.
 type LegacyConnectorError struct {
 	Name string
 }
@@ -262,9 +264,9 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 	default:
 		// Bridge definitions created by the backfill name torznab or rss and
 		// carry legacy_source_id: they stay on the legacy scheduler until they
-		// are rewritten as native definitions. A new native Torznab indexer
-		// (no legacy source) uses the generic torznab family connector.
-		if name == "rss" || (name == "torznab" && indexer.LegacySourceID > 0) {
+		// are rewritten as native definitions. A new native Torznab or RSS
+		// indexer (no legacy source) uses the corresponding family connector.
+		if (name == "rss" || name == "torznab") && indexer.LegacySourceID > 0 {
 			return nil, &LegacyConnectorError{Name: name}
 		}
 		if _, ok := m.registry.Factory(name); !ok {

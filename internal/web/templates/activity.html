@@ -15,6 +15,39 @@
   </a>
 </nav>
 
+<section class="panel" id="network-counters">
+  <div class="panel-head"><h2>{{T "activity.networkTitle"}}</h2></div>
+  <p class="help">{{T "activity.networkHelp"}}</p>
+  {{if .HostMetrics}}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "activity.networkHost"}}</th>
+          <th scope="col">{{T "activity.networkBreaker"}}</th>
+          <th scope="col">{{T "activity.network429"}}</th>
+          <th scope="col">{{T "activity.network403"}}</th>
+          <th scope="col">{{T "activity.networkOpen"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .HostMetrics}}
+        <tr>
+          <td><code>{{.Host}}</code></td>
+          <td>{{.State}}</td>
+          <td>{{.RateLimited}}</td>
+          <td>{{.Forbidden}}</td>
+          <td>{{.BreakerOpen}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="empty">{{T "activity.networkEmpty"}}</p>
+  {{end}}
+</section>
+
 {{if eq .Tab "logs"}}
 {{template "logs_body" .Logs}}
 {{else}}

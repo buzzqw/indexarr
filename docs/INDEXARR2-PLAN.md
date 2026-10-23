@@ -520,7 +520,7 @@ rimosse.
 | Vault AES-256-GCM, chiave da env o file `0600` | `internal/vault` | test + race |
 | Formato nativo v1, validazione, upgrader, JSON Schema | `internal/definition` | test, 3 definizioni di esempio |
 | Tabelle §8, migrazioni numerate, backfill idempotente da `sources` | `internal/store/migrations.go`, `indexarr2.go` | test su DB reale |
-| Contratti `Connector`, `Module`, pipeline a 9 stadi | `internal/engine` | test + race |
+| Contratti `Connector`, `Module`, pipeline a 9 stadi (non ancora invocati a runtime, WP4) | `internal/engine` | test + race |
 | Transport: rate limit per host, circuit breaker, `Retry-After`, SSRF, limiti | `internal/engine` | test + race |
 | Motore definizioni: HTML/JSON/XML, login/CSRF/cookie/token/basic, paginazione, tipi, fallback, dedup | `internal/engine` | test + fixture |
 | Connettori di famiglia UNIT3D, Newznab, Torznab, Gazelle, NexusPHP, TorrentTrader, Xbtit | `internal/family` | test + fixture (stato `bozza`) |
@@ -539,7 +539,7 @@ rimosse.
 | Apply/revert della migrazione legacy con vault e disattivazione della sorgente | `internal/legacyimport`, `internal/adminapi` | test + QA |
 | Provenance multi-indexer (`indexers`, `provenance`), seeders massimi, `StaleProvenance` | `internal/store`, `internal/torznabapi` | test + race |
 | Simulazione end-to-end locale e Docker (Torznab, Prowlarr, Sonarr, client, tracker HTML) | `internal/simmock`, `cmd/simmock`, `sim/` | test + `sim/run.sh` + Docker |
-| Conversione locale Cardigann → nativo v1 (sottoinsieme, warning espliciti) | `internal/cardigann`, `indexarr-def convert-cardigann` | test + race; 926/927 sul corpus reale |
+| Convertitore locale Cardigann → bozza nativa v1, **solo come aiuto alla scrittura** (le bozze non entrano nel catalogo, WP0) | `internal/cardigann`, `indexarr-def convert-cardigann` | test + race; 926/927 file generati sul corpus reale (non "funzionanti") |
 | Import Jackett/Prowlarr in un DB usa-e-getta | `cmd/indexarr-import`, `internal/importers` | test + prova su istanze reali |
 | UI ridisegnata: sidebar, Indexer unificato, Attività, Sistema, redirect legacy | `internal/web` | test + `scripts/ui-smoke.sh` (26 route, 444 link) |
 | i18n: inglese default + it/fr/de/es/zh/pl, 427 chiavi, selettore lingua | `internal/i18n`, `internal/web` | test parità + QA |
@@ -570,27 +570,17 @@ rimosse.
 - Gli errori del vault non bloccano l'avvio: il percorso legacy continua a
   funzionare e solo gli indexer con segreti restano indisponibili.
 
-### Prossimi passi (non ancora fatti)
+### Prossimi passi
 
-1. **Copertura siti**: il convertitore copre il 99,9% del corpus Prowlarr e le
-   famiglie Gazelle/NexusPHP/TorrentTrader/Xbtit ci sono, ma restano `bozza`;
-   servono verifica su siti reali, altri software minori, applicazione
-   dell'import Cardigann da UI/API e pacchetti di definizioni con fixture.
-2. **Catalogo reale**: le definizioni built-in sono `bozza`; servono fixture
-   osservate dai siti e health check live prima di dichiararle `verificate`.
-3. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
-   (oggi `ErrUnsupported`), filtri per tag.
-4. **Import applicato**: `cmd/indexarr-import` crea sorgenti ponte; manca
-   l'apply di definizioni/indexer nativi da UI/API.
-5. **FlareSolverr per indexer** (i proxy HTTP/SOCKS sono fatti), stato `blocked`
-   per CAPTCHA, firma del catalogo remoto, studio delle definizioni, canary e
-   rete di salute opt-in.
-6. **Provenance refresh**: il dato e gli attributi Torznab ci sono; manca il job
-   periodico che usa `StaleProvenance` per aggiornare i seeders.
-7. **i18n delle pagine legacy**: estrarre le chiavi `T` per Release, Rules,
-   Settings, Maintenance e form sorgenti e tradurle nelle 7 lingue. Le pagine
-   nuove sono già coperte.
-8. **UI mobile**: paginazione per liste lunghe, touch target e tabelle larghe.
+Il lavoro aperto è in [`NEXT-STEPS.md`](NEXT-STEPS.md), diviso in work package
+con stub e criteri di accettazione (WP0–WP14). In particolare:
+
+- il convertitore Cardigann è solo uno strumento di scrittura: **nessun import
+  Cardigann da UI/API** (WP0);
+- la pipeline a stadi e i moduli descritti in §3.2 non sono ancora invocati a
+  runtime (WP4);
+- il rate limit per host esiste nel transport ma è disattivato di default e
+  il percorso legacy non lo usa (WP2).
 
 ### Verifica
 
@@ -603,3 +593,32 @@ make def-validate
 ./scripts/qa.sh
 ```
 
+
+## 7. Aggiornamenti dei contratti (23 ottobre 2026, WP0–WP7)
+
+Questi punti integrano i contratti dei §3 e vanno considerati vincolanti:
+
+- **Bozze derivate.** `Meta.DerivedFrom` (`derived_from`) è un campo opzionale
+  del formato v1. Il convertitore Cardigann lo valorizza sempre a `cardigann`;
+  una definizione derivata resta locale, non entra nel catalogo e viene
+  rifiutata da `catalog.Builtins()` e da `indexarr-def validate -catalog`.
+- **Download dalla pagina di dettaglio.** `Definition.Download *Download`
+  (`resolve_on`, `from`, `max_concurrent`, `extract` con target
+  magnet/torrent). È opzionale, schema 1 invariato; il motore risolve durante
+  la ricerca o al grab, con concorrenza e cache.
+- **Famiglia RSS.** Il connettore `rss` è nativo e usa i parser puri di
+  `internal/feed` attraverso il transport. Un indexer `rss` è ponte legacy
+  **solo** se `LegacySourceID > 0`, come per Torznab.
+- **Politeness.** `engine.Politeness` è l'unico budget per host condiviso da
+  percorso nativo e legacy (limiter, breaker, Retry-After). Le impostazioni
+  `host_rate` (1/s), `host_burst` (4), `breaker_threshold` (5),
+  `breaker_cooldown` (60s) sono modificabili e non applicano SSRF al percorso
+  legacy, che deve raggiungere Jackett/Prowlarr in LAN.
+- **Vault e segreti legacy.** La chiave si risolve da env, env-file, config,
+  file legacy, user config, fallback; `SecretCodec` cifra `api_key`, `password`
+  e `url` delle `sources` con prefisso `vault:v1:` e migrazione idempotente.
+  I backup del DB non includono la chiave; il restore verifica che la chiave
+  apra almeno un segreto.
+- **Catalogo verificato.** Le definizioni `extto`, `torrentgalaxy`, `corsaro`,
+  `knaben` sono `verificate` con fixture reali ripulite; `torrentleech` resta
+  `bozza` finché non c'è una fixture reale con rsskey personale sanificata.

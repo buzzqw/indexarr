@@ -59,12 +59,13 @@
         <td><a href="/definitions/{{.ID}}"><code>{{.ID}}</code></a></td>
         <td>
           <a href="/definitions/{{.ID}}">{{.Name}}</a>
+          {{if .Derived}}<span class="chip warn" title="{{T "definitions.derivedTitle"}}">{{T "definitions.derived"}}</span>{{end}}
           {{if .ParseError}}<div class="sub text-danger" title="{{.ParseError}}">{{truncate .ParseError 90}}</div>{{end}}
         </td>
         <td>{{if .Family}}<span class="chip">{{.Family}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
         <td>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</td>
         <td><span class="chip {{stateClass .State}}">{{stateLabel .State}}</span></td>
-        <td>{{if .Builtin}}{{T "definitions.catalogOrigin"}}{{else}}{{.Origin}}{{end}}</td>
+        <td>{{if .Builtin}}{{T "definitions.catalogOrigin"}}{{else}}{{T "definitions.localOrigin"}}{{end}}</td>
         <td>{{if .HashShort}}<code title="{{.Hash}}">{{.HashShort}}</code>{{else}}<span class="muted">—</span>{{end}}</td>
         <td>{{date .UpdatedAt}}</td>
         <td>{{if .Indexers}}<a href="/definitions/{{.ID}}">{{.Indexers}}</a>{{else}}0{{end}}</td>

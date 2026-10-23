@@ -48,7 +48,7 @@
         <tr>
           <td class="nowrap"><a href="/runs/{{.ID}}">{{date .StartedAt}}</a><div class="sub">{{ago .StartedAt}}</div></td>
           <td>{{.SourceName}}</td>
-          <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "running"}}<span class="chip warn">{{T "common.running"}}</span>{{else}}<span class="chip ok">ok</span>{{end}}</td>
+          <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "running"}}<span class="chip warn">{{T "common.running"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
           <td>{{.ItemsSeen}}</td>
           <td>{{.ItemsNew}}</td>
           <td>{{.ItemsUpdated}}</td>

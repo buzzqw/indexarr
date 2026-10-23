@@ -18,7 +18,7 @@ import (
 // secretQueryPattern matches credential-bearing query parameters. Connector
 // errors never carry raw URLs, but this is a second line of defence for
 // transport errors and API messages that quote a request.
-var secretQueryPattern = regexp.MustCompile(`(?i)(api[_-]?key|api[_-]?token|apikey|api_token|passkey)=([^&\s"'<>]+)`)
+var secretQueryPattern = regexp.MustCompile(`(?i)(api[_-]?key|api[_-]?token|apikey|api_token|passkey|rsskey|authkey|token|secret)=([^&\s"'<>]+)`)
 
 // safeFilename turns a release title into a portable file name with ext.
 // Path separators and control characters are removed, runs of whitespace are

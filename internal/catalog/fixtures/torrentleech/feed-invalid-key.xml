@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" ?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>TorrentLeech</title>
+	            <link>https://www.torrentleech.org</link>
+	            <description>The latest torrents from TorrentLeech.org</description>
+	            <language>en</language>
+				<ttl>5</ttl>
+				<atom:link href="http://rss.torrentleech.org/" rel="self" type="application/rss+xml" /><item><title>An error has occured!</title><link></link><description><![CDATA[Your RSS key is invalid.]]></description></item></channel></rss>

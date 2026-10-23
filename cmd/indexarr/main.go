@@ -41,6 +41,9 @@ import (
 var version = "dev"
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "vault" {
+		os.Exit(runVaultCommand(os.Args[2:]))
+	}
 	configPath := flag.String("config", "indexarr.json", "JSON configuration file (created on first start)")
 	listen := flag.String("listen", "", "HTTP listen address, overrides the configuration")
 	dbPath := flag.String("db", "", "SQLite database path, overrides the configuration")
@@ -70,6 +73,28 @@ func main() {
 	levelVar.Set(parseLevel(cfg.LogLevel))
 	logger := newLogger(levelVar, logBuffer)
 	logger.Info("starting indexarr", "version", version, "database", cfg.DBPath, "listen", cfg.Listen)
+
+	// Resolve the vault before touching the database: a restore staged as
+	// <db>.restore is applied next, and its secrets must be checked with the
+	// same key afterwards. A missing key never blocks the legacy path.
+	secretVault, keySource, vaultErr := vault.Resolve(vault.ResolveOptions{
+		EnvKey:        os.Getenv("INDEXARR_MASTER_KEY"),
+		EnvKeyFile:    os.Getenv("INDEXARR_MASTER_KEY_FILE"),
+		ConfigPath:    cfg.VaultKeyPath,
+		DBPath:        cfg.DBPath,
+		UserConfigDir: os.UserConfigDir,
+	})
+	if vaultErr != nil {
+		logger.Warn("secrets vault unavailable; native indexers and sealed source secrets are disabled", "error", vaultErr)
+	} else {
+		logger.Info("secrets vault ready", "key_source", keySource.Kind,
+			"key_path", keySource.Path, "key_in_data_dir", keySource.InDataDir)
+		if keySource.InDataDir {
+			logger.Warn("vault key is in the data directory: move it outside, for example with 'indexarr vault move-key -to <path>'",
+				"key_source", keySource.Kind, "key_path", keySource.Path)
+		}
+	}
+
 	if addr := strings.TrimSpace(os.Getenv("INDEXARR_PPROF")); addr != "" {
 		logger.Warn("pprof endpoint enabled", "addr", addr)
 		go func() {
@@ -78,12 +103,14 @@ func main() {
 			}
 		}()
 	}
+	restored := false
 	if applied, err := backup.ApplyPending(cfg.DBPath); err != nil {
 		logger.Error("cannot apply pending restore", "error", err)
 		rejected := cfg.DBPath + ".restore.rejected"
 		_ = os.Remove(rejected)
 		_ = os.Rename(cfg.DBPath+".restore", rejected)
 	} else if applied {
+		restored = true
 		logger.Info("database restored from pending backup")
 	}
 
@@ -101,13 +128,49 @@ func main() {
 		logger.Warn("marked interrupted runs", "count", interrupted)
 	}
 	key, created, err := st.EnsureAPIKey(startupCtx)
-	startupCancel()
 	if err != nil {
+		startupCancel()
 		fatal(err)
 	}
 	if created {
 		logger.Info("generated a Torznab API key", "apikey", key)
 	}
+	if secretVault != nil {
+		st.SetSecretCodec(vaultCodec{secretVault})
+		canSeal := true
+		if restored {
+			opened, verifyErr := verifyRestoredSecrets(startupCtx, st, secretVault)
+			switch {
+			case verifyErr != nil:
+				// Do not seal plaintext rows with a key that cannot open the
+				// secrets already in the restored database: that would mix two
+				// keys in one file.
+				canSeal = false
+				logger.Error("restored database: the current vault key does not open the stored secrets", "error", verifyErr)
+			case opened == 0:
+				logger.Info("restored database: no sealed secrets to verify")
+			default:
+				logger.Info("restored database: vault key opens the stored secrets", "secrets", opened)
+			}
+		}
+		if canSeal {
+			if sealed, err := st.SealLegacySecrets(startupCtx); err != nil {
+				logger.Warn("cannot seal legacy source secrets", "error", err)
+			} else if sealed > 0 {
+				logger.Info("sealed legacy source secrets", "count", sealed)
+			}
+			// A sealed URL can only be copied into the legacy bridge once the
+			// vault is available, so retry the idempotent backfill after start-up.
+			if bridged, err := st.BackfillLegacySources(startupCtx); err != nil {
+				logger.Warn("cannot bridge sources after unlocking the vault", "error", err)
+			} else if bridged > 0 {
+				logger.Info("bridged legacy sources", "count", bridged)
+			}
+		}
+	} else if restored {
+		logger.Warn("restored database: no vault key available, sealed secrets are not readable")
+	}
+	startupCancel()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -118,22 +181,29 @@ func main() {
 		settings = store.DefaultSettings()
 	}
 
-	// The vault protects indexer secrets in the database and in backups. A
-	// missing key never blocks the legacy sources: only native indexers that
-	// actually have secrets become unavailable.
-	secretVault, vaultErr := vault.FromEnvOrFile("INDEXARR_MASTER_KEY", cfg.DBPath+".key")
-	if vaultErr != nil {
-		logger.Warn("secrets vault unavailable; native indexers with secrets are disabled", "error", vaultErr)
-	}
 	if written, syncErr := catalog.Sync(ctx, st); syncErr != nil {
 		logger.Warn("cannot sync the built-in catalog", "error", syncErr)
 	} else if written > 0 {
 		logger.Info("built-in catalog synchronized", "definitions", written)
 	}
 
+	// One per-host budget is shared by the native transport and the legacy
+	// RSS/HTML/Torznab client, so a host never receives the rate twice.
+	politeness := coreengine.NewPoliteness(
+		settings.HostRate,
+		settings.HostBurst,
+		settings.BreakerThreshold,
+		settings.BreakerCooldown(),
+		coreengine.RealClock{},
+	)
 	transport := coreengine.NewTransport(coreengine.TransportConfig{
-		Timeout:   settings.FetchTimeout(),
-		UserAgent: settings.UserAgent,
+		Timeout:          settings.FetchTimeout(),
+		UserAgent:        settings.UserAgent,
+		RatePerSecond:    settings.HostRate,
+		Burst:            settings.HostBurst,
+		FailureThreshold: settings.BreakerThreshold,
+		Cooldown:         settings.BreakerCooldown(),
+		Politeness:       politeness,
 	})
 	registry := coreengine.NewRegistry()
 	if err := family.Register(registry); err != nil {
@@ -235,6 +305,24 @@ func main() {
 	}
 
 	engine := ingest.New(st, logger)
+	// The legacy path keeps its own base transport (no SSRF guard) so Jackett
+	// and Prowlarr on a LAN address remain reachable, but it shares the same
+	// per-host limiter and breaker as the native transport.
+	legacyTransport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   10,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: time.Second,
+	}
+	engine.SetHTTPClient(&http.Client{
+		Transport: politeness.RoundTripper(legacyTransport),
+		// The per-run context is the real deadline; this is a safety net.
+		Timeout: 4 * time.Minute,
+	})
 	engine.Start(ctx)
 
 	httpServer := &http.Server{
@@ -246,6 +334,7 @@ func main() {
 			DownloadResolver: downloadResolver,
 			Vault:            secretVault, Sync: syncService,
 			GrabGuard: grabGuard, GrabRecord: grabRecord,
+			Politeness: politeness,
 			Restart: func() {
 				if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
 					logger.Error("cannot restart for restore", "error", err)
@@ -280,6 +369,138 @@ func main() {
 		syncService.Wait()
 	}
 	logger.Info("stopped")
+}
+
+// vaultCodec adapts *vault.Vault to store.SecretCodec. The adapter lives here so
+// the SQLite layer never imports the vault package.
+type vaultCodec struct{ v *vault.Vault }
+
+func (c vaultCodec) SealString(plaintext string) (string, error) { return c.v.SealString(plaintext) }
+func (c vaultCodec) OpenString(blob string) (string, error)      { return c.v.OpenString(blob) }
+
+// verifyRestoredSecrets confirms that the current key opens every sealed secret
+// in a restored database. It checks the sealed source fields first and then the
+// native indexer secrets. It never returns or logs plaintext.
+func verifyRestoredSecrets(ctx context.Context, st *store.Store, v *vault.Vault) (int, error) {
+	opened, err := st.VerifySecretCodec(ctx)
+	if err != nil {
+		return opened, err
+	}
+	indexers, err := st.ListIndexers(ctx)
+	if err != nil {
+		return opened, err
+	}
+	for _, indexer := range indexers {
+		secrets, err := st.ListSecrets(ctx, indexer.ID)
+		if err != nil {
+			return opened, err
+		}
+		for _, secret := range secrets {
+			if _, err := v.Open(secret.Nonce, secret.Ciphertext); err != nil {
+				return opened, fmt.Errorf("indexer %s: sealed secret cannot be opened with the configured key: %w", indexer.Slug, err)
+			}
+			opened++
+		}
+	}
+	return opened, nil
+}
+
+func runVaultCommand(args []string) int {
+	if len(args) == 0 {
+		vaultUsage()
+		return 2
+	}
+	switch args[0] {
+	case "export-key":
+		fs := flag.NewFlagSet("vault export-key", flag.ContinueOnError)
+		fs.SetOutput(os.Stderr)
+		configPath := fs.String("config", "indexarr.json", "JSON configuration file")
+		dbPath := fs.String("db", "", "SQLite database path, overrides the configuration")
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+		cfg, err := config.Load(*configPath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "indexarr:", err)
+			return 1
+		}
+		if strings.TrimSpace(*dbPath) != "" {
+			absolute, err := filepath.Abs(strings.TrimSpace(*dbPath))
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "indexarr:", err)
+				return 1
+			}
+			cfg.DBPath = absolute
+		}
+		encoded, source, err := vault.ExportKey(vault.ResolveOptions{
+			EnvKey:        os.Getenv("INDEXARR_MASTER_KEY"),
+			EnvKeyFile:    os.Getenv("INDEXARR_MASTER_KEY_FILE"),
+			ConfigPath:    cfg.VaultKeyPath,
+			DBPath:        cfg.DBPath,
+			UserConfigDir: os.UserConfigDir,
+		})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "indexarr:", err)
+			return 1
+		}
+		fmt.Fprintf(os.Stderr, "warning: the master key is secret; keep this output offline and out of logs\n")
+		fmt.Fprintf(os.Stderr, "key source: %s", source.Kind)
+		if source.Path != "" {
+			fmt.Fprintf(os.Stderr, " (%s)", source.Path)
+		}
+		if source.InDataDir {
+			fmt.Fprintf(os.Stderr, "; warning: the key is in the data directory, move it with 'indexarr vault move-key -to <path>'")
+		}
+		fmt.Fprintln(os.Stderr)
+		fmt.Println(encoded)
+		return 0
+	case "move-key":
+		fs := flag.NewFlagSet("vault move-key", flag.ContinueOnError)
+		fs.SetOutput(os.Stderr)
+		configPath := fs.String("config", "indexarr.json", "JSON configuration file")
+		dbPath := fs.String("db", "", "SQLite database path, overrides the configuration")
+		target := fs.String("to", "", "new master key path (required)")
+		if err := fs.Parse(args[1:]); err != nil {
+			return 2
+		}
+		if strings.TrimSpace(*target) == "" {
+			fmt.Fprintln(os.Stderr, "indexarr: vault move-key requires -to <path>")
+			return 2
+		}
+		cfg, err := config.Load(*configPath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "indexarr:", err)
+			return 1
+		}
+		if strings.TrimSpace(*dbPath) != "" {
+			absolute, err := filepath.Abs(strings.TrimSpace(*dbPath))
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "indexarr:", err)
+				return 1
+			}
+			cfg.DBPath = absolute
+		}
+		moved, err := vault.MoveLegacyKey(cfg.DBPath, *target)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "indexarr:", err)
+			return 1
+		}
+		fmt.Fprintf(os.Stderr, "moved the legacy master key to %s\n", moved)
+		fmt.Fprintln(os.Stderr, "set vault_key_path in indexarr.json (or INDEXARR_MASTER_KEY_FILE) to that path")
+		return 0
+	default:
+		vaultUsage()
+		return 2
+	}
+}
+
+func vaultUsage() {
+	fmt.Fprintln(os.Stderr, `usage: indexarr vault <command>
+
+commands:
+  export-key [-config file] [-db path]   print the resolved master key as base64
+  move-key   [-config file] [-db path] -to <path>
+                                         move the legacy <db>.key file to path`)
 }
 
 func parseLevel(raw string) slog.Level {

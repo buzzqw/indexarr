@@ -40,7 +40,7 @@ func TestJSONSchema(t *testing.T) {
 	if len(doc.Required) == 0 {
 		t.Error("top-level required is empty")
 	}
-	for _, name := range []string{"meta", "setting", "auth", "search", "field", "filter", "rows", "selector"} {
+	for _, name := range []string{"meta", "setting", "auth", "search", "download", "downloadTarget", "field", "filter", "rows", "selector"} {
 		if _, ok := doc.Defs[name]; !ok {
 			t.Errorf("$defs is missing %q", name)
 		}

@@ -66,6 +66,20 @@ var (
 		"url":      true,
 		"category": true,
 	}
+	allowedResolveOn = map[string]bool{
+		"search": true,
+		"grab":   true,
+	}
+	allowedFilterNames = map[string]bool{
+		"trim":        true,
+		"lower":       true,
+		"upper":       true,
+		"replace":     true,
+		"query_param": true,
+		"prefix":      true,
+		"suffix":      true,
+		"regex":       true,
+	}
 	allowedCapabilityParams = map[string]bool{
 		"q":        true,
 		"season":   true,
@@ -122,6 +136,9 @@ func (d *Definition) Validate() error {
 	if !allowedTypes[d.Meta.Type] {
 		add("meta.type: must be one of public, semi-private, private")
 	}
+	if d.Meta.DerivedFrom != "" && !slugPattern.MatchString(d.Meta.DerivedFrom) {
+		add("meta.derived_from: must be a slug matching %s", slugPattern.String())
+	}
 
 	seenSettings := make(map[string]int, len(d.Settings))
 	for i, setting := range d.Settings {
@@ -170,6 +187,10 @@ func (d *Definition) Validate() error {
 	searchConfigured := !reflect.DeepEqual(d.Search, Search{})
 	if d.Connector == "" || searchConfigured {
 		validateSearch(d.Search, add)
+	}
+
+	if d.Download != nil {
+		validateDownload(d.Download, d, add)
 	}
 
 	for i, test := range d.Tests {
@@ -256,6 +277,77 @@ func validateSearch(search Search, add func(string, ...any)) {
 		}
 		if _, ok := search.Response.Fields[name]; !ok {
 			add("search.response.required[%d]: field %q is not defined in search.response.fields", i, name)
+		}
+	}
+}
+
+func validateDownload(download *Download, d *Definition, add func(string, ...any)) {
+	resolveOn := strings.TrimSpace(download.ResolveOn)
+	if resolveOn == "" {
+		resolveOn = "search"
+	}
+	if !allowedResolveOn[resolveOn] {
+		add("download.resolve_on: must be one of search, grab")
+	}
+
+	if download.MaxConcurrent < 0 || download.MaxConcurrent > 8 {
+		add("download.max_concurrent: must be between 1 and 8 (0 uses the default 2)")
+	}
+
+	from := strings.TrimSpace(download.From)
+	if from == "" {
+		from = "details"
+	}
+	if _, ok := d.Search.Response.Fields[from]; !ok {
+		add("download.from: field %q is not declared in search.response.fields", from)
+	}
+
+	if len(download.Extract) == 0 {
+		add("download.extract: at least one target is required")
+	}
+	for i, target := range download.Extract {
+		switch {
+		case target.Magnet != nil && target.Torrent != nil:
+			add("download.extract[%d]: magnet and torrent are mutually exclusive", i)
+		case target.Magnet == nil && target.Torrent == nil:
+			add("download.extract[%d]: must set magnet or torrent", i)
+		case target.Magnet != nil:
+			validateDownloadField(fmt.Sprintf("download.extract[%d].magnet", i), *target.Magnet, add)
+		default:
+			validateDownloadField(fmt.Sprintf("download.extract[%d].torrent", i), *target.Torrent, add)
+		}
+	}
+}
+
+func validateDownloadField(prefix string, field Field, add func(string, ...any)) {
+	if len(field.Selector) == 0 && strings.TrimSpace(field.Path) == "" {
+		add("%s: needs selector or path", prefix)
+	}
+	for i, selector := range field.Selector {
+		if strings.TrimSpace(selector) == "" {
+			add("%s.selector[%d]: must not be empty", prefix, i)
+		}
+	}
+	if field.Type != "" && !allowedFieldTypes[field.Type] {
+		add("%s.type: must be one of text, int, size, date, url, category", prefix)
+	}
+	for i, filter := range field.Filters {
+		switch filter.Name {
+		case "replace":
+			if _, _, ok := strings.Cut(filter.Arg, ":"); !ok {
+				add("%s.filters[%d]: replace argument must be old:new", prefix, i)
+			}
+		case "query_param":
+			if strings.TrimSpace(filter.Arg) == "" {
+				add("%s.filters[%d]: query_param needs a parameter name", prefix, i)
+			}
+		case "regex":
+			if _, err := regexp.Compile(filter.Arg); err != nil {
+				add("%s.filters[%d]: invalid regex", prefix, i)
+			}
+		}
+		if !allowedFilterNames[filter.Name] {
+			add("%s.filters[%d]: unknown filter %q", prefix, i, filter.Name)
 		}
 	}
 }

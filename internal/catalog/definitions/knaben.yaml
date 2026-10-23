@@ -1,0 +1,57 @@
+# VERIFICATA (verified). Knaben public RSS/Atom feed.
+#
+# Written from the public feed captured on 2026-10-23 in
+# fixtures/knaben/feed.xml (https://rss.knaben.org/ita). The feed has no
+# search endpoint: the RSS family filters titles client-side, so `query` is an
+# additional title filter applied to the same document.
+schema: 1
+connector: rss
+
+meta:
+  id: knaben
+  name: Knaben (ITA feed)
+  language: it-IT
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Knaben public RSS feed; releases carry a magnet link.
+  urls:
+    - https://rss.knaben.org/ita
+  updated: "2026-10-23"
+
+settings:
+  - name: url
+    type: text
+    label: "Feed URL"
+    help: "Knaben RSS feed, for example https://rss.knaben.org/ita"
+    default: "https://rss.knaben.org/ita"
+    required: true
+  - name: default-category
+    type: text
+    label: "Default category"
+    help: "Standard Torznab category used when the feed has only text categories."
+    default: "8000"
+  - name: query
+    type: text
+    label: "Title filter (optional)"
+    help: "Keep only feed items whose title contains these words."
+
+categories:
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "Music", standard: 3000, desc: "Audio" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: "ITA"
+  min_rows: 1
+
+tests:
+  - name: feed
+    fixture: fixtures/knaben/feed.xml
+    expect: { min_rows: 5, required: [title, magnet] }

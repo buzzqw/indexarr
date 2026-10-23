@@ -3,6 +3,7 @@
 - [README](../README.md) — presentazione, avvio rapido, configurazione, uso.
 - [API Torznab](API.md) — endpoint, parametri, risposte, download, errori.
 - [Architettura](ARCHITECTURE.md) — pacchetti, flusso, database, scelte di progetto.
+- [Vault](VAULT.md) — chiave maestra, ordine di risoluzione, comandi CLI, backup e Docker secrets.
 - [Definizioni](DEFINITIONS.md) — formato nativo v1, sicurezza, fixture e CLI `indexarr-def`.
 - [Mappa UI](UI-MAP.md) — route legacy/native, redirect e smoke test dell'interfaccia.
 - [Revisione UI](UI-REVIEW.md) — audit dell'interfaccia vecchia/nuova e checklist di redesign.
@@ -13,6 +14,7 @@
 - [Audit operativo 23/10/2026](AUDIT-2026-10-23.md) — risorse, database,
   compatibilità Torznab e interventi eseguiti.
 - [Documento programmatico](MANIFESTO.md) — ovunque, semplice, leggero: promesse e numeri
+- [Prossimi passi](NEXT-STEPS.md) — work package per gli agenti (WP0–WP14), con stub e criteri di accettazione; include l'analisi di usabilità della UI.
 - [Piano indexarr 2](INDEXARR2-PLAN.md) — ordine di lavoro, package e contratti Go.
 - [indexarr 2](../indexarr2.md) — visione e architettura del nuovo indexer
   autonomo che sostituisce Jackett/Prowlarr.

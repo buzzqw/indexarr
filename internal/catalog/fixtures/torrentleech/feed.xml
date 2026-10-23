@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>TorrentLeech</title>
+	            <link>https://www.torrentleech.org</link>
+	            <description>The latest torrents from TorrentLeech.org</description>
+	            <language>en</language>
+				<ttl>5</ttl>
+				<atom:link href="http://rss.torrentleech.org/" rel="self" type="application/rss+xml" />
+<item>
+<title>Synthetic Show S01E01 1080p WEB-DL</title>
+<link>https://www.torrentleech.org/torrent/100001</link>
+<guid>https://www.torrentleech.org/torrent/100001</guid>
+<description><![CDATA[Category: TV<br />Size: 1.20 GB<br />Seeders: 12<br />Leechers: 3]]></description>
+<enclosure url="https://rss.torrentleech.org/download/SYNTHETICRSSKEY/100001.torrent" length="1288490189" type="application/x-bittorrent" />
+<pubDate>Fri, 23 Oct 2026 10:00:00 +0000</pubDate>
+</item>
+<item>
+<title>Synthetic Movie 2026 1080p BluRay</title>
+<link>https://www.torrentleech.org/torrent/100002</link>
+<guid>https://www.torrentleech.org/torrent/100002</guid>
+<description><![CDATA[Category: Movies<br />Size: 8.50 GB<br />Seeders: 40<br />Leechers: 5]]></description>
+<enclosure url="https://rss.torrentleech.org/download/SYNTHETICRSSKEY/100002.torrent" length="9126805504" type="application/x-bittorrent" />
+<pubDate>Fri, 23 Oct 2026 09:30:00 +0000</pubDate>
+</item>
+<item>
+<title>Synthetic Album 2026 FLAC</title>
+<link>https://www.torrentleech.org/torrent/100003</link>
+<guid>https://www.torrentleech.org/torrent/100003</guid>
+<description><![CDATA[Category: Music<br />Size: 350 MB<br />Seeders: 7<br />Leechers: 1]]></description>
+<enclosure url="https://rss.torrentleech.org/download/SYNTHETICRSSKEY/100003.torrent" length="367001600" type="application/x-bittorrent" />
+<pubDate>Fri, 23 Oct 2026 09:00:00 +0000</pubDate>
+</item>
+</channel></rss>

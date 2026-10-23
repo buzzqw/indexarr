@@ -19,12 +19,12 @@
   <article class="card">
     <span class="label">{{T "dashboard.nativeIndexers"}}</span>
     <strong>{{.NativeCount}}</strong>
-    <span class="hint">{{if .NativeErrors}}<span class="text-danger">{{T "dashboard.withErrors" .NativeErrors}}</span>{{else}}{{T "dashboard.noErrors"}}{{end}} · {{T "dashboard.definitionsCount" (len .Definitions)}}</span>
+    <span class="hint">{{if .NativeErrors}}<span class="text-danger">{{T "dashboard.withErrors" .NativeErrors}}</span>{{else}}{{T "dashboard.noCurrentErrors"}}{{end}} · {{T "dashboard.definitionsCount" (len .Definitions)}}</span>
   </article>
   <article class="card">
     <span class="label">{{T "dashboard.legacySources"}}</span>
     <strong>{{.LegacyCount}}</strong>
-    <span class="hint">{{T "dashboard.enabledCount" .Stats.EnabledSources}} · {{if .LegacyErrors}}<span class="text-danger">{{T "dashboard.withErrors" .LegacyErrors}}</span>{{else}}{{T "dashboard.noErrors"}}{{end}}</span>
+    <span class="hint">{{T "dashboard.enabledCount" .Stats.EnabledSources}} · {{if .LegacyErrors}}<span class="text-danger">{{T "dashboard.withErrors" .LegacyErrors}}</span>{{else}}{{T "dashboard.noCurrentErrors"}}{{end}}</span>
   </article>
   <article class="card">
     <span class="label">{{T "dashboard.applications"}}</span>
@@ -34,13 +34,29 @@
   <article class="card">
     <span class="label">{{T "dashboard.errors24h"}}</span>
     <strong>{{.Stats.Errors24h}}</strong>
-    <span class="hint">{{T "dashboard.runs24h" .Stats.Runs24h}}</span>
+    <span class="hint">{{T "dashboard.failedRunsHint" .Stats.Errors24h .Stats.Runs24h}}</span>
   </article>
   <article class="card">
     <span class="label">{{T "dashboard.database"}}</span>
     <strong>{{bytes .Stats.DBBytes}}</strong>
     <span class="hint">{{T "dashboard.newestRelease" (ago .Stats.NewestSeen)}}</span>
   </article>
+</section>
+
+<section class="panel" id="endpoint">
+  <div class="panel-head">
+    <h2>{{T "shell.torznab"}}</h2>
+    <a class="link" href="/settings">{{T "dashboard.endpointSettings"}}</a>
+  </div>
+  <div class="prose">
+    <p>{{T "dashboard.endpointHint"}}</p>
+    <p><code>{{.TorznabURL}}</code></p>
+    {{if .PublicURLSet}}
+    <p class="muted">{{T "dashboard.publicURLValue" .PublicURL}}</p>
+    {{else}}
+    <p class="flash warn" role="alert">{{T "dashboard.publicURLMissing"}} <a href="/settings">{{T "dashboard.publicURLAction"}}</a></p>
+    {{end}}
+  </div>
 </section>
 
 <div class="two-col">
@@ -76,14 +92,17 @@
     </div>
     <div class="status-grid">
       <div class="status-item">
-        <span class="label">{{T "dashboard.native"}}</span>
-        <strong>{{.NativeCount}}</strong>
-        <span class="hint">{{if .NativeErrors}}{{T "dashboard.withErrors" .NativeErrors}}{{else}}{{T "dashboard.allNoErrors"}}{{end}}</span>
-      </div>
-      <div class="status-item">
-        <span class="label">{{T "dashboard.legacy"}}</span>
-        <strong>{{.LegacyCount}}</strong>
-        <span class="hint">{{if .LegacyErrors}}{{T "dashboard.withErrors" .LegacyErrors}}{{else}}{{T "dashboard.allNoErrors"}}{{end}}</span>
+        <span class="label">{{T "dashboard.statusSummary"}}</span>
+        <strong>
+          {{if .Status.OK}}<span class="chip ok">{{T "dashboard.statusOK"}}</span>
+          {{else if .Status.Current}}<span class="chip danger">{{T "dashboard.statusProblems" .Status.Current}}</span>
+          {{else}}<span class="chip warn">{{T "dashboard.statusRecent" .Status.RunErrors}}</span>{{end}}
+        </strong>
+        <span class="hint">
+          {{if .Status.Current}}{{T "dashboard.statusCurrentHint" .Status.Current .Status.RunErrors .Status.Runs}}
+          {{else if .Status.RunErrors}}{{T "dashboard.statusRecentHint" .Status.RunErrors .Status.Runs}}
+          {{else}}{{T "dashboard.statusOKHint" .Status.Runs}}{{end}}
+        </span>
       </div>
     </div>
     <div class="table-scroll">
@@ -93,7 +112,7 @@
           {{range .Runs}}
           <tr>
             <td>{{.SourceName}}</td>
-            <td>{{if eq .Status "error"}}<span class="chip danger" title="{{.Error}}">{{T "common.error"}}</span>{{else if eq .Status "running"}}<span class="chip warn">{{T "common.running"}}</span>{{else}}<span class="chip ok">ok</span>{{end}}</td>
+            <td>{{if eq .Status "error"}}<span class="chip danger" title="{{.Error}}">{{T "common.error"}}</span>{{else if eq .Status "running"}}<span class="chip warn">{{T "common.running"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
             <td class="nowrap">{{T "dashboard.itemsValue" .ItemsNew .ItemsSeen}}</td>
             <td class="nowrap">{{ago .StartedAt}}</td>
           </tr>

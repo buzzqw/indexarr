@@ -24,6 +24,10 @@ echo "==> go test"
 go test ./...
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/indexarr-qa.XXXXXX")"
+# Keep the vault key out of the developer's real user config: WP1 resolves
+# UserConfigDir()/indexarr/master.key when no legacy <db>.key exists.
+export XDG_CONFIG_HOME="$TMP/config"
+mkdir -p "$XDG_CONFIG_HOME"
 PORT="${INDEXARR_QA_PORT:-$((20000 + RANDOM % 30000))}"
 BASE="http://127.0.0.1:$PORT"
 LOG="$TMP/indexarr.log"

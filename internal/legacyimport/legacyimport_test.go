@@ -157,11 +157,8 @@ func TestPreview(t *testing.T) {
 	}
 
 	betaCandidate := byID[beta]
-	if betaCandidate.Native {
-		t.Errorf("rss candidate marked native: %+v", betaCandidate)
-	}
-	if !strings.Contains(strings.ToLower(betaCandidate.Reason), "rss") {
-		t.Errorf("rss reason = %q", betaCandidate.Reason)
+	if !betaCandidate.Native || betaCandidate.Reason != "" {
+		t.Errorf("rss candidate = %+v, want native", betaCandidate)
 	}
 	if betaCandidate.Slug != bridged[beta] || betaCandidate.Slug == "" {
 		t.Errorf("rss slug = %q, want bridged %q", betaCandidate.Slug, bridged[beta])
@@ -187,8 +184,8 @@ func TestPreview(t *testing.T) {
 	}
 
 	native, skipped := Counts(candidates)
-	if native != 3 || skipped != 3 {
-		t.Errorf("counts = %d native, %d skipped; want 3, 3", native, skipped)
+	if native != 4 || skipped != 2 {
+		t.Errorf("counts = %d native, %d skipped; want 4, 2", native, skipped)
 	}
 
 	encoded, err := json.Marshal(candidates)
@@ -200,6 +197,88 @@ func TestPreview(t *testing.T) {
 	} {
 		if strings.Contains(string(encoded), secret) {
 			t.Fatalf("preview leaked %q: %s", secret, encoded)
+		}
+	}
+}
+
+func TestPreviewClassifiesRSSFeeds(t *testing.T) {
+	ctx := context.Background()
+	st := newStore(t)
+	const rssSecret = "RSS-PATH-SECRET-0123456789"
+
+	plain := createSource(t, st, store.Source{
+		Name: "Plain Feed", Kind: "rss",
+		URL: "https://feed.example/rss?rsskey=" + rssSecret, Enabled: true,
+	})
+	knaben := createSource(t, st, store.Source{
+		Name: "Knaben", Kind: "rss",
+		URL: "https://rss.knaben.org/ita///1337x", Enabled: true,
+	})
+	extto := createSource(t, st, store.Source{
+		Name: "ExtTo listing", Kind: "rss",
+		URL: "https://ext.to/browse/", Enabled: true,
+	})
+	galaxy := createSource(t, st, store.Source{
+		Name: "TorrentGalaxy listing", Kind: "rss",
+		URL: "https://torrentgalaxy.one/get-posts/user:MIRCrewRS/", Enabled: true,
+	})
+	corsaro := createSource(t, st, store.Source{
+		Name: "Corsaro listing", Kind: "rss",
+		URL: "https://corsaro.example/torrent/1", Enabled: true,
+	})
+	invalid := createSource(t, st, store.Source{
+		Name: "Broken Feed", Kind: "rss", URL: "not-a-url", Enabled: true,
+	})
+
+	candidates, err := Preview(ctx, st)
+	if err != nil {
+		t.Fatalf("Preview: %v", err)
+	}
+	byID := make(map[int64]Candidate, len(candidates))
+	for _, candidate := range candidates {
+		byID[candidate.SourceID] = candidate
+	}
+
+	for _, id := range []int64{plain, knaben} {
+		if !byID[id].Native || byID[id].Reason != "" {
+			t.Errorf("source %d = %+v, want native feed", id, byID[id])
+		}
+	}
+	for id, site := range map[int64]string{
+		extto:   "ExtTo",
+		galaxy:  "TorrentGalaxy",
+		corsaro: "Corsaro",
+	} {
+		candidate := byID[id]
+		if candidate.Native {
+			t.Errorf("%s listing marked native: %+v", site, candidate)
+		}
+		if !strings.Contains(strings.ToLower(candidate.Reason), "html listing") ||
+			!strings.Contains(candidate.Reason, site) {
+			t.Errorf("%s reason = %q, want an HTML-listing explanation", site, candidate.Reason)
+		}
+	}
+	if byID[invalid].Native || byID[invalid].Reason == "" {
+		t.Errorf("invalid RSS candidate = %+v", byID[invalid])
+	}
+	if got := byID[plain].URL; strings.Contains(got, rssSecret) {
+		t.Errorf("preview leaked the feed key: %q", got)
+	}
+}
+
+func TestHTMLListingSite(t *testing.T) {
+	cases := map[string]string{
+		"https://ext.to/browse/":                              "ExtTo",
+		"https://www.extto.org/":                              "ExtTo",
+		"https://torrentgalaxy.one/get-posts/user:MIRCrewRS/": "TorrentGalaxy",
+		"https://corsaro.example/torrent/1":                   "Corsaro",
+		"https://rss.knaben.org/ita///1337x":                  "",
+		"https://feed.example/rss":                            "",
+		"not-a-url":                                           "",
+	}
+	for raw, want := range cases {
+		if got := htmlListingSite(raw); got != want {
+			t.Errorf("htmlListingSite(%q) = %q, want %q", raw, got, want)
 		}
 	}
 }

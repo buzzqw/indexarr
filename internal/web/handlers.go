@@ -11,6 +11,20 @@ import (
 
 const releasesPerPage = 50
 
+// dashboardStatus is the single error summary of the overview. It merges the
+// current state of every indexer and legacy source with the failed runs of the
+// last 24 hours, so the page cannot say "all clear" while the run counter
+// reports errors (or the other way round).
+type dashboardStatus struct {
+	Current   int   // indexers or sources with a non-empty last_error
+	RunErrors int64 // failed runs in the last 24 hours
+	Runs      int64 // runs in the last 24 hours
+}
+
+func (s dashboardStatus) OK() bool {
+	return s.Current == 0 && s.RunErrors == 0
+}
+
 type dashboardPage struct {
 	base
 	Stats          store.Stats
@@ -21,6 +35,7 @@ type dashboardPage struct {
 	Running        map[int64]bool
 	Runs           []store.Run
 	Recent         []store.Release
+	Status         dashboardStatus
 	NativeErrors   int
 	LegacyErrors   int
 	NativeCount    int
@@ -84,15 +99,20 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		localDefinitions = append(localDefinitions, def)
 	}
 	s.render(w, r, "dashboard", dashboardPage{
-		base:           s.newBase(r, "Overview", "dashboard"),
-		Stats:          stats,
-		Sources:        sources,
-		Indexers:       nativeIndexers,
-		Applications:   applications,
-		Definitions:    localDefinitions,
-		Running:        running,
-		Runs:           runs,
-		Recent:         recent,
+		base:         s.newBaseT(r, "dashboard.title", "dashboard"),
+		Stats:        stats,
+		Sources:      sources,
+		Indexers:     nativeIndexers,
+		Applications: applications,
+		Definitions:  localDefinitions,
+		Running:      running,
+		Runs:         runs,
+		Recent:       recent,
+		Status: dashboardStatus{
+			Current:   nativeErrors + legacyErrors,
+			RunErrors: stats.Errors24h,
+			Runs:      stats.Runs24h,
+		},
 		NativeErrors:   nativeErrors,
 		LegacyErrors:   legacyErrors,
 		NativeCount:    len(nativeIndexers),

@@ -47,6 +47,7 @@ type definitionRow struct {
 	Indexers   int
 	ParseError string
 	Builtin    bool
+	Derived    bool
 }
 
 type definitionsPage struct {
@@ -72,7 +73,7 @@ func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
 		counts[in.DefinitionID]++
 	}
 
-	data := definitionsPage{base: s.newBase(r, "Definitions", "definitions")}
+	data := definitionsPage{base: s.newBaseT(r, "definitions.title", "definitions")}
 	seen := make(map[string]bool, len(defs))
 	for _, def := range defs {
 		if strings.HasPrefix(def.ID, "legacy-") {
@@ -133,6 +134,7 @@ func definitionRowFromStore(def store.Definition, indexers int) definitionRow {
 	}
 	row.Name = parsed.Meta.Name
 	row.Protocol = parsed.Meta.Protocol
+	row.Derived = parsed.IsDerived()
 	if connector := strings.TrimSpace(parsed.Connector); connector != "" {
 		row.Family = connector
 	}
@@ -157,18 +159,19 @@ type definitionPage struct {
 	Body       string
 	Indexers   []store.Indexer
 	Builtin    bool
+	Derived    bool
 }
 
 func (s *Server) definitionPage(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.PathValue("id"))
 	if id == "" {
-		s.renderError(w, r, http.StatusNotFound, "Definizione non trovata")
+		s.renderError(w, r, http.StatusNotFound, s.translate(r, "definition.error.notFound"))
 		return
 	}
 	def, builtin, err := s.storedOrCatalogDefinition(r, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, indexersvc.ErrDefinitionNotFound) {
-			s.renderError(w, r, http.StatusNotFound, "Definizione non trovata")
+			s.renderError(w, r, http.StatusNotFound, s.translate(r, "definition.error.notFound"))
 			return
 		}
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
@@ -188,7 +191,7 @@ func (s *Server) definitionPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := definitionPage{
-		base:       s.newBase(r, "Definition "+id, "definitions"),
+		base:       s.newBase(r, id, "definitions"),
 		Definition: def,
 		Name:       id,
 		Family:     def.Family,
@@ -199,10 +202,12 @@ func (s *Server) definitionPage(w http.ResponseWriter, r *http.Request) {
 	}
 	parsed, err := definition.Parse([]byte(def.Body))
 	if err != nil {
-		data.Problems = validationProblems(err)
+		data.Problems = validationProblems(err, s.translate(r, "definitionForm.invalidShort"))
 	} else {
 		data.Name = parsed.Meta.Name
 		data.Protocol = parsed.Meta.Protocol
+		data.Derived = parsed.IsDerived()
+		data.Title = data.Name
 		if connector := strings.TrimSpace(parsed.Connector); connector != "" {
 			data.Family = connector
 		}
@@ -244,20 +249,20 @@ type definitionFormPage struct {
 
 func (s *Server) definitionNew(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, "definition_form", definitionFormPage{
-		base: s.newBase(r, "New definition", "definitions"),
+		base: s.newBaseT(r, "definitionForm.title", "definitions"),
 		Body: "schema: 1\nmeta:\n  id: my-indexer\n  name: My Indexer\n  type: private\n  protocol: torrent\n  urls:\n    - https://indexer.example/\n",
 	}, http.StatusOK)
 }
 
 func (s *Server) definitionCreate(w http.ResponseWriter, r *http.Request) {
-	body, err := definitionBodyFromRequest(r)
+	body, err := s.definitionBodyFromRequest(r)
 	if err != nil {
 		s.renderDefinitionFormError(w, r, string(body), []string{err.Error()})
 		return
 	}
 	parsed, err := definition.Parse(body)
 	if err != nil {
-		s.renderDefinitionFormError(w, r, string(body), validationProblems(err))
+		s.renderDefinitionFormError(w, r, string(body), validationProblems(err, s.translate(r, "definitionForm.invalidShort")))
 		return
 	}
 
@@ -265,7 +270,7 @@ func (s *Server) definitionCreate(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.store.GetDefinition(r.Context(), parsed.Meta.ID); err == nil {
 		if !overwrite {
 			s.renderDefinitionFormError(w, r, string(body), []string{
-				"Esiste già una definizione con id " + parsed.Meta.ID + "; seleziona «sovrascrivi» per sostituirla.",
+				s.translate(r, "definitionForm.duplicate", parsed.Meta.ID),
 			})
 			return
 		}
@@ -289,22 +294,22 @@ func (s *Server) definitionCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderDefinitionFormError(w, r, string(body), []string{err.Error()})
 		return
 	}
-	redirect(w, r, "/definitions/"+stored.ID, "Definizione salvata", "")
+	redirect(w, r, "/definitions/"+stored.ID, s.translate(r, "definition.saved"), "")
 }
 
 func (s *Server) renderDefinitionFormError(w http.ResponseWriter, r *http.Request, body string, problems []string) {
 	data := definitionFormPage{
-		base:     s.newBase(r, "New definition", "definitions"),
+		base:     s.newBaseT(r, "definitionForm.title", "definitions"),
 		Body:     body,
 		Problems: problems,
 	}
-	data.Error = "La definizione non è valida"
+	data.Error = s.translate(r, "definitionForm.invalid")
 	s.render(w, r, "definition_form", data, http.StatusBadRequest)
 }
 
 // definitionBodyFromRequest accepts either the textarea or an uploaded YAML
 // file. Multipart forms carry the CSRF token in the query string.
-func definitionBodyFromRequest(r *http.Request) ([]byte, error) {
+func (s *Server) definitionBodyFromRequest(r *http.Request) ([]byte, error) {
 	if strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "multipart/form-data") {
 		if err := r.ParseMultipartForm(4 << 20); err != nil {
 			return nil, err
@@ -326,19 +331,19 @@ func definitionBodyFromRequest(r *http.Request) ([]byte, error) {
 	}
 	body := []byte(r.FormValue("body"))
 	if len(bytes.TrimSpace(body)) == 0 {
-		return body, errors.New("Incolla il testo YAML oppure carica un file")
+		return body, errors.New(s.translate(r, "definitionForm.empty"))
 	}
 	return body, nil
 }
 
-func validationProblems(err error) []string {
+func validationProblems(err error, fallback string) []string {
 	var invalid *definition.ValidationError
 	if errors.As(err, &invalid) {
 		return append([]string(nil), invalid.Problems...)
 	}
 	message := strings.TrimSpace(err.Error())
 	if message == "" {
-		message = "definizione non valida"
+		message = fallback
 	}
 	return []string{message}
 }
@@ -377,7 +382,7 @@ func (s *Server) indexersPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := indexersPage{
-		base:        s.newBase(r, "Indexers", "indexers"),
+		base:        s.newBaseT(r, "indexers.title", "indexers"),
 		Tab:         tab,
 		Legacy:      legacy,
 		LegacyCount: len(legacy.Sources),
@@ -441,28 +446,29 @@ type indexerConfigEntry struct {
 
 type indexerPage struct {
 	base
-	Indexer        store.Indexer
-	Definition     store.Definition
-	DefinitionName string
-	Public         []indexerConfigEntry
-	SecretKeys     []string
-	State          store.IndexerState
-	HasState       bool
-	LastRun        *store.IndexerHistory
-	Test           *engine.TestResult
-	Run            *indexer.RunStats
-	RunItems       []engine.Item
+	Indexer          store.Indexer
+	Definition       store.Definition
+	DefinitionName   string
+	Public           []indexerConfigEntry
+	SecretKeys       []string
+	State            store.IndexerState
+	HasState         bool
+	LastRun          *store.IndexerHistory
+	Test             *engine.TestResult
+	Run              *indexer.RunStats
+	RunItems         []engine.Item
+	ApplicationCount int
 }
 
 func (s *Server) indexerPage(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, "ID indexer non valido")
+		s.renderError(w, r, http.StatusBadRequest, s.translate(r, "indexer.error.invalidID"))
 		return
 	}
 	data, err := s.buildIndexerPage(r, id)
 	if err != nil {
-		s.renderError(w, r, statusForIndexerError(err), indexerErrorMessage(err))
+		s.renderError(w, r, statusForIndexerError(err), s.indexerErrorMessage(r, err))
 		return
 	}
 	s.render(w, r, "indexer", data, http.StatusOK)
@@ -478,6 +484,9 @@ func (s *Server) buildIndexerPage(r *http.Request, id int64) (indexerPage, error
 		Indexer:    in,
 		Definition: store.Definition{ID: in.DefinitionID},
 		Public:     publicConfig(in.ConfigJSON),
+	}
+	if applications, err := s.store.ListApplications(r.Context()); err == nil {
+		data.ApplicationCount = len(applications)
 	}
 	if def, err := s.store.GetDefinition(r.Context(), in.DefinitionID); err == nil {
 		data.Definition = def
@@ -504,32 +513,32 @@ func (s *Server) buildIndexerPage(r *http.Request, id int64) (indexerPage, error
 func (s *Server) indexerTest(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", "ID indexer non valido")
+		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.invalidID"))
 		return
 	}
 	if _, err := s.store.GetIndexer(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers?tab=native", "", "Indexer non trovato")
+		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.notFound"))
 		return
 	}
 	if s.native == nil {
 		data, buildErr := s.buildIndexerPage(r, id)
 		if buildErr != nil {
-			redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(buildErr))
+			redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, buildErr))
 			return
 		}
-		data.Error = "Il motore nativo non è configurato: impossibile eseguire il test."
+		data.Error = s.translate(r, "indexer.error.nativeEngineTest")
 		s.render(w, r, "indexer", data, http.StatusOK)
 		return
 	}
 	result, testErr := s.native.Test(r.Context(), id)
 	data, buildErr := s.buildIndexerPage(r, id)
 	if buildErr != nil {
-		redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(buildErr))
+		redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, buildErr))
 		return
 	}
 	data.Test = &result
 	if testErr != nil {
-		data.Error = "Test non riuscito: " + testErr.Error()
+		data.Error = s.translate(r, "indexer.testFailedDetail", testErr.Error())
 	}
 	s.render(w, r, "indexer", data, http.StatusOK)
 }
@@ -537,27 +546,27 @@ func (s *Server) indexerTest(w http.ResponseWriter, r *http.Request) {
 func (s *Server) indexerRun(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", "ID indexer non valido")
+		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.invalidID"))
 		return
 	}
 	if _, err := s.store.GetIndexer(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers?tab=native", "", "Indexer non trovato")
+		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.notFound"))
 		return
 	}
 	if s.native == nil {
 		data, buildErr := s.buildIndexerPage(r, id)
 		if buildErr != nil {
-			redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(buildErr))
+			redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, buildErr))
 			return
 		}
-		data.Error = "Il motore nativo non è configurato: impossibile eseguire l'indexer."
+		data.Error = s.translate(r, "indexer.error.nativeEngineRun")
 		s.render(w, r, "indexer", data, http.StatusOK)
 		return
 	}
 	stats, runErr := s.native.Run(r.Context(), id)
 	data, buildErr := s.buildIndexerPage(r, id)
 	if buildErr != nil {
-		redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(buildErr))
+		redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, buildErr))
 		return
 	}
 	if stats != nil {
@@ -569,7 +578,7 @@ func (s *Server) indexerRun(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if runErr != nil {
-		data.Error = "Esecuzione non riuscita: " + runErr.Error()
+		data.Error = s.translate(r, "indexer.runFailed", runErr.Error())
 	}
 	s.render(w, r, "indexer", data, http.StatusOK)
 }
@@ -581,9 +590,9 @@ func statusForIndexerError(err error) int {
 	return http.StatusInternalServerError
 }
 
-func indexerErrorMessage(err error) string {
+func (s *Server) indexerErrorMessage(r *http.Request, err error) string {
 	if errors.Is(err, sql.ErrNoRows) || errors.Is(err, indexersvc.ErrIndexerNotFound) {
-		return "Indexer non trovato"
+		return s.translate(r, "indexer.error.notFound")
 	}
 	return err.Error()
 }
@@ -641,6 +650,7 @@ type definitionOption struct {
 	Protocol  string
 	Family    string
 	Installed bool
+	Derived   bool
 }
 
 type indexerSettingOption struct {
@@ -670,6 +680,7 @@ type indexerFormPage struct {
 	DefinitionID    string
 	DefinitionName  string
 	Definitions     []definitionOption
+	Derived         bool
 	Name            string
 	Slug            string
 	Protocol        string
@@ -688,7 +699,7 @@ type indexerFormPage struct {
 
 func (s *Server) indexerNew(w http.ResponseWriter, r *http.Request) {
 	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, "Il servizio degli indexer nativi non è configurato.")
+		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
 		return
 	}
 	defID := strings.TrimSpace(r.URL.Query().Get("definition"))
@@ -702,17 +713,17 @@ func (s *Server) indexerNew(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) indexerEdit(w http.ResponseWriter, r *http.Request) {
 	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, "Il servizio degli indexer nativi non è configurato.")
+		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
 		return
 	}
 	id, err := pathID(r)
 	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, "ID indexer non valido")
+		s.renderError(w, r, http.StatusBadRequest, s.translate(r, "indexer.error.invalidID"))
 		return
 	}
 	current, err := s.store.GetIndexer(r.Context(), id)
 	if err != nil {
-		s.renderError(w, r, statusForIndexerError(err), indexerErrorMessage(err))
+		s.renderError(w, r, statusForIndexerError(err), s.indexerErrorMessage(r, err))
 		return
 	}
 	data, err := s.buildIndexerForm(r, current.DefinitionID, &current, nil, nil)
@@ -725,18 +736,22 @@ func (s *Server) indexerEdit(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) indexerCreate(w http.ResponseWriter, r *http.Request) {
 	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, "Il servizio degli indexer nativi non è configurato.")
+		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
 		return
 	}
 	defID := strings.TrimSpace(r.FormValue("definition_id"))
 	parsed, _, err := s.loadDefinitionForForm(r, defID)
 	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, "Scegli una definizione valida: "+err.Error())
+		s.renderError(w, r, http.StatusBadRequest, s.translate(r, "indexerForm.invalidDefinition", err.Error()))
 		return
 	}
 	in, err := indexerInputFromForm(r, parsed)
 	if err != nil {
 		s.renderIndexerFormError(w, r, defID, nil, nil, []string{err.Error()})
+		return
+	}
+	if def, err := s.store.GetDefinition(r.Context(), defID); err == nil && strings.HasPrefix(def.ID, "legacy-") {
+		s.renderIndexerFormError(w, r, defID, nil, &in, []string{s.translate(r, "indexerForm.legacyDefinition")})
 		return
 	}
 	if err := s.ensureStoredDefinition(r, defID); err != nil {
@@ -745,25 +760,25 @@ func (s *Server) indexerCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	created, err := s.svc.Create(r.Context(), in)
 	if err != nil {
-		s.renderIndexerFormError(w, r, defID, nil, &in, []string{indexerFriendlyError(err)})
+		s.renderIndexerFormError(w, r, defID, nil, &in, []string{s.indexerFriendlyError(r, err)})
 		return
 	}
-	redirect(w, r, "/indexers/"+strconv.FormatInt(created.ID, 10), "Indexer creato", "")
+	redirect(w, r, "/indexers/"+strconv.FormatInt(created.ID, 10), s.translate(r, "indexer.created"), "")
 }
 
 func (s *Server) indexerUpdate(w http.ResponseWriter, r *http.Request) {
 	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, "Il servizio degli indexer nativi non è configurato.")
+		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
 		return
 	}
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", "ID indexer non valido")
+		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.invalidID"))
 		return
 	}
 	current, err := s.store.GetIndexer(r.Context(), id)
 	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", indexerErrorMessage(err))
+		redirect(w, r, "/indexers?tab=native", "", s.indexerErrorMessage(r, err))
 		return
 	}
 	defID := strings.TrimSpace(r.FormValue("definition_id"))
@@ -772,7 +787,7 @@ func (s *Server) indexerUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	parsed, _, err := s.loadDefinitionForForm(r, defID)
 	if err != nil {
-		s.renderIndexerFormError(w, r, defID, &current, nil, []string{"Definizione non valida: " + err.Error()})
+		s.renderIndexerFormError(w, r, defID, &current, nil, []string{s.translate(r, "indexerForm.definitionInvalid", err.Error())})
 		return
 	}
 	in, err := indexerInputFromForm(r, parsed)
@@ -789,27 +804,27 @@ func (s *Server) indexerUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := s.svc.Update(r.Context(), id, in); err != nil {
-		s.renderIndexerFormError(w, r, defID, &current, &in, []string{indexerFriendlyError(err)})
+		s.renderIndexerFormError(w, r, defID, &current, &in, []string{s.indexerFriendlyError(r, err)})
 		return
 	}
-	redirect(w, r, "/indexers/"+strconv.FormatInt(id, 10), "Indexer salvato", "")
+	redirect(w, r, "/indexers/"+strconv.FormatInt(id, 10), s.translate(r, "indexer.saved"), "")
 }
 
 func (s *Server) indexerDelete(w http.ResponseWriter, r *http.Request) {
 	if s.svc == nil {
-		s.renderError(w, r, http.StatusServiceUnavailable, "Il servizio degli indexer nativi non è configurato.")
+		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
 		return
 	}
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers?tab=native", "", "ID indexer non valido")
+		redirect(w, r, "/indexers?tab=native", "", s.translate(r, "indexer.error.invalidID"))
 		return
 	}
 	if err := s.svc.Delete(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers?tab=native", "", indexerFriendlyError(err))
+		redirect(w, r, "/indexers?tab=native", "", s.indexerFriendlyError(r, err))
 		return
 	}
-	redirect(w, r, "/indexers?tab=native", "Indexer eliminato", "")
+	redirect(w, r, "/indexers?tab=native", s.translate(r, "indexer.deleted"), "")
 }
 
 func (s *Server) renderIndexerFormError(w http.ResponseWriter, r *http.Request, defID string, current *store.Indexer, in *indexersvc.Input, problems []string) {
@@ -818,20 +833,20 @@ func (s *Server) renderIndexerFormError(w http.ResponseWriter, r *http.Request, 
 		s.renderError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
-	data.Error = "Controlla i campi dell'indexer"
+	data.Error = s.translate(r, "indexerForm.checkFields")
 	s.render(w, r, "indexer_form", data, http.StatusBadRequest)
 }
 
-func indexerFriendlyError(err error) string {
+func (s *Server) indexerFriendlyError(r *http.Request, err error) string {
 	switch {
 	case errors.Is(err, indexersvc.ErrSlugTaken):
-		return "Esiste già un indexer con questo slug"
+		return s.translate(r, "indexer.error.slugTaken")
 	case errors.Is(err, indexersvc.ErrVaultRequired):
-		return "Il vault non è configurato: impossibile salvare i segreti"
+		return s.translate(r, "indexer.error.vaultRequired")
 	case errors.Is(err, indexersvc.ErrDefinitionNotFound):
-		return "Definizione non trovata"
+		return s.translate(r, "indexer.error.definitionNotFound")
 	case errors.Is(err, indexersvc.ErrIndexerNotFound):
-		return "Indexer non trovato"
+		return s.translate(r, "indexer.error.notFound")
 	default:
 		return err.Error()
 	}
@@ -846,7 +861,7 @@ func (s *Server) buildIndexerForm(r *http.Request, defID string, current *store.
 		return indexerFormPage{}, err
 	}
 	data := indexerFormPage{
-		base:        s.newBase(r, "Native indexer", "indexers"),
+		base:        s.newBaseT(r, "indexerForm.new", "indexers"),
 		IsNew:       current == nil,
 		Definitions: options,
 		Priority:    25,
@@ -854,6 +869,7 @@ func (s *Server) buildIndexerForm(r *http.Request, defID string, current *store.
 		Problems:    problems,
 	}
 	if current != nil {
+		data.Title = s.translate(r, "indexerForm.edit", current.Name)
 		data.Indexer = *current
 		data.Name = current.Name
 		data.Slug = current.Slug
@@ -883,7 +899,7 @@ func (s *Server) buildIndexerForm(r *http.Request, defID string, current *store.
 	}
 	data.DefinitionID = defID
 	if defID == "" {
-		data.Problems = append(data.Problems, "Nessuna definizione disponibile: crea prima una definizione.")
+		data.Problems = append(data.Problems, s.translate(r, "indexerForm.noDefinitions"))
 		return data, nil
 	}
 
@@ -892,6 +908,7 @@ func (s *Server) buildIndexerForm(r *http.Request, defID string, current *store.
 		return indexerFormPage{}, err
 	}
 	data.DefinitionName = parsed.Meta.Name
+	data.Derived = parsed.IsDerived()
 	if data.Protocol == "" {
 		data.Protocol = parsed.Meta.Protocol
 	}
@@ -1047,10 +1064,16 @@ func (s *Server) definitionOptions(r *http.Request) ([]definitionOption, error) 
 	installed := make(map[string]bool, len(defs))
 	for _, def := range defs {
 		installed[def.ID] = true
+		// Bridge definitions are generated from legacy sources: they are
+		// read-only and never a valid starting point for a new indexer.
+		if strings.HasPrefix(def.ID, "legacy-") {
+			continue
+		}
 		option := definitionOption{ID: def.ID, Name: definitionName(def), Installed: true}
 		if parsed, err := definition.Parse([]byte(def.Body)); err == nil {
 			option.Protocol = parsed.Meta.Protocol
 			option.Family = parsed.Connector
+			option.Derived = parsed.IsDerived()
 			if option.Family == "" {
 				option.Family = def.Family
 			}
@@ -1062,7 +1085,7 @@ func (s *Server) definitionOptions(r *http.Request) ([]definitionOption, error) 
 		return options, nil
 	}
 	for _, entry := range entries {
-		if installed[entry.ID] {
+		if installed[entry.ID] || strings.HasPrefix(entry.ID, "legacy-") {
 			continue
 		}
 		options = append(options, definitionOption{
@@ -1070,6 +1093,7 @@ func (s *Server) definitionOptions(r *http.Request) ([]definitionOption, error) 
 			Name:     entry.Definition.Meta.Name,
 			Protocol: entry.Definition.Meta.Protocol,
 			Family:   entry.Definition.Connector,
+			Derived:  entry.Definition.IsDerived(),
 		})
 	}
 	return options, nil
@@ -1078,7 +1102,7 @@ func (s *Server) definitionOptions(r *http.Request) ([]definitionOption, error) 
 // loadDefinitionForForm reads a stored definition or a built-in catalog entry.
 func (s *Server) loadDefinitionForForm(r *http.Request, id string) (*definition.Definition, bool, error) {
 	if id == "" {
-		return nil, false, errors.New("scegli una definizione")
+		return nil, false, errors.New(s.translate(r, "indexerForm.chooseDefinition"))
 	}
 	if def, err := s.store.GetDefinition(r.Context(), id); err == nil {
 		parsed, err := definition.Parse([]byte(def.Body))

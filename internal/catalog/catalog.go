@@ -6,9 +6,14 @@
 // "local" are left untouched, and built-in entries are only rewritten when
 // their content hash changes.
 //
-// Every built-in definition is currently in state "bozza" (draft). They are
-// written from the documented format and offline fixtures, have not been
-// verified against live sites, and must not be presented as production ready.
+// Definitions in state "verificata" were written from real public pages or
+// feeds captured into internal/catalog/fixtures/ and pass the offline
+// equivalence test against the legacy parsers. Entries still in state
+// "bozza" are drafts and must not be presented as production ready.
+//
+// Definitions produced by a conversion tool (meta.derived_from, or the
+// Cardigann converter's author) are rejected: derived drafts are local writing
+// aids and never enter the distributed catalog.
 package catalog
 
 import (
@@ -174,6 +179,10 @@ func load(fsys fs.FS) ([]Entry, error) {
 		def, err := definition.Parse(defBody)
 		if err != nil {
 			return nil, fmt.Errorf("catalog: %s: %w", item.File, err)
+		}
+		if def.IsDerived() {
+			return nil, fmt.Errorf("catalog: %s: derived drafts (derived_from=%q, author=%q) cannot enter the catalog; rewrite the definition from observed fixtures",
+				item.File, def.Meta.DerivedFrom, def.Meta.Author)
 		}
 		if def.Meta.ID != item.ID {
 			return nil, fmt.Errorf("catalog: %s: meta.id %q does not match manifest id %q",

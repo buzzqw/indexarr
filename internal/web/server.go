@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/categories"
+	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
@@ -123,6 +124,9 @@ func init() {
 		funcs["syncLevelLabel"] = func(level string) string {
 			return syncLevelLabel(lang, level)
 		}
+		funcs["ago"] = func(value time.Time) string {
+			return humanAgoLang(lang, value)
+		}
 
 		set := &templateSet{
 			pages:    map[string]*template.Template{},
@@ -170,6 +174,8 @@ type base struct {
 	Message      string
 	Error        string
 	TorznabURL   string
+	PublicURL    string
+	PublicURLSet bool
 	Uptime       string
 	AutoRefresh  int
 }
@@ -271,6 +277,9 @@ type Config struct {
 	// payload; GrabRecord records a successful grab. Both are optional.
 	GrabGuard  func(context.Context, int64) error
 	GrabRecord func(context.Context, int64, int64, string) error
+	// Politeness is the shared per-host budget and metric source. It is
+	// optional: without it the Activity page shows no network counters.
+	Politeness *engine.Politeness
 }
 
 // Server serves the web interface, the Torznab API and the health endpoint.
@@ -290,6 +299,7 @@ type Server struct {
 	svc     *indexersvc.Service
 	vault   *vault.Vault
 	sync    *syncjob.Service
+	polite  *engine.Politeness
 }
 
 // New builds the HTTP server.
@@ -327,6 +337,7 @@ func New(cfg Config) *Server {
 		svc:     cfg.Indexers,
 		vault:   cfg.Vault,
 		sync:    cfg.Sync,
+		polite:  cfg.Politeness,
 	}
 	if cfg.Engine != nil {
 		srv.torznab.SetLiveSearch(cfg.Engine.SearchLive)
@@ -592,14 +603,28 @@ func (s *Server) newBase(r *http.Request, title, section string) base {
 		CSRF:         csrfToken(r.Context()),
 		Message:      r.URL.Query().Get("msg"),
 		Error:        r.URL.Query().Get("err"),
-		Uptime:       humanAgo(s.started),
+		Uptime:       humanAgoLang(lang, s.started),
 	}
 	settings, loaded := settingsFromContext(r.Context())
 	if !loaded {
 		settings, _ = s.store.LoadSettings(r.Context())
 	}
+	out.PublicURL = settings.PublicURL
+	out.PublicURLSet = strings.TrimSpace(settings.PublicURL) != ""
 	out.TorznabURL = torznabapi.BaseURL(r, settings) + "/api"
 	return out
+}
+
+// newBaseT is newBase with a catalog key as the page title, so <title> follows
+// the interface language instead of hardcoding an English label in a handler.
+func (s *Server) newBaseT(r *http.Request, key, section string, args ...any) base {
+	return s.newBase(r, i18n.T(requestLanguage(r), key, args...), section)
+}
+
+// translate exposes the request catalog to handlers for flash messages and
+// validation problems. Backend errors still carry their own technical text.
+func (s *Server) translate(r *http.Request, key string, args ...any) string {
+	return i18n.T(requestLanguage(r), key, args...)
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, data any, status int) {
@@ -733,8 +758,14 @@ func humanDateOnly(value time.Time) string {
 }
 
 func humanAgo(value time.Time) string {
+	return humanAgoLang(i18n.EN, value)
+}
+
+// humanAgoLang renders the relative time used by every list. The labels come
+// from the catalog so the page language is consistent with its numbers.
+func humanAgoLang(lang i18n.Language, value time.Time) string {
 	if value.IsZero() {
-		return "never"
+		return i18n.T(lang, "common.never")
 	}
 	elapsed := time.Since(value)
 	if elapsed < 0 {
@@ -742,13 +773,13 @@ func humanAgo(value time.Time) string {
 	}
 	switch {
 	case elapsed < time.Minute:
-		return "just now"
+		return i18n.T(lang, "time.justNow")
 	case elapsed < time.Hour:
-		return strconv.Itoa(int(elapsed.Minutes())) + "m ago"
+		return i18n.T(lang, "time.minutesAgo", int(elapsed.Minutes()))
 	case elapsed < 24*time.Hour:
-		return strconv.Itoa(int(elapsed.Hours())) + "h ago"
+		return i18n.T(lang, "time.hoursAgo", int(elapsed.Hours()))
 	default:
-		return strconv.Itoa(int(elapsed.Hours()/24)) + "d ago"
+		return i18n.T(lang, "time.daysAgo", int(elapsed.Hours()/24))
 	}
 }
 

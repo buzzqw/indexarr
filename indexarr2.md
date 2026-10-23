@@ -25,7 +25,9 @@ Tre principi guidano tutto il resto:
    pipeline senza toccare il resto (§5).
 3. **Cardigann è il passato.** indexarr non lo usa. Tutte le definizioni
    sono riscritte in un formato nativo più robusto, con API e connettori di
-   famiglia prima dello scraping (§6, §7).
+   famiglia prima dello scraping (§6, §7). Unica eccezione ammessa: un
+   convertitore locale che produce **bozze di lavoro** per chi scrive le
+   definizioni; le bozze non entrano mai nel catalogo (§2.1).
 
 Contratto verso l'esterno: **compatibilità 100% con le \*arr**, per torrent e
 Usenet. Torznab e Newznab possono crescere ma non si rompono mai.
@@ -41,6 +43,7 @@ Usenet. Torznab e Newznab possono crescere ma non si rompono mai.
 | Progetto | indexarr è il nuovo progetto; evolve, non si riscrive da zero |
 | Compatibilità \*arr | 100%: tutte le applicazioni che Prowlarr sincronizza |
 | Cardigann | Non usato: tutte le definizioni sono riscritte nel formato nativo |
+| Convertitore Cardigann | Solo strumento CLI di scrittura: produce bozze locali marcate `derived_from: cardigann`, che il catalogo rifiuta. Nessun import Cardigann da UI/API, nessun runtime Cardigann (`docs/NEXT-STEPS.md` WP0) |
 | Protocolli | Torrent **e Usenet** (Newznab) nella 1.0, come Prowlarr |
 | Distribuzione | Un solo binario Go, SQLite, nessun runtime esterno obbligatorio |
 
@@ -48,65 +51,67 @@ Usenet. Torznab e Newznab possono crescere ma non si rompono mai.
 
 | Tema | Stato | Raccomandazione |
 |---|---|---|
-| **Licenza** | Libera, da scegliere | Codice e catalogo sono interamente nostri grazie alla scrittura pulita (§6.6); resta da scegliere quale licenza libera |
+| **Licenza** | Libera, da scegliere (EUPL-1.2, MIT o GPL-3.0) | Codice e catalogo sono interamente nostri grazie alla scrittura pulita (§6.6). Il repository oggi non ha un file `LICENSE`: va aggiunto prima di accettare contributi esterni. La EUPL-1.2 può includere codice MIT e, per la sua clausola di compatibilità, può essere distribuita sotto GPL-3.0; non vale il contrario |
 
 ---
 
 ## 3. Checklist di parità (contratto della 1.0)
 
 Ogni voce ha un criterio di verifica. La 1.0 esce quando sono tutte verdi.
+La colonna "Stato" è l'unica fonte dello stato di parità: chi chiude un work
+package di `docs/NEXT-STEPS.md` la aggiorna qui.
 
 ### 3.1 Distribuzione verso le \*arr
 
-| Voce | Verifica |
-|---|---|
-| Torznab `caps` aggregato e per indexer | Golden test sull'XML; le \*arr importano le caps senza errori |
-| `search`, `tvsearch`, `movie`, `music`, `book` | Test per modalità con tutti i parametri |
-| Parametri id: `imdbid`, `tvdbid`, `tmdbid`, `tvmazeid`, `rid`, `season`, `ep`, `artist`, `album`, `author`, `title` | Mappati verso le definizioni che li supportano; ignorati in modo pulito dove non supportati |
-| `limit`/`offset`, `cat`, `extended`, attributi Torznab | Golden test |
-| Download tramite proxy (`/dl/...`) con API key; nessun passkey esposto | Test: il link restituito non contiene mai URL del tracker |
-| Endpoint aggregato, per indexer e **aggregato filtrato** (tag, lingua, tipo, stato), come i filtri di Jackett | Test di routing |
-| Newznab per indexer Usenet: stesse modalità e parametri, `t=get` che restituisce `.nzb` tramite proxy | Golden test; le \*arr aggiungono l'indexer come Newznab |
-| URL in stile Jackett (`/api/v2.0/indexers/{id}/results/torznab/api`) | Alias per chi migra da Jackett senza toccare le \*arr |
-| Errori Torznab standard (codici 100–900) | Le \*arr mostrano l'errore giusto (API key errata, limite raggiunto, indexer giù) |
+| Voce | Verifica | Stato (23/10) |
+|---|---|---|
+| Torznab `caps` aggregato e per indexer | Golden test sull'XML; le \*arr importano le caps senza errori | fatto |
+| `search`, `tvsearch`, `movie`, `music`, `book` | Test per modalità con tutti i parametri | fatto |
+| Parametri id: `imdbid`, `tvdbid`, `tmdbid`, `tvmazeid`, `rid`, `season`, `ep`, `artist`, `album`, `author`, `title` | Mappati verso le definizioni che li supportano; ignorati in modo pulito dove non supportati | parziale |
+| `limit`/`offset`, `cat`, `extended`, attributi Torznab | Golden test | fatto |
+| Download tramite proxy (`/dl/...`) con API key; nessun passkey esposto | Test: il link restituito non contiene mai URL del tracker | fatto |
+| Endpoint aggregato, per indexer e **aggregato filtrato** (tag, lingua, tipo, stato), come i filtri di Jackett | Test di routing | fatto |
+| Newznab per indexer Usenet: stesse modalità e parametri, `t=get` che restituisce `.nzb` tramite proxy | Golden test; le \*arr aggiungono l'indexer come Newznab | fatto |
+| URL in stile Jackett (`/api/v2.0/indexers/{id}/results/torznab/api`) | Alias per chi migra da Jackett senza toccare le \*arr | fatto |
+| Errori Torznab standard (codici 100–900) | Le \*arr mostrano l'errore giusto (API key errata, limite raggiunto, indexer giù) | fatto |
 
 ### 3.2 App sync (sostituzione di Prowlarr)
 
-| Voce | Verifica |
-|---|---|
-| Applicazioni: Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian | Test di integrazione contro le versioni supportate di ciascuna |
-| Livelli di sync: disabilitato, solo aggiunta/rimozione, sync completo | Test sul ciclo completo |
-| Indexer sincronizzati con il protocollo giusto: Torznab per i torrent, Newznab per Usenet | Test con indexer misti |
-| Campi sincronizzati: nome, URL, API key, categorie, priorità, tag, seeders minimi, seed ratio, seed time, season pack seed time, abilitazione RSS/ricerca automatica/interattiva | Confronto con ciò che Prowlarr scrive nell'app |
-| Riconciliazione: rileva modifiche manuali nell'app e indexer orfani | Test con stato divergente |
+| Voce | Verifica | Stato (23/10) |
+|---|---|---|
+| Applicazioni: Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian | Test di integrazione contro le versioni supportate di ciascuna | parziale: Mylar3/LazyLibrarian `ErrUnsupported` (WP13) |
+| Livelli di sync: disabilitato, solo aggiunta/rimozione, sync completo | Test sul ciclo completo | fatto |
+| Indexer sincronizzati con il protocollo giusto: Torznab per i torrent, Newznab per Usenet | Test con indexer misti | fatto |
+| Campi sincronizzati: nome, URL, API key, categorie, priorità, tag, seeders minimi, seed ratio, seed time, season pack seed time, abilitazione RSS/ricerca automatica/interattiva | Confronto con ciò che Prowlarr scrive nell'app | parziale: verificati URL, categorie, protocollo, flag; seed da verificare |
+| Riconciliazione: rileva modifiche manuali nell'app e indexer orfani | Test con stato divergente | parziale: manca snapshot/rollback (WP13) |
 
 Nota: Readarr è stato ritirato dal team Servarr, ma ha ancora installazioni
 attive; resta in lista finché esistono utenti.
 
 ### 3.3 Gestione degli indexer
 
-| Voce | Verifica |
-|---|---|
-| Aggiunta da catalogo con form generato dai `settings` della definizione | Test UI su definizioni di ciascun tipo di login |
-| Test indexer (login, ricerca, download) con esito strutturato | Esito per fase, non solo "ok/errore" |
-| Proxy per indexer: HTTP, SOCKS4/5, FlareSolverr | Test con proxy simulati |
-| Limiti per indexer: query/giorno, grab/giorno | Le \*arr ricevono l'errore Torznab corretto al superamento |
-| Priorità, tag, abilitazione, redirect del download | Test |
-| Storico query e grab, statistiche per indexer | Visibili in UI e API |
-| Health: indexer falliti, disabilitati temporaneamente, motivo | Stato visibile e notificabile |
-| Ricerca manuale dalla UI e invio ai client di download: qBittorrent e Transmission (esistenti), più Deluge e rTorrent; SABnzbd e NZBGet per Usenet | Test end-to-end con client simulato |
-| Notifiche (health, grab, aggiornamenti) | Test sui canali supportati |
-| Backup/restore di DB, configurazione e definizioni | Restore su istanza pulita |
+| Voce | Verifica | Stato (23/10) |
+|---|---|---|
+| Aggiunta da catalogo con form generato dai `settings` della definizione | Test UI su definizioni di ciascun tipo di login | fatto; usabilità da rifare (WP14) |
+| Test indexer (login, ricerca, download) con esito strutturato | Esito per fase, non solo "ok/errore" | parziale |
+| Proxy per indexer: HTTP, SOCKS4/5, FlareSolverr | Test con proxy simulati | parziale: FlareSolverr nativo da fare (WP11) |
+| Limiti per indexer: query/giorno, grab/giorno | Le \*arr ricevono l'errore Torznab corretto al superamento | fatto |
+| Priorità, tag, abilitazione, redirect del download | Test | parziale |
+| Storico query e grab, statistiche per indexer | Visibili in UI e API | parziale |
+| Health: indexer falliti, disabilitati temporaneamente, motivo | Stato visibile e notificabile | da fare (WP9) |
+| Ricerca manuale dalla UI e invio ai client di download: qBittorrent e Transmission (esistenti), più Deluge e rTorrent; SABnzbd e NZBGet per Usenet | Test end-to-end con client simulato | parziale: client fatti, UI con un solo client (WP14) |
+| Notifiche (health, grab, aggiornamenti) | Test sui canali supportati | parziale: solo eventi legacy (WP13) |
+| Backup/restore di DB, configurazione e definizioni | Restore su istanza pulita | parziale: backend WP1 fatto; riquadro UI in WP14 |
 
 ### 3.4 Motore e catalogo
 
-| Voce | Verifica |
-|---|---|
-| Motore: login di ogni tipo (form, CSRF, cookie, token, API key, Basic), flussi a più passi, paginazione, HTML/JSON/XML, categorie, errori del sito, download a più passaggi, mirror | Suite di test del motore con fixture per ogni funzione |
-| Connettori di famiglia per i software di tracker più diffusi | Ogni famiglia testata su fixture di almeno due siti |
-| Catalogo nativo che copre l'inventario prioritario (§7.3) | 100% dell'inventario prioritario `verificato` |
-| Ponte verso Jackett/Prowlarr per i siti non ancora riscritti (§7.4) | Ogni indexer importato funziona, nativo o tramite ponte |
-| Connettore Newznab generico con preset per gli indexer Usenet noti (come i preset di Prowlarr) | Caps importate dall'indexer; test su fixture Newznab |
+| Voce | Verifica | Stato (23/10) |
+|---|---|---|
+| Motore: login di ogni tipo (form, CSRF, cookie, token, API key, Basic), flussi a più passi, paginazione, HTML/JSON/XML, categorie, errori del sito, download a più passaggi, mirror | Suite di test del motore con fixture per ogni funzione | fatto (WP5: `download.resolve`) |
+| Connettori di famiglia per i software di tracker più diffusi | Ogni famiglia testata su fixture di almeno due siti | parziale: 8 famiglie (RSS inclusa), verifiche reali su 3 siti |
+| Catalogo nativo che copre l'inventario prioritario (§7.3) | 100% dell'inventario prioritario `verificato` | parziale: 4 verificati (ExtTo, TorrentGalaxy, Corsaro, Knaben), TorrentLeech `bozza` |
+| Ponte verso Jackett/Prowlarr per i siti non ancora riscritti (§7.4) | Ogni indexer importato funziona, nativo o tramite ponte | fatto (37/37 in produzione) |
+| Connettore Newznab generico con preset per gli indexer Usenet noti (come i preset di Prowlarr) | Caps importate dall'indexer; test su fixture Newznab | parziale: generico sì, preset no |
 
 La parità del catalogo si misura così: **100% dei siti dell'utente
 funzionanti al giorno uno** (nativi o tramite ponte) e **quota nativa** in
@@ -122,16 +127,16 @@ in indexarr.
 | Funzione | Limite superato | Stato |
 |---|---|---|
 | Cache persistente SQLite + FTS5 | Prowlarr interroga sempre live; Jackett ha solo una cache breve | Esiste |
-| Ricerca `cache+live` con budget e risultati parziali | Latenza e carico sugli indexer | Da fare |
-| Provenance multi-indexer ("visto da 3 indexer") con scelta del link migliore | Duplicati e perdita di informazione | Da fare |
-| Rate limit per host (token bucket) + circuit breaker + `Retry-After` | Comportamento eterogeneo tra definizioni | Da fare |
-| Definizioni testate offline con fixture e record/replay | Test che richiedono il sito vivo | Da fare |
-| Connettori di famiglia e API prima dello scraping (§6) | Definizioni fragili copiate sito per sito | Da fare |
-| Definizioni tipizzate con fallback, mirror e health integrato (§6.4) | Definizioni che si rompono al primo cambio di layout | Da fare |
-| Seeders aggiornati: TTL e refresh dei risultati restituiti dalla cache | Seeders vecchi che falsano le scelte delle \*arr | Da fare |
-| Vault per credenziali e cookie | Credenziali in chiaro | Da fare |
+| Ricerca `cache+live` con budget e risultati parziali | Latenza e carico sugli indexer | Parziale: live search solo su cache miss |
+| Provenance multi-indexer ("visto da 3 indexer") con scelta del link migliore | Duplicati e perdita di informazione | Codice fatto; in produzione vuota (WP8) |
+| Rate limit per host (token bucket) + circuit breaker + `Retry-After` | Comportamento eterogeneo tra definizioni | Codice fatto; rate disattivato di default e assente sul percorso legacy (WP2) |
+| Definizioni testate offline con fixture e record/replay | Test che richiedono il sito vivo | Parziale: fixture sì, record/replay no |
+| Connettori di famiglia e API prima dello scraping (§6) | Definizioni fragili copiate sito per sito | Parziale: 8 famiglie, 4 definizioni verificate (WP6, WP7) |
+| Definizioni tipizzate con fallback, mirror e health integrato (§6.4) | Definizioni che si rompono al primo cambio di layout | Formato fatto; health check non eseguito (WP9) |
+| Seeders aggiornati: TTL e refresh dei risultati restituiti dalla cache | Seeders vecchi che falsano le scelte delle \*arr | Da fare (WP10) |
+| Vault per credenziali e cookie | Credenziali in chiaro | Parziale: chiave accanto al DB, sorgenti legacy in chiaro (WP1) |
 | Metriche per indexer e per richiesta (latenza, 429, challenge) | Diagnosi difficile | Parziale |
-| Footprint: ~30 MiB RSS a riposo oggi (vedi audit) | Runtime .NET | Esiste |
+| Footprint: ~30 MiB RSS a riposo prima di indexarr 2 (audit) | Runtime .NET | Regressione: ~64–73 MiB dopo l'avvio (WP3) |
 
 ---
 
@@ -160,6 +165,10 @@ plan → request → fetch → extract → normalize → enrich → dedup → st
 Ogni stadio ha un'interfaccia Go stabile e accetta **middleware** prima e dopo.
 Una funzione nuova (per esempio un filtro di qualità o un arricchimento con
 TMDB) è un modulo che registra un middleware: non tocca gli altri stadi.
+
+> **Stato al 23/10/2026:** i contratti esistono in `internal/engine`, ma la
+> pipeline non è ancora invocata a runtime e i moduli non vengono registrati.
+> Il collegamento è il WP4 di `docs/NEXT-STEPS.md`.
 
 ### 5.2 Moduli
 
@@ -196,7 +205,7 @@ type Connector interface {
 | Elemento | Meccanismo |
 |---|---|
 | Schema del DB | Migrazioni numerate, testate su copie di DB reali |
-| Formato delle definizioni | Catena di upgrader v0 → vN (§6) |
+| Formato delle definizioni | Catena di upgrader v1 → vN (§6.5) |
 | API Torznab | Solo aggiunte compatibili |
 | API amministrativa | `/api/v2/...` versionata |
 
@@ -210,7 +219,10 @@ rompere installazioni esistenti.
 ### 6.1 Perché non Cardigann
 
 indexarr **non usa Cardigann**, né come formato interno né come formato di
-ingresso. Tutte le definizioni vengono riscritte. Il motivo è funzionale:
+ingresso. Tutte le definizioni vengono riscritte. Il convertitore locale
+(`indexarr-def convert-cardigann`) è solo un aiuto per chi scrive: genera una
+bozza da cui partire, che va riscritta osservando il sito prima di entrare nel
+catalogo. Il motivo della scelta è funzionale:
 
 - Cardigann nasce per lo scraping HTML: ogni cambio di layout rompe la
   definizione, anche quando il sito offre un'API stabile;
@@ -554,22 +566,23 @@ motivata.
 Le fasi sono milestone, non date. La 1.0 coincide con la checklist del §3
 tutta verde.
 
-| Milestone | Contenuto | Uscita |
-|---|---|---|
-| **M0 — Fondamenta** | Modello dati §8, migrazione da `sources`, vault, pipeline a stadi, interfacce `Connector` e `Module` | indexarr funziona come oggi sul nuovo modello |
-| **M1 — Motore** | Formato v1, motore HTML/JSON/XML, sessioni, login, paginazione, rate limit per host, circuit breaker | I tre parser HTML attuali sostituiti da definizioni |
-| **M2 — Catalogo** | Inventario dei siti, connettori di famiglia, prime definizioni, studio delle definizioni, CI del catalogo, ponte | Siti propri tutti funzionanti (nativi o ponte) |
-| **Alpha interna** | Inventario prioritario riscritto e verificato | Uso quotidiano su istanza propria |
-| **M3 — Distribuzione** | Endpoint per indexer e filtrati, alias Jackett, errori Torznab, limiti query/grab, proxy | \*arr collegate senza Jackett/Prowlarr |
-| **M4 — App sync** | Tutte le applicazioni del §3.2, livelli di sync, riconciliazione | Prowlarr rimovibile |
-| **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita, ponte in svuotamento |
-| **M6 — Usenet** | Connettore Newznab e preset, endpoint Newznab, proxy `.nzb`, SABnzbd/NZBGet, sync Newznab verso le \*arr | Indexer Usenet gestiti come in Prowlarr |
-| **Beta** | Health check opt-in; documentazione per chi scrive definizioni | Checklist §3 quasi completa |
-| **1.0** | Checklist §3 verde | Rilascio pubblico |
-| **Dopo la 1.0** | Funzioni del §4 e nuove, come moduli | Continuo |
+| Milestone | Contenuto | Uscita | Stato (23/10) |
+|---|---|---|---|
+| **M0 — Fondamenta** | Modello dati §8, migrazione da `sources`, vault, pipeline a stadi, interfacce `Connector` e `Module` | indexarr funziona come oggi sul nuovo modello | Fatto, salvo pipeline/moduli non collegati (WP4) e vault da completare (WP1) |
+| **M1 — Motore** | Formato v1, motore HTML/JSON/XML, sessioni, login, paginazione, rate limit per host, circuit breaker | I tre parser HTML attuali sostituiti da definizioni | Parziale: manca `download.resolve` (WP5); i tre parser HTML non sono ancora definizioni (WP7) |
+| **M2 — Catalogo** | Inventario dei siti, connettori di famiglia, prime definizioni, studio delle definizioni, CI del catalogo, ponte | Siti propri tutti funzionanti (nativi o ponte) | Parziale: famiglie in bozza, nessuna verificata, nessuna famiglia RSS (WP6, WP7) |
+| **Alpha interna** | Inventario prioritario riscritto e verificato | Uso quotidiano su istanza propria | Da fare (WP8) |
+| **M3 — Distribuzione** | Endpoint per indexer e filtrati, alias Jackett, errori Torznab, limiti query/grab, proxy | \*arr collegate senza Jackett/Prowlarr | Fatto |
+| **M4 — App sync** | Tutte le applicazioni del §3.2, livelli di sync, riconciliazione | Prowlarr rimovibile | Quasi fatto: 5 app su 7, rollback mancante (WP13) |
+| **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita, ponte in svuotamento | Da fare |
+| **M6 — Usenet** | Connettore Newznab e preset, endpoint Newznab, proxy `.nzb`, SABnzbd/NZBGet, sync Newznab verso le \*arr | Indexer Usenet gestiti come in Prowlarr | Fatto lato codice; nessun indexer Usenet reale verificato |
+| **Beta** | Health check opt-in; documentazione per chi scrive definizioni | Checklist §3 quasi completa | — |
+| **1.0** | Checklist §3 verde | Rilascio pubblico | — |
+| **Dopo la 1.0** | Funzioni del §4 e nuove, come moduli | Continuo | — |
 
 Le funzioni del §4 già presenti (cache, FTS5) restano attive in tutte le
-milestone.
+milestone. Il lavoro dettagliato per arrivare alla 1.0 è diviso in work package
+in [`docs/NEXT-STEPS.md`](docs/NEXT-STEPS.md).
 
 ---
 
@@ -732,8 +745,10 @@ categorie, data, infohash e magnet: `DownloadURL` e `DetailsURL` sono rimossi.
 
 ### 15.5 Invarianti da non rompere
 
-- **Nessun Cardigann**: non si leggono né eseguono definizioni Jackett/Prowlarr.
-  Il ponte usa solo il loro endpoint Torznab.
+- **Nessun Cardigann a runtime**: il servizio non legge né esegue definizioni
+  Jackett/Prowlarr; il ponte usa solo il loro endpoint Torznab. Il convertitore
+  è un comando CLI offline per chi scrive definizioni, e le sue bozze non
+  entrano nel catalogo.
 - **Nessun codice scaricato**: le definizioni sono dati; il catalogo remoto, in
   futuro, sarà firmato.
 - **Nessun segreto nelle API**, nei log, negli errori o nelle fixture.
@@ -772,11 +787,11 @@ sulle porte isolate 18484/19080, senza toccare il Jackett già presente.
 
 Validazioni aggiuntive dell'ondata prodotto:
 
-- `./sim/real/run.sh`: **61 asserzioni verdi** con Prowlarr, Sonarr e Radarr
+- `./sim/real/run.sh`: **62 asserzioni verdi** (verifica finale, §15.10) con Prowlarr, Sonarr e Radarr
   reali in container isolati. Verifica il ponte Prowlarr, l'app sync reale,
   `baseUrl`/`apiPath`, categorie, protocollo e flag RSS/ricerca; ha scoperto e
   fatto correggere il mount `/torznab/{slug}/api` e il doppio `/api/api`.
-- `./scripts/ui-smoke.sh`: 26 route e 29 link, nessun link rotto, `lang="it"`,
+- `./scripts/ui-smoke.sh`: 26 route e 444 link (verifica finale, §15.10), nessun link rotto,
   redirect legacy e tab Indexer/Attività.
 - `internal/cardigann` sul corpus reale di 927 definizioni Prowlarr:
   **926 convertite**, 1 non convertibile (definizione senza titolo), con
@@ -784,91 +799,43 @@ Validazioni aggiuntive dell'ondata prodotto:
 - Import reale in sandbox: 7 indexer Jackett + 1 sorgente Prowlarr, 282
   release scaricate dalle istanze attive **senza modificarle**.
 
-### 15.7 Limiti noti e prossima ondata
+### 15.7 Revisione del 23/10 e prossimi passi
 
-Ancora da fare, in ordine di valore:
+Una revisione del codice e della produzione (build `384e541`) ha trovato che le
+fondamenta ci sono ma **nessuna funzione di indexarr 2 serve ancora traffico
+reale**: 37/37 indexer passano dal ponte legacy, 0 nativi, 0 applicazioni,
+provenance vuota. Ha trovato anche punti in cui questo documento descriveva
+come operative cose che non lo sono (pipeline e moduli non collegati, rate
+limit disattivato, vault con la chiave nella cartella dati) e una regressione
+di memoria (~30 → ~64–73 MiB).
 
-1. **Catalogo reale e copertura siti**: sostituire le definizioni `bozza` con
-   definizioni `verificate` su fixture osservate e aumentare la copertura con
-   connettori di famiglia e import delle definizioni Cardigann (vedi §15.9).
-2. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
-   (oggi `ErrUnsupported`), filtri per tag.
-3. **Import applicato**: la UI mostra il piano Prowlarr/Jackett ma non crea
-   ancora definizioni/indexer; manca l'apply con anteprima e rollback.
-4. **FlareSolverr per indexer** (i proxy HTTP/SOCKS sono fatti), stato
-   `blocked` per CAPTCHA, firma del catalogo remoto, studio delle definizioni,
-   riparazione assistita, rete di salute opt-in.
-5. **Catalogo e stato**: health check per definizione, transizioni
-   `verificata`/`degradata`, notifiche.
-6. **Provenance**: il dato c'è e Torznab espone `indexers`/`provenance`;
-   manca il job periodico che aggiorna i seeders con TTL usando
-   `StaleProvenance`.
+Il lavoro da fare è diviso in work package, con stub di codice e criteri di
+accettazione, in [`docs/NEXT-STEPS.md`](docs/NEXT-STEPS.md). Le colonne
+"Stato" del §3, del §4 e del §12 riflettono la revisione.
 
-### 15.9 Copertura siti e Cardigann: stato e piano
+### 15.8 Copertura siti e convertitore Cardigann
 
-**Risposta breve: non è stata avviata una riscrittura dei Cardigann.** Il
-lavoro fatto finora costruisce le fondamenta per non dipendere da Cardigann e,
-allo stesso tempo, per non perdere nessun sito durante la transizione.
+- **Il convertitore è uno strumento di scrittura, non di migrazione.**
+  `indexarr-def convert-cardigann` produce una bozza locale da cui chi scrive
+  parte per riscrivere la definizione osservando il sito. Le bozze sono marcate
+  `derived_from: cardigann` e il catalogo le rifiuta (WP0). Non esiste e non
+  esisterà un "import Cardigann" da UI o API. Il dato "926/927 convertite"
+  misura i file generati, non le definizioni funzionanti.
+- **La copertura del giorno uno** la dà il ponte verso Jackett/Prowlarr.
+- **La copertura nativa** cresce con, in ordine di leva: famiglie (WP6), la
+  sezione `download.resolve` del formato (WP5, necessaria per ExtTo,
+  TorrentGalaxy, Corsaro), le definizioni verificate dell'inventario reale
+  (WP7) e la migrazione della produzione (WP8).
+- **Inventario reale** (da `sources`): 3 Torznab (Jackett, Prowlarr, MirCrew),
+  32 listing HTML (ExtTo, TorrentGalaxy, Corsaro), 2 feed RSS (Knaben,
+  TorrentLeech). Non ha senso scrivere 500 definizioni singole se 20 famiglie
+  coprono l'80% dell'uso reale.
 
-Cosa esiste oggi:
+### 15.9 Come lavorare (per il prossimo agente)
 
-- motore nativo v1 (HTML/JSON/XML, login, paginazione, tipi, fixture);
-- connettori di famiglia `unit3d`, `newznab`, `torznab`, `gazelle`,
-  `nexusphp`, `torrenttrader`, `xbtit`;
-- **convertitore Cardigann locale** (`internal/cardigann` + comando
-  `indexarr-def convert-cardigann`): sul corpus reale di 927 definizioni
-  Prowlarr ne converte **926**, con rilevamento delle famiglie UNIT3D,
-  Torznab e Newznab; produce definizioni native v1 e warning espliciti. Non è
-  un runtime Cardigann e non distribuisce definizioni copiate;
-- ponte legacy: indexarr interroga l'endpoint Torznab di Jackett/Prowlarr, che
-  resta la copertura "giorno uno";
-- `legacyimport`: converte le sorgenti Torznab dirette in indexer nativi, con
-  anteprima, apply e revert;
-- `importers` + `cmd/indexarr-import`: legge Jackett/Prowlarr reali e crea
-  sorgenti ponte in un DB usa-e-getta, senza modificare le istanze;
-- catalogo built-in: 7 definizioni `bozza` (esempio HTML, UNIT3D, Newznab,
-  Gazelle, NexusPHP, TorrentTrader, Xbtit) + esempi. **Non sono ancora
-  centinaia di definizioni per sito**: i connettori di famiglia coprono molti
-  siti, ma mancano pacchetti e verifica live.
-
-Cosa serve per arrivare a centinaia di siti, in ordine di leva:
-
-1. **Connettori di famiglia** (una correzione copre molti siti):
-   - Gazelle e derivati (fatto, `bozza`);
-   - NexusPHP (fatto, `bozza`);
-   - TorrentTrader/TBDev (fatto, `bozza`);
-   - Xbtit/BtiTracker (fatto, `bozza`);
-   - restano AVISTAZ/AsianDVDClub e altri software minori.
-   Ogni famiglia va verificata su almeno due siti/fixture reali prima di
-   dichiararla `verificata`.
-2. **Import Cardigann applicato**:
-   - il convertitore esiste, copre il 99,9% del corpus Prowlarr ed è usabile
-     da CLI;
-   - `cmd/indexarr-import` applica le sorgenti ponte Jackett/Prowlarr in un DB
-     indexarr, non ancora le definizioni native;
-   - manca il collegamento a UI/API che, dopo l'anteprima, crei davvero
-     definizioni e indexer nativi;
-   - nessuna distribuzione di definizioni copiate: si convertono localmente i
-     dati dell'utente, con tracciamento di autore/origine;
-   - il runtime di indexarr continua a non eseguire Cardigann.
-3. **Pacchetti di definizioni** con inventario, fixture, stato
-   `bozza/verificata/degradata`, test CI e quote per famiglia.
-4. **Ponte come rete di sicurezza**: finché una definizione nativa non è
-   verificata, il sito continua a funzionare via Jackett/Prowlarr.
-5. **Studio delle definizioni** nella UI: selettori guidati, anteprima,
-   fixture generate, condivisione con il catalogo.
-6. **Inventario**: misurare quali siti sono realmente usati (sources locali,
-   import Prowlarr/Jackett, statistiche anonime opt-in) e ordinare il lavoro
-   per copertura reale, non per numero di definizioni.
-
-Priorità: prima le famiglie che coprono i siti realmente presenti nelle
-istanze degli utenti (inventario da `sources`, import Prowlarr/Jackett e
-statistiche anonime), poi la coda lunga. Non ha senso scrivere 500 definizioni
-singole se 20 famiglie coprono l'80% dell'uso reale.
-
-### 15.10 Come lavorare (per il prossimo agente)
-
-- Leggi prima `docs/INDEXARR2-PLAN.md` (contratti e stato) e
+- Parti da `docs/NEXT-STEPS.md`: scegli un work package, rispettane i
+  criteri di accettazione e aggiorna lo stato al termine.
+- Leggi poi `docs/INDEXARR2-PLAN.md` (contratti e stato) e
   `docs/DEFINITIONS.md` (formato). Questo documento è la visione, non il
   contratto dei package.
 - Un package per volta, dipendenze verso il basso, nessun ciclo:
@@ -883,7 +850,7 @@ singole se 20 famiglie coprono l'80% dell'uso reale.
   scrivono osservando il sito e registrando autore, data e fixture.
 - Non fare commit di chiavi, database, backup o fixture con dati personali.
 
-### 15.11 UI, i18n e prestazioni (23 ottobre 2026)
+### 15.10 UI, i18n e prestazioni (23 ottobre 2026)
 
 **Lingua.** L'inglese è la lingua di default e il fallback. Le lingue
 supportate sono: inglese, italiano, francese, tedesco, spagnolo, cinese
@@ -934,4 +901,30 @@ reali) tutti verdi.
 **Cosa manca in questa area.** Migrare le pagine legacy alle chiavi `T`;
 aggiungere le traduzioni mancanti per quelle pagine; paginazione per liste
 lunghe (37 sorgenti legacy, 200 run); touch target più grandi su mobile;
-tradurre le stringhe di aiuto lunghe. Il resto dei punti aperti è in §15.7.
+tradurre le stringhe di aiuto lunghe. Il resto dei punti aperti è in `docs/NEXT-STEPS.md` (l'analisi di usabilità è il WP14).
+
+### 15.12 Work package NEXT-STEPS completati (23 ottobre 2026)
+
+Sono stati implementati, senza commit (revisione del coordinatore):
+
+| WP | Stato | Sintesi |
+|---|---|---|
+| WP0 | fatto | `meta.derived_from`; il convertitore emette sempre `derived_from: cardigann`; il catalogo rifiuta le bozze derivate; `validate -catalog` in CI |
+| WP1 | backend fatto | risoluzione chiave vault (env → env-file → config → legacy → user config → fallback), `vault export-key`/`move-key`, cifratura dei segreti legacy `sources` con `vault:v1:`, verifica restore, redazione rsskey. Riquadro UI in WP14 |
+| WP2 | fatto | `engine.Politeness` condiviso nativo/legacy, rate limit 1/s burst 4, breaker, Retry-After, worker dettagli a 2, contatori host in Attività e Prometheus |
+| WP5 | fatto | sezione `download` v1 con `resolve_on: search/grab`, estrattori magnet/torrent, concorrenza limitata, cache TTL e clock iniettabile |
+| WP6 | fatto | famiglia `rss` nativa, cache feed, filtro client-side, `rss` legacy solo con `LegacySourceID > 0`, candidati RSS in `legacyimport` |
+| WP7 | fatto (4/5) | `extto`, `torrentgalaxy`, `corsaro`, `knaben` **verificate** con fixture reali ripulite e test di equivalenza; `torrentleech` `bozza` (serve rsskey personale) |
+| WP12 | fatto con scoperto | matrice CI 12 target, test Ubuntu/Windows/macOS, race, `scripts/budget.sh`; Windows `cmd/indexarr` non compila per `syscall.Kill` (preesistente); RSS 55 MiB, CI usa 80 fino a WP3 |
+| WP14 | fase 1 | esclusi `legacy-*` dai form, rimosso selettore duplicato, dashboard con una sola fonte errori, `public_url` visibile, stringhe nuove in tutte le 7 lingue, “next step” dopo la creazione |
+
+Verifiche eseguite: `gofmt -l .` vuoto, `go vet ./...`, `go test ./...`,
+`go test -race` sui package toccati, `make def-validate` (12 definizioni di
+catalogo), `./scripts/qa.sh`, `./sim/run.sh`: tutti verdi.
+
+Aperti: WP3 (memoria <40 MiB), WP4 (pipeline/moduli), WP8 (migrazione produzione,
+solo con conferma esplicita), WP9 health, WP10 refresh seeders, WP11
+FlareSolverr, WP13 parità residua, WP14 fasi 2–5. Scoperti da tenere presenti:
+filtri condizionali mancanti per ExtTo/TorrentGalaxy; fixture del catalogo
+esposte con symlink `definitions/fixtures`; `example-html.yaml` dichiara fixture
+inesistenti; il pannello Attività è server-rendered senza polling.

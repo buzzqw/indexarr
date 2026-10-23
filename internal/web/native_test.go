@@ -368,7 +368,7 @@ meta:
 		"body": {body},
 	}, cookie)
 	if recorder.Code != http.StatusBadRequest ||
-		!strings.Contains(recorder.Body.String(), "Esiste già una definizione") {
+		!strings.Contains(recorder.Body.String(), "A definition with id") {
 		t.Fatalf("duplicate definition = %d: %s", recorder.Code, recorder.Body.String())
 	}
 }
@@ -381,7 +381,7 @@ func TestNativePagesDegradeWithoutService(t *testing.T) {
 		t.Fatalf("indexers without service = %d: %s", page.Code, page.Body.String())
 	}
 	form := get(t, env.handler, "/indexers/new")
-	if form.Code != http.StatusServiceUnavailable || !strings.Contains(form.Body.String(), "non è configurato") {
+	if form.Code != http.StatusServiceUnavailable || !strings.Contains(form.Body.String(), "not configured") {
 		t.Fatalf("new indexer without service = %d: %s", form.Code, form.Body.String())
 	}
 	definitions := get(t, env.handler, "/definitions")

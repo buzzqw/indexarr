@@ -78,7 +78,7 @@ func (s *Store) ListSources(ctx context.Context) ([]Source, error) {
 	defer rows.Close()
 	var out []Source
 	for rows.Next() {
-		source, err := scanSource(rows)
+		source, err := s.scanSource(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +90,7 @@ func (s *Store) ListSources(ctx context.Context) ([]Source, error) {
 // GetSource loads one source by id.
 func (s *Store) GetSource(ctx context.Context, id int64) (Source, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT `+sourceColumns+` FROM sources WHERE id = ?`, id)
-	source, err := scanSource(row)
+	source, err := s.scanSource(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Source{}, fmt.Errorf("source %d: %w", id, sql.ErrNoRows)
 	}
@@ -100,14 +100,26 @@ func (s *Store) GetSource(ctx context.Context, id int64) (Source, error) {
 // CreateSource inserts a source and returns its id.
 func (s *Store) CreateSource(ctx context.Context, in Source) (int64, error) {
 	now := time.Now().Unix()
+	url, err := s.sealField(strings.TrimSpace(in.URL))
+	if err != nil {
+		return 0, fmt.Errorf("create source: %w", err)
+	}
+	apiKey, err := s.sealField(in.APIKey)
+	if err != nil {
+		return 0, fmt.Errorf("create source: %w", err)
+	}
+	password, err := s.sealField(in.Password)
+	if err != nil {
+		return 0, fmt.Errorf("create source: %w", err)
+	}
 	var id int64
-	err := s.db.QueryRowContext(ctx, `
+	err = s.db.QueryRowContext(ctx, `
 		INSERT INTO sources(name, kind, manager, url, api_key, username, password,
 			categories, default_category, query, enabled, interval_seconds, created_at, updated_at)
 		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
-		strings.TrimSpace(in.Name), in.Kind, in.Manager, strings.TrimSpace(in.URL),
-		in.APIKey, in.Username, in.Password,
+		strings.TrimSpace(in.Name), in.Kind, in.Manager, url,
+		apiKey, in.Username, password,
 		strings.TrimSpace(in.Categories), strings.TrimSpace(in.DefaultCategory),
 		strings.TrimSpace(in.Query), boolInt(in.Enabled), in.IntervalSeconds, now, now).Scan(&id)
 	if err != nil {
@@ -118,6 +130,18 @@ func (s *Store) CreateSource(ctx context.Context, in Source) (int64, error) {
 
 // UpdateSource saves the editable fields of a source.
 func (s *Store) UpdateSource(ctx context.Context, in Source) error {
+	url, err := s.sealField(strings.TrimSpace(in.URL))
+	if err != nil {
+		return fmt.Errorf("update source: %w", err)
+	}
+	apiKey, err := s.sealField(in.APIKey)
+	if err != nil {
+		return fmt.Errorf("update source: %w", err)
+	}
+	password, err := s.sealField(in.Password)
+	if err != nil {
+		return fmt.Errorf("update source: %w", err)
+	}
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE sources SET name = ?, kind = ?, manager = ?, url = ?, api_key = ?,
 			username = ?, password = ?, categories = ?, default_category = ?,
@@ -125,8 +149,8 @@ func (s *Store) UpdateSource(ctx context.Context, in Source) error {
 			consecutive_errors = CASE WHEN ? = 1 THEN 0 ELSE consecutive_errors END,
 			interval_seconds = ?, updated_at = ?
 		WHERE id = ?`,
-		strings.TrimSpace(in.Name), in.Kind, in.Manager, strings.TrimSpace(in.URL),
-		in.APIKey, in.Username, in.Password, strings.TrimSpace(in.Categories),
+		strings.TrimSpace(in.Name), in.Kind, in.Manager, url,
+		apiKey, in.Username, password, strings.TrimSpace(in.Categories),
 		strings.TrimSpace(in.DefaultCategory), strings.TrimSpace(in.Query),
 		boolInt(in.Enabled), boolInt(in.Enabled),
 		in.IntervalSeconds, time.Now().Unix(), in.ID)
@@ -302,7 +326,7 @@ func (s *Store) FinishSourceRun(ctx context.Context, runID int64, source Source,
 	return tx.Commit()
 }
 
-func scanSource(scanner interface{ Scan(...any) error }) (Source, error) {
+func (s *Store) scanSource(scanner interface{ Scan(...any) error }) (Source, error) {
 	var out Source
 	var enabled int
 	var lastRun, lastOK, created, updated int64
@@ -312,6 +336,15 @@ func scanSource(scanner interface{ Scan(...any) error }) (Source, error) {
 		&out.LastItems, &out.TotalItems, &created, &updated, &out.ConsecutiveErrors)
 	if err != nil {
 		return Source{}, err
+	}
+	if out.URL, err = s.openField(out.URL); err != nil {
+		return Source{}, fmt.Errorf("source %d url: %w", out.ID, err)
+	}
+	if out.APIKey, err = s.openField(out.APIKey); err != nil {
+		return Source{}, fmt.Errorf("source %d api key: %w", out.ID, err)
+	}
+	if out.Password, err = s.openField(out.Password); err != nil {
+		return Source{}, fmt.Errorf("source %d password: %w", out.ID, err)
 	}
 	out.Enabled = enabled != 0
 	out.LastRunAt = unixTime(lastRun)

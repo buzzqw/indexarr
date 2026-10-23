@@ -31,10 +31,22 @@ run:
 clean:
 	rm -rf bin
 
-# Validate the example definitions and, when present, the bundled catalog.
-# The fallback keeps the target useful while internal/catalog is being built.
+# Validate the example definitions and the bundled catalog. The catalog pass
+# rejects derived drafts (meta.derived_from or the cardigann-import author):
+# converted Cardigann files are writing aids and must never ship in the catalog.
 def-validate:
-	go run ./cmd/indexarr-def validate examples/definitions internal/catalog/definitions 2>/dev/null || go run ./cmd/indexarr-def validate examples/definitions
+	go run ./cmd/indexarr-def validate examples/definitions
+	go run ./cmd/indexarr-def validate -catalog internal/catalog/definitions
+
+# Resource budget: optimised binary size plus idle RSS on a seeded database.
+.PHONY: budget
+budget:
+	./scripts/budget.sh
+
+# Cross-compile every supported GOOS/GOARCH pair with CGO disabled.
+.PHONY: build-matrix
+build-matrix:
+	./scripts/build-matrix.sh
 
 # Cross-compiled standalone binaries (the SQLite driver is pure Go).
 .PHONY: release

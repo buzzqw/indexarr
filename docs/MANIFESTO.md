@@ -327,11 +327,11 @@ del progetto.
 
 | Area | Obiettivo 1.0 | Oggi |
 |---|---|---|
-| Memoria a riposo, 50 indexer | < 40 MiB | ~30 MiB con 37 sorgenti |
+| Memoria a riposo, 50 indexer | < 40 MiB | ~30 MiB prima di indexarr 2; ~64–73 MiB dopo (regressione, NEXT-STEPS WP3) |
 | Memoria di picco, ricerca su 50 indexer | < 80 MiB | da misurare |
 | CPU a riposo | ~0% (nessun risveglio fuori dai job) | da misurare |
 | Avvio a servizio pronto | < 1 s (DB da 100k release) | da misurare |
-| Binario (amd64, ottimizzato) | < 25 MB con motore e UI completi | 15,9 MB |
+| Binario (amd64, ottimizzato) | < 25 MB con motore e UI completi | 17,3 MiB (PERFORMANCE.md) |
 | Immagine Docker compressa | < 15 MB | da misurare |
 | Ricerca in cache p95 | < 50 ms su 100k release | da misurare |
 | Fan-out live p95, 10 indexer | < 5 s (limitato dal sito più lento, con deadline) | da misurare |

@@ -56,6 +56,10 @@ type TransportConfig struct {
 	Cooldown         time.Duration
 	ProxyURL         string // optional HTTP/SOCKS5 proxy; empty = direct
 	Clock            Clock
+	// Politeness is the per-host budget shared with the legacy HTTP path. When
+	// nil the transport builds a private one from RatePerSecond, Burst,
+	// FailureThreshold, Cooldown and Clock.
+	Politeness *Politeness
 }
 
 // Response is a fully read HTTP response. Body is always closed by the
@@ -76,7 +80,7 @@ type Transport struct {
 	client   *http.Client
 	guard    *Guard
 	breaker  *circuitBreaker
-	limiter  *hostLimiter
+	polite   *Politeness
 	proxyErr error
 }
 
@@ -86,6 +90,11 @@ type Transport struct {
 // rate limiting is enabled.
 func NewTransport(cfg TransportConfig) *Transport {
 	cfg = normalizeTransportConfig(cfg)
+
+	polite := cfg.Politeness
+	if polite == nil {
+		polite = NewPoliteness(cfg.RatePerSecond, cfg.Burst, cfg.FailureThreshold, cfg.Cooldown, cfg.Clock)
+	}
 
 	guard := &Guard{AllowPrivate: cfg.AllowPrivate}
 	dialer := &net.Dialer{Timeout: cfg.Timeout, KeepAlive: 30 * time.Second}
@@ -114,10 +123,10 @@ func NewTransport(cfg TransportConfig) *Transport {
 
 	transport := &Transport{
 		cfg:      cfg,
-		clock:    cfg.Clock,
+		clock:    polite.clock,
 		guard:    guard,
-		breaker:  newCircuitBreaker(cfg.Clock, cfg.FailureThreshold, cfg.Cooldown),
-		limiter:  newHostLimiter(cfg.RatePerSecond, cfg.Burst, cfg.Clock),
+		breaker:  newCircuitBreaker(polite.clock, cfg.FailureThreshold, cfg.Cooldown),
+		polite:   polite,
 		proxyErr: proxyErr,
 	}
 	transport.client = &http.Client{
@@ -221,8 +230,8 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 	}
 
 	host := strings.ToLower(req.URL.Hostname())
-	if err := t.limiter.wait(ctx, host); err != nil {
-		return nil, fmt.Errorf("engine: rate limit wait for %s: %w", host, err)
+	if err := t.polite.before(ctx, host); err != nil {
+		return nil, fmt.Errorf("engine: host %s: %w", host, err)
 	}
 
 	key := breakerKey
@@ -230,6 +239,9 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 		key = "host:" + host
 	}
 	if err := t.breaker.allow(key); err != nil {
+		// Do not hold the shared host's half-open probe when the
+		// per-indexer breaker refuses the request.
+		t.polite.release(host)
 		return nil, fmt.Errorf("engine: breaker %q: %w", key, err)
 	}
 
@@ -248,8 +260,10 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 		}
 		if ctx.Err() != nil {
 			t.breaker.release(key)
+			t.polite.release(host)
 		} else {
 			t.breaker.failure(key)
+			t.polite.failure(host)
 		}
 		return nil, fmt.Errorf("engine: request %s: %w", host, err)
 	}
@@ -259,8 +273,10 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 	if err != nil {
 		if ctx.Err() != nil {
 			t.breaker.release(key)
+			t.polite.release(host)
 		} else {
 			t.breaker.failure(key)
+			t.polite.failure(host)
 		}
 		return nil, fmt.Errorf("engine: read %s: %w", host, err)
 	}
@@ -277,6 +293,7 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 		now := t.clock.Now()
 		wait := retryAfter(response.Header.Get("Retry-After"), now, t.cfg.Cooldown)
 		t.breaker.openUntil(key, now.Add(wait))
+		t.polite.observe(host, response.StatusCode, response.Header)
 		if statusAsResponse {
 			return result, nil
 		}
@@ -284,6 +301,7 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 			host, response.StatusCode, wait.Round(time.Millisecond), ErrRateLimited)
 	}
 
+	t.polite.observe(host, response.StatusCode, response.Header)
 	if response.StatusCode >= 500 {
 		t.breaker.failure(key)
 	} else {

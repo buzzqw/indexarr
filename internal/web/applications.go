@@ -3,7 +3,6 @@ package web
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -92,7 +91,7 @@ func (s *Server) applicationsPage(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	data := applicationsPage{base: s.newBase(r, "Applications", "applications")}
+	data := applicationsPage{base: s.newBaseT(r, "applications.title", "applications")}
 	if s.sync == nil {
 		data.Unavailable = true
 	}
@@ -145,30 +144,30 @@ func (s *Server) newApplicationForm(r *http.Request, title string, current *stor
 }
 
 func (s *Server) applicationNew(w http.ResponseWriter, r *http.Request) {
-	data := s.newApplicationForm(r, "New application", nil, true)
+	data := s.newApplicationForm(r, s.translate(r, "application.new"), nil, true)
 	s.render(w, r, "application_form", data, http.StatusOK)
 }
 
 // applicationInputFromForm parses the non-secret fields. The API key is
 // handled by the caller so it never ends up in a page or a log line.
-func applicationInputFromForm(r *http.Request, create bool) (store.Application, []string) {
+func (s *Server) applicationInputFromForm(r *http.Request, create bool) (store.Application, []string) {
 	app := store.Application{}
 	var problems []string
 
 	app.Kind = strings.ToLower(strings.TrimSpace(r.FormValue("kind")))
 	if !validApplicationKind(app.Kind) {
-		problems = append(problems, "Scegli un tipo di applicazione valido.")
+		problems = append(problems, s.translate(r, "application.error.invalidKind"))
 	}
 
 	app.Name = strings.TrimSpace(r.FormValue("name"))
 	if app.Name == "" {
-		problems = append(problems, "Il nome è obbligatorio.")
+		problems = append(problems, s.translate(r, "application.error.nameRequired"))
 	}
 
 	rawURL := strings.TrimSpace(r.FormValue("url"))
 	normalized, err := normalizeApplicationURL(rawURL)
 	if err != nil {
-		problems = append(problems, "L'URL deve essere un indirizzo http:// o https:// assoluto.")
+		problems = append(problems, s.translate(r, "application.error.urlInvalid"))
 	} else {
 		app.URL = normalized
 	}
@@ -178,7 +177,7 @@ func applicationInputFromForm(r *http.Request, create bool) (store.Application, 
 		level = "full"
 	}
 	if !validApplicationSyncLevel(level) {
-		problems = append(problems, "Scegli un livello di sincronizzazione valido.")
+		problems = append(problems, s.translate(r, "application.error.levelInvalid"))
 	}
 	app.SyncLevel = level
 	return app, problems
@@ -204,13 +203,13 @@ func normalizeApplicationURL(raw string) (string, error) {
 }
 
 func (s *Server) applicationCreate(w http.ResponseWriter, r *http.Request) {
-	app, problems := applicationInputFromForm(r, true)
+	app, problems := s.applicationInputFromForm(r, true)
 	apiKey := strings.TrimSpace(r.FormValue("api_key"))
 	if apiKey == "" {
-		problems = append(problems, "La chiave API è obbligatoria.")
+		problems = append(problems, s.translate(r, "application.error.apiKeyRequired"))
 	}
 
-	data := s.newApplicationForm(r, "New application", nil, true)
+	data := s.newApplicationForm(r, s.translate(r, "application.new"), nil, true)
 	data.Kind = app.Kind
 	data.Name = app.Name
 	data.URL = strings.TrimSpace(r.FormValue("url"))
@@ -220,59 +219,59 @@ func (s *Server) applicationCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(problems) > 0 {
 		data.Problems = problems
-		data.Error = "Controlla i campi dell'applicazione"
+		data.Error = s.translate(r, "application.error.checkFields")
 		s.render(w, r, "application_form", data, http.StatusBadRequest)
 		return
 	}
 	if s.vault == nil {
-		data.Problems = []string{"Il vault non è configurato: impossibile cifrare la chiave API."}
-		data.Error = "Vault non configurato"
+		data.Problems = []string{s.translate(r, "application.error.vaultRequired")}
+		data.Error = s.translate(r, "application.error.vaultTitle")
 		s.render(w, r, "application_form", data, http.StatusServiceUnavailable)
 		return
 	}
 	sealed, err := s.vault.SealString(apiKey)
 	if err != nil {
 		s.log.Error("seal application api key", "component", "indexarr", "subsystem", "web", "error", err)
-		s.renderError(w, r, http.StatusInternalServerError, "Impossibile cifrare la chiave API.")
+		s.renderError(w, r, http.StatusInternalServerError, s.translate(r, "application.error.encryptFailed"))
 		return
 	}
 	app.APIKeyEnc = []byte(sealed)
 	if _, err := s.store.CreateApplication(r.Context(), app); err != nil {
 		s.log.Error("create application", "component", "indexarr", "subsystem", "web", "error", err)
-		s.renderError(w, r, http.StatusInternalServerError, "Impossibile salvare l'applicazione.")
+		s.renderError(w, r, http.StatusInternalServerError, s.translate(r, "application.error.saveFailed"))
 		return
 	}
-	redirect(w, r, "/applications", "Applicazione creata", "")
+	redirect(w, r, "/applications", s.translate(r, "application.created"), "")
 }
 
 func (s *Server) applicationEdit(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		s.renderError(w, r, http.StatusBadRequest, "ID applicazione non valido")
+		s.renderError(w, r, http.StatusBadRequest, s.translate(r, "application.error.invalidID"))
 		return
 	}
 	current, err := s.store.GetApplication(r.Context(), id)
 	if err != nil {
-		s.renderError(w, r, statusForApplicationError(err), applicationErrorMessage(err))
+		s.renderError(w, r, statusForApplicationError(err), s.applicationErrorMessage(r, err))
 		return
 	}
-	data := s.newApplicationForm(r, "Edit "+current.Name, &current, false)
+	data := s.newApplicationForm(r, s.translate(r, "application.edit", current.Name), &current, false)
 	s.render(w, r, "application_form", data, http.StatusOK)
 }
 
 func (s *Server) applicationUpdate(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/applications", "", "ID applicazione non valido")
+		redirect(w, r, "/applications", "", s.translate(r, "application.error.invalidID"))
 		return
 	}
 	current, err := s.store.GetApplication(r.Context(), id)
 	if err != nil {
-		redirect(w, r, "/applications", "", applicationErrorMessage(err))
+		redirect(w, r, "/applications", "", s.applicationErrorMessage(r, err))
 		return
 	}
 
-	app, problems := applicationInputFromForm(r, false)
+	app, problems := s.applicationInputFromForm(r, false)
 	app.ID = current.ID
 	app.LastSyncAt = current.LastSyncAt
 	app.LastError = current.LastError
@@ -284,10 +283,10 @@ func (s *Server) applicationUpdate(w http.ResponseWriter, r *http.Request) {
 		app.APIKeyEnc = nil
 	case apiKey != "":
 		if s.vault == nil {
-			problems = append(problems, "Il vault non è configurato: impossibile cifrare la chiave API.")
+			problems = append(problems, s.translate(r, "application.error.vaultRequired"))
 		} else if sealed, err := s.vault.SealString(apiKey); err != nil {
 			s.log.Error("seal application api key", "component", "indexarr", "subsystem", "web", "error", err)
-			problems = append(problems, "Impossibile cifrare la chiave API.")
+			problems = append(problems, s.translate(r, "application.error.encryptFailed"))
 		} else {
 			app.APIKeyEnc = []byte(sealed)
 		}
@@ -296,55 +295,55 @@ func (s *Server) applicationUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(problems) > 0 {
-		data := s.newApplicationForm(r, "Edit "+current.Name, &current, false)
+		data := s.newApplicationForm(r, s.translate(r, "application.edit", current.Name), &current, false)
 		data.Kind = app.Kind
 		data.Name = app.Name
 		data.URL = strings.TrimSpace(r.FormValue("url"))
 		data.SyncLevel = app.SyncLevel
 		data.Problems = problems
-		data.Error = "Controlla i campi dell'applicazione"
+		data.Error = s.translate(r, "application.error.checkFields")
 		s.render(w, r, "application_form", data, http.StatusBadRequest)
 		return
 	}
 	if err := s.store.UpdateApplication(r.Context(), app); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			redirect(w, r, "/applications", "", "Applicazione non trovata")
+			redirect(w, r, "/applications", "", s.translate(r, "application.error.notFound"))
 			return
 		}
 		s.log.Error("update application", "component", "indexarr", "subsystem", "web", "id", id, "error", err)
-		s.renderError(w, r, http.StatusInternalServerError, "Impossibile salvare l'applicazione.")
+		s.renderError(w, r, http.StatusInternalServerError, s.translate(r, "application.error.saveFailed"))
 		return
 	}
-	redirect(w, r, "/applications", "Applicazione salvata", "")
+	redirect(w, r, "/applications", s.translate(r, "application.saved"), "")
 }
 
 func (s *Server) applicationDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/applications", "", "ID applicazione non valido")
+		redirect(w, r, "/applications", "", s.translate(r, "application.error.invalidID"))
 		return
 	}
 	if err := s.store.DeleteApplication(r.Context(), id); err != nil {
 		s.log.Error("delete application", "component", "indexarr", "subsystem", "web", "id", id, "error", err)
-		redirect(w, r, "/applications", "", "Impossibile eliminare l'applicazione.")
+		redirect(w, r, "/applications", "", s.translate(r, "application.error.deleteFailed"))
 		return
 	}
-	redirect(w, r, "/applications", "Applicazione eliminata", "")
+	redirect(w, r, "/applications", s.translate(r, "application.deleted"), "")
 }
 
 func (s *Server) applicationSync(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/applications", "", "ID applicazione non valido")
+		redirect(w, r, "/applications", "", s.translate(r, "application.error.invalidID"))
 		return
 	}
 	app, err := s.store.GetApplication(r.Context(), id)
 	if err != nil {
-		redirect(w, r, "/applications", "", applicationErrorMessage(err))
+		redirect(w, r, "/applications", "", s.applicationErrorMessage(r, err))
 		return
 	}
 	if s.sync == nil {
-		redirect(w, r, "/applications", "", "Il servizio di sincronizzazione non è configurato.")
+		redirect(w, r, "/applications", "", s.translate(r, "application.error.syncUnavailable"))
 		return
 	}
 
@@ -352,20 +351,20 @@ func (s *Server) applicationSync(w http.ResponseWriter, r *http.Request) {
 	if syncErr != nil {
 		s.log.Warn("manual application sync failed",
 			"component", "indexarr", "subsystem", "web", "application", app.Name, "error", syncErr)
-		redirect(w, r, "/applications", "", fmt.Sprintf("Sync di %s non riuscito: %s", app.Name, syncErr.Error()))
+		redirect(w, r, "/applications", "", s.translate(r, "application.syncFailed", app.Name, syncErr.Error()))
 		return
 	}
-	message := fmt.Sprintf("Sync di %s: %d aggiunti, %d aggiornati, %d eliminati, %d saltati",
+	message := s.translate(r, "application.syncSummary",
 		app.Name, result.Added, result.Updated, result.Deleted, result.Skipped)
 	if strings.EqualFold(app.SyncLevel, "disabled") {
-		message = fmt.Sprintf("Sync di %s: applicazione disabilitata, nessuna modifica (0 aggiunti, 0 aggiornati, 0 eliminati, 0 saltati)", app.Name)
+		message = s.translate(r, "application.syncDisabled", app.Name)
 	}
 	redirect(w, r, "/applications", message, "")
 }
 
 func (s *Server) applicationsSyncAll(w http.ResponseWriter, r *http.Request) {
 	if s.sync == nil {
-		redirect(w, r, "/applications", "", "Il servizio di sincronizzazione non è configurato.")
+		redirect(w, r, "/applications", "", s.translate(r, "application.error.syncUnavailable"))
 		return
 	}
 	results := s.sync.SyncAll(r.Context())
@@ -379,11 +378,11 @@ func (s *Server) applicationsSyncAll(w http.ResponseWriter, r *http.Request) {
 			failures++
 		}
 	}
-	message := fmt.Sprintf("Sincronizzazione completata: %d applicazioni, %d aggiunti, %d aggiornati, %d eliminati, %d saltati",
+	message := s.translate(r, "application.syncAllSummary",
 		len(results), added, updated, deleted, skipped)
 	problem := ""
 	if failures > 0 {
-		problem = fmt.Sprintf("%d applicazione/i con errori: controlla la colonna «Ultimo errore».", failures)
+		problem = s.translate(r, "application.syncAllProblems", failures)
 	}
 	redirect(w, r, "/applications", message, problem)
 }
@@ -395,9 +394,9 @@ func statusForApplicationError(err error) int {
 	return http.StatusInternalServerError
 }
 
-func applicationErrorMessage(err error) string {
+func (s *Server) applicationErrorMessage(r *http.Request, err error) string {
 	if errors.Is(err, sql.ErrNoRows) {
-		return "Applicazione non trovata"
+		return s.translate(r, "application.error.notFound")
 	}
 	return err.Error()
 }

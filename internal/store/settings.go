@@ -48,6 +48,10 @@ const (
 	KeyDownloadClientCat   = "download_client_category"
 	KeyDownloadClientPath  = "download_client_save_path"
 	KeyDownloadClientPause = "download_client_paused"
+	KeyHostRate            = "host_rate"
+	KeyHostBurst           = "host_burst"
+	KeyBreakerThreshold    = "breaker_threshold"
+	KeyBreakerCooldown     = "breaker_cooldown"
 )
 
 // Settings are the runtime options edited from the web interface.
@@ -87,6 +91,10 @@ type Settings struct {
 	DownloadClientCategory string
 	DownloadClientSavePath string
 	DownloadClientPaused   bool
+	HostRate               float64
+	HostBurst              int
+	BreakerThreshold       int
+	BreakerCooldownSeconds int
 }
 
 // DefaultSettings returns the options used before the first save.
@@ -111,6 +119,10 @@ func DefaultSettings() Settings {
 		TorznabLiveSearch:      false,
 		TorznabLiveTimeout:     20,
 		DownloadClient:         "none",
+		HostRate:               1,
+		HostBurst:              4,
+		BreakerThreshold:       5,
+		BreakerCooldownSeconds: 60,
 	}
 }
 
@@ -128,6 +140,16 @@ func (s Settings) FetchTimeout() time.Duration {
 	seconds := s.FetchTimeoutSeconds
 	if seconds < 5 {
 		seconds = 5
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+// BreakerCooldown is how long a host stays blocked after repeated failures or
+// a Retry-After response.
+func (s Settings) BreakerCooldown() time.Duration {
+	seconds := s.BreakerCooldownSeconds
+	if seconds < 1 {
+		seconds = 60
 	}
 	return time.Duration(seconds) * time.Second
 }
@@ -201,6 +223,10 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.DownloadClientCategory = strings.TrimSpace(values[KeyDownloadClientCat])
 	out.DownloadClientSavePath = strings.TrimSpace(values[KeyDownloadClientPath])
 	out.DownloadClientPaused = boolValue(values, KeyDownloadClientPause, false)
+	out.HostRate = floatValue(values, KeyHostRate, 1, 0, 100)
+	out.HostBurst = intValue(values, KeyHostBurst, 4, 1, 100)
+	out.BreakerThreshold = intValue(values, KeyBreakerThreshold, 5, 1, 100)
+	out.BreakerCooldownSeconds = intValue(values, KeyBreakerCooldown, 60, 1, 3600)
 	if raw, ok := values[KeyFetchTorrents]; ok {
 		out.FetchTorrents = raw == "1" || strings.EqualFold(raw, "true")
 	}
@@ -244,6 +270,10 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyDownloadClientCat:   strings.TrimSpace(in.DownloadClientCategory),
 		KeyDownloadClientPath:  strings.TrimSpace(in.DownloadClientSavePath),
 		KeyDownloadClientPause: boolString(in.DownloadClientPaused),
+		KeyHostRate:            strconv.FormatFloat(in.HostRate, 'f', -1, 64),
+		KeyHostBurst:           strconv.Itoa(in.HostBurst),
+		KeyBreakerThreshold:    strconv.Itoa(in.BreakerThreshold),
+		KeyBreakerCooldown:     strconv.Itoa(in.BreakerCooldownSeconds),
 	}
 	if in.FetchTorrents {
 		pairs[KeyFetchTorrents] = "1"
@@ -307,6 +337,18 @@ func intValue(values map[string]string, key string, fallback, min, max int) int 
 		return fallback
 	}
 	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || value < min || value > max {
+		return fallback
+	}
+	return value
+}
+
+func floatValue(values map[string]string, key string, fallback, min, max float64) float64 {
+	raw, ok := values[key]
+	if !ok {
+		return fallback
+	}
+	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
 	if err != nil || value < min || value > max {
 		return fallback
 	}

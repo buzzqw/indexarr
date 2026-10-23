@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/ingest"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/store"
@@ -27,6 +28,7 @@ type testEnv struct {
 	apiKey  string
 	logs    *logbuffer.Buffer
 	level   *slog.LevelVar
+	polite  *engine.Politeness
 }
 
 func newTestEnv(t *testing.T) *testEnv {
@@ -45,9 +47,10 @@ func newTestEnv(t *testing.T) *testEnv {
 	level := new(slog.LevelVar)
 	level.Set(slog.LevelInfo)
 	logger := slog.New(logbuffer.NewHandler(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: level}), logs))
-	engine := ingest.New(st, logger)
-	server := New(Config{Store: st, Engine: engine, Logger: logger, Logs: logs, Level: level, Version: "test", Started: time.Now()})
-	return &testEnv{store: st, server: server, handler: server.Handler(), apiKey: key, logs: logs, level: level}
+	ingestEngine := ingest.New(st, logger)
+	polite := engine.NewPoliteness(0, 1, 5, time.Minute, engine.RealClock{})
+	server := New(Config{Store: st, Engine: ingestEngine, Logger: logger, Logs: logs, Level: level, Version: "test", Started: time.Now(), Politeness: polite})
+	return &testEnv{store: st, server: server, handler: server.Handler(), apiKey: key, logs: logs, level: level, polite: polite}
 }
 
 func csrfFrom(t *testing.T, handler http.Handler, path string) (string, *http.Cookie) {

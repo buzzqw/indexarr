@@ -111,11 +111,17 @@ Flag disponibili:
 {
   "listen": ":8484",
   "db_path": "indexarr.db",
-  "log_level": "info"
+  "log_level": "info",
+  "vault_key_path": ""
 }
 ```
 
 Un `db_path` relativo è risolto rispetto alla directory del file di configurazione.
+`vault_key_path` è opzionale: se vuoto la chiave del vault viene cercata in
+`INDEXARR_MASTER_KEY`, `INDEXARR_MASTER_KEY_FILE`, `<db>.key` legacy (se esiste) e
+poi `os.UserConfigDir()/indexarr/master.key`. Un percorso relativo è risolto
+rispetto alla directory di `indexarr.json`. Dettagli, comandi `vault export-key` /
+`vault move-key`, backup e Docker secrets in [docs/VAULT.md](docs/VAULT.md).
 Tutto il resto (API key, intervalli, retention, credenziali UI) è nel database e si
 modifica dalla pagina **Settings**, senza riavviare.
 
@@ -648,6 +654,12 @@ docker run -d --name indexarr -p 8484:8484 \
   -v indexarr-data:/data \
   indexarr
 ```
+
+Il volume **non** contiene la chiave del vault: in Docker usare
+`INDEXARR_MASTER_KEY_FILE` con un secret montato (esempio in
+[docs/VAULT.md](docs/VAULT.md#docker)) oppure `INDEXARR_MASTER_KEY`. Senza chiave
+il servizio parte e le sorgenti legacy continuano a funzionare, ma i segreti
+cifrati non sono leggibili.
 
 ## Sviluppo
 

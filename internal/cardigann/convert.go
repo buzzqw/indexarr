@@ -17,6 +17,11 @@ import (
 const (
 	defaultAuthor = "cardigann-import"
 	defaultType   = "private"
+
+	// DerivedFrom is written to meta.derived_from in every converted
+	// definition. Converted drafts are writing aids, not catalog entries: the
+	// built-in catalog rejects any definition carrying this marker.
+	DerivedFrom = "cardigann"
 )
 
 type converter struct {
@@ -281,6 +286,7 @@ func (c *converter) convertMeta() (definition.Meta, error) {
 		Author:      c.opts.Author,
 		Description: description,
 		URLs:        urls,
+		DerivedFrom: DerivedFrom,
 	}, nil
 }
 

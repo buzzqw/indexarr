@@ -16,9 +16,10 @@ import (
 
 // Config is the content of indexarr.json.
 type Config struct {
-	Listen   string `json:"listen"`
-	DBPath   string `json:"db_path"`
-	LogLevel string `json:"log_level"`
+	Listen       string `json:"listen"`
+	DBPath       string `json:"db_path"`
+	LogLevel     string `json:"log_level"`
+	VaultKeyPath string `json:"vault_key_path"`
 }
 
 // Default returns the configuration used on a first start.
@@ -65,6 +66,10 @@ func Load(path string) (Config, error) {
 	}
 	if !filepath.IsAbs(cfg.DBPath) {
 		cfg.DBPath = filepath.Join(filepath.Dir(abs), cfg.DBPath)
+	}
+	cfg.VaultKeyPath = strings.TrimSpace(cfg.VaultKeyPath)
+	if cfg.VaultKeyPath != "" && !filepath.IsAbs(cfg.VaultKeyPath) {
+		cfg.VaultKeyPath = filepath.Join(filepath.Dir(abs), cfg.VaultKeyPath)
 	}
 	cfg.LogLevel = strings.ToLower(strings.TrimSpace(cfg.LogLevel))
 	switch cfg.LogLevel {

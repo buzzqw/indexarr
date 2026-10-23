@@ -27,7 +27,7 @@ func TestLoadCreatesDefault(t *testing.T) {
 func TestLoadCustom(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "custom.json")
-	if err := os.WriteFile(path, []byte(`{"listen":":9000","db_path":"data/cache.db","log_level":"debug"}`), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(`{"listen":":9000","db_path":"data/cache.db","log_level":"debug","vault_key_path":"secrets/master.key"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := Load(path)
@@ -39,6 +39,9 @@ func TestLoadCustom(t *testing.T) {
 	}
 	if cfg.DBPath != filepath.Join(dir, "data/cache.db") {
 		t.Errorf("db = %q", cfg.DBPath)
+	}
+	if cfg.VaultKeyPath != filepath.Join(dir, "secrets/master.key") {
+		t.Errorf("vault key path = %q", cfg.VaultKeyPath)
 	}
 }
 

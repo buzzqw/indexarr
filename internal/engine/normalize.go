@@ -312,11 +312,18 @@ func (c *DefinitionConnector) normalizeRow(raw map[string]string, responseURL *u
 		return Item{}, false, nil
 	}
 
+	detailsRaw := raw["details"]
+	if from := c.downloadDetailsField(); from != "" && from != "details" {
+		if value := strings.TrimSpace(raw[from]); value != "" {
+			detailsRaw = value
+		}
+	}
+
 	item := Item{
 		Protocol:   c.protocol,
 		Title:      title,
 		GUID:       strings.TrimSpace(raw["guid"]),
-		DetailsURL: resolveURL(raw["details"], responseURL, c.baseURL),
+		DetailsURL: resolveURL(detailsRaw, responseURL, c.baseURL),
 		IMDbID:     strings.TrimSpace(raw["imdbid"]),
 		TMDbID:     strings.TrimSpace(raw["tmdbid"]),
 		TVDbID:     strings.TrimSpace(raw["tvdbid"]),

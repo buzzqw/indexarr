@@ -59,7 +59,7 @@ type importPage struct {
 }
 
 func (s *Server) importPage(w http.ResponseWriter, r *http.Request) {
-	data := importPage{base: s.newBase(r, "Import", "import")}
+	data := importPage{base: s.newBaseT(r, "import.title", "import")}
 	data.ProwlarrURL = strings.TrimSpace(r.URL.Query().Get("base_url"))
 	data.JackettPath = strings.TrimSpace(r.URL.Query().Get("path"))
 	s.render(w, r, "import", data, http.StatusOK)
@@ -69,11 +69,11 @@ func (s *Server) importProwlarr(w http.ResponseWriter, r *http.Request) {
 	baseURL := strings.TrimSpace(r.FormValue("base_url"))
 	apiKey := strings.TrimSpace(r.FormValue("api_key"))
 	data := importPage{
-		base:        s.newBase(r, "Import", "import"),
+		base:        s.newBaseT(r, "import.title", "import"),
 		ProwlarrURL: baseURL,
 	}
 	if baseURL == "" || apiKey == "" {
-		data.Error = "Inserisci l'URL di Prowlarr e la chiave API."
+		data.Error = s.translate(r, "import.error.prowlarrMissing")
 		s.render(w, r, "import", data, http.StatusBadRequest)
 		return
 	}
@@ -83,7 +83,7 @@ func (s *Server) importProwlarr(w http.ResponseWriter, r *http.Request) {
 	plan, err := importers.FromProwlarr(ctx, baseURL, apiKey, &http.Client{Timeout: importTimeout})
 	if err != nil {
 		s.log.Warn("prowlarr import failed", "component", "indexarr", "subsystem", "web", "error", err)
-		data.Error = "Import da Prowlarr non riuscito: " + redactImportText(err.Error(), apiKey)
+		data.Error = s.translate(r, "import.error.prowlarrFailed", redactImportText(err.Error(), apiKey))
 		s.render(w, r, "import", data, http.StatusBadRequest)
 		return
 	}
@@ -94,11 +94,11 @@ func (s *Server) importProwlarr(w http.ResponseWriter, r *http.Request) {
 func (s *Server) importJackett(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimSpace(r.FormValue("path"))
 	data := importPage{
-		base:        s.newBase(r, "Import", "import"),
+		base:        s.newBaseT(r, "import.title", "import"),
 		JackettPath: path,
 	}
 	if path == "" {
-		data.Error = "Indica la directory dati di Jackett o il file ServerConfig.json."
+		data.Error = s.translate(r, "import.error.jackettMissing")
 		s.render(w, r, "import", data, http.StatusBadRequest)
 		return
 	}
@@ -108,7 +108,7 @@ func (s *Server) importJackett(w http.ResponseWriter, r *http.Request) {
 	plan, err := importers.FromJackettConfig(ctx, path)
 	if err != nil {
 		s.log.Warn("jackett import failed", "component", "indexarr", "subsystem", "web", "error", err)
-		data.Error = "Import da Jackett non riuscito: " + redactImportText(err.Error())
+		data.Error = s.translate(r, "import.error.jackettFailed", redactImportText(err.Error()))
 		s.render(w, r, "import", data, http.StatusBadRequest)
 		return
 	}

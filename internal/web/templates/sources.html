@@ -93,7 +93,7 @@
             <td>
               {{if not .Enabled}}<span class="chip">disabled</span>
               {{else if index $.Running .ID}}<span class="chip warn">running</span>
-              {{else if .LastError}}<span class="chip danger">errore</span>
+              {{else if .LastError}}<span class="chip danger">{{T "common.error"}}</span>
               {{else if .LastOKAt}}<span class="chip ok">ok</span>
               {{else}}<span class="chip">waiting</span>{{end}}
             </td>

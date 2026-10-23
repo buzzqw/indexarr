@@ -1,0 +1,84 @@
+# VERIFICATA (verified). Corsaro (ilCorSaRoBlu) HTML listing.
+#
+# Written from the public pages captured on 2026-10-23 in
+# fixtures/corsaro/listing.html and fixtures/corsaro/detail.html. The public
+# listing already carries a magnet per row; the download section resolves a
+# detail page when a row only has the title link.
+#
+# Guest search on this site is disabled ("Non sei autorizzato a usare il
+# sistema di ricerca interno"), so the definition does not send the `search`
+# parameter: sending it, even empty, makes the site return an error page.
+# Keyword search is therefore not available without an account; the listing
+# and the category filter work for guests.
+schema: 1
+
+meta:
+  id: corsaro
+  name: Corsaro (ilCorSaRoBlu)
+  language: it-IT
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Corsaro HTML listing with magnets in the row.
+  urls:
+    - https://ilcorsaroblu.org/
+  updated: "2026-10-23"
+
+settings:
+  - name: category
+    type: text
+    label: "Category id"
+    help: "Site category id from the listing URL; 0 means all categories."
+    default: "0"
+
+categories:
+  - { site: "2", standard: 3000, desc: "Audio / Music" }
+  - { site: "13", standard: 2040, desc: "Movies 1080p" }
+  - { site: "14", standard: 2040, desc: "Movies 720p" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /index.php
+    params:
+      page: torrents
+      category: "{{ settings.category }}"
+      active: "0"
+      options: "0"
+  pagination: { type: page, start: 1, max_pages: 3, param: pages, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.lista tr" }
+    fields:
+      title:    { selector: 'td[style*="padding-left:10px"] a', filters: [trim] }
+      details:  { selector: 'td[style*="padding-left:10px"] a', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      category: { selector: 'a[href*="category="]', attr: href, filters: [{ query_param: category }], type: category }
+      size:     { selector: "td.lista:nth-last-of-type(2)", type: size }
+      seeders:  { selector: "td.lista:nth-of-type(6)", type: int }
+      leechers: { selector: "td.lista:nth-of-type(7)", type: int }
+      date:     { selector: "td.lista:nth-of-type(5)", type: date, layouts: ["02/01/2006"] }
+    required: [title, magnet]
+
+download:
+  resolve_on: grab
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href*="download.php"]', attr: href, type: url }
+
+health:
+  query: ""
+  min_rows: 1
+
+tests:
+  - name: listing
+    fixture: fixtures/corsaro/listing.html
+    expect: { min_rows: 3, required: [title, magnet] }
+  - name: detail
+    fixture: fixtures/corsaro/detail.html
+    expect: { min_rows: 0 }

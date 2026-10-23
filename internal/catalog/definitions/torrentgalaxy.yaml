@@ -1,0 +1,79 @@
+# VERIFICATA (verified). TorrentGalaxy HTML listing.
+#
+# Written from the public pages captured on 2026-10-23 in
+# fixtures/torrentgalaxy/listing.html and fixtures/torrentgalaxy/details-*.html.
+# The listing of this mirror exposes the magnet in each row; the download
+# section stays as a fallback for user pages that only carry post-detail links.
+#
+# The 13 legacy sources are user pages (/get-posts/user:<name>/), so the
+# uploader setting is what turns them into one definition. The listing has no
+# category column, hence no category mapping.
+schema: 1
+
+meta:
+  id: torrentgalaxy
+  name: TorrentGalaxy
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public TorrentGalaxy HTML listing, with magnets in the row.
+  urls:
+    - https://torrentgalaxy.one/
+  updated: "2026-10-23"
+
+settings:
+  - name: uploader
+    type: text
+    label: "Uploader"
+    help: "User feed to read, for example anonymous or MIRCrewRS."
+    default: "anonymous"
+    required: true
+
+categories:
+  - { site: "1", standard: 2000, desc: "Movies" }
+  - { site: "2", standard: 5000, desc: "TV" }
+  - { site: "3", standard: 3000, desc: "Music" }
+  - { site: "4", standard: 4000, desc: "Games" }
+  - { site: "5", standard: 7000, desc: "Books" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: "/get-posts/user:{{ settings.uploader }}/"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.tgxtablerow" }
+    fields:
+      title:    { selector: 'a[href*="/post-detail/"]', filters: [trim] }
+      details:  { selector: 'a[href*="/post-detail/"]', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      size:     { selector: "span.badge.badge-secondary", type: size }
+      seeders:  { selector: 'span[title="Seeders/Leechers"] font:first-of-type', type: int }
+      leechers: { selector: 'span[title="Seeders/Leechers"] font:last-of-type', type: int }
+      date:     { selector: "small.added-date", attr: data-timestamp, type: date }
+    required: [title, details]
+
+download:
+  resolve_on: grab
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
+
+health:
+  query: ""
+  min_rows: 1
+
+tests:
+  - name: listing
+    fixture: fixtures/torrentgalaxy/listing.html
+    expect: { min_rows: 3, required: [title, details, magnet] }
+  - name: detail
+    fixture: fixtures/torrentgalaxy/details-95ac45.html
+    expect: { min_rows: 0 }

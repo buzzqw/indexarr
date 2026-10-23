@@ -19,7 +19,7 @@
     <dt>{{T "common.priority"}}</dt><dd>{{.Indexer.Priority}}</dd>
     <dt>{{T "common.tags"}}</dt><dd>{{if .Indexer.Tags}}{{.Indexer.Tags}}{{else}}<span class="muted">—</span>{{end}}</dd>
     <dt>{{T "common.secrets"}}</dt><dd>{{if .SecretKeys}}<span class="chip ok">{{T "indexer.configured" (len .SecretKeys)}}</span>{{else}}<span class="muted">{{T "indexer.none"}}</span>{{end}}</dd>
-    <dt>{{T "indexer.circuit"}}</dt><dd>{{if .HasState}}{{if .State.Circuit}}{{.State.Circuit}}{{else}}closed{{end}}{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "indexer.circuit"}}</dt><dd>{{if .HasState}}{{if .State.Circuit}}{{.State.Circuit}}{{else}}{{T "indexer.circuitClosed"}}{{end}}{{else}}<span class="muted">—</span>{{end}}</dd>
     <dt>{{T "common.lastError"}}</dt><dd>{{if .State.LastError}}<code>{{.State.LastError}}</code>{{else}}<span class="muted">—</span>{{end}}</dd>
     <dt>{{T "common.lastRun"}}</dt>
     <dd>{{if .LastRun}}{{date .LastRun.StartedAt}} <span class="muted">({{ago .LastRun.StartedAt}})</span> · <span class="chip {{if eq .LastRun.Status "ok"}}ok{{else if eq .LastRun.Status "error"}}danger{{else}}warn{{end}}">{{statusLabel .LastRun.Status}}</span>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</dd>
@@ -36,6 +36,17 @@
   </div>
 </section>
 
+<section class="panel">
+  <div class="panel-head"><h2>{{T "indexer.nextStep"}}</h2></div>
+  <div class="prose">
+    <p>{{if .ApplicationCount}}{{T "indexer.nextStepConnected" .ApplicationCount}}{{else}}{{T "indexer.nextStepConnect"}}{{end}}</p>
+    <div class="actions">
+      <a class="btn primary" href="/applications/new">{{T "indexer.connectApp"}}</a>
+      <a class="btn" href="/applications">{{T "indexer.manageApps"}}</a>
+    </div>
+  </div>
+</section>
+
 {{if .Test}}
 <section class="panel">
   <div class="panel-head"><h2>{{T "indexer.testResult"}}</h2></div>
@@ -49,7 +60,7 @@
         {{range .Test.Phases}}
         <tr>
           <td>{{.Name}}</td>
-          <td>{{if .OK}}<span class="chip ok">ok</span>{{else}}<span class="chip danger">{{T "common.error"}}</span>{{end}}</td>
+          <td>{{if .OK}}<span class="chip ok">{{T "common.ok"}}</span>{{else}}<span class="chip danger">{{T "common.error"}}</span>{{end}}</td>
           <td>{{if .Message}}{{.Message}}{{else}}<span class="muted">—</span>{{end}}</td>
           <td>{{duration .Duration}}</td>
         </tr>

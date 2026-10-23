@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:torznab="http://torznab.com/schemas/2015/feed">
+  <channel>
+    <title>Synthetic RSS fixture</title>
+    <item>
+      <title>Ubuntu 24.04 Desktop amd64</title>
+      <guid isPermaLink="false">feed-ubuntu-1</guid>
+      <link>magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&amp;dn=Ubuntu</link>
+      <pubDate>Mon, 05 Oct 2026 10:17:44 +0000</pubDate>
+      <category>5000</category>
+      <torznab:attr name="size" value="123456"/>
+      <torznab:attr name="seeders" value="12"/>
+      <torznab:attr name="peers" value="20"/>
+      <torznab:attr name="infohash" value="0123456789abcdef0123456789abcdef01234567"/>
+    </item>
+    <item>
+      <title>Debian 12 netinst</title>
+      <guid>feed-debian-2</guid>
+      <link>https://feed.example.invalid/details/2</link>
+      <enclosure url="https://feed.example.invalid/download/2.torrent" length="999" type="application/x-bittorrent"/>
+      <pubDate>Tue, 06 Oct 2026 11:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Fedora Workstation 42</title>
+      <guid>feed-fedora-3</guid>
+      <link>https://feed.example.invalid/details/3</link>
+      <category>TV &gt; HD</category>
+      <pubDate>Wed, 07 Oct 2026 12:00:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

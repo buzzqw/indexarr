@@ -1,9 +1,10 @@
 # indexarr native catalog manifest.
 #
 # Every definition listed here is embedded in the binary and validated when
-# the catalog is loaded. All entries are in state "bozza": they are written
-# from the documented format and offline fixtures only, have not been checked
-# against a live site, and must not be presented as production ready.
+# the catalog is loaded. A "verificata" entry was written from real public
+# pages captured into internal/catalog/fixtures/ and passes the offline
+# equivalence test; a "bozza" entry has not. Do not present a bozza as
+# production ready.
 schema: 1
 definitions:
   - id: example-html
@@ -32,5 +33,25 @@ definitions:
     author: indexarr
   - id: xbtit-generic
     file: definitions/xbtit-generic.yaml
+    state: bozza
+    author: indexarr
+  - id: extto
+    file: definitions/extto.yaml
+    state: verificata
+    author: indexarr
+  - id: torrentgalaxy
+    file: definitions/torrentgalaxy.yaml
+    state: verificata
+    author: indexarr
+  - id: corsaro
+    file: definitions/corsaro.yaml
+    state: verificata
+    author: indexarr
+  - id: knaben
+    file: definitions/knaben.yaml
+    state: verificata
+    author: indexarr
+  - id: torrentleech
+    file: definitions/torrentleech.yaml
     state: bozza
     author: indexarr

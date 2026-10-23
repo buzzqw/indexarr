@@ -143,7 +143,7 @@ func TestImportProwlarrErrorDoesNotLeakKey(t *testing.T) {
 		t.Fatalf("status = %d, want 400: %s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, "Import da Prowlarr non riuscito") {
+	if !strings.Contains(body, "Prowlarr import failed") {
 		t.Errorf("missing Italian error: %s", body)
 	}
 	if strings.Contains(body, apiKey) {
@@ -193,7 +193,7 @@ func TestImportJackettInvalidPath(t *testing.T) {
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400: %s", recorder.Code, recorder.Body.String())
 	}
-	if !strings.Contains(recorder.Body.String(), "Import da Jackett non riuscito") {
+	if !strings.Contains(recorder.Body.String(), "Jackett import failed") {
 		t.Errorf("missing Italian error: %s", recorder.Body.String())
 	}
 }

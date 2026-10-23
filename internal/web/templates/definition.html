@@ -10,6 +10,10 @@
   </div>
 </section>
 
+{{if .Derived}}
+<p class="flash warn" role="alert">{{T "definition.derivedWarning"}}</p>
+{{end}}
+
 {{if .Problems}}
 <section class="panel">
   <div class="panel-head"><h2>{{T "definition.problems"}}</h2></div>
@@ -31,7 +35,7 @@
     <dt>{{T "common.protocol"}}</dt><dd>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</dd>
     <dt>{{T "definition.schema"}}</dt><dd>{{.Definition.SchemaVersion}}</dd>
     <dt>{{T "definition.state"}}</dt><dd><span class="chip {{stateClass .Definition.State}}">{{stateLabel .Definition.State}}</span></dd>
-    <dt>{{T "definition.origin"}}</dt><dd>{{if .Builtin}}{{T "definition.catalogOrigin"}}{{else}}{{.Definition.Origin}}{{end}}</dd>
+    <dt>{{T "definition.origin"}}</dt><dd>{{if .Builtin}}{{T "definition.catalogOrigin"}}{{else}}{{T "definitions.localOrigin"}}{{end}}</dd>
     <dt>{{T "definition.author"}}</dt><dd>{{if .Definition.Author}}{{.Definition.Author}}{{else}}<span class="muted">—</span>{{end}}</dd>
     <dt>{{T "definition.hash"}}</dt><dd>{{if .HashShort}}<code title="{{.Definition.Hash}}">{{.HashShort}}</code>{{else}}<span class="muted">—</span>{{end}}</dd>
     <dt>{{T "definition.updated"}}</dt><dd>{{date .Definition.UpdatedAt}}</dd>

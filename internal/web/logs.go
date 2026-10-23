@@ -96,7 +96,7 @@ func (s *Server) logsData(r *http.Request) logsPage {
 		runtimeLevel = strings.ToLower(s.level.Level().String())
 	}
 	data := logsPage{
-		base:         s.newBase(r, "Log", "activity"),
+		base:         s.newBaseT(r, "activity.logs", "activity"),
 		Entries:      entries,
 		Level:        levelName,
 		RuntimeLevel: runtimeLevel,

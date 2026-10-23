@@ -264,7 +264,9 @@ func fetchListingDetails(ctx context.Context, client *http.Client, refs []listin
 	}
 	jobs := make(chan listingDetail)
 	results := make(chan result)
-	workers := 6
+	// Detail pages for one listing share a host: two workers keep the burst
+	// small, and the polite RoundTripper applies the process-wide budget.
+	const workers = 2
 	var wg sync.WaitGroup
 	for i := 0; i < workers; i++ {
 		wg.Add(1)

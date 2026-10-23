@@ -166,7 +166,7 @@ func TestApplicationValidation(t *testing.T) {
 		t.Fatalf("status = %d, want 400: %s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"nome è obbligatorio", "http:// o https://", "chiave API è obbligatoria"} {
+	for _, want := range []string{"The name is required.", "http:// or https://", "The API key is required."} {
 		if !strings.Contains(body, want) {
 			t.Errorf("validation page missing %q", want)
 		}
@@ -247,7 +247,7 @@ func TestApplicationSyncDisabled(t *testing.T) {
 		t.Fatalf("flash page = %d: %s", page.Code, page.Body.String())
 	}
 	body := page.Body.String()
-	for _, want := range []string{"disabilitata", "0 aggiunti", "0 aggiornati", "0 eliminati", "0 saltati"} {
+	for _, want := range []string{"application disabled", "0 added", "0 updated", "0 deleted", "0 skipped"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("sync flash missing %q", want)
 		}
@@ -265,7 +265,7 @@ func TestApplicationSyncWithoutService(t *testing.T) {
 		t.Fatalf("sync status = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	page := get(t, env.handler, recorder.Header().Get("Location"))
-	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "non è configurato") {
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "not configured") {
 		t.Fatalf("missing degradation message: %d\n%s", page.Code, page.Body.String())
 	}
 
@@ -275,7 +275,7 @@ func TestApplicationSyncWithoutService(t *testing.T) {
 		t.Fatalf("sync all status = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	page = get(t, env.handler, recorder.Header().Get("Location"))
-	if !strings.Contains(page.Body.String(), "non è configurato") {
+	if !strings.Contains(page.Body.String(), "not configured") {
 		t.Fatal("sync all did not degrade with a clear message")
 	}
 }

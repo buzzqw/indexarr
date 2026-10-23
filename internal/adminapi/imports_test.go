@@ -272,7 +272,7 @@ func TestLegacyPreviewEndpoint(t *testing.T) {
 	if len(body.Candidates) != 2 {
 		t.Fatalf("candidates = %+v", body.Candidates)
 	}
-	if body.Counts.Native != 1 || body.Counts.Skipped != 1 {
+	if body.Counts.Native != 2 || body.Counts.Skipped != 0 {
 		t.Fatalf("counts = %+v", body.Counts)
 	}
 	for _, candidate := range body.Candidates {
@@ -282,7 +282,8 @@ func TestLegacyPreviewEndpoint(t *testing.T) {
 				t.Errorf("torznab candidate = %+v", candidate)
 			}
 		case "rss":
-			if candidate.Native || candidate.Reason == "" || candidate.Slug == "" {
+			// WP6: a plain RSS/Atom feed is a native candidate.
+			if !candidate.Native || candidate.Reason != "" || candidate.Slug == "" {
 				t.Errorf("rss candidate = %+v", candidate)
 			}
 		default:

@@ -229,11 +229,97 @@ func describeHTTPError(status int, body []byte) error {
 	return fmt.Errorf("HTTP %d: %s", status, redactSecrets(text))
 }
 
-var secretPattern = regexp.MustCompile(`(?i)(apikey|api_key|passkey|token)=([^&\s"']+)`)
+var (
+	secretPattern = regexp.MustCompile(`(?i)(apikey|api_key|passkey|rsskey|authkey|token|secret)=([^&\s"']+)`)
+	urlPattern    = regexp.MustCompile(`(?i)https?://[^\s"'<>]+`)
+)
 
 // redactSecrets removes the credentials that net/http puts in transport error
 // messages (the URL is included verbatim) before an error reaches the log, the
-// run history or the web interface.
+// run history or the web interface. Besides query parameters it masks long
+// secret-like path segments, which is how many trackers embed rsskeys and
+// passkeys (for example /rss/<hex>).
 func redactSecrets(text string) string {
-	return secretPattern.ReplaceAllString(text, "$1=***")
+	text = secretPattern.ReplaceAllString(text, "$1=***")
+	return urlPattern.ReplaceAllStringFunc(text, redactURLPath)
+}
+
+func redactURLPath(raw string) string {
+	trimmed := strings.TrimRight(raw, ".,;:!?)]}")
+	suffix := raw[len(trimmed):]
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return raw
+	}
+	path, changed := redactPath(parsed.Path)
+	if !changed {
+		return raw
+	}
+	parsed.Path = path
+	redacted := parsed.String() + suffix
+	// url.String escapes the asterisks we use as the mask; the marker is for
+	// humans reading a log, so keep it readable instead of percent-encoded.
+	redacted = strings.ReplaceAll(redacted, "%2A%2A%2A", "***")
+	return strings.ReplaceAll(redacted, "%2a%2a%2a", "***")
+}
+
+func redactPath(path string) (string, bool) {
+	segments := strings.Split(path, "/")
+	changed := false
+	for i, segment := range segments {
+		if looksLikeSecretPathSegment(segment) {
+			segments[i] = "***"
+			changed = true
+		}
+	}
+	if !changed {
+		return path, false
+	}
+	return strings.Join(segments, "/"), true
+}
+
+// looksLikeSecretPathSegment recognises opaque identifiers (hex keys, rsskeys,
+// passkeys) while leaving normal path words and short ids alone.
+func looksLikeSecretPathSegment(segment string) bool {
+	if len(segment) < 16 {
+		return false
+	}
+	digits, letters := false, false
+	hexOnly := true
+	for _, r := range segment {
+		switch {
+		case r >= '0' && r <= '9':
+			digits = true
+		case (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F'):
+			letters = true
+		case (r >= 'g' && r <= 'z') || (r >= 'G' && r <= 'Z'):
+			letters = true
+			hexOnly = false
+		case r == '-' || r == '_' || r == '~' || r == '+' || r == '=':
+			hexOnly = false
+		default:
+			return false
+		}
+	}
+	if letters && hexOnly {
+		return true
+	}
+	return digits && letters
+}
+
+// RedactURL returns a URL that is safe to show in logs or the UI: embedded
+// userinfo, the query and long secret-like path segments are removed. WP14 can
+// use it for the source list without exposing rsskeys.
+func RedactURL(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return "[invalid URL]"
+	}
+	parsed.User = nil
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	parsed.Path, _ = redactPath(parsed.Path)
+	redacted := parsed.String()
+	redacted = strings.ReplaceAll(redacted, "%2A%2A%2A", "***")
+	return strings.ReplaceAll(redacted, "%2a%2a%2a", "***")
 }

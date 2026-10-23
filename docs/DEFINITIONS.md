@@ -21,6 +21,7 @@ categories: []
 capabilities: {}
 auth: {}               # opzionale
 search: {}             # obbligatorio se connector è assente
+download: {}           # opzionale: magnet/torrent dalla pagina di dettaglio
 health: {}             # opzionale
 tests: []              # opzionale, ma richiesto per il catalogo
 ```
@@ -41,6 +42,20 @@ deve contenere un solo documento YAML.
 | `author` | no | autore o manutentore |
 | `description` | no | descrizione breve |
 | `updated` | no | data dell'ultima revisione, per esempio `"2026-10-23"` |
+| `derived_from` | no | slug dello strumento che ha prodotto una bozza, per esempio `cardigann`; una bozza derivata resta locale e il catalogo la rifiuta |
+
+### Bozze derivate
+
+`derived_from` marca una definizione prodotta da uno strumento di conversione,
+oggi solo il convertitore Cardigann (`derived_from: cardigann`). Non è un
+percorso di migrazione né un'importazione: la bozza resta **locale**, la UI e
+l'API non hanno una rotta per importarla, e il catalogo built-in la rifiuta.
+
+L'autore `cardigann-import` è un marcatore equivalente a `derived_from`,
+confrontato senza distinzione di maiuscole. Per entrare nel catalogo una bozza
+va riscritta osservando il sito: selettori verificati su fixture reali, autore e
+data nostri, `derived_from` rimosso. `make def-validate` esegue questa policy
+sulla directory del catalogo con `validate -catalog`.
 
 ## `settings`
 
@@ -316,6 +331,72 @@ category:
   type: category
 ```
 
+## `download`
+
+Risolve il magnet o il link `.torrent` da una pagina di dettaglio quando il
+listing non li espone. La sezione è **opzionale** e retro-compatibile: le
+definizioni che hanno già `magnet` o `download` nella riga di ricerca non
+cambiano e `schema` resta 1.
+
+```yaml
+download:
+  resolve_on: search          # search (default) | grab
+  from: details               # campo della ricerca, default details
+  max_concurrent: 2           # 1..8, default 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
+```
+
+| Campo | Obbligatorio | Regole |
+|---|---|---|
+| `resolve_on` | no | `search` (default) oppure `grab` |
+| `from` | no | nome di un campo dichiarato in `search.response.fields`; vuoto = `details` |
+| `max_concurrent` | no | da 1 a 8; `0` o assente = 2. Valori fuori intervallo sono rifiutati |
+| `extract` | sì | almeno un estrattore; ogni voce ha **solo** `magnet` o **solo** `torrent` |
+
+Ogni estrattore è un `Field` con le stesse regole dei campi di ricerca:
+`selector` (lista = fallback) oppure `path` per una risposta JSON, `attr`,
+`type` (`text`, `int`, `size`, `date`, `url`, `category`) e `filters`. Per
+`torrent` il valore viene risolto come URL relativo alla pagina di dettaglio;
+per `magnet` deve essere un URI `magnet:`.
+
+### Semantica
+
+- **`resolve_on: search`** — durante la ricerca, per ogni riga con il campo
+  `from` valorizzato e senza magnet né link di download, il motore apre la
+  pagina di dettaglio con lo stesso transport, la stessa sessione e la stessa
+  autenticazione della ricerca. Applica gli estrattori **nell'ordine
+  dichiarato**: il primo che produce un valore vince. Imposta `Magnet` e
+  `InfoHash` normalizzato, oppure `DownloadURL` per un `.torrent`. Le righe che
+  hanno già un magnet o un torrent non vengono aperte.
+- **`resolve_on: grab`** — la ricerca non apre i dettagli; `Download` li apre
+  al momento del grab. Meno richieste al sito, infohash disponibile solo dopo
+  il download.
+- **`Download`** preferisce un magnet già presente, poi un URL di download
+  diretto, poi la pagina di dettaglio risolta con questa sezione. Un redirect
+  della pagina (o del link) verso `magnet:` viene restituito come
+  `Payload.Magnet`.
+- La concorrenza è limitata da `max_concurrent` (default 2, massimo 8). Le
+  risoluzioni riuscite sono tenute in una cache in memoria per indexer
+  (256 voci, TTL 10 minuti); righe con lo stesso URL di dettaglio condividono
+  una sola richiesta.
+- Un dettaglio che fallisce non interrompe la pagina: la riga resta senza
+  magnet/URL e il fallimento viene contato. Gli errori non contengono mai
+  l'URL del tracker, che può includere una passkey.
+
+### Validazione
+
+- `resolve_on` deve essere `search` o `grab`;
+- `from` (dopo il default `details`) deve esistere in
+  `search.response.fields`;
+- `extract` non può essere vuoto;
+- ogni voce deve avere esattamente uno tra `magnet` e `torrent`;
+- ogni campo deve avere `selector` o `path` non vuoti, un `type` ammesso e
+  filtri validi (`replace: old:new`, `query_param` con nome, `regex`
+  compilabile, nomi noti);
+- `max_concurrent` deve essere `0` (default) o tra 1 e 8.
+
 ## `health`
 
 ```yaml
@@ -440,6 +521,16 @@ FAIL bad.yaml: definition: meta.id: is required
 Con `-json` emette un array di `{path, ok, id, error}`. L'exit code è 1 se
 almeno un file fallisce, 2 per un errore d'uso.
 
+`-catalog` (alias `-reject-derived`) aggiunge la policy del catalogo: rifiuta
+le bozze derivate, cioè `meta.derived_from` non vuoto o `meta.author` uguale a
+`cardigann-import` senza distinzione di maiuscole. `make def-validate` usa
+questa modalità per `internal/catalog/definitions/`, mentre la validazione
+normale continua ad accettare le bozze locali prodotte dal convertitore.
+
+```bash
+indexarr-def validate -catalog internal/catalog/definitions
+```
+
 ### `fmt`
 
 Analizza e riserializza in YAML canonico (2 spazi). **I commenti e l'ordine
@@ -461,14 +552,19 @@ se una fixture manca, è vuota o non è un file regolare.
 
 ### `convert-cardigann`
 
-Converte **in locale** definizioni Cardigann (Jackett/Prowlarr) nel formato
-nativo v1. Non è un runtime Cardigann: indexarr non esegue mai questi file e non
-li distribuisce. Il convertitore copre un sottoinsieme documentato in
+Converte **in locale** definizioni Cardigann (Jackett/Prowlarr) in **bozze** del
+formato nativo v1. È uno **strumento di scrittura, non di migrazione**: non è un
+runtime Cardigann, indexarr non esegue mai questi file e non li distribuisce.
+Ogni bozza prodotta contiene `meta.derived_from: cardigann`; non esiste una
+rotta UI/API che la importi e il catalogo built-in la rifiuta. Si parte da lì
+per riscrivere la definizione osservando il sito, con fixture nostre.
+
+Il convertitore copre un sottoinsieme documentato in
 `internal/cardigann/MAPPING.md`; ciò che non è rappresentabile finisce in
 `warning`/`unsupported` e la definizione prodotta resta `bozza`.
 
 ```bash
-# una definizione: YAML nativo su stdout
+# una definizione: YAML nativo (bozza) su stdout
 indexarr-def convert-cardigann ~/.config/Jackett/Indexers/example.yml
 
 # una directory: un file per definizione, poi validazione
@@ -476,19 +572,20 @@ indexarr-def convert-cardigann -o ./native ~/.config/Jackett/Indexers
 indexarr-def validate ./native
 ```
 
-Le definizioni prodotte non hanno fixture: prima di entrare nel catalogo vanno
-verificate su pagine reali e corredate di test offline. Le credenziali non
-vengono copiate nel YAML: restano impostazioni che l'utente compila e che il
-vault cifra.
+Le definizioni prodotte non hanno fixture: per entrare nel catalogo vanno
+riscritte e verificate su pagine reali, con test offline e senza
+`derived_from`. Le credenziali non vengono copiate nel YAML: restano
+impostazioni che l'utente compila e che il vault cifra.
 
 ## Sicurezza e scrittura pulita
 
 - **Le definizioni sono dati.** Non contengono codice, include, script o comandi.
   I template leggono solo le variabili elencate e l'unico filtro è `join`.
-- Non esistono richieste implicite oltre a quelle dichiarate in `auth.steps` e
-  `search.request` e ai link di download restituiti dal sito; il transport
-  applica timeout, limite di dimensione, rate limit per host, circuit breaker e
-  blocco SSRF.
+- Non esistono richieste implicite oltre a quelle dichiarate in `auth.steps`,
+  `search.request`, `download.extract` (la pagina di dettaglio del campo
+  `from`) e ai link di download restituiti dal sito; il transport applica
+  timeout, limite di dimensione, rate limit per host, circuit breaker e blocco
+  SSRF.
 - I segreti (password, token, API key, cookie) sono redatti negli errori; gli URL
   di download possono contenere una passkey e non escono dalle API.
 - **Nessuna passkey, cookie o credenziale nelle fixture.** Le fixture sono
@@ -498,6 +595,9 @@ vault cifra.
   codice di Jackett o Prowlarr. Ogni definizione registra autore, data e le
   fixture da cui è stata scritta; il catalogo è interamente nostro e
   distribuibile con la licenza scelta dal progetto.
+- **Le bozze derivate restano locali.** Il convertitore Cardigann è un aiuto
+  alla scrittura: produce `derived_from: cardigann`, non è raggiungibile da
+  UI/API e il catalogo (e `make def-validate`) rifiuta queste bozze.
 - niente CAPTCHA automatico: un indexer bloccato richiede intervento umano.
 
 ## Come aggiungere una definizione
@@ -505,17 +605,22 @@ vault cifra.
 1. Scegli la fonte più stabile: API ufficiale, feed, connettore di famiglia;
    usa lo scraping HTML solo se necessario.
 2. Crea `examples/definitions/<id>.yaml` (o la directory del catalogo) con
-   `schema: 1` e un `meta.id` slug univoco.
+   `schema: 1` e un `meta.id` slug univoco. Se parti da una bozza del
+   convertitore, riscrivila e togli `derived_from`: il catalogo rifiuta le
+   bozze derivate.
 3. Dichiara `settings`, `categories` e `capabilities` in base a ciò che il sito
    espone davvero.
 4. Descrivi l'autenticazione con passi espliciti; estrai CSRF/token e verifica
    `success`/`failure` con selettori o status.
 5. Scrivi `search.request`, la paginazione e i campi tipizzati. Metti in
    `required` solo i campi senza cui la release è inutilizzabile.
-6. Aggiungi `health` con una query reale e `min_rows` ragionevole.
-7. Salva fixture sintetiche in `fixtures/<id>/` e dichiara i test con
+6. Se il listing non espone il magnet, dichiara `download` con il campo
+   `from` e gli estrattori della pagina di dettaglio; usa `resolve_on: grab`
+   se vuoi rimandare l'apertura dei dettagli al momento del download.
+7. Aggiungi `health` con una query reale e `min_rows` ragionevole.
+8. Salva fixture sintetiche in `fixtures/<id>/` e dichiara i test con
    `min_rows`, `required` e, per i siti privati, login riuscito/fallito.
-8. Esegui:
+9. Esegui:
 
    ```bash
    indexarr-def validate examples/definitions
@@ -524,9 +629,9 @@ vault cifra.
    make def-validate
    ```
 
-9. Verifica che la definizione passi anche i test del motore e che nessun dato
-   sensibile sia finito nelle fixture.
-10. Aggiorna `meta.updated`, autore e descrizione; per il catalogo rispetta i
+10. Verifica che la definizione passi anche i test del motore e che nessun dato
+    sensibile sia finito nelle fixture.
+11. Aggiorna `meta.updated`, autore e descrizione; per il catalogo rispetta i
     requisiti di §7.2 (`health`, test, fixture di login, stato `bozza` →
     `verificata`).
 
@@ -596,6 +701,14 @@ search:
       leechers: { selector: "td.leechers", type: int }
       date:     { selector: "td.date", type: date, layouts: ["02-01-2006 15:04"] }
     required: [title, download, size]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
 
 health:
   query: test

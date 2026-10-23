@@ -19,8 +19,9 @@ import (
 // driver is serialised per connection and indexarr mixes a web UI with
 // background writers.
 type Store struct {
-	db   *sql.DB
-	path string
+	db    *sql.DB
+	path  string
+	codec SecretCodec
 }
 
 // Open opens (and creates when missing) the database at path.

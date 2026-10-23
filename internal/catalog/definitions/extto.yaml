@@ -1,0 +1,90 @@
+# VERIFICATA (verified). Public ExtTo HTML listing.
+#
+# Written from the public pages captured on 2026-10-23 in
+# fixtures/extto/listing.html and fixtures/extto/detail.html. The listing
+# carries the magnet link in the same row, so the download section is a
+# fallback for layouts that only expose a detail page (resolve_on: grab).
+#
+# The legacy sources differ only by the `filter` query parameter: `c=TV` or
+# `c=Movies` selects a category, `u=<uploader>` selects an uploader and
+# `tg=<tag>` selects a language/quality tag. v1 has no conditional query
+# parameters, so one setting carries the whole expression; the default keeps
+# the previous TV source working. Examples:
+#   c=TV, c=Movies, c=Music, u=EZTV, tg=English
+schema: 1
+
+meta:
+  id: extto
+  name: ExtTo
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public ExtTo HTML listing with magnets in the row.
+  urls:
+    - https://extto.org/
+  updated: "2026-10-23"
+
+settings:
+  - name: filter
+    type: text
+    label: "Site filter (category, uploader or language)"
+    help: "One site filter expression: c=TV, c=Movies, u=EZTV or tg=English. Required because an empty filter returns no rows."
+    default: "c=TV"
+    required: true
+
+categories:
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "Music", standard: 3000, desc: "Audio" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Apps", standard: 4000, desc: "Applications" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+  - { site: "Documentaries", standard: 5080, desc: "Documentaries" }
+  - { site: "XXX", standard: 6000, desc: "Adult" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /browse/
+    params:
+      q: "{{ query.keywords }}"
+      filter: "{{ settings.filter }}"
+  pagination: { type: page, start: 1, max_pages: 3, param: page, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.search-table > tbody > tr" }
+    fields:
+      title:    { selector: "span.name", filters: [trim] }
+      details:  { selector: 'a[href*="/post-detail/"]', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      category: { selector: 'a[href*="filter=c="]', type: category }
+      size:     { selector: "td.nowrap-td span", type: size }
+      seeders:  { selector: "td.hide-on-mob span.text-success", type: int }
+      leechers: { selector: "td.hide-on-mob span.text-danger", type: int }
+      date:     { selector: "td.nowrap-td:nth-child(3) span", type: date }
+    required: [title, details]
+
+download:
+  resolve_on: grab
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
+
+health:
+  query: test
+  min_rows: 1
+
+tests:
+  - name: listing
+    fixture: fixtures/extto/listing.html
+    expect: { min_rows: 3, required: [title, details, magnet] }
+  - name: detail
+    fixture: fixtures/extto/detail.html
+    expect: { min_rows: 0 }

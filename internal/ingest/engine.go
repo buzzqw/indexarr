@@ -152,6 +152,15 @@ func New(st *store.Store, logger *slog.Logger) *Engine {
 	}
 }
 
+// SetHTTPClient replaces the HTTP client used by the legacy RSS, HTML listing
+// and Torznab paths. Call it before Start; the caller passes a client whose
+// transport is the shared polite RoundTripper.
+func (e *Engine) SetHTTPClient(client *http.Client) {
+	if client != nil {
+		e.http = client
+	}
+}
+
 // IsRunning reports whether a source currently has a run in progress.
 func (e *Engine) IsRunning(sourceID int64) bool {
 	_, ok := e.running.Load(sourceID)

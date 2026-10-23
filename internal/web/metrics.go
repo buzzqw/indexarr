@@ -39,4 +39,21 @@ func (s *Server) metrics(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "# TYPE indexarr_blocklist_rules gauge\nindexarr_blocklist_rules %d\n", len(rules))
 	fmt.Fprintf(w, "# HELP indexarr_db_bytes Database size including the WAL.\n")
 	fmt.Fprintf(w, "# TYPE indexarr_db_bytes gauge\nindexarr_db_bytes %d\n", stats.DBBytes)
+
+	hostMetrics := s.polite.HostMetrics()
+	fmt.Fprintf(w, "# HELP indexarr_host_rate_limited_total HTTP 429 responses per host.\n")
+	fmt.Fprintf(w, "# TYPE indexarr_host_rate_limited_total counter\n")
+	for _, metric := range hostMetrics {
+		fmt.Fprintf(w, "indexarr_host_rate_limited_total{host=%q} %d\n", metric.Host, metric.RateLimited)
+	}
+	fmt.Fprintf(w, "# HELP indexarr_host_forbidden_total HTTP 403 responses per host.\n")
+	fmt.Fprintf(w, "# TYPE indexarr_host_forbidden_total counter\n")
+	for _, metric := range hostMetrics {
+		fmt.Fprintf(w, "indexarr_host_forbidden_total{host=%q} %d\n", metric.Host, metric.Forbidden)
+	}
+	fmt.Fprintf(w, "# HELP indexarr_host_breaker_open_total Requests refused by an open per-host breaker.\n")
+	fmt.Fprintf(w, "# TYPE indexarr_host_breaker_open_total counter\n")
+	for _, metric := range hostMetrics {
+		fmt.Fprintf(w, "indexarr_host_breaker_open_total{host=%q} %d\n", metric.Host, metric.BreakerOpen)
+	}
 }

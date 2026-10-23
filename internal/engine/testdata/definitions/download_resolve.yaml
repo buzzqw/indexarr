@@ -1,0 +1,28 @@
+schema: 1
+meta:
+  id: download-resolve
+  name: Download Resolve
+  type: public
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+capabilities:
+  search: [q]
+search:
+  request:
+    get: /search
+    params: { q: "{{ query.keywords }}" }
+  response:
+    type: html
+    rows: { selector: "table.results tbody tr" }
+    fields:
+      title: { selector: "a.title" }
+      details: { selector: "a.title", attr: href, type: url }
+      magnet: { selector: 'a[href^="magnet:"]', attr: href }
+    required: [title, details]
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }

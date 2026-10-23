@@ -1,7 +1,15 @@
 # Cardigann → native v1 mapping
 
-`internal/cardigann` is a local importer. It reads a Cardigann YAML file and
-writes a native definition; indexarr never interprets Cardigann at runtime.
+`internal/cardigann` is a local **writing aid**, not a migration or import path.
+It reads a Cardigann YAML file and writes a draft of a native definition;
+indexarr never interprets Cardigann at runtime and never imports a converted
+draft from the UI or the API.
+
+Every produced document carries `meta.derived_from: cardigann` (constant
+`cardigann.DerivedFrom`). Derived drafts stay local: the built-in catalog
+rejects them, and `make def-validate` fails if one appears under
+`internal/catalog/definitions/`. To ship a definition, rewrite it by observing
+the site, with our own fixtures and without the marker.
 
 Every produced document is serialized, parsed and validated with
 `definition.Parse` before it is returned. Output is deterministic: the body is
@@ -34,6 +42,7 @@ templates were not translated. API keys/defaults are never copied.
 | Cardigann | Native v1 |
 |---|---|
 | `id`, `name`, `description`, `language` | `meta.*`; `id` is slugified |
+| — | `meta.derived_from: cardigann`, always |
 | `type` (`public`, `semi-private`, `private`) | `meta.type`; fallback `private` |
 | `protocol`, `usenet`, `type: usenet` | `meta.protocol` (`torrent` by default) |
 | `links`, `legacyLinks`, `urls`, `link`, `url` | `meta.urls` (http/https only, deduplicated, userinfo removed) |
