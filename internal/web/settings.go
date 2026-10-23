@@ -337,15 +337,18 @@ func (s *Server) runsClear(w http.ResponseWriter, r *http.Request) {
 type maintenancePage struct {
 	base
 	Stats               store.Stats
+	Report              store.DBReport
 	DBPath              string
 	SQLiteVersion       string
 	RetentionDays       int
+	DefaultPurgeDays    int
 	Backups             []backup.Info
 	BackupDir           string
 	BackupEnabled       bool
 	BackupIntervalHours int
 	BackupKeep          int
 	FailedSources       []store.Source
+	Sources             []store.Source
 	SourceErrors        int
 }
 
@@ -355,9 +358,18 @@ func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
+	report, err := s.store.LoadDBReport(r.Context())
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
 	settings, _ := s.store.LoadSettings(r.Context())
 	backups, _ := backup.List(s.store.Path())
 	sources, _ := s.store.ListSources(r.Context())
+	purgeDays := settings.RetentionDays
+	if purgeDays <= 0 {
+		purgeDays = 30
+	}
 	var failed []store.Source
 	sourceErrors := 0
 	for _, source := range sources {
@@ -373,15 +385,18 @@ func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, "maintenance", maintenancePage{
 		base:                s.newBase(r, "Maintenance", "maintenance"),
 		Stats:               stats,
+		Report:              report,
 		DBPath:              s.store.Path(),
 		SQLiteVersion:       version,
 		RetentionDays:       settings.RetentionDays,
+		DefaultPurgeDays:    purgeDays,
 		Backups:             backups,
 		BackupDir:           backup.Dir(s.store.Path()),
 		BackupEnabled:       settings.BackupEnabled,
 		BackupIntervalHours: settings.BackupIntervalHours,
 		BackupKeep:          settings.BackupKeep,
 		FailedSources:       failed,
+		Sources:             sources,
 		SourceErrors:        sourceErrors,
 	}, http.StatusOK)
 }
@@ -404,12 +419,48 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		redirect(w, r, "/maintenance", "Integrity check: "+result, "")
+	case "quick_check":
+		result, err := s.store.QuickCheck(ctx)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/maintenance", "Quick check: "+result, "")
+	case "foreign_keys":
+		violations, err := s.store.ForeignKeyCheck(ctx)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		message := "Foreign key check: ok"
+		if violations > 0 {
+			message = fmt.Sprintf("Foreign key check: %d violation(s) found", violations)
+		}
+		redirect(w, r, "/maintenance", message, "")
 	case "optimize":
 		if err := s.store.Optimize(ctx); err != nil {
 			redirect(w, r, "/maintenance", "", err.Error())
 			return
 		}
 		redirect(w, r, "/maintenance", "Planner statistics refreshed and WAL checkpointed", "")
+	case "checkpoint":
+		busy, logFrames, checkpointed, err := s.store.Checkpoint(ctx)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		message := fmt.Sprintf("WAL checkpoint: %d frame(s) written and WAL truncated", checkpointed)
+		if busy != 0 {
+			message = fmt.Sprintf("WAL checkpoint incomplete: %d of %d frame(s) still pending",
+				logFrames-checkpointed, logFrames)
+		}
+		redirect(w, r, "/maintenance", message, "")
+	case "analyze":
+		if err := s.store.Analyze(ctx); err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/maintenance", "Planner statistics rebuilt (ANALYZE)", "")
 	case "reindex":
 		if err := s.store.Reindex(ctx); err != nil {
 			redirect(w, r, "/maintenance", "", err.Error())
@@ -461,6 +512,81 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		redirect(w, r, "/maintenance", fmt.Sprintf("%d old run(s) removed", removed), "")
+	case "purge_days":
+		days, err := intInRange(r.FormValue("days"), 30, 36500)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		removed, err := s.store.PruneReleases(ctx, time.Now().AddDate(0, 0, -days))
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/maintenance",
+			fmt.Sprintf("%d release(s) not seen in the last %d day(s) removed", removed, days), "")
+	case "purge_source":
+		sourceID, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("source_id")), 10, 64)
+		if err != nil || sourceID <= 0 {
+			redirect(w, r, "/maintenance", "", "Choose a source to purge")
+			return
+		}
+		source, err := s.store.GetSource(ctx, sourceID)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", "Choose a source to purge")
+			return
+		}
+		removed, err := s.store.DeleteReleasesBySource(ctx, sourceID)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/maintenance",
+			fmt.Sprintf("%d release(s) from %s removed", removed, source.Name), "")
+	case "purge_no_links":
+		removed, err := s.store.DeleteReleasesWithoutLinks(ctx)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/maintenance",
+			fmt.Sprintf("%d release(s) without magnet or .torrent removed", removed), "")
+	case "purge_hidden":
+		removed, err := s.store.DeleteHiddenReleases(ctx)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/maintenance", fmt.Sprintf("%d hidden release(s) removed", removed), "")
+	case "clear_runs_days":
+		days, err := intInRange(r.FormValue("days"), 30, 36500)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		removed, err := s.store.ClearRuns(ctx, time.Now().AddDate(0, 0, -days))
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/maintenance",
+			fmt.Sprintf("%d run(s) older than %d day(s) removed", removed, days), "")
+	case "reset_api_usage":
+		removed, err := s.store.ResetAPIUsage(ctx)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/maintenance",
+			fmt.Sprintf("API usage counters reset for %d key(s)", removed), "")
+	case "recount_sources":
+		updated, err := s.store.RecalculateSourceCounts(ctx)
+		if err != nil {
+			redirect(w, r, "/maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/maintenance",
+			fmt.Sprintf("Cached item counters recalculated for %d source(s)", updated), "")
 	case "delete_all":
 		if r.FormValue("confirm") != "DELETE" {
 			redirect(w, r, "/maintenance", "", `Type DELETE in the confirmation field`)
@@ -496,4 +622,18 @@ func (s *Server) maintenanceBackup(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
 	w.Header().Set("Cache-Control", "no-store")
 	http.ServeFile(w, r, filepath.Clean(target))
+}
+
+// intInRange parses an optional positive integer form field. An empty value
+// uses fallback; anything outside 1..max is rejected.
+func intInRange(raw string, fallback, max int) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return fallback, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 1 || value > max {
+		return 0, fmt.Errorf("enter a number between 1 and %d", max)
+	}
+	return value, nil
 }

@@ -2,7 +2,7 @@ BINARY  := bin/indexarr
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build test vet fmt run clean
+.PHONY: build test vet fmt run clean qa
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/indexarr
@@ -12,6 +12,10 @@ test:
 
 vet:
 	go vet ./...
+
+# QA: static checks, unit/integration tests and a real-binary HTTP smoke test.
+qa:
+	./scripts/qa.sh
 
 fmt:
 	gofmt -w .

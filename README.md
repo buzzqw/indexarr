@@ -501,19 +501,33 @@ e i token sono oscurati nel buffer mostrato dalla UI.
 
 ## Manutenzione
 
+- **Database report**: dimensioni, pagine libere, WAL/SHM, conteggio righe per
+  tabella e ripartizione delle release (torrent, magnet, senza link, nascoste,
+  preferite).
 - **Integrity check**: `PRAGMA integrity_check`, riporta `ok` o il problema.
+- **Quick check / Foreign key check**: controlli rapidi su integrità e
+  violazioni di chiave esterna.
 - **Vacuum**: ricompatta il file SQLite.
 - **Deduplica per infohash**: unisce righe duplicate conservando magnet, torrent e
   il maggior numero di osservazioni.
 - **Pulizia `.torrent`**: elimina i blob conservando metadati e magnet (utile per
   ridurre il database).
 - **Retention**: elimina le release non più viste da N giorni; gira anche da sola
-  ogni sei ore.
+  ogni sei ore. La pulizia manuale può usare una finestra diversa o eliminare
+  tutte le release di una singola sorgente.
+- **Pulizia mirata**: elimina le release senza magnet né `.torrent` (inutilizzabili
+  dai client) e quelle nascoste; la cronologia run può essere svuotata oltre che
+  per età anche con un numero di giorni personalizzato.
 - **Optimize / checkpoint**: `PRAGMA optimize` + `wal_checkpoint(TRUNCATE)`, sicuro
-  a caldo.
+  a caldo; il checkpoint WAL è disponibile anche da solo.
+- **Analyze**: `ANALYZE` per rigenerare le statistiche del query planner.
 - **Rebuild indexes**: `REINDEX`.
 - **Clear source errors**: azzera `last_error` e il contatore di errori
   consecutivi; non riabilita una sorgente disabilitata.
+- **Reset API usage**: azzera i contatori di richieste per chiave, senza
+  revocare le chiavi.
+- **Recount source items**: ricalcola `total_items` dal numero di release
+  attualmente in cache per ogni sorgente.
 - **Salute sorgenti**: la pagina elenca le sorgenti con errori, il numero di
   fallimenti e i pulsanti Test/Run.
 - **Backup automatici**: crea un backup consistente ogni N ore (default 24,
@@ -627,11 +641,13 @@ docker run -d --name indexarr -p 8484:8484 \
 ```bash
 make test    # go test ./...
 make vet     # go vet ./...
+make qa      # vet + test + smoke test HTTP sul binario reale
 make build   # bin/indexarr
 make release # binari linux/amd64, linux/arm64, windows/amd64, darwin/arm64
 ```
 
 Struttura dei pacchetti e scelte di progetto: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Suite di test e smoke test: [docs/QA.md](docs/QA.md).
 
 ## Prossimi passi
 

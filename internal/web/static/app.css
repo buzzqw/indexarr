@@ -516,6 +516,7 @@ input[readonly] { background: var(--surface-2); }
 }
 
 .action-grid form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.4rem; }
+.action-grid form .field { width: 100%; }
 
 .two-col {
   display: grid;
