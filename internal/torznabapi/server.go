@@ -361,10 +361,15 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	// Sonarr processes every release before showing the manual search. For an
 	// episode query a huge season-wide list costs more than it helps: one page
 	// is enough for the *arr decision, and the client cannot ask for page 2.
-	if mode == "tvsearch" && filter.Season > 0 && filter.Episode > 0 && total > 70 {
-		total = 70
+	if mode == "tvsearch" && filter.Season > 0 && filter.Episode > 0 {
 		if filter.Offset >= 70 {
 			releases = nil
+			total = 70
+		} else if len(releases) > 70 {
+			releases = releases[:70]
+		}
+		if total > 70 {
+			total = 70
 		}
 	}
 	// Provenance is fetched once for the whole page: writeItem never queries
