@@ -144,6 +144,7 @@ definitions:
     file: definitions/mircrew.yaml
     state: bozza
     author: indexarr
+    italian: true
 
   - id: 1337x
     file: definitions/1337x.yaml

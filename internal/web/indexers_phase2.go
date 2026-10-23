@@ -850,7 +850,7 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	var sites []catalog.IndexEntry
 	var types []catalog.IndexEntry
 	for _, entry := range index {
-		if entry.ID == "example-html" {
+		if entry.ID == "example-html" || entry.State == "morta" {
 			continue
 		}
 		if isGenericDefinition(entry.ID) {
@@ -878,10 +878,15 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	}
 	sort.SliceStable(filtered, func(i, j int) bool {
 		if q.Sort == "used" {
-			_, leftUsed := added[filtered[i].ID]
-			_, rightUsed := added[filtered[j].ID]
-			if leftUsed != rightUsed {
-				return leftUsed
+			leftUsage, rightUsage := filtered[i].Usage, filtered[j].Usage
+			if _, ok := added[filtered[i].ID]; ok {
+				leftUsage++
+			}
+			if _, ok := added[filtered[j].ID]; ok {
+				rightUsage++
+			}
+			if leftUsage != rightUsage {
+				return leftUsage > rightUsage
 			}
 		}
 		left, right := strings.ToLower(filtered[i].Name), strings.ToLower(filtered[j].Name)
@@ -916,7 +921,7 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	}
 	for _, entry := range filtered[offset:end] {
 		choice := s.siteChoice(r, entry, added[entry.ID])
-		if _, ok := added[entry.ID]; ok {
+		if _, ok := added[entry.ID]; ok && choice.Usage == 0 {
 			choice.Usage = 1
 		}
 		view.Sites = append(view.Sites, choice)
@@ -951,7 +956,8 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		Categories:    s.catalogCategoryLabels(r, entry.Categories),
 		AccessLabel:   s.catalogAccessLabel(r, entry.Required),
 		QuickAdd:      catalogQuickAdd(entry),
-		Italian:       strings.HasPrefix(strings.ToLower(entry.Language), "it"),
+		Italian:       entry.Italian || strings.HasPrefix(strings.ToLower(entry.Language), "it"),
+		Usage:         entry.Usage,
 	}
 	if len(entry.Hosts) > 0 {
 		choice.URL = "https://" + entry.Hosts[0] + "/"

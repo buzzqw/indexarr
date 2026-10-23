@@ -519,10 +519,36 @@ func (s *Server) loadDefinitionForForm(r *http.Request, id string) (*definition.
 		return nil, false, err
 	}
 	entry, ok := catalog.Get(id)
-	if !ok {
-		return nil, false, indexersvc.ErrDefinitionNotFound
+	if ok {
+		return entry.Definition, false, nil
 	}
-	return entry.Definition, false, nil
+	if parsed, body, err := catalogSiteDefinition(id); err == nil {
+		_ = body
+		return parsed, false, nil
+	}
+	return nil, false, indexersvc.ErrDefinitionNotFound
+}
+
+func catalogSiteDefinition(id string) (*definition.Definition, []byte, error) {
+	sites, err := catalog.Sites()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, site := range sites {
+		if site.ID != id {
+			continue
+		}
+		body, err := catalog.DefinitionForSite(site)
+		if err != nil {
+			return nil, nil, err
+		}
+		parsed, err := definition.Parse(body)
+		if err != nil {
+			return nil, nil, err
+		}
+		return parsed, body, nil
+	}
+	return nil, nil, indexersvc.ErrDefinitionNotFound
 }
 
 // ensureStoredDefinition installs a built-in definition the first time an
@@ -534,18 +560,32 @@ func (s *Server) ensureStoredDefinition(r *http.Request, id string) error {
 		return err
 	}
 	entry, ok := catalog.Get(id)
-	if !ok {
+	if ok {
+		return s.store.UpsertDefinition(r.Context(), store.Definition{
+			ID:            entry.ID,
+			SchemaVersion: entry.Definition.Schema,
+			Family:        entry.Definition.Connector,
+			State:         entry.State,
+			Origin:        catalog.OriginBuiltin,
+			Author:        entry.Author,
+			Body:          string(entry.Body),
+			Hash:          entry.Hash,
+			UpdatedAt:     time.Now().UTC(),
+		})
+	}
+	parsed, body, err := catalogSiteDefinition(id)
+	if err != nil {
 		return indexersvc.ErrDefinitionNotFound
 	}
 	return s.store.UpsertDefinition(r.Context(), store.Definition{
-		ID:            entry.ID,
-		SchemaVersion: entry.Definition.Schema,
-		Family:        entry.Definition.Connector,
-		State:         entry.State,
-		Origin:        catalog.OriginBuiltin,
-		Author:        entry.Author,
-		Body:          string(entry.Body),
-		Hash:          entry.Hash,
+		ID:            parsed.Meta.ID,
+		SchemaVersion: parsed.Schema,
+		Family:        parsed.Connector,
+		State:         "bozza",
+		Origin:        "catalog",
+		Author:        "indexarr",
+		Body:          string(body),
+		Hash:          definition.Fingerprint(body),
 		UpdatedAt:     time.Now().UTC(),
 	})
 }

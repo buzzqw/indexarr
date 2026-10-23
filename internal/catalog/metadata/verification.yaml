@@ -1455,13 +1455,6 @@ results:
         families:
             - nexusphp
         checked: "2026-10-23"
-    manual:mircrew:
-        url: http://localhost:9118/
-        http: 200
-        final: http://localhost:9118/
-        title: Login
-        bytes: 2264
-        checked: "2026-10-23"
     prowlarr:4:
         url: https://www.limetorrents.fun/
         http: 200

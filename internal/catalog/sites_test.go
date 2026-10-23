@@ -86,7 +86,6 @@ func TestItalianPriorityRows(t *testing.T) {
 		"jk-shareisland-api": {FamilyUnit3D, SiteStateTry},
 		"jk-futuretorrent":   {"", SiteStateTry},
 		"jk-trackerzero":     {"", SiteStateTry},
-		"mircrew":            {FamilyTorznab, SiteStateTry},
 	}
 	for id, expected := range want {
 		site, ok := byID[id]

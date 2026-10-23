@@ -4926,7 +4926,10 @@
     "state": "verificata",
     "hosts": [
       "knaben.org"
-    ]
+    ],
+    "url": "https://knaben.org/",
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "librivox",
@@ -5013,31 +5016,6 @@
   {
     "id": "mircrew",
     "name": "MirCrew",
-    "description": "Local MirCrew Torznab bridge (block B), not a public tracker.",
-    "language": "it-IT",
-    "type": "private",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "localhost"
-    ],
-    "url": "http://localhost:9118/",
-    "family": "torznab",
-    "italian": true,
-    "source": "manual",
-    "evidence": "GET http://localhost:9118/ -\u003e HTTP 200, 2264 bytes, title \"Login\", checked 2026-10-23; private, no account used",
-    "proposable": true
-  },
-  {
-    "id": "mircrew",
-    "name": "MirCrew",
     "description": "MirCrew Italian forum (phpBB, Cloudflare, magnets unlocked by thanking a topic).",
     "language": "it-IT",
     "type": "private",
@@ -5053,7 +5031,11 @@
     "state": "bozza",
     "hosts": [
       "mircrew-releases.org"
-    ]
+    ],
+    "url": "https://mircrew-releases.org/",
+    "italian": true,
+    "source": "native",
+    "proposable": true
   },
   {
     "id": "newznab-generic",
@@ -5128,35 +5110,6 @@
     ],
     "url": "https://nyaa.si/",
     "source": "native",
-    "proposable": true
-  },
-  {
-    "id": "pr-12",
-    "name": "Knaben",
-    "description": "Knaben is a Public torrent meta-search engine",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "verificata",
-    "hosts": [
-      "knaben.eu",
-      "knaben.org"
-    ],
-    "url": "https://knaben.org/",
-    "source": "prowlarr",
-    "evidence": "GET https://knaben.org/ -\u003e HTTP 200, 95306 bytes, title \"Knaben Database\", checked 2026-10-23",
     "proposable": true
   },
   {
