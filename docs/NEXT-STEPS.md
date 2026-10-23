@@ -134,7 +134,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP5 | `download.resolve`: magnet/torrent dalla pagina di dettaglio | fatto | `4e429e5` |
 | WP6 | Famiglia RSS/Atom nativa | fatto | `4e429e5` |
 | WP7 | Prime definizioni native verificate (ExtTo, TorrentGalaxy, Corsaro, Knaben, TorrentLeech RSS) | fatto (4/5 verificati; TorrentLeech bozza) | `4e429e5` |
-| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; passo 5 (scambio produzione) pronto, da eseguire | |
+| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; passo 5 (scambio produzione) pronto, da eseguire | `d0b32e0` |
 | WP9 | Health check e transizioni di stato del catalogo | da fare | |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
