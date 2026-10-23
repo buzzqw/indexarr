@@ -76,6 +76,11 @@ func TestSettingsSecretsStayOutOfInitialHTML(t *testing.T) {
 	if !strings.Contains(body, `data-secret-change`) {
 		t.Error("the secret fields have no Change button")
 	}
+	for _, name := range []string{"notify_telegram_token_remove", "download_client_password_remove"} {
+		if !strings.Contains(body, `name="`+name+`"`) {
+			t.Errorf("the explicit Remove action %s is missing", name)
+		}
+	}
 
 	request, _ := http.NewRequest(http.MethodGet, "/settings/secrets/torznab", nil)
 	request.Header.Set("X-Requested-With", "fetch")
@@ -160,6 +165,53 @@ func TestSettingsSecretFieldsPreserveAndReplace(t *testing.T) {
 	}
 	if stored.DownloadClientPassword != "REPLACEDDOWNLOADPASSWORD" {
 		t.Errorf("download password was not replaced: %q", stored.DownloadClientPassword)
+	}
+}
+
+// TestSettingsSecretFieldsCanBeRemoved checks the explicit Remove action,
+// which is separate from Change and deletes the stored value.
+func TestSettingsSecretFieldsCanBeRemoved(t *testing.T) {
+	env := newTestEnv(t)
+	seedSettingsSecrets(t, env)
+	token, cookie := csrfFrom(t, env.handler, "/settings")
+	values := url.Values{
+		"csrf":                            {token},
+		"notify_telegram_token":           {""},
+		"notify_telegram_token_remove":    {"1"},
+		"notify_telegram_chat_id":         {"4242"},
+		"download_client":                 {"qbittorrent"},
+		"download_client_url":             {"http://127.0.0.1:8090"},
+		"download_client_password":        {""},
+		"download_client_password_remove": {"1"},
+		"download_client_user":            {"synthetic"},
+		"default_interval_seconds":        {"3600"},
+		"retention_days":                  {"0"},
+		"fetch_timeout_seconds":           {"45"},
+		"workers":                         {"2"},
+		"max_torrents_per_run":            {"30"},
+		"max_torrent_mb":                  {"8"},
+		"fetch_torrents":                  {"on"},
+		"user_agent":                      {"indexarr/test"},
+		"torznab_download_factor":         {"0"},
+		"torznab_upload_factor":           {"1"},
+		"api_rate_limit_per_minute":       {"0"},
+		"backup_interval_hours":           {"24"},
+		"backup_keep":                     {"7"},
+		"torznab_live_timeout_seconds":    {"20"},
+	}
+	recorder := postForm(t, env.handler, "/settings", values, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("remove save = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	stored, err := env.store.LoadSettings(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.NotifyTelegramToken != "" {
+		t.Errorf("Telegram token after removal = %q, want empty", stored.NotifyTelegramToken)
+	}
+	if stored.DownloadClientPassword != "" {
+		t.Errorf("download password after removal = %q, want empty", stored.DownloadClientPassword)
 	}
 }
 

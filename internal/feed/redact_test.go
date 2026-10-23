@@ -50,3 +50,18 @@ func TestRedactURL(t *testing.T) {
 		t.Errorf("unexpected redacted URL: %q", got)
 	}
 }
+
+func TestRedactURLForDisplay(t *testing.T) {
+	got := RedactURLForDisplay("https://rss.example/feed.xml?passkey=SYNTHETICPASSKEY")
+	if strings.Contains(got, "SYNTHETICPASSKEY") {
+		t.Fatalf("query secret leaked: %q", got)
+	}
+	if got != "https://rss.example/feed.xml?passkey=••••" {
+		t.Errorf("display URL = %q", got)
+	}
+
+	path := RedactURLForDisplay("https://rss.example/SYNTHETICRSSKEY/feed.xml")
+	if strings.Contains(path, "SYNTHETICRSSKEY") || path != "https://rss.example/••••/feed.xml" {
+		t.Errorf("path display URL = %q", path)
+	}
+}

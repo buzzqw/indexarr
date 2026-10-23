@@ -626,3 +626,36 @@ func TestVaultRequiredForSecrets(t *testing.T) {
 	}))
 	requireStatus(t, res, http.StatusCreated)
 }
+
+func TestIndexerSensitiveURLIsSealed(t *testing.T) {
+	e := newEnv(t, true, true)
+	ctx := context.Background()
+	e.createDefinition("feed", "Feed Tracker")
+	const raw = "https://rss.example/feed.xml?passkey=SYNTHETICPASSKEY"
+	created := e.createIndexer(map[string]any{
+		"definition_id": "feed",
+		"name":          "Secret Feed",
+		"settings":      map[string]any{"url": raw},
+	})
+	if strings.Contains(string(e.do(http.MethodGet, "/api/v2/indexers", "").body), "SYNTHETICPASSKEY") {
+		t.Fatal("the indexer API leaked the sensitive URL")
+	}
+	row, err := e.store.GetIndexer(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("GetIndexer: %v", err)
+	}
+	if strings.Contains(row.ConfigJSON, "SYNTHETICPASSKEY") || strings.Contains(row.ConfigJSON, "passkey") {
+		t.Fatalf("sensitive URL in config_json: %s", row.ConfigJSON)
+	}
+	secret, err := e.store.GetSecret(ctx, created.ID, "url")
+	if err != nil {
+		t.Fatalf("GetSecret(url): %v", err)
+	}
+	value, err := e.vault.Open(secret.Nonce, secret.Ciphertext)
+	if err != nil {
+		t.Fatalf("vault.Open: %v", err)
+	}
+	if value != raw {
+		t.Fatalf("sealed URL = %q, want the original", value)
+	}
+}

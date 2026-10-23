@@ -243,6 +243,12 @@ if ("serviceWorker" in navigator) {
   });
 
   document.addEventListener("change", (event) => {
+    if (event.target.matches("input[data-confirm]") && event.target.checked) {
+      if (!window.confirm(event.target.getAttribute("data-confirm"))) {
+        event.target.checked = false;
+        return;
+      }
+    }
     if (!event.target.matches("[data-select-all]")) {
       return;
     }

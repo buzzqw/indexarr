@@ -16,8 +16,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/definition"
+	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/vault"
@@ -72,7 +74,11 @@ type Input struct {
 	Priority     *int
 	Tags         []string
 	Enabled      *bool
-	Settings     map[string]string
+	// IntervalSeconds overrides the global scheduler interval when positive.
+	// Nil means "use the definition suggestion, then the global default"; an
+	// explicit zero means the global default.
+	IntervalSeconds *int
+	Settings        map[string]string
 }
 
 // Create validates the definition, splits the settings, stores the public
@@ -143,16 +149,21 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 	if in.Priority != nil {
 		priority = *in.Priority
 	}
+	interval, err := resolveInterval(in.IntervalSeconds, parsed.Meta.Interval.Duration())
+	if err != nil {
+		return store.Indexer{}, err
+	}
 
 	id, err := s.store.CreateIndexer(ctx, store.Indexer{
-		DefinitionID: definitionID,
-		Protocol:     protocol,
-		Slug:         slug,
-		Name:         name,
-		Enabled:      enabled,
-		Priority:     priority,
-		ConfigJSON:   configJSON,
-		Tags:         joinTags(in.Tags),
+		DefinitionID:    definitionID,
+		Protocol:        protocol,
+		Slug:            slug,
+		Name:            name,
+		Enabled:         enabled,
+		Priority:        priority,
+		ConfigJSON:      configJSON,
+		Tags:            joinTags(in.Tags),
+		IntervalSeconds: interval,
 	})
 	if err != nil {
 		if isUniqueError(err) {
@@ -225,6 +236,13 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 	if in.Priority != nil {
 		current.Priority = *in.Priority
 	}
+	if in.IntervalSeconds != nil {
+		interval, err := resolveInterval(in.IntervalSeconds, 0)
+		if err != nil {
+			return store.Indexer{}, err
+		}
+		current.IntervalSeconds = interval
+	}
 	if in.Enabled != nil {
 		current.Enabled = *in.Enabled
 	}
@@ -253,7 +271,17 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 		if err != nil {
 			return store.Indexer{}, err
 		}
+		// A URL that becomes sensitive moves from config_json to the vault, so
+		// the stale public value must not survive in the database.
+		for key := range secrets {
+			delete(config, key)
+		}
+		// A secret replaced by a plain value must be removed from the vault,
+		// otherwise the stale secret would win when the connector is built.
 		for key, value := range public {
+			if existingSecrets[key] {
+				deletes = append(deletes, key)
+			}
 			if value == "" {
 				delete(config, key)
 				continue
@@ -442,12 +470,13 @@ func validateRequired(parsed *definition.Definition, provided map[string]string,
 			}
 			return fmt.Errorf("missing required setting: %s", setting.Name)
 		}
-		if IsSecretKey(setting.Name) {
-			if existingSecrets[setting.Name] {
+		if existingSecrets[setting.Name] {
+			continue
+		}
+		if !IsSecretKey(setting.Name) {
+			if text := settingText(config[setting.Name]); text != "" {
 				continue
 			}
-		} else if text := settingText(config[setting.Name]); text != "" {
-			continue
 		}
 		return fmt.Errorf("missing required setting: %s", setting.Name)
 	}
@@ -508,7 +537,7 @@ func splitSettings(settings map[string]string) (public map[string]string, secret
 		if strings.TrimSpace(key) == "" {
 			return nil, nil, nil, errors.New("settings: key must not be empty")
 		}
-		if IsSecretKey(key) {
+		if IsSecretSetting(key, value) {
 			if value == "" {
 				deletes = append(deletes, key)
 				continue
@@ -535,6 +564,39 @@ func IsSecretKey(key string) bool {
 		}
 	}
 	return false
+}
+
+// IsURLSettingKey reports whether a setting holds a URL. Such settings are
+// normally public, but a URL carrying an rsskey, passkey, apikey, key or token
+// must be sealed like a password.
+func IsURLSettingKey(key string) bool {
+	lower := strings.ToLower(strings.TrimSpace(key))
+	return lower == "url" || lower == "feed" || strings.HasSuffix(lower, "_url") || strings.HasSuffix(lower, "_uri")
+}
+
+// IsSecretSetting reports whether a setting value belongs in the vault.
+func IsSecretSetting(key, value string) bool {
+	if IsSecretKey(key) {
+		return true
+	}
+	return IsURLSettingKey(key) && feed.IsSensitiveURL(value)
+}
+
+// resolveInterval returns the effective per-indexer interval. Nil means "use
+// the definition suggestion when it has one"; an explicit zero means the
+// global default. A positive value below one minute is rejected.
+func resolveInterval(requested *int, suggested time.Duration) (int, error) {
+	if requested == nil {
+		if suggested >= time.Minute {
+			return int(suggested / time.Second), nil
+		}
+		return 0, nil
+	}
+	seconds := *requested
+	if seconds < 0 || (seconds > 0 && seconds < 60) {
+		return 0, errors.New("interval_seconds must be 0 or at least 60")
+	}
+	return seconds, nil
 }
 
 // NormalizeSlug lowercases a value and turns every run of unsupported

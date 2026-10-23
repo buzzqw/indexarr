@@ -282,7 +282,14 @@ func redactPath(path string) (string, bool) {
 // passkeys) while leaving normal path words and short ids alone.
 func looksLikeSecretPathSegment(segment string) bool {
 	if len(segment) < 16 {
-		return false
+		// All-uppercase opaque tokens are unusual in ordinary paths and are a
+		// common shape for an rsskey embedded by a feed (for example
+		// /SYNTHETICRSSKEY/feed.xml). Lower the length threshold only for
+		// that shape, so normal words and short ids stay readable.
+		if len(segment) < 12 || !allUpperAlphaNumeric(segment) {
+			return false
+		}
+		return true
 	}
 	digits, letters := false, false
 	hexOnly := true
@@ -305,6 +312,77 @@ func looksLikeSecretPathSegment(segment string) bool {
 		return true
 	}
 	return digits && letters
+}
+
+func allUpperAlphaNumeric(segment string) bool {
+	letters := false
+	for _, r := range segment {
+		switch {
+		case r >= '0' && r <= '9':
+		case r >= 'A' && r <= 'Z':
+			letters = true
+		default:
+			return false
+		}
+	}
+	return letters
+}
+
+// IsSensitiveURL reports whether a URL carries credentials in userinfo, a
+// secret-like query parameter or an opaque path segment. It is used to decide
+// that a URL setting belongs in the vault instead of config_json.
+func IsSensitiveURL(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	if parsed.User != nil {
+		return true
+	}
+	for name := range parsed.Query() {
+		if isSensitiveParamName(name) {
+			return true
+		}
+	}
+	if _, changed := redactPath(parsed.Path); changed {
+		return true
+	}
+	return false
+}
+
+func isSensitiveParamName(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "rsskey", "passkey", "apikey", "api_key", "authkey", "key", "token", "secret":
+		return true
+	}
+	return false
+}
+
+// RedactURLForDisplay is RedactURL for the UI: sensitive query values and
+// opaque path segments become bullets, so the operator can recognise the URL
+// without reading its key.
+func RedactURLForDisplay(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return "[invalid URL]"
+	}
+	parsed.User = nil
+	parsed.Fragment = ""
+	if parsed.RawQuery != "" {
+		query := parsed.Query()
+		for name := range query {
+			if isSensitiveParamName(name) {
+				query.Set(name, "***")
+			}
+		}
+		parsed.RawQuery = query.Encode()
+	}
+	parsed.Path, _ = redactPath(parsed.Path)
+	redacted := parsed.String()
+	redacted = strings.ReplaceAll(redacted, "%2A%2A%2A", "••••")
+	redacted = strings.ReplaceAll(redacted, "%2a%2a%2a", "••••")
+	redacted = strings.ReplaceAll(redacted, "***", "••••")
+	return redacted
 }
 
 // RedactURL returns a URL that is safe to show in logs or the UI: embedded

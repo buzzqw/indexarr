@@ -36,8 +36,11 @@ type Indexer struct {
 	ProxyID      *int64
 	QueryLimit   int
 	GrabLimit    int
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	// IntervalSeconds overrides the global scheduler interval when positive.
+	// Zero keeps the global default_interval_seconds.
+	IntervalSeconds int
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // Secret is one vault-sealed value belonging to an indexer.
@@ -125,7 +128,7 @@ const definitionColumns = `id, schema_version, family, state, origin, author,
 	body, hash, updated_at`
 
 const indexerColumns = `id, definition_id, protocol, slug, name, enabled, priority,
-	config_json, tags, proxy_id, query_limit, grab_limit,
+	config_json, tags, proxy_id, query_limit, grab_limit, interval_seconds,
 	created_at, updated_at`
 
 // UpsertDefinition inserts or replaces a definition by id.
@@ -234,13 +237,13 @@ func createIndexer(ctx context.Context, db dbExecer, in Indexer) (int64, error) 
 	var id int64
 	err := db.QueryRowContext(ctx, `
 		INSERT INTO indexers(definition_id, protocol, slug, name, enabled, priority,
-			config_json, proxy_id, tags, query_limit, grab_limit,
+			config_json, proxy_id, tags, query_limit, grab_limit, interval_seconds,
 			created_at, updated_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
 		in.DefinitionID, in.Protocol, strings.TrimSpace(in.Slug), strings.TrimSpace(in.Name),
 		boolInt(in.Enabled), in.Priority, in.ConfigJSON, proxy, in.Tags,
-		in.QueryLimit, in.GrabLimit, created.Unix(), updated.Unix()).Scan(&id)
+		in.QueryLimit, in.GrabLimit, in.IntervalSeconds, created.Unix(), updated.Unix()).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create indexer: %w", err)
 	}
@@ -299,7 +302,7 @@ func scanIndexer(scanner interface{ Scan(...any) error }) (Indexer, error) {
 	var created, updated int64
 	if err := scanner.Scan(&out.ID, &out.DefinitionID, &out.Protocol, &out.Slug,
 		&out.Name, &enabled, &out.Priority, &out.ConfigJSON, &out.Tags, &proxy,
-		&out.QueryLimit, &out.GrabLimit, &created, &updated); err != nil {
+		&out.QueryLimit, &out.GrabLimit, &out.IntervalSeconds, &created, &updated); err != nil {
 		return Indexer{}, err
 	}
 	out.Enabled = enabled != 0
@@ -327,11 +330,11 @@ func (s *Store) UpdateIndexer(ctx context.Context, in Indexer) error {
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE indexers SET definition_id = ?, protocol = ?, slug = ?, name = ?,
 			enabled = ?, priority = ?, config_json = ?, proxy_id = ?, tags = ?,
-			query_limit = ?, grab_limit = ?, updated_at = ?
+			query_limit = ?, grab_limit = ?, interval_seconds = ?, updated_at = ?
 		WHERE id = ?`,
 		in.DefinitionID, in.Protocol, strings.TrimSpace(in.Slug), strings.TrimSpace(in.Name),
 		boolInt(in.Enabled), in.Priority, in.ConfigJSON, proxy, in.Tags,
-		in.QueryLimit, in.GrabLimit, time.Now().Unix(), in.ID)
+		in.QueryLimit, in.GrabLimit, in.IntervalSeconds, time.Now().Unix(), in.ID)
 	if err != nil {
 		return fmt.Errorf("update indexer %d: %w", in.ID, err)
 	}
@@ -587,6 +590,30 @@ func (s *Store) CountIndexerHistory(ctx context.Context, indexerID int64, kinds 
 		return 0, fmt.Errorf("count indexer history %d: %w", indexerID, err)
 	}
 	return count, nil
+}
+
+// LastRunTimes returns the most recent successful or failed scheduled run per
+// indexer. The scheduler uses it to honour per-indexer intervals without an
+// N+1 query per row.
+func (s *Store) LastRunTimes(ctx context.Context) (map[int64]time.Time, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT indexer_id, MAX(started_at)
+		FROM indexer_history
+		WHERE kind = 'run' AND indexer_id IS NOT NULL
+		GROUP BY indexer_id`)
+	if err != nil {
+		return nil, fmt.Errorf("last run times: %w", err)
+	}
+	defer rows.Close()
+	out := map[int64]time.Time{}
+	for rows.Next() {
+		var id, started int64
+		if err := rows.Scan(&id, &started); err != nil {
+			return nil, err
+		}
+		out[id] = unixTime(started)
+	}
+	return out, rows.Err()
 }
 
 // IndexerForRelease returns the indexer that most recently supplied a release,

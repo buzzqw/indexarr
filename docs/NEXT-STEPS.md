@@ -144,7 +144,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP0 | Convertitore solo come aiuto alla scrittura | fatto | `4e429e5` |
 | WP1 | Vault: chiave fuori dai dati, backup chiave, segreti legacy cifrati | fatto (backend; riquadro UI in WP14) | `4e429e5` |
 | WP2 | Rate limit di default e percorso legacy sul transport educato | fatto | `4e429e5` |
-| WP3 | Memoria: tornare sotto 40 MiB a riposo | fatto (budget 40 MiB: 26,9 MiB a 60 s, 35,5 MiB a 300 s) | `0d5037c` |
+| WP3 | Memoria: tornare sotto 40 MiB a riposo | fatto (misure 26,9 MiB a 60 s, 35,5 MiB a 300 s; nuovo budget: avviso 64, errore 128 MiB) | `0d5037c` |
 | WP4 | Pipeline a stadi e moduli collegati a runtime | da fare | |
 | WP5 | `download.resolve`: magnet/torrent dalla pagina di dettaglio | fatto | `4e429e5` |
 | WP6 | Famiglia RSS/Atom nativa | fatto | `4e429e5` |
@@ -153,12 +153,15 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP9 | Health check e transizioni di stato del catalogo | da fare | |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
-| WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI 40 MiB) | `4e429e5` |
+| WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI: avviso 64 MiB, errore 128 MiB) | `4e429e5` |
 | WP13 | Parità residua | da fare | |
 | WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1, 1b, 1c e 2 fatte; 3–5 da fare | `45ead7d` |
 | WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | `b0abb6c` |
 | WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
 | WP16 | Rimozione del percorso legacy | fatto | `4a11fb8` |
+| WP17 | Vedere i dati che nutrono indexarr | da fare | |
+| WP18 | I siti che l'utente usa davvero (fase 1) | da fare | |
+| WP19 | Elenco dei siti come Jackett/Prowlarr | da fare | |
 
 ---
 
@@ -893,6 +896,178 @@ ARCHITECTURE, indexarr2.md) senza il percorso legacy.
 
 ---
 
+## WP17 — Vedere i dati che nutrono indexarr
+
+**Perché.** L'utente vuole vedere cosa entra: da quale sito, cosa è arrivato,
+cosa è stato scartato e perché, quanto sono completi i dati, e cosa riceve
+Sonarr. Oggi `indexer_history` salva solo stato, latenza, byte ed errore.
+
+**Cosa fare.**
+
+1. **Metriche per ogni esecuzione** (aggiornamento, ricerca da app, prova).
+   - Estendere `indexer_history`, oppure aggiungere una tabella figlia, con:
+     - elementi letti, nuovi, duplicati;
+     - scartati, con il motivo: senza link, bloccati da regola, troppo
+       vecchi, categoria esclusa, parsing fallito;
+     - completezza dei campi, in percentuale degli elementi con dimensione,
+       seeders, categoria, data, infohash/magnet.
+   - Conservazione: 30 giorni, configurabile in Impostazioni → Manutenzione.
+2. **Ultimo campione per indexer.**
+   - Tabella `indexer_samples`, una riga per indexer, sovrascritta a ogni
+     esecuzione riuscita.
+   - Contiene la richiesta (URL redatto, metodo, stato, tempi), la risposta
+     grezza troncata a **256 KiB** e già redatta (nessun segreto, cookie o
+     passkey), e i primi 50 elementi normalizzati.
+   - Niente file sparsi, niente crescita senza limite.
+3. **Pagina dettaglio indexer, nuova scheda "Dati":**
+   - grafico semplice (SVG generato lato server, niente librerie) di elementi
+     nuovi e scartati per esecuzione, ultimi 7 giorni;
+   - tabella delle ultime 20 esecuzioni con le metriche del punto 1;
+   - barra di completezza dei campi; se un campo scende sotto il 50%,
+     compare il componente `problem` con una frase ("Questo sito non fornisce
+     i seeders: Sonarr non potrà ordinare per popolarità");
+   - "Ultimo campione" in "Avanzate e diagnostica", con risposta grezza ed
+     elementi normalizzati affiancati;
+   - accanto a ogni elemento, quali campi sono stati trovati e quali no.
+4. **"Prova come Sonarr/Radarr"** nel dettaglio indexer.
+   - Un piccolo form: tipo (ricerca, serie, film), testo, stagione/episodio,
+     IMDb/TVDb.
+   - Mostra la tabella dei risultati, i tempi e, in un blocco chiuso, **l'XML
+     Torznab esatto** che riceverebbe l'app.
+   - Usa lo stesso codice dell'endpoint `/api`, non una copia.
+5. **Attività → "Nuove release":**
+   - flusso delle release in arrivo da tutti gli indexer, filtrabile per
+     indexer;
+   - aggiornamento ogni 10 s solo con la scheda visibile;
+   - per ogni release, quanti indexer l'hanno vista (provenance).
+6. **Attività → "Ricerche":** per ogni richiesta ricevuta dalle app: app,
+   query, indexer interrogati, risultati per indexer, tempo totale, errori.
+
+**Progetto snello:**
+
+- metriche calcolate in streaming durante la normalizzazione, senza una
+  seconda passata;
+- campione tagliato prima di essere tenuto in memoria;
+- pagine paginate lato server.
+
+**Accettazione:**
+
+- test sul modello metriche, con un elemento per ciascun motivo di scarto;
+- test che nessun segreto finisce in `indexer_samples` (fixture con
+  `SYNTHETICKEY` nell'URL e nel corpo);
+- test che "Prova come Sonarr" produce lo stesso XML di `/api` per la stessa
+  richiesta;
+- screenshot a 1440 e 390 px della scheda Dati con dati reali, da
+  un'istanza di prova con 3–4 indexer pubblici attivi per almeno 3
+  aggiornamenti.
+
+**Commit:** `Show what feeds each indexer: run metrics, samples and app view`.
+
+---
+
+## WP18 — I siti che l'utente usa davvero (fase 1)
+
+Inventario fatto oggi (23/10) leggendo Jackett e Prowlarr in sola lettura:
+
+| Sito | Dove oggi | Tipo | Stato nativo | Da fare |
+|---|---|---|---|---|
+| Knaben | Jackett + Prowlarr | pubblico | verificata | — |
+| ExtTo | diretto | pubblico | verificata | — |
+| TorrentGalaxy | diretto (`torrentgalaxy.one`) | pubblico | verificata | — |
+| TorrentGalaxyClone | Jackett | pubblico | — | capire se è lo stesso sito/layout di `torrentgalaxy.yaml`; altrimenti definizione propria |
+| LimeTorrents | Jackett + Prowlarr | pubblico | — | definizione HTML |
+| The Pirate Bay | Prowlarr | pubblico | — | definizione JSON (il sito ha un'API JSON pubblica) |
+| TorrentsCSV | Prowlarr (disattivato) | pubblico | — | definizione JSON |
+| showRSS | Jackett | pubblico | — | definizione famiglia `rss` |
+| Il Corsaro Blu | Jackett | semi-privato | verificata solo ospite (senza ricerca) | variante con login e ricerca |
+| ilDraGoNeRo | Jackett | semi-privato, IT | — | definizione con login |
+| TorrentLeech | Jackett + Prowlarr | privato | bozza (solo RSS) | definizione con login e ricerca, RSS come opzione |
+| MirCrew | indexer proprio su `:9118/api` | IT | — | `torznab-generic` verso `:9118/api` subito; una definizione nativa è fuori perimetro |
+
+Per ogni sito da fare:
+
+- **Sito pubblico:**
+  - definizione scritta guardando il sito;
+  - fixture reali ripulite (elenco, ricerca, un dettaglio se serve);
+  - README della fixture;
+  - `indexarr-def test` verde;
+  - stato **verificata** solo se una ricerca reale dall'istanza di prova
+    restituisce risultati coerenti con la fixture. Annota nel report data e
+    numero di risultati.
+- **Sito privato o semi-privato:**
+  - definizione completa di login (`DEFINITIONS.md` §`auth`) e ricerca;
+  - fixture costruite da pagine **pubbliche** (pagina di login, pagina di
+    errore) e da esempi sintetici fedeli alla struttura;
+  - stato **in prova**;
+  - elenco nel report dei campi che l'utente dovrà inserire.
+- **Se un sito è irraggiungibile o dietro Cloudflare:** definizione scritta,
+  stato in prova, motivo nel report. FlareSolverr (WP11) non è in questo
+  ciclo.
+
+**Accettazione:**
+
+- `make def-validate` verde con tutte le nuove definizioni;
+- test di catalogo verdi;
+- tabella nel report: sito, stato, numero di risultati alla prova reale,
+  campi richiesti all'utente.
+
+**Commit:** `Add native definitions for the coordinator's sites`.
+
+---
+
+## WP19 — Elenco dei siti come Jackett/Prowlarr
+
+**Perché.** Oggi "Aggiungi indexer" mostra una dozzina di voci. L'utente
+vuole un elenco sfogliabile come quello di Jackett/Prowlarr, che regga
+centinaia di siti.
+
+**Cosa fare.**
+
+1. **Indice del catalogo generato a build time.**
+   - `go generate` produce un indice compatto (JSON o Go) con id, nome,
+     descrizione, lingua, tipo (pubblico/semi-privato/privato), protocollo,
+     categorie principali, campi richiesti, stato e host.
+   - La UI e la ricerca dei siti leggono **solo l'indice**. La definizione
+     YAML completa si analizza solo quando serve (creazione, esecuzione).
+   - Così mille definizioni non costano mille parse all'avvio.
+   - Test: l'indice è allineato alle definizioni, cioè la CI fallisce se ci
+     si dimentica di rigenerarlo.
+2. **Pagina "Aggiungi indexer" a elenco** (`UI-GUIDE.md` §4.3, estesa):
+   - **Ricerca:** casella di ricerca e filtri a chip: Pubblico, Semi-privato,
+     Privato; lingua; categoria (Film, Serie, Musica, Libri, Anime, Giochi,
+     Software, XXX); protocollo (torrent, usenet); stato (Verificato, In
+     prova).
+   - **Ogni riga:**
+     - nome e descrizione breve;
+     - badge del tipo, bandiera o sigla della lingua, categorie;
+     - "Serve: account" oppure "Serve: API key" oppure niente;
+     - stato.
+   - **Aggiunta:** il pulsante "Aggiungi" su un sito pubblico senza campi
+     obbligatori lo aggiunge con un clic (con un `next-step`). Si possono
+     anche selezionare più siti pubblici e premere "Aggiungi selezionati".
+   - **Siti già configurati:** marcati "Già aggiunto", con un link al
+     dettaglio.
+   - **In fondo all'elenco:** "Non trovi il sito?", con le voci "Tipo di sito
+     generico" (UNIT3D, Gazelle, …), "Via Jackett/Prowlarr", "Feed RSS",
+     "Torznab/Newznab".
+   - **Prestazioni:** filtri e ricerca lato server, con paginazione o
+     caricamento progressivo. Deve funzionare senza JS (form GET).
+3. **Contatore nella pagina:** "N siti supportati · M verificati". Sono
+   numeri veri dall'indice.
+
+**Accettazione:**
+
+- test con un indice sintetico di **1000** voci: la pagina risponde in meno
+  di 50 ms lato server e l'avvio non analizza le 1000 definizioni (test sul
+  conteggio dei parse);
+- filtri combinati corretti;
+- "Aggiungi selezionati" idempotente;
+- screenshot a 1440 e 390 px.
+
+**Commit:** `Browse and add sites from a searchable catalog index`.
+
+---
+
 ## WP9 — Health check e transizioni di stato del catalogo
 
 **Cosa fare.** Job periodico (default ogni 6 h, con jitter) che esegue
@@ -968,7 +1143,7 @@ risposta; senza → errore tipizzato `ErrChallenge` e stato `blocked`.
 2. Test su `ubuntu-latest`, `windows-latest`, `macos-latest`.
 3. `scripts/budget.sh`: fallisce se il binario linux/amd64 ottimizzato supera
    25 MB o se l'RSS dopo 60 s di avvio su un DB seed (`internal/perf`) supera
-   il budget (40 MiB, da abbassare quando WP3 è chiuso).
+   128 MiB; tra 64 e 128 MiB stampa un avviso senza fallire.
 4. `go test -race ./...` in CI.
 
 **Stub.**

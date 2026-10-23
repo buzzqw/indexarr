@@ -170,11 +170,15 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if token := strings.TrimSpace(r.FormValue("notify_telegram_token")); token != "" {
+	if r.FormValue("notify_telegram_token_remove") != "" {
+		// An explicit removal is separate from "Change": it deletes the stored
+		// token and leaves the field empty. The chat id is inert without it.
+		in.NotifyTelegramToken = ""
+	} else if token := strings.TrimSpace(r.FormValue("notify_telegram_token")); token != "" {
 		in.NotifyTelegramToken = token
 	}
 	in.NotifyTelegramChatID = strings.TrimSpace(r.FormValue("notify_telegram_chat_id"))
-	if (in.NotifyTelegramToken == "") != (in.NotifyTelegramChatID == "") {
+	if in.NotifyTelegramToken != "" && in.NotifyTelegramChatID == "" {
 		renderInvalid(s.translate(r, "settings.error.telegramPair"))
 		return
 	}
@@ -220,7 +224,9 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	in.DownloadClientUser = strings.TrimSpace(r.FormValue("download_client_user"))
-	if password := r.FormValue("download_client_password"); password != "" {
+	if r.FormValue("download_client_password_remove") != "" {
+		in.DownloadClientPassword = ""
+	} else if password := r.FormValue("download_client_password"); password != "" {
 		in.DownloadClientPassword = password
 	}
 	in.DownloadClientCategory = strings.TrimSpace(r.FormValue("download_client_category"))

@@ -17,7 +17,7 @@ sono la soglia oltre la quale una modifica viene considerata una regressione.
 | Obiettivo | Soglia |
 |---|---|
 | Binario statico (`CGO_ENABLED=0`, `-trimpath -s -w`) | < 20 MB |
-| RSS a riposo | < 40 MiB (manifesto; WP3 §9) |
+| RSS a riposo | avviso sopra 64 MiB, errore sopra 128 MiB (decisione del coordinatore, 23/10) |
 | Latenza Torznab p95 con 50.000 release | < 50 ms |
 | Goroutine e file descriptor dopo ricerche ripetute | nessuna crescita illimitata |
 
@@ -119,7 +119,7 @@ Riepilogo rispetto agli obiettivi:
 | Obiettivo | Misurato | Esito |
 |---|---|---|
 | Binario < 20 MB | **17,3 MiB** (18.112.672 byte) | ✅ |
-| RSS a riposo < 40 MiB | **32,4–36,5 MiB** (51,0 MiB dopo il carico a 50k) | ✅ (WP3 §9: 26,3 MiB a 60 s e 34,7 MiB a 300 s con 15 indexer) |
+| RSS a riposo (avviso 64 MiB, errore 128 MiB) | **32,4–36,5 MiB** (51,0 MiB dopo il carico a 50k) | ✅ (WP3 §9: 26,3 MiB a 60 s e 34,7 MiB a 300 s con 15 indexer) |
 | p95 Torznab < 50 ms a 50k | **20,2 ms** titolo · **17,2 ms** titolo+cat · **10,9 ms** empty · **22,7 ms** stress | ✅ |
 | Nessuna crescita di goroutine/FD | 3 → 3 goroutine, 10 → 10 FD su 1.000 ricerche | ✅ |
 
@@ -381,8 +381,9 @@ poco utile rispetto al guadagno. Sono candidati per una passata futura.
 
 ## 9. WP3 — memoria a riposo (23 ottobre 2026)
 
-Questa sezione misura il ritorno sotto il budget del manifesto (**RSS < 40 MiB a
-riposo**). Le misure di §3 sono precedenti alle fasi UI e ai template i18n:
+Questa sezione misura il ritorno sotto il vecchio budget del manifesto (**RSS <
+40 MiB a riposo**), oggi sostituito dalla soglia con avviso a 64 MiB ed errore a
+128 MiB. Le misure di §3 sono precedenti alle fasi UI e ai template i18n:
 servono come riferimento storico, non come baseline per il budget.
 
 ### 9.1 Metodologia
@@ -434,7 +435,7 @@ coordinatore come misura finale; non è stato prolungato a 10/30 minuti.
   sette all'avvio (~23 MiB). Le altre lingue si compilano alla prima richiesta.
 - **i18n:** ~1,5 MiB, caricati una volta in `init`, nessuna allocazione per
   richiesta. Non è stato modificato: non è un consumo per richiesta e il
-  margine sotto 40 MiB non lo richiede.
+  margine sotto il vecchio tetto di 40 MiB non lo richiede.
 - **SQLite:** pool a 4 connessioni invariato (nessuna evidenza per ridurlo).
 - **Backup:** `VACUUM INTO` resta; dopo la copia `debug.FreeOSMemory()` restituisce
   al sistema le pagine del processo. Il picco transitorio resta (~48 MiB a 75 s
@@ -449,8 +450,8 @@ coordinatore come misura finale; non è stato prolungato a 10/30 minuti.
 - Backup e profilo heap sono transienti: il budget CI misura a 60 s su un DB
   seed senza backup (`default_interval_seconds=3600`), quindi confronta il
   valore 26,3 MiB, non il picco del backup.
-- `scripts/budget.sh` usa la soglia di 40 MiB e il job CI non ha più l'override
-  temporaneo a 80 MiB.
+- `scripts/budget.sh` avvisa sopra 64 MiB e fallisce sopra 128 MiB. Il job CI
+  non ha override: usa le stesse soglie.
 - Il campione "prima" e quello "dopo" sono due esecuzioni distinte sullo stesso
   tipo di DB e di seed; la macchina è condivisa, quindi le differenze sotto
   1–2 MiB non sono significative.

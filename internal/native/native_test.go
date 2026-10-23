@@ -420,3 +420,73 @@ func TestOnResultReceivesOneOutcomePerIndexer(t *testing.T) {
 		}
 	}
 }
+
+func TestDueIndexersHonoursPerIndexerInterval(t *testing.T) {
+	now := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	indexers := []store.Indexer{
+		{ID: 1, Enabled: true, IntervalSeconds: 0},   // global, last run 30m ago
+		{ID: 2, Enabled: true, IntervalSeconds: 900}, // 15m, last run 20m ago -> due
+		{ID: 3, Enabled: true, IntervalSeconds: 900}, // 15m, last run 5m ago -> not due
+		{ID: 4, Enabled: false, IntervalSeconds: 0},  // disabled
+	}
+	lastRuns := map[int64]time.Time{
+		1: now.Add(-30 * time.Minute),
+		2: now.Add(-20 * time.Minute),
+		3: now.Add(-5 * time.Minute),
+		4: now.Add(-24 * time.Hour),
+	}
+	due := dueIndexers(indexers, lastRuns, time.Hour, now)
+	if len(due) != 1 || due[0].ID != 2 {
+		t.Fatalf("due = %+v, want only indexer 2", due)
+	}
+}
+
+func TestDueIndexersNeverShortensTheGlobalInterval(t *testing.T) {
+	now := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	indexers := []store.Indexer{
+		{ID: 1, Enabled: true},                            // global
+		{ID: 2, Enabled: true, IntervalSeconds: 6 * 3600}, // longer than global
+	}
+	lastRuns := map[int64]time.Time{
+		1: now.Add(-59 * time.Minute),
+		2: now.Add(-2 * time.Hour),
+	}
+	due := dueIndexers(indexers, lastRuns, time.Hour, now)
+	if len(due) != 0 {
+		t.Fatalf("due = %+v, want no indexer before its interval", due)
+	}
+
+	// At the global boundary the global indexer becomes due; the long one
+	// still waits for its own six hours.
+	due = dueIndexers(indexers, lastRuns, time.Hour, now.Add(time.Minute))
+	if len(due) != 1 || due[0].ID != 1 {
+		t.Fatalf("due at the boundary = %+v, want only indexer 1", due)
+	}
+}
+
+func TestDueIndexersRunsIndexerWithoutHistory(t *testing.T) {
+	now := time.Now()
+	due := dueIndexers([]store.Indexer{{ID: 9, Enabled: true}}, map[int64]time.Time{}, time.Hour, now)
+	if len(due) != 1 || due[0].ID != 9 {
+		t.Fatalf("due = %+v, want the never-run indexer", due)
+	}
+}
+
+func TestDuePassSkipsRecentlyRunIndexer(t *testing.T) {
+	st, runner := newHarness(t, 2, nil)
+	tracker := &inflightTracker{}
+	server := newNativeServer(t, 0, tracker)
+	addNativeDefinition(t, st, "due-native", server.URL)
+	recentID := createIndexer(t, st, "due-native", "due-recent", "Due Recent", nativeConfig(server.URL), true)
+	createIndexer(t, st, "due-native", "due-pending", "Due Pending", nativeConfig(server.URL), true)
+	if _, err := st.RecordIndexerHistory(context.Background(), store.IndexerHistory{
+		IndexerID: recentID, Kind: "run", Status: "ok", StartedAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("RecordIndexerHistory: %v", err)
+	}
+
+	runner.runDuePass(context.Background())
+	if got := tracker.requests.Load(); got != 1 {
+		t.Fatalf("requests = %d, want only the indexer without a recent run", got)
+	}
+}

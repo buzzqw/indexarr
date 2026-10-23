@@ -43,6 +43,10 @@ type Meta struct {
 	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
 	URLs        []string `yaml:"urls" json:"urls"`
 	Updated     string   `yaml:"updated,omitempty" json:"updated,omitempty"`
+	// Interval is an optional suggested refresh interval (a Go duration such
+	// as "15m"). An empty value means the definition has no recommendation and
+	// the global default interval applies.
+	Interval Duration `yaml:"interval,omitempty" json:"interval,omitempty"`
 	// DerivedFrom marks a draft produced by a conversion tool. Derived drafts
 	// are writing aids: they stay local and the built-in catalog rejects them.
 	DerivedFrom string `yaml:"derived_from,omitempty" json:"derived_from,omitempty"`

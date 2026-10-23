@@ -43,6 +43,7 @@ deve contenere un solo documento YAML.
 | `description` | no | descrizione breve |
 | `updated` | no | data dell'ultima revisione, per esempio `"2026-10-23"` |
 | `derived_from` | no | slug dello strumento che ha prodotto una bozza, per esempio `cardigann`; una bozza derivata resta locale e il catalogo la rifiuta |
+| `interval` | no | durata Go, per esempio `15m`; è un suggerimento per l'intervallo di aggiornamento dell'indexer. Vuoto = nessun suggerimento, vale il valore globale. Il minimo è 60s |
 
 ### Bozze derivate
 
@@ -56,6 +57,15 @@ confrontato senza distinzione di maiuscole. Per entrare nel catalogo una bozza
 va riscritta osservando il sito: selettori verificati su fixture reali, autore e
 data nostri, `derived_from` rimosso. `make def-validate` esegue questa policy
 sulla directory del catalogo con `validate -catalog`.
+
+### Intervallo suggerito
+
+`meta.interval` è additivo e facoltativo. Un feed "ultime 24 h" ha bisogno di
+aggiornamenti più frequenti di un sito con la ricerca, quindi la definizione
+può suggerire una durata Go (`15m`, `2h`). Alla creazione dell'indexer il campo
+"Intervallo" in Avanzate è precompilato con questo valore; l'utente può
+cambiarlo o impostarlo a `0` per usare l'intervallo globale. Un valore inferiore
+a 60s è rifiutato. Il formato resta `schema: 1`.
 
 ## `settings`
 

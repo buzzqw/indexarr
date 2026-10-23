@@ -35,7 +35,8 @@
   {{if .ShowURL}}
   <div class="field">
     <label for="url">{{.URLLabel}}</label>
-    <input id="url" name="url" type="url" required value="{{.URLValue}}" placeholder="{{T "indexerForm.urlPlaceholder"}}">
+    <input id="url" name="url" type="url"{{if not .URLSecret}} required{{end}} value="{{.URLValue}}" placeholder="{{if .URLPlaceholder}}{{.URLPlaceholder}}{{else}}{{T "indexerForm.urlPlaceholder"}}{{end}}">
+    {{if .URLSecret}}<p class="help">{{T "indexerForm.urlStored" .URLPlaceholder}}</p>{{end}}
   </div>
   {{else if eq (len .URLChoices) 1}}
   <input type="hidden" name="url" value="{{.URLValue}}">
@@ -81,6 +82,11 @@
       <div class="field">
         <label for="priority">{{T "idx.priority"}}</label>
         <input id="priority" name="priority" type="number" value="{{.Priority}}">
+      </div>
+      <div class="field">
+        <label for="interval_seconds">{{T "indexerForm.interval"}}</label>
+        <input id="interval_seconds" name="interval_seconds" type="number" min="0" step="60" value="{{.IntervalSeconds}}">
+        <p class="help">{{T "indexerForm.intervalHelp"}}</p>
       </div>
     </div>
 

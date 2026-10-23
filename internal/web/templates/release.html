@@ -39,7 +39,7 @@
     </div>
     <div class="actions">
       <button class="btn" type="button" data-copy="{{.Release.Magnet}}">{{T "release.copyMagnet"}}</button>
-      <a class="btn" href="{{.Release.Magnet}}">{{T "release.openInClient"}}</a>
+      <a class="btn" href="{{safeURL .Release.Magnet}}">{{T "release.openInClient"}}</a>
     </div>
   {{else}}
     <p class="muted">{{T "release.noMagnet"}}</p>

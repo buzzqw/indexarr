@@ -13,6 +13,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/categories"
 	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/engine"
+	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
@@ -732,9 +733,12 @@ type compactFormView struct {
 	AllowPrivate    bool
 	Enabled         bool
 	URLValue        string
+	URLPlaceholder  string
+	URLSecret       bool
 	URLChoices      []indexerSettingOption
 	ShowURL         bool
 	URLLabel        string
+	IntervalSeconds int
 	Categories      []categoryChoice
 	CategoryHelp    string
 	Help            string
@@ -766,12 +770,18 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		data.Tags = current.Tags
 		data.Enabled = current.Enabled
 	}
+	if current != nil {
+		data.IntervalSeconds = current.IntervalSeconds
+	}
 	if in != nil {
 		data.Name = in.Name
 		data.Slug = in.Slug
 		data.Protocol = in.Protocol
 		if in.Priority != nil {
 			data.Priority = *in.Priority
+		}
+		if in.IntervalSeconds != nil {
+			data.IntervalSeconds = *in.IntervalSeconds
 		}
 		data.Tags = strings.Join(in.Tags, ", ")
 		if in.Enabled != nil {
@@ -784,6 +794,11 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	}
 	data.DefinitionName = parsed.Meta.Name
 	data.Derived = parsed.IsDerived()
+	if current == nil && in == nil && data.IntervalSeconds == 0 {
+		if suggested := parsed.Meta.Interval.Duration(); suggested >= time.Minute {
+			data.IntervalSeconds = int(suggested / time.Second)
+		}
+	}
 	if !data.Derived {
 		switch s.definitionState(r, defID) {
 		case "bozza", "degradata":
@@ -824,6 +839,10 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	data.DefaultCategory = value("default_category")
 	data.UserAgent = value("user_agent")
 	data.AllowPrivate = truthy(value("allow_private"))
+	if current != nil && secretKeys["url"] {
+		data.URLSecret = true
+		data.URLPlaceholder = s.redactedSecretURL(r, current.ID, "url")
+	}
 
 	definitionHasURL := false
 	for _, setting := range parsed.Settings {
@@ -832,28 +851,25 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		}
 	}
 	urlValue := value("url")
-	if urlValue == "" {
-		urlValue = strings.TrimSpace(prefillURL)
-	}
-	knownSite := siteHasRealAddress(defID, parsed)
-	if urlValue == "" && knownSite {
-		urlValue = parsed.Meta.URLs[0]
+	if !data.URLSecret {
+		if urlValue == "" {
+			urlValue = strings.TrimSpace(prefillURL)
+		}
+		knownSite := siteHasRealAddress(defID, parsed)
+		if urlValue == "" && knownSite {
+			urlValue = parsed.Meta.URLs[0]
+		}
 	}
 	data.URLValue = urlValue
+	knownSite := siteHasRealAddress(defID, parsed)
 
 	for _, setting := range parsed.Settings {
 		name := setting.Name
-		if fixedSettingNames[name] || name == "default-category" {
-			if name == "default-category" {
-				raw := value(name)
-				if current == nil && in == nil && raw == "" {
-					raw = setting.Default
-				}
-				data.AdvancedFields = append(data.AdvancedFields, s.settingField(r, setting, raw, secretKeys[name], false))
-			}
-			continue
-		}
 		if name == "url" {
+			if data.URLSecret {
+				data.ShowURL = true
+				continue
+			}
 			if knownSite {
 				// A known site already knows its address: never ask for it
 				// outside the mirrors selector in Advanced.
@@ -864,9 +880,17 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 				}
 				continue
 			}
-			field := s.settingField(r, setting, urlValue, secretKeys[name], true)
 			data.ShowURL = true
-			data.RequiredFields = append(data.RequiredFields, field)
+			continue
+		}
+		if fixedSettingNames[name] || name == "default-category" {
+			if name == "default-category" {
+				raw := value(name)
+				if current == nil && in == nil && raw == "" {
+					raw = setting.Default
+				}
+				data.AdvancedFields = append(data.AdvancedFields, s.settingField(r, setting, raw, secretKeys[name], false))
+			}
 			continue
 		}
 		raw := value(name)
@@ -922,6 +946,23 @@ func siteHasRealAddress(defID string, def *definition.Definition) bool {
 	}
 	raw := strings.ToLower(def.Meta.URLs[0])
 	return !strings.Contains(raw, ".invalid") && !strings.Contains(raw, "example.")
+}
+
+// redactedSecretURL decrypts a URL secret only to build a redacted label for
+// the edit form. The plaintext never reaches the response.
+func (s *Server) redactedSecretURL(r *http.Request, indexerID int64, key string) string {
+	if s.vault == nil {
+		return ""
+	}
+	secret, err := s.store.GetSecret(r.Context(), indexerID, key)
+	if err != nil {
+		return ""
+	}
+	value, err := s.vault.Open(secret.Nonce, secret.Ciphertext)
+	if err != nil {
+		return ""
+	}
+	return feed.RedactURLForDisplay(value)
 }
 
 func (s *Server) settingField(r *http.Request, setting definition.Setting, value string, hasSecret, forceRequired bool) indexerSettingField {
@@ -1267,6 +1308,9 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	if data.LastRun != nil {
 		settings, _ := s.store.LoadSettings(r.Context())
 		interval := settings.DefaultInterval()
+		if in.IntervalSeconds > 0 {
+			interval = time.Duration(in.IntervalSeconds) * time.Second
+		}
 		if interval <= 0 {
 			interval = 30 * time.Minute
 		}

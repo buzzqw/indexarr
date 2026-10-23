@@ -564,12 +564,17 @@ func indexerInputFromForm(r *http.Request, parsed *definition.Definition) (index
 		categories = strings.Join(joined, ",")
 	}
 	settings := map[string]string{
-		"url":              strings.TrimSpace(r.FormValue("url")),
 		"categories":       categories,
 		"query":            strings.TrimSpace(r.FormValue("query")),
 		"user_agent":       strings.TrimSpace(r.FormValue("user_agent")),
 		"default_category": strings.TrimSpace(r.FormValue("default_category")),
 		"allow_private":    "false",
+	}
+	// An empty URL means "keep the stored value" when the URL is a vault
+	// secret; a new value replaces it. On create the field is required, so an
+	// empty value is still rejected by the service.
+	if rawURL := strings.TrimSpace(r.FormValue("url")); rawURL != "" {
+		settings["url"] = rawURL
 	}
 	if r.FormValue("allow_private") != "" {
 		settings["allow_private"] = "true"
@@ -599,16 +604,39 @@ func indexerInputFromForm(r *http.Request, parsed *definition.Definition) (index
 			settings[name] = strings.TrimSpace(r.FormValue("setting_" + name))
 		}
 	}
+	var interval *int
+	if values, present := r.Form["interval_seconds"]; present {
+		seconds := 0
+		if raw := strings.TrimSpace(firstValue(values)); raw != "" {
+			value, err := strconv.Atoi(raw)
+			if err != nil {
+				return indexersvc.Input{}, errors.New("L'intervallo deve essere un numero di secondi")
+			}
+			if value < 0 || (value > 0 && value < 60) {
+				return indexersvc.Input{}, errors.New("L'intervallo deve essere 0 o almeno 60 secondi")
+			}
+			seconds = value
+		}
+		interval = &seconds
+	}
 	return indexersvc.Input{
-		DefinitionID: strings.TrimSpace(r.FormValue("definition_id")),
-		Name:         strings.TrimSpace(r.FormValue("name")),
-		Slug:         strings.TrimSpace(r.FormValue("slug")),
-		Protocol:     strings.TrimSpace(r.FormValue("protocol")),
-		Priority:     &priority,
-		Tags:         splitTagList(r.FormValue("tags")),
-		Enabled:      &enabled,
-		Settings:     settings,
+		DefinitionID:    strings.TrimSpace(r.FormValue("definition_id")),
+		Name:            strings.TrimSpace(r.FormValue("name")),
+		Slug:            strings.TrimSpace(r.FormValue("slug")),
+		Protocol:        strings.TrimSpace(r.FormValue("protocol")),
+		Priority:        &priority,
+		Tags:            splitTagList(r.FormValue("tags")),
+		Enabled:         &enabled,
+		IntervalSeconds: interval,
+		Settings:        settings,
 	}, nil
+}
+
+func firstValue(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
 }
 
 // addExtraSecretValues handles vault keys that are not declared by the current

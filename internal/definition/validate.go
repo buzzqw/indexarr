@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 // ValidationError reports every problem found in a definition.
@@ -138,6 +139,9 @@ func (d *Definition) Validate() error {
 	}
 	if d.Meta.DerivedFrom != "" && !slugPattern.MatchString(d.Meta.DerivedFrom) {
 		add("meta.derived_from: must be a slug matching %s", slugPattern.String())
+	}
+	if interval := d.Meta.Interval.Duration(); interval != 0 && interval < time.Minute {
+		add("meta.interval: must be empty or at least 60s")
 	}
 
 	seenSettings := make(map[string]int, len(d.Settings))

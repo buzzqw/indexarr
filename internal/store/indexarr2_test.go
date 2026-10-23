@@ -56,8 +56,8 @@ func TestIndexarr2Schema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2DropLegacyVersion {
-		t.Fatalf("schema version = %d, want %d", version, indexarr2DropLegacyVersion)
+	if version != indexarr2IntervalVersion {
+		t.Fatalf("schema version = %d, want %d", version, indexarr2IntervalVersion)
 	}
 	var name string
 	if err := st.DB().QueryRowContext(ctx,
@@ -84,6 +84,13 @@ func TestIndexarr2Schema(t *testing.T) {
 		if !exists {
 			t.Errorf("releases.%s is missing", column)
 		}
+	}
+	exists, err := st.columnExists("indexers", "interval_seconds")
+	if err != nil {
+		t.Fatalf("columnExists(indexers.interval_seconds): %v", err)
+	}
+	if !exists {
+		t.Error("indexers.interval_seconds is missing")
 	}
 	for _, table := range []string{
 		"definitions", "indexers", "indexer_secrets", "indexer_state",
@@ -132,7 +139,7 @@ func TestMigrationIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2DropLegacyVersion {
+	if version != indexarr2IntervalVersion {
 		t.Fatalf("schema version = %d", version)
 	}
 	if err := second.DB().QueryRowContext(ctx,
@@ -150,7 +157,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	st := newTestStore(t)
 
 	wantErr := errors.New("boom")
-	err := st.applyMigration(ctx, 4, "broken", func(tx *sql.Tx) error {
+	err := st.applyMigration(ctx, 5, "broken", func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `CREATE TABLE migration_should_rollback (id INTEGER)`); err != nil {
 			return err
 		}
@@ -163,7 +170,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2DropLegacyVersion {
+	if version != indexarr2IntervalVersion {
 		t.Fatalf("schema version after failure = %d", version)
 	}
 	var tables int
@@ -177,7 +184,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	}
 	var rows int
 	if err := st.DB().QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM schema_migrations WHERE version = 4`).Scan(&rows); err != nil {
+		`SELECT COUNT(*) FROM schema_migrations WHERE version = 5`).Scan(&rows); err != nil {
 		t.Fatalf("check migration row: %v", err)
 	}
 	if rows != 0 {
@@ -708,7 +715,7 @@ func TestDropLegacySourcesMigration(t *testing.T) {
 	}
 	defer migrated.Close()
 	version, err := migrated.schemaVersion(ctx)
-	if err != nil || version != indexarr2DropLegacyVersion {
+	if err != nil || version != indexarr2IntervalVersion {
 		t.Fatalf("schema version = %d, %v", version, err)
 	}
 	for _, table := range []string{"sources", "runs"} {

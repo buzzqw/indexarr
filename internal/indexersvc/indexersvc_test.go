@@ -109,6 +109,9 @@ func TestCreateWithSecrets(t *testing.T) {
 		strings.Contains(created.ConfigJSON, "apikey") {
 		t.Errorf("secret leaked into config_json: %s", created.ConfigJSON)
 	}
+	if !strings.Contains(created.ConfigJSON, "https://example.invalid/") {
+		t.Errorf("an ordinary newznab URL left config_json: %s", created.ConfigJSON)
+	}
 
 	secret, err := st.GetSecret(ctx, created.ID, "apikey")
 	if err != nil {
@@ -324,3 +327,138 @@ func TestNewRequiresStore(t *testing.T) {
 }
 
 func intPtr(value int) *int { return &value }
+
+func intervalDefinition(id string) string {
+	return `schema: 1
+connector: rss
+meta:
+  id: ` + id + `
+  name: ` + id + `
+  type: public
+  protocol: torrent
+  urls: ["https://feed.example/"]
+  interval: 15m
+settings:
+  - {name: url, type: text, required: true}
+`
+}
+
+func TestCreatePrefillsSuggestedInterval(t *testing.T) {
+	svc, st, _, _ := newService(t)
+	ctx := context.Background()
+	storeDefinition(t, st, "interval-feed", intervalDefinition("interval-feed"))
+
+	created, err := svc.Create(ctx, Input{
+		DefinitionID: "interval-feed",
+		Name:         "Interval feed",
+		Settings:     map[string]string{"url": "https://feed.example/rss"},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if created.IntervalSeconds != 900 {
+		t.Fatalf("interval = %d, want 900 from meta.interval", created.IntervalSeconds)
+	}
+
+	explicit := 0
+	created, err = svc.Create(ctx, Input{
+		DefinitionID:    "interval-feed",
+		Name:            "Global interval feed",
+		IntervalSeconds: &explicit,
+		Settings:        map[string]string{"url": "https://feed.example/rss"},
+	})
+	if err != nil {
+		t.Fatalf("Create explicit: %v", err)
+	}
+	if created.IntervalSeconds != 0 {
+		t.Fatalf("explicit interval = %d, want 0", created.IntervalSeconds)
+	}
+
+	tooShort := 30
+	if _, err := svc.Create(ctx, Input{
+		DefinitionID:    "interval-feed",
+		Name:            "Short interval feed",
+		IntervalSeconds: &tooShort,
+		Settings:        map[string]string{"url": "https://feed.example/rss"},
+	}); err == nil {
+		t.Fatal("Create accepted an interval below 60 seconds")
+	}
+}
+
+func TestSensitiveURLIsStoredInTheVault(t *testing.T) {
+	for name, raw := range map[string]string{
+		"path":  "https://rss.example/SYNTHETICRSSKEY/feed.xml",
+		"query": "https://rss.example/feed.xml?passkey=SYNTHETICPASSKEY",
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc, st, v, _ := newService(t)
+			ctx := context.Background()
+			storeDefinition(t, st, "rss-secret", intervalDefinition("rss-secret"))
+			created, err := svc.Create(ctx, Input{
+				DefinitionID: "rss-secret",
+				Name:         "RSS " + name,
+				Settings:     map[string]string{"url": raw},
+			})
+			if err != nil {
+				t.Fatalf("Create: %v", err)
+			}
+			if strings.Contains(created.ConfigJSON, raw) || strings.Contains(created.ConfigJSON, "SYNTHETIC") {
+				t.Fatalf("sensitive URL leaked into config_json: %s", created.ConfigJSON)
+			}
+			secret, err := st.GetSecret(ctx, created.ID, "url")
+			if err != nil {
+				t.Fatalf("GetSecret(url): %v", err)
+			}
+			plain, err := v.Open(secret.Nonce, secret.Ciphertext)
+			if err != nil {
+				t.Fatalf("vault.Open: %v", err)
+			}
+			if plain != raw {
+				t.Fatalf("stored URL = %q, want the original", plain)
+			}
+		})
+	}
+}
+
+func TestPublicURLStaysInConfigAndCanBecomeSecret(t *testing.T) {
+	svc, st, _, _ := newService(t)
+	ctx := context.Background()
+	storeDefinition(t, st, "rss-public", intervalDefinition("rss-public"))
+	created, err := svc.Create(ctx, Input{
+		DefinitionID: "rss-public",
+		Name:         "Public RSS",
+		Settings:     map[string]string{"url": "https://rss.example/feed.xml"},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if !strings.Contains(created.ConfigJSON, "https://rss.example/feed.xml") {
+		t.Fatalf("public URL was not kept in config_json: %s", created.ConfigJSON)
+	}
+
+	updated, err := svc.Update(ctx, created.ID, Input{
+		Settings: map[string]string{"url": "https://rss.example/feed.xml?passkey=SYNTHETICPASSKEY"},
+	})
+	if err != nil {
+		t.Fatalf("Update to secret: %v", err)
+	}
+	if strings.Contains(updated.ConfigJSON, "SYNTHETICPASSKEY") || strings.Contains(updated.ConfigJSON, "passkey") {
+		t.Fatalf("secret URL leaked into config_json: %s", updated.ConfigJSON)
+	}
+	if _, err := st.GetSecret(ctx, created.ID, "url"); err != nil {
+		t.Fatalf("URL was not sealed: %v", err)
+	}
+
+	updated, err = svc.Update(ctx, created.ID, Input{
+		Settings: map[string]string{"url": "https://rss.example/feed.xml"},
+	})
+	if err != nil {
+		t.Fatalf("Update back to public: %v", err)
+	}
+	if !strings.Contains(updated.ConfigJSON, "https://rss.example/feed.xml") {
+		t.Fatalf("public URL was not restored: %s", updated.ConfigJSON)
+	}
+	if _, err := st.GetSecret(ctx, created.ID, "url"); err == nil {
+		t.Fatal("stale URL secret survived the transition to a public URL")
+	}
+}

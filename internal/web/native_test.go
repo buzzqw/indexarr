@@ -147,6 +147,7 @@ func newNativeEnv(t *testing.T) *nativeEnv {
 		Started:  time.Now(),
 		Native:   manager,
 		Indexers: svc,
+		Vault:    v,
 	})
 	return &nativeEnv{
 		store:   st,

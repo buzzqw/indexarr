@@ -185,6 +185,16 @@ func (s *Store) migrate() error {
 		"drop legacy sources", s.dropLegacySources); err != nil {
 		return err
 	}
+	// Migration 4 adds the optional per-indexer scheduler interval. Zero keeps
+	// the global default_interval_seconds, so existing rows and the fresh-start
+	// database keep their current cadence.
+	if err := s.applyMigration(context.Background(), indexarr2IntervalVersion,
+		"indexer interval", func(tx *sql.Tx) error {
+			_, err := tx.Exec(`ALTER TABLE indexers ADD COLUMN interval_seconds INTEGER NOT NULL DEFAULT 0`)
+			return err
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

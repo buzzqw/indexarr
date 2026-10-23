@@ -106,7 +106,9 @@ jobs:
         run: ./scripts/build-matrix.sh --target "${{ matrix.target }}"
 
   # Resource budget: optimised binary size plus idle RSS on a seeded database.
-  # The RSS ceiling is the 40 MiB manifesto target used by scripts/budget.sh.
+  # scripts/budget.sh warns above 64 MiB and fails above 128 MiB; the CI job
+  # deliberately has no override, so it exercises the same policy as a local
+  # run.
   budget:
     name: Resource budget
     runs-on: ubuntu-latest

@@ -13,6 +13,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/engine"
+	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -21,32 +22,34 @@ var secretFragments = []string{
 }
 
 type indexerRequest struct {
-	DefinitionID string         `json:"definition_id"`
-	Name         string         `json:"name"`
-	Slug         string         `json:"slug"`
-	Protocol     string         `json:"protocol"`
-	Priority     *int           `json:"priority"`
-	Tags         []string       `json:"tags"`
-	Enabled      *bool          `json:"enabled"`
-	QueryLimit   *int           `json:"query_limit"`
-	GrabLimit    *int           `json:"grab_limit"`
-	Settings     map[string]any `json:"settings"`
+	DefinitionID    string         `json:"definition_id"`
+	Name            string         `json:"name"`
+	Slug            string         `json:"slug"`
+	Protocol        string         `json:"protocol"`
+	Priority        *int           `json:"priority"`
+	Tags            []string       `json:"tags"`
+	Enabled         *bool          `json:"enabled"`
+	QueryLimit      *int           `json:"query_limit"`
+	GrabLimit       *int           `json:"grab_limit"`
+	IntervalSeconds *int           `json:"interval_seconds"`
+	Settings        map[string]any `json:"settings"`
 }
 
 type indexerResponse struct {
-	ID           int64     `json:"id"`
-	DefinitionID string    `json:"definition_id"`
-	Protocol     string    `json:"protocol"`
-	Slug         string    `json:"slug"`
-	Name         string    `json:"name"`
-	Enabled      bool      `json:"enabled"`
-	Priority     int       `json:"priority"`
-	Tags         []string  `json:"tags"`
-	QueryLimit   int       `json:"query_limit"`
-	GrabLimit    int       `json:"grab_limit"`
-	HasSecrets   bool      `json:"has_secrets"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID              int64     `json:"id"`
+	DefinitionID    string    `json:"definition_id"`
+	Protocol        string    `json:"protocol"`
+	Slug            string    `json:"slug"`
+	Name            string    `json:"name"`
+	Enabled         bool      `json:"enabled"`
+	Priority        int       `json:"priority"`
+	Tags            []string  `json:"tags"`
+	QueryLimit      int       `json:"query_limit"`
+	GrabLimit       int       `json:"grab_limit"`
+	IntervalSeconds int       `json:"interval_seconds"`
+	HasSecrets      bool      `json:"has_secrets"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type searchRequest struct {
@@ -245,18 +248,24 @@ func (s *Server) handleIndexerCreate(w http.ResponseWriter, r *http.Request) {
 	if req.GrabLimit != nil {
 		grabLimit = *req.GrabLimit
 	}
+	interval, err := intervalFromRequest(req.IntervalSeconds, parsed.Meta.Interval.Duration())
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	id, err := s.store.CreateIndexer(ctx, store.Indexer{
-		DefinitionID: definitionID,
-		Protocol:     protocol,
-		Slug:         slug,
-		Name:         name,
-		Enabled:      enabled,
-		Priority:     priority,
-		ConfigJSON:   string(configJSON),
-		Tags:         joinTags(req.Tags),
-		QueryLimit:   queryLimit,
-		GrabLimit:    grabLimit,
+		DefinitionID:    definitionID,
+		Protocol:        protocol,
+		Slug:            slug,
+		Name:            name,
+		Enabled:         enabled,
+		Priority:        priority,
+		ConfigJSON:      string(configJSON),
+		Tags:            joinTags(req.Tags),
+		QueryLimit:      queryLimit,
+		GrabLimit:       grabLimit,
+		IntervalSeconds: interval,
 	})
 	if err != nil {
 		if isUniqueError(err) {
@@ -366,6 +375,14 @@ func (s *Server) handleIndexerUpdate(w http.ResponseWriter, r *http.Request) {
 	if req.GrabLimit != nil {
 		in.GrabLimit = *req.GrabLimit
 	}
+	if req.IntervalSeconds != nil {
+		interval, err := intervalFromRequest(req.IntervalSeconds, 0)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		in.IntervalSeconds = interval
+	}
 	if req.Tags != nil {
 		in.Tags = joinTags(req.Tags)
 	}
@@ -384,7 +401,23 @@ func (s *Server) handleIndexerUpdate(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		existing, err := s.store.ListSecrets(ctx, id)
+		if err != nil {
+			s.logger.Error("adminapi: list indexer secrets", "id", id, "error", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		existingSecrets := make(map[string]bool, len(existing))
+		for _, secret := range existing {
+			existingSecrets[secret.Key] = true
+		}
+		for key := range secrets {
+			delete(config, key)
+		}
 		for key, value := range public {
+			if existingSecrets[key] {
+				deletes = append(deletes, key)
+			}
 			if value == nil || settingText(value) == "" {
 				delete(config, key)
 				continue
@@ -634,19 +667,20 @@ func (s *Server) indexerResponse(r *http.Request, in store.Indexer) (indexerResp
 		return indexerResponse{}, err
 	}
 	return indexerResponse{
-		ID:           in.ID,
-		DefinitionID: in.DefinitionID,
-		Protocol:     in.Protocol,
-		Slug:         in.Slug,
-		Name:         in.Name,
-		Enabled:      in.Enabled,
-		Priority:     in.Priority,
-		Tags:         splitTags(in.Tags),
-		QueryLimit:   in.QueryLimit,
-		GrabLimit:    in.GrabLimit,
-		HasSecrets:   len(secrets) > 0,
-		CreatedAt:    in.CreatedAt,
-		UpdatedAt:    in.UpdatedAt,
+		ID:              in.ID,
+		DefinitionID:    in.DefinitionID,
+		Protocol:        in.Protocol,
+		Slug:            in.Slug,
+		Name:            in.Name,
+		Enabled:         in.Enabled,
+		Priority:        in.Priority,
+		Tags:            splitTags(in.Tags),
+		QueryLimit:      in.QueryLimit,
+		GrabLimit:       in.GrabLimit,
+		IntervalSeconds: in.IntervalSeconds,
+		HasSecrets:      len(secrets) > 0,
+		CreatedAt:       in.CreatedAt,
+		UpdatedAt:       in.UpdatedAt,
 	}, nil
 }
 
@@ -706,7 +740,7 @@ func splitSettings(settings map[string]any) (public map[string]any, secrets map[
 		if key == "" {
 			return nil, nil, nil, errors.New("settings: key must not be empty")
 		}
-		if isSecretKey(key) {
+		if isSecretSetting(key, settingText(raw)) {
 			value := settingText(raw)
 			if value == "" {
 				deletes = append(deletes, key)
@@ -728,6 +762,33 @@ func isSecretKey(key string) bool {
 		}
 	}
 	return false
+}
+
+func isURLSettingKey(key string) bool {
+	lower := strings.ToLower(strings.TrimSpace(key))
+	return lower == "url" || lower == "feed" ||
+		strings.HasSuffix(lower, "_url") || strings.HasSuffix(lower, "_uri")
+}
+
+func isSecretSetting(key, value string) bool {
+	return isSecretKey(key) || (isURLSettingKey(key) && feed.IsSensitiveURL(value))
+}
+
+// intervalFromRequest mirrors the indexersvc rule for the API: nil uses the
+// definition suggestion, zero keeps the global default and a positive value
+// must be at least one minute.
+func intervalFromRequest(requested *int, suggested time.Duration) (int, error) {
+	if requested == nil {
+		if suggested >= time.Minute {
+			return int(suggested / time.Second), nil
+		}
+		return 0, nil
+	}
+	seconds := *requested
+	if seconds < 0 || (seconds > 0 && seconds < 60) {
+		return 0, errors.New("interval_seconds must be 0 or at least 60")
+	}
+	return seconds, nil
 }
 
 func settingText(value any) string {

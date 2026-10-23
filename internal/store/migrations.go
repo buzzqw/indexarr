@@ -13,6 +13,7 @@ const (
 	indexarr2FoundationVersion    = 1
 	indexarr2UsenetPayloadVersion = 2
 	indexarr2DropLegacyVersion    = 3
+	indexarr2IntervalVersion      = 4
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

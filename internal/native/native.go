@@ -156,12 +156,17 @@ func (r *Runner) Start(ctx context.Context) {
 func (r *Runner) Wait() { r.wg.Wait() }
 
 func (r *Runner) loop(ctx context.Context) {
+	// The tick is one minute because it is also the shortest interval a user
+	// or a definition may request. The global interval still governs indexers
+	// without an override: the tick only decides when due work is checked, not
+	// how often each indexer runs.
+	tick := minInterval
 	r.logger.Info("native: scheduler started",
-		"interval", r.interval.String(), "workers", r.workers)
+		"interval", r.interval.String(), "tick", tick.String(), "workers", r.workers)
 
-	r.runPass(ctx)
+	r.runDuePass(ctx)
 	lastMaintenance := time.Now()
-	ticker := time.NewTicker(r.interval)
+	ticker := time.NewTicker(tick)
 	defer ticker.Stop()
 	for {
 		select {
@@ -169,7 +174,7 @@ func (r *Runner) loop(ctx context.Context) {
 			r.logger.Info("native: scheduler stopped")
 			return
 		case <-ticker.C:
-			r.runPass(ctx)
+			r.runDuePass(ctx)
 			r.maybeBackup(ctx)
 			if time.Since(lastMaintenance) >= 6*time.Hour {
 				lastMaintenance = time.Now()
@@ -190,6 +195,62 @@ func (r *Runner) runPass(ctx context.Context) {
 		return
 	}
 	r.logSummary(outcomes)
+}
+
+// runDuePass runs only the indexers whose own interval has elapsed. Manual
+// actions (RunOnce, RunAll, RunIndexer) deliberately bypass this filter.
+func (r *Runner) runDuePass(ctx context.Context) {
+	if ctx.Err() != nil {
+		return
+	}
+	indexers, err := r.store.ListIndexers(ctx)
+	if err != nil {
+		r.logger.Warn("native: list indexers", "error", err)
+		return
+	}
+	settings, err := r.store.LoadSettings(ctx)
+	if err != nil {
+		r.logger.Warn("native: load settings, using the default interval", "error", err)
+		settings = store.DefaultSettings()
+	}
+	lastRuns, err := r.store.LastRunTimes(ctx)
+	if err != nil {
+		r.logger.Warn("native: load last run times", "error", err)
+		lastRuns = map[int64]time.Time{}
+	}
+	candidates := dueIndexers(indexers, lastRuns, settings.DefaultInterval(), time.Now())
+	outcomes := r.runCandidates(ctx, sortCandidates(candidates))
+	if ctx.Err() != nil {
+		return
+	}
+	r.logSummary(outcomes)
+}
+
+// dueIndexers filters the enabled indexers whose next run is due. A positive
+// IntervalSeconds overrides the global interval; zero uses the global one. It
+// never changes the global cadence for the other indexers.
+func dueIndexers(indexers []store.Indexer, lastRuns map[int64]time.Time, global time.Duration, now time.Time) []store.Indexer {
+	if global < minInterval {
+		global = minInterval
+	}
+	out := make([]store.Indexer, 0, len(indexers))
+	for _, indexerRow := range indexers {
+		if !indexerRow.Enabled {
+			continue
+		}
+		interval := global
+		if indexerRow.IntervalSeconds > 0 {
+			interval = time.Duration(indexerRow.IntervalSeconds) * time.Second
+			if interval < minInterval {
+				interval = minInterval
+			}
+		}
+		if last, ok := lastRuns[indexerRow.ID]; ok && now.Before(last.Add(interval)) {
+			continue
+		}
+		out = append(out, indexerRow)
+	}
+	return out
 }
 
 func (r *Runner) logSummary(outcomes []RunOutcome) {
@@ -236,7 +297,12 @@ func (r *Runner) RunOnce(ctx context.Context) []RunOutcome {
 		r.logger.Warn("native: list indexers", "error", err)
 		return nil
 	}
-	candidates := sortCandidates(indexers)
+	return r.runCandidates(ctx, sortCandidates(indexers))
+}
+
+// runCandidates runs an explicit candidate list and preserves the ascending
+// indexer ID order in the returned outcomes.
+func (r *Runner) runCandidates(ctx context.Context, candidates []store.Indexer) []RunOutcome {
 	if len(candidates) == 0 {
 		return nil
 	}
