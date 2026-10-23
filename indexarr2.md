@@ -131,7 +131,7 @@ in indexarr.
 | Provenance multi-indexer ("visto da 3 indexer") con scelta del link migliore | Duplicati e perdita di informazione | Codice fatto; in produzione vuota (WP8) |
 | Rate limit per host (token bucket) + circuit breaker + `Retry-After` | Comportamento eterogeneo tra definizioni | Codice fatto: rate limit per host attivo su ogni percorso (WP2, WP16) |
 | Definizioni testate offline con fixture e record/replay | Test che richiedono il sito vivo | Parziale: fixture sì, record/replay no |
-| Connettori di famiglia e API prima dello scraping (§6) | Definizioni fragili copiate sito per sito | Parziale: 8 famiglie, 4 definizioni verificate (WP6, WP7) |
+| Connettori di famiglia e API prima dello scraping (§6) | Definizioni fragili copiate sito per sito | Parziale: 8 famiglie, 36 definizioni verificate (WP6, WP7, WP18) |
 | Definizioni tipizzate con fallback, mirror e health integrato (§6.4) | Definizioni che si rompono al primo cambio di layout | Formato fatto; health check non eseguito (WP9) |
 | Seeders aggiornati: TTL e refresh dei risultati restituiti dalla cache | Seeders vecchi che falsano le scelte delle \*arr | Da fare (WP10) |
 | Vault per credenziali e cookie | Credenziali in chiaro | Fatto lato backend: chiave fuori dai dati e segreti degli indexer cifrati (WP1) |
@@ -563,7 +563,7 @@ tutta verde.
 |---|---|---|---|
 | **M0 — Fondamenta** | Modello dati §8, schema nativo, vault, pipeline a stadi, interfacce `Connector` e `Module` | indexarr funziona sul nuovo modello | Fatto, salvo pipeline/moduli non collegati (WP4) |
 | **M1 — Motore** | Formato v1, motore HTML/JSON/XML, sessioni, login, paginazione, rate limit per host, circuit breaker | I tre parser HTML storici sostituiti da definizioni | Fatto (WP5, WP7) |
-| **M2 — Catalogo** | Inventario dei siti, connettori di famiglia, prime definizioni, studio delle definizioni, CI del catalogo | Siti propri tutti funzionanti | Fatto: 8 famiglie, 4 definizioni verificate, RSS nativa (WP6, WP7) |
+| **M2 — Catalogo** | Inventario dei siti, connettori di famiglia, prime definizioni, studio delle definizioni, CI del catalogo | Siti propri tutti funzionanti | Fatto: 8 famiglie, 36 definizioni verificate, RSS nativa (WP6, WP7, WP18) |
 | **Alpha interna** | Inventario prioritario riscritto e verificato | Uso quotidiano su istanza propria | Fatto: import da Jackett/Prowlarr in indexer nativi (WP8) |
 | **M3 — Distribuzione** | Endpoint per indexer e filtrati, alias Jackett, errori Torznab, limiti query/grab, proxy | \*arr collegate senza Jackett/Prowlarr | Fatto |
 | **M4 — App sync** | Tutte le applicazioni del §3.2, livelli di sync, riconciliazione | Prowlarr rimovibile | Quasi fatto: 5 app su 7, rollback mancante (WP13) |
@@ -716,12 +716,12 @@ strict) e `./sim/run.sh`.
 | WP0 | fatto | convertitore Cardigann solo CLI, bozze `derived_from` rifiutate dal catalogo |
 | WP1 | fatto (backend) | risoluzione chiave vault (env → env-file → config → file dati → user config → fallback), `export-key`/`move-key`, verifica restore, redazione rsskey |
 | WP2 | fatto | `engine.Politeness` condiviso, rate limit 1/s burst 4, breaker, `Retry-After`, contatori host in Attività e Prometheus |
-| WP3 | fatto | memoria sotto 40 MiB a riposo (26,9 MiB a 60 s, 35,5 MiB a 300 s; budget CI 40 MiB) |
+| WP3 | fatto | memoria 26,9 MiB a 60 s e 35,5 MiB a 300 s; nuovo budget: avviso 64 MiB, errore 128 MiB |
 | WP4 | da fare | pipeline e moduli collegati a runtime |
 | WP5 | fatto | `download.resolve`: magnet/torrent dalla pagina di dettaglio |
 | WP6 | fatto | famiglia RSS/Atom nativa, cache feed, filtro client-side |
 | WP7 | fatto | ExtTo, TorrentGalaxy, Corsaro e Knaben verificate; TorrentLeech in bozza |
-| WP8 | passi 1–4 fatti | import in sola lettura da Jackett/Prowlarr in indexer nativi; passo 5 (scambio produzione) pronto |
+| WP8 | passi 1–5 fatti | import in sola lettura da Jackett/Prowlarr in indexer nativi; `fresh-start.sh` provato su copia; scambio produzione da eseguire |
 | WP9–WP11 | da fare | health, refresh seeders, FlareSolverr nativo |
 | WP12 | fatto | CI multipiattaforma e budget |
 | WP13 | da fare | parità residua (import applicato completo, Mylar3/LazyLibrarian, rollback sync, notifiche health/grab) |
@@ -729,6 +729,9 @@ strict) e `./sim/run.sh`.
 | WP-R | fatto | dettagli dopo limit/dedup, fixture senza symlink, build Windows, redazione, `example-html` |
 | WP15 | da fare | parametri condizionali nelle definizioni (v1.1) |
 | WP16 | fatto | rimosso il percorso legacy: `sources`, `internal/ingest`, `internal/legacyimport`, `SealLegacySecrets`, rotte `/sources*` (302), `legacy/apply|revert`, tab Nativi/Legacy, definizioni `legacy-*`, chiavi i18n orfane |
+| WP17 | fatto | metriche per esecuzione, campioni redatti, scheda Dati, Prova come Sonarr/Radarr, feed release e ricerche app |
+| WP18 | fase 1 e 2 fatte | 36 definizioni verificate totali, 27 pubbliche aggiunte in fase 2, 3 private in prova, MirCrew via Torznab |
+| WP19 | fatto | indice di catalogo a build time, elenco siti filtrabile e aggiunta rapida idempotente |
 
 ### 15.8 Come lavorare (per il prossimo agente)
 
