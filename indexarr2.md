@@ -721,7 +721,7 @@ strict) e `./sim/run.sh`.
 | WP5 | fatto | `download.resolve`: magnet/torrent dalla pagina di dettaglio |
 | WP6 | fatto | famiglia RSS/Atom nativa, cache feed, filtro client-side |
 | WP7 | fatto | ExtTo, TorrentGalaxy, Corsaro e Knaben verificate; TorrentLeech in bozza |
-| WP8 | passi 1–5 fatti | import in sola lettura da Jackett/Prowlarr in indexer nativi; `fresh-start.sh` provato su copia; scambio produzione da eseguire |
+| WP8 | passi 1–4 fatti; script e prova generale fatti | import in sola lettura da Jackett/Prowlarr in indexer nativi; `fresh-start.sh` provato su copia; scambio produzione da eseguire |
 | WP9–WP11 | da fare | health, refresh seeders, FlareSolverr nativo |
 | WP12 | fatto | CI multipiattaforma e budget |
 | WP13 | da fare | parità residua (import applicato completo, Mylar3/LazyLibrarian, rollback sync, notifiche health/grab) |
