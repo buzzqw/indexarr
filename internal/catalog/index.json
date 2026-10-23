@@ -22,6 +22,21 @@
     ]
   },
   {
+    "id": "academictorrents",
+    "name": "Academic Torrents",
+    "description": "Public Academic Torrents research feed (latest entries; keyword search filters the feed client-side).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "academictorrents.com"
+    ]
+  },
+  {
     "id": "acgnx",
     "name": "ACGNX",
     "description": "Public ACGNX anime RSS keyword search with magnet enclosures.",
@@ -57,6 +72,39 @@
     ]
   },
   {
+    "id": "anirena",
+    "name": "AniRena",
+    "description": "Public AniRena anime RSS search with .torrent enclosures.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime",
+      "music",
+      "books",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "anirena.com"
+    ]
+  },
+  {
+    "id": "audiobookbay",
+    "name": "AudioBook Bay",
+    "description": "Public AudioBook Bay search; magnets from the release info hash.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "audiobookbay.lu"
+    ]
+  },
+  {
     "id": "bangumimoe",
     "name": "Bangumi Moe",
     "description": "Public Bangumi Moe JSON torrent search with magnets and health.",
@@ -69,6 +117,59 @@
     "state": "verificata",
     "hosts": [
       "bangumi.moe"
+    ]
+  },
+  {
+    "id": "bitsearch",
+    "name": "Bitsearch",
+    "description": "Public Bitsearch HTML search (the SolidTorrents successor) with magnets and .torrent links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "bitsearch.eu"
+    ]
+  },
+  {
+    "id": "bt4g",
+    "name": "BT4G",
+    "description": "Public BT4G DHT search through its RSS/XML results.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "bt4gprx.com"
+    ]
+  },
+  {
+    "id": "btdig",
+    "name": "BTDigg",
+    "description": "Public BTDigg DHT search with magnets.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "btdig.com"
     ]
   },
   {
@@ -153,6 +254,41 @@
     ]
   },
   {
+    "id": "eztv",
+    "name": "EZTV",
+    "description": "Public EZTV TV feed with .torrent enclosures (client-side title filter).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "eztvx.to",
+      "myrss.org"
+    ]
+  },
+  {
+    "id": "fosstorrents",
+    "name": "FOSS Torrents",
+    "description": "Public FOSS Torrents distribution catalogue (exact project name).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "fosstorrents.com"
+    ]
+  },
+  {
     "id": "gazelle-generic",
     "name": "Gazelle (generic)",
     "description": "Generic Gazelle tracker; the family connector reads URL and API token.",
@@ -185,6 +321,25 @@
     "state": "bozza",
     "hosts": [
       "ildragonero2.info"
+    ]
+  },
+  {
+    "id": "internetarchive",
+    "name": "Internet Archive",
+    "description": "Public Internet Archive search for texts and software with archive torrents.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "archive.org"
     ]
   },
   {
@@ -233,6 +388,21 @@
     ]
   },
   {
+    "id": "librivox",
+    "name": "LibriVox",
+    "description": "Public LibriVox audiobook catalogue (exact title) with archive torrents.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "librivox.org"
+    ]
+  },
+  {
     "id": "limetorrents",
     "name": "LimeTorrents",
     "description": "Public LimeTorrents HTML search with magnets on the release page.",
@@ -253,6 +423,22 @@
     "hosts": [
       "limetorrents.fun",
       "limetorrents.zone"
+    ]
+  },
+  {
+    "id": "linuxtracker",
+    "name": "LinuxTracker",
+    "description": "Public LinuxTracker search for Linux distribution torrents, with magnets on the detail page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "linuxtracker.org"
     ]
   },
   {
@@ -336,6 +522,21 @@
     ]
   },
   {
+    "id": "shanaproject",
+    "name": "Shana Project",
+    "description": "Public Shana Project anime search with direct .torrent links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "shanaproject.com"
+    ]
+  },
+  {
     "id": "showrss",
     "name": "showRSS",
     "description": "showRSS TV feed (public show feed or personal showRSS feed).",
@@ -351,6 +552,28 @@
     "state": "verificata",
     "hosts": [
       "showrss.info"
+    ]
+  },
+  {
+    "id": "solidtorrents",
+    "name": "SolidTorrents",
+    "description": "Public SolidTorrents HTML search with magnets and .torrent links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "solidtorrents.eu"
     ]
   },
   {
@@ -412,6 +635,52 @@
     ]
   },
   {
+    "id": "torlock",
+    "name": "Torlock",
+    "description": "Public Torlock search through its official Torznab API (no account or API key).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torlock.com"
+    ]
+  },
+  {
+    "id": "torrent9",
+    "name": "Torrent9",
+    "description": "Public Torrent9 French search; magnets from the release page.",
+    "language": "fr-FR",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrent9.to",
+      "www7.torrent9.to"
+    ]
+  },
+  {
     "id": "torrentdownloads",
     "name": "TorrentDownloads",
     "description": "Public TorrentDownloads RSS search results with infohash and health.",
@@ -431,6 +700,31 @@
     "hosts": [
       "torrentdownloads.me",
       "torrentdownloads.pro"
+    ]
+  },
+  {
+    "id": "torrentfunk",
+    "name": "TorrentFunk",
+    "description": "Public TorrentFunk search through its official Torznab API (no account or API key).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentfunk.com"
     ]
   },
   {

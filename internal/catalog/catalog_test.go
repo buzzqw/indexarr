@@ -32,8 +32,8 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 32 {
-		t.Fatalf("len(Builtins()) = %d, want 32", len(entries))
+	if len(entries) != 48 {
+		t.Fatalf("len(Builtins()) = %d, want 48", len(entries))
 	}
 
 	verified := map[string]bool{
@@ -57,6 +57,22 @@ func TestBuiltinsValid(t *testing.T) {
 		"acgnx":              true,
 		"bangumimoe":         true,
 		"mikan":              true,
+		"torlock":            true,
+		"torrentfunk":        true,
+		"bt4g":               true,
+		"solidtorrents":      true,
+		"bitsearch":          true,
+		"btdig":              true,
+		"linuxtracker":       true,
+		"academictorrents":   true,
+		"shanaproject":       true,
+		"anirena":            true,
+		"audiobookbay":       true,
+		"internetarchive":    true,
+		"eztv":               true,
+		"torrent9":           true,
+		"librivox":           true,
+		"fosstorrents":       true,
 	}
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
@@ -138,8 +154,8 @@ func TestIndexShapeIsStable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Index: %v", err)
 	}
-	if len(index) != 32 {
-		t.Fatalf("len(Index()) = %d, want 32", len(index))
+	if len(index) != 48 {
+		t.Fatalf("len(Index()) = %d, want 48", len(index))
 	}
 	for i := 1; i < len(index); i++ {
 		if index[i-1].ID >= index[i].ID {
@@ -195,14 +211,54 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 		t.Fatalf("Builtins: %v", err)
 	}
 	want := []string{
-		"example-html", "unit3d-generic", "newznab-generic", "torznab-generic",
-		"gazelle-generic", "nexusphp-generic", "torrenttrader-generic", "xbtit-generic",
-		"extto", "torrentgalaxy", "corsaro", "knaben", "torrentleech",
-		"torrentleech-rss", "torrentgalaxyclone", "limetorrents",
-		"thepiratebay", "torrentscsv", "showrss", "corsaro-account",
-		"ildragonegro", "1337x", "animetosho", "kickasstorrents", "nyaa",
-		"subsplease", "tokyotosho", "torrentdownloads", "yts",
-		"acgnx", "bangumimoe", "mikan",
+		"example-html",
+		"unit3d-generic",
+		"newznab-generic",
+		"torznab-generic",
+		"gazelle-generic",
+		"nexusphp-generic",
+		"torrenttrader-generic",
+		"xbtit-generic",
+		"extto",
+		"torrentgalaxy",
+		"corsaro",
+		"knaben",
+		"torrentleech",
+		"torrentleech-rss",
+		"torrentgalaxyclone",
+		"limetorrents",
+		"thepiratebay",
+		"torrentscsv",
+		"showrss",
+		"corsaro-account",
+		"ildragonegro",
+		"1337x",
+		"animetosho",
+		"kickasstorrents",
+		"nyaa",
+		"subsplease",
+		"tokyotosho",
+		"torrentdownloads",
+		"yts",
+		"acgnx",
+		"bangumimoe",
+		"mikan",
+		"torlock",
+		"torrentfunk",
+		"bt4g",
+		"solidtorrents",
+		"bitsearch",
+		"btdig",
+		"linuxtracker",
+		"academictorrents",
+		"shanaproject",
+		"anirena",
+		"audiobookbay",
+		"internetarchive",
+		"eztv",
+		"torrent9",
+		"librivox",
+		"fosstorrents",
 	}
 	if len(entries) != len(want) {
 		t.Fatalf("len(Builtins()) = %d, want %d", len(entries), len(want))
@@ -223,8 +279,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 32 {
-		t.Fatalf("manifest has %d definitions, want 32", len(items))
+	if len(items) != 48 {
+		t.Fatalf("manifest has %d definitions, want 48", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")
