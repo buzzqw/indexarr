@@ -140,6 +140,11 @@ func (d *Definition) Validate() error {
 	if d.Meta.DerivedFrom != "" && !slugPattern.MatchString(d.Meta.DerivedFrom) {
 		add("meta.derived_from: must be a slug matching %s", slugPattern.String())
 	}
+	switch d.Meta.Mirror {
+	case "", "official", "unofficial":
+	default:
+		add("meta.mirror: must be empty, official or unofficial")
+	}
 	if interval := d.Meta.Interval.Duration(); interval != 0 && interval < time.Minute {
 		add("meta.interval: must be empty or at least 60s")
 	}

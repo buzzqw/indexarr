@@ -5,10 +5,11 @@
 # The forum refuses guest search ("Non ti è permesso di utilizzare il sistema
 # di ricerca"), so the search fixture is synthetic and keeps the standard phpBB
 # search-result markup; the topic fixture keeps a magnet in the post body. The
-# login form needs the phpBB form_token, creation_time and session id, which
-# are extracted from the login page. A desktop browser User-Agent is sent
-# explicitly: the site redirects the default client to the index page. State
-# stays "bozza" until the coordinator verifies it with an account.
+# supported login path is a pasted session cookie (auth.strategy cookie): the
+# phpBB form_token/sid flow is fragile and cannot be verified without an
+# account. A desktop browser User-Agent is sent explicitly: the site redirects
+# the default client to the index page. State stays "bozza" until the
+# coordinator verifies it with an account.
 schema: 1
 
 meta:
@@ -26,8 +27,11 @@ meta:
   latest: false
 
 settings:
-  - { name: username, type: text, label: "Username", required: true }
-  - { name: password, type: password, label: "Password", required: true }
+  - name: cookie
+    type: password
+    label: "Session cookie"
+    help: "Paste the Cookie request header copied from the browser after logging in to the forum."
+    required: true
 
 categories:
   - { site: "0", standard: 8000, desc: "Other" }
@@ -36,29 +40,9 @@ capabilities:
   search: [q]
 
 auth:
-  strategy: form
-  steps:
-    - get: /forum/ucp.php?mode=login
-      headers:
-        User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-      extract:
-        form_token: { selector: 'input[name="form_token"]', attr: value }
-        creation_time: { selector: 'input[name="creation_time"]', attr: value }
-        sid: { selector: 'input[name="sid"]', attr: value }
-    - post: /forum/ucp.php?mode=login
-      headers:
-        User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-      form:
-        username: "{{ settings.username }}"
-        password: "{{ settings.password }}"
-        form_token: "{{ form_token }}"
-        creation_time: "{{ creation_time }}"
-        sid: "{{ sid }}"
-        login: "Login"
-  success: { selector: 'a[href*="mode=logout"]' }
-  failure:
-    - { selector: "div.error", message: text }
-  refresh_after: 6h
+  # The phpBB login needs a form_token and a session id; a cookie copied from
+  # a logged-in browser is the stable path and the engine sends it as-is.
+  strategy: cookie
 
 search:
   request:
@@ -100,9 +84,3 @@ tests:
   - name: detail
     fixture: fixtures/ildragonegro/detail.html
     expect: { min_rows: 0 }
-  - name: login-ok
-    fixture: fixtures/ildragonegro/login-ok.html
-    expect: { authenticated: true }
-  - name: login-failed
-    fixture: fixtures/ildragonegro/login-failed.html
-    expect: { authenticated: false }

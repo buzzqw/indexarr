@@ -29,8 +29,8 @@ func main() {
 func run(args []string) int {
 	flags := flag.NewFlagSet("indexarr-import", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
-	jackettDir := flags.String("jackett", "", "Jackett data directory or ServerConfig.json")
-	jackettURL := flags.String("jackett-url", "", "live Jackett base URL, overrides the copied ServerConfig.json")
+	jackettDir := flags.String("jackett", "", "Jackett data directory or ServerConfig.json (offline fallback)")
+	jackettURL := flags.String("jackett-url", "", "live Jackett base URL; alone it reads the t=indexers list, with -jackett it overrides the copy")
 	jackettKey := flags.String("jackett-key", os.Getenv("INDEXARR_JACKETT_KEY"), "Jackett API key (default: INDEXARR_JACKETT_KEY)")
 	prowlarrURL := flags.String("prowlarr", "", "Prowlarr base URL, e.g. http://127.0.0.1:9696")
 	prowlarrKey := flags.String("prowlarr-key", os.Getenv("INDEXARR_PROWLARR_KEY"), "Prowlarr API key (default: INDEXARR_PROWLARR_KEY)")
@@ -40,20 +40,31 @@ func run(args []string) int {
 	jsonOut := flags.Bool("json", false, "print machine-readable output")
 	timeout := flags.Duration("timeout", 20*time.Second, "network timeout for Prowlarr")
 	flags.Usage = func() {
-		fmt.Fprint(os.Stderr, `usage: indexarr-import (-jackett DIR | -prowlarr URL -prowlarr-key KEY) [flags]
+		fmt.Fprint(os.Stderr, `usage: indexarr-import (-jackett-url URL | -jackett DIR | -prowlarr URL) [flags]
 
-Reads an existing Jackett or Prowlarr configuration without modifying it.
+Reads an existing Jackett or Prowlarr installation without modifying it. A
+live Jackett is read with a GET on
+/api/v2.0/indexers/all/results/torznab/api?t=indexers&configured=true and every
+indexer is probed; a copy of the Jackett data directory is the offline
+fallback. Prowlarr is read with the official v1 API.
+
 With -apply and -db it creates native indexers in a disposable indexarr
-database: verified catalog definitions where available, otherwise native
-torznab indexers pointed at the manager's per-indexer endpoint.
+database: verified catalog definitions where available, otherwise a native
+torznab indexer pointed at the manager's per-indexer endpoint. The same site
+arriving from several sources is imported once, preferring a verified native
+definition, then Prowlarr, then Jackett.
+
+The optional INDEXARR_TORRENTLEECH_RSS_URL environment variable adds the
+native torrentleech-rss indexer. The value contains a personal rsskey: it is
+sealed in the vault and never printed or written to a log.
 
 The vault key is resolved with the same rules as the server: INDEXARR_MASTER_KEY,
 INDEXARR_MASTER_KEY_FILE, -config's vault_key_path, <db>.key, then the user
 configuration directory. Secrets are sealed before they touch the database.
 
 flags:
-  -jackett DIR        Jackett data directory or ServerConfig.json
-  -jackett-url URL    live Jackett base URL (default: from the copied config)
+  -jackett DIR        Jackett data directory or ServerConfig.json (fallback)
+  -jackett-url URL    live Jackett base URL (with -jackett it overrides the copy)
   -jackett-key KEY    Jackett API key (default: INDEXARR_JACKETT_KEY)
   -prowlarr URL       Prowlarr base URL
   -prowlarr-key KEY   Prowlarr API key (default: INDEXARR_PROWLARR_KEY)
@@ -61,44 +72,90 @@ flags:
   -config PATH        indexarr JSON configuration (optional)
   -apply              write native indexers (otherwise only print the plan)
   -json               machine-readable output
-  -timeout 20s        Prowlarr HTTP timeout
+  -timeout 20s        network timeout
 `)
 	}
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if (*jackettDir == "") == (*prowlarrURL == "") {
+	feedURL := strings.TrimSpace(os.Getenv("INDEXARR_TORRENTLEECH_RSS_URL"))
+	if *jackettDir == "" && *jackettURL == "" && *prowlarrURL == "" && feedURL == "" {
 		flags.Usage()
+		return 2
+	}
+	if strings.TrimSpace(*jackettKey) == "" && (*jackettDir != "" || *jackettURL != "") {
+		fmt.Fprintln(os.Stderr, "indexarr-import: -jackett-key is required with -jackett or -jackett-url")
+		return 2
+	}
+	if strings.TrimSpace(*prowlarrKey) == "" && *prowlarrURL != "" {
+		fmt.Fprintln(os.Stderr, "indexarr-import: -prowlarr-key is required with -prowlarr")
 		return 2
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
-	var plan importers.Plan
-	var err error
-	switch {
-	case *jackettDir != "":
-		plan, err = importers.FromJackettConfig(ctx, *jackettDir)
-		if err == nil && (strings.TrimSpace(*jackettURL) != "" || strings.TrimSpace(*jackettKey) != "") {
+	var plans []importers.Plan
+	// The live Jackett API is the primary source. The copied data directory is
+	// used only when the API does not answer, so a stale copy can never hide a
+	// running instance's real indexer list.
+	if *jackettURL != "" {
+		plan, err := importers.FromJackettAPI(ctx, *jackettURL, *jackettKey, nil)
+		if err == nil {
+			plans = append(plans, plan)
+		} else if *jackettDir == "" {
+			fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
+			return 1
+		} else {
+			fmt.Fprintf(os.Stderr, "indexarr-import: warning: live Jackett failed (%v); using the copy\n", err)
+			plan, err = importers.FromJackettConfig(ctx, *jackettDir)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
+				return 1
+			}
+			plan, err = importers.OverrideManagerEndpoint(plan, "", *jackettKey)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
+				return 1
+			}
+			plans = append(plans, plan)
+		}
+	} else if *jackettDir != "" {
+		plan, err := importers.FromJackettConfig(ctx, *jackettDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
+			return 1
+		}
+		if strings.TrimSpace(*jackettURL) != "" || strings.TrimSpace(*jackettKey) != "" {
 			plan, err = importers.OverrideManagerEndpoint(plan, *jackettURL, *jackettKey)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
+				return 1
+			}
 		}
-	case *prowlarrURL != "":
-		if strings.TrimSpace(*prowlarrKey) == "" {
-			fmt.Fprintln(os.Stderr, "indexarr-import: -prowlarr-key is required with -prowlarr")
-			return 2
-		}
-		plan, err = importers.FromProwlarr(ctx, *prowlarrURL, *prowlarrKey, nil)
+		plans = append(plans, plan)
 	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
-		return 1
+	if *prowlarrURL != "" {
+		plan, err := importers.FromProwlarr(ctx, *prowlarrURL, *prowlarrKey, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
+			return 1
+		}
+		plans = append(plans, plan)
 	}
 
-	targets, err := importers.Targets(plan)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
-		return 1
+	var targets []importers.NativeTarget
+	for _, plan := range plans {
+		planTargets, err := importers.Targets(plan)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
+			return 1
+		}
+		targets = append(targets, planTargets...)
 	}
+	if feedURL != "" {
+		targets = append(targets, importers.TorrentLeechRSSTarget(feedURL))
+	}
+	targets, dropped := importers.Deduplicate(targets)
 
 	if *apply {
 		if *dbPath == "" {
@@ -121,7 +178,7 @@ flags:
 		printApplySummary(result, *dbPath, keySource.Kind)
 	}
 
-	printPlan(redactPlan(plan), targets, *jsonOut)
+	printPlans(plans, targets, dropped, *jsonOut)
 	return 0
 }
 
@@ -148,48 +205,109 @@ func redactPlan(plan importers.Plan) importers.Plan {
 	return plan
 }
 
-func printPlan(plan importers.Plan, targets []importers.NativeTarget, asJSON bool) {
+// jsonOutput is the machine-readable import plan. Target secrets are removed
+// before encoding, exactly like the human-readable report.
+type jsonOutput struct {
+	Plans   []importers.Plan         `json:"plans"`
+	Targets []importers.NativeTarget `json:"targets"`
+	Dropped []droppedTargetJSON      `json:"dropped,omitempty"`
+}
+
+type droppedTargetJSON struct {
+	Target    importers.NativeTarget `json:"target"`
+	CoveredBy importers.NativeTarget `json:"covered_by"`
+}
+
+func printPlans(plans []importers.Plan, targets []importers.NativeTarget, dropped []importers.DroppedTarget, asJSON bool) {
+	redactedPlans := make([]importers.Plan, 0, len(plans))
+	for _, plan := range plans {
+		redactedPlans = append(redactedPlans, redactPlan(plan))
+	}
+	redactedTargets := redactTargets(targets)
+	redactedDropped := make([]droppedTargetJSON, 0, len(dropped))
+	for _, item := range dropped {
+		redactedDropped = append(redactedDropped, droppedTargetJSON{
+			Target:    redactTarget(item.Target),
+			CoveredBy: redactTarget(item.CoveredBy),
+		})
+	}
+
 	if asJSON {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(plan); err != nil {
+		if err := encoder.Encode(jsonOutput{
+			Plans: redactedPlans, Targets: redactedTargets, Dropped: redactedDropped,
+		}); err != nil {
 			fmt.Fprintf(os.Stderr, "indexarr-import: encode plan: %v\n", err)
 		}
 		return
 	}
-	fmt.Printf("source: %s\n", plan.Source)
-	fmt.Printf("indexers: %d, applications: %d, proxies: %d, warnings: %d\n",
-		len(plan.Indexers), len(plan.Applications), len(plan.Proxies), len(plan.Warnings))
-	for i, indexer := range plan.Indexers {
-		fmt.Printf("  %-40s protocol=%-7s enabled=%t categories=%s hint=%s\n",
-			indexer.Name, indexer.Protocol, indexer.Enabled,
-			joinInts(indexer.Categories), indexer.DefinitionHint)
-		if i < len(targets) {
-			fmt.Printf("    target: %s\n", targetLabel(targets[i]))
+	for _, plan := range redactedPlans {
+		fmt.Printf("source: %s\n", plan.Source)
+		fmt.Printf("indexers: %d, applications: %d, proxies: %d, warnings: %d\n",
+			len(plan.Indexers), len(plan.Applications), len(plan.Proxies), len(plan.Warnings))
+		for _, indexer := range plan.Indexers {
+			fmt.Printf("  %-40s protocol=%-7s enabled=%t categories=%s hint=%s\n",
+				indexer.Name, indexer.Protocol, indexer.Enabled,
+				joinInts(indexer.Categories), indexer.DefinitionHint)
+		}
+		for _, app := range plan.Applications {
+			fmt.Printf("  app %-30s kind=%s sync=%s\n", app.Name, app.Kind, app.SyncLevel)
+		}
+		for _, warning := range plan.Warnings {
+			fmt.Printf("  warning: %s\n", warning)
 		}
 	}
-	for _, app := range plan.Applications {
-		fmt.Printf("  app %-30s kind=%s sync=%s\n", app.Name, app.Kind, app.SyncLevel)
+	printImportTable(redactedTargets, redactedDropped)
+}
+
+// printImportTable is the per-site result of the import: native, via Jackett,
+// via Prowlarr, disabled, or not imported because another source already
+// covers the site.
+func printImportTable(targets []importers.NativeTarget, dropped []droppedTargetJSON) {
+	fmt.Printf("import table (one indexer per site):\n")
+	for _, target := range targets {
+		fmt.Printf("  %-28s %-34s %s\n", target.SiteKey, target.Name, targetKind(target))
 	}
-	for _, warning := range plan.Warnings {
-		fmt.Printf("  warning: %s\n", warning)
+	for _, item := range dropped {
+		fmt.Printf("  %-28s %-34s non importato: già coperto da %s\n",
+			item.Target.SiteKey, item.Target.Name, item.CoveredBy.Name)
 	}
 }
 
-// targetLabel describes a native target without its secrets.
-func targetLabel(target importers.NativeTarget) string {
-	kind := "native"
-	if target.ViaManager != "" {
-		kind = "torznab bridge"
-	}
-	label := fmt.Sprintf("%-14s %s -> %s", kind, target.Name, target.DefinitionID)
-	if target.ViaManager != "" {
-		label += " (" + target.ViaManager + ")"
-	}
+func targetKind(target importers.NativeTarget) string {
 	if !target.Enabled {
-		label += " [disabled]"
+		reason := strings.TrimSpace(target.DisabledReason)
+		if reason == "" {
+			reason = "disattivato"
+		}
+		return "disattivato (" + reason + ")"
 	}
-	return label
+	if !strings.EqualFold(target.DefinitionID, "torznab-generic") {
+		return "nativo (" + target.DefinitionID + ")"
+	}
+	switch strings.ToLower(strings.TrimSpace(target.ViaManager)) {
+	case "prowlarr":
+		return "via Prowlarr"
+	case "jackett":
+		return "via Jackett"
+	default:
+		return "torznab"
+	}
+}
+
+// redactTarget removes the vaulted values from a target before any output.
+func redactTarget(target importers.NativeTarget) importers.NativeTarget {
+	target.Secrets = nil
+	return target
+}
+
+func redactTargets(targets []importers.NativeTarget) []importers.NativeTarget {
+	out := make([]importers.NativeTarget, 0, len(targets))
+	for _, target := range targets {
+		out = append(out, redactTarget(target))
+	}
+	return out
 }
 
 func printApplySummary(result importers.ApplyResult, dbPath, keySource string) {
@@ -201,8 +319,8 @@ func printApplySummary(result importers.ApplyResult, dbPath, keySource string) {
 			bridges++
 		}
 	}
-	fmt.Printf("applied %d indexers to %s: %d created, %d updated (%d native, %d torznab bridge)\n",
-		len(result.Applied), dbPath, result.Created, result.Updated, native, bridges)
+	fmt.Printf("applied %d indexers to %s: %d created, %d updated, %d duplicates skipped (%d native, %d torznab bridge)\n",
+		len(result.Applied), dbPath, result.Created, result.Updated, result.Skipped, native, bridges)
 	for _, item := range result.Applied {
 		action := "created"
 		if item.Updated {
@@ -213,6 +331,10 @@ func printApplySummary(result importers.ApplyResult, dbPath, keySource string) {
 			kind = "torznab bridge"
 		}
 		fmt.Printf("  %-14s %-40s %s (%s)\n", kind, item.Name, action, item.DefinitionID)
+	}
+	for _, item := range result.Dropped {
+		fmt.Printf("  %-14s %-40s non importato: già coperto da %s\n",
+			"duplicate", item.Target.Name, item.CoveredBy.Name)
 	}
 	if keySource != "" {
 		fmt.Printf("vault key source: %s\n", keySource)

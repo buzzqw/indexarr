@@ -320,6 +320,9 @@ func (s *Server) indexerBadges(r *http.Request, in store.Indexer, def *definitio
 		default:
 			out = append(out, uiBadge{Kind: "access", Label: s.translate(r, "idx.badgePublic")})
 		}
+		if strings.EqualFold(strings.TrimSpace(def.Meta.Mirror), "unofficial") {
+			out = append(out, uiBadge{Kind: "mirror", Label: s.translate(r, "idx.badgeMirror")})
+		}
 	}
 	rawURL := ""
 	if config := publicConfigMap(in.ConfigJSON); config != nil {
@@ -1246,6 +1249,7 @@ type compactFormView struct {
 	Problems        []string
 	Note            string
 	StateWarning    string
+	MirrorWarning   string
 	ChangeSiteURL   string
 }
 
@@ -1303,6 +1307,9 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		case "bozza", "degradata":
 			data.StateWarning = s.translate(r, "idx.testingWarning")
 		}
+	}
+	if strings.EqualFold(strings.TrimSpace(parsed.Meta.Mirror), "unofficial") {
+		data.MirrorWarning = s.translate(r, "indexerForm.mirrorWarning")
 	}
 	if current == nil && in == nil && strings.TrimSpace(data.Name) == "" {
 		data.Name = parsed.Meta.Name
@@ -1469,7 +1476,7 @@ func (s *Server) settingField(r *http.Request, setting definition.Setting, value
 	field := indexerSettingField{
 		Name:      setting.Name,
 		Label:     label,
-		Help:      setting.Help,
+		Help:      s.settingHelp(r, setting.Name, setting.Help),
 		Type:      settingFieldType(setting),
 		Value:     value,
 		Required:  setting.Required || forceRequired,
@@ -1503,6 +1510,19 @@ func (s *Server) settingLabel(r *http.Request, name, fallback string) string {
 		return fallback
 	}
 	return name
+}
+
+// settingHelp prefers a translated help line over the help text written in
+// the definition. Definitions stay language-neutral while the UI can explain
+// a field (the pasted session cookie, for example) in all seven languages.
+func (s *Server) settingHelp(r *http.Request, name, fallback string) string {
+	key := "setting." + name + ".help"
+	lang := requestLanguage(r)
+	help := i18n.T(lang, key)
+	if help != key && strings.TrimSpace(help) != "" {
+		return help
+	}
+	return fallback
 }
 
 func splitCategoryList(raw string) []string {

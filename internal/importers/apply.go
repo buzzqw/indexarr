@@ -29,6 +29,7 @@ type AppliedIndexer struct {
 // Errors counts the failure that stopped the run (zero when err is nil).
 type ApplyResult struct {
 	Applied []AppliedIndexer
+	Dropped []DroppedTarget
 	Created int
 	Updated int
 	Skipped int
@@ -62,6 +63,8 @@ func ApplyTargets(ctx context.Context, st *store.Store, secretVault *vault.Vault
 		return result, err
 	}
 
+	targets, result.Dropped = Deduplicate(targets)
+	result.Skipped = len(result.Dropped)
 	seen := make(map[string]bool, len(targets))
 	for _, target := range targets {
 		key := target.Key()

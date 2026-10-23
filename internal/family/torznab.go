@@ -250,16 +250,14 @@ func (t *Torznab) Download(ctx context.Context, item engine.Item) (engine.Payloa
 		return engine.Payload{Magnet: target}, nil
 	}
 
-	// Prefer a real indexer id. A GUID synthesised from the infohash or the
-	// download URL is not a t=get id, so those fall back to the release URL.
-	id := strings.TrimSpace(item.Attributes["guid"])
+	// Prefer a real indexer id. A GUID synthesised from the infohash, the
+	// download URL or the tracker's release page is not a t=get id, so those
+	// fall back to the release URL. Prowlarr in particular returns the site
+	// download URL as <guid>; sending it as t=get&id= answers HTTP 400, while
+	// its <link> is already the working per-indexer download.
+	id := opaqueTorznabID(item.Attributes["guid"], item)
 	if id == "" {
-		candidate := strings.TrimSpace(item.GUID)
-		if candidate != "" &&
-			candidate != strings.TrimSpace(item.DownloadURL) &&
-			!strings.EqualFold(candidate, strings.TrimSpace(item.InfoHash)) {
-			id = candidate
-		}
+		id = opaqueTorznabID(item.GUID, item)
 	}
 
 	var resp *engine.Response
@@ -560,6 +558,25 @@ func normalizeInfoHash(raw string) string {
 		if _, err := hex.DecodeString(value); err == nil {
 			return value
 		}
+	}
+	return value
+}
+
+// opaqueTorznabID reports whether raw can be sent as a Torznab t=get id. URLs
+// (the tracker release page or download URL Prowlarr exposes as <guid>),
+// magnets and infohashes cannot: the release download URL is used instead.
+func opaqueTorznabID(raw string, item engine.Item) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+	lower := strings.ToLower(value)
+	if strings.Contains(lower, "://") || strings.HasPrefix(lower, "magnet:") {
+		return ""
+	}
+	if strings.EqualFold(value, strings.TrimSpace(item.DownloadURL)) ||
+		strings.EqualFold(value, strings.TrimSpace(item.InfoHash)) {
+		return ""
 	}
 	return value
 }

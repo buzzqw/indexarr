@@ -12,22 +12,27 @@
 #   1. stops the service (systemd unit or the local process in indexarr.pid);
 #   2. moves data/ to data.old-<timestamp>/ (never deletes it);
 #   3. creates a fresh data directory and database;
-#   4. copies the Torznab API key from the old database into the new one;
+#   4. copies the Torznab API key and the TorrentLeech RSS URL from the old
+#      database into the new one (the feed URL is sealed and never printed);
 #   5. imports Jackett/Prowlarr indexers as native indexers, reading the
-#      manager keys from the moved database and passing them to the importer
-#      through the environment (never on the command line, never printed);
+#      manager keys from --env-file (default ~/.config/indexarr-dev/managers.env)
+#      or the environment and passing them to the importer through the
+#      environment (never on the command line, never printed);
 #   6. starts the service again and waits for /healthz.
 #
 # On any error after the data directory has been moved, the script stops the
 # new service, moves the failed directory aside as data.failed-<timestamp>/,
 # restores data.old-<timestamp>/ and starts the old service again.
 #
-# The Jackett import has two inputs: --jackett (the live URL used for a
-# read-only probe) and --jackett-copy (a copy of the Jackett data directory,
-# never the live one). The live URL and the key from the old database override
-# the stale values inside the copy, so the imported bridges work. If the live
-# probe rejects the key, the Jackett import is skipped with a warning and the
-# Prowlarr import continues.
+# The Jackett import reads the live t=indexers list from --jackett (or
+# JACKETT_URL). --jackett-copy is only a fallback used when that API does not
+# answer; it is never the primary source. Indexers that fail the read-only caps
+# probe are imported disabled with the reason in the summary.
+#
+# The manager keys come from --env-file (default
+# ~/.config/indexarr-dev/managers.env) or from JACKETT_* / PROWLARR_* variables.
+# The old database is used only for the Torznab API key of indexarr itself and
+# for the personal TorrentLeech RSS URL, which is sealed in the vault.
 #
 # The script never writes to Jackett or Prowlarr: only GET requests.
 #
@@ -41,9 +46,10 @@
 #   --listen ADDR             listen address for the new instance (default: from config, else :8484)
 #   --port PORT               shorthand for --listen 127.0.0.1:PORT (test use)
 #   --no-systemd              manage a local process with a PID file instead of systemd
-#   --jackett URL             live Jackett base URL (read-only probe, optional)
-#   --prowlarr URL            live Prowlarr base URL
-#   --jackett-copy DIR        copy of the Jackett data directory (ServerConfig.json + Indexers/)
+#   --env-file FILE           Jackett/Prowlarr keys (default: ~/.config/indexarr-dev/managers.env)
+#   --jackett URL             live Jackett base URL (default: JACKETT_URL)
+#   --prowlarr URL            live Prowlarr base URL (default: PROWLARR_URL)
+#   --jackett-copy DIR        copy of Jackett data, used only if the live API fails
 #   --skip-import             do not import from Jackett/Prowlarr
 #   --yes                     do not ask for confirmation with --apply/--rollback
 #   -h, --help                this help
@@ -63,14 +69,16 @@ LISTEN=""
 PORT=""
 NO_SYSTEMD=0
 MODE="dry-run"
-JACKETT_URL=""
-PROWLARR_URL=""
+JACKETT_URL="${JACKETT_URL:-}"
+PROWLARR_URL="${PROWLARR_URL:-}"
 JACKETT_COPY=""
+ENV_FILE="${HOME}/.config/indexarr-dev/managers.env"
+ENV_FILE_EXPLICIT=0
 SKIP_IMPORT=0
 ASSUME_YES=0
 
 usage() {
-	sed -n '2,52p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+	sed -n '2,58p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 die() {
@@ -148,6 +156,12 @@ while (($#)); do
 		PROWLARR_URL="$2"
 		shift 2
 		;;
+	--env-file)
+		need_value "$1" "${2:-}"
+		ENV_FILE="$2"
+		ENV_FILE_EXPLICIT=1
+		shift 2
+		;;
 	--jackett-copy)
 		need_value "$1" "${2:-}"
 		JACKETT_COPY="$2"
@@ -170,6 +184,44 @@ while (($#)); do
 		;;
 	esac
 done
+
+# load_manager_env reads only the four manager variables from the env file.
+# An explicit --env-file must exist; the default one may be absent. Values
+# already present in the environment win, so a one-off override never requires
+# editing the file. The keys are exported for the importer and never printed.
+load_manager_env() {
+	local file="$1" explicit="$2" line key value
+	if [[ ! -f "$file" ]]; then
+		((explicit == 0)) || die "env file not found: $file"
+		return 0
+	fi
+	while IFS= read -r line || [[ -n "$line" ]]; do
+		[[ "$line" =~ ^[[:space:]]*# ]] && continue
+		[[ "$line" == *=* ]] || continue
+		key="${line%%=*}"
+		key="${key#export }"
+		key="${key//[[:space:]]/}"
+		value="${line#*=}"
+		case "$value" in
+		\"*\") value="${value:1:${#value}-2}" ;;
+		\'*\') value="${value:1:${#value}-2}" ;;
+		esac
+		case "$key" in
+		JACKETT_URL | JACKETT_API_KEY | PROWLARR_URL | PROWLARR_API_KEY)
+			if [[ -z "${!key:-}" ]]; then
+				printf -v "$key" '%s' "$value"
+				export "$key"
+			fi
+			;;
+		esac
+	done <"$file"
+}
+
+load_manager_env "$ENV_FILE" "$ENV_FILE_EXPLICIT"
+JACKETT_URL="${JACKETT_URL:-}"
+PROWLARR_URL="${PROWLARR_URL:-}"
+JACKETT_KEY="${JACKETT_API_KEY:-}"
+PROWLARR_KEY="${PROWLARR_API_KEY:-}"
 
 if [[ -n "$PORT" && -n "$LISTEN" ]]; then
 	die "--port and --listen are mutually exclusive"
@@ -319,30 +371,22 @@ read_setting() {
 	sqlite_ro "$db" "SELECT value FROM settings WHERE key='$key';"
 }
 
-read_source_url() {
-	local id="$1"
-	[[ "$id" =~ ^[0-9]+$ ]] || return 0
-	sqlite_ro "$DB_OLD" "SELECT url FROM sources WHERE id=$id;"
-}
-
-read_source_key() {
-	local id="$1"
-	[[ "$id" =~ ^[0-9]+$ ]] || return 0
-	sqlite_ro "$DB_OLD" "SELECT api_key FROM sources WHERE id=$id;"
-}
-
-source_exists() {
-	local id="$1"
-	[[ "$(sqlite_ro "$DB_OLD" "SELECT count(*) FROM sources WHERE id=$id;" 2>/dev/null || echo 0)" == "1" ]]
+# read_torrentleech_feed returns the personal RSS URL of the old TorrentLeech
+# source. The URL embeds the rsskey: it is never printed, only handed to the
+# importer through the environment and sealed in the vault.
+read_torrentleech_feed() {
+	sqlite_ro "$DB_OLD" "SELECT url FROM sources
+		WHERE lower(name) LIKE '%torrentleech%' OR lower(url) LIKE '%torrentleech%'
+		ORDER BY (lower(name) LIKE '%rss%') DESC, id DESC LIMIT 1;" 2>/dev/null || true
 }
 
 # --- preflight ------------------------------------------------------------
 
 # Manager values are resolved once, before anything destructive happens.
-JACKETT_KEY=""
-PROWLARR_KEY=""
 JACKETT_OK=0
+JACKETT_FALLBACK=0
 PROWLARR_OK=0
+TL_RSS_URL=""
 DB_OLD=""
 
 preflight_common() {
@@ -373,9 +417,17 @@ preflight_dry_run() {
 	if [[ "$SKIP_IMPORT" == "1" ]]; then
 		note "import: skipped (--skip-import)"
 	else
-		[[ -n "$PROWLARR_URL" ]] && note "Prowlarr: $PROWLARR_URL" || note "Prowlarr: from old database source 2"
-		[[ -n "$JACKETT_URL" ]] && note "Jackett probe: $JACKETT_URL" || note "Jackett: not configured"
-		[[ -n "$JACKETT_COPY" ]] && note "Jackett data copy: $JACKETT_COPY" || note "Jackett data copy: not configured"
+		if [[ -f "$ENV_FILE" ]]; then
+			note "manager env file: $ENV_FILE"
+		else
+			note "manager env file: $ENV_FILE (missing; using exported variables)"
+		fi
+		note "Prowlarr key present: $(if [[ -n "$PROWLARR_KEY" ]]; then echo yes; else echo no; fi)"
+		note "Jackett key present: $(if [[ -n "$JACKETT_KEY" ]]; then echo yes; else echo no; fi)"
+		[[ -n "$PROWLARR_URL" ]] && note "Prowlarr: $PROWLARR_URL" || note "Prowlarr: not configured"
+		[[ -n "$JACKETT_URL" ]] && note "Jackett: $JACKETT_URL" || note "Jackett: not configured"
+		[[ -n "$JACKETT_COPY" ]] && note "Jackett fallback copy: $JACKETT_COPY" || note "Jackett fallback copy: not configured"
+		note "TorrentLeech RSS: from the old database source (URL never printed)"
 	fi
 }
 
@@ -399,25 +451,24 @@ preflight_apply() {
 	[[ ! -e "$FAILED_DIR" ]] || die "failed directory already exists: $FAILED_DIR"
 
 	if [[ "$SKIP_IMPORT" != "1" ]]; then
-		if [[ -z "$PROWLARR_URL" ]]; then
-			PROWLARR_URL="$(read_source_url 2)"
-		fi
-		if [[ -z "$JACKETT_URL" ]]; then
-			JACKETT_URL="$(read_source_url 1)"
-		fi
-		if source_exists 1; then
-			JACKETT_KEY="$(read_source_key 1)"
-		fi
-		if source_exists 2; then
-			PROWLARR_KEY="$(read_source_key 2)"
+		TL_RSS_URL="$(read_torrentleech_feed)"
+		TL_RSS_URL="${TL_RSS_URL%%$'\n'*}"
+		if [[ -n "$TL_RSS_URL" && ! "$TL_RSS_URL" =~ ^https?:// ]]; then
+			warn "the TorrentLeech feed URL in the old database is not http(s); it will not be imported"
+			TL_RSS_URL=""
 		fi
 
-		if [[ -z "$PROWLARR_URL" && -z "$JACKETT_COPY" ]]; then
-			die "no Prowlarr URL and no Jackett copy: nothing to import (use --skip-import to really skip)"
+		if [[ -n "$PROWLARR_URL" && -z "$PROWLARR_KEY" ]]; then
+			die "PROWLARR_API_KEY is missing (set it in $ENV_FILE or in the environment)"
 		fi
+		if [[ -n "$JACKETT_URL" && -z "$JACKETT_KEY" ]]; then
+			die "JACKETT_API_KEY is missing (set it in $ENV_FILE or in the environment)"
+		fi
+		if [[ -z "$PROWLARR_URL" && -z "$JACKETT_URL" && -z "$JACKETT_COPY" && -z "$TL_RSS_URL" ]]; then
+			die "no Prowlarr URL, no Jackett URL and no TorrentLeech feed: nothing to import (use --skip-import to really skip)"
+		fi
+
 		if [[ -n "$PROWLARR_URL" ]]; then
-			[[ -n "$PROWLARR_KEY" ]] ||
-				die "Prowlarr API key not found in sources id 2 (use --skip-import to skip)"
 			step "checking Prowlarr read-only: $PROWLARR_URL"
 			if ! INDEXARR_PROWLARR_KEY="$PROWLARR_KEY" "$IMPORTER" \
 				-prowlarr "$PROWLARR_URL" -timeout 20s >/dev/null 2>"$DATA_DIR/.fresh-start-prowlarr.err"; then
@@ -434,11 +485,21 @@ preflight_apply() {
 			step "checking Jackett read-only: $JACKETT_URL"
 			if probe_jackett; then
 				JACKETT_OK=1
-				note "Jackett accepted the key"
+				note "Jackett t=indexers list accepted the key"
+			elif [[ -n "$JACKETT_COPY" && -d "$JACKETT_COPY" ]]; then
+				JACKETT_OK=1
+				JACKETT_FALLBACK=1
+				warn "Jackett API did not answer; using --jackett-copy as the fallback"
 			else
-				warn "Jackett rejected the key; the Jackett import will be skipped and Prowlarr will continue"
+				warn "Jackett API did not answer and no --jackett-copy fallback exists; the Jackett import will be skipped"
 			fi
+		elif [[ -n "$JACKETT_COPY" ]]; then
+			warn "--jackett-copy is only a fallback: set JACKETT_URL so the live API is tried first; the copy is ignored"
 		fi
+		if [[ "$PROWLARR_OK" != "1" && "$JACKETT_OK" != "1" && -z "$TL_RSS_URL" ]]; then
+			die "no manager accepted the import (use --skip-import to really skip)"
+		fi
+		[[ -n "$TL_RSS_URL" ]] && note "TorrentLeech RSS URL read from the old database (secret, not printed)"
 	fi
 
 	if [[ "$NO_SYSTEMD" == "1" ]]; then
@@ -450,19 +511,19 @@ preflight_apply() {
 	fi
 }
 
-# probe_jackett performs a single GET to the Torznab caps endpoint with the key
-# in a curl config streamed on stdin, so the key never appears in the process
-# list or in a temporary file.
+# probe_jackett performs a single GET to the live t=indexers endpoint with the
+# key in a curl config streamed on stdin, so the key never appears in the
+# process list or in a temporary file.
 probe_jackett() {
 	local body code
 	body="$(mktemp "${TMPDIR:-/tmp}/indexarr-jackett-probe.XXXXXX")"
-	code="$({ printf 'url = "%s/api/v2.0/indexers/all/results/torznab/api?t=caps&apikey=%s"\n' "${JACKETT_URL%/}" "$JACKETT_KEY"
-		printf 'silent\nshow-error\nmax-time = 10\noutput = "%s"\n' "$body"; } |
+	code="$({ printf 'url = "%s/api/v2.0/indexers/all/results/torznab/api?t=indexers&configured=true&apikey=%s"\n' "${JACKETT_URL%/}" "$JACKETT_KEY"
+		printf 'silent\nshow-error\nmax-time = 15\noutput = "%s"\n' "$body"; } |
 		curl --config - -w '%{http_code}' 2>/dev/null || true)"
 	local ok=1
 	if [[ "$code" != "200" ]]; then
 		ok=0
-	elif ! grep -q '<caps' "$body" 2>/dev/null || grep -q '<error' "$body" 2>/dev/null; then
+	elif ! grep -q '<indexers' "$body" 2>/dev/null || grep -q '<error' "$body" 2>/dev/null; then
 		ok=0
 	fi
 	rm -f "$body"
@@ -514,30 +575,30 @@ set_api_key() {
 run_import() {
 	local log="$DATA_DIR/import.log"
 	: >"$log"
-	if [[ -n "$PROWLARR_URL" && "$PROWLARR_OK" == "1" ]]; then
-		step "importing Prowlarr indexers"
-		if ! INDEXARR_PROWLARR_KEY="$PROWLARR_KEY" "$IMPORTER" \
-			-prowlarr "$PROWLARR_URL" -db "$DB" -config "$CONFIG" -apply >>"$log" 2>&1; then
-			tail -n 20 "$log" >&2 || true
-			return 1
-		fi
-		note "Prowlarr import written to the new database"
+	local -a args=(-db "$DB" -config "$CONFIG" -apply)
+	if [[ "$PROWLARR_OK" == "1" ]]; then
+		args+=(-prowlarr "$PROWLARR_URL")
 	fi
-	if [[ -n "$JACKETT_COPY" && "$JACKETT_OK" == "1" ]]; then
-		step "importing Jackett indexers from the copy"
-		local -a args
-		args=(-jackett "$JACKETT_COPY" -db "$DB" -config "$CONFIG" -apply)
-		if [[ -n "$JACKETT_URL" ]]; then
+	if [[ "$JACKETT_OK" == "1" ]]; then
+		if [[ "$JACKETT_FALLBACK" == "1" ]]; then
+			args+=(-jackett "$JACKETT_COPY")
+			note "using the Jackett copy as the fallback"
+		else
 			args+=(-jackett-url "$JACKETT_URL")
 		fi
-		if ! INDEXARR_JACKETT_KEY="$JACKETT_KEY" "$IMPORTER" "${args[@]}" >>"$log" 2>&1; then
-			tail -n 20 "$log" >&2 || true
-			return 1
-		fi
-		note "Jackett import written to the new database"
-	elif [[ -n "$JACKETT_COPY" ]]; then
-		warn "Jackett import skipped: the live probe did not accept the key"
 	fi
+	if [[ "${#args[@]}" -le 4 ]]; then
+		note "no manager to import"
+	fi
+	step "importing live managers and the TorrentLeech feed"
+	if ! INDEXARR_PROWLARR_KEY="$PROWLARR_KEY" \
+		INDEXARR_JACKETT_KEY="$JACKETT_KEY" \
+		INDEXARR_TORRENTLEECH_RSS_URL="$TL_RSS_URL" \
+		"$IMPORTER" "${args[@]}" >>"$log" 2>&1; then
+		tail -n 20 "$log" >&2 || true
+		return 1
+	fi
+	note "import written to the new database (one indexer per site)"
 	if [[ -s "$log" ]]; then
 		note "import log: $log"
 	fi
@@ -661,7 +722,8 @@ show_plan() {
 	if [[ "$SKIP_IMPORT" == "1" ]]; then
 		printf '  5. import skipped (--skip-import)\n'
 	else
-		printf '  5. import Jackett/Prowlarr as native indexers (keys from the old database, GET only)\n'
+		printf '  5. import Jackett/Prowlarr as native indexers (keys from %s, GET only)\n' "$ENV_FILE"
+		printf '  5b. add the native torrentleech-rss indexer with the old feed URL\n'
 	fi
 	printf '  6. start the service and wait for %s\n' "$HEALTH_URL"
 	printf '\nNo command was executed. Re-run with --apply to perform the switch.\n'

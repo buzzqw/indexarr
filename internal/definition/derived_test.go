@@ -71,6 +71,19 @@ func TestDerivedFromJSONRoundTrip(t *testing.T) {
 	}
 }
 
+func TestMirrorParsingAndValidation(t *testing.T) {
+	def, err := Parse([]byte(derivedDefinitionYAML("  mirror: unofficial\n")))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if def.Meta.Mirror != "unofficial" {
+		t.Fatalf("meta.mirror = %q", def.Meta.Mirror)
+	}
+	if _, err := Parse([]byte(derivedDefinitionYAML("  mirror: maybe\n"))); err == nil {
+		t.Fatal("invalid mirror value was accepted")
+	}
+}
+
 func TestDerivedFromValidation(t *testing.T) {
 	if _, err := Parse([]byte(derivedDefinitionYAML("  derived_from: cardigann\n"))); err != nil {
 		t.Fatalf("valid derived_from was rejected: %v", err)

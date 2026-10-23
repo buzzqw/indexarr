@@ -21,19 +21,21 @@ const nativeDefinition = "torznab-generic"
 // Secrets are carried in the target because the caller seals them in the
 // vault; they must never be logged or included in errors.
 type NativeTarget struct {
-	Name         string
-	Slug         string
-	DefinitionID string            // verified catalog id, or "torznab-generic"
-	ViaManager   string            // "jackett" | "prowlarr" | "" (direct)
-	BaseURL      string            // per-indexer Torznab endpoint when ViaManager != ""
-	Config       map[string]string // non-secret settings for config_json
-	Secrets      map[string]string // sealed by the caller, never logged
-	Enabled      bool
-	Priority     int
-	Tags         []string
-	Categories   []int
-	Protocol     Protocol
-	RemoteID     string
+	Name           string
+	Slug           string
+	DefinitionID   string            // verified catalog id, or "torznab-generic"
+	ViaManager     string            // "jackett" | "prowlarr" | "" (direct)
+	SiteKey        string            // stable site identity used to drop duplicates
+	BaseURL        string            // per-indexer Torznab endpoint when ViaManager != ""
+	Config         map[string]string // non-secret settings for config_json
+	Secrets        map[string]string // sealed by the caller, never logged
+	Enabled        bool
+	DisabledReason string // why an upstream indexer is imported disabled
+	Priority       int
+	Tags           []string
+	Categories     []int
+	Protocol       Protocol
+	RemoteID       string
 }
 
 // Key returns the idempotency key of a target: definition, base URL and slug.
@@ -215,19 +217,21 @@ func catalogTarget(entry catalog.Entry, indexer Indexer) NativeTarget {
 	}
 
 	return NativeTarget{
-		Name:         indexer.Name,
-		Slug:         slugify(indexer.Name),
-		DefinitionID: entry.ID,
-		ViaManager:   "",
-		BaseURL:      firstNonEmpty(indexer.SiteURL, firstMetaURL(def)),
-		Config:       config,
-		Secrets:      secrets,
-		Enabled:      indexer.Enabled,
-		Priority:     indexer.Priority,
-		Tags:         append([]string(nil), indexer.Tags...),
-		Categories:   append([]int(nil), indexer.Categories...),
-		Protocol:     protocol,
-		RemoteID:     indexer.RemoteID,
+		Name:           indexer.Name,
+		Slug:           slugify(indexer.Name),
+		DefinitionID:   entry.ID,
+		SiteKey:        siteKeyForIndexer(indexer, entry.ID),
+		ViaManager:     "",
+		BaseURL:        firstNonEmpty(indexer.SiteURL, firstMetaURL(def)),
+		Config:         config,
+		Secrets:        secrets,
+		Enabled:        indexer.Enabled,
+		DisabledReason: targetDisabledReason(indexer, ""),
+		Priority:       indexer.Priority,
+		Tags:           append([]string(nil), indexer.Tags...),
+		Categories:     append([]int(nil), indexer.Categories...),
+		Protocol:       protocol,
+		RemoteID:       indexer.RemoteID,
 	}
 }
 
@@ -266,20 +270,39 @@ func bridgeTarget(source, managerURL, managerAPIKey string, indexer Indexer) Nat
 	}
 
 	return NativeTarget{
-		Name:         indexer.Name,
-		Slug:         slugify(indexer.Name),
-		DefinitionID: nativeDefinition,
-		ViaManager:   manager,
-		BaseURL:      endpoint,
-		Config:       config,
-		Secrets:      secrets,
-		Enabled:      indexer.Enabled,
-		Priority:     indexer.Priority,
-		Tags:         append([]string(nil), indexer.Tags...),
-		Categories:   append([]int(nil), indexer.Categories...),
-		Protocol:     indexer.Protocol,
-		RemoteID:     indexer.RemoteID,
+		Name:           indexer.Name,
+		Slug:           slugify(indexer.Name),
+		DefinitionID:   nativeDefinition,
+		SiteKey:        siteKeyForIndexer(indexer, ""),
+		ViaManager:     manager,
+		BaseURL:        endpoint,
+		Config:         config,
+		Secrets:        secrets,
+		Enabled:        indexer.Enabled,
+		DisabledReason: targetDisabledReason(indexer, manager),
+		Priority:       indexer.Priority,
+		Tags:           append([]string(nil), indexer.Tags...),
+		Categories:     append([]int(nil), indexer.Categories...),
+		Protocol:       indexer.Protocol,
+		RemoteID:       indexer.RemoteID,
 	}
+}
+
+func disabledUpstreamReason(enabled bool, manager string) string {
+	if enabled {
+		return ""
+	}
+	if manager != "" {
+		return "disattivato in " + manager
+	}
+	return "disattivato nella sorgente"
+}
+
+func targetDisabledReason(indexer Indexer, manager string) string {
+	if reason := strings.TrimSpace(indexer.DisabledReason); reason != "" {
+		return reason
+	}
+	return disabledUpstreamReason(indexer.Enabled, manager)
 }
 
 // managerEndpoint builds the documented per-indexer Torznab URL. When the plan
@@ -304,6 +327,95 @@ func managerEndpoint(manager, managerURL string, indexer Indexer) string {
 		return ""
 	default:
 		return strings.TrimSpace(indexer.BaseURL)
+	}
+}
+
+// siteKeyForIndexer is the identity used to recognise the same site arriving
+// from Jackett, Prowlarr and the native catalog. The tracker host is preferred
+// because manager endpoints (127.0.0.1:9117, /14/api) are not site identities;
+// the definition id and, as a last resort, the slug keep entries without a
+// usable URL distinct.
+func siteKeyForIndexer(indexer Indexer, definitionID string) string {
+	for _, raw := range []string{indexer.SiteURL, indexer.Fields["site_link"]} {
+		if host := urlHost(raw); host != "" {
+			return host
+		}
+	}
+	if definitionID != "" {
+		return "definition:" + strings.ToLower(strings.TrimSpace(definitionID))
+	}
+	return "slug:" + slugify(indexer.Name)
+}
+
+// DroppedTarget records a duplicate that was not imported, with the target
+// that covers it, so the summary can say "non importato: già coperto da …".
+type DroppedTarget struct {
+	Target    NativeTarget
+	CoveredBy NativeTarget
+}
+
+// targetRank implements the coordinator's preference: a verified native
+// definition first, then the Prowlarr bridge, then the Jackett bridge.
+func targetRank(target NativeTarget) int {
+	if strings.ToLower(strings.TrimSpace(target.DefinitionID)) != nativeDefinition {
+		return 0
+	}
+	switch strings.ToLower(strings.TrimSpace(target.ViaManager)) {
+	case "prowlarr":
+		return 1
+	case "jackett":
+		return 2
+	default:
+		return 3
+	}
+}
+
+// Deduplicate keeps one target per site. The first target wins only on equal
+// rank; otherwise the higher-preference source replaces it and the loser is
+// returned in dropped. Ordering is stable, so an idempotent re-import sees the
+// same list and updates the same rows.
+func Deduplicate(targets []NativeTarget) ([]NativeTarget, []DroppedTarget) {
+	kept := make([]NativeTarget, 0, len(targets))
+	var dropped []DroppedTarget
+	position := make(map[string]int, len(targets))
+	for _, target := range targets {
+		key := strings.TrimSpace(target.SiteKey)
+		if key == "" {
+			kept = append(kept, target)
+			continue
+		}
+		index, seen := position[key]
+		if !seen {
+			position[key] = len(kept)
+			kept = append(kept, target)
+			continue
+		}
+		current := kept[index]
+		if targetRank(target) < targetRank(current) {
+			kept[index] = target
+			dropped = append(dropped, DroppedTarget{Target: current, CoveredBy: target})
+			continue
+		}
+		dropped = append(dropped, DroppedTarget{Target: target, CoveredBy: current})
+	}
+	return kept, dropped
+}
+
+// TorrentLeechRSSTarget builds the native personal-feed target. The feed URL
+// contains the user's rsskey: it travels in Secrets, is sealed by the caller
+// and is never written to a config_json or a log.
+func TorrentLeechRSSTarget(feedURL string) NativeTarget {
+	return NativeTarget{
+		Name:         "TorrentLeech (RSS)",
+		Slug:         "torrentleech-rss",
+		DefinitionID: "torrentleech-rss",
+		SiteKey:      "torrentleech-rss",
+		ViaManager:   "",
+		Config:       map[string]string{"default-category": "8000"},
+		Secrets:      map[string]string{"url": strings.TrimSpace(feedURL)},
+		Enabled:      true,
+		Priority:     25,
+		Protocol:     ProtocolTorrent,
 	}
 }
 

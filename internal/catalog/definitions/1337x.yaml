@@ -19,6 +19,10 @@ meta:
   protocol: torrent
   author: indexarr
   description: Public 1337x keyword search through the 1337x.tube mirror.
+  # 1337x.to (and the 1337x.st / x1337x.ws proxies) still answer HTTP 403
+  # (Cloudflare challenge) from this network, so the working mirror is first.
+  # The badge stays visible while the primary address is unofficial.
+  mirror: unofficial
   urls:
     - https://1337x.tube/
     - https://1337x.to/

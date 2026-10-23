@@ -19,6 +19,10 @@ meta:
   protocol: torrent
   author: indexarr
   description: Public Kickass Torrents search through the thekat.info mirror.
+  # The official domains (kickasstorrents.to) answer HTTP 451 from this
+  # network and katcr.co is behind a JavaScript challenge, so the working
+  # mirror is first and the definition keeps the unofficial badge.
+  mirror: unofficial
   urls:
     - https://thekat.info/
   updated: "2026-10-23"

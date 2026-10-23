@@ -149,7 +149,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP5 | `download.resolve`: magnet/torrent dalla pagina di dettaglio | fatto | `4e429e5` |
 | WP6 | Famiglia RSS/Atom nativa | fatto | `4e429e5` |
 | WP7 | Prime definizioni native verificate (ExtTo, TorrentGalaxy, Corsaro, Knaben, TorrentLeech RSS) | fatto (4/5 verificati; TorrentLeech bozza) | `4e429e5` |
-| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; `scripts/fresh-start.sh` provato su copia (apply + rollback); scambio produzione da eseguire | `5c4a470` |
+| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; `scripts/fresh-start.sh` con chiavi da env-file, Jackett dal vivo, dedup e `torrentleech-rss` nativo; tre prove su copia; scambio produzione da eseguire | `5c4a470` |
 | WP9 | Health check e transizioni di stato del catalogo | da fare | |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
@@ -736,19 +736,28 @@ e il servizio systemd. Eseguirla solo con il coordinatore presente. Il
 database attuale è usa e getta, ma `data.old-<data>/` si conserva per una
 settimana come rete di sicurezza.
 
-**Stato (23/10):** `scripts/fresh-start.sh` implementa il passo 5 (dry-run
-predefinito, `--apply`, `--rollback`, override `--data-dir`, `--unit`,
-`--binary`, `--listen`/`--port`, `--no-systemd`, `--jackett`, `--prowlarr`,
-`--jackett-copy`, `--skip-import`, `--yes`). La prova generale è stata fatta
-su una copia del DB con porta `18510` e processo locale: apply, tre cicli di
-aggiornamento, ricerca per indexer e rollback. I risultati sono nel corpo del
-commit `Add the fresh-start script and record the dress rehearsal`. Per il
+**Stato (23/10, ciclo 4):** `scripts/fresh-start.sh` implementa il passo 5
+(dry-run predefinito, `--apply`, `--rollback`, override `--data-dir`, `--unit`,
+`--binary`, `--listen`/`--port`, `--no-systemd`, `--env-file`, `--jackett`,
+`--prowlarr`, `--jackett-copy`, `--skip-import`, `--yes`). Le chiavi di
+Jackett/Prowlarr arrivano da `--env-file` (default
+`~/.config/indexarr-dev/managers.env`) o dalle variabili; il DB vecchio serve
+solo per la API key Torznab di indexarr e per l'URL del feed TorrentLeech, che
+viene creato come indexer nativo `torrentleech-rss` e sigillato nel vault.
+L'elenco Jackett si legge dal vivo con
+`GET /api/v2.0/indexers/all/results/torznab/api?t=indexers&configured=true`;
+`--jackett-copy` è solo il ripiego quando l'API non risponde. La prova
+generale è stata fatta tre volte su copie del DB con porta `18510` e processo
+locale; ogni ciclo ha importato dal vivo, creato 9 indexer senza doppioni e
+fatto almeno un ciclo del feed TorrentLeech con release nuove > 0. Per il
 giorno dello scambio restano validi i comandi qui sotto; con `--no-systemd`
 lo script usa un PID file e non tocca systemd.
 
 Prerequisiti: il binario nuovo è già compilato e installato come
 `bin/indexarr` (fuori da questa procedura); Jackett/Prowlarr sono raggiungibili
-in sola lettura; per Jackett si usa una **copia** della directory dati.
+in sola lettura; `~/.config/indexarr-dev/managers.env` contiene le quattro
+variabili `JACKETT_URL`, `JACKETT_API_KEY`, `PROWLARR_URL`,
+`PROWLARR_API_KEY`.
 
 ```bash
 cd /home/andres/indexarr
@@ -793,8 +802,11 @@ e ricorda di verificare che le app lo raggiungano.
 ```bash
 # 5. Import dalla UI: http://<host>:8484/import
 #    - Prowlarr: URL dell'istanza + API key (sola lettura).
-#    - Jackett: percorso della COPIA della directory dati, mai quella viva.
+#    - Jackett: URL vivo (t=indexers); la copia della directory dati è solo il
+#      ripiego se l'API non risponde.
 #    Anteprima -> selezionare i siti -> Importa selezionati -> riepilogo.
+#    Lo stesso sito da più sorgenti entra una volta sola: nativo verificato >
+#    Prowlarr > Jackett; gli altri compaiono come "già coperto da …".
 ```
 
 Alternativa da riga di comando, con il servizio fermo (stesso servizio di
@@ -802,10 +814,13 @@ apply della UI, nessuna riga in `sources`):
 
 ```bash
 sudo systemctl stop indexarr
+set -a; . ~/.config/indexarr-dev/managers.env; set +a
 go build -o /tmp/indexarr-import ./cmd/indexarr-import
-/tmp/indexarr-import -prowlarr "http://127.0.0.1:9696" \
-  -prowlarr-key "$PROWLARR_API_KEY" -db data/indexarr.db -apply
-# oppure: /tmp/indexarr-import -jackett /percorso/della/copia -db data/indexarr.db -apply
+INDEXARR_JACKETT_KEY="$JACKETT_API_KEY" INDEXARR_PROWLARR_KEY="$PROWLARR_API_KEY" \
+  /tmp/indexarr-import -jackett-url "$JACKETT_URL" -prowlarr "$PROWLARR_URL" \
+  -db data/indexarr.db -apply
+# Il feed TorrentLeech personale si aggiunge con l'URL letto dal DB vecchio:
+# INDEXARR_TORRENTLEECH_RSS_URL="https://rss24h.torrentleech.org/<rsskey>" ...
 sudo systemctl start indexarr
 ```
 

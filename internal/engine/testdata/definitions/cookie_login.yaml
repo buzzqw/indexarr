@@ -1,0 +1,27 @@
+schema: 1
+meta:
+  id: cookie-login
+  name: Cookie Login
+  type: private
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+settings:
+  - { name: cookie, type: password, required: true }
+categories:
+  - { site: "5", standard: 5040, desc: "TV HD" }
+capabilities:
+  search: [q]
+auth:
+  strategy: cookie
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+  response:
+    type: html
+    rows: { selector: "table.results tbody tr" }
+    fields:
+      title: { selector: "a.title", filters: [trim] }
+      download: { selector: "a.download", attr: href, type: url }
+    required: [title, download]

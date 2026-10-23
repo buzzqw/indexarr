@@ -56,6 +56,10 @@ type Meta struct {
 	// DerivedFrom marks a draft produced by a conversion tool. Derived drafts
 	// are writing aids: they stay local and the built-in catalog rejects them.
 	DerivedFrom string `yaml:"derived_from,omitempty" json:"derived_from,omitempty"`
+	// Mirror marks a definition whose working address is not the site's
+	// official domain. The value "unofficial" shows a permanent badge and a
+	// warning in the form, even when the definition itself is verified.
+	Mirror string `yaml:"mirror,omitempty" json:"mirror,omitempty"`
 }
 
 // HasLatest reports whether the indexer publishes a list of new releases. The

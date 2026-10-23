@@ -94,9 +94,14 @@ chmod +x "$TMP/fake-indexarr"
 cat >"$TMP/fake-import" <<'FAKE'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'prowlarr=%s jackett=%s args=%s\n' \
+prowlarr_sha="$(printf '%s' "${INDEXARR_PROWLARR_KEY:-}" | sha256sum | cut -d' ' -f1)"
+jackett_sha="$(printf '%s' "${INDEXARR_JACKETT_KEY:-}" | sha256sum | cut -d' ' -f1)"
+printf 'prowlarr=%s jackett=%s tl=%s psha=%s jsha=%s args=%s\n' \
 	"${INDEXARR_PROWLARR_KEY:+set}" \
 	"${INDEXARR_JACKETT_KEY:+set}" \
+	"${INDEXARR_TORRENTLEECH_RSS_URL:+set}" \
+	"$prowlarr_sha" \
+	"$jackett_sha" \
 	"$*" >>"${FAKE_IMPORT_MARKER:?}"
 exit 0
 FAKE
@@ -128,6 +133,7 @@ INSERT INTO settings(key, value) VALUES ('api_key', '$key');
 INSERT INTO settings(key, value) VALUES ('marker', '$marker');
 INSERT INTO sources(id, name, kind, url, api_key) VALUES (1, 'jackett', 'torznab', 'http://127.0.0.1:9117', 'jackett-source-key');
 INSERT INTO sources(id, name, kind, url, api_key) VALUES (2, 'Prowlarr', 'torznab', 'http://127.0.0.1:9696', 'prowlarr-source-key');
+INSERT INTO sources(id, name, kind, url, api_key) VALUES (37, 'rss24h.torrentleech.org', 'rss', 'https://rss24h.torrentleech.org/TESTRSSKEY', '');
 SQL
 }
 
@@ -227,7 +233,11 @@ python3 -c '
 import http.server, sys
 class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        body = b"<caps><server title=\"test\" /></caps>"
+        if "t=indexers" not in self.path:
+            self.send_response(404); self.end_headers(); return
+        if "apikey=jackett-live-key" not in self.path:
+            self.send_response(403); self.end_headers(); return
+        body = b"<indexers><indexer id=\"site\" configured=\"true\"><title>Site</title><link>https://site.example/</link></indexer></indexers>"
         self.send_response(200)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -241,27 +251,64 @@ PIDS+=("$JACKETT_SERVER_PID")
 sleep 0.3
 mkdir -p "$TMP/jackett-copy/Indexers"
 printf '{"Port": 9117, "APIKey": "stale-copy-key"}\n' >"$TMP/jackett-copy/ServerConfig.json"
+cat >"$TMP/managers.env" <<ENV
+JACKETT_URL=http://127.0.0.1:$JACKETT_PORT
+JACKETT_API_KEY=jackett-live-key
+PROWLARR_URL=http://127.0.0.1:$PORT
+PROWLARR_API_KEY=prowlarr-live-key
+ENV
 export FAKE_IMPORT_MARKER="$TMP/import.marker"
 : >"$FAKE_IMPORT_MARKER"
 OUT="$TMP/import.out"
 "$SCRIPT" --apply --yes --no-systemd --data-dir "$DATA" \
 	--binary "$TMP/fake-indexarr" --importer "$TMP/fake-import" \
-	--port "$PORT" --prowlarr "http://127.0.0.1:$PORT" \
-	--jackett "http://127.0.0.1:$JACKETT_PORT" \
+	--port "$PORT" --env-file "$TMP/managers.env" \
 	--jackett-copy "$TMP/jackett-copy" >"$OUT" 2>&1
 grep -q 'fresh start complete' "$OUT" || { cat "$OUT" >&2; fail "import apply did not complete"; }
 APPLY_CALLS="$(grep -c -- '-apply' "$FAKE_IMPORT_MARKER" || true)"
-[[ "$APPLY_CALLS" == "2" ]] || { cat "$FAKE_IMPORT_MARKER" >&2; fail "expected two importer apply calls, got $APPLY_CALLS"; }
-grep -q 'prowlarr=set.*-apply' "$FAKE_IMPORT_MARKER" || fail "Prowlarr key was not passed through the environment"
-grep -q 'jackett=set.*-apply' "$FAKE_IMPORT_MARKER" || fail "Jackett key was not passed through the environment"
-if grep -q -- 'jackett-source-key\|prowlarr-source-key' "$OUT" "$FAKE_IMPORT_MARKER"; then
-	fail "importer output or marker contains a source key"
+[[ "$APPLY_CALLS" == "1" ]] || { cat "$FAKE_IMPORT_MARKER" >&2; fail "expected one combined importer apply call, got $APPLY_CALLS"; }
+grep -q 'prowlarr=set jackett=set tl=set' "$FAKE_IMPORT_MARKER" || fail "manager or TorrentLeech secrets were not passed through the environment"
+grep -q -- '-prowlarr http://127.0.0.1:'"$PORT" "$FAKE_IMPORT_MARKER" || fail "Prowlarr URL missing from the import"
+grep -q -- '-jackett-url http://127.0.0.1:'"$JACKETT_PORT" "$FAKE_IMPORT_MARKER" || fail "live Jackett URL missing from the import"
+if grep -q -- '-jackett /' "$FAKE_IMPORT_MARKER"; then
+	fail "the Jackett copy was used even though the live API answered"
 fi
-if grep -q -- 'jackett-source-key\|prowlarr-source-key' "$DATA/import.log"; then
-	fail "import.log contains a source key"
+PROWLARR_SHA="$(printf '%s' 'prowlarr-live-key' | sha256sum | cut -d' ' -f1)"
+JACKETT_SHA="$(printf '%s' 'jackett-live-key' | sha256sum | cut -d' ' -f1)"
+grep -q -- "psha=$PROWLARR_SHA" "$FAKE_IMPORT_MARKER" || fail "Prowlarr did not receive the env-file key"
+grep -q -- "jsha=$JACKETT_SHA" "$FAKE_IMPORT_MARKER" || fail "Jackett did not receive the env-file key"
+if grep -q -- 'jackett-source-key\|prowlarr-source-key\|TESTRSSKEY\|jackett-live-key\|prowlarr-live-key' "$OUT" "$FAKE_IMPORT_MARKER" "$DATA/import.log"; then
+	fail "import output, marker or log contains a secret"
 fi
 kill_from_pidfile "$DATA/indexarr.pid"
-ok "import receives both keys through the environment, never in the logs"
+ok "import uses the env-file keys and the live Jackett list, never the old source keys"
+
+# --- 3b. Jackett copy is only the fallback when the live API fails --------
+
+DATA="$TMP/fallback/data"
+make_data "$DATA" "$OLD_KEY" "old-marker"
+PORT="$(free_port)"
+DEAD_JACKETT_PORT="$(free_port)"
+cat >"$TMP/fallback.env" <<ENV
+JACKETT_URL=http://127.0.0.1:$DEAD_JACKETT_PORT
+JACKETT_API_KEY=jackett-live-key
+PROWLARR_URL=http://127.0.0.1:$PORT
+PROWLARR_API_KEY=prowlarr-live-key
+ENV
+: >"$FAKE_IMPORT_MARKER"
+OUT="$TMP/fallback.out"
+"$SCRIPT" --apply --yes --no-systemd --data-dir "$DATA" \
+	--binary "$TMP/fake-indexarr" --importer "$TMP/fake-import" \
+	--port "$PORT" --env-file "$TMP/fallback.env" \
+	--jackett-copy "$TMP/jackett-copy" >"$OUT" 2>&1
+grep -q 'fresh start complete' "$OUT" || { cat "$OUT" >&2; fail "fallback apply did not complete"; }
+grep -q -- '-jackett /' "$FAKE_IMPORT_MARKER" || { cat "$FAKE_IMPORT_MARKER" >&2; fail "fallback did not use the Jackett copy"; }
+if grep -q -- '-jackett-url' "$FAKE_IMPORT_MARKER"; then
+	fail "fallback still pointed the copy at the dead live URL"
+fi
+grep -q 'using --jackett-copy as the fallback' "$OUT" || fail "fallback warning missing"
+kill_from_pidfile "$DATA/indexarr.pid"
+ok "the Jackett copy is used only after the live API fails"
 
 # --- 4. a failed preflight changes nothing -------------------------------
 

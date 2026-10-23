@@ -202,6 +202,37 @@ func TestDefinitionConnectorFormLoginCookiesAndSearch(t *testing.T) {
 	}
 }
 
+func TestDefinitionConnectorPastedCookieSkipsLoginAndSendsHeader(t *testing.T) {
+	searchPage := fixture(t, "search.html")
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/search" {
+			t.Errorf("unexpected request %s %s; a cookie strategy must not visit a login page", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		requests.Add(1)
+		if got := r.Header.Get("Cookie"); got != "sid=abc; uid=42" {
+			t.Errorf("Cookie header = %q", got)
+		}
+		writeBody(t, w, searchPage)
+	}))
+	defer server.Close()
+
+	connector := newDefinitionConnector(t, "cookie_login.yaml", server.URL,
+		map[string]string{"cookie": " Cookie: sid=abc; uid=42 \n"}, newDefinitionClock())
+	items, err := connector.Search(context.Background(), SearchRequest{Mode: ModeSearch, Query: "ubuntu"})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) == 0 {
+		t.Fatal("search returned no items")
+	}
+	if requests.Load() != 1 {
+		t.Fatalf("requests = %d, want 1", requests.Load())
+	}
+}
+
 func TestDefinitionConnectorLoginFailureHidesCredentials(t *testing.T) {
 	loginPage := fixture(t, "login.html")
 	failedPage := fixture(t, "login_failed.html")

@@ -617,6 +617,25 @@ func TestTorznabDownload(t *testing.T) {
 		}
 	})
 
+	t.Run("url guid uses the release download link", func(t *testing.T) {
+		// Prowlarr returns the tracker download page as <guid>. Sending it as
+		// t=get&id= makes Prowlarr answer 400; the <link> is the real download.
+		payload, err := connector.Download(context.Background(), engine.Item{
+			Title:       "Prowlarr Release",
+			GUID:        "https://tracker.example/download/123/Release.torrent",
+			DownloadURL: server.URL + "/direct.torrent",
+			Attributes: map[string]string{
+				"guid": "https://tracker.example/download/123/Release.torrent",
+			},
+		})
+		if err != nil {
+			t.Fatalf("Download: %v", err)
+		}
+		if string(payload.Body) != torrentBody {
+			t.Errorf("body = %q", payload.Body)
+		}
+	})
+
 	t.Run("enclosure URL with API key", func(t *testing.T) {
 		payload, err := connector.Download(context.Background(), engine.Item{
 			Title:       "Enclosure",

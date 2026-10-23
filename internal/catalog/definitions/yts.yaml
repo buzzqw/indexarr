@@ -18,6 +18,9 @@ meta:
   protocol: torrent
   author: indexarr
   description: Public YTS movie API (JSON) with hash, size and health.
+  # yts.mx no longer resolves; yts.gg answers the same API but is not the
+  # historical official domain, so the badge stays visible.
+  mirror: unofficial
   urls:
     - https://yts.gg/
     - https://yts.lt/

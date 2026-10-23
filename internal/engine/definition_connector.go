@@ -700,6 +700,11 @@ func (c *DefinitionConnector) applyAuth(request *http.Request) {
 	if cookie := c.session.Cookies(request.URL); cookie != "" && request.Header.Get("Cookie") == "" {
 		request.Header.Set("Cookie", cookie)
 	}
+	// A pasted session cookie wins over the jar: it is the credential the
+	// user explicitly supplied in the form (the reCAPTCHA login path).
+	if cookie := c.pastedCookie(); cookie != "" && request.Header.Get("Cookie") == "" {
+		request.Header.Set("Cookie", cookie)
+	}
 	switch authStrategy(c.def) {
 	case "basic":
 		request.SetBasicAuth(c.settings["username"], c.settings["password"])
@@ -729,8 +734,33 @@ func (c *DefinitionConnector) authTemplateValues() *templateValues {
 }
 
 func (c *DefinitionConnector) needsLogin() bool {
+	if c.pastedCookie() != "" {
+		// A cookie the user copied from the browser already is the session:
+		// there is no form to submit and no login page to visit.
+		return false
+	}
 	strategy := authStrategy(c.def)
-	return strategy == "form" || strategy == "cookie"
+	if strategy == "cookie" {
+		// With no steps a cookie strategy means "use the pasted cookie"; only
+		// an explicit login flow still needs to run.
+		return len(c.def.Auth.Steps) > 0
+	}
+	return strategy == "form"
+}
+
+// pastedCookie returns the session cookie supplied in the settings, if any.
+// Browsers copy the whole "Cookie:" request header; the prefix, line breaks
+// and surrounding whitespace are removed before the value reaches a request.
+func (c *DefinitionConnector) pastedCookie() string {
+	raw := strings.TrimSpace(c.settings["cookie"])
+	if raw == "" {
+		return ""
+	}
+	raw = strings.TrimSpace(strings.TrimPrefix(raw, "Cookie:"))
+	raw = strings.TrimSpace(strings.TrimPrefix(raw, "cookie:"))
+	raw = strings.ReplaceAll(raw, "\r", " ")
+	raw = strings.ReplaceAll(raw, "\n", " ")
+	return strings.TrimSpace(raw)
 }
 
 func (c *DefinitionConnector) ensureLogin(ctx context.Context) error {

@@ -57,7 +57,10 @@ type Indexer struct {
 	Tags       []string
 	Priority   int
 	Enabled    bool
-	Fields     map[string]string // non-secret Prowlarr/Jackett fields
+	// DisabledReason explains why a probe disabled an upstream indexer. It is
+	// non-secret and only reaches the import table and the UI.
+	DisabledReason string
+	Fields         map[string]string // non-secret Prowlarr/Jackett fields
 }
 
 // Application is one downstream *arr instance configured in Prowlarr.

@@ -16,6 +16,7 @@
       "xxx"
     ],
     "state": "verificata",
+    "mirror": "unofficial",
     "hosts": [
       "1337x.to",
       "1337x.tube"
@@ -200,8 +201,7 @@
       "music"
     ],
     "required": [
-      "password",
-      "username"
+      "cookie"
     ],
     "state": "bozza",
     "hosts": [
@@ -315,8 +315,7 @@
     "type": "private",
     "protocol": "torrent",
     "required": [
-      "password",
-      "username"
+      "cookie"
     ],
     "state": "bozza",
     "hosts": [
@@ -360,6 +359,7 @@
       "xxx"
     ],
     "state": "verificata",
+    "mirror": "unofficial",
     "hosts": [
       "thekat.info"
     ]
@@ -933,6 +933,7 @@
       "movies"
     ],
     "state": "verificata",
+    "mirror": "unofficial",
     "hosts": [
       "yts.ag",
       "yts.am",

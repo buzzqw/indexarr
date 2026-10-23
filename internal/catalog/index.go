@@ -41,6 +41,7 @@ type IndexEntry struct {
 	Categories  []string `json:"categories,omitempty"`
 	Required    []string `json:"required,omitempty"`
 	State       string   `json:"state"`
+	Mirror      string   `json:"mirror,omitempty"`
 	Hosts       []string `json:"hosts,omitempty"`
 }
 
@@ -95,6 +96,7 @@ func BuildIndex(entries []Entry) []IndexEntry {
 			Categories:  indexCategories(def.Categories),
 			Required:    indexRequired(def.Settings),
 			State:       entry.State,
+			Mirror:      strings.TrimSpace(def.Meta.Mirror),
 			Hosts:       indexHosts(def.Meta.URLs),
 		}
 		out = append(out, item)

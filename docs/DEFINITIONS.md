@@ -43,6 +43,7 @@ deve contenere un solo documento YAML.
 | `description` | no | descrizione breve |
 | `updated` | no | data dell'ultima revisione, per esempio `"2026-10-23"` |
 | `derived_from` | no | slug dello strumento che ha prodotto una bozza, per esempio `cardigann`; una bozza derivata resta locale e il catalogo la rifiuta |
+| `mirror` | no | `official` oppure `unofficial`. `unofficial` segnala che la definizione funziona solo attraverso un mirror non ufficiale: la UI mostra sempre il badge "Mirror non ufficiale" e un avviso nel form, anche quando lo stato è `verificata`. Additivo: le definizioni senza il campo restano valide |
 | `interval` | no | durata Go, per esempio `15m`; è un suggerimento per l'intervallo di aggiornamento dell'indexer. Vuoto = nessun suggerimento, vale il valore globale. Il minimo è 60s |
 | `latest` | no | `true` (predefinito) se il sito pubblica un elenco o un feed delle novità; `false` se sa solo rispondere a una ricerca |
 

@@ -105,13 +105,14 @@ func (s *Server) buildIndexerData(r *http.Request, indexerID int64) (*indexerDat
 	}
 	data.Runs = rows
 
-	since := time.Now().Add(-dataChartDays * 24 * time.Hour)
+	now := time.Now()
+	since := now.Add(-dataChartDays * 24 * time.Hour)
 	series, err := s.store.RunSeries(r.Context(), indexerID, since)
 	if err != nil {
 		return nil, err
 	}
 	if len(series) > 0 {
-		data.Chart = renderRunChart(series)
+		data.Chart = renderRunChartWindow(series, since, now)
 		data.HasChart = true
 	}
 
@@ -288,6 +289,15 @@ func durationLabel(value time.Duration) string {
 // renderRunChart draws the 7-day new/discarded series as inline SVG. It uses
 // no library and no client-side code; the server writes every rectangle.
 func renderRunChart(points []store.RunSeriesPoint) htmltemplate.HTML {
+	now := time.Now()
+	return renderRunChartWindow(points, now.Add(-dataChartDays*24*time.Hour), now)
+}
+
+// renderRunChartWindow positions every run on a real time axis: two runs an
+// hour apart stay close together even when the series also contains a run six
+// days later. Uniform spacing (one slot per run) hid long gaps and made a
+// single burst look like a steady schedule.
+func renderRunChartWindow(points []store.RunSeriesPoint, start, end time.Time) htmltemplate.HTML {
 	if len(points) == 0 {
 		return ""
 	}
@@ -299,6 +309,7 @@ func renderRunChart(points []store.RunSeriesPoint) htmltemplate.HTML {
 	const bottom = 22
 	plotWidth := width - left - right
 	plotHeight := height - top - bottom
+	const barWidth = 2.5
 
 	max := int64(1)
 	for _, point := range points {
@@ -309,7 +320,15 @@ func renderRunChart(points []store.RunSeriesPoint) htmltemplate.HTML {
 			max = point.Discarded
 		}
 	}
-	group := float64(plotWidth) / float64(len(points))
+	span := end.Sub(start)
+	if span <= 0 {
+		span = time.Second
+	}
+	// Leave room for the pair of bars at both ends.
+	usable := float64(plotWidth) - barWidth*2
+	if usable < 1 {
+		usable = 1
+	}
 	var b strings.Builder
 	b.WriteString(`<svg class="run-chart" viewBox="0 0 `)
 	b.WriteString(strconv.Itoa(width))
@@ -318,18 +337,21 @@ func renderRunChart(points []store.RunSeriesPoint) htmltemplate.HTML {
 	b.WriteString(`" role="img" preserveAspectRatio="none">`)
 	fmt.Fprintf(&b, `<line class="chart-axis" x1="%d" y1="%d" x2="%d" y2="%d"/>`,
 		left, top+plotHeight, width-right, top+plotHeight)
-	for i, point := range points {
-		x := float64(left) + float64(i)*group
-		barWidth := group / 2.2
-		if barWidth < 1 {
-			barWidth = 1
+	for _, point := range points {
+		ratio := float64(point.StartedAt.Sub(start)) / float64(span)
+		if ratio < 0 {
+			ratio = 0
 		}
+		if ratio > 1 {
+			ratio = 1
+		}
+		x := float64(left) + ratio*usable
 		newHeight := float64(point.New) / float64(max) * float64(plotHeight)
 		oldHeight := float64(point.Discarded) / float64(max) * float64(plotHeight)
 		// A tick marks every run, including one that produced no new or
 		// discarded item, so the chart never looks like the run is missing.
 		fmt.Fprintf(&b, `<rect class="chart-tick" x="%.2f" y="%d" width="%.2f" height="1"/>`,
-			x, top+plotHeight, group)
+			x, top+plotHeight, barWidth)
 		title := html.EscapeString(fmt.Sprintf("%s · %d/%d",
 			point.StartedAt.Local().Format("2006-01-02 15:04"), point.New, point.Discarded))
 		fmt.Fprintf(&b, `<rect class="chart-new" x="%.2f" y="%.2f" width="%.2f" height="%.2f"><title>%s</title></rect>`,

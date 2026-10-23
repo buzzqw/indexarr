@@ -1,0 +1,207 @@
+package importers
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+)
+
+const jackettTestKey = "jackett-api-key-SECRET"
+
+func TestFromJackettAPIReadsLiveListAndDisablesFailures(t *testing.T) {
+	var mu sync.Mutex
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %s, want GET", r.Method)
+		}
+		mu.Lock()
+		paths = append(paths, r.URL.String())
+		mu.Unlock()
+		switch {
+		case r.URL.Path == "/api/v2.0/indexers/all/results/torznab/api":
+			if got := r.URL.Query().Get("t"); got != "indexers" {
+				t.Errorf("t = %q", got)
+			}
+			if got := r.URL.Query().Get("configured"); got != "true" {
+				t.Errorf("configured = %q", got)
+			}
+			if got := r.URL.Query().Get("apikey"); got != jackettTestKey {
+				t.Errorf("apikey = %q", got)
+			}
+			w.Header().Set("Content-Type", "application/xml")
+			fmt.Fprint(w, `<indexers>
+  <indexer id="good" configured="true">
+    <title>Good Site</title>
+    <description>Working indexer</description>
+    <link>https://good.example/</link>
+    <language>en-US</language>
+    <type>public</type>
+    <caps><categories><category id="2000" name="Movies"><subcat id="2040" name="Movies/HD"/></category></categories></caps>
+  </indexer>
+  <indexer id="bad" configured="true">
+    <title>Bad Site</title>
+    <link>https://bad.example/</link>
+    <type>public</type>
+  </indexer>
+  <indexer id="off" configured="false">
+    <title>Off Site</title>
+    <link>https://off.example/</link>
+  </indexer>
+</indexers>`)
+		case strings.HasPrefix(r.URL.Path, "/api/v2.0/indexers/good/"):
+			if got := r.URL.Query().Get("t"); got != "caps" {
+				t.Errorf("good probe t = %q", got)
+			}
+			fmt.Fprint(w, `<caps><server title="Jackett"/></caps>`)
+		case strings.HasPrefix(r.URL.Path, "/api/v2.0/indexers/bad/"):
+			http.Error(w, "Indexer is not configured", http.StatusInternalServerError)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	plan, err := FromJackettAPI(context.Background(), server.URL, jackettTestKey, server.Client())
+	if err != nil {
+		t.Fatalf("FromJackettAPI: %v", err)
+	}
+	if plan.Source != "jackett" || plan.ManagerURL != server.URL {
+		t.Fatalf("plan = %+v", plan)
+	}
+	if len(plan.Indexers) != 2 {
+		t.Fatalf("indexers = %d, want 2 configured: %+v", len(plan.Indexers), plan.Indexers)
+	}
+	byID := map[string]Indexer{}
+	for _, indexer := range plan.Indexers {
+		byID[indexer.RemoteID] = indexer
+	}
+	if !byID["good"].Enabled {
+		t.Errorf("good indexer is disabled")
+	}
+	if byID["bad"].Enabled {
+		t.Errorf("bad indexer stayed enabled")
+	}
+	if !strings.Contains(byID["bad"].DisabledReason, "500") {
+		t.Errorf("bad reason = %q", byID["bad"].DisabledReason)
+	}
+	if got := byID["good"].BaseURL; got != server.URL+"/api/v2.0/indexers/good/results/torznab/" {
+		t.Errorf("good endpoint = %q", got)
+	}
+	if got := byID["good"].Categories; len(got) != 2 || got[0] != 2000 || got[1] != 2040 {
+		t.Errorf("good categories = %v", got)
+	}
+	if byID["good"].SiteURL != "https://good.example/" {
+		t.Errorf("good site URL = %q", byID["good"].SiteURL)
+	}
+	joined := strings.Join(plan.Warnings, "\n")
+	if !strings.Contains(joined, "Bad Site") || !strings.Contains(joined, "HTTP 500") {
+		t.Errorf("warnings = %v", plan.Warnings)
+	}
+	if strings.Contains(joined, jackettTestKey) {
+		t.Fatalf("warning leaked the API key: %v", plan.Warnings)
+	}
+
+	// Only the bulk list and caps probes; no writes, no search.
+	mu.Lock()
+	defer mu.Unlock()
+	for _, path := range paths {
+		if strings.Contains(path, "t=search") || strings.Contains(path, "t=get") {
+			t.Errorf("unexpected request %s", path)
+		}
+	}
+}
+
+func TestFromJackettAPIRejectsBadURLWithoutLeakingKey(t *testing.T) {
+	_, err := FromJackettAPI(context.Background(), "file:///tmp/jackett", jackettTestKey, nil)
+	if err == nil {
+		t.Fatal("FromJackettAPI accepted a non-http URL")
+	}
+	if strings.Contains(err.Error(), jackettTestKey) {
+		t.Fatalf("error leaked the key: %v", err)
+	}
+}
+
+func TestDeduplicatePrefersNativeThenProwlarrThenJackett(t *testing.T) {
+	jackett := NativeTarget{
+		Name: "Site", Slug: "site", DefinitionID: nativeDefinition,
+		SiteKey: "site.example", ViaManager: "jackett", BaseURL: "http://jackett/1",
+	}
+	prowlarr := NativeTarget{
+		Name: "Site", Slug: "site", DefinitionID: nativeDefinition,
+		SiteKey: "site.example", ViaManager: "prowlarr", BaseURL: "http://prowlarr/1/api",
+	}
+	native := NativeTarget{
+		Name: "Site", Slug: "site", DefinitionID: "site",
+		SiteKey: "site.example", BaseURL: "https://site.example/",
+	}
+	other := NativeTarget{
+		Name: "Other", Slug: "other", DefinitionID: nativeDefinition,
+		SiteKey: "other.example", ViaManager: "jackett", BaseURL: "http://jackett/2",
+	}
+
+	kept, dropped := Deduplicate([]NativeTarget{jackett, other, prowlarr, native})
+	if len(kept) != 2 {
+		t.Fatalf("kept = %d, want 2: %+v", len(kept), kept)
+	}
+	if kept[0].DefinitionID != "site" || kept[0].ViaManager != "" {
+		t.Fatalf("site winner = %+v", kept[0])
+	}
+	if kept[1].Name != "Other" {
+		t.Fatalf("other site = %+v", kept[1])
+	}
+	if len(dropped) != 2 {
+		t.Fatalf("dropped = %+v", dropped)
+	}
+	for _, item := range dropped {
+		if item.CoveredBy.Name != "Site" {
+			t.Errorf("covered by %q", item.CoveredBy.Name)
+		}
+	}
+
+	// A Prowlarr and a Jackett bridge with no native definition: Prowlarr wins.
+	kept, dropped = Deduplicate([]NativeTarget{jackett, prowlarr})
+	if len(kept) != 1 || kept[0].ViaManager != "prowlarr" {
+		t.Fatalf("bridge winner = %+v", kept)
+	}
+	if len(dropped) != 1 || dropped[0].Target.ViaManager != "jackett" {
+		t.Fatalf("bridge dropped = %+v", dropped)
+	}
+}
+
+func TestDeduplicateIsIdempotent(t *testing.T) {
+	targets := []NativeTarget{
+		{Name: "A", DefinitionID: nativeDefinition, SiteKey: "a", ViaManager: "jackett"},
+		{Name: "A", DefinitionID: nativeDefinition, SiteKey: "a", ViaManager: "prowlarr"},
+		{Name: "B", DefinitionID: nativeDefinition, SiteKey: "b", ViaManager: "prowlarr"},
+	}
+	first, dropped := Deduplicate(targets)
+	second, droppedAgain := Deduplicate(first)
+	if len(first) != 2 || len(second) != 2 {
+		t.Fatalf("first=%d second=%d", len(first), len(second))
+	}
+	if len(dropped) != 1 || len(droppedAgain) != 0 {
+		t.Fatalf("dropped=%d again=%d", len(dropped), len(droppedAgain))
+	}
+	if first[0].ViaManager != "prowlarr" || second[0].ViaManager != "prowlarr" {
+		t.Fatalf("winner changed: %+v -> %+v", first[0], second[0])
+	}
+}
+
+func TestTorrentLeechRSSTargetKeepsTheFeedInSecrets(t *testing.T) {
+	const feed = "https://rss.example/SECRET-RSS-KEY"
+	target := TorrentLeechRSSTarget(feed)
+	if target.DefinitionID != "torrentleech-rss" || target.Slug != "torrentleech-rss" {
+		t.Fatalf("target = %+v", target)
+	}
+	if target.Secrets["url"] != feed {
+		t.Fatalf("secret = %q", target.Secrets["url"])
+	}
+	if strings.Contains(fmt.Sprint(target.Config), "SECRET") {
+		t.Fatalf("feed URL leaked into config: %v", target.Config)
+	}
+}

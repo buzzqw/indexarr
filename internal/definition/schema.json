@@ -127,6 +127,13 @@
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9-]*$",
           "description": "Conversion tool that produced this draft, for example cardigann. Derived drafts are writing aids, stay local and are rejected by the built-in catalog."
+        },
+        "mirror": {
+          "enum": [
+            "official",
+            "unofficial"
+          ],
+          "description": "Optional. \"unofficial\" marks a definition that currently works only through a non-official mirror; the UI shows a permanent badge and a warning even when the definition is verified."
         }
       }
     },

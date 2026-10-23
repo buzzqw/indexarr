@@ -1,15 +1,16 @@
-# IN PROVA (trial). Corsaro account variant with login and keyword search.
+# IN PROVA (trial). Corsaro account variant with a pasted session cookie.
 #
 # The guest definition corsaro.yaml stays unchanged: this file is the account
 # variant and shares the same public listing layout. The public login page was
 # captured on 2026-10-23 in fixtures/corsaro-account/login.html; it shows a
 # reCAPTCHA marker (input[name="trp_recaptcha_required"]), so a fully automatic
-# login is not possible today and the state stays "bozza" until the coordinator
-# verifies it with an account. The search request is the one the site documents
-# in its own search form (index.php page=torrents&search=...); guests get
-# "Non sei autorizzato a usare il sistema di ricerca interno", account holders
-# do not. Successful login and search pages are synthetic fixtures that keep the
-# observed markup; see fixtures/corsaro-account/README.md.
+# login is not possible. The supported path is auth.strategy cookie: the user
+# logs in with a browser and pastes the Cookie request header into the form.
+# The search request is the one the site documents in its own search form
+# (index.php page=torrents&search=...); guests get "Non sei autorizzato a usare
+# il sistema di ricerca interno", account holders do not. Search pages are
+# synthetic fixtures that keep the observed markup; see
+# fixtures/corsaro-account/README.md.
 schema: 1
 
 meta:
@@ -25,8 +26,11 @@ meta:
   updated: "2026-10-23"
 
 settings:
-  - { name: username, type: text, label: "Username", required: true }
-  - { name: password, type: password, label: "Password", required: true }
+  - name: cookie
+    type: password
+    label: "Session cookie"
+    help: "Paste the Cookie request header copied from the browser (the site uses reCAPTCHA)."
+    required: true
   - name: category
     type: text
     label: "Category id"
@@ -43,17 +47,9 @@ capabilities:
   search: [q]
 
 auth:
-  strategy: form
-  steps:
-    - get: /index.php?page=login
-    - post: /index.php?page=login
-      form:
-        uid: "{{ settings.username }}"
-        pwd: "{{ settings.password }}"
-  success: { selector: 'a[href*="page=logout"]' }
-  failure:
-    - { selector: "div.error", message: text }
-  refresh_after: 6h
+  # The site's login has a reCAPTCHA: there is no form step to automate. The
+  # engine sends the pasted Cookie header on every request.
+  strategy: cookie
 
 search:
   request:
@@ -95,9 +91,3 @@ tests:
   - name: search
     fixture: fixtures/corsaro-account/search.html
     expect: { min_rows: 3, required: [title, magnet] }
-  - name: login-ok
-    fixture: fixtures/corsaro-account/login-ok.html
-    expect: { authenticated: true }
-  - name: login-failed
-    fixture: fixtures/corsaro-account/login-failed.html
-    expect: { authenticated: false }
