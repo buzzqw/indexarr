@@ -24,7 +24,7 @@ func TestTemplatesRenderInEveryLanguage(t *testing.T) {
 		if !strings.Contains(body, `<html lang="`+lang.HTML()+`" dir="ltr">`) {
 			t.Errorf("%s page has the wrong document language", lang)
 		}
-		for _, key := range []string{"shell.overview", "shell.manageNav", "shell.searchLabel"} {
+		for _, key := range []string{"shell.home", "shell.search", "shell.searchLabel"} {
 			want := html.EscapeString(i18n.T(lang, key))
 			if want == key {
 				t.Fatalf("%s is missing the catalog key %s", lang, key)

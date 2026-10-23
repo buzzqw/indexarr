@@ -12,7 +12,7 @@ import (
 
 func TestRulesPageAddAndDelete(t *testing.T) {
 	env := newTestEnv(t)
-	token, cookie := csrfFrom(t, env.handler, "/rules")
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=rules")
 
 	recorder := postForm(t, env.handler, "/rules", url.Values{
 		"csrf":  {token},
@@ -23,7 +23,7 @@ func TestRulesPageAddAndDelete(t *testing.T) {
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("add status = %d: %s", recorder.Code, recorder.Body.String())
 	}
-	body := get(t, env.handler, "/rules").Body.String()
+	body := get(t, env.handler, "/settings?section=rules").Body.String()
 	if !strings.Contains(body, "cam") || !strings.Contains(body, "bad quality") {
 		t.Error("rule not listed")
 	}

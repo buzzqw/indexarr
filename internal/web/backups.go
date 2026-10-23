@@ -14,14 +14,14 @@ import (
 func (s *Server) maintenanceBackupNow(w http.ResponseWriter, r *http.Request) {
 	settings, err := s.store.LoadSettings(r.Context())
 	if err != nil {
-		redirect(w, r, "/maintenance", "", err.Error())
+		redirect(w, r, "/settings?section=backup", "", err.Error())
 		return
 	}
 	ctx, cancel := contextWithTimeout(r, 10*time.Minute)
 	defer cancel()
 	info, err := backup.Create(ctx, s.store, s.store.Path())
 	if err != nil {
-		redirect(w, r, "/maintenance", "", err.Error())
+		redirect(w, r, "/settings?section=backup", "", err.Error())
 		return
 	}
 	if removed, err := backup.Prune(s.store.Path(), settings.BackupKeep); err != nil {
@@ -30,7 +30,7 @@ func (s *Server) maintenanceBackupNow(w http.ResponseWriter, r *http.Request) {
 		s.log.Info("old backups removed", "count", removed)
 	}
 	s.log.Info("manual backup created", "file", info.Name, "bytes", info.Size)
-	redirect(w, r, "/maintenance", "Backup created: "+info.Name, "")
+	redirect(w, r, "/settings?section=backup", "Backup created: "+info.Name, "")
 }
 
 func (s *Server) maintenanceBackupDownload(w http.ResponseWriter, r *http.Request) {
@@ -50,16 +50,16 @@ func (s *Server) maintenanceBackupDownload(w http.ResponseWriter, r *http.Reques
 func (s *Server) maintenanceBackupDelete(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if err := backup.Delete(s.store.Path(), name); err != nil {
-		redirect(w, r, "/maintenance", "", err.Error())
+		redirect(w, r, "/settings?section=backup", "", err.Error())
 		return
 	}
-	redirect(w, r, "/maintenance", "Backup deleted: "+name, "")
+	redirect(w, r, "/settings?section=backup", "Backup deleted: "+name, "")
 }
 
 func (s *Server) maintenanceRestore(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 512<<20)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		redirect(w, r, "/maintenance", "", "Invalid upload: "+err.Error())
+		redirect(w, r, "/settings?section=backup", "", "Invalid upload: "+err.Error())
 		return
 	}
 	if r.MultipartForm != nil {
@@ -67,22 +67,22 @@ func (s *Server) maintenanceRestore(w http.ResponseWriter, r *http.Request) {
 	}
 	file, header, err := r.FormFile("backup")
 	if err != nil {
-		redirect(w, r, "/maintenance", "", "Choose a .db backup file")
+		redirect(w, r, "/settings?section=backup", "", "Choose a .db backup file")
 		return
 	}
 	defer file.Close()
 	if header.Size > 512<<20 {
-		redirect(w, r, "/maintenance", "", "The backup is larger than 512 MiB")
+		redirect(w, r, "/settings?section=backup", "", "The backup is larger than 512 MiB")
 		return
 	}
 	dir := backup.Dir(s.store.Path())
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		redirect(w, r, "/maintenance", "", err.Error())
+		redirect(w, r, "/settings?section=backup", "", err.Error())
 		return
 	}
 	temp, err := os.CreateTemp(dir, "upload-*.db")
 	if err != nil {
-		redirect(w, r, "/maintenance", "", err.Error())
+		redirect(w, r, "/settings?section=backup", "", err.Error())
 		return
 	}
 	tempName := temp.Name()
@@ -90,19 +90,19 @@ func (s *Server) maintenanceRestore(w http.ResponseWriter, r *http.Request) {
 	written, err := io.Copy(temp, io.LimitReader(file, 512<<20+1))
 	closeErr := temp.Close()
 	if err != nil || closeErr != nil {
-		redirect(w, r, "/maintenance", "", "Cannot save the upload")
+		redirect(w, r, "/settings?section=backup", "", "Cannot save the upload")
 		return
 	}
 	if written > 512<<20 {
-		redirect(w, r, "/maintenance", "", "The backup is larger than 512 MiB")
+		redirect(w, r, "/settings?section=backup", "", "The backup is larger than 512 MiB")
 		return
 	}
 	if err := backup.Validate(tempName); err != nil {
-		redirect(w, r, "/maintenance", "", "Invalid backup: "+err.Error())
+		redirect(w, r, "/settings?section=backup", "", "Invalid backup: "+err.Error())
 		return
 	}
 	if err := backup.Stage(s.store.Path(), tempName); err != nil {
-		redirect(w, r, "/maintenance", "", err.Error())
+		redirect(w, r, "/settings?section=backup", "", err.Error())
 		return
 	}
 	s.log.Info("restore staged; restarting to apply it", "file", header.Filename)
@@ -114,7 +114,7 @@ func (s *Server) maintenanceRestore(w http.ResponseWriter, r *http.Request) {
 			s.restart()
 		}()
 	}
-	redirect(w, r, "/maintenance", message, "")
+	redirect(w, r, "/settings?section=backup", message, "")
 }
 
 // contextWithTimeout keeps the cancellation of the request but detaches the

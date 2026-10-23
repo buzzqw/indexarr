@@ -33,8 +33,8 @@ func TestMaintenanceActions(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	token, cookie := csrfFrom(t, env.handler, "/maintenance")
-	page := get(t, env.handler, "/maintenance").Body.String()
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=maintenance")
+	page := get(t, env.handler, "/settings?section=maintenance").Body.String()
 	for _, want := range []string{
 		"Database report", "Cleanup and retention", "Purge by age",
 		"Purge indexer", "Delete dead releases",
@@ -141,7 +141,7 @@ func TestMaintenanceCleanupActions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	token, cookie := csrfFrom(t, env.handler, "/maintenance")
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=maintenance")
 	actions := []url.Values{
 		{"csrf": {token}, "action": {"purge_no_links"}},
 		{"csrf": {token}, "action": {"purge_hidden"}},
@@ -175,7 +175,7 @@ func TestMaintenanceCleanupActions(t *testing.T) {
 
 func TestMaintenanceRejectsInvalidCleanupInput(t *testing.T) {
 	env := newTestEnv(t)
-	token, cookie := csrfFrom(t, env.handler, "/maintenance")
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=maintenance")
 	for _, values := range []url.Values{
 		{"csrf": {token}, "action": {"purge_days"}, "days": {"0"}},
 		{"csrf": {token}, "action": {"clear_runs_days"}, "days": {"-1"}},

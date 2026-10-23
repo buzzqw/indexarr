@@ -158,16 +158,16 @@ func (s *Server) logsSetLevel(w http.ResponseWriter, r *http.Request) {
 	case "error":
 		level = slog.LevelError
 	default:
-		redirect(w, r, "/logs", "", "Log level must be debug, info, warn or error")
+		redirect(w, r, "/settings?section=advanced", "", "Log level must be debug, info, warn or error")
 		return
 	}
 	if s.level != nil {
 		s.level.Set(level)
 	}
 	if err := s.store.SetSetting(r.Context(), store.KeyLogLevel, name); err != nil {
-		redirect(w, r, "/logs", "", err.Error())
+		redirect(w, r, "/settings?section=advanced", "", err.Error())
 		return
 	}
 	s.log.Info("log level changed", "level", name)
-	redirect(w, r, "/logs", "Log level set to "+name, "")
+	redirect(w, r, "/settings?section=advanced", "Log level set to "+name, "")
 }

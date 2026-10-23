@@ -1544,3 +1544,120 @@ pre.yaml {
   .run-chart { height: 150px; }
 }
 .chart-tick { fill: var(--border); }
+
+/* WP14 fase 3 — six-item shell, Home, Settings sections and setup wizard. */
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  margin-left: 0.4rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.copy-field { display: flex; gap: 0.45rem; align-items: stretch; }
+.copy-field input { flex: 1 1 auto; min-width: 0; }
+
+.home-status { padding: 1rem 1.15rem; }
+.home-status-warn { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
+.home-status-danger { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+.status-line { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; margin: 0; }
+.status-line strong { font-size: 1.02rem; }
+.home-problems { list-style: none; margin: 0.65rem 0 0; padding: 0; display: grid; gap: 0.35rem; }
+.home-problems .problem { margin: 0; }
+.connect-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.35rem 1.2rem; }
+.connect-grid .field:first-child { grid-column: 1 / -1; }
+.home-numbers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; margin: 0; padding: 1rem 1.15rem; }
+.home-numbers div { padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2); }
+.home-numbers dt { color: var(--muted); font-size: 0.8rem; }
+.home-numbers dd { margin: 0.15rem 0 0; font-size: 1.45rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.next-step-panel p { margin: 0 0 0.9rem; }
+
+.settings-layout { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  position: sticky;
+  top: 1rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.settings-nav a {
+  padding: 0.45rem 0.65rem;
+  border-radius: 7px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 650;
+}
+.settings-nav a:hover { color: var(--text); background: var(--surface-2); }
+.settings-nav a.active { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.settings-body { min-width: 0; }
+
+.setup-steps {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+.setup-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+.setup-steps li.active { color: var(--text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.setup-steps li.done { color: var(--text); }
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.setup-steps li.active .step-number { background: var(--accent); color: #fff; }
+.setup-site-list { list-style: none; margin: 0; padding: 0; }
+.setup-site-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.setup-site-list li:last-child { border-bottom: 0; }
+.setup-site-list .check { width: auto; }
+
+@media (max-width: 900px) {
+  .settings-layout { grid-template-columns: minmax(0, 1fr); }
+  .settings-nav { position: static; flex-direction: row; overflow-x: auto; }
+  .settings-nav a { white-space: nowrap; }
+  .connect-grid { grid-template-columns: minmax(0, 1fr); }
+  .connect-grid .field:first-child { grid-column: auto; }
+}
+@media (max-width: 620px) {
+  .home-numbers { grid-template-columns: minmax(0, 1fr); }
+  .copy-field { flex-wrap: wrap; }
+}

@@ -24,7 +24,7 @@ func TestAdditionalAPIKeys(t *testing.T) {
 	if err != nil || len(keys) != 1 || keys[0].Name != "Sonarr" {
 		t.Fatalf("keys = %#v, %v", keys, err)
 	}
-	page := get(t, env.handler, "/settings").Body.String()
+	page := get(t, env.handler, "/settings?section=security").Body.String()
 	if !strings.Contains(page, "Sonarr") || !strings.Contains(page, "••••••••") {
 		t.Error("additional key name/mask not listed")
 	}

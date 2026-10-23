@@ -82,7 +82,9 @@ type applicationRow struct {
 type applicationsPage struct {
 	base
 	Rows        []applicationRow
+	Clients     []downloadClientRow
 	Unavailable bool
+	TorznabURL  string
 }
 
 func (s *Server) applicationsPage(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +93,15 @@ func (s *Server) applicationsPage(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	data := applicationsPage{base: s.newBaseT(r, "applications.title", "applications")}
+	clients, err := s.store.ListDownloadClients(r.Context())
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	data := applicationsPage{
+		base: s.newBaseT(r, "applications.title", "applications"),
+	}
+	data.TorznabURL = data.base.TorznabURL
 	if s.sync == nil {
 		data.Unavailable = true
 	}
@@ -101,6 +111,19 @@ func (s *Server) applicationsPage(w http.ResponseWriter, r *http.Request) {
 			KindLabel:      applicationKindLabel(app.Kind),
 			SyncLevelLabel: applicationSyncLevelLabel(app.SyncLevel),
 			HasKey:         len(app.APIKeyEnc) > 0,
+		})
+	}
+	for _, client := range clients {
+		host := client.URL
+		if parsed, err := url.Parse(client.URL); err == nil && parsed.Host != "" {
+			host = parsed.Host
+		}
+		data.Clients = append(data.Clients, downloadClientRow{
+			Client:      client,
+			KindLabel:   downloadClientKindLabel(client.Kind),
+			Host:        host,
+			HasSecret:   client.PasswordEnc != "" || client.APIKeyEnc != "",
+			ProtocolKey: "client.protocol." + client.Protocol,
 		})
 	}
 	s.render(w, r, "applications", data, http.StatusOK)

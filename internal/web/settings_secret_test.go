@@ -9,7 +9,7 @@ import (
 
 func TestSettingsNeverRenderAPIKey(t *testing.T) {
 	env := newTestEnv(t)
-	body := get(t, env.handler, "/settings").Body.String()
+	body := get(t, env.handler, "/settings?section=security").Body.String()
 	if env.apiKey == "" {
 		t.Fatal("test env has no API key")
 	}

@@ -11,37 +11,18 @@ import (
 
 const releasesPerPage = 50
 
-// dashboardStatus is the single error summary of the overview. It merges the
-// current state of every indexer with the failed runs of the last 24 hours, so
-// the page cannot say "all clear" while the run counter reports errors (or the
-// other way round).
-type dashboardStatus struct {
-	Current   int   // indexers with a non-empty last_error
-	RunErrors int64 // failed runs in the last 24 hours
-	Runs      int64 // runs in the last 24 hours
-}
-
-func (s dashboardStatus) OK() bool {
-	return s.Current == 0 && s.RunErrors == 0
-}
-
 type dashboardPage struct {
 	base
-	Stats          store.Stats
-	Indexers       []store.Indexer
-	Applications   []store.Application
-	Definitions    []store.Definition
-	Runs           []store.RunHistory
-	Recent         []store.Release
-	Status         dashboardStatus
-	IndexerErrors  int
-	IndexerCount   int
-	ApplicationNum int
+	Status       HomeStatus
+	Activity     store.HomeActivity
+	NextStep     *homeNextStep
+	Clients      []store.DownloadClient
+	SuggestedURL string
 }
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	stats, err := s.store.LoadStats(ctx)
+	settings, err := s.store.LoadSettings(ctx)
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
@@ -51,40 +32,35 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	applications, err := s.store.ListApplications(ctx)
-	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-	definitions, err := s.store.ListDefinitions(ctx)
-	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-	runs, _ := s.store.ListRunHistory(ctx, 0, false, 6)
-	recent, _ := s.store.ListRecentReleases(ctx, 10)
-	indexerErrors := 0
-	for _, in := range indexers {
-		if state, err := s.store.GetIndexerState(ctx, in.ID); err == nil && state.LastError != "" {
-			indexerErrors++
+	// First run: the dashboard is replaced by the four-step wizard until the
+	// operator adds an indexer, finishes or explicitly skips it.
+	if s.shouldShowSetup(r, settings, len(indexers)) {
+		data, err := s.setupData(r, 1)
+		if err != nil {
+			s.renderError(w, r, http.StatusInternalServerError, err.Error())
+			return
 		}
+		s.render(w, r, "setup", data, http.StatusOK)
+		return
+	}
+	status := s.HomeStatus(ctx)
+	activity, err := s.store.LoadHomeActivity(ctx)
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	clients, err := s.store.ListDownloadClients(ctx)
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
 	}
 	s.render(w, r, "dashboard", dashboardPage{
 		base:         s.newBaseT(r, "dashboard.title", "dashboard"),
-		Stats:        stats,
-		Indexers:     indexers,
-		Applications: applications,
-		Definitions:  definitions,
-		Runs:         runs,
-		Recent:       recent,
-		Status: dashboardStatus{
-			Current:   indexerErrors,
-			RunErrors: stats.Errors24h,
-			Runs:      stats.Runs24h,
-		},
-		IndexerErrors:  indexerErrors,
-		IndexerCount:   len(indexers),
-		ApplicationNum: len(applications),
+		Status:       status,
+		Activity:     activity,
+		NextStep:     s.nextStep(ctx, status, settings, len(clients)),
+		Clients:      clients,
+		SuggestedURL: suggestedPublicURL(r),
 	}, http.StatusOK)
 }
 
@@ -291,13 +267,9 @@ func (s *Server) releasePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clientName := ""
-	if settings, err := s.store.LoadSettings(r.Context()); err == nil {
-		switch settings.DownloadClient {
-		case "qbittorrent":
-			clientName = "qBittorrent"
-		case "transmission":
-			clientName = "Transmission"
-		}
+	if cfg, name, err := s.resolveDownloadClient(r.Context(), release.Protocol); err == nil {
+		_ = cfg
+		clientName = name
 	}
 	s.render(w, r, "release", releasePage{
 		base:           s.newBaseT(r, "releases.title", "releases"),

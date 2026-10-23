@@ -106,7 +106,8 @@ var pageNames = []string{
 	"dashboard", "releases", "release",
 	"run", "rules", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
-	"applications", "application_form", "import", "activity",
+	"applications", "application_form", "import", "activity", "setup",
+	"download_client_form",
 }
 
 var templateFuncMap = template.FuncMap{
@@ -116,6 +117,7 @@ var templateFuncMap = template.FuncMap{
 	"ago":        humanAgo,
 	"catName":    categories.Name,
 	"catNameInt": func(id int) string { return categories.Name(strconv.Itoa(id)) },
+	"clientKind": downloadClientKindLabel,
 	"num": func(value int64) string {
 		if value < 0 {
 			return "?"
@@ -263,6 +265,9 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 		case "indexer":
 			// The detail page embeds the Data tab and the Sonarr/Radarr try form.
 			files = append(files, "templates/indexer_data.html", "templates/indexer_try.html")
+		case "settings":
+			// Settings → Advanced keeps the Definitions table.
+			files = append(files, "templates/settings_definitions.html")
 		}
 		tmpl := template.New("layout.html").Funcs(funcs)
 		tmpl = template.Must(tmpl.ParseFS(templateFiles, files...))
@@ -301,6 +306,10 @@ type base struct {
 	// LiveRefresh is the polling interval for pages that must reload only
 	// while the browser tab is visible. app.js checks document.visibilityState.
 	LiveRefresh int
+	// Nav badges come from HomeStatus: they only appear when something needs
+	// attention, never as a plain counter.
+	NavIndexerProblems int
+	NavAppProblems     int
 }
 
 func requestLanguage(r *http.Request) i18n.Language {
@@ -406,6 +415,9 @@ type Config struct {
 	// optional: without it the application pages still list the configured
 	// entries but cannot store a new key.
 	Vault *vault.Vault
+	// VaultKey describes where the master key lives, without key material.
+	// It is shown in Settings → Security.
+	VaultKey vault.Info
 	// Sync reconciles the native indexers with the downstream applications.
 	// It is optional: the pages degrade with a clear message when it is nil.
 	Sync *syncjob.Service
@@ -420,22 +432,23 @@ type Config struct {
 
 // Server serves the web interface, the Torznab API and the health endpoint.
 type Server struct {
-	store   *store.Store
-	log     *slog.Logger
-	version string
-	started time.Time
-	torznab *torznabapi.Server
-	static  http.Handler
-	logs    *logbuffer.Buffer
-	level   *slog.LevelVar
-	restart func()
-	admin   http.Handler
-	native  *indexer.Manager
-	sched   *native.Runner
-	svc     *indexersvc.Service
-	vault   *vault.Vault
-	sync    *syncjob.Service
-	polite  *engine.Politeness
+	store    *store.Store
+	log      *slog.Logger
+	version  string
+	started  time.Time
+	torznab  *torznabapi.Server
+	static   http.Handler
+	logs     *logbuffer.Buffer
+	level    *slog.LevelVar
+	restart  func()
+	admin    http.Handler
+	native   *indexer.Manager
+	sched    *native.Runner
+	svc      *indexersvc.Service
+	vault    *vault.Vault
+	vaultKey vault.Info
+	sync     *syncjob.Service
+	polite   *engine.Politeness
 	// importPlans holds short-lived previews between /import and /import/apply.
 	// Secrets stay in this process memory and never reach the HTML.
 	importPlans *importPlanStore
@@ -464,6 +477,12 @@ func New(cfg Config) *Server {
 		level = new(slog.LevelVar)
 		level.Set(slog.LevelInfo)
 	}
+	// Embedders and tests may pass a working vault without the key-location
+	// metadata. In that case the vault is available, just without a path.
+	if cfg.Vault != nil && cfg.VaultKey.Kind == "" {
+		cfg.VaultKey.Available = true
+		cfg.VaultKey.Kind = "config"
+	}
 	srv := &Server{
 		store:        cfg.Store,
 		log:          logger,
@@ -479,6 +498,7 @@ func New(cfg Config) *Server {
 		sched:        cfg.Scheduler,
 		svc:          cfg.Indexers,
 		vault:        cfg.Vault,
+		vaultKey:     cfg.VaultKey,
 		sync:         cfg.Sync,
 		polite:       cfg.Politeness,
 		importPlans:  newImportPlanStore(),
@@ -492,13 +512,63 @@ func New(cfg Config) *Server {
 	if cfg.GrabGuard != nil {
 		srv.torznab.SetGrabGuard(cfg.GrabGuard, cfg.GrabRecord)
 	}
+	// Existing installations configured one client in Settings. Move it into
+	// the new table on first start, sealing the password with the vault. If the
+	// vault is unavailable the legacy fallback in resolveDownloadClient still
+	// works, so this is best-effort and never blocks startup.
+	srv.migrateLegacyDownloadClient()
 	return srv
+}
+
+// migrateLegacyDownloadClient is additive: it does nothing when a client row
+// already exists or when the old setting is empty.
+func (s *Server) migrateLegacyDownloadClient() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	clients, err := s.store.ListDownloadClients(ctx)
+	if err != nil || len(clients) > 0 {
+		return
+	}
+	settings, err := s.store.LoadSettings(ctx)
+	if err != nil || settings.DownloadClient == "" || settings.DownloadClient == "none" {
+		return
+	}
+	sealed := ""
+	if settings.DownloadClientPassword != "" {
+		sealed, err = s.sealSecret(settings.DownloadClientPassword)
+		if err != nil {
+			s.log.Warn("cannot import the legacy download client: secrets vault unavailable", "error", err)
+			return
+		}
+	}
+	_, err = s.store.CreateDownloadClient(ctx, store.DownloadClient{
+		Name:        downloadClientKindLabel(settings.DownloadClient),
+		Kind:        settings.DownloadClient,
+		Protocol:    store.DefaultDownloadClientProtocol(settings.DownloadClient),
+		URL:         settings.DownloadClientURL,
+		Username:    settings.DownloadClientUser,
+		PasswordEnc: sealed,
+		Category:    settings.DownloadClientCategory,
+		SavePath:    settings.DownloadClientSavePath,
+		Paused:      settings.DownloadClientPaused,
+		Enabled:     true,
+		IsDefault:   true,
+	})
+	if err != nil {
+		s.log.Warn("cannot import the legacy download client", "error", err)
+		return
+	}
+	s.log.Info("legacy download client imported into App", "kind", settings.DownloadClient)
 }
 
 // Handler builds the complete route table.
 func (s *Server) Handler() http.Handler {
 	ui := http.NewServeMux()
 	ui.HandleFunc("GET /{$}", s.dashboard)
+	ui.HandleFunc("GET /setup", s.setupPage)
+	ui.HandleFunc("POST /setup/address", s.setupAddress)
+	ui.HandleFunc("POST /setup/skip", s.setupSkip)
+	ui.HandleFunc("POST /setup/finish", s.setupFinish)
 	ui.HandleFunc("GET /language/{code}", s.setLanguage)
 	ui.HandleFunc("GET /releases", s.releasesPage)
 	ui.HandleFunc("GET /releases/results", s.releasesResults)
@@ -516,7 +586,7 @@ func (s *Server) Handler() http.Handler {
 	// every /sources path redirects to the unified indexers page.
 	ui.HandleFunc("/sources", s.sourcesRedirect)
 	ui.HandleFunc("/sources/", s.sourcesRedirect)
-	ui.HandleFunc("GET /definitions", s.definitionsPage)
+	ui.HandleFunc("GET /definitions", s.definitionsRedirect)
 	ui.HandleFunc("GET /definitions/new", s.definitionNew)
 	ui.HandleFunc("POST /definitions", s.definitionCreate)
 	ui.HandleFunc("GET /definitions/{id}", s.definitionPage)
@@ -555,7 +625,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /runs", s.runsRedirect)
 	ui.HandleFunc("GET /runs/{id}", s.runPage)
 	ui.HandleFunc("POST /runs/clear", s.runsClear)
-	ui.HandleFunc("GET /rules", s.rulesPage)
+	ui.HandleFunc("GET /rules", s.rulesRedirect)
 	ui.HandleFunc("POST /rules", s.rulesAdd)
 	ui.HandleFunc("POST /rules/{id}/delete", s.rulesDelete)
 	ui.HandleFunc("GET /logs", s.logsRedirect)
@@ -570,7 +640,17 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /settings/apikeys", s.settingsAPIKeyAdd)
 	ui.HandleFunc("POST /settings/apikeys/{id}/delete", s.settingsAPIKeyDelete)
 	ui.HandleFunc("POST /settings/flaresolverr/test", s.settingsTestFlareSolverr)
-	ui.HandleFunc("GET /maintenance", s.maintenancePage)
+	ui.HandleFunc("POST /settings/public-url", s.settingsPublicURL)
+	ui.HandleFunc("POST /settings/setup/reopen", s.setupReopen)
+	ui.HandleFunc("GET /download-clients", s.downloadClientsRedirect)
+	ui.HandleFunc("GET /download-clients/new", s.downloadClientNew)
+	ui.HandleFunc("POST /download-clients", s.downloadClientCreate)
+	ui.HandleFunc("GET /download-clients/{id}/edit", s.downloadClientEdit)
+	ui.HandleFunc("POST /download-clients/{id}", s.downloadClientUpdate)
+	ui.HandleFunc("POST /download-clients/{id}/delete", s.downloadClientDelete)
+	ui.HandleFunc("POST /download-clients/{id}/test", s.downloadClientTest)
+	ui.HandleFunc("POST /download-clients/{id}/default", s.downloadClientDefault)
+	ui.HandleFunc("GET /maintenance", s.maintenanceRedirect)
 	ui.HandleFunc("POST /maintenance", s.maintenanceAction)
 	ui.HandleFunc("GET /maintenance/backup", s.maintenanceBackup)
 	ui.HandleFunc("POST /maintenance/backup-now", s.maintenanceBackupNow)
@@ -756,6 +836,12 @@ func (s *Server) newBase(r *http.Request, title, section string) base {
 	out.PublicURL = settings.PublicURL
 	out.PublicURLSet = strings.TrimSpace(settings.PublicURL) != ""
 	out.TorznabURL = torznabapi.BaseURL(r, settings) + "/api"
+	// One status source for the page and the sidebar badge.
+	status := s.HomeStatus(r.Context())
+	if status.Level != "danger" {
+		out.NavIndexerProblems = status.ProblemIndexers
+		out.NavAppProblems = status.ProblemApps
+	}
 	return out
 }
 
@@ -834,7 +920,11 @@ func redirect(w http.ResponseWriter, r *http.Request, path, message, problem str
 	}
 	target := path
 	if encoded := values.Encode(); encoded != "" {
-		target += "?" + encoded
+		if strings.Contains(target, "?") {
+			target += "&" + encoded
+		} else {
+			target += "?" + encoded
+		}
 	}
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }

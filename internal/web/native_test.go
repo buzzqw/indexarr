@@ -163,13 +163,13 @@ func newNativeEnv(t *testing.T) *nativeEnv {
 func TestNativePagesRender(t *testing.T) {
 	env := newNativeEnv(t)
 
-	for _, path := range []string{"/definitions", "/definitions/test-native", "/definitions/new", "/indexers", "/indexers/new?definition=test-native"} {
+	for _, path := range []string{"/settings?section=advanced", "/definitions/test-native", "/definitions/new", "/indexers", "/indexers/new?definition=test-native"} {
 		recorder := get(t, env.handler, path)
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("GET %s = %d: %s", path, recorder.Code, recorder.Body.String())
 		}
 	}
-	definitions := get(t, env.handler, "/definitions").Body.String()
+	definitions := get(t, env.handler, "/settings?section=advanced").Body.String()
 	for _, want := range []string{"Definitions", "Built-in catalog", "Local definitions", "Test Native", "test-native"} {
 		if !strings.Contains(definitions, want) {
 			t.Errorf("definitions page missing %q", want)
@@ -385,7 +385,7 @@ func TestNativePagesDegradeWithoutService(t *testing.T) {
 	if form.Code != http.StatusServiceUnavailable || !strings.Contains(form.Body.String(), "not configured") {
 		t.Fatalf("new indexer without service = %d: %s", form.Code, form.Body.String())
 	}
-	definitions := get(t, env.handler, "/definitions")
+	definitions := get(t, env.handler, "/settings?section=advanced")
 	if definitions.Code != http.StatusOK || !strings.Contains(definitions.Body.String(), "Definitions") {
 		t.Fatalf("definitions without service = %d: %s", definitions.Code, definitions.Body.String())
 	}

@@ -275,6 +275,43 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 7 moves download clients out of the single settings row into
+	// their own table. It is additive: the old download_client* settings stay
+	// in place and remain the fallback until the operator adds a client in App.
+	if err := s.applyMigration(context.Background(), indexarr2DownloadClientsVersion,
+		"download clients", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`CREATE TABLE IF NOT EXISTS download_clients (
+					id           INTEGER PRIMARY KEY AUTOINCREMENT,
+					name         TEXT    NOT NULL DEFAULT '',
+					kind         TEXT    NOT NULL DEFAULT 'qbittorrent',
+					protocol     TEXT    NOT NULL DEFAULT 'torrent'
+						CHECK (protocol IN ('torrent', 'usenet')),
+					url          TEXT    NOT NULL DEFAULT '',
+					username     TEXT    NOT NULL DEFAULT '',
+					password_enc TEXT,
+					apikey_enc   TEXT,
+					category     TEXT    NOT NULL DEFAULT '',
+					save_path    TEXT    NOT NULL DEFAULT '',
+					paused       INTEGER NOT NULL DEFAULT 0,
+					enabled      INTEGER NOT NULL DEFAULT 1,
+					is_default   INTEGER NOT NULL DEFAULT 0,
+					created_at   INTEGER NOT NULL DEFAULT 0,
+					updated_at   INTEGER NOT NULL DEFAULT 0
+				)`,
+				`CREATE INDEX IF NOT EXISTS download_clients_protocol
+					ON download_clients(protocol, enabled)`,
+				`CREATE INDEX IF NOT EXISTS download_clients_default
+					ON download_clients(is_default)`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

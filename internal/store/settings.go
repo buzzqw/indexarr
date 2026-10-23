@@ -53,6 +53,7 @@ const (
 	KeyHostBurst            = "host_burst"
 	KeyBreakerThreshold     = "breaker_threshold"
 	KeyBreakerCooldown      = "breaker_cooldown"
+	KeySetupDismissed       = "setup_dismissed"
 )
 
 // Settings are the runtime options edited from the web interface.
@@ -99,6 +100,9 @@ type Settings struct {
 	HostBurst              int
 	BreakerThreshold       int
 	BreakerCooldownSeconds int
+	// SetupDismissed remembers that the operator skipped the first-run
+	// wizard. It is reopened from Settings → General.
+	SetupDismissed bool
 }
 
 // DefaultSettings returns the options used before the first save.
@@ -233,6 +237,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.HostBurst = intValue(values, KeyHostBurst, 4, 1, 100)
 	out.BreakerThreshold = intValue(values, KeyBreakerThreshold, 5, 1, 100)
 	out.BreakerCooldownSeconds = intValue(values, KeyBreakerCooldown, 600, 1, 3600)
+	out.SetupDismissed = boolValue(values, KeySetupDismissed, false)
 	if raw, ok := values[KeyFetchTorrents]; ok {
 		out.FetchTorrents = raw == "1" || strings.EqualFold(raw, "true")
 	}
@@ -281,6 +286,7 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyHostBurst:            strconv.Itoa(in.HostBurst),
 		KeyBreakerThreshold:     strconv.Itoa(in.BreakerThreshold),
 		KeyBreakerCooldown:      strconv.Itoa(in.BreakerCooldownSeconds),
+		KeySetupDismissed:       boolString(in.SetupDismissed),
 	}
 	if in.FetchTorrents {
 		pairs[KeyFetchTorrents] = "1"

@@ -155,7 +155,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
 | WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI: avviso 64 MiB, errore 128 MiB) | `d267576` |
 | WP13 | Parità residua | da fare | |
-| WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1, 1b, 1c e 2 fatte; 3–5 da fare | `45ead7d` |
+| WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1, 1b, 1c, 2 e 3 fatte; 4–5 da fare | `45ead7d` |
 | WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | `b0abb6c` |
 | WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
 | WP16 | Rimozione del percorso legacy | fatto | `4a11fb8` |

@@ -46,40 +46,52 @@ func TestSettingsSecretsStayOutOfInitialHTML(t *testing.T) {
 	env := newTestEnv(t)
 	seedSettingsSecrets(t, env)
 
-	body := get(t, env.handler, "/settings").Body.String()
+	body := get(t, env.handler, "/settings?section=security").Body.String()
+	general := get(t, env.handler, "/settings?section=general").Body.String()
 	for _, secret := range []string{
 		env.apiKey,
 		"SYNTHETICTELEGRAMTOKEN",
-		"SYNTHETICDOWNLOADPASSWORD",
 		"apikey=" + env.apiKey,
 	} {
 		if secret == "" {
 			continue
 		}
-		if strings.Contains(body, secret) {
+		if strings.Contains(body, secret) || strings.Contains(general, secret) {
 			t.Errorf("initial /settings HTML contains the secret %q", secret)
 		}
 	}
 	if !strings.Contains(body, "https://idx.example/api?apikey=••••••") {
 		t.Error("the Torznab endpoint does not show the host/path with a masked key")
 	}
-	for _, id := range []string{"notify_telegram_token", "download_client_password"} {
-		field := regexp.MustCompile(`id="` + id + `"[^>]*value="([^"]*)"`).FindStringSubmatch(body)
+	field := regexp.MustCompile(`id="notify_telegram_token"[^>]*value="([^"]*)"`).FindStringSubmatch(general)
+	if field == nil {
+		t.Error("secret field notify_telegram_token is missing")
+	} else if field[1] != "" {
+		t.Error("secret field notify_telegram_token starts with a value")
+	}
+	// Download clients moved to App: their form never starts with a secret.
+	clientForm := get(t, env.handler, "/download-clients/new").Body.String()
+	for _, id := range []string{"client_password", "client_api_key"} {
+		field := regexp.MustCompile(`id="` + id + `"[^>]*value="([^"]*)"`).FindStringSubmatch(clientForm)
 		if field == nil {
-			t.Errorf("secret field %s is missing", id)
+			t.Errorf("secret field %s is missing from the client form", id)
 			continue
 		}
 		if field[1] != "" {
 			t.Errorf("secret field %s starts with a value", id)
 		}
 	}
-	if !strings.Contains(body, `data-secret-change`) {
-		t.Error("the secret fields have no Change button")
+	if strings.Contains(clientForm, "SYNTHETICDOWNLOADPASSWORD") {
+		t.Error("the client form contains the stored password")
 	}
-	for _, name := range []string{"notify_telegram_token_remove", "download_client_password_remove"} {
-		if !strings.Contains(body, `name="`+name+`"`) {
-			t.Errorf("the explicit Remove action %s is missing", name)
-		}
+	if !strings.Contains(general, `data-secret-change`) {
+		t.Error("the Telegram secret field has no Change button")
+	}
+	if !strings.Contains(general, `name="notify_telegram_token_remove"`) {
+		t.Error("the explicit Telegram Remove action is missing")
+	}
+	if !strings.Contains(clientForm, `id="client_password"`) {
+		t.Error("the client form has no password field")
 	}
 
 	request, _ := http.NewRequest(http.MethodGet, "/settings/secrets/torznab", nil)

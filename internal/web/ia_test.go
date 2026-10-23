@@ -159,23 +159,26 @@ func TestDashboardQuickActions(t *testing.T) {
 	}
 	body := recorder.Body.String()
 	for _, want := range []string{
-		"Configuration", "Status", "Indexers",
-		"Applications", "Errors (24h)", "Database",
-		"New native indexer", `href="/indexers/new"`,
-		"Import from Prowlarr/Jackett", `href="/import"`,
-		"Connect application", `href="/applications/new"`,
+		"Status", "Add indexer", `href="/indexers/new"`,
+		"Connect your apps", "Connect an app", `href="/applications/new"`,
+		"Last 24 hours", "Next step",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("dashboard missing %q", want)
+			t.Errorf("home missing %q", want)
+		}
+	}
+	for _, unwanted := range []string{"Errors (24h)", "Database size", "169"} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("home still shows the technical counter %q", unwanted)
 		}
 	}
 }
 
 func TestDefinitionsSectionsAndIndexerCTA(t *testing.T) {
 	env := newTestEnv(t)
-	recorder := get(t, env.handler, "/definitions")
+	recorder := get(t, env.handler, "/settings?section=advanced")
 	if recorder.Code != http.StatusOK {
-		t.Fatalf("GET /definitions = %d", recorder.Code)
+		t.Fatalf("GET /settings?section=advanced = %d", recorder.Code)
 	}
 	body := recorder.Body.String()
 	for _, want := range []string{
@@ -206,9 +209,7 @@ func TestNavigationEnglishGroupedAndNoSourcesDuplicate(t *testing.T) {
 	}
 	sidebar := body[asideStart:asideEnd]
 	for _, want := range []string{
-		"Overview", "Releases", "Indexers", "Definitions", "Applications",
-		"Import", "Activity", "Rules", "Settings", "Maintenance",
-		"Manage", "System",
+		"Home", "Search", "Indexers", "App", "Activity", "Settings",
 	} {
 		if !strings.Contains(sidebar, want) {
 			t.Errorf("navigation missing %q", want)

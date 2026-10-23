@@ -1,0 +1,90 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{.Title}}</h1>
+    <p class="muted">{{T "client.subtitle"}}</p>
+  </div>
+  <a class="btn" href="/applications#clients">{{T "common.back"}}</a>
+</section>
+
+<form class="panel form" method="post" action="{{if .IsNew}}/download-clients{{else}}/download-clients/{{.Client.ID}}{{end}}">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="client_name">{{T "client.name"}}</label>
+      <input id="client_name" name="name" type="text" required value="{{.Client.Name}}" placeholder="{{T "client.namePlaceholder"}}">
+    </div>
+    <div class="field">
+      <label for="client_kind">{{T "client.kind"}}</label>
+      <select id="client_kind" name="kind" data-client-kind>
+        {{range .Kinds}}<option value="{{.}}"{{if eq $.Client.Kind .}} selected{{end}}>{{clientKind .}}</option>{{end}}
+      </select>
+      <p class="help">{{T "client.kindHelp"}}</p>
+    </div>
+    <div class="field">
+      <label for="client_protocol">{{T "client.protocol"}}</label>
+      <select id="client_protocol" name="protocol">
+        <option value="torrent"{{if eq .Client.Protocol "torrent"}} selected{{end}}>{{T "client.protocol.torrent"}}</option>
+        <option value="usenet"{{if eq .Client.Protocol "usenet"}} selected{{end}}>{{T "client.protocol.usenet"}}</option>
+      </select>
+    </div>
+  </div>
+  <div class="field grow">
+    <label for="client_url">{{T "client.url"}}</label>
+    <input id="client_url" name="url" type="url" required value="{{.Client.URL}}" placeholder="{{T "client.urlPlaceholder"}}">
+    <p class="help">{{T "client.urlHelp"}}</p>
+  </div>
+  <div class="form-grid">
+    <div class="field">
+      <label for="client_username">{{T "client.username"}}</label>
+      <input id="client_username" name="username" type="text" value="{{.Client.Username}}" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="client_password">{{T "client.password"}}</label>
+      <div class="secret-field" data-secret-change-field>
+        <input id="client_password" name="password" type="password" value="" placeholder="{{if .HasPassword}}{{T "client.secretStored"}}{{else}}{{T "client.passwordPlaceholder"}}{{end}}" autocomplete="new-password">
+        {{if .HasPassword}}<button class="btn" type="button" data-secret-change>{{T "client.change"}}</button>{{end}}
+      </div>
+      {{if .HasPassword}}<label class="check muted"><input type="checkbox" name="password_remove" data-confirm="{{T "client.removeConfirm"}}"> <span>{{T "client.removeStored"}}</span></label>{{end}}
+    </div>
+    <div class="field">
+      <label for="client_api_key">{{T "client.apiKey"}}</label>
+      <div class="secret-field" data-secret-change-field>
+        <input id="client_api_key" name="api_key" type="password" value="" placeholder="{{if .HasAPIKey}}{{T "client.secretStored"}}{{else}}{{T "client.apiKeyPlaceholder"}}{{end}}" autocomplete="new-password">
+        {{if .HasAPIKey}}<button class="btn" type="button" data-secret-change>{{T "client.change"}}</button>{{end}}
+      </div>
+      {{if .HasAPIKey}}<label class="check muted"><input type="checkbox" name="api_key_remove" data-confirm="{{T "client.removeConfirm"}}"> <span>{{T "client.removeStored"}}</span></label>{{end}}
+      <p class="help">{{T "client.apiKeyHelp"}}</p>
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="field">
+      <label for="client_category">{{T "client.category"}}</label>
+      <input id="client_category" name="category" type="text" value="{{.Client.Category}}" placeholder="{{T "client.categoryPlaceholder"}}">
+    </div>
+    <div class="field">
+      <label for="client_save_path">{{T "client.savePath"}}</label>
+      <input id="client_save_path" name="save_path" type="text" value="{{.Client.SavePath}}" placeholder="{{T "client.savePathPlaceholder"}}">
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="field checkbox">
+      <input id="client_paused" name="paused" type="checkbox"{{if .Client.Paused}} checked{{end}}>
+      <label for="client_paused">{{T "client.paused"}}</label>
+    </div>
+    <div class="field checkbox">
+      <input id="client_enabled" name="enabled" type="checkbox"{{if or .IsNew .Client.Enabled}} checked{{end}}>
+      <label for="client_enabled">{{T "client.enabled"}}</label>
+    </div>
+    <div class="field checkbox">
+      <input id="client_default" name="is_default" type="checkbox"{{if .Client.IsDefault}} checked{{end}}>
+      <label for="client_default">{{T "client.isDefault"}}</label>
+      <p class="help">{{T "client.isDefaultHelp"}}</p>
+    </div>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/applications#clients">{{T "common.cancel"}}</a>
+    <button class="btn primary" type="submit">{{T "client.save"}}</button>
+  </div>
+</form>
+{{end}}

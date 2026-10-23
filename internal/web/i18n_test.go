@@ -19,11 +19,11 @@ func TestDefaultLanguageIsEnglish(t *testing.T) {
 	if !strings.Contains(body, `<html lang="en" dir="ltr">`) {
 		t.Error("the default document language is not English")
 	}
-	if !strings.Contains(body, `<title>Overview · indexarr</title>`) {
+	if !strings.Contains(body, `<title>Home · indexarr</title>`) {
 		t.Error("the default page title is not in English")
 	}
 	for _, want := range []string{
-		"Skip to content", "Overview", "Manage", "System",
+		"Skip to content", "Home", "Search", "Settings",
 		"Search releases", "Language", "English", "Italiano",
 		`class="app-shell"`, `class="sidebar"`,
 		`action="/releases"`, `name="q"`,
@@ -89,7 +89,7 @@ func TestLanguageRouteSetsCookieAndRedirectsToReferer(t *testing.T) {
 	if !strings.Contains(body, `<html lang="it" dir="ltr">`) {
 		t.Error("the saved cookie did not select Italian")
 	}
-	if !strings.Contains(body, "Panoramica") || !strings.Contains(body, "Cerca release") {
+	if !strings.Contains(body, "Home") || !strings.Contains(body, "Cerca release") {
 		t.Error("the Italian page was not rendered from the catalog")
 	}
 }
@@ -103,19 +103,19 @@ func TestLanguageQueryWinsWithoutCookie(t *testing.T) {
 	env.handler.ServeHTTP(recorder, request)
 	body := recorder.Body.String()
 	if !strings.Contains(body, `<html lang="it" dir="ltr">`) ||
-		!strings.Contains(body, "Panoramica") {
+		!strings.Contains(body, "Home") {
 		t.Error("?lang=it did not select Italian")
 	}
 
 	french := get(t, env.handler, "/?lang=fr").Body.String()
 	if !strings.Contains(french, `<html lang="fr" dir="ltr">`) ||
-		!strings.Contains(french, "Système") {
+		!strings.Contains(french, "Paramètres") {
 		t.Error("?lang=fr did not select French")
 	}
 
 	unknown := get(t, env.handler, "/?lang=xx-YY").Body.String()
 	if !strings.Contains(unknown, `<html lang="en" dir="ltr">`) ||
-		!strings.Contains(unknown, "Overview") {
+		!strings.Contains(unknown, "Home") {
 		t.Error("an unknown language did not fall back to English")
 	}
 }
@@ -128,7 +128,7 @@ func TestLanguageCookiePrecedence(t *testing.T) {
 	request.AddCookie(&http.Cookie{Name: languageCookie, Value: "it"})
 	recorder := httptest.NewRecorder()
 	env.handler.ServeHTTP(recorder, request)
-	if !strings.Contains(recorder.Body.String(), "Panoramica") {
+	if !strings.Contains(recorder.Body.String(), "Home") {
 		t.Error("the cookie did not win over Accept-Language")
 	}
 
@@ -136,7 +136,7 @@ func TestLanguageCookiePrecedence(t *testing.T) {
 	request.AddCookie(&http.Cookie{Name: languageCookie, Value: "it"})
 	recorder = httptest.NewRecorder()
 	env.handler.ServeHTTP(recorder, request)
-	if !strings.Contains(recorder.Body.String(), "Overview") {
+	if !strings.Contains(recorder.Body.String(), "Home") {
 		t.Error("?lang=en did not win over the cookie")
 	}
 }
@@ -148,8 +148,8 @@ func TestItalianCatalogOnOwnedPages(t *testing.T) {
 		want []string
 	}{
 		{"/indexers?lang=it", []string{"Indexer", "Aggiungi indexer"}},
-		{"/definitions?lang=it", []string{"Definizioni", "Catalogo built-in", "Azione"}},
-		{"/applications?lang=it", []string{"Applicazioni", "Livelli di sincronizzazione", "Sincronizza tutte"}},
+		{"/settings?section=advanced&lang=it", []string{"Definizioni", "Catalogo", "Azione"}},
+		{"/applications?lang=it", []string{"App", "Client di download", "Sincronizza tutte"}},
 		{"/import?lang=it", []string{"Importa", "Anteprima, nessuna modifica", "Genera piano da Prowlarr"}},
 		{"/activity?lang=it", []string{"Attività", "Esecuzioni pianificate", "Log"}},
 	}
@@ -204,7 +204,7 @@ func TestSidebarActiveSection(t *testing.T) {
 
 func TestDefinitionsTableIDAndShortAction(t *testing.T) {
 	env := newNativeEnv(t)
-	body := get(t, env.handler, "/definitions").Body.String()
+	body := get(t, env.handler, "/settings?section=advanced").Body.String()
 	for _, want := range []string{
 		`class="definitions-table"`,
 		`>Create indexer</a>`,
@@ -237,7 +237,7 @@ func TestReleaseAndSettingsTemplatesUseCatalog(t *testing.T) {
 	for _, key := range i18n.Keys() {
 		known[key] = true
 	}
-	allowed := map[string]bool{"indexarr": true}
+	allowed := map[string]bool{"indexarr": true, "WAL": true}
 
 	for _, name := range files {
 		path := "templates/" + name + ".html"
@@ -299,14 +299,25 @@ func TestReleasesIndexerAndReleaseTypeAreDistinct(t *testing.T) {
 func TestReleaseAndSettingsPagesTranslate(t *testing.T) {
 	env := newTestEnv(t)
 
-	settingsBody := get(t, env.handler, "/settings?lang=it").Body.String()
+	generalBody := get(t, env.handler, "/settings?lang=it").Body.String()
 	for _, want := range []string{
 		`<html lang="it" dir="ltr">`,
-		"Impostazioni", "Chiave API", "Client di download",
-		"Salva impostazioni", "Backup automatici",
+		"Impostazioni", "Generale", "Salva impostazioni", "Notifiche",
 	} {
-		if !strings.Contains(settingsBody, want) {
+		if !strings.Contains(generalBody, want) {
 			t.Errorf("/settings?lang=it missing %q", want)
+		}
+	}
+	settingsBody := get(t, env.handler, "/settings?section=security&lang=it").Body.String()
+	for _, want := range []string{"Chiave API", "Sicurezza"} {
+		if !strings.Contains(settingsBody, want) {
+			t.Errorf("/settings?section=security&lang=it missing %q", want)
+		}
+	}
+	backupBody := get(t, env.handler, "/settings?section=backup&lang=it").Body.String()
+	for _, want := range []string{"Backup automatici", "Salva impostazioni"} {
+		if !strings.Contains(backupBody, want) {
+			t.Errorf("/settings?section=backup&lang=it missing %q", want)
 		}
 	}
 	if env.apiKey == "" {

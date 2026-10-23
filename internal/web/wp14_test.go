@@ -2,6 +2,8 @@ package web
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -63,8 +65,10 @@ func TestDerivedDefinitionWarning(t *testing.T) {
 	}
 }
 
-// TestDashboardSingleErrorSource covers U8: the overview must never say that
-// everything is error-free while the 24h run counter reports failures.
+// TestDashboardSingleErrorSource covers U8: the home status is one value, so
+// it cannot say "everything works" while a current indexer error exists. A
+// failed run that has since recovered is not a problem anymore: it stays in
+// Activity, not on Home.
 func TestDashboardSingleErrorSource(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := context.Background()
@@ -83,7 +87,7 @@ func TestDashboardSingleErrorSource(t *testing.T) {
 	}
 
 	if err := env.store.UpsertIndexerState(ctx, store.IndexerState{
-		IndexerID: indexerID, Circuit: "closed", LastError: "boom",
+		IndexerID: indexerID, Circuit: "closed", LastError: "HTTP 429: too many requests",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -94,18 +98,17 @@ func TestDashboardSingleErrorSource(t *testing.T) {
 	}
 
 	body := get(t, env.handler, "/").Body.String()
-	if strings.Contains(body, "all without errors") || strings.Contains(body, ">no errors<") {
-		t.Error("the dashboard claims there are no errors while a current error exists")
+	if strings.Contains(body, "All indexers look healthy now") {
+		t.Error("the home page claims there are no errors while a current error exists")
 	}
-	for _, want := range []string{"Overall status", "1 problem(s)", "failed run"} {
+	for _, want := range []string{"indexers have problems", "Broken source", "limiting requests", "Needs attention"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("dashboard status missing %q", want)
+			t.Errorf("home status missing %q", want)
 		}
 	}
 
-	// A later successful run clears the entity error but leaves the failed run
-	// in the 24h window: the summary must mention it instead of going back to
-	// "no errors".
+	// A later successful run clears the current error. The old failed run is
+	// still in Activity, but Home must go back to green instead of counting it.
 	if err := env.store.UpsertIndexerState(ctx, store.IndexerState{
 		IndexerID: indexerID, Circuit: "closed", LastError: "",
 	}); err != nil {
@@ -118,52 +121,51 @@ func TestDashboardSingleErrorSource(t *testing.T) {
 	}
 
 	body = get(t, env.handler, "/").Body.String()
-	if strings.Contains(body, "all without errors") || strings.Contains(body, ">no errors<") {
-		t.Error("the dashboard claims there are no errors while a run failed in the last 24h")
-	}
-	for _, want := range []string{"All indexers look healthy now", "1 failed run(s) of 2"} {
+	for _, want := range []string{"Everything works", "1 indexers active"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("dashboard status missing %q", want)
+			t.Errorf("home status missing %q", want)
 		}
+	}
+	if strings.Contains(body, "indexers have problems") {
+		t.Error("the home page still reports problems after the indexer recovered")
 	}
 }
 
-// TestDashboardPublicURLWarning covers U12: the dashboard shows the configured
-// public URL and links to Settings when public_url is empty.
+// TestDashboardPublicURLWarning covers U12: without public_url the Home shows
+// the address this browser is using and a one-click way to adopt it.
 func TestDashboardPublicURLWarning(t *testing.T) {
 	env := newTestEnv(t)
 
 	body := get(t, env.handler, "/").Body.String()
 	for _, want := range []string{
-		"public_url is not set",
-		`href="/settings"`,
-		"Set the public URL",
+		"Use this address",
+		"http://example.com/api",
+		"Check that your apps can reach it",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("missing public_url warning %q", want)
+			t.Errorf("missing suggested address %q", want)
 		}
 	}
 
-	ctx := context.Background()
-	settings, err := env.store.LoadSettings(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	settings.PublicURL = "https://indexarr.example"
-	if err := env.store.SaveSettings(ctx, settings); err != nil {
-		t.Fatal(err)
+	token, cookie := csrfFrom(t, env.handler, "/")
+	recorder := postForm(t, env.handler, "/settings/public-url", url.Values{
+		"csrf":       {token},
+		"public_url": {"http://example.com"},
+	}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("POST public-url = %d: %s", recorder.Code, recorder.Body.String())
 	}
 
 	body = get(t, env.handler, "/").Body.String()
-	if strings.Contains(body, "public_url is not set") {
-		t.Error("the dashboard still warns after public_url is configured")
+	if strings.Contains(body, "Use this address") {
+		t.Error("the home page still proposes an address after public_url is set")
 	}
 	for _, want := range []string{
-		"https://indexarr.example/api",
-		"Public URL: https://indexarr.example",
+		"http://example.com/api",
+		"Public address: http://example.com",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("dashboard missing configured endpoint %q", want)
+			t.Errorf("home missing configured endpoint %q", want)
 		}
 	}
 }
@@ -204,7 +206,8 @@ func TestOwnedTemplatesUseCatalog(t *testing.T) {
 		"definitions", "definition", "definition_form", "applications",
 		"application_form", "import", "activity", "activity_feed",
 		"activity_searches", "indexer_data", "indexer_try", "runs", "logs",
-		"error", "components",
+		"error", "components", "setup", "settings", "settings_definitions",
+		"download_client_form",
 	}
 	allowed := map[string]bool{
 		"indexarr": true,
@@ -212,6 +215,7 @@ func TestOwnedTemplatesUseCatalog(t *testing.T) {
 		"torrent":  true,
 		"usenet":   true,
 		"ms":       true,
+		"WAL":      true,
 	}
 	known := make(map[string]bool, len(i18n.Keys()))
 	for _, key := range i18n.Keys() {

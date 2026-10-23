@@ -272,7 +272,7 @@ func TestActivityFeedAndSearchesPages(t *testing.T) {
 
 func TestSettingsHistoryRetentionField(t *testing.T) {
 	env := newTestEnv(t)
-	body := get(t, env.handler, "/settings").Body.String()
+	body := get(t, env.handler, "/settings?section=updates").Body.String()
 	if !strings.Contains(body, `name="history_retention_days"`) {
 		t.Fatal("the history retention field is missing from Settings")
 	}

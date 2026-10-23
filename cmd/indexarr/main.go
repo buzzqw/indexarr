@@ -284,6 +284,7 @@ func main() {
 			Native: indexerManager, Indexers: indexerService, Scheduler: nativeRunner,
 			DownloadResolver: downloadResolver,
 			Vault:            secretVault, Sync: syncService,
+			VaultKey:  keySource.Info(),
 			GrabGuard: grabGuard, GrabRecord: grabRecord,
 			Politeness: politeness,
 			Restart: func() {

@@ -31,14 +31,14 @@ func (s *Server) rulesAdd(w http.ResponseWriter, r *http.Request) {
 	value := strings.TrimSpace(r.FormValue("value"))
 	note := strings.TrimSpace(r.FormValue("note"))
 	if value == "" {
-		redirect(w, r, "/rules", "", "The rule value is required")
+		redirect(w, r, "/settings?section=rules", "", "The rule value is required")
 		return
 	}
 	if _, err := s.store.AddBlocklistRule(r.Context(), kind, value, note); err != nil {
-		redirect(w, r, "/rules", "", err.Error())
+		redirect(w, r, "/settings?section=rules", "", err.Error())
 		return
 	}
-	redirect(w, r, "/rules", "Rule added; future runs will skip matching releases", "")
+	redirect(w, r, "/settings?section=rules", "Rule added; future runs will skip matching releases", "")
 }
 
 func (s *Server) rulesDelete(w http.ResponseWriter, r *http.Request) {
@@ -48,10 +48,10 @@ func (s *Server) rulesDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := s.store.DeleteBlocklistRule(r.Context(), id); err != nil {
-		redirect(w, r, "/rules", "", err.Error())
+		redirect(w, r, "/settings?section=rules", "", err.Error())
 		return
 	}
-	redirect(w, r, "/rules", "Rule deleted", "")
+	redirect(w, r, "/settings?section=rules", "Rule deleted", "")
 }
 
 func (s *Server) releaseFavorite(w http.ResponseWriter, r *http.Request) {

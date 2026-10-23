@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -55,36 +56,42 @@ type definitionsPage struct {
 }
 
 func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
-	defs, err := s.store.ListDefinitions(r.Context())
+	data := definitionsPage{base: s.newBaseT(r, "definitions.title", "definitions")}
+	data.CatalogRows, data.LocalRows = s.definitionRows(r.Context(), &data.base)
+	s.render(w, r, "definitions", data, http.StatusOK)
+}
+
+// definitionRows builds the catalog/local tables used by the old Definitions
+// page and by Settings → Advanced. The base is optional and only used to log a
+// catalog parse warning.
+func (s *Server) definitionRows(ctx context.Context, data *base) ([]definitionRow, []definitionRow) {
+	defs, err := s.store.ListDefinitions(ctx)
 	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
+		return nil, nil
 	}
-	indexers, err := s.store.ListIndexers(r.Context())
+	indexers, err := s.store.ListIndexers(ctx)
 	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
+		return nil, nil
 	}
 	counts := make(map[string]int, len(indexers))
 	for _, in := range indexers {
 		counts[in.DefinitionID]++
 	}
-
-	data := definitionsPage{base: s.newBaseT(r, "definitions.title", "definitions")}
+	var catalogRows, localRows []definitionRow
 	seen := make(map[string]bool, len(defs))
 	for _, def := range defs {
 		seen[def.ID] = true
 		row := definitionRowFromStore(def, counts[def.ID])
 		if def.Origin == catalog.OriginBuiltin {
 			row.Builtin = true
-			data.CatalogRows = append(data.CatalogRows, row)
+			catalogRows = append(catalogRows, row)
 			continue
 		}
-		data.LocalRows = append(data.LocalRows, row)
+		localRows = append(localRows, row)
 	}
 
 	entries, catalogErr := catalog.Builtins()
-	if catalogErr != nil {
+	if catalogErr != nil && data != nil {
 		s.log.Warn("load catalog for definitions page", "error", catalogErr)
 	}
 	for _, entry := range entries {
@@ -102,10 +109,9 @@ func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
 			Builtin:  true,
 		}
 		row.HashShort = shortHash(row.Hash)
-		data.CatalogRows = append(data.CatalogRows, row)
+		catalogRows = append(catalogRows, row)
 	}
-
-	s.render(w, r, "definitions", data, http.StatusOK)
+	return catalogRows, localRows
 }
 
 func definitionRowFromStore(def store.Definition, indexers int) definitionRow {

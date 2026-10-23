@@ -5,9 +5,9 @@
     <p class="muted">{{T "applications.subtitle"}}</p>
   </div>
   <div class="actions">
+    <a class="btn" href="/download-clients/new">{{T "client.add"}}</a>
     <a class="btn primary" href="/applications/new">{{T "applications.new"}}</a>
-    <a class="btn" href="/indexers?tab=native">{{T "applications.nativeIndexers"}}</a>
-    <form method="post" action="/applications/sync" style="display:inline">
+    <form method="post" action="/applications/sync">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn" type="submit">{{T "applications.syncAll"}}</button>
     </form>
@@ -17,18 +17,8 @@
 {{if .Unavailable}}<p class="flash warn" role="status">{{T "applications.unavailable"}}</p>{{end}}
 
 <section class="panel">
-  <div class="panel-head"><h2>{{T "applications.levels"}}</h2></div>
-  <div class="prose">
-    <ul>
-      <li>{{T "applications.levelDisabled"}}</li>
-      <li>{{T "applications.levelAddRemove"}}</li>
-      <li>{{T "applications.levelFull"}}</li>
-    </ul>
-    <p>{{T "applications.manualNote"}}</p>
-  </div>
-</section>
-
-<section class="panel">
+  <div class="panel-head"><h2>{{T "applications.appsTitle"}}</h2></div>
+  {{if .Rows}}
   <div class="table-scroll">
     <table>
       <thead>
@@ -39,37 +29,121 @@
           <th scope="col">{{T "applications.level"}}</th>
           <th scope="col">{{T "applications.lastSync"}}</th>
           <th scope="col">{{T "common.lastError"}}</th>
-          <th scope="col">{{T "common.key"}}</th>
           <th scope="col" class="right">{{T "common.actions"}}</th>
         </tr>
       </thead>
       <tbody>
         {{range .Rows}}
         <tr>
-          <td>{{.KindLabel}}</td>
+          <td><span class="status-dot status-{{if .Application.LastError}}problem{{else}}ok{{end}}" role="img" aria-label="{{if .Application.LastError}}{{T "common.error"}}{{else}}{{T "common.ok"}}{{end}}"><span class="dot" aria-hidden="true"></span></span> {{.KindLabel}}</td>
           <td><a href="/applications/{{.Application.ID}}/edit">{{.Application.Name}}</a></td>
           <td><code>{{.Application.URL}}</code></td>
           <td>{{syncLevelLabel .Application.SyncLevel}}</td>
           <td class="nowrap">{{date .Application.LastSyncAt}}</td>
           <td>{{if .Application.LastError}}<span class="text-danger" title="{{.Application.LastError}}">{{truncate .Application.LastError 80}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
-          <td>{{if .HasKey}}<span class="chip ok">{{T "common.keyConfigured"}}</span>{{else}}<span class="chip warn">{{T "common.keyMissing"}}</span>{{end}}</td>
           <td class="right nowrap">
-            <form method="post" action="/applications/{{.Application.ID}}/sync" style="display:inline">
+            <form method="post" action="/applications/{{.Application.ID}}/sync">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
               <button class="btn small" type="submit">{{T "common.sync"}}</button>
             </form>
             <a class="btn small" href="/applications/{{.Application.ID}}/edit">{{T "common.edit"}}</a>
-            <form method="post" action="/applications/{{.Application.ID}}/delete" style="display:inline" data-confirm="{{T "applications.deleteConfirm"}}">
+            <form method="post" action="/applications/{{.Application.ID}}/delete" data-confirm="{{T "applications.deleteConfirm"}}">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
               <button class="btn small danger" type="submit">{{T "common.delete"}}</button>
             </form>
           </td>
         </tr>
-        {{else}}
-        <tr><td colspan="8" class="empty">{{T "applications.empty"}}</td></tr>
         {{end}}
       </tbody>
     </table>
   </div>
+  {{else}}
+  <div class="empty-state">
+    <p class="empty-title">{{T "applications.emptyTitle"}}</p>
+    <p class="muted">{{T "applications.empty"}}</p>
+    <a class="btn primary" href="/applications/new">{{T "applications.connectApp"}}</a>
+  </div>
+  {{end}}
 </section>
+
+<section class="panel" id="clients">
+  <div class="panel-head">
+    <h2>{{T "client.title"}}</h2>
+    <a class="btn small" href="/download-clients/new">{{T "client.add"}}</a>
+  </div>
+  <p class="help">{{T "client.ruleHelp"}}</p>
+  {{if .Clients}}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "client.name"}}</th>
+          <th scope="col">{{T "client.protocol"}}</th>
+          <th scope="col">{{T "client.address"}}</th>
+          <th scope="col">{{T "client.default"}}</th>
+          <th scope="col" class="right">{{T "common.actions"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Clients}}
+        <tr>
+          <td>
+            <span class="status-dot status-{{if .Client.Enabled}}ok{{else}}disabled{{end}}" role="img" aria-label="{{if .Client.Enabled}}{{T "common.ok"}}{{else}}{{T "client.disabled"}}{{end}}"><span class="dot" aria-hidden="true"></span></span>
+            <strong>{{if .Client.Name}}{{.Client.Name}}{{else}}{{.KindLabel}}{{end}}</strong> <span class="muted">· {{.KindLabel}}</span>{{if .HasSecret}} <span class="chip">{{T "client.secretStored"}}</span>{{end}}
+          </td>
+          <td>{{T .ProtocolKey}}</td>
+          <td><code>{{.Host}}</code></td>
+          <td>{{if .Client.IsDefault}}<span class="chip ok">{{T "client.defaultChip"}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+          <td class="right nowrap">
+            <form method="post" action="/download-clients/{{.Client.ID}}/test">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small" type="submit">{{T "client.test"}}</button>
+            </form>
+            {{if not .Client.IsDefault}}
+            <form method="post" action="/download-clients/{{.Client.ID}}/default">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small" type="submit">{{T "client.makeDefault"}}</button>
+            </form>
+            {{end}}
+            <a class="btn small" href="/download-clients/{{.Client.ID}}/edit">{{T "common.edit"}}</a>
+            <form method="post" action="/download-clients/{{.Client.ID}}/delete" data-confirm="{{T "client.deleteConfirm" .KindLabel}}">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small danger" type="submit">{{T "common.delete"}}</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="empty-state">
+    <p class="empty-title">{{T "client.emptyTitle"}}</p>
+    <p class="muted">{{T "client.empty"}}</p>
+    <a class="btn primary" href="/download-clients/new">{{T "client.add"}}</a>
+  </div>
+  {{end}}
+</section>
+
+<details class="advanced">
+  <summary>{{T "applications.manualTitle"}}</summary>
+  <div class="advanced-body">
+    <div class="field grow">
+      <label for="manual_endpoint">{{T "home.connect.urlLabel"}}</label>
+      <div class="copy-field">
+        <input id="manual_endpoint" type="text" readonly value="{{.TorznabURL}}" spellcheck="false">
+        <button class="btn" type="button" data-copy="{{.TorznabURL}}">{{T "common.copy"}}</button>
+      </div>
+    </div>
+    <div class="field grow">
+      <label for="manual_key">{{T "home.connect.apiKey"}}</label>
+      <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/apikey">
+        <input id="manual_key" type="password" readonly value="" placeholder="••••••••••••" autocomplete="off">
+        <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>
+        <button class="btn" type="button" data-secret-copy>{{T "common.copy"}}</button>
+      </div>
+    </div>
+    <p class="help">{{T "applications.levelsHelp"}}</p>
+  </div>
+</details>
 {{end}}

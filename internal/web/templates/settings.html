@@ -6,331 +6,578 @@
   </div>
 </section>
 
-<nav class="subnav" aria-label="{{T "settings.sectionsLabel"}}">
-  <a href="#api-torznab">{{T "settings.apiTorznab"}}</a>
-  <a href="#rete">{{T "settings.networkNav"}}</a>
-  <a href="#client-download">{{T "settings.downloadClient"}}</a>
-  <a href="#notifiche">{{T "settings.notificationsNav"}}</a>
-  <a href="#backup-manutenzione">{{T "settings.backupNav"}}</a>
-</nav>
+<div class="settings-layout">
+  <nav class="settings-nav" aria-label="{{T "settings.sectionsLabel"}}">
+    {{range .Sections}}<a href="{{.URL}}"{{if .Active}} class="active" aria-current="page"{{end}}>{{T .Label}}</a>{{end}}
+  </nav>
 
-<section class="panel" id="api-torznab">
-  <div class="panel-head"><h2>{{T "settings.apiTorznab"}}</h2></div>
-  <div class="field">
-    <label for="api_key_view">{{T "settings.apiKey"}}</label>
-    <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/apikey">
-      <input id="api_key_view" type="password" readonly value="" placeholder="••••••••••••" spellcheck="false" autocomplete="off">
-      <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>
-      <button class="btn" type="button" data-secret-copy>{{T "common.copy"}}</button>
-    </div>
-    <p class="help">{{T "settings.apiKeyHelp"}} <code>{{T "settings.apikeyParam"}}</code>. {{T "settings.apiKeyRotateHelp"}}</p>
-  </div>
-  <div class="field">
-    <label for="torznab_url">{{T "settings.torznabEndpointLabel"}}</label>
-    <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/torznab">
-      <input id="torznab_url" type="text" readonly value="{{.TorznabMasked}}" spellcheck="false" autocomplete="off">
-      <button class="btn" type="button" data-secret-copy>{{T "common.copy"}}</button>
-    </div>
-    <p class="help">{{T "settings.categoriesHelp"}}: <code>5000</code> {{T "settings.categoryTV"}}, <code>2000</code> {{T "settings.categoryMovies"}}, <code>3000</code> {{T "settings.categoryAudio"}}, <code>7000</code> {{T "settings.categoryBooks"}}. {{T "settings.capsHelp"}}: <code>{{T "settings.torznabCapsExample" .TorznabMasked}}</code>.</p>
-  </div>
-  <form method="post" action="/settings/apikey" data-confirm="{{T "settings.regenerateConfirm"}}">
+  <div class="settings-body">
+  {{if eq .Section "general"}}
+  <form class="panel form" method="post" action="/settings">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <button class="btn danger" type="submit">{{T "settings.regenerate"}}</button>
-  </form>
-</section>
-
-<section class="panel">
-  <div class="panel-head"><h2>{{T "settings.additionalKeys"}}</h2></div>
-  <p class="help">{{T "settings.additionalKeysHelp"}}</p>
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr><th scope="col">{{T "common.name"}}</th><th scope="col">{{T "common.key"}}</th><th scope="col">{{T "settings.created"}}</th><th scope="col">{{T "settings.lastUsed"}}</th><th scope="col">{{T "settings.requests"}}</th><th scope="col" class="right">{{T "common.actions"}}</th></tr>
-      </thead>
-      <tbody>
-        {{range .AdditionalKeys}}
-        <tr>
-          <td>{{.Name}}</td>
-          <td>
-            <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/key/{{.ID}}">
-              <input type="password" readonly value="" placeholder="{{.Masked}}" autocomplete="off" aria-label="{{T "settings.apiKeyAria" .Name}}">
-              <button class="btn small" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>
-              <button class="btn small" type="button" data-secret-copy>{{T "common.copy"}}</button>
-            </div>
-          </td>
-          <td class="nowrap">{{date .CreatedAt}}</td>
-          <td class="nowrap">{{if .LastUsedAt}}{{date .LastUsedAt}}{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</td>
-          <td>{{.Requests}}</td>
-          <td class="right">
-            <form method="post" action="/settings/apikeys/{{.ID}}/delete" data-confirm="{{T "settings.revokeConfirm"}}">
-              <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small danger" type="submit">{{T "settings.revoke"}}</button>
-            </form>
-          </td>
-        </tr>
-        {{else}}
-        <tr><td colspan="6" class="empty">{{T "settings.noKeys"}}</td></tr>
-        {{end}}
-      </tbody>
-    </table>
-  </div>
-  <form class="inline-form" method="post" action="/settings/apikeys">
-    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="section" value="general">
+    <div class="panel-head"><h2>{{T "settings.section.general"}}</h2></div>
     <div class="field grow">
-      <label for="key_name">{{T "settings.newKeyName"}}</label>
-      <input id="key_name" name="name" type="text" maxlength="80" required placeholder="{{T "settings.newKeyNamePlaceholder"}}">
+      <label for="public_url">{{T "settings.publicURL"}}</label>
+      <input id="public_url" name="public_url" type="url" value="{{.Settings.PublicURL}}" placeholder="{{T "settings.publicURLPlaceholder"}}">
+      <p class="help">{{T "settings.publicURLHelp"}}</p>
+    </div>
+    <div class="panel-head"><h2>{{T "settings.notificationsTitle"}}</h2></div>
+    <div class="form-grid">
+      <div class="field grow">
+        <label for="notify_webhook_url">{{T "settings.webhookURL"}}</label>
+        <input id="notify_webhook_url" name="notify_webhook_url" type="url" value="{{.Settings.NotifyWebhookURL}}" placeholder="{{T "settings.webhookPlaceholder"}}">
+        <p class="help">{{T "settings.webhookHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="notify_telegram_token">{{T "settings.telegramToken"}}</label>
+        <div class="secret-field" data-secret-change-field>
+          <input id="notify_telegram_token" name="notify_telegram_token" type="password" value="" placeholder="{{T "settings.secretStored"}}" autocomplete="new-password">
+          <button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>
+        </div>
+        <label class="check muted"><input type="checkbox" name="notify_telegram_token_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+        <p class="help">{{T "settings.telegramTokenHelp"}} {{T "settings.secretEmptyHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="notify_telegram_chat_id">{{T "settings.telegramChatID"}}</label>
+        <input id="notify_telegram_chat_id" name="notify_telegram_chat_id" type="text" value="{{.Settings.NotifyTelegramChatID}}">
+        <p class="help">{{T "settings.telegramChatHelp"}}</p>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="field checkbox">
+        <input id="notify_new_releases" name="notify_new_releases" type="checkbox"{{if .Settings.NotifyNewReleases}} checked{{end}}>
+        <label for="notify_new_releases">{{T "settings.notifyNewReleases"}}</label>
+      </div>
+      <div class="field checkbox">
+        <input id="notify_failures" name="notify_failures" type="checkbox"{{if .Settings.NotifyFailures}} checked{{end}}>
+        <label for="notify_failures">{{T "settings.notifyFailures"}}</label>
+      </div>
     </div>
     <div class="actions">
-      <button class="btn primary" type="submit">{{T "settings.addKey"}}</button>
+      <button class="btn primary" type="submit">{{T "settings.save"}}</button>
     </div>
   </form>
-</section>
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "settings.setupTitle"}}</h2></div>
+    <p>{{T "settings.setupHelp"}}</p>
+    <form method="post" action="/settings/setup/reopen">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">{{T "settings.setupReopen"}}</button>
+    </form>
+  </section>
+  {{end}}
 
-<form class="panel form" method="post" action="/settings">
-  <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <div class="panel-head"><h2>{{T "settings.acquisition"}}</h2></div>
+  {{if eq .Section "security"}}
+  <section class="panel" id="api-torznab">
+    <div class="panel-head"><h2>{{T "settings.apiTorznab"}}</h2></div>
+    <div class="field">
+      <label for="api_key_view">{{T "settings.apiKey"}}</label>
+      <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/apikey">
+        <input id="api_key_view" type="password" readonly value="" placeholder="••••••••••••" spellcheck="false" autocomplete="off">
+        <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>
+        <button class="btn" type="button" data-secret-copy>{{T "common.copy"}}</button>
+      </div>
+      <p class="help">{{T "settings.apiKeyHelp"}} <code>{{T "settings.apikeyParam"}}</code>. {{T "settings.apiKeyRotateHelp"}}</p>
+    </div>
+    <div class="field">
+      <label for="torznab_url">{{T "settings.torznabEndpointLabel"}}</label>
+      <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/torznab">
+        <input id="torznab_url" type="text" readonly value="{{.TorznabMasked}}" spellcheck="false" autocomplete="off">
+        <button class="btn" type="button" data-secret-copy>{{T "common.copy"}}</button>
+      </div>
+      <p class="help">{{T "settings.categoriesHelp"}}: <code>5000</code> {{T "settings.categoryTV"}}, <code>2000</code> {{T "settings.categoryMovies"}}, <code>3000</code> {{T "settings.categoryAudio"}}, <code>7000</code> {{T "settings.categoryBooks"}}.</p>
+    </div>
+    <form method="post" action="/settings/apikey" data-confirm="{{T "settings.regenerateConfirm"}}">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn danger" type="submit">{{T "settings.regenerate"}}</button>
+    </form>
+  </section>
 
-  <div class="form-grid">
-    <div class="field">
-      <label for="default_interval_seconds">{{T "settings.defaultInterval"}}</label>
-      <input id="default_interval_seconds" name="default_interval_seconds" type="number" min="60" max="2592000" step="60" required value="{{.Settings.DefaultIntervalSeconds}}">
-      <p class="help">{{T "settings.defaultIntervalHelp"}}</p>
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "settings.additionalKeys"}}</h2></div>
+    <p class="help">{{T "settings.additionalKeysHelp"}}</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th scope="col">{{T "common.name"}}</th><th scope="col">{{T "common.key"}}</th><th scope="col">{{T "settings.created"}}</th><th scope="col">{{T "settings.lastUsed"}}</th><th scope="col">{{T "settings.requests"}}</th><th scope="col" class="right">{{T "common.actions"}}</th></tr>
+        </thead>
+        <tbody>
+          {{range .AdditionalKeys}}
+          <tr>
+            <td>{{.Name}}</td>
+            <td>
+              <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/key/{{.ID}}">
+                <input type="password" readonly value="" placeholder="{{.Masked}}" autocomplete="off" aria-label="{{T "settings.apiKeyAria" .Name}}">
+                <button class="btn small" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>
+                <button class="btn small" type="button" data-secret-copy>{{T "common.copy"}}</button>
+              </div>
+            </td>
+            <td class="nowrap">{{date .CreatedAt}}</td>
+            <td class="nowrap">{{if .LastUsedAt}}{{date .LastUsedAt}}{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</td>
+            <td>{{.Requests}}</td>
+            <td class="right">
+              <form method="post" action="/settings/apikeys/{{.ID}}/delete" data-confirm="{{T "settings.revokeConfirm"}}">
+                <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                <button class="btn small danger" type="submit">{{T "settings.revoke"}}</button>
+              </form>
+            </td>
+          </tr>
+          {{else}}
+          <tr><td colspan="6" class="empty">{{T "settings.noKeys"}}</td></tr>
+          {{end}}
+        </tbody>
+      </table>
     </div>
-    <div class="field">
-      <label for="fetch_timeout_seconds">{{T "settings.fetchTimeout"}}</label>
-      <input id="fetch_timeout_seconds" name="fetch_timeout_seconds" type="number" min="5" max="300" required value="{{.Settings.FetchTimeoutSeconds}}">
-      <p class="help">{{T "settings.fetchTimeoutHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="workers">{{T "settings.workers"}}</label>
-      <input id="workers" name="workers" type="number" min="1" max="16" required value="{{.Settings.Workers}}">
-      <p class="help">{{T "settings.workersHelp"}}</p>
-    </div>
-  </div>
-
-  <div class="form-grid">
-    <div class="field">
-      <label for="max_torrents_per_run">{{T "settings.maxTorrents"}}</label>
-      <input id="max_torrents_per_run" name="max_torrents_per_run" type="number" min="0" max="200" required value="{{.Settings.MaxTorrentsPerRun}}">
-      <p class="help">{{T "settings.maxTorrentsHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="max_torrent_mb">{{T "settings.maxTorrentSize"}}</label>
-      <input id="max_torrent_mb" name="max_torrent_mb" type="number" min="1" max="64" required value="{{.MaxTorrentMB}}">
-      <p class="help">{{T "settings.maxTorrentSizeHelp"}}</p>
-    </div>
-    <div class="field checkbox">
-      <input id="fetch_torrents" name="fetch_torrents" type="checkbox"{{if .Settings.FetchTorrents}} checked{{end}}>
-      <label for="fetch_torrents">{{T "settings.fetchTorrents"}}</label>
-      <p class="help">{{T "settings.fetchTorrentsHelp"}}</p>
-    </div>
-  </div>
-
-  <div class="field">
-    <label for="user_agent">{{T "settings.userAgent"}}</label>
-    <input id="user_agent" name="user_agent" type="text" value="{{.Settings.UserAgent}}">
-  </div>
-
-  <div class="panel-head"><h2 id="rete">{{T "settings.networkTitle"}}</h2></div>
-  <div class="form-grid">
-    <div class="field">
-      <label for="host_rate">{{T "settings.hostRate"}}</label>
-      <input id="host_rate" name="host_rate" type="number" min="0" max="100" step="0.1" required value="{{.Settings.HostRate}}">
-      <p class="help">{{T "settings.hostRateHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="host_burst">{{T "settings.hostBurst"}}</label>
-      <input id="host_burst" name="host_burst" type="number" min="1" max="100" required value="{{.Settings.HostBurst}}">
-      <p class="help">{{T "settings.hostBurstHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="breaker_threshold">{{T "settings.breakerThreshold"}}</label>
-      <input id="breaker_threshold" name="breaker_threshold" type="number" min="1" max="100" required value="{{.Settings.BreakerThreshold}}">
-      <p class="help">{{T "settings.breakerThresholdHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="breaker_cooldown">{{T "settings.breakerCooldown"}}</label>
-      <input id="breaker_cooldown" name="breaker_cooldown" type="number" min="1" max="3600" required value="{{.Settings.BreakerCooldownSeconds}}">
-      <p class="help">{{T "settings.breakerCooldownHelp"}}</p>
-    </div>
-  </div>
-
-  <div class="panel-head"><h2>{{T "settings.flaresolverrTitle"}}</h2></div>
-  <div class="form-grid">
-    <div class="field grow">
-      <label for="flaresolverr_url">{{T "settings.flaresolverrURL"}}</label>
-      <input id="flaresolverr_url" name="flaresolverr_url" type="url" value="{{.Settings.FlareSolverrURL}}" placeholder="{{T "settings.flaresolverrURLPlaceholder"}}">
-      <p class="help">{{T "settings.flaresolverrHelp"}}</p>
+    <form class="inline-form" method="post" action="/settings/apikeys">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <div class="field grow">
+        <label for="key_name">{{T "settings.newKeyName"}}</label>
+        <input id="key_name" name="name" type="text" maxlength="80" required placeholder="{{T "settings.newKeyNamePlaceholder"}}">
+      </div>
       <div class="actions">
-        <button class="btn" type="submit" formaction="/settings/flaresolverr/test" formmethod="post">{{T "settings.testFlareSolverr"}}</button>
+        <button class="btn primary" type="submit">{{T "settings.addKey"}}</button>
       </div>
-      <p class="help">{{T "settings.flaresolverrTestHelp"}} <code>{{T "settings.flaresolverrTestURL"}}</code> {{T "settings.flaresolverrTestHelpAfter"}}</p>
-    </div>
-  </div>
+    </form>
+  </section>
 
-  <div class="panel-head"><h2 id="notifiche">{{T "settings.notificationsTitle"}}</h2></div>
-  <div class="form-grid">
-    <div class="field grow">
-      <label for="notify_webhook_url">{{T "settings.webhookURL"}}</label>
-      <input id="notify_webhook_url" name="notify_webhook_url" type="url" value="{{.Settings.NotifyWebhookURL}}" placeholder="{{T "settings.webhookPlaceholder"}}">
-      <p class="help">{{T "settings.webhookHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="notify_telegram_token">{{T "settings.telegramToken"}}</label>
-      <div class="secret-field" data-secret-change-field>
-        <input id="notify_telegram_token" name="notify_telegram_token" type="password" value="" placeholder="{{T "settings.secretStored"}}" autocomplete="new-password">
-        <button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "settings.vaultTitle"}}</h2></div>
+    {{if .VaultKey.Available}}
+    <dl class="detail">
+      <dt>{{T "settings.vaultWhere"}}</dt><dd><code>{{.VaultKey.Kind}}</code>{{if .VaultKey.Path}} · <code>{{.VaultKey.Path}}</code>{{end}}</dd>
+    </dl>
+    {{if .VaultKey.InDataDir}}<p class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span>{{T "settings.vaultInData"}}</span></p>{{end}}
+    <p class="help">{{T "settings.vaultHelp"}}</p>
+    {{else}}
+    <p class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span>{{T "settings.vaultUnavailable"}}</span></p>
+    {{end}}
+  </section>
+
+  <form class="panel form" method="post" action="/settings">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="section" value="security">
+    <div class="panel-head"><h2>{{T "settings.webAccess"}}</h2></div>
+    {{if not .Settings.UIUser}}<p class="flash warn" role="status">{{T "settings.openWarning"}}</p>{{end}}
+    <div class="form-grid">
+      <div class="field">
+        <label for="ui_user">{{T "settings.user"}}</label>
+        <input id="ui_user" name="ui_user" type="text" value="{{.Settings.UIUser}}" autocomplete="username">
+        <p class="help">{{T "settings.userHelp"}}</p>
       </div>
-      <label class="check muted"><input type="checkbox" name="notify_telegram_token_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
-      <p class="help">{{T "settings.telegramTokenHelp"}} {{T "settings.secretEmptyHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="notify_telegram_chat_id">{{T "settings.telegramChatID"}}</label>
-      <input id="notify_telegram_chat_id" name="notify_telegram_chat_id" type="text" value="{{.Settings.NotifyTelegramChatID}}">
-      <p class="help">{{T "settings.telegramChatHelp"}}</p>
-    </div>
-  </div>
-  <div class="form-grid">
-    <div class="field checkbox">
-      <input id="notify_new_releases" name="notify_new_releases" type="checkbox"{{if .Settings.NotifyNewReleases}} checked{{end}}>
-      <label for="notify_new_releases">{{T "settings.notifyNewReleases"}}</label>
-    </div>
-    <div class="field checkbox">
-      <input id="notify_failures" name="notify_failures" type="checkbox"{{if .Settings.NotifyFailures}} checked{{end}}>
-      <label for="notify_failures">{{T "settings.notifyFailures"}}</label>
-    </div>
-    <div class="field">
-      <label for="auto_disable_after">{{T "settings.autoDisable"}}</label>
-      <input id="auto_disable_after" name="auto_disable_after" type="number" min="0" max="100" value="{{.Settings.AutoDisableAfter}}">
-      <p class="help">{{T "settings.autoDisableHelp"}}</p>
-    </div>
-  </div>
-
-  <div class="panel-head"><h2>{{T "settings.torznabRatio"}}</h2></div>
-  <div class="form-grid">
-    <div class="field">
-      <label for="torznab_download_factor">{{T "settings.downloadFactor"}}</label>
-      <input id="torznab_download_factor" name="torznab_download_factor" type="number" min="0" max="100" required value="{{.Settings.TorznabDownloadFactor}}">
-      <p class="help">{{T "settings.downloadFactorHelp"}} <code>{{T "settings.downloadVolumeFactorTag"}}</code>.</p>
-    </div>
-    <div class="field">
-      <label for="torznab_upload_factor">{{T "settings.uploadFactor"}}</label>
-      <input id="torznab_upload_factor" name="torznab_upload_factor" type="number" min="0" max="100" required value="{{.Settings.TorznabUploadFactor}}">
-      <p class="help">{{T "settings.uploadFactorHelp"}} <code>{{T "settings.uploadVolumeFactorTag"}}</code>.</p>
-    </div>
-    <div class="field">
-      <label for="api_rate_limit_per_minute">{{T "settings.apiRateLimit"}}</label>
-      <input id="api_rate_limit_per_minute" name="api_rate_limit_per_minute" type="number" min="0" max="100000" value="{{.Settings.APIRateLimit}}">
-      <p class="help">{{T "settings.apiRateLimitHelp"}}</p>
-    </div>
-    <div class="field checkbox">
-      <input id="torznab_live_search" name="torznab_live_search" type="checkbox"{{if .Settings.TorznabLiveSearch}} checked{{end}}>
-      <label for="torznab_live_search">{{T "settings.liveSearch"}}</label>
-      <p class="help">{{T "settings.liveSearchHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="torznab_live_timeout_seconds">{{T "settings.liveSearchTimeout"}}</label>
-      <input id="torznab_live_timeout_seconds" name="torznab_live_timeout_seconds" type="number" min="5" max="120" value="{{.Settings.TorznabLiveTimeout}}">
-      <p class="help">{{T "settings.liveSearchTimeoutHelp"}}</p>
-    </div>
-  </div>
-
-  <div class="panel-head"><h2 id="client-download">{{T "settings.downloadClient"}}</h2></div>
-  <div class="form-grid">
-    <div class="field">
-      <label for="download_client">{{T "settings.client"}}</label>
-      <select id="download_client" name="download_client">
-        <option value="none"{{if eq .Settings.DownloadClient "none"}} selected{{end}}>{{T "common.none"}}</option>
-        <option value="qbittorrent"{{if eq .Settings.DownloadClient "qbittorrent"}} selected{{end}}>{{T "settings.clientQBittorrent"}}</option>
-        <option value="transmission"{{if eq .Settings.DownloadClient "transmission"}} selected{{end}}>{{T "settings.clientTransmission"}}</option>
-      </select>
-      <p class="help">{{T "settings.downloadClientHelp"}}</p>
-    </div>
-    <div class="field grow">
-      <label for="download_client_url">{{T "settings.clientURL"}}</label>
-      <input id="download_client_url" name="download_client_url" type="url" value="{{.Settings.DownloadClientURL}}" placeholder="{{T "settings.clientURLPlaceholder"}}">
-      <p class="help">{{T "settings.clientURLHelpQB"}} (<code>{{T "settings.clientURLExampleQB"}}</code>); {{T "settings.clientURLHelpTransmission"}} (<code>{{T "settings.clientURLExampleTransmission"}}</code>).</p>
-    </div>
-    <div class="field">
-      <label for="download_client_user">{{T "settings.username"}}</label>
-      <input id="download_client_user" name="download_client_user" type="text" value="{{.Settings.DownloadClientUser}}" autocomplete="username">
-    </div>
-    <div class="field">
-      <label for="download_client_password">{{T "settings.password"}}</label>
-      <div class="secret-field" data-secret-change-field>
-        <input id="download_client_password" name="download_client_password" type="password" value="" placeholder="{{T "settings.secretStored"}}" autocomplete="new-password">
-        <button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>
+      <div class="field">
+        <label for="ui_password">{{T "settings.newPassword"}}</label>
+        <input id="ui_password" name="ui_password" type="password" autocomplete="new-password">
+        <p class="help">{{T "settings.newPasswordHelp"}}</p>
       </div>
-      <label class="check muted"><input type="checkbox" name="download_client_password_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
-      <p class="help">{{T "settings.secretEmptyHelp"}}</p>
+      <div class="field">
+        <label for="ui_password_confirm">{{T "settings.confirmPassword"}}</label>
+        <input id="ui_password_confirm" name="ui_password_confirm" type="password" autocomplete="new-password">
+      </div>
     </div>
-    <div class="field">
-      <label for="download_client_category">{{T "settings.qbittorrentCategory"}}</label>
-      <input id="download_client_category" name="download_client_category" type="text" value="{{.Settings.DownloadClientCategory}}" placeholder="{{T "settings.qbittorrentCategoryPlaceholder"}}">
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "settings.save"}}</button>
     </div>
-    <div class="field">
-      <label for="download_client_save_path">{{T "settings.savePath"}}</label>
-      <input id="download_client_save_path" name="download_client_save_path" type="text" value="{{.Settings.DownloadClientSavePath}}" placeholder="{{T "settings.savePathPlaceholder"}}">
-    </div>
-    <div class="field checkbox">
-      <input id="download_client_paused" name="download_client_paused" type="checkbox"{{if .Settings.DownloadClientPaused}} checked{{end}}>
-      <label for="download_client_paused">{{T "settings.addPaused"}}</label>
-    </div>
-  </div>
+  </form>
+  {{end}}
 
-  <div class="panel-head"><h2 id="backup-manutenzione">{{T "settings.backupsTitle"}}</h2></div>
-  <div class="form-grid">
-    <div class="field checkbox">
-      <input id="backup_enabled" name="backup_enabled" type="checkbox"{{if .Settings.BackupEnabled}} checked{{end}}>
-      <label for="backup_enabled">{{T "settings.backupsEnabled"}}</label>
-      <p class="help">{{T "settings.backupsEnabledHelp"}} <code>{{T "settings.vacuumInto"}}</code>.</p>
+  {{if eq .Section "network"}}
+  <form class="panel form" method="post" action="/settings">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="section" value="network">
+    <div class="panel-head"><h2>{{T "settings.networkTitle"}}</h2></div>
+    <div class="form-grid">
+      <div class="field grow">
+        <label for="flaresolverr_url">{{T "settings.flaresolverrURL"}}</label>
+        <input id="flaresolverr_url" name="flaresolverr_url" type="url" value="{{.Settings.FlareSolverrURL}}" placeholder="{{T "settings.flaresolverrURLPlaceholder"}}">
+        <p class="help">{{T "settings.flaresolverrHelp"}}</p>
+        <div class="actions">
+          <button class="btn" type="submit" formaction="/settings/flaresolverr/test" formmethod="post">{{T "settings.testFlareSolverr"}}</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="host_rate">{{T "settings.hostRate"}}</label>
+        <input id="host_rate" name="host_rate" type="number" min="0" max="100" step="0.1" required value="{{.Settings.HostRate}}">
+        <p class="help">{{T "settings.hostRateHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="host_burst">{{T "settings.hostBurst"}}</label>
+        <input id="host_burst" name="host_burst" type="number" min="1" max="100" required value="{{.Settings.HostBurst}}">
+        <p class="help">{{T "settings.hostBurstHelp"}}</p>
+      </div>
     </div>
-    <div class="field">
-      <label for="backup_interval_hours">{{T "settings.backupInterval"}}</label>
-      <input id="backup_interval_hours" name="backup_interval_hours" type="number" min="6" max="168" value="{{.Settings.BackupIntervalHours}}">
-      <p class="help">{{T "settings.backupIntervalHelp"}}</p>
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "settings.save"}}</button>
     </div>
-    <div class="field">
-      <label for="backup_keep">{{T "settings.backupKeep"}}</label>
-      <input id="backup_keep" name="backup_keep" type="number" min="1" max="60" value="{{.Settings.BackupKeep}}">
-      <p class="help">{{T "settings.backupKeepHelp"}}</p>
-    </div>
-  </div>
-  <p class="help">{{T "settings.backupDirHelp"}} <code>{{.BackupDir}}</code>. {{T "settings.backupDirActions"}}</p>
+  </form>
+  {{end}}
 
-  <div class="panel-head"><h2>{{T "settings.retentionTitle"}}</h2></div>
-  <div class="field">
-    <label for="retention_days">{{T "settings.retentionDays"}}</label>
-    <input id="retention_days" name="retention_days" type="number" min="0" max="3650" required value="{{.Settings.RetentionDays}}">
-    <p class="help">{{T "settings.retentionHelp"}}</p>
-  </div>
-  <div class="field">
-    <label for="history_retention_days">{{T "settings.historyRetentionDays"}}</label>
-    <input id="history_retention_days" name="history_retention_days" type="number" min="0" max="3650" required value="{{.Settings.HistoryRetentionDays}}">
-    <p class="help">{{T "settings.historyRetentionHelp"}}</p>
-  </div>
+  {{if eq .Section "updates"}}
+  <form class="panel form" method="post" action="/settings">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="section" value="updates">
+    <div class="panel-head"><h2>{{T "settings.section.updates"}}</h2></div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="default_interval_seconds">{{T "settings.defaultInterval"}}</label>
+        <input id="default_interval_seconds" name="default_interval_seconds" type="number" min="60" max="2592000" step="60" required value="{{.Settings.DefaultIntervalSeconds}}">
+        <p class="help">{{T "settings.defaultIntervalHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="retention_days">{{T "settings.retentionDays"}}</label>
+        <input id="retention_days" name="retention_days" type="number" min="0" max="3650" required value="{{.Settings.RetentionDays}}">
+        <p class="help">{{T "settings.retentionHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="history_retention_days">{{T "settings.historyRetentionDays"}}</label>
+        <input id="history_retention_days" name="history_retention_days" type="number" min="0" max="3650" required value="{{.Settings.HistoryRetentionDays}}">
+        <p class="help">{{T "settings.historyRetentionHelp"}}</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "settings.save"}}</button>
+    </div>
+  </form>
+  {{end}}
 
-  <div class="panel-head"><h2>{{T "settings.webAccess"}}</h2></div>
-  {{if not .Settings.UIUser}}<p class="flash warn" role="status">{{T "settings.openWarning"}}</p>{{end}}
-  <div class="form-grid">
-    <div class="field">
-      <label for="ui_user">{{T "settings.user"}}</label>
-      <input id="ui_user" name="ui_user" type="text" value="{{.Settings.UIUser}}" autocomplete="username">
-      <p class="help">{{T "settings.userHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="ui_password">{{T "settings.newPassword"}}</label>
-      <input id="ui_password" name="ui_password" type="password" autocomplete="new-password">
-      <p class="help">{{T "settings.newPasswordHelp"}}</p>
-    </div>
-    <div class="field">
-      <label for="ui_password_confirm">{{T "settings.confirmPassword"}}</label>
-      <input id="ui_password_confirm" name="ui_password_confirm" type="password" autocomplete="new-password">
-    </div>
-  </div>
+  {{if eq .Section "rules"}}
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "rules.addTitle"}}</h2></div>
+    <p class="help">{{T "rules.intro"}}</p>
+    <form class="prose" method="post" action="/rules">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <div class="form-grid">
+        <div class="field">
+          <label for="kind">{{T "rules.type"}}</label>
+          <select id="kind" name="kind">
+            <option value="infohash">{{T "rules.kind.infohash"}}</option>
+            <option value="title">{{T "rules.kind.title"}}</option>
+            <option value="regex">{{T "rules.kind.regex"}}</option>
+            <option value="source">{{T "rules.kind.source"}}</option>
+            <option value="category">{{T "rules.kind.category"}}</option>
+          </select>
+        </div>
+        <div class="field grow">
+          <label for="value">{{T "rules.value"}}</label>
+          <input id="value" name="value" type="text" required spellcheck="false" placeholder="{{T "rules.valuePlaceholder"}}">
+        </div>
+        <div class="field grow">
+          <label for="note">{{T "rules.note"}}</label>
+          <input id="note" name="note" type="text" placeholder="{{T "rules.notePlaceholder"}}">
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">{{T "rules.add"}}</button>
+      </div>
+      <p class="help">{{T "rules.help"}}</p>
+    </form>
+  </section>
 
-  <div class="actions">
-    <button class="btn primary" type="submit">{{T "settings.save"}}</button>
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "rules.active"}}</h2></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th scope="col">{{T "rules.type"}}</th><th scope="col">{{T "rules.value"}}</th><th scope="col">{{T "rules.note"}}</th><th scope="col">{{T "settings.created"}}</th><th scope="col" class="right">{{T "common.actions"}}</th></tr>
+        </thead>
+        <tbody>
+          {{range .Rules}}
+          <tr>
+            <td><span class="chip">{{.Kind}}</span></td>
+            <td><code>{{.Value}}</code></td>
+            <td>{{if .Note}}{{.Note}}{{else}}<span class="muted">—</span>{{end}}</td>
+            <td class="nowrap">{{date .CreatedAt}}</td>
+            <td class="right">
+              <form method="post" action="/rules/{{.ID}}/delete" data-confirm="{{T "rules.deleteConfirm"}}">
+                <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                <button class="btn small danger" type="submit">{{T "common.delete"}}</button>
+              </form>
+            </td>
+          </tr>
+          {{else}}
+          <tr><td colspan="5" class="empty">{{T "rules.empty"}}</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {{end}}
+
+  {{if eq .Section "backup"}}
+  <form class="panel form" method="post" action="/settings">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="section" value="backup">
+    <div class="panel-head"><h2>{{T "settings.backupsTitle"}}</h2></div>
+    <div class="form-grid">
+      <div class="field checkbox">
+        <input id="backup_enabled" name="backup_enabled" type="checkbox"{{if .BackupEnabled}} checked{{end}}>
+        <label for="backup_enabled">{{T "settings.backupsEnabled"}}</label>
+        <p class="help">{{T "settings.backupsEnabledHelp"}} <code>{{T "settings.vacuumInto"}}</code>.</p>
+      </div>
+      <div class="field">
+        <label for="backup_interval_hours">{{T "settings.backupInterval"}}</label>
+        <input id="backup_interval_hours" name="backup_interval_hours" type="number" min="6" max="168" value="{{.BackupIntervalHours}}">
+        <p class="help">{{T "settings.backupIntervalHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="backup_keep">{{T "settings.backupKeep"}}</label>
+        <input id="backup_keep" name="backup_keep" type="number" min="1" max="60" value="{{.BackupKeep}}">
+        <p class="help">{{T "settings.backupKeepHelp"}}</p>
+      </div>
+    </div>
+    <p class="help">{{T "settings.backupDirHelp"}} <code>{{.BackupDir}}</code>.</p>
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "settings.save"}}</button>
+    </div>
+  </form>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>{{T "settings.backupNowTitle"}}</h2>
+      <form method="post" action="/maintenance/backup-now">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button class="btn" type="submit">{{T "settings.backupNow"}}</button>
+      </form>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th scope="col">{{T "settings.backupFile"}}</th><th scope="col">{{T "dashboard.size"}}</th><th scope="col">{{T "settings.created"}}</th><th scope="col" class="right">{{T "common.actions"}}</th></tr>
+        </thead>
+        <tbody>
+          {{range .Backups}}
+          <tr>
+            <td><code>{{.Name}}</code>{{if .Automatic}} <span class="chip">{{T "settings.backupAutomatic"}}</span>{{else}} <span class="chip warn">{{T "settings.backupPreRestore"}}</span>{{end}}</td>
+            <td>{{bytes .Size}}</td>
+            <td class="nowrap">{{date .ModTime}}</td>
+            <td class="right nowrap">
+              <a class="btn small" href="/maintenance/backups/{{.Name}}">{{T "settings.download"}}</a>
+              <form method="post" action="/maintenance/backups/{{.Name}}/delete" data-confirm="{{T "settings.backupDeleteConfirm"}}">
+                <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                <button class="btn small danger" type="submit">{{T "common.delete"}}</button>
+              </form>
+            </td>
+          </tr>
+          {{else}}
+          <tr><td colspan="4" class="empty">{{T "settings.backupEmpty"}}</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    <div class="panel-head"><h2>{{T "settings.restoreTitle"}}</h2></div>
+    <p class="help">{{T "settings.restoreHelp"}}</p>
+    <form method="post" action="/maintenance/restore?csrf={{.CSRF}}" enctype="multipart/form-data" data-confirm="{{T "settings.restoreConfirm"}}">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <div class="field">
+        <label for="backup_file">{{T "settings.backupFile"}}</label>
+        <input id="backup_file" name="backup" type="file" accept=".db,application/octet-stream" required>
+      </div>
+      <div class="actions">
+        <button class="btn danger" type="submit">{{T "settings.restoreAction"}}</button>
+      </div>
+    </form>
+  </section>
+  {{end}}
+
+  {{if eq .Section "maintenance"}}
+  <section class="cards" aria-label="{{T "settings.maintenanceSummary"}}">
+    <article class="card"><span class="label">{{T "settings.dbSize"}}</span><strong>{{bytes .Stats.DBBytes}}</strong><span class="hint">{{.DBPath}}</span></article>
+    <article class="card"><span class="label">{{T "settings.dbReleases"}}</span><strong>{{.Stats.Releases}}</strong><span class="hint">{{T "settings.dbTorrents" .Stats.Torrents}}</span></article>
+    <article class="card"><span class="label">{{T "settings.dbTorrentData"}}</span><strong>{{bytes .Stats.TorrentBytes}}</strong></article>
+    <article class="card"><span class="label">{{T "settings.dbSQLite"}}</span><strong>{{.SQLiteVersion}}</strong><span class="hint">{{if .RetentionDays}}{{T "settings.dbRetention" .RetentionDays}}{{else}}{{T "settings.dbRetentionNone"}}{{end}}</span></article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "settings.dbReport"}}</h2></div>
+    <dl class="detail">
+      <dt>{{T "settings.dbFile"}}</dt><dd><code>{{.DBPath}}</code></dd>
+      <dt>{{T "settings.dbPages"}}</dt><dd>{{.Report.PageCount}} × {{bytes .Report.PageSize}} · {{T "settings.dbFree"}} {{.Report.FreelistCount}} ({{bytes .Report.FreeBytes}})</dd>
+      <dt>{{T "settings.dbJournal"}}</dt><dd>{{.Report.JournalMode}} · WAL {{bytes .Report.WALBytes}}</dd>
+      <dt>{{T "settings.dbRows"}}</dt><dd>{{T "settings.dbRowsValue" .Report.Releases .Report.Indexers .Report.History .Report.Blocklist .Report.SavedSearches .Report.APIKeys}}</dd>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "settings.checksTitle"}}</h2></div>
+    <div class="action-grid">
+      <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="integrity"><button class="btn" type="submit">{{T "settings.check.integrity"}}</button></form>
+      <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="quick_check"><button class="btn" type="submit">{{T "settings.check.quick"}}</button></form>
+      <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="foreign_keys"><button class="btn" type="submit">{{T "settings.check.foreign"}}</button></form>
+      <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="optimize"><button class="btn" type="submit">{{T "settings.check.optimize"}}</button></form>
+      <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="checkpoint"><button class="btn" type="submit">{{T "settings.check.checkpoint"}}</button></form>
+      <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="analyze"><button class="btn" type="submit">{{T "settings.check.analyze"}}</button></form>
+      <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reindex"><button class="btn" type="submit">{{T "settings.check.reindex"}}</button></form>
+      <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="vacuum"><button class="btn" type="submit">{{T "settings.check.vacuum"}}</button></form>
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.resetErrorsConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reset_errors"><button class="btn" type="submit">{{T "settings.check.resetErrors"}}</button></form>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "settings.cleanupTitle"}}</h2></div>
+    <div class="action-grid">
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.dedupeConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="dedupe"><button class="btn" type="submit">{{T "settings.cleanup.dedupe"}}</button></form>
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.clearTorrentsConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="clear_torrents"><button class="btn" type="submit">{{T "settings.cleanup.clearTorrents"}}</button></form>
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.pruneConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="prune"><button class="btn" type="submit">{{T "settings.cleanup.prune"}}</button></form>
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.purgeDaysConfirm"}}">
+        <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="purge_days">
+        <div class="field"><label for="purge_days">{{T "settings.cleanup.days"}}</label><input id="purge_days" name="days" type="number" min="1" max="36500" value="{{.DefaultPurgeDays}}" required></div>
+        <button class="btn danger" type="submit">{{T "settings.cleanup.purgeDays"}}</button>
+      </form>
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.purgeIndexerConfirm"}}">
+        <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="purge_indexer">
+        <div class="field"><label for="purge_indexer">{{T "settings.cleanup.indexer"}}</label>
+          <select id="purge_indexer" name="indexer_id" required>
+            <option value="">{{T "settings.cleanup.chooseIndexer"}}</option>
+            {{range .Indexers}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+          </select>
+        </div>
+        <button class="btn danger" type="submit">{{T "settings.cleanup.purgeIndexer"}}</button>
+      </form>
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.purgeNoLinksConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="purge_no_links"><button class="btn danger" type="submit">{{T "settings.cleanup.purgeNoLinks"}}</button></form>
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.purgeHiddenConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="purge_hidden"><button class="btn danger" type="submit">{{T "settings.cleanup.purgeHidden"}}</button></form>
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.clearRunsConfirm"}}">
+        <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="clear_runs_days">
+        <div class="field"><label for="run_days">{{T "settings.cleanup.runsDays"}}</label><input id="run_days" name="days" type="number" min="1" max="36500" value="30" required></div>
+        <button class="btn" type="submit">{{T "settings.cleanup.clearRuns"}}</button>
+      </form>
+      <form method="post" action="/maintenance" data-confirm="{{T "settings.resetAPIUsageConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reset_api_usage"><button class="btn" type="submit">{{T "settings.cleanup.resetAPIUsage"}}</button></form>
+    </div>
+  </section>
+
+  <section class="panel danger-zone">
+    <div class="panel-head"><h2>{{T "settings.dangerTitle"}}</h2></div>
+    <p>{{T "settings.dangerText"}}</p>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.deleteAllConfirm"}}">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="delete_all">
+      <div class="field">
+        <label for="confirm">{{T "settings.dangerPrompt"}}</label>
+        <input id="confirm" name="confirm" type="text" autocomplete="off" spellcheck="false" placeholder="{{T "settings.dangerWord"}}">
+      </div>
+      <button class="btn danger" type="submit">{{T "settings.deleteAll"}}</button>
+    </form>
+  </section>
+  {{end}}
+
+  {{if eq .Section "advanced"}}
+  <form class="panel form" method="post" action="/settings">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="section" value="advanced">
+    <div class="panel-head"><h2>{{T "settings.performanceTitle"}}</h2></div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="workers">{{T "settings.workers"}}</label>
+        <input id="workers" name="workers" type="number" min="1" max="16" required value="{{.Settings.Workers}}">
+        <p class="help">{{T "settings.workersHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="fetch_timeout_seconds">{{T "settings.fetchTimeout"}}</label>
+        <input id="fetch_timeout_seconds" name="fetch_timeout_seconds" type="number" min="5" max="300" required value="{{.Settings.FetchTimeoutSeconds}}">
+        <p class="help">{{T "settings.fetchTimeoutHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="breaker_threshold">{{T "settings.breakerThreshold"}}</label>
+        <input id="breaker_threshold" name="breaker_threshold" type="number" min="1" max="100" required value="{{.Settings.BreakerThreshold}}">
+        <p class="help">{{T "settings.breakerThresholdHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="breaker_cooldown">{{T "settings.breakerCooldown"}}</label>
+        <input id="breaker_cooldown" name="breaker_cooldown" type="number" min="1" max="3600" required value="{{.Settings.BreakerCooldownSeconds}}">
+        <p class="help">{{T "settings.breakerCooldownHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="max_torrents_per_run">{{T "settings.maxTorrents"}}</label>
+        <input id="max_torrents_per_run" name="max_torrents_per_run" type="number" min="0" max="200" required value="{{.Settings.MaxTorrentsPerRun}}">
+        <p class="help">{{T "settings.maxTorrentsHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="max_torrent_mb">{{T "settings.maxTorrentSize"}}</label>
+        <input id="max_torrent_mb" name="max_torrent_mb" type="number" min="1" max="64" required value="{{.MaxTorrentMB}}">
+        <p class="help">{{T "settings.maxTorrentSizeHelp"}}</p>
+      </div>
+      <div class="field checkbox">
+        <input id="fetch_torrents" name="fetch_torrents" type="checkbox"{{if .Settings.FetchTorrents}} checked{{end}}>
+        <label for="fetch_torrents">{{T "settings.fetchTorrents"}}</label>
+        <p class="help">{{T "settings.fetchTorrentsHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="user_agent">{{T "settings.userAgent"}}</label>
+        <input id="user_agent" name="user_agent" type="text" value="{{.Settings.UserAgent}}">
+      </div>
+    </div>
+
+    <div class="panel-head"><h2>{{T "settings.torznabRatio"}}</h2></div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="torznab_download_factor">{{T "settings.downloadFactor"}}</label>
+        <input id="torznab_download_factor" name="torznab_download_factor" type="number" min="0" max="100" required value="{{.Settings.TorznabDownloadFactor}}">
+        <p class="help">{{T "settings.downloadFactorHelp"}} <code>{{T "settings.downloadVolumeFactorTag"}}</code>.</p>
+      </div>
+      <div class="field">
+        <label for="torznab_upload_factor">{{T "settings.uploadFactor"}}</label>
+        <input id="torznab_upload_factor" name="torznab_upload_factor" type="number" min="0" max="100" required value="{{.Settings.TorznabUploadFactor}}">
+        <p class="help">{{T "settings.uploadFactorHelp"}} <code>{{T "settings.uploadVolumeFactorTag"}}</code>.</p>
+      </div>
+      <div class="field">
+        <label for="api_rate_limit_per_minute">{{T "settings.apiRateLimit"}}</label>
+        <input id="api_rate_limit_per_minute" name="api_rate_limit_per_minute" type="number" min="0" max="100000" value="{{.Settings.APIRateLimit}}">
+        <p class="help">{{T "settings.apiRateLimitHelp"}}</p>
+      </div>
+      <div class="field checkbox">
+        <input id="torznab_live_search" name="torznab_live_search" type="checkbox"{{if .Settings.TorznabLiveSearch}} checked{{end}}>
+        <label for="torznab_live_search">{{T "settings.liveSearch"}}</label>
+        <p class="help">{{T "settings.liveSearchHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="torznab_live_timeout_seconds">{{T "settings.liveSearchTimeout"}}</label>
+        <input id="torznab_live_timeout_seconds" name="torznab_live_timeout_seconds" type="number" min="5" max="120" value="{{.Settings.TorznabLiveTimeout}}">
+        <p class="help">{{T "settings.liveSearchTimeoutHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="auto_disable_after">{{T "settings.autoDisable"}}</label>
+        <input id="auto_disable_after" name="auto_disable_after" type="number" min="0" max="100" value="{{.Settings.AutoDisableAfter}}">
+        <p class="help">{{T "settings.autoDisableHelp"}}</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "settings.save"}}</button>
+    </div>
+  </form>
+
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "settings.logLevelTitle"}}</h2></div>
+    <form method="post" action="/logs/level">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <div class="form-grid">
+        <div class="field">
+          <label for="runtime_level">{{T "settings.logLevel"}}</label>
+          <select id="runtime_level" name="runtime_level">
+            <option value="debug"{{if eq .LogLevel "debug"}} selected{{end}}>{{T "logs.levels.debug"}}</option>
+            <option value="info"{{if eq .LogLevel "info"}} selected{{end}}>{{T "logs.levels.info"}}</option>
+            <option value="warn"{{if eq .LogLevel "warn"}} selected{{end}}>{{T "logs.levels.warn"}}</option>
+            <option value="error"{{if eq .LogLevel "error"}} selected{{end}}>{{T "logs.levels.error"}}</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions"><button class="btn" type="submit">{{T "settings.logLevelSave"}}</button></div>
+    </form>
+  </section>
+
+  <section class="panel" id="definitions">
+    <div class="panel-head">
+      <h2>{{T "definitions.title"}}</h2>
+      <div class="actions">
+        <a class="btn" href="/definitions/new">{{T "definitions.new"}}</a>
+        <a class="btn" href="/import">{{T "shell.import"}}</a>
+      </div>
+    </div>
+    <p class="help">{{T "definitions.advancedHelp"}}</p>
+    <div class="panel-head"><h2>{{T "definitions.catalog"}}</h2><span class="muted">{{T "definitions.catalogHint"}}</span></div>
+    {{template "definition_table" .CatalogRows}}
+    <div class="panel-head"><h2>{{T "definitions.local"}}</h2><span class="muted">{{T "definitions.localHint"}}</span></div>
+    {{template "definition_table" .LocalRows}}
+  </section>
+  {{end}}
   </div>
-</form>
+</div>
 {{end}}

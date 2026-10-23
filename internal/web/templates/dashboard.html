@@ -5,136 +5,96 @@
     <p class="muted">{{T "dashboard.subtitle"}}</p>
   </div>
   <div class="actions">
-    <a class="btn" href="/indexers">{{T "dashboard.manageIndexers"}}</a>
-    <a class="btn primary" href="/activity">{{T "dashboard.activity"}}</a>
+    <a class="btn primary" href="/indexers/new">{{T "home.addIndexer"}}</a>
   </div>
 </section>
 
-<section class="cards" aria-label="{{T "dashboard.summaryLabel"}}">
-  <article class="card">
-    <span class="label">{{T "dashboard.releases"}}</span>
-    <strong>{{.Stats.Releases}}</strong>
-    <span class="hint">{{T "dashboard.releasesHint" .Stats.Torrents (bytes .Stats.TorrentBytes)}}</span>
-  </article>
-  <article class="card">
-    <span class="label">{{T "dashboard.nativeIndexers"}}</span>
-    <strong>{{.IndexerCount}}</strong>
-    <span class="hint">{{if .IndexerErrors}}<span class="text-danger">{{T "dashboard.withErrors" .IndexerErrors}}</span>{{else}}{{T "dashboard.noCurrentErrors"}}{{end}} · {{T "dashboard.definitionsCount" (len .Definitions)}}</span>
-  </article>
-  <article class="card">
-    <span class="label">{{T "dashboard.applications"}}</span>
-    <strong>{{.ApplicationNum}}</strong>
-    <span class="hint">{{if .ApplicationNum}}{{T "dashboard.appHintLinked"}}{{else}}{{T "dashboard.appHintNone"}}{{end}}</span>
-  </article>
-  <article class="card">
-    <span class="label">{{T "dashboard.errors24h"}}</span>
-    <strong>{{.Stats.Errors24h}}</strong>
-    <span class="hint">{{T "dashboard.failedRunsHint" .Stats.Errors24h .Stats.Runs24h}}</span>
-  </article>
-  <article class="card">
-    <span class="label">{{T "dashboard.database"}}</span>
-    <strong>{{bytes .Stats.DBBytes}}</strong>
-    <span class="hint">{{T "dashboard.newestRelease" (ago .Stats.NewestSeen)}}</span>
-  </article>
-</section>
-
-<section class="panel" id="endpoint">
-  <div class="panel-head">
-    <h2>{{T "shell.torznab"}}</h2>
-    <a class="link" href="/settings">{{T "dashboard.endpointSettings"}}</a>
-  </div>
-  <div class="prose">
-    <p>{{T "dashboard.endpointHint"}}</p>
-    <p><code>{{.TorznabURL}}</code></p>
-    {{if .PublicURLSet}}
-    <p class="muted">{{T "dashboard.publicURLValue" .PublicURL}}</p>
-    {{else}}
-    <p class="flash warn" role="alert">{{T "dashboard.publicURLMissing"}} <a href="/settings">{{T "dashboard.publicURLAction"}}</a></p>
+<section class="panel home-status home-status-{{.Status.Level}}" aria-label="{{T "home.status.title"}}">
+  {{if eq .Status.Level "danger"}}
+  <p class="status-line">
+    <span class="status-dot status-problem" role="img" aria-label="{{T "home.status.danger"}}"><span class="dot" aria-hidden="true"></span></span>
+    <strong>{{T "home.status.danger"}}</strong>
+    <span class="muted">— {{T "home.status.dangerHint"}}</span>
+  </p>
+  {{else if .Status.HasProblems}}
+  <p class="status-line">
+    <span class="status-dot status-problem" role="img" aria-label="{{T "home.status.attention"}}"><span class="dot" aria-hidden="true"></span></span>
+    <strong>{{if eq (len .Status.Problems) .Status.ProblemIndexers}}{{T "home.status.problems" .Status.ProblemIndexers}}{{else}}{{T "home.status.issues" (len .Status.Problems)}}{{end}}</strong>
+  </p>
+  <ul class="home-problems">
+    {{range .Status.Problems}}
+    <li class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span><strong>{{.Name}}</strong> — {{T .Code}}</span><a class="problem-action" href="{{.ActionURL}}">{{T .ActionKey}}</a></li>
     {{end}}
+  </ul>
+  {{else}}
+  <p class="status-line">
+    <span class="status-dot status-ok" role="img" aria-label="{{T "home.status.ok"}}"><span class="dot" aria-hidden="true"></span></span>
+    <strong>{{T "home.status.ok"}}</strong>
+    <span class="muted">{{if .Status.ActiveIndexers}}· {{T "home.status.indexers" .Status.ActiveIndexers}} · {{end}}{{if .Status.LastReleaseAt}}{{T "home.status.lastRelease" (ago .Status.LastReleaseAt)}}{{else}}{{T "home.status.never"}}{{end}}</span>
+  </p>
+  {{end}}
+</section>
+
+<section class="panel" id="connect">
+  <div class="panel-head">
+    <h2>{{T "home.connect.title"}}</h2>
+    {{if .Status.Healthy}}<a class="link" href="/applications">{{T "home.connect.manageApps"}}</a>{{end}}
+  </div>
+  <div class="connect-grid">
+    {{if .PublicURLSet}}
+    <div class="field grow">
+      <label for="home_endpoint">{{T "home.connect.urlLabel"}}</label>
+      <div class="copy-field">
+        <input id="home_endpoint" type="text" readonly value="{{.TorznabURL}}" spellcheck="false">
+        <button class="btn" type="button" data-copy="{{.TorznabURL}}">{{T "common.copy"}}</button>
+      </div>
+      <p class="help">{{T "home.connect.publicURL" .PublicURL}}</p>
+    </div>
+    {{else}}
+    <div class="field grow">
+      <label for="home_endpoint">{{T "home.connect.urlLabel"}}</label>
+      <div class="copy-field">
+        <input id="home_endpoint" type="text" readonly value="{{.SuggestedURL}}/api" spellcheck="false">
+        <button class="btn" type="button" data-copy="{{.SuggestedURL}}/api">{{T "common.copy"}}</button>
+      </div>
+      <p class="help">{{T "home.connect.suggestedHelp"}}</p>
+      <form method="post" action="/settings/public-url">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <input type="hidden" name="public_url" value="{{.SuggestedURL}}">
+        <button class="btn" type="submit">{{T "home.connect.useAddress"}}</button>
+      </form>
+    </div>
+    {{end}}
+    <div class="field grow">
+      <label for="home_api_key">{{T "home.connect.apiKey"}}</label>
+      <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/apikey">
+        <input id="home_api_key" type="password" readonly value="" placeholder="••••••••••••" spellcheck="false" autocomplete="off">
+        <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>
+        <button class="btn" type="button" data-secret-copy>{{T "common.copy"}}</button>
+      </div>
+      <p class="help">{{T "home.connect.apiKeyHelp"}}</p>
+    </div>
+  </div>
+  <div class="actions">
+    <a class="btn primary" href="/applications/new">{{T "home.connect.connectApp"}}</a>
   </div>
 </section>
 
 <div class="two-col">
   <section class="panel">
-    <div class="panel-head">
-      <h2>{{T "dashboard.configuration"}}</h2>
-      <a class="link" href="/indexers">{{T "dashboard.openIndexers"}}</a>
-    </div>
-    <div class="action-grid dashboard-actions">
-      <a class="quick-action" href="/indexers/new">
-        <strong>{{T "dashboard.newNative"}}</strong>
-        <span>{{T "dashboard.newNativeHint"}}</span>
-      </a>
-      <a class="quick-action" href="/import">
-        <strong>{{T "dashboard.import"}}</strong>
-        <span>{{T "dashboard.importHint"}}</span>
-      </a>
-      <a class="quick-action" href="/applications/new">
-        <strong>{{T "dashboard.connectApp"}}</strong>
-        <span>{{T "dashboard.connectAppHint"}}</span>
-      </a>
-    </div>
+    <div class="panel-head"><h2>{{T "home.hours.title"}}</h2></div>
+    <dl class="home-numbers">
+      <div><dt>{{T "home.hours.releases"}}</dt><dd>{{.Activity.NewReleases}}</dd></div>
+      <div><dt>{{T "home.hours.searches"}}</dt><dd>{{.Activity.AppSearches}}</dd></div>
+      <div><dt>{{T "home.hours.grabs"}}</dt><dd>{{.Activity.Grabs}}</dd></div>
+    </dl>
   </section>
-
-  <section class="panel">
-    <div class="panel-head">
-      <h2>{{T "dashboard.status"}}</h2>
-      <a class="link" href="/activity">{{T "dashboard.latestRuns"}}</a>
-    </div>
-    <div class="status-grid">
-      <div class="status-item">
-        <span class="label">{{T "dashboard.statusSummary"}}</span>
-        <strong>
-          {{if .Status.OK}}<span class="chip ok">{{T "dashboard.statusOK"}}</span>
-          {{else if .Status.Current}}<span class="chip danger">{{T "dashboard.statusProblems" .Status.Current}}</span>
-          {{else}}<span class="chip warn">{{T "dashboard.statusRecent" .Status.RunErrors}}</span>{{end}}
-        </strong>
-        <span class="hint">
-          {{if .Status.Current}}{{T "dashboard.statusCurrentHint" .Status.Current .Status.RunErrors .Status.Runs}}
-          {{else if .Status.RunErrors}}{{T "dashboard.statusRecentHint" .Status.RunErrors .Status.Runs}}
-          {{else}}{{T "dashboard.statusOKHint" .Status.Runs}}{{end}}
-        </span>
-      </div>
-    </div>
-    <div class="table-scroll">
-      <table>
-        <thead><tr><th scope="col">{{T "dashboard.indexer"}}</th><th scope="col">{{T "dashboard.outcome"}}</th><th scope="col">{{T "dashboard.when"}}</th></tr></thead>
-        <tbody>
-          {{range .Runs}}
-          <tr>
-            <td>{{.IndexerName}}</td>
-            <td>{{if eq .Status "error"}}<span class="chip danger" title="{{.Error}}">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
-            <td class="nowrap">{{ago .StartedAt}}</td>
-          </tr>
-          {{else}}
-          <tr><td colspan="3" class="empty">{{T "dashboard.noRuns"}}</td></tr>
-          {{end}}
-        </tbody>
-      </table>
-    </div>
+  {{if .NextStep}}
+  <section class="panel next-step-panel">
+    <div class="panel-head"><h2>{{T "home.next.title"}}</h2></div>
+    <p>{{T .NextStep.Key}}</p>
+    <a class="btn primary" href="{{.NextStep.ActionURL}}">{{T .NextStep.ActionKey}}</a>
   </section>
+  {{end}}
 </div>
-
-<section class="panel">
-  <div class="panel-head">
-    <h2>{{T "dashboard.recentReleases"}}</h2>
-    <a class="link" href="/releases">{{T "dashboard.allReleases"}}</a>
-  </div>
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th scope="col">{{T "dashboard.titleColumn"}}</th><th scope="col">{{T "dashboard.size"}}</th><th scope="col">{{T "dashboard.seen"}}</th></tr></thead>
-      <tbody>
-        {{range .Recent}}
-        <tr>
-          <td><a href="/releases/{{.ID}}">{{truncate .Title 70}}</a></td>
-          <td class="nowrap">{{bytes .Size}}</td>
-          <td class="nowrap">{{ago .FirstSeenAt}}</td>
-        </tr>
-        {{else}}
-        <tr><td colspan="3" class="empty">{{T "dashboard.noReleases"}}</td></tr>
-        {{end}}
-      </tbody>
-    </table>
-  </div>
-</section>
 {{end}}

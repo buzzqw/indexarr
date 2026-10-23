@@ -46,6 +46,14 @@ func newTestEnv(t *testing.T) *testEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Most tests exercise the normal home page, not the first-run wizard.
+	// The wizard tests clear this flag explicitly.
+	if settings, err := st.LoadSettings(ctx); err == nil {
+		settings.SetupDismissed = true
+		if err := st.SaveSettings(ctx, settings); err != nil {
+			t.Fatal(err)
+		}
+	}
 	logs := logbuffer.New(100)
 	level := new(slog.LevelVar)
 	level.Set(slog.LevelInfo)
@@ -105,7 +113,7 @@ func TestDashboard(t *testing.T) {
 		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"Overview", "Configuration", "Status", "Torznab endpoint", "indexarr"} {
+	for _, want := range []string{"Home", "Status", "Connect your apps", "indexarr"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("dashboard missing %q", want)
 		}
@@ -245,7 +253,7 @@ func TestSettingsRejectsShortPassword(t *testing.T) {
 
 func TestMaintenanceIntegrity(t *testing.T) {
 	env := newTestEnv(t)
-	token, cookie := csrfFrom(t, env.handler, "/maintenance")
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=maintenance")
 	recorder := postForm(t, env.handler, "/maintenance", url.Values{
 		"csrf":   {token},
 		"action": {"integrity"},
@@ -254,7 +262,7 @@ func TestMaintenanceIntegrity(t *testing.T) {
 		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	location := recorder.Header().Get("Location")
-	if !strings.Contains(location, "/maintenance?") {
+	if !strings.Contains(location, "/settings?section=maintenance") {
 		t.Fatalf("location = %q", location)
 	}
 	page := get(t, env.handler, location)

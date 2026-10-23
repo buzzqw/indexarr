@@ -98,12 +98,12 @@ func TestApplicationPagesRender(t *testing.T) {
 		t.Fatalf("GET /applications = %d: %s", list.Code, list.Body.String())
 	}
 	body := list.Body.String()
-	for _, want := range []string{"Applications", "Synchronization levels", "Disabled", "Full sync", "No applications configured"} {
+	for _, want := range []string{"App", "Download clients", "Connect an app", "No app connected", "No download client"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("applications page missing %q", want)
 		}
 	}
-	for _, nav := range []string{`href="/applications"`, `href="/import"`} {
+	for _, nav := range []string{`href="/applications"`, `href="/settings"`} {
 		if !strings.Contains(body, nav) {
 			t.Errorf("layout missing nav link %s", nav)
 		}
@@ -113,7 +113,7 @@ func TestApplicationPagesRender(t *testing.T) {
 	if form.Code != http.StatusOK {
 		t.Fatalf("GET /applications/new = %d: %s", form.Code, form.Body.String())
 	}
-	for _, want := range []string{"New application", "Full sync", "API key"} {
+	for _, want := range []string{"Connect an app", "Full sync", "API key"} {
 		if !strings.Contains(form.Body.String(), want) {
 			t.Errorf("application form missing %q", want)
 		}

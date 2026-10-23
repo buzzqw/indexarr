@@ -14,20 +14,20 @@ rompono.
 Una sola voce per azione. La creazione di un indexer vive solo su
 `/indexers/new`; l'elenco e i dettagli stanno su `/indexers`.
 
-| Gruppo | Voce | Route | Note |
-|---|---|---|---|
-| — | Dashboard | `/` | Pagina iniziale |
-| — | Releases | `/releases` | Ricerca e cache release |
-| — | Attività | `/activity?tab=runs` | Storico aggiornamenti |
-| — | Attività | `/activity?tab=logs` | Log runtime |
-| Indexer | Indexer | `/indexers` | Elenco unico, run e test |
-| Indexer | Aggiungi indexer | `/indexers/new` | Unica voce di creazione |
-| Definizioni | Definizioni | `/definitions` | Catalogo e definizioni locali |
-| Integrazioni | Applicazioni | `/applications` | Sync Sonarr/Radarr/… |
-| Integrazioni | Importa | `/import` | Import Prowlarr/Jackett in indexer nativi |
-| Sistema | Regole | `/rules` | Blocklist e regole |
-| Sistema | Impostazioni | `/settings` | API key, FlareSolverr, opzioni |
-| Sistema | Manutenzione | `/maintenance` | Report, backup, restore |
+| Voce | Route | Contenuto |
+|---|---|---|
+| Home | `/` | Stato da `HomeStatus`, endpoint da copiare, ultime 24 ore, prossimo passo |
+| Cerca | `/releases` | Ricerca e cache release |
+| Indexer | `/indexers` | Elenco unico, dettaglio, aggiunta, import |
+| App | `/applications` | App \*arr e client di download |
+| Attività | `/activity?tab=runs` | Aggiornamenti, ricerche, grab, log |
+| Impostazioni | `/settings?section=…` | Generale, Sicurezza, Rete, Aggiornamenti, Regole, Backup, Manutenzione, Avanzate |
+
+Le voci di primo livello sono esattamente sei. Definizioni, import e regole
+vivono dentro Impostazioni (Avanzate e Regole) e non hanno più una voce
+propria. `/definitions`, `/rules` e `/maintenance` rispondono 302 verso la
+sezione corrispondente; `/definitions/new` e `/definitions/{id}` restano
+raggiungibili dagli strumenti.
 
 Regole di navigazione:
 
@@ -35,7 +35,8 @@ Regole di navigazione:
   etichetta e destinazioni diverse sono un errore.
 - Lo stesso percorso può comparire due volte solo se è chiaramente un contenitore
   e un figlio; lo smoke test lo segnala come warning, non come errore hard.
-- `/sources` non è più una pagina: risponde sempre con un redirect 302.
+- `/sources`, `/runs`, `/logs`, `/definitions`, `/rules` e `/maintenance` non
+  sono più pagine di primo livello: rispondono 302 verso la nuova posizione.
 
 ## Inventario route
 
@@ -63,7 +64,7 @@ Regole di navigazione:
 | `/definitions/new` | Nuova definizione YAML | — |
 | `/definitions/example-html` | Definizione dimostrativa | Usata da QA e documentazione |
 | `/definitions/{id}` | Dettaglio definizione | `id` è uno slug, non un numero |
-| `/applications` | Applicazioni \*arr collegate | — |
+| `/applications` | App \*arr e client di download | Ancore `#clients` |
 | `/applications/new` | Nuova applicazione | — |
 | `/applications/{id}/edit` | Modifica applicazione | — |
 | `/import` | Import Prowlarr/Jackett | Anteprima, non applica |
@@ -74,7 +75,10 @@ Regole di navigazione:
 | `/logs` | Vecchio ingresso Attività | 302 verso `/activity?tab=logs` |
 | `/logs/download` | Download del log | File, non pagina |
 | `/rules` | Regole/blocklist | Gruppo **Sistema** |
-| `/settings` | Impostazioni e API key | Gruppo **Sistema** |
+| `/settings` | Impostazioni a sezioni | `?section=general|security|network|updates|rules|backup|maintenance|advanced` |
+| `/download-clients/new` | Aggiungi client di download | Form compatto |
+| `/download-clients/{id}/edit` | Modifica client | Password mai nell'HTML |
+| `/setup` | Primo avvio in 4 passi | Saltabile e riapribile |
 | `/maintenance` | Report, backup, restore | Gruppo **Sistema** |
 | `/maintenance/backup` | Download backup immediato | File, non pagina |
 | `/maintenance/backups/{name}` | Download di un backup | File, non pagina |

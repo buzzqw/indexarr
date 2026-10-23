@@ -438,3 +438,17 @@ if ("serviceWorker" in navigator) {
     });
   }
 })();
+
+// Download client form: the protocol follows the client type until the
+// operator changes it explicitly. Without JavaScript the select still works.
+(() => {
+  const kind = document.querySelector("[data-client-kind]");
+  const protocol = document.getElementById("client_protocol");
+  if (!kind || !protocol) {
+    return;
+  }
+  const usenet = new Set(["sabnzbd", "nzbget"]);
+  kind.addEventListener("change", () => {
+    protocol.value = usenet.has(kind.value) ? "usenet" : "torrent";
+  });
+})();

@@ -51,29 +51,40 @@ func TestActivityShowsNetworkCounters(t *testing.T) {
 func TestSettingsNetworkSectionRoundTrip(t *testing.T) {
 	env := newTestEnv(t)
 
-	body := get(t, env.handler, "/settings?lang=en").Body.String()
+	body := get(t, env.handler, "/settings?section=network&lang=en").Body.String()
 	for _, want := range []string{
 		"Network",
 		`name="host_rate"`,
 		`name="host_burst"`,
-		`name="breaker_threshold"`,
-		`name="breaker_cooldown"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("settings page missing %q", want)
 		}
 	}
+	advanced := get(t, env.handler, "/settings?section=advanced&lang=en").Body.String()
+	for _, want := range []string{`name="breaker_threshold"`, `name="breaker_cooldown"`} {
+		if !strings.Contains(advanced, want) {
+			t.Errorf("advanced settings page missing %q", want)
+		}
+	}
 
-	token, cookie := csrfFrom(t, env.handler, "/settings?lang=en")
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=network&lang=en")
 	recorder := postForm(t, env.handler, "/settings", url.Values{
-		"csrf":              {token},
-		"host_rate":         {"2.5"},
-		"host_burst":        {"8"},
-		"breaker_threshold": {"7"},
-		"breaker_cooldown":  {"120"},
+		"csrf":       {token},
+		"section":    {"network"},
+		"host_rate":  {"2.5"},
+		"host_burst": {"8"},
 	}, cookie)
 	if recorder.Code != http.StatusSeeOther && recorder.Code != http.StatusFound {
 		t.Fatalf("POST /settings = %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	advancedToken, advancedCookie := csrfFrom(t, env.handler, "/settings?section=advanced&lang=en")
+	if rec := postForm(t, env.handler, "/settings", url.Values{
+		"csrf": {advancedToken}, "section": {"advanced"},
+		"breaker_threshold": {"7"}, "breaker_cooldown": {"120"},
+	}, advancedCookie); rec.Code != http.StatusSeeOther {
+		t.Fatalf("POST advanced settings = %d: %s", rec.Code, rec.Body.String())
 	}
 
 	settings, err := env.store.LoadSettings(context.Background())

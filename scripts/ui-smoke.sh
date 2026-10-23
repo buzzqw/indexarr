@@ -418,7 +418,8 @@ fi
 say ""
 say "==> routes"
 
-# Pages that must render (200) or redirect (301/302/303) after the redesign.
+# Six-item map (UI-GUIDE §3): Home, Cerca, Indexer, App, Attività, Impostazioni.
+# Old URLs must answer 302 instead of disappearing.
 check_html_route "/"
 check_html_route "/releases"
 check_html_route "/releases?query=test"
@@ -435,12 +436,25 @@ check_html_route "/indexers/new?q=pirate"
 check_html_route "/indexers/new?page=2"
 check_html_route "/applications"
 check_html_route "/applications/new"
+check_html_route "/download-clients/new"
 check_html_route "/import"
 check_html_route "/runs"
 check_html_route "/logs"
 check_html_route "/rules"
 check_html_route "/settings"
+check_html_route "/settings?section=general"
+check_html_route "/settings?section=security"
+check_html_route "/settings?section=network"
+check_html_route "/settings?section=updates"
+check_html_route "/settings?section=rules"
+check_html_route "/settings?section=backup"
+check_html_route "/settings?section=maintenance"
+check_html_route "/settings?section=advanced"
 check_html_route "/maintenance"
+check_html_route "/setup"
+check_html_route "/setup?step=2"
+check_html_route "/setup?step=3"
+check_html_route "/setup?step=4"
 
 # New information architecture: still pending while the redesign is in progress.
 check_activity_route "/activity?tab=runs"

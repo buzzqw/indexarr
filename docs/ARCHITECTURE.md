@@ -107,6 +107,7 @@ applications ──N:M── indexers (app_indexers)
 blocklist (rules)
 saved_searches (named queries)
 api_keys (additional Torznab keys)
+download_clients (torrent/usenet, one default per protocol rule)
 settings (key/value)
 ```
 
@@ -130,6 +131,10 @@ settings (key/value)
   matcher compila le regex una volta per run e scarta le release prima dell'upsert.
 - `saved_searches`, `api_keys`, `settings`: ricerca salvata, chiavi aggiuntive
   revocabili e opzioni key/value.
+- `download_clients`: client torrent e Usenet con segreti sigillati nel vault,
+  protocollo, categoria, percorso, flag predefinito. La migrazione 6 crea la
+  tabella; le vecchie impostazioni `download_client*` restano come fallback e
+  vengono importate al primo avvio quando il vault è disponibile.
 
 Indici su infohash, data di pubblicazione, categoria, ultima osservazione, id
 esterni e provenance. Il database usa WAL, `busy_timeout`, foreign key e un pool
@@ -201,7 +206,8 @@ quelle con origine `local`; riscrive una voce solo quando cambia l'hash.
 - Download: `/dl/{id}.torrent` richiede la stessa API key della ricerca e i link
   generati usano la chiave della richiesta.
 - Errori XML per i client Torznab, pagine HTML con stato corretto per la UI.
-- `/sources*` e `/indexers?tab=legacy` rispondono 302 verso `/indexers`.
+- `/sources*` e `/indexers?tab=legacy` rispondono 302 verso `/indexers`;
+  `/definitions`, `/rules` e `/maintenance` verso la sezione di Impostazioni.
 - `GET /metrics` e `GET /sw.js` sono sul mux esterno; `/metrics` non richiede
   autenticazione come `/healthz` e non va pubblicato senza reverse proxy.
 - PWA: manifest e icona negli asset, service worker che mette in cache solo

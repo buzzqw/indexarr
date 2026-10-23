@@ -21,9 +21,9 @@ func TestMaintenanceBackups(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, cookie := csrfFrom(t, env.handler, "/maintenance")
-	page := get(t, env.handler, "/maintenance").Body.String()
-	if !strings.Contains(page, info.Name) || !strings.Contains(page, "Backup now") {
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=backup")
+	page := get(t, env.handler, "/settings?section=backup").Body.String()
+	if !strings.Contains(page, info.Name) || !strings.Contains(page, "Back up now") {
 		t.Fatal("backup listed in maintenance")
 	}
 	download := get(t, env.handler, "/maintenance/backups/"+info.Name)

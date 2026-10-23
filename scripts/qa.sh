@@ -87,11 +87,11 @@ check() {
 }
 
 echo "==> HTTP smoke tests"
-check / "Overview"
+check / "Welcome to indexarr"
 check /releases "Release"
 check "/indexers" "Indexers"
-check /maintenance "Maintenance"
-check /maintenance "Database report"
+check "/settings?section=maintenance" "Database report"
+check "/settings?section=backup" "Backup"
 check "/activity?tab=logs" "Log"
 check "/activity?tab=logs&component=indexer" "Indexer"
 check "/activity?tab=feed" "New releases"
@@ -100,11 +100,11 @@ check /healthz '"status":"ok"'
 check /static/app.css "max-width: 720px"
 check /static/manifest.webmanifest '"name": "indexarr"'
 check /sw.js "indexarr-static"
-check /definitions "Definitions"
+check "/settings?section=advanced" "Definitions"
 check /definitions/new "New definition"
 check /indexers "Indexers"
 check /indexers/new "Add indexer"
-check /applications "Applications"
+check /applications "Download clients"
 check /import "Import"
 
 KEY="$(grep -o 'apikey=[0-9a-f]\{64\}' "$LOG" | head -n 1 | cut -d= -f2)"

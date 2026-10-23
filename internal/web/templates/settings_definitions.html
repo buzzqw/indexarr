@@ -1,0 +1,42 @@
+{{define "definition_table"}}
+<div class="table-scroll">
+  <table class="definitions-table">
+    <thead>
+      <tr>
+        <th scope="col">{{T "definitions.id"}}</th>
+        <th scope="col">{{T "definitions.name"}}</th>
+        <th scope="col">{{T "definitions.family"}}</th>
+        <th scope="col">{{T "definitions.protocol"}}</th>
+        <th scope="col">{{T "definitions.state"}}</th>
+        <th scope="col">{{T "definitions.origin"}}</th>
+        <th scope="col">{{T "definitions.hash"}}</th>
+        <th scope="col">{{T "definitions.updated"}}</th>
+        <th scope="col">{{T "definitions.indexerCount"}}</th>
+        <th scope="col" class="right">{{T "definitions.action"}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .}}
+      <tr>
+        <td><a href="/definitions/{{.ID}}"><code>{{.ID}}</code></a></td>
+        <td>
+          <a href="/definitions/{{.ID}}">{{.Name}}</a>
+          {{if .Derived}}<span class="chip warn" title="{{T "definitions.derivedTitle"}}">{{T "definitions.derived"}}</span>{{end}}
+          {{if .ParseError}}<div class="sub text-danger" title="{{.ParseError}}">{{truncate .ParseError 90}}</div>{{end}}
+        </td>
+        <td>{{if .Family}}<span class="chip">{{.Family}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td><span class="chip {{stateClass .State}}">{{stateLabel .State}}</span></td>
+        <td>{{if .Builtin}}{{T "definitions.catalogOrigin"}}{{else}}{{T "definitions.localOrigin"}}{{end}}</td>
+        <td>{{if .HashShort}}<code title="{{.Hash}}">{{.HashShort}}</code>{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{date .UpdatedAt}}</td>
+        <td>{{if .Indexers}}<a href="/definitions/{{.ID}}">{{.Indexers}}</a>{{else}}0{{end}}</td>
+        <td class="right nowrap"><a class="btn small" href="/indexers/new?definition={{.ID}}" title="{{T "definitions.createIndexerTitle"}}">{{T "definitions.createIndexer"}}</a></td>
+      </tr>
+      {{else}}
+      <tr><td colspan="10" class="empty">{{T "definitions.empty"}}</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}

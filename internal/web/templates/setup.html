@@ -1,0 +1,103 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{T "setup.title"}}</h1>
+    <p class="muted">{{T "setup.subtitle"}}</p>
+  </div>
+  <div class="actions">
+    <span class="muted">{{T "setup.stepOf" .Step .Steps}}</span>
+    <form method="post" action="/setup/skip">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">{{T "setup.skip"}}</button>
+    </form>
+  </div>
+</section>
+
+<ol class="setup-steps" aria-label="{{T "setup.progress"}}">
+  <li class="{{if eq .Step 1}}active{{else if gt .Step 1}}done{{end}}"><span class="step-number">1</span><span>{{T "setup.step.address"}}</span></li>
+  <li class="{{if eq .Step 2}}active{{else if gt .Step 2}}done{{end}}"><span class="step-number">2</span><span>{{T "setup.step.import"}}</span></li>
+  <li class="{{if eq .Step 3}}active{{else if gt .Step 3}}done{{end}}"><span class="step-number">3</span><span>{{T "setup.step.sites"}}</span></li>
+  <li class="{{if eq .Step 4}}active{{end}}"><span class="step-number">4</span><span>{{T "setup.step.app"}}</span></li>
+</ol>
+
+{{if eq .Step 1}}
+<section class="panel">
+  <div class="panel-head"><h2>{{T "setup.address.title"}}</h2></div>
+  <p>{{T "setup.address.text"}}</p>
+  <form class="form" method="post" action="/setup/address">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="field grow">
+      <label for="setup_public_url">{{T "setup.address.label"}}</label>
+      <input id="setup_public_url" name="public_url" type="url" value="{{if .HasPublicURL}}{{.PublicURL}}{{else}}{{.SuggestedURL}}{{end}}" placeholder="{{T "setup.address.placeholder"}}">
+      <p class="help">{{T "setup.address.help"}}</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "setup.address.save"}}</button>
+    </div>
+  </form>
+  <p class="help">{{T "setup.address.verifyHelp"}}</p>
+</section>
+{{end}}
+
+{{if eq .Step 2}}
+<section class="panel">
+  <div class="panel-head"><h2>{{T "setup.import.title"}}</h2></div>
+  <p>{{T "setup.import.text"}}</p>
+  <p class="help">{{T "setup.import.readOnly"}}</p>
+  <div class="actions">
+    <a class="btn primary" href="/import">{{T "setup.import.action"}}</a>
+    <a class="btn" href="/setup?step=3">{{T "setup.import.none" }}</a>
+  </div>
+</section>
+{{end}}
+
+{{if eq .Step 3}}
+<section class="panel">
+  <div class="panel-head">
+    <h2>{{T "setup.sites.title"}}</h2>
+    <span class="muted">{{T "setup.sites.count" .SiteTotal}}</span>
+  </div>
+  <p>{{T "setup.sites.text"}}</p>
+  {{if .Sites}}
+  <form method="post" action="/indexers/catalog/add">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <ul class="setup-site-list">
+      {{range .Sites}}
+      <li>
+        <label class="check">
+          <input type="checkbox" name="definition_id" value="{{.ID}}">
+          <span><strong>{{.Name}}</strong> <span class="badge">{{.Type}}</span></span>
+        </label>
+        {{if .Required}}<span class="muted">{{T "setup.sites.credentials"}}</span>{{end}}
+      </li>
+      {{end}}
+    </ul>
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "setup.sites.addSelected"}}</button>
+    </div>
+  </form>
+  {{else}}
+  <p class="muted">{{T "setup.sites.empty"}}</p>
+  {{end}}
+  <div class="actions">
+    <a class="btn" href="/indexers/new">{{T "setup.sites.all"}}</a>
+    <a class="btn" href="/setup?step=4">{{T "setup.next" }}</a>
+  </div>
+</section>
+{{end}}
+
+{{if eq .Step 4}}
+<section class="panel">
+  <div class="panel-head"><h2>{{T "setup.app.title"}}</h2></div>
+  <p>{{T "setup.app.text"}}</p>
+  {{if .AppCount}}<p class="flash ok" role="status">{{T "setup.app.linked" .AppCount}}</p>{{end}}
+  <div class="actions">
+    <a class="btn primary" href="/applications/new">{{T "setup.app.action"}}</a>
+    <form method="post" action="/setup/finish">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">{{T "setup.app.finish"}}</button>
+    </form>
+  </div>
+</section>
+{{end}}
+{{end}}

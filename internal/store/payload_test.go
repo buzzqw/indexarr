@@ -70,8 +70,8 @@ func TestMigration2AddsPayloadColumnsToLegacyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2LiveSearchVersion {
-		t.Fatalf("schema version = %d, want %d", version, indexarr2LiveSearchVersion)
+	if version != indexarr2DownloadClientsVersion {
+		t.Fatalf("schema version = %d, want %d", version, indexarr2ActivityVersion)
 	}
 	for _, column := range []string{"protocol", "payload", "payload_type"} {
 		exists, err := migrated.columnExists("releases", column)

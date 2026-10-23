@@ -485,6 +485,17 @@ release e "Avanzate e diagnostica" chiuso. I componenti di §5 stanno in
 delle impostazioni usano `setting.<name>.label` in tutte le 7 lingue, con la
 `label` della definizione come fallback.
 
+**Stato fase 3 (23/10): fatta.** La barra laterale ha le sei voci Home,
+Cerca, Indexer, App, Attività, Impostazioni; il badge compare solo per i
+problemi correnti e legge la stessa `HomeStatus` della Home. Le URL
+`/sources`, `/runs`, `/logs`, `/definitions`, `/rules` e `/maintenance`
+rispondono 302 verso la nuova posizione. La Home mostra stato, endpoint e API
+key da copiare, ultime 24 ore e un solo "Prossimo passo". App unisce app \*arr
+e più client di download (tabella `download_clients`, protocollo torrent/Usenet
+e client predefinito). Impostazioni è divisa in otto sezioni con salvataggio
+indipendente; le Definizioni stanno solo in Avanzate. Il primo avvio è un
+wizard di quattro passi, saltabile e riapribile da Generale.
+
 **Stato WP19 (23/10): fatto.** L'aggiunta non è più una dozzina di voci: è un
 elenco di siti sfogliabile come Jackett/Prowlarr, alimentato da
 `internal/catalog/index.json` generato a build time (`go generate
