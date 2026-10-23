@@ -1,0 +1,63 @@
+# VERIFICATA (verified). BT4G public RSS search API.
+#
+# Written from the public XML response captured on 2026-10-23 in
+# fixtures/bt4g/search.rss
+# (https://bt4gprx.com/search?q=test&orderby=relevance&category=all&p=1&page=rss).
+# The HTML search page is behind a Cloudflare challenge for our network, but
+# the site publishes the same results as RSS/XML with a magnet in <link>, the
+# size and type in <description> and an infohash. bt4g.org and bt4g.com are
+# official proxy domains; bt4gprx.com is the primary one captured here.
+schema: 1
+
+meta:
+  id: bt4g
+  name: BT4G
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public BT4G DHT search through its RSS/XML results.
+  urls:
+    - https://bt4gprx.com/
+  updated: "2026-10-23"
+  interval: 15m
+
+categories:
+  - { site: "Video", standard: 2000, desc: "Video" }
+  - { site: "Audio", standard: 3000, desc: "Audio" }
+  - { site: "Application", standard: 4000, desc: "Applications" }
+  - { site: "Doc", standard: 7000, desc: "Documents" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+      orderby: relevance
+      category: all
+      page: rss
+  pagination: { type: page, start: 1, step: 1, max_pages: 3, param: p, stop_when: empty_rows }
+  response:
+    type: xml
+    rows: { path: rss.channel.item }
+    fields:
+      title:    { path: title, filters: [trim] }
+      magnet:   { path: link }
+      details:  { path: guid, type: url }
+      size:     { path: description, filters: [{ regex: '<br>([0-9.,]+ ?[KMGTP]?B)<br>' }], type: size }
+      category: { path: description, filters: [{ regex: '<br>[^<]*<br>([A-Za-z]+)<br>' }], type: category }
+      date:     { path: pubDate, type: date, layouts: ["Mon,2 Jan 2006 15:04:05 -0700"] }
+    required: [title, magnet, size]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/bt4g/search.rss
+    expect: { min_rows: 10, required: [title, magnet, size, category] }

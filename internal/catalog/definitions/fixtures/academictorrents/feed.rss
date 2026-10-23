@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:academictorrents="https://academictorrents.com" version="2.0">
+<channel>
+<title>Academic Torrents</title>
+<description>Recent Torrents</description>
+<link>https://academictorrents.com/</link>
+<item>
+<title>TesticulUS: Testicular B-mode Ultrasound Dataset</title>
+<category>Dataset</category>
+<infohash>a02dbd993e21ce655d44512ee28ff754457a88a7</infohash>
+<guid>https://academictorrents.com/details/a02dbd993e21ce655d44512ee28ff754457a88a7</guid>
+<link>https://academictorrents.com/details/a02dbd993e21ce655d44512ee28ff754457a88a7</link>
+<description># TesticulUS A public collection of testicular ultrasound images for medical image analysis, from the AImageLab group at the University of Modena and Reggio Emilia (UNIMORE). It has two parts: a synthetic set for classification pretraining, and a real multicenter set for segmentation. ## TesticulUS-Syn (ICIAP 2025) Synthetic B-mode images generated with a Denoising Diffusion Probabilistic Model (DDPM). They were released because the real clinical images behind the original classification study could not be shared. The study targeted classification of parenchymal inhomogeneity and proposed a training pipeline built around synthetic pretraining. | Field | Value | | &amp;mdash;- | &amp;mdash;- | | Organ | Testicle | | Images | 9,289 | | Generation method | DDPM, custom implementation based on OpenAI guided-diffusion | | File format | PNG | | Image shape | 256 x 256 | | Modality | Ultrasound, B-mode (synthetic) | | License | CC BY-NC-SA | The images were validated and filtered using the technique described in the paper. ## TesticulUS-Real (BMVC 2026) The first multicenter testicular ultrasound segmentation dataset. Each image comes with an expert-reviewed segmentation mask. A subset also carries the parenchymal inhomogeneity classification label from the ICIAP 2025 study, so it supports both segmentation and classification work. | Field | Value | | &amp;mdash;- | &amp;mdash;- | | Organ | Testicle | | Images | 1,053 | | Centers | 2 (Baggiovara Hospital, Modena; Umberto I Hospital, Rome) | | Acquisition systems | Esaote MyLab25 Gold / MyLab XPro80 (851 images), Philips EPIQ 5 (202 images) | | File format | PNG | | Modality | Ultrasound, B-mode | | License | CC BY-NC-SA | The accompanying paper also introduces Cond-UNet, a lightweight conditional U-Net using FiLM modulation and a Shared Attention Conditioning (SAC) mechanism. It was benchmarked across five anatomical regions with the testicular data held out as an unseen organ, and it matches or beats much larger foundation-model baselines at a fraction of the cost. ## Resources - Cond-UNet code: https://github.com/AImageLab-zip/US_Cond-UNet - Classification code: https://github.com/AImageLab-zip/TesticulUS - Cond-UNet on Hugging Face: https://huggingface.co/AImageLab-Zip/US_Cond-UNet ## Citation Anyone using the dataset must cite both papers: - Enhancing Testicular Ultrasound Image Classification through Synthetic Data and Pretraining Strategies (ICIAP 2025) - A New Multicenter Testicular US Dataset and a Lightweight Cond-UNet for Generalization in US Segmentation (BMVC 2026)</description>
+<size>466779732</size>
+</item>
+<item>
+<title>Topics in Mathematics with Applications in Finance (MIT 18.642) - Video lectures 2024</title>
+<category>Course</category>
+<infohash>e53507bbf0bc496e40ea17ebdf132eec35e560be</infohash>
+<guid>https://academictorrents.com/details/e53507bbf0bc496e40ea17ebdf132eec35e560be</guid>
+<link>https://academictorrents.com/details/e53507bbf0bc496e40ea17ebdf132eec35e560be</link>
+<description>The purpose of the class is to expose undergraduate and graduate students to the mathematical concepts and techniques used in the financial industry. The course will consist of a set of mathematics lectures on topics in linear algebra, probability, statistics, stochastic processes, and numerical methods. Mathematics lectures will be mixed with lectures illustrating the corresponding application in the financial industry. MIT mathematicians will teach the mathematics part, while industry professionals will give the lectures on applications in finance. The schedule includes lecturers from investment banks, FinTech and hedge fund industries as well as academia. Broad familiarity with linear algebra, statistics, stochastic processes and partial differential equations will be helpful (but not required). Prior knowledge of economics or finance is not required but may be helpful for some lectures. **Main course URL:** https://ocw.mit.edu/courses/18-642-topics-in-mathematics-with-applications-in-finance-fall-2024/ **Contents:** * Lecture 1, Part I: Introduction of the Class * Lecture 1, Part II: Introduction of Financial Markets, Financial Terms and Concepts * Lecture 1, Part III: Bond  Mathematics  * Lecture 2: Linear Algebra * Lecture 4: Linear Algebra (cont.); Probability Theory * Lecture 5: Probability Theory (cont.); Stochastic Processes I * Lecture 6: Stochastic Processes I (cont.); Regression Analysis * Lecture 7: Linear Rates, Products, and Models * Lecture 8: Regression Analysis (cont.) * Lecture 9: Principal Component Analysis in Finance * Lecture 10: Counterparty Risk Optimization * Lecture 11: Regression Analysis (cont.) * Lecture 12: Time Series Analysis * Lecture 13: Portfolio Management * Lecture 14: Stochastic Processes II * Lecture 18: Applying Data Science and Artificial Intelligence to Managing Biomedical Portfolios * Lecture 19: Volatility Modeling * Lecture 20: Building the First Federally (CFTC) Regulated Exchange Dedicated to Trading on Events * Lecture 21: Black-Scholes Formula, Risk Neutral Valuation * Lecture 23: Introduction to Machine Learning * Lecture 24: Stochastic Calculus * Lecture 25: Stochastic Calculus (cont.); Stochastic Differential Equations &amp;mdash;- **About the Instructors:** Dr. Peter Kempthorne is a lecturer in the MIT Department of Mathematics on financial mathematics and statistics. He is also president of Kempthorne Analytics and formerly was an associate professor and principal research scientist at MIT Sloan School of Management with research focus on statistical modeling in finance. Dr. Vasily Strela is a managing director and the global head of fixed income quantitative analytics at RBC Capital Markets. He is also a research affiliate in the MIT Department of Mathematics. Dr. Jake Xia is a research affiliate in the MIT Department of Mathematics. He is managing director of Harvard Management Company. Prior to that, he was managing director of Morgan Stanley. &amp;mdash;- This content hosted at the Internet Archive at https://archive.org/details/mit18_642f24 Files may have changed, which prevents torrents from downloading correctly or completely; please check for an updated torrent at https://archive.org/download/mit18_642f24/mit18_642f24_archive.torrent Note: retrieval usually requires a client that supports webseeding (GetRight style). Note: many Internet Archive torrents contain a  pad file  directory. This directory and the files within it may be erased once retrieval completes. Note: the file mit18_642f24_meta.xml contains metadata about this torrent s contents.</description>
+<size>3770679296</size>
+</item>
+<item>
+<title>Stack Exchange Data Dump (2026-09-30)</title>
+<category>Dataset</category>
+<infohash>c32cdd0306ee7717cd63f98f8df6486af55f79c8</infohash>
+<guid>https://academictorrents.com/details/c32cdd0306ee7717cd63f98f8df6486af55f79c8</guid>
+<link>https://academictorrents.com/details/c32cdd0306ee7717cd63f98f8df6486af55f79c8</link>
+<description>This data dump is sourced from the various sites in the Stack Exchange network of Q&amp;A sites. This dump contains data up to and including 2026-06-30. The exact licenses for each bit of content is embedded in each entry. For license date ranges, see the root-level license.txt, or https://stackoverflow.com/help/licensing. For the schema, see the sede-and-data-dump-schema.md file within each .7z This torrent has also been archived at https://archive.org/details/stackexchange_20260930</description>
+<size>99497279488</size>
+</item>
+<item>
+<title>Reddit comments/submissions 2026-09</title>
+<category>Dataset</category>
+<infohash>98b6dbad155750c4d5f65d5923e0c2d11f46da85</infohash>
+<guid>https://academictorrents.com/details/98b6dbad155750c4d5f65d5923e0c2d11f46da85</guid>
+<link>https://academictorrents.com/details/98b6dbad155750c4d5f65d5923e0c2d11f46da85</link>
+<description>Reddit comments and submissions from 2026-09 Documentation, json schemas and more can be found at https://github.com/ArthurHeitmann/arctic_shift Helper scripts for processing files can be found at https://github.com/Watchful1/PushshiftDumpssions</description>
+<size>74356662467</size>
+</item>
+<item>
+<title>Advanced Topics in Cryptography (MIT 6.5630) - Video lectures 2023</title>
+<category>Course</category>
+<infohash>723a9c6f86738d4111baadf87a6a51a1c038f6f1</infohash>
+<guid>https://academictorrents.com/details/723a9c6f86738d4111baadf87a6a51a1c038f6f1</guid>
+<link>https://academictorrents.com/details/723a9c6f86738d4111baadf87a6a51a1c038f6f1</link>
+<description>This course is about the evolution of proofs in computer science.  We will learn about the power of interactive proofs, multi-prover interactive proofs, and probabilistically checkable proofs.  We will then show how to use cryptography to convert these powerful proof systems into computationally sound non-interactive arguments (SNARGs). **Main course URL:** https://ocw.mit.edu/courses/6-5630-advanced-topics-in-cryptography-fall-2023/ **Contents:** * Lecture 1: Interactive Proofs and the Sum-Check Protocol * Lecture 2: Doubly Efficient Interactive Proofs * Lecture 3: Continuation of the GKR Protocol and Corollaries * Lecture 4: PCP (Probabilistically checkable proofs) via GKR and Interactive Arguments * Lecture 5: The Kilian-Micali Protocol * Lecture 6: Fiat-Shamir Paradigm and Zero-Knowledge Proofs * Lecture 7: Soundness of the Fiat-Shamir Paradigm in the standard model * Lecture 8: Succinct Non-interactive Arguments for Batch NP (BARGs) from LWE * Lecture 9: BARGs Implies SNARGs and Connection to Non-signaling PCPs &amp;mdash;- This content hosted at the Internet Archive at https://archive.org/details/mit6_5630f23 Files may have changed, which prevents torrents from downloading correctly or completely; please check for an updated torrent at https://archive.org/download/mit6_5630f23/mit6_5630f23_archive.torrent Note: retrieval usually requires a client that supports webseeding (GetRight style). Note: many Internet Archive torrents contain a  pad file  directory. This directory and the files within it may be erased once retrieval completes. Note: the file mit6_5630f23_meta.xml contains metadata about this torrent s contents.</description>
+<size>3219128320</size>
+</item>
+<item>
+<title>Celebrity Together</title>
+<category>Dataset</category>
+<infohash>1d959d3af14abbccc7c30293113670848d8aaa89</infohash>
+<guid>https://academictorrents.com/details/1d959d3af14abbccc7c30293113670848d8aaa89</guid>
+<link>https://academictorrents.com/details/1d959d3af14abbccc7c30293113670848d8aaa89</link>
+<description>This dataset contains images that have multiple labeled celebrities per image. It therefore can be used as an evaluation benchmark for retrieving a set of identities. Namely, given a query of a set of identities (and one or several face images are provided for each identity), the system should return a ranked list of the dataset images, such that images containing all the query identities are ranked first, followed by images containing all but one, etc. The  Celebrity Together  dataset has 194k images containing 546k faces in total, covering 2622 labeled celebrities (same identities as VGGFace Dataset). 59% faces correspond to these 2622 celebrities, and the rest faces are considered as  unknown  people. The images in this dataset were obtained using Google Image Search and verified by human annotation. Further details of the dataset collection procedure are explained in the paper.</description>
+<size>22416978817</size>
+</item>
+<item>
+<title>enwiki-20261001-pages-articles-multistream.xml.bz2</title>
+<category>Dataset</category>
+<infohash>82075af82e83b99e9a4c6ef17e564947efe65a66</infohash>
+<guid>https://academictorrents.com/details/82075af82e83b99e9a4c6ef17e564947efe65a66</guid>
+<link>https://academictorrents.com/details/82075af82e83b99e9a4c6ef17e564947efe65a66</link>
+<description>English Wikipedia Multistream 2026-10-01 https://en.wikipedia.org/wiki/Wikipedia:Database_download Corresponding index file: https://academictorrents.com/details/e6d8aef6d3dffd1ff9eb36d84988242871812a79</description>
+<size>26899580121</size>
+</item>
+<item>
+<title>enwiki-20261001-pages-articles-multistream-index.txt.bz2</title>
+<category>Dataset</category>
+<infohash>e6d8aef6d3dffd1ff9eb36d84988242871812a79</infohash>
+<guid>https://academictorrents.com/details/e6d8aef6d3dffd1ff9eb36d84988242871812a79</guid>
+<link>https://academictorrents.com/details/e6d8aef6d3dffd1ff9eb36d84988242871812a79</link>
+<description>English Wikipedia Multistream Index 2026-10-01 https://en.wikipedia.org/wiki/Wikipedia:Database_download Corresponding multistream file: https://academictorrents.com/details/82075af82e83b99e9a4c6ef17e564947efe65a66</description>
+<size>285068855</size>
+</item>
+<item>
+<title>Computer Systems Security (MIT 6.858) - Video lectures 2014</title>
+<category>Course</category>
+<infohash>4b9c8a79866e71648bde841d682ad33ea3c7101b</infohash>
+<guid>https://academictorrents.com/details/4b9c8a79866e71648bde841d682ad33ea3c7101b</guid>
+<link>https://academictorrents.com/details/4b9c8a79866e71648bde841d682ad33ea3c7101b</link>
+<description>This is a class about the design and implementation of secure computer systems. Lectures cover threat models, attacks that compromise security, and techniques for achieving security, based on recent research papers. Topics include operating system (OS) security, capabilities, information flow control, language security, network protocols, hardware security, and security in web applications. **Main course URL:** https://ocw.mit.edu/6-858F14 **Table of contents:** * Lecture 1: Introduction, Threat Models * Lecture 2: Control Hijacking Attacks * Lecture 3: Buffer Overflow Exploits and Defenses * Lecture 4: Privilege Separation * Lecture 6: Capabilities * Lecture 7: Sandboxing Native Code * Lecture 8: Web Security Model * Lecture 9: Securing Web Applications * Lecture 10: Symbolic Execution * Lecture 11: Ur / Web * Lecture 12: Network Security * Lecture 13: Network Protocols * Lecture 14: SSL and HTTPS * Lecture 15: Medical Software * Lecture 16: Side-Channel Attacks * Lecture 17: User Authentication * Lecture 18: Private Browsing * Lecture 19: Anonymous Communication * Lecture 20: Mobile Phone Security * Lecture 21: Data Tracking * Lecture 22: Guest Lecture from MIT IS&amp;T * Lecture 23: Security Economics &amp;mdash;- This content hosted at the Internet Archive at https://archive.org/details/MIT6.858F14 Files may have changed, which prevents torrents from downloading correctly or completely; please check for an updated torrent at https://archive.org/download/MIT6.858F14/MIT6.858F14_archive.torrent Note: retrieval usually requires a client that supports webseeding (GetRight style). Note: many Internet Archive torrents contain a  pad file  directory. This directory and the files within it may be erased once retrieval completes. Note: the file MIT6.858F14_meta.xml contains metadata about this torrent s contents.</description>
+<size>11035213824</size>
+</item>
+<item>
+<title>Celebrity in Places</title>
+<category>Dataset</category>
+<infohash>04200d16ba377e1bc0c5690d87ee047e1e70a5b5</infohash>
+<guid>https://academictorrents.com/details/04200d16ba377e1bc0c5690d87ee047e1e70a5b5</guid>
+<link>https://academictorrents.com/details/04200d16ba377e1bc0c5690d87ee047e1e70a5b5</link>
+<description>The dataset contains about 36k images of celebrities in different types of scenes. There are 4611 celebrities and 16 places involved. The images were obtained using Google Image Search and verified by human annotation.</description>
+<size>1976719940</size>
+</item>
+</channel>
+</rss>

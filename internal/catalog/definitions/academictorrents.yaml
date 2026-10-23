@@ -1,0 +1,53 @@
+# VERIFICATA (verified). Academic Torrents public RSS feed.
+#
+# Academic Torrents asks robots not to scrape browse.php and publishes the
+# latest public entries as RSS at https://academictorrents.com/rss.xml, captured
+# on 2026-10-23 in fixtures/academictorrents/feed.rss. The API at /apiv2/ and
+# the full database.xml are not used: the API is behind a Cloudflare challenge
+# for our network and the database is a nightly full dump. Each item carries an
+# infohash and a size, so the RSS family builds the magnet. A feed has no
+# server-side search: keywords filter the newest entries client-side, which the
+# definition states plainly.
+schema: 1
+connector: rss
+
+meta:
+  id: academictorrents
+  name: Academic Torrents
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Academic Torrents research feed (latest entries; keyword search filters the feed client-side).
+  urls:
+    - https://academictorrents.com/
+  updated: "2026-10-23"
+  interval: 2h
+
+settings:
+  - name: url
+    type: text
+    label: "Feed URL"
+    help: "Public RSS feed of recent entries (https://academictorrents.com/rss.xml)."
+    default: "https://academictorrents.com/rss.xml"
+    required: true
+  - name: default-category
+    type: text
+    label: "Default category"
+    help: "Standard Torznab category used for feed entries that have only a text category."
+    default: "8000"
+
+categories:
+  - { site: "8000", standard: 8000, desc: "Research data and papers" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: test
+  min_rows: 1
+
+tests:
+  - name: feed
+    fixture: fixtures/academictorrents/feed.rss
+    expect: { min_rows: 5, required: [title, magnet, size] }

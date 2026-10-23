@@ -11,127 +11,198 @@ definitions:
     file: definitions/example-html.yaml
     state: bozza
     author: indexarr
+
   - id: unit3d-generic
     file: definitions/unit3d-generic.yaml
     state: bozza
     author: indexarr
+
   - id: newznab-generic
     file: definitions/newznab-generic.yaml
     state: bozza
     author: indexarr
+
   - id: torznab-generic
     file: definitions/torznab-generic.yaml
     state: bozza
     author: indexarr
+
   - id: gazelle-generic
     file: definitions/gazelle-generic.yaml
     state: bozza
     author: indexarr
+
   - id: nexusphp-generic
     file: definitions/nexusphp-generic.yaml
     state: bozza
     author: indexarr
+
   - id: torrenttrader-generic
     file: definitions/torrenttrader-generic.yaml
     state: bozza
     author: indexarr
+
   - id: xbtit-generic
     file: definitions/xbtit-generic.yaml
     state: bozza
     author: indexarr
+
   - id: extto
     file: definitions/extto.yaml
     state: verificata
     author: indexarr
+
   - id: torrentgalaxy
     file: definitions/torrentgalaxy.yaml
     state: verificata
     author: indexarr
+
   - id: corsaro
     file: definitions/corsaro.yaml
     state: verificata
     author: indexarr
+
   - id: knaben
     file: definitions/knaben.yaml
     state: verificata
     author: indexarr
+
   - id: torrentleech
     file: definitions/torrentleech.yaml
     state: bozza
     author: indexarr
+
   - id: torrentleech-rss
     file: definitions/torrentleech-rss.yaml
     state: bozza
     author: indexarr
+
   - id: torrentgalaxyclone
     file: definitions/torrentgalaxyclone.yaml
     state: verificata
     author: indexarr
+
   - id: limetorrents
     file: definitions/limetorrents.yaml
     state: verificata
     author: indexarr
+
   - id: thepiratebay
     file: definitions/thepiratebay.yaml
     state: verificata
     author: indexarr
+
   - id: torrentscsv
     file: definitions/torrentscsv.yaml
     state: verificata
     author: indexarr
+
   - id: showrss
     file: definitions/showrss.yaml
     state: verificata
     author: indexarr
+
   - id: corsaro-account
     file: definitions/corsaro-account.yaml
     state: bozza
     author: indexarr
+
   - id: ildragonegro
     file: definitions/ildragonegro.yaml
     state: bozza
     author: indexarr
+
   - id: 1337x
     file: definitions/1337x.yaml
     state: verificata
     author: indexarr
+
   - id: animetosho
     file: definitions/animetosho.yaml
     state: verificata
     author: indexarr
+
   - id: kickasstorrents
     file: definitions/kickasstorrents.yaml
     state: verificata
     author: indexarr
+
   - id: nyaa
     file: definitions/nyaa.yaml
     state: verificata
     author: indexarr
+
   - id: subsplease
     file: definitions/subsplease.yaml
     state: verificata
     author: indexarr
+
   - id: tokyotosho
     file: definitions/tokyotosho.yaml
     state: verificata
     author: indexarr
+
   - id: torrentdownloads
     file: definitions/torrentdownloads.yaml
     state: verificata
     author: indexarr
+
   - id: yts
     file: definitions/yts.yaml
     state: verificata
     author: indexarr
+
   - id: acgnx
     file: definitions/acgnx.yaml
     state: verificata
     author: indexarr
+
   - id: bangumimoe
     file: definitions/bangumimoe.yaml
     state: verificata
     author: indexarr
+
   - id: mikan
     file: definitions/mikan.yaml
+    state: verificata
+    author: indexarr
+
+  - id: torlock
+    file: definitions/torlock.yaml
+    state: verificata
+    author: indexarr
+
+  - id: torrentfunk
+    file: definitions/torrentfunk.yaml
+    state: verificata
+    author: indexarr
+
+  - id: bt4g
+    file: definitions/bt4g.yaml
+    state: verificata
+    author: indexarr
+
+  - id: solidtorrents
+    file: definitions/solidtorrents.yaml
+    state: verificata
+    author: indexarr
+
+  - id: bitsearch
+    file: definitions/bitsearch.yaml
+    state: verificata
+    author: indexarr
+
+  - id: btdig
+    file: definitions/btdig.yaml
+    state: verificata
+    author: indexarr
+
+  - id: linuxtracker
+    file: definitions/linuxtracker.yaml
+    state: verificata
+    author: indexarr
+
+  - id: academictorrents
+    file: definitions/academictorrents.yaml
     state: verificata
     author: indexarr

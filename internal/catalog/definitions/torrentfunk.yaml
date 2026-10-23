@@ -1,0 +1,59 @@
+# VERIFICATA (verified). TorrentFunk public Torznab API.
+#
+# Written from the public API responses captured on 2026-10-23 in
+# fixtures/torrentfunk/search.xml
+# (https://www.torrentfunk.com/torznab/api?t=search&q=test). The HTML pages are
+# behind a Cloudflare challenge for our network, while the Torznab endpoint is
+# public, keyless and returns magnet links, seeders and standard categories.
+# TorrentFunk shares the same feed generator as Torlock, but it is a separate
+# site with its own torrent ids, so it gets its own definition.
+schema: 1
+connector: torznab
+
+meta:
+  id: torrentfunk
+  name: TorrentFunk
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public TorrentFunk search through its official Torznab API (no account or API key).
+  urls:
+    - https://www.torrentfunk.com/
+  updated: "2026-10-23"
+  interval: 30m
+
+settings:
+  - name: url
+    type: text
+    label: "Torznab endpoint"
+    help: "Official TorrentFunk Torznab API. The API key is optional and may stay empty."
+    default: "https://www.torrentfunk.com/torznab/api"
+    required: true
+
+categories:
+  - { site: "2000", standard: 2000, desc: "Movies" }
+  - { site: "5000", standard: 5000, desc: "TV" }
+  - { site: "5070", standard: 5070, desc: "Anime" }
+  - { site: "3000", standard: 3000, desc: "Audio" }
+  - { site: "3030", standard: 3030, desc: "Audiobook" }
+  - { site: "4000", standard: 4000, desc: "PC" }
+  - { site: "4050", standard: 4050, desc: "Games" }
+  - { site: "6000", standard: 6000, desc: "XXX" }
+  - { site: "7000", standard: 7000, desc: "Books" }
+  - { site: "7020", standard: 7020, desc: "Ebook" }
+  - { site: "8000", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep]
+  movie-search: [q]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/torrentfunk/search.xml
+    expect: { min_rows: 10, required: [title, magnet, size, seeders, category] }

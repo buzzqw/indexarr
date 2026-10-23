@@ -1,0 +1,84 @@
+# VERIFICATA (verified). Bitsearch HTML search.
+#
+# Bitsearch is the successor front-end of SolidTorrents: solidtorrents.to
+# redirects here. Written from the public search page captured on 2026-10-23 in
+# fixtures/bitsearch/listing.html (https://bitsearch.eu/search?q=test). It uses
+# the same card layout, numeric category ids and swarm counters as
+# solidtorrents.yaml; the two domains share an index, but they are separate
+# public sites with separate definitions, and the README records that. As on
+# SolidTorrents, the category query parameter answers HTTP 520 for our network,
+# so it is not sent and rows carry the per-card category. A page parameter
+# encoded before q also answers HTTP 520, so the definition stays on the first
+# page (20 results).
+schema: 1
+
+meta:
+  id: bitsearch
+  name: Bitsearch
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Bitsearch HTML search (the SolidTorrents successor) with magnets and .torrent links.
+  urls:
+    - https://bitsearch.eu/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "1", standard: 8000, desc: "Other" }
+  - { site: "2", standard: 2000, desc: "Movies" }
+  - { site: "3", standard: 5000, desc: "TV" }
+  - { site: "4", standard: 5070, desc: "Anime" }
+  - { site: "5", standard: 4000, desc: "Software" }
+  - { site: "6", standard: 4050, desc: "Games" }
+  - { site: "7", standard: 3000, desc: "Music" }
+  - { site: "8", standard: 3030, desc: "Audiobooks" }
+  - { site: "9", standard: 7000, desc: "Books" }
+  - { site: "10", standard: 6000, desc: "Adult" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.torrent-result-card" }
+    fields:
+      title:    { selector: "h3 a", filters: [trim] }
+      details:  { selector: "h3 a", attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      download: { selector: 'a[href^="/download/torrent/"]', attr: href, type: url }
+      size:     { selector: "div.torrent-result-meta > span:nth-of-type(2) > span", type: size }
+      date:     { selector: "div.torrent-result-meta > span:nth-of-type(3) > span", type: date, layouts: ["1/2/2006"] }
+      seeders:  { selector: "span.text-green-600 span.font-medium", type: int }
+      leechers: { selector: "span.text-red-600 span.font-medium", type: int }
+      category:
+        selector: "div.torrent-result-meta > span:nth-of-type(1) > span"
+        filters:
+          - { replace: "Other:1" }
+          - { replace: "Movies:2" }
+          - { replace: "TV:3" }
+          - { replace: "Anime:4" }
+          - { replace: "Softwares:5" }
+          - { replace: "Games:6" }
+          - { replace: "Music:7" }
+          - { replace: "AudioBook:8" }
+          - { replace: "Ebook/Course:9" }
+          - { replace: "XXX:10" }
+          - { regex: "^([0-9]+)" }
+        type: category
+    required: [title, magnet, size]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/bitsearch/listing.html
+    expect: { min_rows: 10, required: [title, magnet, size, seeders, category] }

@@ -1,0 +1,54 @@
+# VERIFICATA (verified). BTDigg DHT search.
+#
+# Written from the public search page captured on 2026-10-23 in
+# fixtures/btdig/listing.html (https://btdig.com/search?q=test&p=0). BTDigg
+# shows ten results per page; each one_result row exposes the title and details
+# link, a magnet and the torrent size. The interface is Korean by default and
+# the age is a relative phrase, so the definition does not extract a date or a
+# category and rows use the 8000 fallback. Pagination is the p parameter
+# starting at 0.
+schema: 1
+
+meta:
+  id: btdig
+  name: BTDigg
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public BTDigg DHT search with magnets.
+  urls:
+    - https://btdig.com/
+  updated: "2026-10-23"
+  interval: 15m
+
+categories:
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: page, start: 0, step: 1, max_pages: 3, param: p, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "div.one_result" }
+    fields:
+      title:   { selector: "div.torrent_name a", filters: [trim] }
+      details: { selector: "div.torrent_name a", attr: href, type: url }
+      magnet:  { selector: "div.torrent_magnet a", attr: href }
+      size:    { selector: "span.torrent_size", type: size }
+    required: [title, magnet, size]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/btdig/listing.html
+    expect: { min_rows: 10, required: [title, magnet, size] }

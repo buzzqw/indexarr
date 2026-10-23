@@ -1,0 +1,71 @@
+# VERIFICATA (verified). LinuxTracker HTML search.
+#
+# Written from the public search and detail pages captured on 2026-10-23 in
+# fixtures/linuxtracker/listing.html (https://linuxtracker.org/torrents/?q=test)
+# and fixtures/linuxtracker/detail.html (the first release page,
+# /torrents/dad8a156233aa21c2922d1979bfed285b19d8b06/). The listing has no
+# magnet; the detail page carries both the magnet and /download/. Category
+# filters on the site are numeric distro ids (KDE Neon, Ubuntu, ...), while the
+# row only shows the distro name, so the definition does not publish a precise
+# category and rows use the 8000 fallback. Every release is a Linux
+# distribution, so the single declared 4000 category describes the index as a
+# whole. The listing has 25 rows and each magnet needs a detail request, so the
+# definition resolves downloads on grab instead of opening 25 pages during a
+# search.
+schema: 1
+
+meta:
+  id: linuxtracker
+  name: LinuxTracker
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public LinuxTracker search for Linux distribution torrents, with magnets on the detail page.
+  urls:
+    - https://linuxtracker.org/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "linux", standard: 4000, desc: "Linux distributions" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /torrents/
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: page, start: 1, step: 1, max_pages: 3, param: page, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.torrent-table tbody tr" }
+    fields:
+      title:    { selector: "a.torrent-name", filters: [trim] }
+      details:  { selector: "a.torrent-name", attr: href, type: url }
+      size:     { selector: "td:nth-of-type(4)", type: size }
+      seeders:  { selector: "td.seeds strong", type: int }
+      leechers: { selector: "td.leeches strong", type: int }
+      date:     { selector: "td:nth-of-type(3)", type: date, layouts: ["Jan 2, 2006"] }
+    required: [title, details, size]
+
+download:
+  resolve_on: grab
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href$="/download/"]', attr: href, type: url }
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/linuxtracker/listing.html
+    expect: { min_rows: 10, required: [title, details, size, seeders] }
+  - name: detail
+    fixture: fixtures/linuxtracker/detail.html
+    expect: { min_rows: 0 }
