@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -50,7 +51,7 @@ func (e *Engine) SearchLive(ctx context.Context, filter store.Filter) (int, erro
 	}
 	rules, err := e.store.ListBlocklist(ctx)
 	if err != nil {
-		e.log.Warn("live search: cannot load blocklist", "error", err)
+		e.log.Warn("live search: cannot load blocklist", "component", "indexarr", "error", err)
 	}
 	matcher := store.NewBlocklistMatcher(rules)
 
@@ -74,7 +75,8 @@ func (e *Engine) SearchLive(ctx context.Context, filter store.Filter) (int, erro
 			}
 			items, err := e.torznabClient(source, settings).Fetch(ctx, query, 50)
 			if err != nil {
-				e.log.Debug("live search source failed", "source", source.Name, "error", err)
+				e.log.Warn("live search source failed",
+					sourceLogArgs(source, "error", err.Error())...)
 				return
 			}
 			result := store.RunResult{}
@@ -84,8 +86,8 @@ func (e *Engine) SearchLive(ctx context.Context, filter store.Filter) (int, erro
 					return
 				}
 				if err := e.saveItem(ctx, source, settings, item, &result, &attempts, matcher); err != nil {
-					e.log.Debug("live search item skipped", "source", source.Name,
-						"title", textutil.Truncate(item.Title, 80), "error", err)
+					e.log.Warn("live search item skipped", sourceLogArgs(source,
+						"title", textutil.Truncate(item.Title, 80), "error", err.Error())...)
 				}
 			}
 			if count := int(result.New + result.Updated); count > 0 {
@@ -214,7 +216,7 @@ func (e *Engine) TestAll(ctx context.Context) (int, error) {
 	runCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Minute)
 	go func() {
 		defer cancel()
-		e.log.Info("testing sources", "count", len(enabled))
+		e.log.Info("testing sources", "component", "indexarr", "count", len(enabled))
 		sem := make(chan struct{}, 3)
 		var wg sync.WaitGroup
 		for _, source := range enabled {
@@ -223,16 +225,11 @@ func (e *Engine) TestAll(ctx context.Context) (int, error) {
 			go func(source store.Source) {
 				defer wg.Done()
 				defer func() { <-sem }()
-				message, err := e.TestSource(runCtx, source)
-				if err != nil {
-					e.log.Warn("source test failed", "source", source.Name, "error", err)
-					return
-				}
-				e.log.Info("source test ok", "source", source.Name, "result", message)
+				_, _ = e.TestSource(runCtx, source)
 			}(source)
 		}
 		wg.Wait()
-		e.log.Info("source test finished", "count", len(enabled))
+		e.log.Info("source test finished", "component", "indexarr", "count", len(enabled))
 	}()
 	return len(enabled), nil
 }
@@ -260,6 +257,7 @@ func (e *Engine) RunSource(ctx context.Context, sourceID int64) (*store.RunResul
 	defer e.cancels.Delete(sourceID)
 	runID, startedAt, err := e.store.BeginSourceRun(runCtx, sourceID)
 	if err != nil {
+		e.log.Error("cannot start source run", sourceLogArgs(source, "error", err.Error())...)
 		return nil, err
 	}
 	result := store.RunResult{}
@@ -270,7 +268,10 @@ func (e *Engine) RunSource(ctx context.Context, sourceID int64) (*store.RunResul
 	finishCtx, finishCancel := context.WithTimeout(context.WithoutCancel(runCtx), 10*time.Second)
 	defer finishCancel()
 	if err := e.store.FinishSourceRun(finishCtx, runID, source, startedAt, result, runErr); err != nil {
-		e.log.Error("cannot record run", "source", source.Name, "error", err)
+		e.log.Error("cannot record run", sourceLogArgs(source, "error", err.Error())...)
+	}
+	if runErr != nil && !errors.Is(runErr, errRunCanceled) {
+		e.log.Error("source run failed", sourceLogArgs(source, "error", runErr.Error())...)
 	}
 	e.afterRun(finishCtx, source, settings, result, runErr)
 	return &result, runErr
@@ -290,7 +291,7 @@ func (e *Engine) afterRun(ctx context.Context, source store.Source, settings sto
 				if err := e.store.SetSourceEnabled(ctx, source.ID, false); err == nil {
 					disabled = true
 					e.log.Warn("source auto-disabled after repeated failures",
-						"source", source.Name, "errors", latest.ConsecutiveErrors)
+						sourceLogArgs(source, "errors", latest.ConsecutiveErrors)...)
 				}
 			}
 		}
@@ -326,7 +327,7 @@ func (e *Engine) sendNotification(settings store.Settings, event notify.Event) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		if err := notify.Send(ctx, cfg, event); err != nil {
-			e.log.Warn("notification failed", "kind", event.Kind, "error", err)
+			e.log.Warn("notification failed", "component", "notify", "kind", event.Kind, "error", err)
 		}
 	}()
 }
@@ -345,6 +346,28 @@ func (e *Engine) torznabClient(source store.Source, settings store.Settings) *fe
 		Timeout:      settings.FetchTimeout(),
 		HTTPClient:   e.http,
 	})
+}
+
+// sourceLogArgs gives every source-related record the same fields, so the Logs
+// page can filter by origin and by source.
+func sourceLogArgs(source store.Source, extra ...any) []any {
+	component := "indexer"
+	if source.Kind == "rss" {
+		component = "rss"
+	}
+	args := []any{"component", component, "source", source.Name, "kind", source.Kind}
+	if host := sourceHost(source.URL); host != "" {
+		args = append(args, "host", host)
+	}
+	return append(args, extra...)
+}
+
+func sourceHost(rawURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return ""
+	}
+	return parsed.Hostname()
 }
 
 func (e *Engine) fetchItems(ctx context.Context, source store.Source, settings store.Settings) ([]feed.Item, error) {
@@ -371,7 +394,7 @@ func (e *Engine) ingest(ctx context.Context, source store.Source, settings store
 	result.Seen = int64(len(items))
 	rules, err := e.store.ListBlocklist(ctx)
 	if err != nil {
-		e.log.Warn("cannot load blocklist", "error", err)
+		e.log.Warn("cannot load blocklist", "component", "indexarr", "error", err)
 	}
 	matcher := store.NewBlocklistMatcher(rules)
 	attempts := 0
@@ -380,8 +403,8 @@ func (e *Engine) ingest(ctx context.Context, source store.Source, settings store
 			return ctx.Err()
 		}
 		if err := e.saveItem(ctx, source, settings, item, result, &attempts, matcher); err != nil {
-			e.log.Debug("item skipped", "source", source.Name,
-				"title", textutil.Truncate(item.Title, 80), "error", err)
+			e.log.Warn("item skipped", sourceLogArgs(source,
+				"title", textutil.Truncate(item.Title, 80), "error", err.Error())...)
 		}
 	}
 	return nil
@@ -433,8 +456,8 @@ func (e *Engine) saveItem(ctx context.Context, source store.Source, settings sto
 				MaxBytes:  settings.MaxTorrentBytes,
 			})
 			if err != nil {
-				e.log.Debug("torrent download failed", "source", source.Name,
-					"title", textutil.Truncate(title, 80), "error", err)
+				e.log.Warn("torrent download failed", sourceLogArgs(source,
+					"title", textutil.Truncate(title, 80), "error", err.Error())...)
 			} else {
 				torrent = blob
 				hash = fetchedHash
@@ -504,13 +527,22 @@ func (e *Engine) TestSource(ctx context.Context, source store.Source) (string, e
 	}
 	testCtx, cancel := context.WithTimeout(ctx, settings.FetchTimeout()*2+10*time.Second)
 	defer cancel()
+	var message string
+	var testErr error
 	if source.Kind == "rss" {
-		return feed.TestRSS(testCtx, e.http, source.URL, feed.RequestOptions{
+		message, testErr = feed.TestRSS(testCtx, e.http, source.URL, feed.RequestOptions{
 			UserAgent:    settings.UserAgent,
 			Username:     source.Username,
 			Password:     source.Password,
 			FlareSolverr: settings.FlareSolverrURL,
 		})
+	} else {
+		message, testErr = e.torznabClient(source, settings).Test(testCtx)
 	}
-	return e.torznabClient(source, settings).Test(testCtx)
+	if testErr != nil {
+		e.log.Warn("source test failed", sourceLogArgs(source, "error", testErr.Error())...)
+	} else {
+		e.log.Info("source test ok", sourceLogArgs(source, "result", message)...)
+	}
+	return message, testErr
 }

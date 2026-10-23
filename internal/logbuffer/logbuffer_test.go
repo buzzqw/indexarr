@@ -94,3 +94,26 @@ func TestGroupPrefix(t *testing.T) {
 		t.Fatalf("group prefix = %#v", entries)
 	}
 }
+
+func TestComponentFilter(t *testing.T) {
+	buffer := New(10)
+	logger := testLogger(buffer)
+	logger.Warn("indexer down", "component", "indexer", "source", "Tracker")
+	logger.Warn("rss down", "component", "rss", "source", "Feed")
+	logger.Error("internal", "component", "indexarr")
+
+	indexers := buffer.SnapshotFilter(Filter{MinLevel: slog.LevelWarn, Component: "indexer"})
+	if len(indexers) != 1 || indexers[0].Source() != "Tracker" || indexers[0].Component() != "indexer" {
+		t.Fatalf("indexer filter = %#v", indexers)
+	}
+	if got := buffer.SnapshotFilter(Filter{MinLevel: slog.LevelWarn, Component: "rss"}); len(got) != 1 {
+		t.Errorf("rss filter = %#v", got)
+	}
+	if got := buffer.SnapshotFilter(Filter{MinLevel: slog.LevelWarn, Component: "indexarr"}); len(got) != 1 {
+		t.Errorf("indexarr filter = %#v", got)
+	}
+	dump := buffer.DumpFilter(Filter{MinLevel: slog.LevelWarn, Component: "rss"})
+	if !strings.Contains(dump, "rss down") || strings.Contains(dump, "indexer down") {
+		t.Errorf("component dump = %q", dump)
+	}
+}

@@ -33,6 +33,23 @@ type Entry struct {
 // LevelName returns DEBUG, INFO, WARN or ERROR.
 func (e Entry) LevelName() string { return e.Level.String() }
 
+// Component returns the "component" attribute, used to separate indexarr
+// internals from indexer, RSS and notification errors.
+func (e Entry) Component() string { return e.attr("component") }
+
+// Source returns the "source" attribute when the entry belongs to a configured
+// indexer or feed.
+func (e Entry) Source() string { return e.attr("source") }
+
+func (e Entry) attr(key string) string {
+	for _, attr := range e.Attrs {
+		if attr.Key == key {
+			return attr.Value
+		}
+	}
+	return ""
+}
+
 // LevelClass returns the CSS class used by the log page.
 func (e Entry) LevelClass() string {
 	switch {
@@ -101,19 +118,32 @@ func (b *Buffer) Add(entry Entry) {
 	b.next = (b.next + 1) % b.max
 }
 
+// Filter selects log entries for the UI and the text download.
+type Filter struct {
+	Limit     int
+	MinLevel  slog.Level
+	Query     string
+	Component string
+}
+
 // Snapshot returns matching entries, newest first. A non-positive limit means
 // "all matching entries".
 func (b *Buffer) Snapshot(limit int, minLevel slog.Level, query string) []Entry {
+	return b.SnapshotFilter(Filter{Limit: limit, MinLevel: minLevel, Query: query})
+}
+
+// SnapshotFilter is Snapshot with an optional component filter.
+func (b *Buffer) SnapshotFilter(filter Filter) []Entry {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	ordered := b.orderedLocked()
 	out := make([]Entry, 0, len(ordered))
 	for i := len(ordered) - 1; i >= 0; i-- {
 		entry := ordered[i]
-		if entry.Level < minLevel || !matches(entry, query) {
+		if !entryMatches(entry, filter) {
 			continue
 		}
-		if limit > 0 && len(out) >= limit {
+		if filter.Limit > 0 && len(out) >= filter.Limit {
 			break
 		}
 		out = append(out, entry)
@@ -123,17 +153,32 @@ func (b *Buffer) Snapshot(limit int, minLevel slog.Level, query string) []Entry 
 
 // Dump returns matching entries in chronological order as text, for download.
 func (b *Buffer) Dump(minLevel slog.Level, query string) string {
+	return b.DumpFilter(Filter{MinLevel: minLevel, Query: query})
+}
+
+// DumpFilter is Dump with an optional component filter.
+func (b *Buffer) DumpFilter(filter Filter) string {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	var out strings.Builder
 	for _, entry := range b.orderedLocked() {
-		if entry.Level < minLevel || !matches(entry, query) {
+		if !entryMatches(entry, filter) {
 			continue
 		}
 		out.WriteString(entry.Text())
 		out.WriteByte('\n')
 	}
 	return out.String()
+}
+
+func entryMatches(entry Entry, filter Filter) bool {
+	if entry.Level < filter.MinLevel || !matches(entry, filter.Query) {
+		return false
+	}
+	if filter.Component == "" {
+		return true
+	}
+	return strings.EqualFold(entry.Component(), filter.Component)
 }
 
 // Clear empties the buffer.

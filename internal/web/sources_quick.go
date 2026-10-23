@@ -101,7 +101,7 @@ func (s *Server) sourcesDiscover(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		data.Error = err.Error()
-		s.log.Warn("feed discovery failed", "url", rawURL, "error", err)
+		s.log.Warn("feed discovery failed", "component", "rss", "subsystem", "discovery", "url", rawURL, "error", err)
 	} else {
 		s.log.Info("feed discovery done", "url", rawURL, "feeds", len(feeds))
 	}

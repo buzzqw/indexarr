@@ -37,7 +37,7 @@ func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 	defer cancel()
 	if err := downloadclient.Add(ctx, cfg, release); err != nil {
-		s.log.Warn("send to download client failed", "release_id", id, "client", cfg.Kind, "error", err)
+		s.log.Warn("send to download client failed", "component", "indexarr", "subsystem", "downloadclient", "release_id", id, "client", cfg.Kind, "error", err)
 		redirect(w, r, "/releases/"+fmt.Sprint(id), "", "Download client: "+err.Error())
 		return
 	}

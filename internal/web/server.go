@@ -371,7 +371,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name string, dat
 	}
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, "layout.html", data); err != nil {
-		s.log.Error("render page", "page", name, "error", err)
+		s.log.Error("render page", "component", "indexarr", "subsystem", "web", "page", name, "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -402,7 +402,7 @@ func (s *Server) renderPartial(w http.ResponseWriter, name string, data any) {
 	}
 	var buf bytes.Buffer
 	if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
-		s.log.Error("render partial", "partial", name, "error", err)
+		s.log.Error("render partial", "component", "indexarr", "subsystem", "web", "partial", name, "error", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}

@@ -79,3 +79,58 @@ func TestLogsDownloadAndClear(t *testing.T) {
 		t.Error("empty state missing")
 	}
 }
+
+func TestLogsFilterByComponent(t *testing.T) {
+	env := newTestEnv(t)
+	now := time.Now()
+	env.logs.Add(logbuffer.Entry{
+		Time: now, Level: slog.LevelError, Message: "source run failed",
+		Attrs: []logbuffer.Attr{
+			{Key: "component", Value: "indexer"},
+			{Key: "source", Value: "Tracker"},
+			{Key: "error", Value: "HTTP 502"},
+		},
+	})
+	env.logs.Add(logbuffer.Entry{
+		Time: now, Level: slog.LevelWarn, Message: "item skipped",
+		Attrs: []logbuffer.Attr{
+			{Key: "component", Value: "rss"},
+			{Key: "source", Value: "Feed"},
+		},
+	})
+	env.logs.Add(logbuffer.Entry{
+		Time: now, Level: slog.LevelError, Message: "database failed",
+		Attrs: []logbuffer.Attr{
+			{Key: "component", Value: "indexarr"},
+		},
+	})
+
+	indexer := get(t, env.handler, "/logs?component=indexer")
+	if indexer.Code != 200 {
+		t.Fatalf("indexer logs = %d", indexer.Code)
+	}
+	body := indexer.Body.String()
+	for _, want := range []string{"source run failed", "Tracker", "Problems (1)", "component"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("indexer logs missing %q", want)
+		}
+	}
+	if strings.Contains(body, "item skipped") || strings.Contains(body, "database failed") {
+		t.Error("component filter leaked other entries")
+	}
+
+	rss := get(t, env.handler, "/logs?component=rss").Body.String()
+	if !strings.Contains(rss, "item skipped") || strings.Contains(rss, "source run failed") {
+		t.Error("rss component filter is wrong")
+	}
+
+	download := get(t, env.handler, "/logs/download?component=rss").Body.String()
+	if !strings.Contains(download, "item skipped") || strings.Contains(download, "source run failed") {
+		t.Errorf("component download filter = %q", download)
+	}
+
+	problems := get(t, env.handler, "/logs?level=warn").Body.String()
+	if !strings.Contains(problems, "Problems (3)") {
+		t.Errorf("problem count not shown: %s", problems)
+	}
+}

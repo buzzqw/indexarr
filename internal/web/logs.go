@@ -17,11 +17,14 @@ type logsPage struct {
 	Level        string
 	RuntimeLevel string
 	Query        string
+	Component    string
+	ProblemCount int
 	Limit        int
 	Auto         bool
 	BufferSize   int
 	MaxEntries   int
 	DownloadURL  string
+	ProblemsURL  string
 }
 
 func parseLogLevel(raw string) (slog.Level, bool) {
@@ -55,12 +58,33 @@ func (s *Server) logsPage(w http.ResponseWriter, r *http.Request) {
 		limit = 1000
 	}
 	auto := r.URL.Query().Get("auto") == "1"
-	entries := s.logs.Snapshot(limit, minLevel, query)
+	component := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("component")))
+	switch component {
+	case "", "indexarr", "indexer", "rss", "notify":
+	default:
+		component = ""
+	}
+	filter := logbuffer.Filter{Limit: limit, MinLevel: minLevel, Query: query, Component: component}
+	entries := s.logs.SnapshotFilter(filter)
+	problemCount := len(s.logs.SnapshotFilter(logbuffer.Filter{
+		MinLevel: slog.LevelWarn, Query: query, Component: component,
+	}))
 
 	values := url.Values{}
 	values.Set("level", levelName)
 	if query != "" {
 		values.Set("q", query)
+	}
+	if component != "" {
+		values.Set("component", component)
+	}
+	problemValues := url.Values{}
+	problemValues.Set("level", "warn")
+	if query != "" {
+		problemValues.Set("q", query)
+	}
+	if component != "" {
+		problemValues.Set("component", component)
 	}
 	runtimeLevel := "info"
 	if s.level != nil {
@@ -72,11 +96,14 @@ func (s *Server) logsPage(w http.ResponseWriter, r *http.Request) {
 		Level:        levelName,
 		RuntimeLevel: runtimeLevel,
 		Query:        query,
+		Component:    component,
+		ProblemCount: problemCount,
 		Limit:        limit,
 		Auto:         auto,
 		BufferSize:   s.logs.Len(),
 		MaxEntries:   s.logs.Cap(),
 		DownloadURL:  "/logs/download?" + values.Encode(),
+		ProblemsURL:  "/logs?" + problemValues.Encode(),
 	}
 	if auto {
 		data.AutoRefresh = 10
@@ -91,7 +118,15 @@ func (s *Server) logsDownload(w http.ResponseWriter, r *http.Request) {
 		minLevel = slog.LevelDebug
 	}
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
-	text := s.logs.Dump(minLevel, query)
+	component := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("component")))
+	switch component {
+	case "", "indexarr", "indexer", "rss", "notify":
+	default:
+		component = ""
+	}
+	text := s.logs.DumpFilter(logbuffer.Filter{
+		MinLevel: minLevel, Query: query, Component: component,
+	})
 	filename := "indexarr-logs-" + time.Now().Format("20060102-150405") + ".txt"
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)

@@ -49,7 +49,8 @@ func (e *Engine) worker(ctx context.Context) {
 			case errors.Is(err, ErrAlreadyRunning):
 				continue
 			case err != nil:
-				e.log.Warn("run failed", "source_id", sourceID, "error", err)
+				// RunSource logs the failure with source, kind and host context.
+				continue
 			default:
 				e.log.Info("run complete", "source_id", sourceID,
 					"seen", result.Seen, "new", result.New,
@@ -108,13 +109,13 @@ func (e *Engine) maybeBackup(ctx context.Context) {
 		info, err := backup.Create(backupCtx, e.store, e.store.Path())
 		if err != nil {
 			e.backupRetry.Store(time.Now().Add(15 * time.Minute).Unix())
-			e.log.Warn("automatic backup failed", "error", err)
+			e.log.Warn("automatic backup failed", "component", "indexarr", "subsystem", "backup", "error", err)
 			return
 		}
 		e.backupRetry.Store(0)
 		e.log.Info("automatic backup created", "file", info.Name, "bytes", info.Size)
 		if removed, err := backup.Prune(e.store.Path(), settings.BackupKeep); err != nil {
-			e.log.Warn("backup rotation failed", "error", err)
+			e.log.Warn("backup rotation failed", "component", "indexarr", "subsystem", "backup", "error", err)
 		} else if removed > 0 {
 			e.log.Info("old backups removed", "count", removed)
 		}
@@ -124,12 +125,12 @@ func (e *Engine) maybeBackup(ctx context.Context) {
 func (e *Engine) dispatch(ctx context.Context) {
 	settings, err := e.store.LoadSettings(ctx)
 	if err != nil {
-		e.log.Error("cannot load settings for the scheduler", "error", err)
+		e.log.Error("cannot load settings for the scheduler", "component", "indexarr", "subsystem", "scheduler", "error", err)
 		return
 	}
 	sources, err := e.store.ListSources(ctx)
 	if err != nil {
-		e.log.Error("cannot list sources", "error", err)
+		e.log.Error("cannot list sources", "component", "indexarr", "subsystem", "scheduler", "error", err)
 		return
 	}
 	now := time.Now()
@@ -178,17 +179,17 @@ func (e *Engine) maintenance(ctx context.Context) {
 	if settings.RetentionDays > 0 {
 		before := time.Now().AddDate(0, 0, -settings.RetentionDays)
 		if removed, err := e.store.PruneReleases(ctx, before); err != nil {
-			e.log.Warn("retention prune failed", "error", err)
+			e.log.Warn("retention prune failed", "component", "indexarr", "subsystem", "maintenance", "error", err)
 		} else if removed > 0 {
 			e.log.Info("retention prune", "removed", removed, "days", settings.RetentionDays)
 		}
 	}
 	if removed, err := e.store.ClearRuns(ctx, time.Now().AddDate(0, 0, -90)); err != nil {
-		e.log.Warn("run history cleanup failed", "error", err)
+		e.log.Warn("run history cleanup failed", "component", "indexarr", "subsystem", "maintenance", "error", err)
 	} else if removed > 0 {
 		e.log.Info("run history cleanup", "removed", removed)
 	}
 	if err := e.store.Optimize(ctx); err != nil {
-		e.log.Warn("database optimize failed", "error", err)
+		e.log.Warn("database optimize failed", "component", "indexarr", "subsystem", "maintenance", "error", err)
 	}
 }

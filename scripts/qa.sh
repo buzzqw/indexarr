@@ -88,6 +88,8 @@ check /releases "Releases"
 check /sources "Quick add"
 check /maintenance "Database report"
 check /maintenance "Cleanup and retention"
+check /logs "Problems"
+check "/logs?component=indexer" "Origin"
 check /healthz '"status":"ok"'
 check /static/app.css "max-width: 720px"
 check /static/manifest.webmanifest '"name": "indexarr"'

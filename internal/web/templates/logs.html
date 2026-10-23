@@ -5,6 +5,7 @@
     <p class="muted">In-memory log of the running process, newest first. The same lines go to stdout and the systemd journal.</p>
   </div>
   <div class="actions">
+    <a class="btn" href="{{.ProblemsURL}}">Problems ({{.ProblemCount}})</a>
     <a class="btn" href="{{.DownloadURL}}">Download .txt</a>
     <form method="post" action="/logs/clear" data-confirm="Clear the in-memory log buffer?">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -43,6 +44,16 @@
       <option value="error"{{if eq .Level "error"}} selected{{end}}>Errors only</option>
     </select>
   </div>
+  <div class="field">
+    <label for="component">Origin</label>
+    <select id="component" name="component">
+      <option value=""{{if eq .Component ""}} selected{{end}}>All origins</option>
+      <option value="indexarr"{{if eq .Component "indexarr"}} selected{{end}}>indexarr</option>
+      <option value="indexer"{{if eq .Component "indexer"}} selected{{end}}>Indexer / Torznab</option>
+      <option value="rss"{{if eq .Component "rss"}} selected{{end}}>RSS / HTML</option>
+      <option value="notify"{{if eq .Component "notify"}} selected{{end}}>Notifications</option>
+    </select>
+  </div>
   <div class="field grow">
     <label for="q">Search</label>
     <input id="q" name="q" type="search" value="{{.Query}}" placeholder="message or attribute">
@@ -66,7 +77,8 @@
 </form>
 
 <p class="muted log-summary">
-  Showing {{len .Entries}} of {{.BufferSize}} captured (max {{.MaxEntries}}).
+  Showing {{len .Entries}} of {{.BufferSize}} captured (max {{.MaxEntries}});
+  <strong>{{.ProblemCount}}</strong> warning(s)/error(s) match the current filters.
   The process level is <strong>{{.RuntimeLevel}}</strong>; change it above without a restart.
   API keys, passwords and tokens are redacted.
 </p>
@@ -77,7 +89,7 @@
     <time class="log-time" datetime="{{.Time.Format "2006-01-02T15:04:05Z07:00"}}">{{.Time.Format "2006-01-02 15:04:05"}}</time>
     <span class="log-level {{.LevelClass}}">{{.LevelName}}</span>
     <div class="log-body">
-      <div class="log-msg">{{.Message}}</div>
+      <div class="log-msg">{{if .Component}}<span class="log-tag">{{.Component}}</span>{{end}}{{if .Source}}<span class="log-tag">{{.Source}}</span>{{end}}{{.Message}}</div>
       {{if .Attrs}}<div class="log-attrs">{{range .Attrs}}<span class="log-attr"><code>{{.Key}}</code>={{.Value}}</span>{{end}}</div>{{end}}
     </div>
   </div>

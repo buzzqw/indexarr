@@ -210,7 +210,7 @@ func (s *Server) sourcesImport(w http.ResponseWriter, r *http.Request) {
 		source, err := sourceFromJSON(entry)
 		if err != nil {
 			invalid++
-			s.log.Warn("source import skipped", "index", index, "name", entry.Name, "error", err)
+			s.log.Warn("source import skipped", "component", "indexarr", "subsystem", "sources", "index", index, "name", entry.Name, "error", err)
 			continue
 		}
 		if names[strings.ToLower(source.Name)] || urls[strings.TrimRight(source.URL, "/")] {
@@ -219,7 +219,7 @@ func (s *Server) sourcesImport(w http.ResponseWriter, r *http.Request) {
 		}
 		if _, err := s.store.CreateSource(r.Context(), source); err != nil {
 			invalid++
-			s.log.Warn("source import failed", "index", index, "name", source.Name, "error", err)
+			s.log.Warn("source import failed", "component", "indexarr", "subsystem", "sources", "index", index, "name", source.Name, "error", err)
 			continue
 		}
 		names[strings.ToLower(source.Name)] = true

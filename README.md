@@ -481,11 +481,20 @@ In **Settings → Notifications**:
 
 Il tab **Logs** mostra gli ultimi **2000** messaggi del processo, dal più recente:
 
-- filtro per livello (`debug`, `info`, `warning`, `error`) e ricerca nel messaggio
+- filtro per livello (`debug`, `info`, `warning`, `error`), per **origine**
+  (`indexarr`, `indexer`/Torznab, RSS/HTML, notifiche) e ricerca nel messaggio
   e negli attributi;
+- pulsante **Problems** con il conteggio di warning ed errori che corrispondono
+  ai filtri correnti;
 - limite righe (100/300/1000) e **auto-refresh** ogni 10 secondi;
 - **Download .txt** e **Clear** del buffer;
 - qui arrivano anche gli esiti di **Test all** e del **Test FlareSolverr**.
+
+Ogni errore di una sorgente riporta `source`, `kind`, `host` e il messaggio
+originale dell'indexer o del feed: un run fallito è a livello `error`, mentre i
+problemi parziali (singolo item scartato, download `.torrent` fallito, live
+search) sono a livello `warning`. Gli errori interni usano `component=indexarr`,
+quelli degli indexer `component=indexer` e quelli dei feed `component=rss`.
 
 Il buffer è in memoria e si svuota al riavvio. Le stesse righe vanno su stdout e,
 con il servizio systemd, nel journal:

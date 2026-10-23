@@ -72,7 +72,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	settings, err := s.store.LoadSettings(r.Context())
 	if err != nil {
-		s.log.Error("torznab: load settings", "error", err)
+		s.log.Error("torznab: load settings", "component", "indexarr", "subsystem", "torznab", "error", err)
 		s.writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
@@ -120,7 +120,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	releases, total, err := s.store.SearchReleases(r.Context(), filter)
 	if err != nil {
-		s.log.Error("torznab: search", "error", err)
+		s.log.Error("torznab: search", "component", "indexarr", "subsystem", "torznab", "error", err)
 		s.writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
@@ -134,12 +134,12 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 		stored, liveErr := s.liveSearch(liveCtx, filter)
 		cancel()
 		if liveErr != nil {
-			s.log.Warn("torznab: live search", "error", liveErr)
+			s.log.Warn("torznab: live search", "component", "indexer", "subsystem", "torznab", "error", liveErr)
 		}
 		if stored > 0 {
 			releases, total, err = s.store.SearchReleases(r.Context(), filter)
 			if err != nil {
-				s.log.Error("torznab: search after live", "error", err)
+				s.log.Error("torznab: search after live", "component", "indexarr", "subsystem", "torznab", "error", err)
 				s.writeError(w, http.StatusInternalServerError, "internal error")
 				return
 			}
@@ -169,7 +169,7 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request, settings stor
 	if !primary {
 		key, found, err := s.store.LookupAPIKey(r.Context(), provided)
 		if err != nil {
-			s.log.Error("torznab: lookup API key", "error", err)
+			s.log.Error("torznab: lookup API key", "component", "indexarr", "subsystem", "torznab", "error", err)
 			s.writeError(w, http.StatusInternalServerError, "internal error")
 			return "", false
 		}
@@ -186,7 +186,7 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request, settings stor
 	}
 	if !primary {
 		if err := s.store.TouchAPIKey(r.Context(), additional.ID); err != nil {
-			s.log.Warn("torznab: update API key usage", "error", err)
+			s.log.Warn("torznab: update API key usage", "component", "indexarr", "subsystem", "torznab", "error", err)
 		}
 	}
 	return provided, true

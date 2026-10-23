@@ -490,6 +490,18 @@ input[readonly] { background: var(--surface-2); }
 .log-level.warn { color: var(--warn); }
 .log-level.error { color: var(--danger); }
 .log-msg { overflow-wrap: anywhere; }
+.log-tag {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .log-attrs { margin-top: 0.15rem; color: var(--muted); font-size: 0.75rem; }
 .log-attr { margin-right: 0.75rem; overflow-wrap: anywhere; }
 

@@ -124,11 +124,9 @@ func (s *Server) sourceSavedAction(w http.ResponseWriter, r *http.Request, sourc
 	case "test":
 		message, err := s.engine.TestSource(r.Context(), source)
 		if err != nil {
-			s.log.Warn("source test after save failed", "source", source.Name, "error", err)
 			redirect(w, r, "/sources", "", "Saved, but the test failed: "+err.Error())
 			return true
 		}
-		s.log.Info("source test after save ok", "source", source.Name, "result", message)
 		redirect(w, r, "/sources", savedMessage+" · Test OK: "+message, "")
 		return true
 	case "run":
@@ -218,11 +216,9 @@ func (s *Server) sourceTest(w http.ResponseWriter, r *http.Request) {
 	}
 	message, err := s.engine.TestSource(r.Context(), source)
 	if err != nil {
-		s.log.Warn("source test failed", "source", source.Name, "error", err)
 		redirect(w, r, "/sources", "", "Test failed: "+err.Error())
 		return
 	}
-	s.log.Info("source test ok", "source", source.Name, "result", message)
 	redirect(w, r, "/sources", "Test OK: "+message, "")
 }
 

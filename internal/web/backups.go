@@ -25,7 +25,7 @@ func (s *Server) maintenanceBackupNow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if removed, err := backup.Prune(s.store.Path(), settings.BackupKeep); err != nil {
-		s.log.Warn("backup rotation failed", "error", err)
+		s.log.Warn("backup rotation failed", "component", "indexarr", "subsystem", "backup", "error", err)
 	} else if removed > 0 {
 		s.log.Info("old backups removed", "count", removed)
 	}

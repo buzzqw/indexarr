@@ -271,12 +271,12 @@ func (s *Server) settingsTestFlareSolverr(w http.ResponseWriter, r *http.Request
 	client := &http.Client{Timeout: 100 * time.Second}
 	body, status, err := flaresolverr.Get(ctx, client, endpoint, "https://example.com/", flaresolverr.DefaultTimeout)
 	if err != nil {
-		s.log.Warn("FlareSolverr test failed", "endpoint", endpoint, "error", err)
+		s.log.Warn("FlareSolverr test failed", "component", "indexarr", "subsystem", "flaresolverr", "endpoint", endpoint, "error", err)
 		redirect(w, r, "/settings", "", "FlareSolverr test failed: "+err.Error())
 		return
 	}
 	if status != http.StatusOK {
-		s.log.Warn("FlareSolverr test returned an HTTP error", "endpoint", endpoint, "status", status)
+		s.log.Warn("FlareSolverr test returned an HTTP error", "component", "indexarr", "subsystem", "flaresolverr", "endpoint", endpoint, "status", status)
 		redirect(w, r, "/settings", "", fmt.Sprintf("FlareSolverr solved the page but returned HTTP %d", status))
 		return
 	}

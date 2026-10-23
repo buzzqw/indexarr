@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/backup"
+	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -471,5 +472,60 @@ func TestTriggerAndAlreadyRunning(t *testing.T) {
 	runs, _ := st.ListRuns(context.Background(), sourceID, true, 10)
 	if len(runs) != 1 {
 		t.Errorf("failed runs = %d", len(runs))
+	}
+}
+
+func TestRunFailureLogsSourceContext(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(t.TempDir() + "/logcontext.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "indexer exploded", http.StatusBadGateway)
+	}))
+	defer server.Close()
+
+	buffer := logbuffer.New(100)
+	logger := slog.New(logbuffer.NewHandler(slog.NewTextHandler(io.Discard, nil), buffer))
+	engine := New(st, logger)
+
+	cases := []struct {
+		name      string
+		kind      string
+		component string
+	}{
+		{"Broken RSS", "rss", "rss"},
+		{"Broken Indexer", "torznab", "indexer"},
+	}
+	for _, tc := range cases {
+		sourceID, err := st.CreateSource(ctx, store.Source{
+			Name: tc.name, Kind: tc.kind, Manager: "torznab",
+			URL: server.URL, Enabled: true,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := engine.RunSource(ctx, sourceID); err == nil {
+			t.Fatalf("%s: expected the run to fail", tc.name)
+		}
+		entries := buffer.SnapshotFilter(logbuffer.Filter{
+			MinLevel: slog.LevelError, Component: tc.component,
+		})
+		if len(entries) == 0 {
+			t.Fatalf("%s: no error log with component %q", tc.name, tc.component)
+		}
+		entry := entries[0]
+		if entry.Message != "source run failed" || entry.Source() != tc.name {
+			t.Errorf("%s: log entry = %#v", tc.name, entry)
+		}
+		text := entry.Text()
+		for _, want := range []string{"kind=" + tc.kind, "host=127.0.0.1", "error="} {
+			if !strings.Contains(text, want) {
+				t.Errorf("%s: log entry missing %q: %s", tc.name, want, text)
+			}
+		}
 	}
 }

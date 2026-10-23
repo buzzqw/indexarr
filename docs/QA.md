@@ -51,6 +51,9 @@ INDEXARR_QA_PORT=18080 make qa
 - **Web UI**: dashboard, release, dettaglio, sorgenti, quick add, import/export,
   impostazioni, log, manutenzione, CSRF, autenticazione Basic opzionale,
   PWA e asset statici.
+- **Log**: filtro per livello e per origine (`indexarr`, indexer, RSS,
+  notifiche), conteggio dei problemi, contesto `source`/`kind`/`host` sugli
+  errori delle sorgenti e download filtrato.
 - **Manutenzione**: check di integrità e foreign key, analyze, checkpoint WAL,
   vacuum, reindex, pulizia per età/sorgente, release senza link, release
   nascoste, cronologia run, contatori API e ricalcolo dei contatori sorgente.
