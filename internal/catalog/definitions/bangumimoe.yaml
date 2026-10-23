@@ -1,0 +1,70 @@
+# VERIFICATA (verified). Bangumi Moe public JSON search API.
+#
+# The site is an Angular app; its public v2 API is reachable without an
+# account. Written from the response captured on 2026-10-23 in
+# fixtures/bangumimoe/search.json
+# (POST https://bangumi.moe/api/v2/torrent/search with `query=test`, which the
+# server accepts as form-encoded input like the app's own JSON call). Each
+# torrent carries the magnet, infohash, human size, seeders/leechers and an
+# ISO publish_time, so no detail page is needed.
+#
+# The API pages with a `p` form field; format v1 only sends pagination in the
+# query string, so this definition returns the first page (the API returns all
+# matches for a narrow query and at most one page otherwise).
+#
+# Both category_tag_id values observed on anime releases (the general anime tag
+# and its batch/series companion) map to 5070; unknown tags fall back to 8000.
+schema: 1
+
+meta:
+  id: bangumimoe
+  name: Bangumi Moe
+  language: zh-CN
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Bangumi Moe JSON torrent search with magnets and health.
+  urls:
+    - https://bangumi.moe/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "549ef207fe682f7549f1ea90", standard: 5070, desc: "Anime" }
+  - { site: "54967e14ff43b99e284d0bf7", standard: 5070, desc: "Anime batch" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    post: /api/v2/torrent/search
+    headers:
+      Accept: application/json
+    form:
+      query: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: json
+    rows: { path: torrents }
+    fields:
+      title:    { path: title, filters: [trim] }
+      details:  { path: "_id", filters: [{ prefix: "https://bangumi.moe/torrent/" }], type: url }
+      magnet:   { path: magnet }
+      infohash: { path: infoHash }
+      category: { path: category_tag_id, type: category }
+      size:     { path: size, type: size }
+      seeders:  { path: seeders, type: int }
+      leechers: { path: leechers, type: int }
+      date:     { path: publish_time, type: date }
+    required: [title, magnet, size]
+
+health:
+  query: test
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/bangumimoe/search.json
+    expect: { min_rows: 3, required: [title, magnet, size, seeders, category, date] }

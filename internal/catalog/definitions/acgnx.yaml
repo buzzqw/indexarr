@@ -1,0 +1,66 @@
+# VERIFICATA (verified). ACGNX public RSS search.
+#
+# The share.acgnx.se home page answers a Cloudflare challenge, but the public
+# RSS endpoint is reachable and supports a server-side keyword query:
+#   https://share.acgnx.se/rss.xml?keyword=test
+# captured on 2026-10-23 in fixtures/acgnx/search.xml. Each item carries a
+# magnet enclosure, an infohash, a category, a date and a description with the
+# size ("| 923.5MB | 動畫 | <hash>"). The definition parses those fields
+# directly, so no detail page is opened. The absolute feed URL is used because
+# the site root itself is challenged.
+schema: 1
+
+meta:
+  id: acgnx
+  name: ACGNX
+  language: zh-TW
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public ACGNX anime RSS keyword search with magnet enclosures.
+  urls:
+    - https://share.acgnx.se/rss.xml
+    - https://share.acgnx.se/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "動畫", standard: 5070, desc: "Anime" }
+  - { site: "漫畫", standard: 7030, desc: "Comics" }
+  - { site: "音樂", standard: 3000, desc: "Audio" }
+  - { site: "遊戲", standard: 4000, desc: "Games" }
+  - { site: "小說", standard: 7000, desc: "Books" }
+  - { site: "三次元", standard: 2000, desc: "Live action" }
+  - { site: "其他", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: https://share.acgnx.se/rss.xml
+    params:
+      keyword: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: xml
+    rows: { path: rss.channel.item }
+    fields:
+      title:    { path: title, filters: [trim] }
+      details:  { path: guid, type: url }
+      magnet:   { path: "enclosure@url" }
+      infohash: { path: "enclosure@url", filters: [{ regex: "btih:([0-9A-Fa-f]+)" }] }
+      category: { path: category, type: category }
+      size:     { path: description, filters: [{ regex: "\\|\\s*([0-9.]+\\s*[KMGTP]?B)\\s*\\|" }], type: size }
+      date:     { path: pubDate, type: date }
+    required: [title, magnet, size]
+
+health:
+  query: test
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/acgnx/search.xml
+    expect: { min_rows: 5, required: [title, magnet, size, category, date] }

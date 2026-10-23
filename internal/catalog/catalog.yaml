@@ -123,3 +123,15 @@ definitions:
     file: definitions/yts.yaml
     state: verificata
     author: indexarr
+  - id: acgnx
+    file: definitions/acgnx.yaml
+    state: verificata
+    author: indexarr
+  - id: bangumimoe
+    file: definitions/bangumimoe.yaml
+    state: verificata
+    author: indexarr
+  - id: mikan
+    file: definitions/mikan.yaml
+    state: verificata
+    author: indexarr

@@ -1,0 +1,60 @@
+# VERIFICATA (verified). Mikan Project public HTML search.
+#
+# Written from the public search page captured on 2026-10-23 in
+# fixtures/mikan/listing.html
+# (https://mikanani.me/Home/Search?searchstr=test). The site returns all
+# matching rows on one page (437 for "test") in table rows carrying the title,
+# a magnet in `data-clipboard-text`, the human size, the update time and a
+# .torrent link. No detail page is needed and no account is required.
+#
+# The site is anime-only and has no per-row category cell; the `/Home/` release
+# namespace is the stable per-row marker, mapped to standard category 5070.
+schema: 1
+
+meta:
+  id: mikan
+  name: Mikan Project
+  language: zh-CN
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Mikan Project anime search with magnets and .torrent links.
+  urls:
+    - https://mikanani.me/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "Home", standard: 5070, desc: "Anime" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /Home/Search
+    params:
+      searchstr: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "tr.js-search-results-row" }
+    fields:
+      title:    { selector: "a.magnet-link-wrap", filters: [trim] }
+      details:  { selector: "a.magnet-link-wrap", attr: href, type: url }
+      magnet:   { selector: "a.js-magnet", attr: data-clipboard-text }
+      category: { selector: "a.magnet-link-wrap", attr: href, filters: [{ regex: "(Home)" }], type: category }
+      size:     { selector: "td:nth-child(3)", type: size }
+      date:     { selector: "td:nth-child(4)", type: date, layouts: ["2006/01/02 15:04"] }
+      download: { selector: "td:nth-child(5) a", attr: href, type: url }
+    required: [title, details, magnet, size]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/mikan/listing.html
+    expect: { min_rows: 5, required: [title, details, magnet, size, category, date] }

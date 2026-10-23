@@ -22,6 +22,26 @@
     ]
   },
   {
+    "id": "acgnx",
+    "name": "ACGNX",
+    "description": "Public ACGNX anime RSS keyword search with magnet enclosures.",
+    "language": "zh-TW",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "share.acgnx.se"
+    ]
+  },
+  {
     "id": "animetosho",
     "name": "AnimeTosho",
     "description": "Public AnimeTosho HTML search; anime releases with magnets.",
@@ -34,6 +54,21 @@
     "state": "verificata",
     "hosts": [
       "animetosho.org"
+    ]
+  },
+  {
+    "id": "bangumimoe",
+    "name": "Bangumi Moe",
+    "description": "Public Bangumi Moe JSON torrent search with magnets and health.",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "bangumi.moe"
     ]
   },
   {
@@ -218,6 +253,21 @@
     "hosts": [
       "limetorrents.fun",
       "limetorrents.zone"
+    ]
+  },
+  {
+    "id": "mikan",
+    "name": "Mikan Project",
+    "description": "Public Mikan Project anime search with magnets and .torrent links.",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "mikanani.me"
     ]
   },
   {

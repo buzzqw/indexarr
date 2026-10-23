@@ -421,6 +421,7 @@ func TestCatalogVerifiedDefinitionsExist(t *testing.T) {
 		"extto", "torrentgalaxy", "corsaro", "knaben",
 		"1337x", "animetosho", "kickasstorrents", "nyaa",
 		"subsplease", "tokyotosho", "torrentdownloads", "yts",
+		"acgnx", "bangumimoe", "mikan",
 	} {
 		if states[id] != "verificata" {
 			t.Errorf("%s: state = %q, want verificata", id, states[id])

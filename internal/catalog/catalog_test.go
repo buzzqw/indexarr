@@ -32,8 +32,8 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 29 {
-		t.Fatalf("len(Builtins()) = %d, want 29", len(entries))
+	if len(entries) != 32 {
+		t.Fatalf("len(Builtins()) = %d, want 32", len(entries))
 	}
 
 	verified := map[string]bool{
@@ -54,6 +54,9 @@ func TestBuiltinsValid(t *testing.T) {
 		"tokyotosho":         true,
 		"torrentdownloads":   true,
 		"yts":                true,
+		"acgnx":              true,
+		"bangumimoe":         true,
+		"mikan":              true,
 	}
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
@@ -135,8 +138,8 @@ func TestIndexShapeIsStable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Index: %v", err)
 	}
-	if len(index) != 29 {
-		t.Fatalf("len(Index()) = %d, want 29", len(index))
+	if len(index) != 32 {
+		t.Fatalf("len(Index()) = %d, want 32", len(index))
 	}
 	for i := 1; i < len(index); i++ {
 		if index[i-1].ID >= index[i].ID {
@@ -199,6 +202,7 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 		"thepiratebay", "torrentscsv", "showrss", "corsaro-account",
 		"ildragonegro", "1337x", "animetosho", "kickasstorrents", "nyaa",
 		"subsplease", "tokyotosho", "torrentdownloads", "yts",
+		"acgnx", "bangumimoe", "mikan",
 	}
 	if len(entries) != len(want) {
 		t.Fatalf("len(Builtins()) = %d, want %d", len(entries), len(want))
@@ -219,8 +223,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 29 {
-		t.Fatalf("manifest has %d definitions, want 29", len(items))
+	if len(items) != 32 {
+		t.Fatalf("manifest has %d definitions, want 32", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")

@@ -1,0 +1,46 @@
+{
+  "torrents": [
+    {
+      "_id": "6aa54ce99605d5c690342c00",
+      "category_tag_id": "549ef207fe682f7549f1ea90",
+      "title": "[GM-Team][凡人修仙传 慕兰之战][Fan Ren Xiu Xian Zhuan][2026][15][AVC][4K SDR+][NoLogo]【Test】",
+      "publish_time": "2026-09-12T13:00:25.441Z",
+      "magnet": "magnet:?xt=urn:btih:d19a6932dc21b6fa98f738d41134f443ee556fce",
+      "infoHash": "d19a6932dc21b6fa98f738d41134f443ee556fce",
+      "size": "3.01 GB",
+      "seeders": 0,
+      "leechers": 0,
+      "downloads": 6,
+      "finished": 0
+    },
+    {
+      "_id": "6a207636a9616b2639bcca35",
+      "category_tag_id": "54967e14ff43b99e284d0bf7",
+      "title": "[7³ACG] 迟早是最强的炼金术师？/Possibly the Greatest Alchemist of All Time S01 | 01-12 [简繁字幕] BDrip 1080p x265 OPUS 2.0",
+      "publish_time": "2026-06-03T18:45:10.155Z",
+      "magnet": "magnet:?xt=urn:btih:90d443324943a1567e5ce58fa8504d8026b6cb82",
+      "infoHash": "90d443324943a1567e5ce58fa8504d8026b6cb82",
+      "size": "12.65 GB",
+      "seeders": 0,
+      "leechers": 0,
+      "downloads": 32,
+      "finished": 0
+    },
+    {
+      "_id": "6a1b93f3a9616b26395c6ca3",
+      "category_tag_id": "54967e14ff43b99e284d0bf7",
+      "title": "[7³ACG] 迟早是最强的炼金术师？/Possibly the Greatest Alchemist of All Time S01 | 01-12 [简繁字幕] BDrip 1080p AV1 OPUS 2.0",
+      "publish_time": "2026-05-31T01:50:43.485Z",
+      "magnet": "magnet:?xt=urn:btih:75b60d15e5c969f892697a65f0d51651976f89f1",
+      "infoHash": "75b60d15e5c969f892697a65f0d51651976f89f1",
+      "size": "4.21 GB",
+      "seeders": 0,
+      "leechers": 0,
+      "downloads": 28,
+      "finished": 0
+    }
+  ],
+  "count": 3,
+  "page_count": 1,
+  "success": true
+}
