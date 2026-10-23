@@ -657,6 +657,7 @@ make release # binari linux/amd64, linux/arm64, windows/amd64, darwin/arm64
 
 Struttura dei pacchetti e scelte di progetto: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Suite di test e smoke test: [docs/QA.md](docs/QA.md).
+Audit operativo del 23/10/2026: [docs/AUDIT-2026-10-23.md](docs/AUDIT-2026-10-23.md).
 
 ## Prossimi passi
 
