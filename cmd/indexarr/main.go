@@ -26,6 +26,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	coreengine "github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/family"
+	"github.com/buzzqw/indexarr/internal/health"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
@@ -265,6 +266,21 @@ func main() {
 		}
 	}
 
+	// The catalog health job checks the configured sites every six hours and
+	// keeps the definition states in sync with the WP17 history.
+	var healthChecker *health.Checker
+	if indexerManager != nil {
+		healthChecker, err = health.New(health.Config{
+			Store: st, Manager: indexerManager, Logger: logger,
+		})
+		if err != nil {
+			logger.Warn("health checker disabled", "error", err)
+			healthChecker = nil
+		} else {
+			healthChecker.Start(ctx)
+		}
+	}
+
 	var adminHandler http.Handler
 	adminServer, err := adminapi.New(adminapi.Config{
 		Store: st, Vault: secretVault, Manager: indexerManager, Sync: syncService,
@@ -318,6 +334,9 @@ func main() {
 	}
 	if syncService != nil {
 		syncService.Wait()
+	}
+	if healthChecker != nil {
+		healthChecker.Wait()
 	}
 	logger.Info("stopped")
 }

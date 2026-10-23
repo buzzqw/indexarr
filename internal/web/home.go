@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/backup"
+	"github.com/buzzqw/indexarr/internal/health"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -15,6 +16,7 @@ import (
 type HomeProblem struct {
 	Name      string
 	Code      string
+	Count     int
 	ActionKey string
 	ActionURL string
 	Kind      string
@@ -54,32 +56,28 @@ func (s *Server) HomeStatus(ctx context.Context) HomeStatus {
 	if err != nil {
 		return HomeStatus{Level: "danger", Err: err.Error()}
 	}
-	now := time.Now()
 	for _, indexer := range indexers {
 		if indexer.Enabled {
 			status.ActiveIndexers++
 		} else {
 			status.DisabledIndexers++
 		}
-		state, err := s.store.GetIndexerState(ctx, indexer.ID)
-		if err != nil {
-			continue
-		}
-		lastError := strings.TrimSpace(state.LastError)
-		if lastError == "" && state.Circuit != "open" && state.DisabledUntil.Before(now) {
-			continue
-		}
 		if !indexer.Enabled {
 			continue
 		}
+		view := s.loadIndexerHealth(ctx, indexer)
+		if !view.Assessment.NeedsAttention() {
+			continue
+		}
 		status.ProblemIndexers++
-		status.Problems = append(status.Problems, HomeProblem{
+		problem := HomeProblem{
 			Name:      indexer.Name,
-			Code:      explainIndexerError(lastError, state.Circuit),
 			ActionKey: "home.action.indexer",
 			ActionURL: "/indexers/" + itoa(indexer.ID),
 			Kind:      "indexer",
-		})
+		}
+		problem.Code, problem.Count = homeProblemCode(view)
+		status.Problems = append(status.Problems, problem)
 	}
 	applications, err := s.store.ListApplications(ctx)
 	if err != nil {
@@ -104,6 +102,29 @@ func (s *Server) HomeStatus(ctx context.Context) HomeStatus {
 		status.Level = "warn"
 	}
 	return status
+}
+
+// homeProblemCode maps the first health reason to the one-sentence catalog key
+// shown in Home. The same reason drives the list and the detail page.
+func homeProblemCode(view indexerHealthView) (string, int) {
+	for _, reason := range view.Assessment.Reasons {
+		switch reason.Code {
+		case health.ReasonCircuit:
+			return "home.problem.circuit", 0
+		case health.ReasonLastError:
+			return explainIndexerError(view.State.LastError, view.State.Circuit), 0
+		case health.ReasonErrors:
+			if raw := strings.TrimSpace(view.Assessment.LastError); raw != "" {
+				return explainIndexerError(raw, view.State.Circuit), reason.Count
+			}
+			return "home.problem.errors", reason.Count
+		case health.ReasonZeroResults:
+			return "home.problem.zero", reason.Count
+		case health.ReasonCompleteness:
+			return "home.problem.completeness", 0
+		}
+	}
+	return "home.problem.unknown", 0
 }
 
 // explainIndexerError maps a raw error into a catalog key. Unknown errors keep

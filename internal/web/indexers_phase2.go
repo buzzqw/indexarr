@@ -14,6 +14,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/feed"
+	"github.com/buzzqw/indexarr/internal/health"
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
@@ -131,13 +132,14 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 	for _, in := range indexers {
 		view := s.indexerRowView(r, in, defs)
 		data.Total++
-		switch view.Status.State {
-		case "problem":
+		attention := view.Status.State == "problem" || view.Status.State == "degraded"
+		if attention {
 			data.Problems++
-		case "disabled":
+		}
+		if view.Status.State == "disabled" {
 			data.Disabled++
 		}
-		if data.State == "problem" && view.Status.State != "problem" {
+		if data.State == "problem" && !attention {
 			continue
 		}
 		if data.State == "disabled" && view.Status.State != "disabled" {
@@ -223,88 +225,15 @@ func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[stri
 	} else if row.Filters > 1 {
 		row.FiltersLabel = s.translate(r, "idx.filters", row.Filters)
 	}
-	var state store.IndexerState
-	hasState := false
-	if value, err := s.store.GetIndexerState(r.Context(), in.ID); err == nil {
-		state = value
-		hasState = true
+	state := s.loadIndexerHealth(r.Context(), in)
+	if state.LastRun != nil {
+		row.LastUpdate = state.LastRun.StartedAt
 	}
-	var lastRun *store.IndexerHistory
-	if history, err := s.store.ListIndexerHistory(r.Context(), in.ID, 50); err == nil {
-		for i := range history {
-			if history[i].Kind == "run" {
-				lastRun = &history[i]
-				break
-			}
-		}
-	}
-	if lastRun != nil {
-		row.LastUpdate = lastRun.StartedAt
-	}
-	row.Status = s.indexerStatus(r, in, state, hasState, lastRun)
-	if row.Status.State == "problem" {
-		row.Problem = s.problemFor(r, in, state, lastRun)
+	row.Status = s.statusDotFor(r, state)
+	if row.Status.State == "problem" || row.Status.State == "degraded" {
+		row.Problem = s.healthProblem(r, state)
 	}
 	return row
-}
-
-func (s *Server) indexerStatus(r *http.Request, in store.Indexer, state store.IndexerState, hasState bool, lastRun *store.IndexerHistory) statusDot {
-	switch {
-	case !in.Enabled:
-		return statusDot{State: "disabled", Label: s.translate(r, "idx.statusDisabled")}
-	case (hasState && (strings.TrimSpace(state.LastError) != "" || strings.EqualFold(state.Circuit, "open"))) ||
-		(lastRun != nil && lastRun.Status == "error"):
-		return statusDot{State: "problem", Label: s.translate(r, "idx.statusProblem")}
-	case lastRun == nil:
-		return statusDot{State: "testing", Label: s.translate(r, "idx.statusTesting")}
-	default:
-		return statusDot{State: "ok", Label: s.translate(r, "idx.statusOk")}
-	}
-}
-
-// problemFor turns a known error into one sentence plus an action. The raw
-// error stays in the diagnostics block of the detail page.
-func (s *Server) problemFor(r *http.Request, in store.Indexer, state store.IndexerState, lastRun *store.IndexerHistory) *uiProblem {
-	raw := strings.ToLower(strings.TrimSpace(state.LastError))
-	if raw == "" && lastRun != nil {
-		raw = strings.ToLower(strings.TrimSpace(lastRun.Error))
-	}
-	detail := "/indexers/" + strconv.FormatInt(in.ID, 10)
-	switch {
-	case strings.Contains(raw, "429") || strings.Contains(raw, "rate limit") || strings.Contains(raw, "too many"):
-		return &uiProblem{
-			Text:        s.translate(r, "idx.problem.rate"),
-			ActionLabel: s.translate(r, "idx.problem.rateAction"),
-			ActionURL:   "/settings",
-		}
-	case strings.Contains(raw, "403") || strings.Contains(raw, "forbidden") || strings.Contains(raw, "cloudflare"):
-		return &uiProblem{
-			Text:        s.translate(r, "idx.problem.forbidden"),
-			ActionLabel: s.translate(r, "idx.problem.forbiddenAction"),
-			ActionURL:   "/settings",
-		}
-	case strings.Contains(raw, "401") || strings.Contains(raw, "unauthorized") ||
-		strings.Contains(raw, "login") || strings.Contains(raw, "credential") || strings.Contains(raw, "password"):
-		return &uiProblem{
-			Text:        s.translate(r, "idx.problem.auth"),
-			ActionLabel: s.translate(r, "idx.problem.authAction"),
-			ActionURL:   detail + "/edit",
-		}
-	case strings.Contains(raw, "timeout") || strings.Contains(raw, "deadline") ||
-		strings.Contains(raw, "no such host") || strings.Contains(raw, "connection refused") ||
-		strings.Contains(raw, "unreachable") || strings.Contains(raw, "dial"):
-		return &uiProblem{
-			Text:        s.translate(r, "idx.problem.unreachable"),
-			ActionLabel: s.translate(r, "idx.problem.unreachableAction"),
-			ActionURL:   detail,
-		}
-	default:
-		return &uiProblem{
-			Text:        s.translate(r, "idx.problem.generic"),
-			ActionLabel: s.translate(r, "idx.problem.genericAction"),
-			ActionURL:   detail,
-		}
-	}
 }
 
 func (s *Server) indexerBadges(r *http.Request, in store.Indexer, def *definition.Definition) []uiBadge {
@@ -1730,7 +1659,10 @@ type indexerDetailView struct {
 	RunItems          []engine.Item
 	Test              *engine.TestResult
 	Problem           *uiProblem
+	Problems          []uiProblem
 	SlowProblem       *uiProblem
+	CatalogState      string
+	Health            health.Assessment
 	Latest            bool
 	SearchOnly        bool
 	LatencyP50        string
@@ -1816,10 +1748,12 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		data.Hash = stored.Hash
 		data.HashShort = shortHash(stored.Hash)
 		data.Origin = stored.Origin
+		data.CatalogState = stored.State
 	} else if entry, ok := catalog.Get(in.DefinitionID); ok {
 		data.Hash = entry.Hash
 		data.HashShort = shortHash(entry.Hash)
 		data.Origin = catalog.OriginBuiltin
+		data.CatalogState = entry.State
 	}
 	if data.Connector == "" {
 		if stored, err := s.store.GetDefinition(r.Context(), in.DefinitionID); err == nil {
@@ -1829,17 +1763,15 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		}
 	}
 	data.Badges = s.indexerBadges(r, in, def)
-	if state, err := s.store.GetIndexerState(r.Context(), in.ID); err == nil {
-		data.State = state
-		data.HasState = true
-	}
+	healthView := s.loadIndexerHealth(r.Context(), in)
+	data.Health = healthView.Assessment
+	data.State = healthView.State
+	data.HasState = healthView.HasState
+	data.LastRun = healthView.LastRun
 	history, _ := s.store.ListIndexerHistory(r.Context(), in.ID, 200)
 	now := time.Now()
 	for i := range history {
 		item := history[i]
-		if item.Kind == "run" && data.LastRun == nil {
-			data.LastRun = &history[i]
-		}
 		if !item.StartedAt.Before(now.Add(-24 * time.Hour)) {
 			switch item.Kind {
 			case "search":
@@ -1849,13 +1781,14 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 			}
 		}
 	}
-	data.Status = s.indexerStatus(r, in, data.State, data.HasState, data.LastRun)
+	data.Status = s.statusDotFor(r, healthView)
 	data.LastError = strings.TrimSpace(data.State.LastError)
 	if data.LastError == "" && data.LastRun != nil {
 		data.LastError = strings.TrimSpace(data.LastRun.Error)
 	}
-	if data.Status.State == "problem" {
-		data.Problem = s.problemFor(r, in, data.State, data.LastRun)
+	data.Problems = s.healthProblems(r, healthView)
+	if len(data.Problems) > 0 {
+		data.Problem = &data.Problems[0]
 	}
 	settings, settingsErr := s.store.LoadSettings(r.Context())
 	if settingsErr != nil {

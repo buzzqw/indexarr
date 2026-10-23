@@ -123,6 +123,11 @@ func Message(event Event) string {
 		if event.Error != "" {
 			b.WriteString("\n" + event.Error)
 		}
+	case "indexer_degraded":
+		fmt.Fprintf(&b, "indexarr: indexer %s is degraded", event.Source)
+		if event.Error != "" {
+			b.WriteString("\n" + event.Error)
+		}
 	default:
 		b.WriteString("indexarr: " + event.Kind)
 	}

@@ -1153,6 +1153,7 @@ pre.yaml {
 }
 .status-dot.status-ok .dot { background: var(--ok); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 20%, transparent); }
 .status-dot.status-problem .dot { background: var(--danger); box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 20%, transparent); }
+.status-dot.status-degraded .dot { background: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 20%, transparent); }
 .status-dot.status-disabled .dot { background: var(--muted); opacity: 0.45; box-shadow: none; }
 .status-dot.status-testing .dot { background: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 20%, transparent); }
 

@@ -23,7 +23,7 @@
   </p>
   <ul class="home-problems">
     {{range .Status.Problems}}
-    <li class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span><strong>{{.Name}}</strong> — {{T .Code}}</span><a class="problem-action" href="{{.ActionURL}}">{{T .ActionKey}}</a></li>
+    <li class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span><strong>{{.Name}}</strong> — {{if .Count}}{{T .Code .Count}}{{else}}{{T .Code}}{{end}}</span><a class="problem-action" href="{{.ActionURL}}">{{T .ActionKey}}</a></li>
     {{end}}
   </ul>
   {{else}}

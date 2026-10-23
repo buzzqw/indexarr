@@ -759,3 +759,50 @@ func TestDropLegacySourcesMigration(t *testing.T) {
 		t.Error("release_sources was not recreated")
 	}
 }
+
+func TestSetDefinitionStateKeepsTheDefinition(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	def := testDefinition("health-state")
+	def.UpdatedAt = time.Unix(1_700_000_000, 0)
+	if err := st.UpsertDefinition(ctx, def); err != nil {
+		t.Fatalf("UpsertDefinition: %v", err)
+	}
+	before, err := st.GetDefinition(ctx, def.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := st.SetDefinitionState(ctx, def.ID, "degradata"); err != nil {
+		t.Fatalf("SetDefinitionState: %v", err)
+	}
+	after, err := st.GetDefinition(ctx, def.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.State != "degradata" {
+		t.Errorf("state = %q", after.State)
+	}
+	if after.Body != before.Body || after.Hash != before.Hash ||
+		after.UpdatedAt.Unix() != before.UpdatedAt.Unix() {
+		t.Errorf("state transition changed the definition: %#v", after)
+	}
+
+	if err := st.SetDefinitionState(ctx, def.ID, "verificata"); err != nil {
+		t.Fatalf("recovery: %v", err)
+	}
+	recovered, err := st.GetDefinition(ctx, def.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovered.State != "verificata" || recovered.Body != before.Body {
+		t.Errorf("recovery = %#v", recovered)
+	}
+
+	if err := st.SetDefinitionState(ctx, def.ID, "not-a-state"); err == nil {
+		t.Error("invalid state was accepted")
+	}
+	if err := st.SetDefinitionState(ctx, "missing", "stabile"); !errors.Is(err, sql.ErrNoRows) {
+		t.Errorf("missing definition error = %v", err)
+	}
+}

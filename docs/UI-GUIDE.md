@@ -175,9 +175,11 @@ Indexer                                   [Importa]  [Aggiungi indexer]
 
 - Una riga per sito. Badge di accesso: "Pubblico", "Privato", "Via Jackett",
   "Via Prowlarr", "Feed". Niente "nativo/legacy".
-- Pallino di stato con la stessa scala della Home (● ok, ▲ problema, ○
-  disattivato, ◌ in prova). Il problema è scritto sotto la riga, con
-  l'azione.
+- Pallino di stato con la stessa scala della Home (● ok, ◐ degradato, ▲
+  problema, ○ disattivato, ◌ in prova). Il problema è scritto sotto la riga,
+  con l'azione. "Degradato" significa che il sito risponde ma i dati sono
+  incompleti, oppure che errori/risultati a zero si ripetono; il calcolo è
+  lo stesso della Home (WP9).
 - Menu "⋯": Prova, Aggiorna ora, Disattiva, Duplica, Elimina. Le azioni di
   massa (seleziona → disattiva/elimina) compaiono solo dopo aver
   selezionato.
@@ -388,7 +390,7 @@ test che li renderizza:
 
 | Componente | Uso | Note |
 |---|---|---|
-| `status-dot` | stato di indexer/app/client | 4 stati: ok, problema, disattivato, in prova; testo per screen reader |
+| `status-dot` | stato di indexer/app/client | 5 stati: ok, degradato, problema, disattivato, in prova; testo per screen reader |
 | `problem` | riga problema con causa e azione | prende `Problem{Text, ActionLabel, ActionURL}` |
 | `secret-field` | API key, password | mascherato, "Mostra", "Copia"; il valore non è nell'HTML finché non si preme "Mostra" (fetch) |
 | `copy-field` | URL endpoint | pulsante Copia con conferma "Copiato" |

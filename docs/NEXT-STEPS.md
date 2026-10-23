@@ -150,7 +150,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP6 | Famiglia RSS/Atom nativa | fatto | `4e429e5` |
 | WP7 | Prime definizioni native verificate (ExtTo, TorrentGalaxy, Corsaro, Knaben, TorrentLeech RSS) | fatto (4/5 verificati; TorrentLeech bozza) | `4e429e5` |
 | WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; `scripts/fresh-start.sh` con chiavi da env-file, Jackett dal vivo, dedup, `torrentleech-rss` nativo, `--build` e rollback del binario; tre prove su copia con il binario del tip (9 indexer, 0 doppioni, TorrentLeech RSS >0); checklist del giorno dello scambio pronta; scambio produzione da eseguire | `5c4a470`, `9b48543` |
-| WP9 | Health check e transizioni di stato del catalogo | da fare | |
+| WP9 | Health check e transizioni di stato del catalogo | fatto (job 6 h, modello condiviso, stato `degradata` in Home/elenco/dettaglio) | `ce4c866` |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
 | WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI: avviso 64 MiB, errore 128 MiB) | `d267576` |
@@ -1246,6 +1246,44 @@ func (c *Checker) Start(ctx context.Context)
 // pure transition function, fully table-tested
 func NextState(current string, recent []Outcome, thresholds Thresholds) string
 ```
+
+**Regola di stato (implementata).** Una sola funzione,
+`health.Assess`, legge la cronologia WP17 (`run`, `search`, `latest`,
+`health`) e produce lo stato mostrato in Home, nel badge della sidebar,
+nell'elenco e nel dettaglio. Una definizione è **degradata** quando almeno
+una di queste condizioni è vera:
+
+- completezza dei campi sotto il **50%** nell'esecuzione più recente che ha
+  misurato elementi (seeders, dimensione, categoria, data, infohash/magnet);
+- **3 errori consecutivi** (le esecuzioni annullate non contano);
+- **3 risposte consecutive a zero risultati** (solo esecuzioni con metriche).
+
+Lo stato dell'indexer è `problem` quando c'è un errore corrente o il breaker
+è aperto, `degraded` quando valgono le condizioni sopra ma l'ultima
+esecuzione è riuscita, `testing` senza dati, `disabled` se l'indexer è
+disattivato. Il problema mostrato dice sempre causa e rimedio.
+
+Le transizioni del catalogo sono pure (`health.NextState`) e non toccano
+mai corpo, hash o `updated_at` della definizione: cambia solo `state`.
+
+```text
+bozza       → bozza        (il controllo salute non promuove una bozza)
+verificata  → stabile      dopo 3 esecuzioni pulite consecutive
+verificata  → degradata    dopo 3 errori/zero, o completezza sotto soglia
+stabile     → degradata    con le stesse condizioni
+degradata   → verificata   alla prima esecuzione pulita, quando il segnale
+                           che l'aveva degradata è sparito
+```
+
+La completezza resta quella dell'ultima esecuzione che ha misurato elementi:
+un health check riuscito non cancella un difetto di dati ancora presente.
+Quando più indexer configurati condividono la stessa definizione (i filtri di
+uno stesso sito), vale il caso peggiore: un filtro degradato degrada la
+definizione; il ritorno a `verificata` richiede che tutti i filtri abbiano
+un'esecuzione pulita.
+Il job gira ogni 6 ore con jitter, parte dopo il primo intervallo (non al
+riavvio) e registra `indexer_history.kind = health`; al passaggio a
+`degradata` invia la notifica configurata.
 
 **Accettazione.** Test a tabella di `NextState`; test end-to-end con
 `simmock`; stato visibile in UI e `/api/v2/definitions`.

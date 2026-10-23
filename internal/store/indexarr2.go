@@ -168,6 +168,32 @@ func upsertDefinition(ctx context.Context, db dbExecer, d Definition) error {
 	return err
 }
 
+// SetDefinitionState changes only the catalog state of one definition. The
+// body, hash and updated_at stay untouched: a health transition must never
+// lose or rewrite the definition, and changing updated_at would needlessly
+// invalidate every cached connector.
+func (s *Store) SetDefinitionState(ctx context.Context, id, state string) error {
+	state = strings.ToLower(strings.TrimSpace(state))
+	switch state {
+	case "bozza", "verificata", "stabile", "degradata":
+	default:
+		return fmt.Errorf("definition %s: invalid state %q", id, state)
+	}
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE definitions SET state = ? WHERE id = ?`, state, id)
+	if err != nil {
+		return fmt.Errorf("set definition state %s: %w", id, err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("set definition state %s: %w", id, err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("definition %s: %w", id, sql.ErrNoRows)
+	}
+	return nil
+}
+
 // GetDefinition loads one definition by id.
 func (s *Store) GetDefinition(ctx context.Context, id string) (Definition, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT `+definitionColumns+` FROM definitions WHERE id = ?`, id)
