@@ -129,7 +129,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP0 | Convertitore solo come aiuto alla scrittura | fatto | `4e429e5` |
 | WP1 | Vault: chiave fuori dai dati, backup chiave, segreti legacy cifrati | fatto (backend; riquadro UI in WP14) | `4e429e5` |
 | WP2 | Rate limit di default e percorso legacy sul transport educato | fatto | `4e429e5` |
-| WP3 | Memoria: tornare sotto 40 MiB a riposo | da fare | |
+| WP3 | Memoria: tornare sotto 40 MiB a riposo | fatto (budget 40 MiB: 26,9 MiB a 60 s, 35,5 MiB a 300 s) | `0d5037c` |
 | WP4 | Pipeline a stadi e moduli collegati a runtime | da fare | |
 | WP5 | `download.resolve`: magnet/torrent dalla pagina di dettaglio | fatto | `4e429e5` |
 | WP6 | Famiglia RSS/Atom nativa | fatto | `4e429e5` |

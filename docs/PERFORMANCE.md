@@ -17,7 +17,7 @@ sono la soglia oltre la quale una modifica viene considerata una regressione.
 | Obiettivo | Soglia |
 |---|---|
 | Binario statico (`CGO_ENABLED=0`, `-trimpath -s -w`) | < 20 MB |
-| RSS a riposo | < 60 MB |
+| RSS a riposo | < 40 MiB (manifesto; WP3 §9) |
 | Latenza Torznab p95 con 50.000 release | < 50 ms |
 | Goroutine e file descriptor dopo ricerche ripetute | nessuna crescita illimitata |
 
@@ -119,7 +119,7 @@ Riepilogo rispetto agli obiettivi:
 | Obiettivo | Misurato | Esito |
 |---|---|---|
 | Binario < 20 MB | **17,3 MiB** (18.112.672 byte) | ✅ |
-| RSS a riposo < 60 MB | **32,4–36,5 MiB** (51,0 MiB dopo il carico a 50k) | ✅ |
+| RSS a riposo < 40 MiB | **32,4–36,5 MiB** (51,0 MiB dopo il carico a 50k) | ✅ (WP3 §9: 26,3 MiB a 60 s e 34,7 MiB a 300 s con 15 indexer) |
 | p95 Torznab < 50 ms a 50k | **20,2 ms** titolo · **17,2 ms** titolo+cat · **10,9 ms** empty · **22,7 ms** stress | ✅ |
 | Nessuna crescita di goroutine/FD | 3 → 3 goroutine, 10 → 10 FD su 1.000 ricerche | ✅ |
 
@@ -376,3 +376,81 @@ poco utile rispetto al guadagno. Sono candidati per una passata futura.
 - `internal/perf/perf_test.go` — test goroutine/FD.
 - `scripts/bench.sh` — harness end-to-end.
 - `docs/PERFORMANCE.md` — questo documento.
+
+---
+
+## 9. WP3 — memoria a riposo (23 ottobre 2026)
+
+Questa sezione misura il ritorno sotto il budget del manifesto (**RSS < 40 MiB a
+riposo**). Le misure di §3 sono precedenti alle fasi UI e ai template i18n:
+servono come riferimento storico, non come baseline per il budget.
+
+### 9.1 Metodologia
+
+| Voce | Valore |
+|---|---|
+| Commit "prima" | `cc49ae5` (legacy rimosso, UI fase 2) |
+| Binario | `CGO_ENABLED=0 go build -trimpath -ldflags '-s -w'` |
+| Database | `benchseed -n 10000`, più 5 indexer sintetici → **15 indexer** |
+| Impostazioni | `default_interval_seconds=60`, `backup_enabled=1`, `backup_interval_hours=6` |
+| Porta HTTP / pprof | `127.0.0.1:18520` / `127.0.0.1:6062` |
+| Campioni | RSS da `ps -o rss=` e `/proc/<pid>/status`; heap `inuse_space` con `pprof?gc=1` |
+| Macchina | Intel N97, 4 core, 15,7 GiB, macchina condivisa (±10–20% tra esecuzioni) |
+
+L'istanza esegue un ciclo dello scheduler ogni 60 s e un backup automatico al
+primo tick (~60 s). È quindi incluso il costo del backup, che nelle misure
+precedenti era la seconda voce dopo i template.
+
+### 9.2 Prima / dopo
+
+| Campione | Prima (`cc49ae5`) | Dopo | Δ |
+|---|---:|---:|---:|
+| RSS a 60 s (prima del backup) | **45,3 MiB** (46.344 KiB) | **26,3 MiB** (26.964 KiB) | **−19,0 MiB** |
+| RSS a 75 s (subito dopo `VACUUM INTO`) | 67,1 MiB (68.696 KiB) | 47,5 MiB (48.620 KiB) transitorio | −19,6 MiB |
+| RSS a 300 s | **52,8 MiB** (54.064 KiB) | **34,7 MiB** (35.516 KiB) | **−18,1 MiB** |
+| HWM a 300 s | 68,7 MiB | 49,6 MiB | −19,1 MiB |
+| Heap `inuse_space` | **25,5 MiB** | **6,0 MiB** | −19,5 MiB |
+| Template nel heap | 23,0 MiB (90%) | 2,0 MiB (33%) | −21,0 MiB |
+| FD / thread a riposo | 13 / 10 | 15 / 10 | stabili |
+
+Dopo il campione a 75 s (backup + profilo heap) l'RSS dell'istanza ottimizzata
+scende da solo a **33,7–34,3 MiB** in circa un minuto e resta lì; il valore a
+300 s include un nuovo profilo heap. Il campione a 300 s è stato accettato dal
+coordinatore come misura finale; non è stato prolungato a 10/30 minuti.
+
+### 9.3 Consumatori dopo la correzione
+
+`pprof -top -sample_index=inuse_space` a 60 s e 300 s:
+
+```text
+ 1537 kB  runtime.mallocgc (stack del profilo / runtime)
+ 1536 kB  encoding/json/v2.makeString  ← cataloghi i18n (una tantum)
+  525 kB  golang.org/x/net/html.map.init.1
+ 2048 kB  web.compileTemplateSet       ← solo il set inglese
+  512 kB  net/http.init
+```
+
+- **Template:** il set inglese costa ~2,0 MiB di heap; prima se ne compilavano
+  sette all'avvio (~23 MiB). Le altre lingue si compilano alla prima richiesta.
+- **i18n:** ~1,5 MiB, caricati una volta in `init`, nessuna allocazione per
+  richiesta. Non è stato modificato: non è un consumo per richiesta e il
+  margine sotto 40 MiB non lo richiede.
+- **SQLite:** pool a 4 connessioni invariato (nessuna evidenza per ridurlo).
+- **Backup:** `VACUUM INTO` resta; dopo la copia `debug.FreeOSMemory()` restituisce
+  al sistema le pagine del processo. Il picco transitorio resta (~48 MiB a 75 s
+  con un DB da 13 MiB), ma non si accumula più: prima l'RSS restava ~53 MiB.
+
+### 9.4 Limiti e note
+
+- Le altre lingue non vengono mai sfrattate: un'istanza che rende tutte e 7 le
+  lingue somma i set (~2 MiB di heap ciascuno) e si avvicina al vecchio tetto.
+  L'inglese è sempre residente come default e fallback. Lo sfrattamento è stato
+  evitato perché richiederebbe di coordinarsi con i render in corso.
+- Backup e profilo heap sono transienti: il budget CI misura a 60 s su un DB
+  seed senza backup (`default_interval_seconds=3600`), quindi confronta il
+  valore 26,3 MiB, non il picco del backup.
+- `scripts/budget.sh` usa la soglia di 40 MiB e il job CI non ha più l'override
+  temporaneo a 80 MiB.
+- Il campione "prima" e quello "dopo" sono due esecuzioni distinte sullo stesso
+  tipo di DB e di seed; la macchina è condivisa, quindi le differenze sotto
+  1–2 MiB non sono significative.

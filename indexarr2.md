@@ -136,7 +136,7 @@ in indexarr.
 | Seeders aggiornati: TTL e refresh dei risultati restituiti dalla cache | Seeders vecchi che falsano le scelte delle \*arr | Da fare (WP10) |
 | Vault per credenziali e cookie | Credenziali in chiaro | Fatto lato backend: chiave fuori dai dati e segreti degli indexer cifrati (WP1) |
 | Metriche per indexer e per richiesta (latenza, 429, challenge) | Diagnosi difficile | Parziale |
-| Footprint: ~30 MiB RSS a riposo prima di indexarr 2 (audit) | Runtime .NET | Regressione: ~64–73 MiB dopo l'avvio (WP3) |
+| Footprint: ~30 MiB RSS a riposo prima di indexarr 2 (audit) | Runtime .NET | Fatto: ~26–35 MiB a riposo dopo WP3 (budget 40 MiB) |
 
 ---
 
@@ -716,7 +716,7 @@ strict) e `./sim/run.sh`.
 | WP0 | fatto | convertitore Cardigann solo CLI, bozze `derived_from` rifiutate dal catalogo |
 | WP1 | fatto (backend) | risoluzione chiave vault (env → env-file → config → file dati → user config → fallback), `export-key`/`move-key`, verifica restore, redazione rsskey |
 | WP2 | fatto | `engine.Politeness` condiviso, rate limit 1/s burst 4, breaker, `Retry-After`, contatori host in Attività e Prometheus |
-| WP3 | da fare | memoria sotto 40 MiB a riposo |
+| WP3 | fatto | memoria sotto 40 MiB a riposo (26,9 MiB a 60 s, 35,5 MiB a 300 s; budget CI 40 MiB) |
 | WP4 | da fare | pipeline e moduli collegati a runtime |
 | WP5 | fatto | `download.resolve`: magnet/torrent dalla pagina di dettaglio |
 | WP6 | fatto | famiglia RSS/Atom nativa, cache feed, filtro client-side |

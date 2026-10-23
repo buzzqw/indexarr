@@ -105,16 +105,12 @@ jobs:
       - name: Cross-compile ${{ matrix.target }}
         run: ./scripts/build-matrix.sh --target "${{ matrix.target }}"
 
-  # Resource budget. The 80 MiB RSS ceiling is a deliberate temporary override:
-  # the current service needs ~64 MiB under load and 32-37 MiB idle, and WP3 is
-  # still open. The script's own default remains the manifesto target of 40 MiB.
-  # TODO(WP3/WP12): remove this env override once WP3 is closed.
+  # Resource budget: optimised binary size plus idle RSS on a seeded database.
+  # The RSS ceiling is the 40 MiB manifesto target used by scripts/budget.sh.
   budget:
     name: Resource budget
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      INDEXARR_BUDGET_RSS_MIB: "80"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

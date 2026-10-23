@@ -12,12 +12,9 @@
 #      `ps -o rss=`. The gate is Linux-only: on other systems it is skipped
 #      with a clear message (there is no portable equivalent of `ps -o rss=`).
 #
-# The RSS ceiling defaults to 40 MiB, the manifesto target. The current
-# service, however, measures roughly 64 MiB under load and 32-37 MiB idle, so
-# the CI job intentionally runs this script with INDEXARR_BUDGET_RSS_MIB=80 to
-# keep the pipeline green while WP3 works on memory. TODO(WP3/WP12): drop the
-# CI override to the 40 MiB default as soon as WP3 lands; the binary-size gate
-# below is already hard in CI (measured ~17.3 MiB on build 384e541).
+# The RSS ceiling defaults to 40 MiB, the manifesto target. WP3 closed the
+# gap: the measured idle RSS is ~27 MiB at 60 s and ~35 MiB after a backup, so
+# the CI job uses the same 40 MiB gate as this script (no override).
 #
 # Usage: scripts/budget.sh [--keep]
 #   --keep   keep the temporary directory and print its path
