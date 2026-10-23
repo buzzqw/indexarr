@@ -107,6 +107,9 @@ func (e *Engine) SearchLive(ctx context.Context, filter store.Filter) (int, erro
 // ErrQueueFull is returned when the worker queue is saturated.
 var ErrQueueFull = errors.New("run queue is full, try again shortly")
 
+// ErrTestAllRunning is returned when a background source test is already active.
+var ErrTestAllRunning = errors.New("source test already running")
+
 // Engine owns the HTTP fetchers and the worker queue.
 type Engine struct {
 	store         *store.Store
@@ -119,6 +122,7 @@ type Engine struct {
 	startOnce     sync.Once
 	backupRunning atomic.Bool
 	backupRetry   atomic.Int64
+	testingAll    atomic.Bool
 }
 
 // New builds an engine. It does not start any goroutine until Start is called.
@@ -200,8 +204,12 @@ func (e *Engine) TriggerAll(ctx context.Context) (int, error) {
 // immediately. Each outcome is written to the application log, visible in the
 // Logs tab; a full run can take minutes with many slow indexers.
 func (e *Engine) TestAll(ctx context.Context) (int, error) {
+	if !e.testingAll.CompareAndSwap(false, true) {
+		return 0, ErrTestAllRunning
+	}
 	sources, err := e.store.ListSources(ctx)
 	if err != nil {
+		e.testingAll.Store(false)
 		return 0, err
 	}
 	var enabled []store.Source
@@ -211,10 +219,12 @@ func (e *Engine) TestAll(ctx context.Context) (int, error) {
 		}
 	}
 	if len(enabled) == 0 {
+		e.testingAll.Store(false)
 		return 0, nil
 	}
 	runCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Minute)
 	go func() {
+		defer e.testingAll.Store(false)
 		defer cancel()
 		e.log.Info("testing sources", "component", "indexarr", "count", len(enabled))
 		sem := make(chan struct{}, 3)

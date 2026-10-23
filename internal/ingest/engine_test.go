@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -578,5 +579,19 @@ func TestRunSourceStoresMagnetOnTorrentRedirect(t *testing.T) {
 	}
 	if release.Magnet != magnet || len(release.Torrent) != 0 {
 		t.Errorf("release = magnet %q, torrent %d bytes", release.Magnet, len(release.Torrent))
+	}
+}
+
+func TestTestAllRejectsConcurrentRun(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(t.TempDir() + "/testall.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	engine := New(st, testLogger())
+	engine.testingAll.Store(true)
+	if _, err := engine.TestAll(ctx); !errors.Is(err, ErrTestAllRunning) {
+		t.Fatalf("TestAll error = %v, want ErrTestAllRunning", err)
 	}
 }
