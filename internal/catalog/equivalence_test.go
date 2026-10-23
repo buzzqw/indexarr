@@ -347,7 +347,8 @@ func TestRSSDefinitionsComparison(t *testing.T) {
 		fixture string
 	}{
 		{"knaben", "knaben/feed.xml"},
-		{"torrentleech", "torrentleech/feed.xml"},
+		{"torrentleech-rss", "torrentleech/feed.xml"},
+		{"showrss", "showrss/feed.rss"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.id, func(t *testing.T) {
@@ -421,7 +422,9 @@ func TestCatalogVerifiedDefinitionsExist(t *testing.T) {
 			t.Errorf("%s: state = %q, want verificata", id, states[id])
 		}
 	}
-	if states["torrentleech"] != "bozza" {
-		t.Errorf("torrentleech: state = %q, want bozza (no real release fixture yet)", states["torrentleech"])
+	for _, id := range []string{"torrentleech", "torrentleech-rss", "corsaro-account", "ildragonegro"} {
+		if states[id] != "bozza" {
+			t.Errorf("%s: state = %q, want bozza (needs the coordinator's credentials)", id, states[id])
+		}
 	}
 }

@@ -1,0 +1,55 @@
+# VERIFICATA (verified). showRSS public show feed.
+#
+# showRSS publishes one RSS feed per show at
+# https://showrss.info/show/<id>.rss, and a personal feed once the user picks
+# shows. The feed was captured on 2026-10-23 in fixtures/showrss/feed.rss
+# (https://showrss.info/show/1967.rss): items carry the magnet in <link>.
+# There is no search endpoint, so the RSS family filters titles client-side;
+# the URL setting lets the user replace the sample feed with the personal one.
+schema: 1
+connector: rss
+
+meta:
+  id: showrss
+  name: showRSS
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: showRSS TV feed (public show feed or personal showRSS feed).
+  urls:
+    - https://showrss.info/
+  updated: "2026-10-23"
+
+settings:
+  - name: url
+    type: password
+    label: "Feed URL"
+    help: "A public show feed such as https://showrss.info/show/1967.rss, or your personal feed from showRSS."
+    default: "https://showrss.info/show/1967.rss"
+    required: true
+  - name: default-category
+    type: text
+    label: "Default category"
+    help: "Standard Torznab category used when the feed has only text categories."
+    default: "5000"
+  - name: query
+    type: text
+    label: "Title filter (optional)"
+    help: "Keep only feed items whose title contains these words."
+
+categories:
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: NCIS
+  min_rows: 1
+
+tests:
+  - name: feed
+    fixture: fixtures/showrss/feed.rss
+    expect: { min_rows: 3, required: [title, magnet] }

@@ -1,13 +1,15 @@
-# BOZZA (draft). TorrentLeech RSS feed.
+# IN PROVA (trial). TorrentLeech with login and keyword search.
 #
-# The feed address embeds a personal rsskey and no release is public without
-# one, so only the channel envelope and the invalid-key error were observed on
-# 2026-10-23 (fixtures/torrentleech/feed-invalid-key.xml). The item fixture is
-# synthetic and preserves that envelope; see fixtures/torrentleech/README.md.
-# Promotion to "verificata" requires a real, sanitized feed capture and the
-# equivalence test on it.
+# The public login page was captured on 2026-10-23 in
+# fixtures/torrentleech/login.html (https://www.torrentleech.org/): a plain
+# form posting username/password to /user/account/login/, no CSRF field. The
+# browse path /torrents/browse/list/query/<q> redirects guests to the login
+# page, which is how it was confirmed. Search results and the release page are
+# synthetic fixtures that keep the table and action markup; see
+# fixtures/torrentleech/README.md. The previous RSS-only definition stays
+# available as torrentleech-rss.yaml. State is "bozza" until the coordinator
+# verifies both login and search with an account.
 schema: 1
-connector: rss
 
 meta:
   id: torrentleech
@@ -16,43 +18,80 @@ meta:
   type: private
   protocol: torrent
   author: indexarr
-  description: Private TorrentLeech RSS feed; the URL contains a personal rsskey.
+  description: Private TorrentLeech with login and keyword search.
   urls:
-    - https://rss.torrentleech.org/
+    - https://www.torrentleech.org/
   updated: "2026-10-23"
 
 settings:
-  - name: url
-    type: password
-    label: "Personal RSS feed URL"
-    help: "https://rss.torrentleech.org/<your-rsskey>; the key is stored by the vault as a secret setting."
-    required: true
-  - name: default-category
-    type: text
-    label: "Default category"
-    help: "Standard Torznab category used when the feed has only text categories."
-    default: "8000"
-  - name: query
-    type: text
-    label: "Title filter (optional)"
-    help: "Keep only feed items whose title contains these words."
+  - { name: username, type: text, label: "Username", required: true }
+  - { name: password, type: password, label: "Password", required: true }
 
 categories:
-  - { site: "TV", standard: 5000, desc: "TV" }
-  - { site: "Movies", standard: 2000, desc: "Movies" }
-  - { site: "Music", standard: 3000, desc: "Audio" }
-  - { site: "Games", standard: 4000, desc: "Games" }
-  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "1", standard: 2000, desc: "Movies" }
+  - { site: "2", standard: 5000, desc: "TV" }
+  - { site: "3", standard: 3000, desc: "Music" }
+  - { site: "4", standard: 4000, desc: "Games" }
+  - { site: "5", standard: 7000, desc: "Books" }
   - { site: "0", standard: 8000, desc: "Other" }
 
 capabilities:
   search: [q]
+  tv-search: [q, season, ep]
+  movie-search: [q]
+
+auth:
+  strategy: form
+  steps:
+    - get: /
+    - post: /user/account/login/
+      form:
+        username: "{{ settings.username }}"
+        password: "{{ settings.password }}"
+  success: { selector: 'a[href*="/user/account/logout"]' }
+  failure:
+    - { selector: "div.alert-danger", message: text }
+  refresh_after: 6h
+
+search:
+  request:
+    get: "/torrents/browse/list/query/{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table#torrenttable tbody tr" }
+    fields:
+      title:    { selector: "td.name a", filters: [trim] }
+      details:  { selector: "td.name a", attr: href, type: url }
+      category: { selector: "td.category a", attr: href, filters: [{ regex: "category/([0-9]+)" }], type: category }
+      date:     { selector: "td.added", type: date, layouts: ["2006-01-02 15:04:05"] }
+      size:     { selector: "td.size", type: size }
+      seeders:  { selector: "td.seeders", type: int }
+      leechers: { selector: "td.leechers", type: int }
+    required: [title, details]
+
+download:
+  resolve_on: grab
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
 
 health:
-  query: ""
+  query: test
   min_rows: 1
 
 tests:
-  - name: feed
-    fixture: fixtures/torrentleech/feed.xml
-    expect: { min_rows: 3, required: [title, download] }
+  - name: search
+    fixture: fixtures/torrentleech/search.html
+    expect: { min_rows: 3, required: [title, details, size, seeders] }
+  - name: detail
+    fixture: fixtures/torrentleech/detail.html
+    expect: { min_rows: 0 }
+  - name: login-ok
+    fixture: fixtures/torrentleech/login-ok.html
+    expect: { authenticated: true }
+  - name: login-failed
+    fixture: fixtures/torrentleech/login-failed.html
+    expect: { authenticated: false }

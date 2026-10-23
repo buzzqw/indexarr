@@ -406,6 +406,15 @@ func (m *Manager) applySecrets(ctx context.Context, indexerID int64, settings ma
 // applyDefaults gives family connectors the settings they read and exposes the
 // indexer identity to definitions. An explicitly configured value always wins.
 func applyDefaults(indexer store.Indexer, parsed *definition.Definition, settings map[string]string) {
+	// Format v1 setting names are slugs, so a definition declares "apikey" and
+	// the family connectors read the canonical "api_key". Keep the two names in
+	// sync here as the definition connector already does for its own settings.
+	if strings.TrimSpace(settings["api_key"]) == "" {
+		settings["api_key"] = settings["apikey"]
+	}
+	if strings.TrimSpace(settings["apikey"]) == "" {
+		settings["apikey"] = settings["api_key"]
+	}
 	if strings.TrimSpace(settings["base_url"]) == "" {
 		if url := strings.TrimSpace(settings["url"]); url != "" {
 			settings["base_url"] = url

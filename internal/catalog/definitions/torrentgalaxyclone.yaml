@@ -1,0 +1,82 @@
+# VERIFICATA (verified). TorrentGalaxyClone keyword search.
+#
+# The Jackett/Prowlarr entry named "TorrentGalaxyClone" is the same site and
+# layout as torrentgalaxy.yaml (torrentgalaxy.one, mirror torrentgalaxy.info),
+# but it is not the same definition: torrentgalaxy.yaml reads an uploader feed
+# (/get-posts/user:<name>/) while this one performs a keyword search
+# (/get-posts/keywords:<q>/). The HTML rows are identical (div.tgxtablerow).
+#
+# Written from the public keyword page captured on 2026-10-23 in
+# fixtures/torrentgalaxyclone/listing.html and from the release page in
+# fixtures/torrentgalaxyclone/detail.html. The listing has no date cell for
+# keyword results and the magnet lives on the detail page, so the download
+# section resolves it during the search (resolve_on: search) and the cached
+# release carries a magnet and an infohash. The category link is path-based
+# (/get-posts/category:Movies:time:10D), hence the regex filter.
+schema: 1
+
+meta:
+  id: torrentgalaxyclone
+  name: TorrentGalaxyClone
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public TorrentGalaxy keyword search (same layout as TorrentGalaxy).
+  urls:
+    - https://torrentgalaxy.one/
+    - https://torrentgalaxy.info/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "Music", standard: 3000, desc: "Audio" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Apps", standard: 4000, desc: "Applications" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+  - { site: "Documentaries", standard: 5080, desc: "Documentaries" }
+  - { site: "XXX", standard: 6000, desc: "Adult" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: "/get-posts/keywords:{{ query.keywords }}/"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.tgxtablerow" }
+    fields:
+      title:    { selector: 'a[href*="/post-detail/"]', filters: [trim] }
+      details:  { selector: 'a[href*="/post-detail/"]', attr: href, type: url }
+      category: { selector: 'a[href*="category:"]', attr: href, filters: [{ regex: "category:([^:]+)" }], type: category }
+      size:     { selector: "span.badge.badge-secondary", type: size }
+      seeders:  { selector: 'span[title="Seeders/Leechers"] font:first-of-type', type: int }
+      leechers: { selector: 'span[title="Seeders/Leechers"] font:last-of-type', type: int }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
+
+health:
+  query: test
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/torrentgalaxyclone/listing.html
+    expect: { min_rows: 5, required: [title, details, category, size] }
+  - name: detail
+    fixture: fixtures/torrentgalaxyclone/detail.html
+    expect: { min_rows: 0 }

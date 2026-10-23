@@ -59,3 +59,35 @@ definitions:
     file: definitions/torrentleech.yaml
     state: bozza
     author: indexarr
+  - id: torrentleech-rss
+    file: definitions/torrentleech-rss.yaml
+    state: bozza
+    author: indexarr
+  - id: torrentgalaxyclone
+    file: definitions/torrentgalaxyclone.yaml
+    state: verificata
+    author: indexarr
+  - id: limetorrents
+    file: definitions/limetorrents.yaml
+    state: verificata
+    author: indexarr
+  - id: thepiratebay
+    file: definitions/thepiratebay.yaml
+    state: verificata
+    author: indexarr
+  - id: torrentscsv
+    file: definitions/torrentscsv.yaml
+    state: verificata
+    author: indexarr
+  - id: showrss
+    file: definitions/showrss.yaml
+    state: verificata
+    author: indexarr
+  - id: corsaro-account
+    file: definitions/corsaro-account.yaml
+    state: bozza
+    author: indexarr
+  - id: ildragonegro
+    file: definitions/ildragonegro.yaml
+    state: bozza
+    author: indexarr

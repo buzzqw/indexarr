@@ -1,0 +1,58 @@
+# VERIFICATA (verified). TorrentsCSV public JSON API.
+#
+# Written from the public response captured on 2026-10-23 in
+# fixtures/torrentscsv/search.json
+# (https://torrents-csv.com/service/search?q=test&size=20). The service returns
+# {"torrents":[...]} with an infohash, byte size and Unix timestamps; there is
+# no magnet and no category, so the magnet is built from the hash and rows use
+# the engine's 8000 fallback. The service also returns a "next" cursor, which
+# format v1 declares but the engine does not implement yet, so pagination stays
+# at the first page.
+schema: 1
+
+meta:
+  id: torrentscsv
+  name: TorrentsCSV
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public TorrentsCSV JSON search API.
+  urls:
+    - https://torrents-csv.com/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /service/search
+    params:
+      q: "{{ query.keywords }}"
+      size: "100"
+  pagination: { type: none }
+  response:
+    type: json
+    rows: { path: torrents }
+    fields:
+      title:    { path: name, filters: [trim] }
+      magnet:   { path: infohash, filters: [{ prefix: "magnet:?xt=urn:btih:" }] }
+      infohash: { path: infohash }
+      size:     { path: size_bytes, type: size }
+      seeders:  { path: seeders, type: int }
+      leechers: { path: leechers, type: int }
+      date:     { path: created_unix, type: date }
+    required: [title, magnet, size]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/torrentscsv/search.json
+    expect: { min_rows: 10, required: [title, magnet, size, seeders] }

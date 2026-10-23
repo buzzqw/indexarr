@@ -1,0 +1,103 @@
+# IN PROVA (trial). Corsaro account variant with login and keyword search.
+#
+# The guest definition corsaro.yaml stays unchanged: this file is the account
+# variant and shares the same public listing layout. The public login page was
+# captured on 2026-10-23 in fixtures/corsaro-account/login.html; it shows a
+# reCAPTCHA marker (input[name="trp_recaptcha_required"]), so a fully automatic
+# login is not possible today and the state stays "bozza" until the coordinator
+# verifies it with an account. The search request is the one the site documents
+# in its own search form (index.php page=torrents&search=...); guests get
+# "Non sei autorizzato a usare il sistema di ricerca interno", account holders
+# do not. Successful login and search pages are synthetic fixtures that keep the
+# observed markup; see fixtures/corsaro-account/README.md.
+schema: 1
+
+meta:
+  id: corsaro-account
+  name: Corsaro (account)
+  language: it-IT
+  type: semi-private
+  protocol: torrent
+  author: indexarr
+  description: ilCorSaRoBlu with login and keyword search (account required).
+  urls:
+    - https://ilcorsaroblu.org/
+  updated: "2026-10-23"
+
+settings:
+  - { name: username, type: text, label: "Username", required: true }
+  - { name: password, type: password, label: "Password", required: true }
+  - name: category
+    type: text
+    label: "Category id"
+    help: "Site category id; 0 means all categories."
+    default: "0"
+
+categories:
+  - { site: "2", standard: 3000, desc: "Audio / Music" }
+  - { site: "13", standard: 2040, desc: "Movies 1080p" }
+  - { site: "14", standard: 2040, desc: "Movies 720p" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+auth:
+  strategy: form
+  steps:
+    - get: /index.php?page=login
+    - post: /index.php?page=login
+      form:
+        uid: "{{ settings.username }}"
+        pwd: "{{ settings.password }}"
+  success: { selector: 'a[href*="page=logout"]' }
+  failure:
+    - { selector: "div.error", message: text }
+  refresh_after: 6h
+
+search:
+  request:
+    get: /index.php
+    params:
+      page: torrents
+      search: "{{ query.keywords }}"
+      category: "{{ settings.category }}"
+      active: "0"
+      options: "0"
+  pagination: { type: page, start: 1, max_pages: 3, param: pages, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.lista tr" }
+    fields:
+      title:    { selector: 'td[style*="padding-left:10px"] a', filters: [trim] }
+      details:  { selector: 'td[style*="padding-left:10px"] a', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      category: { selector: 'a[href*="category="]', attr: href, filters: [{ query_param: category }], type: category }
+      size:     { selector: "td.lista:nth-last-of-type(2)", type: size }
+      seeders:  { selector: "td.lista:nth-of-type(6)", type: int }
+      leechers: { selector: "td.lista:nth-of-type(7)", type: int }
+      date:     { selector: "td.lista:nth-of-type(5)", type: date, layouts: ["02/01/2006"] }
+    required: [title, magnet]
+
+download:
+  resolve_on: grab
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href*="download.php"]', attr: href, type: url }
+
+health:
+  query: ""
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/corsaro-account/search.html
+    expect: { min_rows: 3, required: [title, magnet] }
+  - name: login-ok
+    fixture: fixtures/corsaro-account/login-ok.html
+    expect: { authenticated: true }
+  - name: login-failed
+    fixture: fixtures/corsaro-account/login-failed.html
+    expect: { authenticated: false }

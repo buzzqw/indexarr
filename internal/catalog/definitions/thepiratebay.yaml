@@ -1,0 +1,113 @@
+# VERIFICATA (verified). The Pirate Bay public JSON API.
+#
+# Written from the public response captured on 2026-10-23 in
+# fixtures/thepiratebay/search.json (https://apibay.org/q.php?q=test&cat=0).
+# The API returns a bare JSON array: one object per release with a hex info
+# hash and no magnet, so the magnet is built from the hash with a prefix
+# filter. Details point at the main site. The category is the numeric TPB
+# category (1xx audio, 2xx video, 3xx applications, 4xx games, 5xx adult,
+# 6xx other) mapped below to standard Torznab ids.
+schema: 1
+
+meta:
+  id: thepiratebay
+  name: The Pirate Bay
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public The Pirate Bay JSON search API (apibay.org).
+  urls:
+    - https://apibay.org/
+    - https://thepiratebay.org/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "100", standard: 3000, desc: "Audio" }
+  - { site: "101", standard: 3000, desc: "Music" }
+  - { site: "102", standard: 3030, desc: "Audio books" }
+  - { site: "103", standard: 3000, desc: "Sound clips" }
+  - { site: "104", standard: 3040, desc: "FLAC" }
+  - { site: "199", standard: 3000, desc: "Audio other" }
+  - { site: "200", standard: 2000, desc: "Video" }
+  - { site: "201", standard: 2000, desc: "Movies" }
+  - { site: "202", standard: 2000, desc: "Movies DVDR" }
+  - { site: "203", standard: 3000, desc: "Music videos" }
+  - { site: "204", standard: 2000, desc: "Movie clips" }
+  - { site: "205", standard: 5000, desc: "TV shows" }
+  - { site: "206", standard: 2000, desc: "Handheld" }
+  - { site: "207", standard: 2040, desc: "HD Movies" }
+  - { site: "208", standard: 5040, desc: "HD TV shows" }
+  - { site: "209", standard: 2000, desc: "3D" }
+  - { site: "211", standard: 2045, desc: "UHD Movies" }
+  - { site: "212", standard: 5045, desc: "UHD TV shows" }
+  - { site: "299", standard: 2000, desc: "Video other" }
+  - { site: "300", standard: 4000, desc: "Applications" }
+  - { site: "301", standard: 4000, desc: "Windows" }
+  - { site: "302", standard: 4000, desc: "Mac" }
+  - { site: "303", standard: 4000, desc: "UNIX" }
+  - { site: "304", standard: 4000, desc: "Handheld" }
+  - { site: "305", standard: 4000, desc: "iOS" }
+  - { site: "306", standard: 4000, desc: "Android" }
+  - { site: "399", standard: 4000, desc: "Applications other" }
+  - { site: "400", standard: 4000, desc: "Games" }
+  - { site: "401", standard: 4000, desc: "PC games" }
+  - { site: "402", standard: 4000, desc: "Mac games" }
+  - { site: "403", standard: 4000, desc: "Console games" }
+  - { site: "404", standard: 4000, desc: "XBOX360" }
+  - { site: "405", standard: 4000, desc: "Wii" }
+  - { site: "406", standard: 4000, desc: "Handheld games" }
+  - { site: "407", standard: 4000, desc: "iOS games" }
+  - { site: "408", standard: 4000, desc: "Android games" }
+  - { site: "499", standard: 4000, desc: "Games other" }
+  - { site: "500", standard: 6000, desc: "Adult" }
+  - { site: "501", standard: 6000, desc: "Adult movies" }
+  - { site: "502", standard: 6000, desc: "Adult DVDR" }
+  - { site: "503", standard: 6000, desc: "Pictures" }
+  - { site: "504", standard: 6000, desc: "Adult games" }
+  - { site: "505", standard: 6000, desc: "Adult HD movies" }
+  - { site: "506", standard: 6000, desc: "Adult clips" }
+  - { site: "599", standard: 6000, desc: "Adult other" }
+  - { site: "600", standard: 8000, desc: "Other" }
+  - { site: "601", standard: 7000, desc: "E-books" }
+  - { site: "602", standard: 7030, desc: "Comics" }
+  - { site: "603", standard: 8000, desc: "Pictures" }
+  - { site: "604", standard: 8000, desc: "Covers" }
+  - { site: "605", standard: 8000, desc: "Physibles" }
+  - { site: "699", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /q.php
+    params:
+      q: "{{ query.keywords }}"
+      cat: "0"
+  pagination: { type: none }
+  response:
+    type: json
+    rows: { path: "" }
+    fields:
+      title:    { path: name, filters: [trim] }
+      details:  { path: id, filters: [{ prefix: "https://thepiratebay.org/description.php?id=" }], type: url }
+      magnet:   { path: info_hash, filters: [{ prefix: "magnet:?xt=urn:btih:" }] }
+      infohash: { path: info_hash }
+      size:     { path: size, type: size }
+      seeders:  { path: seeders, type: int }
+      leechers: { path: leechers, type: int }
+      date:     { path: added, type: date }
+      category: { path: category, type: category }
+    required: [title, magnet, size]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/thepiratebay/search.json
+    expect: { min_rows: 10, required: [title, magnet, size, seeders, category] }

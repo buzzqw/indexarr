@@ -1,0 +1,75 @@
+# VERIFICATA (verified). LimeTorrents HTML search.
+#
+# Written from the public search page captured on 2026-10-23 in
+# fixtures/limetorrents/listing.html and from one release page in
+# fixtures/limetorrents/detail.html. The listing carries no magnet: it links
+# the release page and an external .torrent mirror. The release page has the
+# magnet, so the download section resolves it during the search. The category is a word inside
+# the "Last Month - in Other" cell; there is no numeric category id in the row.
+schema: 1
+
+meta:
+  id: limetorrents
+  name: LimeTorrents
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public LimeTorrents HTML search with magnets on the release page.
+  urls:
+    - https://www.limetorrents.fun/
+    - https://limetorrents.zone/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "Music", standard: 3000, desc: "Audio" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Apps", standard: 4000, desc: "Applications" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+  - { site: "Documentaries", standard: 5080, desc: "Documentaries" }
+  - { site: "XXX", standard: 6000, desc: "Adult" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: "/search/all/{{ query.keywords }}/"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.table2 tr" }
+    fields:
+      title:    { selector: 'div.tt-name a[href*="-torrent-"]', filters: [trim] }
+      details:  { selector: 'div.tt-name a[href*="-torrent-"]', attr: href, type: url }
+      category: { selector: "td:nth-of-type(2)", filters: [{ regex: " in ([A-Za-z]+)" }], type: category }
+      size:     { selector: "td:nth-of-type(3)", type: size }
+      seeders:  { selector: "td:nth-of-type(4)", type: int }
+      leechers: { selector: "td:nth-of-type(5)", type: int }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href*=".torrent"]', attr: href, type: url }
+
+health:
+  query: test
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/limetorrents/listing.html
+    expect: { min_rows: 5, required: [title, details, size, seeders] }
+  - name: detail
+    fixture: fixtures/limetorrents/detail.html
+    expect: { min_rows: 0 }

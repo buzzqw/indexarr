@@ -32,15 +32,20 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 13 {
-		t.Fatalf("len(Builtins()) = %d, want 13", len(entries))
+	if len(entries) != 21 {
+		t.Fatalf("len(Builtins()) = %d, want 21", len(entries))
 	}
 
 	verified := map[string]bool{
-		"extto":         true,
-		"torrentgalaxy": true,
-		"corsaro":       true,
-		"knaben":        true,
+		"extto":              true,
+		"torrentgalaxy":      true,
+		"corsaro":            true,
+		"knaben":             true,
+		"torrentgalaxyclone": true,
+		"limetorrents":       true,
+		"thepiratebay":       true,
+		"torrentscsv":        true,
+		"showrss":            true,
 	}
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
@@ -107,6 +112,9 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 		"example-html", "unit3d-generic", "newznab-generic", "torznab-generic",
 		"gazelle-generic", "nexusphp-generic", "torrenttrader-generic", "xbtit-generic",
 		"extto", "torrentgalaxy", "corsaro", "knaben", "torrentleech",
+		"torrentleech-rss", "torrentgalaxyclone", "limetorrents",
+		"thepiratebay", "torrentscsv", "showrss", "corsaro-account",
+		"ildragonegro",
 	}
 	if len(entries) != len(want) {
 		t.Fatalf("len(Builtins()) = %d, want %d", len(entries), len(want))
@@ -127,8 +135,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 13 {
-		t.Fatalf("manifest has %d definitions, want 13", len(items))
+	if len(items) != 21 {
+		t.Fatalf("manifest has %d definitions, want 21", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")
