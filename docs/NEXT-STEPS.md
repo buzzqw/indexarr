@@ -141,7 +141,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI 80 MiB fino a WP3) | `4e429e5` |
 | WP13 | Parità residua | da fare | |
 | WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1 fatta; 1b subito; 2–5 dopo WP16 | `4e429e5` |
-| WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | |
+| WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | `b0abb6c` |
 | WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
 | WP16 | Rimozione del percorso legacy | da fare | |
 
