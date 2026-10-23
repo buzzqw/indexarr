@@ -594,6 +594,10 @@ func TestLoadRejectsDerivedDraftInCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read %s: %v", target, err)
 	}
+	// A Windows checkout may materialise the embedded fixture with CRLF.
+	// Normalise before injecting the marker so the test exercises the policy
+	// on every supported platform.
+	body = bytes.ReplaceAll(body, []byte("\r\n"), []byte("\n"))
 	derived := bytes.Replace(body, []byte("  author: indexarr\n"),
 		[]byte("  author: indexarr\n  derived_from: cardigann\n"), 1)
 	if bytes.Equal(derived, body) {

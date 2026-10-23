@@ -176,6 +176,10 @@ func load(fsys fs.FS) ([]Entry, error) {
 		if err != nil {
 			return nil, fmt.Errorf("catalog: read %s: %w", item.File, err)
 		}
+		// A Windows checkout with core.autocrlf may materialise the embedded
+		// YAML with CRLF. Parse and hash the canonical LF form so the built-in
+		// index is identical on every platform.
+		defBody = bytes.ReplaceAll(defBody, []byte("\r\n"), []byte("\n"))
 		def, err := definition.Parse(defBody)
 		if err != nil {
 			return nil, fmt.Errorf("catalog: %s: %w", item.File, err)

@@ -8,6 +8,7 @@
 package compat
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"encoding/xml"
@@ -456,7 +457,12 @@ func assertGolden(t *testing.T, got []byte, name string) {
 	if err != nil {
 		t.Fatalf("read golden %s: %v (run UPDATE_GOLDEN=1 go test ./internal/compat -run TestGolden)", name, err)
 	}
-	if string(got) != string(want) {
+	// Git may materialise the golden with CRLF on Windows while the server
+	// always writes LF. The snapshot is about the XML bytes, not the checkout
+	// line ending, so normalise only that difference.
+	got = bytes.ReplaceAll(got, []byte("\r\n"), []byte("\n"))
+	want = bytes.ReplaceAll(want, []byte("\r\n"), []byte("\n"))
+	if !bytes.Equal(got, want) {
 		t.Errorf("%s mismatch:\n--- got ---\n%s\n--- want ---\n%s", name, got, want)
 	}
 }
