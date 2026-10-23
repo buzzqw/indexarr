@@ -180,6 +180,12 @@ func main() {
 	}
 
 	var downloadResolver func(context.Context, int64) ([]byte, string, string, error)
+	var grabGuard func(context.Context, int64) error
+	var grabRecord func(context.Context, int64, int64, string) error
+	if indexerManager != nil {
+		grabGuard = indexerManager.CheckGrab
+		grabRecord = indexerManager.RecordGrab
+	}
 	if indexerManager != nil && secretVault != nil {
 		resolver, resolverErr := downloadproxy.New(downloadproxy.Config{
 			Store: st, Vault: secretVault, Manager: indexerManager,
@@ -238,6 +244,8 @@ func main() {
 			Version: version, Started: time.Now(), Admin: adminHandler,
 			Native: indexerManager, Indexers: indexerService,
 			DownloadResolver: downloadResolver,
+			Vault:            secretVault, Sync: syncService,
+			GrabGuard: grabGuard, GrabRecord: grabRecord,
 			Restart: func() {
 				if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
 					logger.Error("cannot restart for restore", "error", err)

@@ -101,6 +101,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/v2/applications/{id}", s.handleApplicationDelete)
 	mux.HandleFunc("POST /api/v2/applications/{id}/sync", s.handleApplicationSync)
 
+	mux.HandleFunc("POST /api/v2/import/prowlarr", s.handleImportProwlarr)
+	mux.HandleFunc("POST /api/v2/import/jackett", s.handleImportJackett)
+	mux.HandleFunc("GET /api/v2/legacy/preview", s.handleLegacyPreview)
+
 	// JSON for unknown routes, so clients never receive an HTML body.
 	notFound := func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, "not found")

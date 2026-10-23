@@ -43,6 +43,10 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		return stats, fmt.Errorf("indexer %s: parse config_json: %w", indexer.Slug, configErr)
 	}
 
+	if err := m.checkQueryLimit(ctx, indexer.ID); err != nil {
+		return stats, err
+	}
+
 	connector, err := m.connectorFor(ctx, indexer)
 	if err != nil {
 		return stats, err

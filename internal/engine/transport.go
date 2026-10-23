@@ -28,6 +28,7 @@ var (
 	ErrBreakerOpen  = errors.New("engine: circuit breaker open")
 	ErrRateLimited  = errors.New("engine: rate limited by indexer")
 	ErrBodyTooLarge = errors.New("engine: response body too large")
+	ErrInvalidProxy = errors.New("engine: invalid proxy configuration")
 )
 
 // Clock supplies the current time. Tests inject a fake clock to exercise
@@ -53,6 +54,7 @@ type TransportConfig struct {
 	Burst            int
 	FailureThreshold int
 	Cooldown         time.Duration
+	ProxyURL         string // optional HTTP/SOCKS5 proxy; empty = direct
 	Clock            Clock
 }
 
@@ -69,12 +71,13 @@ type Response struct {
 // the SSRF guard, per-host rate limiting, size limits and a per-indexer
 // circuit breaker.
 type Transport struct {
-	cfg     TransportConfig
-	clock   Clock
-	client  *http.Client
-	guard   *Guard
-	breaker *circuitBreaker
-	limiter *hostLimiter
+	cfg      TransportConfig
+	clock    Clock
+	client   *http.Client
+	guard    *Guard
+	breaker  *circuitBreaker
+	limiter  *hostLimiter
+	proxyErr error
 }
 
 // NewTransport builds a transport from cfg. Defaults for zero fields are:
@@ -86,10 +89,21 @@ func NewTransport(cfg TransportConfig) *Transport {
 
 	guard := &Guard{AllowPrivate: cfg.AllowPrivate}
 	dialer := &net.Dialer{Timeout: cfg.Timeout, KeepAlive: 30 * time.Second}
+
+	var proxyURL *url.URL
+	var proxyErr error
+	if strings.TrimSpace(cfg.ProxyURL) != "" {
+		proxyURL, proxyErr = parseProxyURL(cfg.ProxyURL)
+	}
+	proxyFunc := http.ProxyURL(proxyURL)
+	if proxyURL == nil {
+		proxyFunc = nil
+	}
+
 	httpTransport := &http.Transport{
-		// Per-indexer proxies arrive with the proxy module; no global proxy is
-		// used so the SSRF guard always sees the real target.
-		Proxy:                 nil,
+		// A per-indexer proxy is trusted configuration; the SSRF guard still
+		// validates the final request target before every hop.
+		Proxy:                 proxyFunc,
 		DialContext:           guard.DialContext(dialer),
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          100,
@@ -99,11 +113,12 @@ func NewTransport(cfg TransportConfig) *Transport {
 	}
 
 	transport := &Transport{
-		cfg:     cfg,
-		clock:   cfg.Clock,
-		guard:   guard,
-		breaker: newCircuitBreaker(cfg.Clock, cfg.FailureThreshold, cfg.Cooldown),
-		limiter: newHostLimiter(cfg.RatePerSecond, cfg.Burst, cfg.Clock),
+		cfg:      cfg,
+		clock:    cfg.Clock,
+		guard:    guard,
+		breaker:  newCircuitBreaker(cfg.Clock, cfg.FailureThreshold, cfg.Cooldown),
+		limiter:  newHostLimiter(cfg.RatePerSecond, cfg.Burst, cfg.Clock),
+		proxyErr: proxyErr,
 	}
 	transport.client = &http.Client{
 		Transport:     httpTransport,
@@ -111,6 +126,34 @@ func NewTransport(cfg TransportConfig) *Transport {
 		CheckRedirect: transport.checkRedirect,
 	}
 	return transport
+}
+
+// Config returns the normalized configuration this transport was built with.
+// The per-indexer manager uses it to clone timeout, User-Agent, body limits and
+// private-address policy onto a proxy-specific transport.
+func (t *Transport) Config() TransportConfig {
+	if t == nil {
+		return TransportConfig{}
+	}
+	return t.cfg
+}
+
+// parseProxyURL validates a proxy configuration. The returned error never
+// includes the raw URL, which may carry credentials in its userinfo.
+func parseProxyURL(raw string) (*url.URL, error) {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return nil, fmt.Errorf("%w: malformed URL", ErrInvalidProxy)
+	}
+	switch strings.ToLower(parsed.Scheme) {
+	case "http", "https", "socks5", "socks5h":
+	default:
+		return nil, fmt.Errorf("%w: unsupported scheme %q", ErrInvalidProxy, parsed.Scheme)
+	}
+	if parsed.Hostname() == "" {
+		return nil, fmt.Errorf("%w: missing host", ErrInvalidProxy)
+	}
+	return parsed, nil
 }
 
 // Do executes req. The caller's request is cloned, so the User-Agent and
@@ -169,6 +212,9 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 	}
 	if req == nil || req.URL == nil {
 		return nil, errors.New("engine: request without URL")
+	}
+	if t.proxyErr != nil {
+		return nil, fmt.Errorf("engine: refusing request: %w", t.proxyErr)
 	}
 	if err := t.guard.CheckURL(req.URL); err != nil {
 		return nil, err

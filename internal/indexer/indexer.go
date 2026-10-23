@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -46,11 +47,21 @@ var (
 
 	// ErrStoreRequired is returned by New without a store.
 	ErrStoreRequired = errors.New("indexer: store is required")
+
+	// ErrQueryLimit is returned when an indexer has exhausted its daily query
+	// budget. The limit covers search, latest and run attempts.
+	ErrQueryLimit = errors.New("indexer: daily query limit reached")
+
+	// ErrGrabLimit is returned when an indexer has exhausted its daily grab
+	// budget for release downloads.
+	ErrGrabLimit = errors.New("indexer: daily grab limit reached")
 )
 
 // LegacyConnectorError is the typed error returned for a definition whose
-// connector is torznab or rss and has no factory in the registry. It unwraps
-// to ErrLegacyConnector, so errors.Is keeps working.
+// connector is torznab or rss. The bridge stays on the legacy ingest path even
+// when a family factory with the same name is registered, so those sources keep
+// working until they are rewritten. It unwraps to ErrLegacyConnector, so
+// errors.Is keeps working.
 type LegacyConnectorError struct {
 	Name string
 }
@@ -202,6 +213,12 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 	}
 	applyDefaults(indexer, parsed, settings)
 
+	proxyURL, proxySecrets, err := m.proxyURLFor(ctx, indexer)
+	if err != nil {
+		return nil, redactError(err, append(secretValues, proxySecrets...))
+	}
+	secretValues = append(secretValues, proxySecrets...)
+
 	protocol := engine.Protocol(strings.TrimSpace(indexer.Protocol))
 	if !protocol.Valid() {
 		protocol = engine.ProtocolTorrent
@@ -213,11 +230,20 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 		Protocol: protocol,
 	}
 
-	// A local indexer is an explicit opt-in: it gets its own guarded
-	// transport with private addresses allowed, never the shared public one.
+	// The shared transport serves every public indexer. A local indexer (an
+	// explicit opt-in) and an indexer with a proxy get their own transport, so
+	// private addresses and the proxy stay scoped to that one indexer.
 	transport := m.transport
-	if settingBool(settings["allow_private"]) {
-		transport = engine.NewTransport(engine.TransportConfig{AllowPrivate: true})
+	transportCfg := m.transport.Config()
+	allowPrivate := settingBool(settings["allow_private"])
+	if allowPrivate || proxyURL != "" {
+		if allowPrivate {
+			transportCfg.AllowPrivate = true
+		}
+		if proxyURL != "" {
+			transportCfg.ProxyURL = proxyURL
+		}
+		transport = engine.NewTransport(transportCfg)
 	}
 
 	name := connectorName(parsed, def)
@@ -234,10 +260,14 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 			return nil, redactError(fmt.Errorf("indexer %s: build definition connector: %w", indexer.Slug, err), secretValues)
 		}
 	default:
+		// Bridge definitions created by the backfill name torznab or rss and
+		// carry legacy_source_id: they stay on the legacy scheduler until they
+		// are rewritten as native definitions. A new native Torznab indexer
+		// (no legacy source) uses the generic torznab family connector.
+		if name == "rss" || (name == "torznab" && indexer.LegacySourceID > 0) {
+			return nil, &LegacyConnectorError{Name: name}
+		}
 		if _, ok := m.registry.Factory(name); !ok {
-			if name == "torznab" || name == "rss" {
-				return nil, &LegacyConnectorError{Name: name}
-			}
 			return nil, fmt.Errorf("indexer %s: connector %q is not registered", indexer.Slug, name)
 		}
 		connector, err = m.registry.NewConnector(name, engine.Config{
@@ -291,7 +321,69 @@ func connectorKey(def store.Definition, indexer store.Indexer) string {
 	b.WriteString(indexer.Slug)
 	b.WriteByte('|')
 	b.WriteString(indexer.Protocol)
+	b.WriteByte('|')
+	if indexer.ProxyID != nil {
+		b.WriteString(strconv.FormatInt(*indexer.ProxyID, 10))
+	}
 	return b.String()
+}
+
+// proxyURLFor resolves the optional proxy of an indexer. Sealed credentials are
+// decrypted and injected as username:password into the proxy URL. The returned
+// plaintext values are used only to redact errors and are never logged.
+func (m *Manager) proxyURLFor(ctx context.Context, indexer store.Indexer) (string, []string, error) {
+	if indexer.ProxyID == nil {
+		return "", nil, nil
+	}
+	proxy, err := m.store.GetProxy(ctx, *indexer.ProxyID)
+	if err != nil {
+		return "", nil, fmt.Errorf("indexer %s: load proxy %d: %w", indexer.Slug, *indexer.ProxyID, err)
+	}
+	raw := strings.TrimSpace(proxy.URL)
+	if raw == "" {
+		return "", nil, fmt.Errorf("indexer %s: proxy %d has no URL", indexer.Slug, proxy.ID)
+	}
+	if len(proxy.SecretsEnc) == 0 {
+		return raw, nil, nil
+	}
+	if m.vault == nil {
+		return "", nil, fmt.Errorf("indexer %s: proxy %d has sealed credentials: %w",
+			indexer.Slug, proxy.ID, ErrVaultRequired)
+	}
+	credentials, err := m.vault.OpenString(string(proxy.SecretsEnc))
+	if err != nil {
+		return "", nil, fmt.Errorf("indexer %s: decrypt proxy %d credentials: %w",
+			indexer.Slug, proxy.ID, err)
+	}
+	withCredentials, err := proxyWithCredentials(raw, credentials)
+	if err != nil {
+		return "", nil, fmt.Errorf("indexer %s: proxy %d: %w", indexer.Slug, proxy.ID, err)
+	}
+	var secrets []string
+	if strings.TrimSpace(credentials) != "" {
+		secrets = append(secrets, credentials)
+	}
+	return withCredentials, secrets, nil
+}
+
+// proxyWithCredentials injects decrypted credentials into a proxy URL. The
+// error never repeats the URL or the credentials.
+func proxyWithCredentials(raw, credentials string) (string, error) {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Hostname() == "" {
+		return "", errors.New("invalid proxy URL")
+	}
+	credentials = strings.TrimSpace(credentials)
+	if credentials == "" {
+		return raw, nil
+	}
+	username, password, hasPassword := strings.Cut(credentials, ":")
+	if hasPassword {
+		parsed.User = url.UserPassword(username, password)
+	} else {
+		parsed.User = url.User(username)
+	}
+	return parsed.String(), nil
 }
 
 // applySecrets decrypts every secret of the indexer into settings and returns

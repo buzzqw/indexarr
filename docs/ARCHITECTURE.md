@@ -205,17 +205,18 @@ reti private e metadata cloud salvo `allow_private`) e redirect rivalidati.
 | Percorso | Responsabilità |
 |---|---|
 | `internal/definition` | Formato nativo v1: parsing YAML strict, validazione, `Fingerprint` SHA-256, catena di upgrader, JSON Schema incorporato |
-| `internal/engine` | Contratti connettore/pipeline, transport con guardie, sessioni cookie, template, estrazione HTML/JSON/XML, normalizzazione e `DefinitionConnector` |
-| `internal/family` | Connettori di famiglia `unit3d` e `newznab`, registrati come factory |
+| `internal/engine` | Contratti connettore/pipeline, transport con guardie e proxy, sessioni cookie, template, estrazione HTML/JSON/XML, normalizzazione e `DefinitionConnector` |
+| `internal/family` | Connettori di famiglia `unit3d`, `newznab` e `torznab`, registrati come factory |
 | `internal/vault` | AES-256-GCM; chiave da `INDEXARR_MASTER_KEY` o file separato, mai nel database |
 | `internal/catalog` | Catalogo incorporato (`catalog.yaml` + `definitions/*.yaml`): manifest validato, definizioni parsate, sincronizzazione verso lo store |
 | `internal/indexer` | Costruisce e mette in cache il connettore da definizione + configurazione + segreti, esegue un indexer torrent/Usenet, registra storico e provenance |
 | `internal/indexersvc` | Servizio delle pagine native: validazione, creazione/aggiornamento/cancellazione indexer, separazione tra config pubblica e segreti nel vault |
 | `internal/native` | Scheduler degli indexer nativi con worker limitati; salta il ponte legacy |
-| `internal/adminapi` | API JSON `/api/v2` autenticata con API key: definizioni, catalogo, indexer, applicazioni, test/search/run |
+| `internal/adminapi` | API JSON `/api/v2` autenticata con API key: definizioni, catalogo, indexer, applicazioni, import e legacy preview, test/search/run |
 | `internal/syncjob` | Riconciliazione periodica delle applicazioni \*arr con `appsync`, persistenza di `app_indexers` e gestione dei livelli di sync |
 | `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.torrent`/`.nzb` non ancora in cache |
 | `internal/importers` | Piano di import da Prowlarr e Jackett (indexer, applicazioni, proxy, categorie) |
+| `internal/legacyimport` | Anteprima di migrazione delle `sources` legacy verso un indexer Torznab nativo |
 | `internal/appsync` | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr (API Servarr) e Mylar3/LazyLibrarian, con livelli di sync |
 | `internal/downloadclient` | Invio a qBittorrent, Transmission, Deluge, rTorrent, SABnzbd e NZBGet |
 | `internal/deftool` | Logica testabile del CLI: validazione, formattazione, controllo fixture |

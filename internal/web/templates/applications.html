@@ -1,0 +1,74 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Applicazioni</h1>
+    <p class="muted">Le istanze *arr collegate a indexarr. La chiave API resta cifrata nel vault e non viene mai mostrata.</p>
+  </div>
+  <div class="actions">
+    <a class="btn primary" href="/applications/new">Nuova applicazione</a>
+    <form method="post" action="/applications/sync" style="display:inline">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">Sincronizza tutte</button>
+    </form>
+  </div>
+</section>
+
+{{if .Unavailable}}<p class="flash warn" role="status">{{.Unavailable}}</p>{{end}}
+
+<section class="panel">
+  <div class="panel-head"><h2>Livelli di sincronizzazione</h2></div>
+  <div class="prose">
+    <ul>
+      <li><strong>Disabilitato</strong> — l'applicazione resta configurata ma non viene mai contattata e nessun indexer viene aggiunto, aggiornato o rimosso.</li>
+      <li><strong>Solo aggiunta/rimozione</strong> — indexarr aggiunge gli indexer mancanti e rimuove quelli che ha creato e non sono più desiderati, senza aggiornare quelli già presenti.</li>
+      <li><strong>Sincronizzazione completa</strong> — come sopra, ma aggiorna anche nome, URL, chiave, categorie, priorità e opzioni degli indexer già presenti.</li>
+    </ul>
+    <p>Gli indexer creati a mano nell'applicazione non vengono mai modificati o eliminati.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Tipo</th>
+          <th scope="col">Nome</th>
+          <th scope="col">URL</th>
+          <th scope="col">Livello</th>
+          <th scope="col">Ultimo sync</th>
+          <th scope="col">Ultimo errore</th>
+          <th scope="col">Chiave</th>
+          <th scope="col" class="right">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td>{{.KindLabel}}</td>
+          <td><a href="/applications/{{.Application.ID}}/edit">{{.Application.Name}}</a></td>
+          <td><code>{{.Application.URL}}</code></td>
+          <td>{{.SyncLevelLabel}}</td>
+          <td class="nowrap">{{date .Application.LastSyncAt}}</td>
+          <td>{{if .Application.LastError}}<span class="text-danger" title="{{.Application.LastError}}">{{truncate .Application.LastError 80}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+          <td>{{if .HasKey}}<span class="chip ok">configurata</span>{{else}}<span class="chip warn">assente</span>{{end}}</td>
+          <td class="right nowrap">
+            <form method="post" action="/applications/{{.Application.ID}}/sync" style="display:inline">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small" type="submit">Sync</button>
+            </form>
+            <a class="btn small" href="/applications/{{.Application.ID}}/edit">Modifica</a>
+            <form method="post" action="/applications/{{.Application.ID}}/delete" style="display:inline" data-confirm="Eliminare questa applicazione? Gli indexer già presenti nell'app non vengono toccati.">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small danger" type="submit">Elimina</button>
+            </form>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="8" class="empty">Nessuna applicazione configurata. Aggiungi Sonarr, Radarr o un altro client per sincronizzare gli indexer.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}

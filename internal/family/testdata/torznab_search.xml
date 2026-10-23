@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:torznab="http://torznab.com/schemas/2015/feed">
+  <channel>
+    <title>Example Torznab Indexer</title>
+    <item>
+      <title>Magnet.Release.2026.1080p.WEB-DL</title>
+      <guid isPermaLink="false">magnet-guid-1</guid>
+      <link>https://tracker.example/details/magnet-release</link>
+      <comments>https://tracker.example/details/magnet-release#comments</comments>
+      <pubDate>Mon, 06 May 2024 07:08:09 +0000</pubDate>
+      <category>Movies &gt; HD</category>
+      <enclosure url="https://tracker.example/download/1.torrent?passkey=SECRET" length="1234567890" type="application/x-bittorrent"/>
+      <torznab:attr name="magneturl" value="magnet:?xt=urn:btih:ABCDEF0123456789ABCDEF0123456789ABCDEF01&amp;dn=Magnet.Release"/>
+      <torznab:attr name="infohash" value="ABCDEF0123456789ABCDEF0123456789ABCDEF01"/>
+      <torznab:attr name="seeders" value="12"/>
+      <torznab:attr name="leechers" value="3"/>
+      <torznab:attr name="size" value="1234567890"/>
+      <torznab:attr name="category" value="2040"/>
+      <torznab:attr name="imdbid" value="tt1234567"/>
+      <torznab:attr name="tmdbid" value="456"/>
+      <torznab:attr name="tvdbid" value="789"/>
+    </item>
+    <item>
+      <title>Enclosure.Movie.2024.2160p</title>
+      <guid>enclosure-guid-2</guid>
+      <link>https://tracker.example/details/enclosure-movie</link>
+      <pubDate>Tue, 07 May 2024 10:11:12 GMT</pubDate>
+      <enclosure url="/api?t=get&amp;id=enclosure-guid-2" length="987654321" type="application/x-bittorrent"/>
+      <torznab:attr name="category" value="2000"/>
+      <torznab:attr name="seeders" value="5"/>
+      <torznab:attr name="leechers" value="1"/>
+      <torznab:attr name="infohash" value="0123456789ABCDEF0123456789ABCDEF01234567"/>
+    </item>
+    <item>
+      <title>Link.Only.Release.1080p</title>
+      <guid>link-guid-3</guid>
+      <link>/download/3.torrent</link>
+      <pubDate>Wed, 08 May 2024 12:13:14 +0000</pubDate>
+      <torznab:attr name="category" value="5040"/>
+      <torznab:attr name="seeders" value="42"/>
+      <torznab:attr name="leechers" value="7"/>
+    </item>
+    <item>
+      <title>Malformed release with no identity</title>
+      <category>5000</category>
+    </item>
+    <item>
+      <guid>no-title-guid</guid>
+      <link>https://tracker.example/details/no-title</link>
+    </item>
+  </channel>
+</rss>

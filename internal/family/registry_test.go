@@ -12,7 +12,7 @@ func TestRegister(t *testing.T) {
 	if err := Register(registry); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	for _, name := range []string{ConnectorUnit3D, ConnectorNewznab} {
+	for _, name := range []string{ConnectorUnit3D, ConnectorNewznab, ConnectorTorznab} {
 		if _, ok := registry.Factory(name); !ok {
 			t.Errorf("factory %q was not registered", name)
 		}
@@ -59,6 +59,25 @@ func TestRegister(t *testing.T) {
 		t.Errorf("newznab categories = %v", newznabCaps.Categories)
 	}
 
+	torznab, err := registry.NewConnector(ConnectorTorznab, engine.Config{
+		Indexer: engine.IndexerRef{Slug: "torrents"},
+		Settings: map[string]string{
+			"url":        "https://indexer.example/api",
+			"api_token":  "torznab-key",
+			"categories": "5000, 5040",
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewConnector(torznab): %v", err)
+	}
+	torznabCaps := torznab.Capabilities()
+	if torznabCaps.Protocol != engine.ProtocolTorrent {
+		t.Errorf("torznab protocol = %q", torznabCaps.Protocol)
+	}
+	if len(torznabCaps.Categories) != 2 || torznabCaps.Categories[0] != 5000 || torznabCaps.Categories[1] != 5040 {
+		t.Errorf("torznab categories = %v", torznabCaps.Categories)
+	}
+
 	if err := Register(registry); err == nil {
 		t.Fatal("duplicate Register succeeded, want error")
 	}
@@ -85,5 +104,19 @@ func TestRegisterFactoryErrors(t *testing.T) {
 	})
 	if err == nil {
 		t.Error("missing base URL did not fail")
+	}
+
+	_, err = registry.NewConnector(ConnectorTorznab, engine.Config{
+		Settings: map[string]string{"categories": "not-a-number"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "categories") {
+		t.Errorf("invalid torznab categories error = %v", err)
+	}
+
+	_, err = registry.NewConnector(ConnectorTorznab, engine.Config{
+		Settings: map[string]string{"categories": "5000", "api_key": "secret"},
+	})
+	if err == nil {
+		t.Error("missing Torznab base URL did not fail")
 	}
 }

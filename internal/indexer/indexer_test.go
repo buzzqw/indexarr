@@ -312,6 +312,15 @@ func TestLegacyConnector(t *testing.T) {
 	body := readTestdata(t, "legacy_torznab.yaml")
 	seedDefinition(t, st, "legacy-torznab", "torznab", body)
 	id := createIndexer(t, st, "legacy-torznab", "legacy-torznab", "Legacy Torznab", "torrent", `{}`)
+	// The backfill marks a bridge indexer with legacy_source_id; a native
+	// Torznab indexer (no legacy source) is handled by the family connector.
+	if err := st.UpdateIndexer(context.Background(), store.Indexer{
+		ID: id, DefinitionID: "legacy-torznab", Slug: "legacy-torznab",
+		Name: "Legacy Torznab", Protocol: "torrent", Enabled: true,
+		Priority: 25, ConfigJSON: `{}`, LegacySourceID: 7,
+	}); err != nil {
+		t.Fatalf("UpdateIndexer: %v", err)
+	}
 
 	_, _, err := manager.Connector(context.Background(), id)
 	if !errors.Is(err, ErrLegacyConnector) {
@@ -544,5 +553,24 @@ connector: fake
 	}
 	if total != 2 {
 		t.Errorf("releases = %d, want 2", total)
+	}
+}
+
+func TestNativeTorznabConnector(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	manager := newTestManager(t, st, v)
+
+	body := "schema: 1\nconnector: torznab\nmeta:\n  id: native-torznab\n  name: Native Torznab\n  type: private\n  protocol: torrent\n  urls:\n    - https://tracker.example/api\nsettings:\n  - {name: apikey, type: password, required: true}\n"
+	seedDefinition(t, st, "native-torznab", "", body)
+	id := createIndexer(t, st, "native-torznab", "native-torznab", "Native Torznab", "torrent", `{"base_url":"https://tracker.example/api"}`)
+	putSecret(t, st, v, id, "apikey", "torznab-key")
+
+	connector, _, err := manager.Connector(context.Background(), id)
+	if err != nil {
+		t.Fatalf("Connector: %v", err)
+	}
+	if _, ok := connector.(*family.Torznab); !ok {
+		t.Fatalf("connector = %T, want *family.Torznab", connector)
 	}
 }

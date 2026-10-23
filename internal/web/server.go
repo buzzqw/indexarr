@@ -21,7 +21,9 @@ import (
 	"github.com/buzzqw/indexarr/internal/ingest"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/store"
+	"github.com/buzzqw/indexarr/internal/syncjob"
 	"github.com/buzzqw/indexarr/internal/torznabapi"
+	"github.com/buzzqw/indexarr/internal/vault"
 )
 
 //go:embed templates/*.html
@@ -36,6 +38,7 @@ var pageNames = []string{
 	"dashboard", "releases", "release", "sources", "source_form", "source_bulk",
 	"runs", "run", "rules", "logs", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
+	"applications", "application_form", "import",
 }
 
 var templateFuncMap = template.FuncMap{
@@ -142,6 +145,17 @@ type Config struct {
 	// release_sources.download_ref). It returns body, content type and
 	// filename. Optional: without it the proxy only serves stored payloads.
 	DownloadResolver func(context.Context, int64) ([]byte, string, string, error)
+	// Vault seals the API keys of the downstream applications. It is
+	// optional: without it the application pages still list the configured
+	// entries but cannot store a new key.
+	Vault *vault.Vault
+	// Sync reconciles the native indexers with the downstream applications.
+	// It is optional: the pages degrade with a clear message when it is nil.
+	Sync *syncjob.Service
+	// GrabGuard checks the per-indexer daily grab limit before serving a
+	// payload; GrabRecord records a successful grab. Both are optional.
+	GrabGuard  func(context.Context, int64) error
+	GrabRecord func(context.Context, int64, int64, string) error
 }
 
 // Server serves the web interface, the Torznab API and the health endpoint.
@@ -159,6 +173,8 @@ type Server struct {
 	admin   http.Handler
 	native  *indexer.Manager
 	svc     *indexersvc.Service
+	vault   *vault.Vault
+	sync    *syncjob.Service
 }
 
 // New builds the HTTP server.
@@ -194,11 +210,16 @@ func New(cfg Config) *Server {
 		admin:   cfg.Admin,
 		native:  cfg.Native,
 		svc:     cfg.Indexers,
+		vault:   cfg.Vault,
+		sync:    cfg.Sync,
 	}
 	if cfg.Engine != nil {
 		srv.torznab.SetLiveSearch(cfg.Engine.SearchLive)
 	}
 	srv.torznab.SetDownloadResolver(cfg.DownloadResolver)
+	if cfg.GrabGuard != nil {
+		srv.torznab.SetGrabGuard(cfg.GrabGuard, cfg.GrabRecord)
+	}
 	return srv
 }
 
@@ -251,6 +272,17 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /indexers/{id}/delete", s.indexerDelete)
 	ui.HandleFunc("POST /indexers/{id}/test", s.indexerTest)
 	ui.HandleFunc("POST /indexers/{id}/run", s.indexerRun)
+	ui.HandleFunc("GET /applications", s.applicationsPage)
+	ui.HandleFunc("GET /applications/new", s.applicationNew)
+	ui.HandleFunc("POST /applications", s.applicationCreate)
+	ui.HandleFunc("POST /applications/sync", s.applicationsSyncAll)
+	ui.HandleFunc("GET /applications/{id}/edit", s.applicationEdit)
+	ui.HandleFunc("POST /applications/{id}", s.applicationUpdate)
+	ui.HandleFunc("POST /applications/{id}/delete", s.applicationDelete)
+	ui.HandleFunc("POST /applications/{id}/sync", s.applicationSync)
+	ui.HandleFunc("GET /import", s.importPage)
+	ui.HandleFunc("POST /import/prowlarr", s.importProwlarr)
+	ui.HandleFunc("POST /import/jackett", s.importJackett)
 	ui.HandleFunc("GET /runs", s.runsPage)
 	ui.HandleFunc("GET /runs/{id}", s.runPage)
 	ui.HandleFunc("POST /runs/clear", s.runsClear)

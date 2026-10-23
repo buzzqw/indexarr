@@ -11,11 +11,12 @@ import (
 const (
 	ConnectorUnit3D  = "unit3d"
 	ConnectorNewznab = "newznab"
+	ConnectorTorznab = "torznab"
 )
 
-// Register adds the UNIT3D and generic Newznab connector factories to r.
-// Settings understood by both factories are base_url (or url), api_key (or
-// api_token), categories, user_agent and allow_private.
+// Register adds the UNIT3D, generic Newznab and generic Torznab connector
+// factories to r. Settings understood by all factories are base_url (or url),
+// api_key (or api_token), categories, user_agent and allow_private.
 func Register(r *engine.Registry) error {
 	if r == nil {
 		return fmt.Errorf("family: nil registry")
@@ -25,6 +26,9 @@ func Register(r *engine.Registry) error {
 	}
 	if err := r.RegisterConnector(ConnectorNewznab, newznabFactory); err != nil {
 		return fmt.Errorf("family: register %q: %w", ConnectorNewznab, err)
+	}
+	if err := r.RegisterConnector(ConnectorTorznab, torznabFactory); err != nil {
+		return fmt.Errorf("family: register %q: %w", ConnectorTorznab, err)
 	}
 	return nil
 }
@@ -54,6 +58,23 @@ func newznabFactory(cfg engine.Config) (engine.Connector, error) {
 	}
 	userAgent := settings["user_agent"]
 	return NewNewznab(NewznabConfig{
+		Indexer:    cfg.Indexer,
+		BaseURL:    firstNonEmpty(settings["base_url"], settings["url"]),
+		APIKey:     firstNonEmpty(settings["api_key"], settings["api_token"]),
+		Transport:  transportFromSettings(cfg.Transport, settings),
+		Categories: categories,
+		UserAgent:  userAgent,
+	})
+}
+
+func torznabFactory(cfg engine.Config) (engine.Connector, error) {
+	settings := cfg.Settings
+	categories, err := parseCategoryList(settings["categories"])
+	if err != nil {
+		return nil, fmt.Errorf("torznab: categories: %w", err)
+	}
+	userAgent := settings["user_agent"]
+	return NewTorznab(TorznabConfig{
 		Indexer:    cfg.Indexer,
 		BaseURL:    firstNonEmpty(settings["base_url"], settings["url"]),
 		APIKey:     firstNonEmpty(settings["api_key"], settings["api_token"]),

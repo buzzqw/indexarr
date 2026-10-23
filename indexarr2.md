@@ -629,7 +629,7 @@ definizioni è descritto in [`docs/DEFINITIONS.md`](docs/DEFINITIONS.md).
 |---|---|---|
 | `internal/definition` | Formato nativo v1: parse YAML strict, validazione, `Fingerprint`, upgrader, JSON Schema incorporato | sì |
 | `internal/engine` | Contratti `Connector`/`Module`, pipeline a 9 stadi, transport (rate limit, breaker, SSRF), sessioni, template, estrazione HTML/JSON/XML, `DefinitionConnector` | sì |
-| `internal/family` | Connettori di famiglia UNIT3D e Newznab generico, registrati nel registry | sì |
+| `internal/family` | Connettori di famiglia UNIT3D, Newznab generico e Torznab generico, registrati nel registry | sì |
 | `internal/vault` | AES-256-GCM, chiave da `INDEXARR_MASTER_KEY` o file separato `0600` | sì |
 | `internal/store` | Tabelle §8, migrazioni numerate, backfill da `sources`, CRUD definizioni/indexer/segreti/stato/provenance/storico/app/proxy | sì |
 | `internal/catalog` | Catalogo built-in incorporato (`catalog.yaml` + `definitions/*.yaml`), validato e sincronizzabile | sì |
@@ -640,6 +640,7 @@ definizioni è descritto in [`docs/DEFINITIONS.md`](docs/DEFINITIONS.md).
 | `internal/syncjob` | Riconciliazione periodica con Sonarr/Radarr/Lidarr/Readarr/Whisparr; scrive `app_indexers` | sì |
 | `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.nzb`/`.torrent` su richiesta | sì |
 | `internal/importers` | Piano di import da Prowlarr e Jackett (definizioni, indexer, applicazioni, proxy) | sì |
+| `internal/legacyimport` | Anteprima di migrazione delle `sources` legacy verso Torznab nativo (solo lettura) | sì |
 | `internal/torznabapi` | Distribuzione Torznab: alias Jackett, routing per indexer, filtri aggregati, errori 100–900 | sì |
 | `internal/appsync` | Client Servarr (Sonarr/Radarr/Lidarr/Readarr/Whisparr), Mylar3/LazyLibrarian per il test, reconcile puro | sì |
 | `internal/deftool`, `cmd/indexarr-def` | CLI `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` | sì |
@@ -678,8 +679,11 @@ All'avvio `cmd/indexarr`:
    15 minuti;
 6. monta `/api/v2` fuori dall'autenticazione Basic della UI, con auth a API key;
 7. monta le pagine native `/definitions` e `/indexers`, con form generati dai
-   `settings`, test per fase e run manuale;
-8. avvia il server HTTP e lo scheduler legacy.
+   `settings`, test per fase e run manuale; `/applications` e `/import`
+   coprono il sync \*arr e l'anteprima di import;
+8. applica i limiti query/grab per indexer e usa il proxy HTTP/SOCKS
+   configurato per l'indexer;
+9. avvia il server HTTP e lo scheduler legacy.
 
 Il proxy `/dl/{id}.torrent` e `/dl/{id}.nzb` serve i payload salvati; se il
 payload non c'è, `downloadproxy` apre il `download_ref` cifrato e lo scarica
@@ -710,6 +714,9 @@ Nessun cookie, nessun CSRF. Errori JSON.
 | GET/PUT/DELETE | `/api/v2/applications/{id}` |
 | POST | `/api/v2/applications/{id}/sync` |
 | POST | `/api/v2/applications/sync` |
+| POST | `/api/v2/import/prowlarr` |
+| POST | `/api/v2/import/jackett` |
+| GET | `/api/v2/legacy/preview` |
 
 Le risposte non contengono mai `api_key`, password, cookie o URL del tracker.
 La ricerca restituisce solo titolo, GUID, dimensione, seeders/leechers,
@@ -753,21 +760,22 @@ indexer ponte su 37 e non tocca il percorso legacy.
 
 Ancora da fare, in ordine di valore:
 
-1. **Limiti query/grab applicati davvero** (le colonne esistono, l'enforcement
-   no) e stato `blocked` per i CAPTCHA.
-2. **Proxy per indexer** (HTTP, SOCKS4/5, FlareSolverr): oggi c'è solo
-   `allow_private`.
-3. **Catalogo reale**: sostituire le definizioni `bozza` con definizioni
+1. **Catalogo reale**: sostituire le definizioni `bozza` con definizioni
    `verificate` su fixture osservate; health check live e canary.
-4. **Credenziali legacy → vault** e svuotamento progressivo del ponte.
-5. **Provenance in uscita**: “visto su N indexer”, scelta del link migliore,
+2. **Migrazione legacy applicata**: `legacyimport` produce solo l'anteprima;
+   mancano conversione delle sorgenti in definizioni Torznab native,
+   spostamento dei segreti nel vault e disattivazione con rollback.
+3. **Provenance in uscita**: “visto su N indexer”, scelta del link migliore,
    refresh dei seeders con TTL.
-6. **App sync**: snapshot per il rollback in un clic, pagine web, sync per
-   Mylar3/LazyLibrarian quando l'API è verificata.
-7. **Import Prowlarr/Jackett cablato**: `internal/importers` produce il piano;
-   mancano endpoint e UI che lo applichino.
-8. **Sicurezza e manutenzione**: firma del catalogo remoto, studio delle
-   definizioni, riparazione assistita, rete di salute opt-in.
+4. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
+   (oggi `ErrUnsupported`), filtri per tag.
+5. **Import applicato**: oggi la UI mostra il piano Prowlarr/Jackett ma non
+   crea definizioni/indexer; manca l'apply con anteprima e rollback.
+6. **FlareSolverr per indexer** (i proxy HTTP/SOCKS sono fatti), stato
+   `blocked` per CAPTCHA, firma del catalogo remoto, studio delle definizioni,
+   riparazione assistita, rete di salute opt-in.
+7. **Catalogo e stato**: health check per definizione, transizioni
+   `verificata`/`degradata`, notifiche.
 
 ### 15.8 Come lavorare (per il prossimo agente)
 

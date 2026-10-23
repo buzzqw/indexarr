@@ -1,0 +1,159 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Importa</h1>
+    <p class="muted">Leggi la configurazione di Prowlarr o Jackett e genera un piano di migrazione per indexarr 2.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Anteprima, nessuna modifica</h2></div>
+  <div class="prose">
+    <p>L'import produce solo un <strong>piano</strong>: indexer, applicazioni e proxy trovati nella configurazione di origine. <strong>Non</strong> crea definizioni, non scrive nel database e non modifica Prowlarr o Jackett.</p>
+    <p>L'applicazione del piano arriverà insieme alla mappatura delle definizioni native. Le chiavi API, le password e gli altri segreti non vengono mostrati: il piano indica soltanto se un valore è presente.</p>
+  </div>
+</section>
+
+<div class="form-grid">
+  <form class="panel form" method="post" action="/import/prowlarr">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="panel-head"><h2>Prowlarr</h2></div>
+    <div class="field grow">
+      <label for="prowlarr_base_url">URL di Prowlarr</label>
+      <input id="prowlarr_base_url" name="base_url" type="url" required value="{{.ProwlarrURL}}" placeholder="http://prowlarr:9696">
+      <p class="help">Base URL dell'istanza, senza <code>/api/v1</code>.</p>
+    </div>
+    <div class="field grow">
+      <label for="prowlarr_api_key">Chiave API</label>
+      <input id="prowlarr_api_key" name="api_key" type="password" required value="" autocomplete="new-password" spellcheck="false" placeholder="chiave API di Prowlarr">
+      <p class="help">Usata solo per questa richiesta e mai mostrata nel piano.</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">Genera piano da Prowlarr</button>
+    </div>
+  </form>
+
+  <form class="panel form" method="post" action="/import/jackett">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="panel-head"><h2>Jackett</h2></div>
+    <div class="field grow">
+      <label for="jackett_path">Directory dati di Jackett</label>
+      <input id="jackett_path" name="path" type="text" required value="{{.JackettPath}}" placeholder="/config/Jackett">
+      <p class="help">Directory che contiene <code>ServerConfig.json</code> e <code>Indexers/</code>, oppure il percorso del solo <code>ServerConfig.json</code>.</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">Genera piano da Jackett</button>
+    </div>
+  </form>
+</div>
+
+{{with .Plan}}
+<section class="panel">
+  <div class="panel-head"><h2>Piano da {{.Source}}</h2></div>
+  <div class="prose">
+    <p>Piano generato in sola anteprima: nessun elemento è stato salvato.</p>
+  </div>
+
+  <h2>Indexer ({{len .Indexers}})</h2>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Nome</th>
+          <th scope="col">Implementazione</th>
+          <th scope="col">Protocollo</th>
+          <th scope="col">Definizione suggerita</th>
+          <th scope="col">Base URL</th>
+          <th scope="col">Categorie</th>
+          <th scope="col">Tag</th>
+          <th scope="col">Stato</th>
+          <th scope="col">Segreti</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Indexers}}
+        <tr>
+          <td>{{.Name}}</td>
+          <td>{{.Implementation}}</td>
+          <td>{{.Protocol}}</td>
+          <td><code>{{.DefinitionHint}}</code></td>
+          <td><code>{{.BaseURL}}</code></td>
+          <td>{{if .Categories}}{{.Categories}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td>{{if .Tags}}{{.Tags}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td>{{if .Enabled}}<span class="chip ok">abilitato</span>{{else}}<span class="chip">disabilitato</span>{{end}}</td>
+          <td>
+            {{if .HasKey}}<span class="chip ok">chiave</span>{{end}}
+            {{if .HasCredentials}}<span class="chip warn">credenziali</span>{{end}}
+            {{if and (not .HasKey) (not .HasCredentials)}}<span class="muted">—</span>{{end}}
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="9" class="empty">Nessun indexer trovato nella configurazione.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Applicazioni ({{len .Applications}})</h2>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Tipo</th>
+          <th scope="col">Nome</th>
+          <th scope="col">URL</th>
+          <th scope="col">Livello sync</th>
+          <th scope="col">Chiave</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Applications}}
+        <tr>
+          <td>{{.Kind}}</td>
+          <td>{{.Name}}</td>
+          <td><code>{{.URL}}</code></td>
+          <td>{{.SyncLevel}}</td>
+          <td>{{if .HasKey}}<span class="chip ok">presente</span>{{else}}<span class="muted">—</span>{{end}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="5" class="empty">Nessuna applicazione trovata nella configurazione.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Proxy ({{len .Proxies}})</h2>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Tipo</th>
+          <th scope="col">URL</th>
+          <th scope="col">Utente</th>
+          <th scope="col">Password</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Proxies}}
+        <tr>
+          <td>{{.Kind}}</td>
+          <td><code>{{.URL}}</code></td>
+          <td>{{if .HasUser}}<span class="chip ok">presente</span>{{else}}<span class="muted">—</span>{{end}}</td>
+          <td>{{if .HasPassword}}<span class="chip ok">presente</span>{{else}}<span class="muted">—</span>{{end}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="4" class="empty">Nessun proxy trovato nella configurazione.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  {{if .Warnings}}
+  <h2>Avvisi ({{len .Warnings}})</h2>
+  <div class="prose">
+    <ul>{{range .Warnings}}<li>{{.}}</li>{{end}}</ul>
+  </div>
+  {{end}}
+</section>
+{{end}}
+{{end}}

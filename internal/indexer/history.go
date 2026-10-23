@@ -91,9 +91,77 @@ func (m *Manager) recordHistory(ctx context.Context, indexerID int64, kind, quer
 	}
 }
 
+// queryHistoryKinds are the indexer operations counted against the daily query
+// limit. A rejected attempt is not written for Search/Latest, so the count
+// reflects completed or started work only.
+var queryHistoryKinds = []string{"search", "latest", "run"}
+
+// checkQueryLimit enforces indexer.QueryLimit over a rolling 24-hour window
+// before the connector is touched. A zero limit disables the check.
+func (m *Manager) checkQueryLimit(ctx context.Context, indexerID int64) error {
+	indexer, err := m.store.GetIndexer(ctx, indexerID)
+	if err != nil {
+		return fmt.Errorf("indexer %d: %w", indexerID, err)
+	}
+	if indexer.QueryLimit <= 0 {
+		return nil
+	}
+	count, err := m.store.CountIndexerHistory(ctx, indexerID, queryHistoryKinds,
+		time.Now().Add(-24*time.Hour))
+	if err != nil {
+		return fmt.Errorf("indexer %s: count queries: %w", indexer.Slug, err)
+	}
+	if count >= indexer.QueryLimit {
+		return fmt.Errorf("indexer %s: %w (%d/%d in 24h)",
+			indexer.Slug, ErrQueryLimit, count, indexer.QueryLimit)
+	}
+	return nil
+}
+
+// CheckGrab enforces indexer.GrabLimit over a rolling 24-hour window. It is
+// called before a release payload is served; a zero limit disables the check.
+func (m *Manager) CheckGrab(ctx context.Context, indexerID int64) error {
+	indexer, err := m.store.GetIndexer(ctx, indexerID)
+	if err != nil {
+		return fmt.Errorf("indexer %d: %w", indexerID, err)
+	}
+	if indexer.GrabLimit <= 0 {
+		return nil
+	}
+	count, err := m.store.CountIndexerHistory(ctx, indexerID, []string{"grab"},
+		time.Now().Add(-24*time.Hour))
+	if err != nil {
+		return fmt.Errorf("indexer %s: count grabs: %w", indexer.Slug, err)
+	}
+	if count >= indexer.GrabLimit {
+		return fmt.Errorf("indexer %s: %w (%d/%d in 24h)",
+			indexer.Slug, ErrGrabLimit, count, indexer.GrabLimit)
+	}
+	return nil
+}
+
+// RecordGrab appends a grab history row. Callers invoke it only after a
+// download was served successfully.
+func (m *Manager) RecordGrab(ctx context.Context, indexerID int64, releaseID int64, title string) error {
+	_, err := m.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+		IndexerID: indexerID,
+		Kind:      "grab",
+		Query:     truncate(title, 300),
+		Status:    "ok",
+		StartedAt: time.Now(),
+	})
+	if err != nil {
+		return fmt.Errorf("indexer %d: record grab for release %d: %w", indexerID, releaseID, err)
+	}
+	return nil
+}
+
 // Search runs a search through the cached connector and records history.
 func (m *Manager) Search(ctx context.Context, indexerID int64, req engine.SearchRequest) ([]engine.Item, error) {
 	started := time.Now()
+	if err := m.checkQueryLimit(ctx, indexerID); err != nil {
+		return nil, err
+	}
 	connector, indexer, err := m.Connector(ctx, indexerID)
 	if err != nil {
 		m.recordHistory(ctx, indexerID, "search", req.Query, statusFor(ctx, err), started, 0, err)
@@ -111,6 +179,9 @@ func (m *Manager) Search(ctx context.Context, indexerID int64, req engine.Search
 // history.
 func (m *Manager) Latest(ctx context.Context, indexerID int64, req engine.LatestRequest) ([]engine.Item, error) {
 	started := time.Now()
+	if err := m.checkQueryLimit(ctx, indexerID); err != nil {
+		return nil, err
+	}
 	connector, indexer, err := m.Connector(ctx, indexerID)
 	if err != nil {
 		m.recordHistory(ctx, indexerID, "latest", "", statusFor(ctx, err), started, 0, err)

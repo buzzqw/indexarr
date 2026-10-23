@@ -523,16 +523,19 @@ rimosse.
 | Contratti `Connector`, `Module`, pipeline a 9 stadi | `internal/engine` | test + race |
 | Transport: rate limit per host, circuit breaker, `Retry-After`, SSRF, limiti | `internal/engine` | test + race |
 | Motore definizioni: HTML/JSON/XML, login/CSRF/cookie/token/basic, paginazione, tipi, fallback, dedup | `internal/engine` | test + fixture |
-| Connettori di famiglia UNIT3D e Newznab generico | `internal/family` | test + fixture |
+| Connettori di famiglia UNIT3D, Newznab generico e Torznab generico | `internal/family` | test + fixture |
+| Limiti query/grab per indexer e proxy HTTP/SOCKS per indexer | `internal/indexer`, `internal/engine`, `internal/torznabapi` | test + race |
 | Runtime store+vault+definizione+connettore, run e provenance | `internal/indexer` | test + race |
 | Scheduler degli indexer nativi, skip del ponte legacy | `internal/native` | test + race |
 | Catalogo built-in (bozza) e sync nel DB | `internal/catalog` | test |
 | UI web per definizioni e indexer nativi (form dai `settings`, test/run) | `internal/web`, `internal/indexersvc` | test + QA |
-| API `/api/v2`: definizioni, catalogo, indexer, applicazioni, test/search/run, segreti nel vault | `internal/adminapi` | test + QA reale |
+| UI web per applicazioni e anteprima import Prowlarr/Jackett | `internal/web` | test + QA |
+| API `/api/v2`: definizioni, catalogo, indexer, applicazioni, import, legacy preview | `internal/adminapi` | test + QA reale |
 | App sync: riconciliazione periodica con le \*arr, `applications`/`app_indexers` | `internal/syncjob` | test + race |
 | Payload Usenet `.nzb`, protocollo per release, proxy download opaco | `internal/store` (migrazione 2), `internal/downloadproxy`, `internal/torznabapi` | test + race |
 | Client Deluge, rTorrent, SABnzbd, NZBGet | `internal/downloadclient` | test + race |
 | Import da Prowlarr e Jackett (piano di migrazione) | `internal/importers` | test + race |
+| Anteprima di migrazione delle sorgenti legacy verso Torznab nativo | `internal/legacyimport` | test + race |
 | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr e reconcile | `internal/appsync` | test + race |
 | CLI `indexarr-def`, esempi, documentazione | `cmd/indexarr-def`, `internal/deftool` | test + CI |
 | Alias Jackett/Newznab, routing per indexer, filtri aggregati, errori 100–900 | `internal/torznabapi` | test + QA |
@@ -551,29 +554,31 @@ rimosse.
   `public_url` (o l'indirizzo locale come fallback) e l'API key primaria.
 - Il resolver del proxy serve i payload non ancora salvati leggendo il
   `download_ref` cifrato e chiamando il connettore dell'indexer.
+- I limiti query/grab per indexer sono applicati dal runtime e dal proxy;
+  i proxy HTTP/SOCKS dell'indexer sono usati dal trasporto dedicato.
+- Le pagine `/applications` e `/import` coprono il sync \*arr e l'anteprima di
+  import Prowlarr/Jackett; l'applicazione del piano di import è il passo dopo.
 - Gli errori del vault non bloccano l'avvio: il percorso legacy continua a
   funzionare e solo gli indexer con segreti restano indisponibili.
 
 ### Prossimi passi (non ancora fatti)
 
-1. **Limiti query/grab applicati davvero** (la colonna c'è, l'enforcement no) e
-   stato `blocked` per i CAPTCHA.
-2. **Proxy per indexer** (HTTP, SOCKS4/5, FlareSolverr) nel transport; oggi
-   esiste solo `allow_private`.
-3. **Catalogo reale**: le definizioni built-in sono `bozza`; servono fixture
+1. **Catalogo reale**: le definizioni built-in sono `bozza`; servono fixture
    osservate dai siti e health check live prima di dichiararle `verificate`.
-4. **Migrazione delle credenziali legacy nel vault** e rimozione progressiva
-   del ponte.
-5. **Provenance in uscita**: “visto su N indexer”, scelta del link migliore,
+2. **Migrazione legacy applicata**: `legacyimport` produce solo l'anteprima;
+   mancano conversione `sources` → definizione Torznab nativa, spostamento dei
+   segreti nel vault e disattivazione della sorgente con rollback.
+3. **Provenance in uscita**: “visto su N indexer”, scelta del link migliore,
    refresh seeders con TTL.
-6. **App sync**: snapshot per il rollback in un clic, pagine web e sync per
-   Mylar3/LazyLibrarian (i client rispondono `ErrUnsupported` finché l'API non
-   è verificata).
-7. **Import Prowlarr/Jackett cablato**: il package `internal/importers`
-   produce il piano, mancano endpoint/UI che lo applichino a definizioni e
-   indexer.
-8. **Firma del catalogo remoto**, studio delle definizioni, riparazione
-   assistita, canary, rete di salute opt-in.
+4. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
+   (oggi `ErrUnsupported`), filtri per tag.
+5. **Import applicato**: endpoint/UI che creino definizioni e indexer dal piano
+   Prowlarr/Jackett, non solo l'anteprima.
+6. **FlareSolverr per indexer** (i proxy HTTP/SOCKS sono fatti), stato `blocked`
+   per CAPTCHA, firma del catalogo remoto, studio delle definizioni, canary e
+   rete di salute opt-in.
+7. **Catalogo e stato**: health check per definizione, transizioni
+   `verificata`/`degradata`, notifiche.
 
 ### Verifica
 

@@ -98,6 +98,8 @@ check /definitions "Definizioni"
 check /definitions/new "Nuova definizione"
 check /indexers "Indexer nativi"
 check /indexers/new "Nuovo indexer nativo"
+check /applications "Applicazioni"
+check /import "Importa"
 
 KEY="$(grep -o 'apikey=[0-9a-f]\{64\}' "$LOG" | head -n 1 | cut -d= -f2)"
 if [[ -z "$KEY" ]]; then
@@ -186,5 +188,12 @@ if ! grep -q '"added":0' <<<"$SYNC"; then
 fi
 curl -fsS -X DELETE "$BASE/api/v2/applications/$APP_ID?apikey=$KEY" >/dev/null
 echo "ok   /api/v2/applications (vault + sync)"
+
+LEGACY="$(curl -fsS "$BASE/api/v2/legacy/preview?apikey=$KEY")"
+if ! grep -q '"counts"' <<<"$LEGACY" || ! grep -q '"candidates"' <<<"$LEGACY"; then
+  echo "FAIL /api/v2/legacy/preview: $LEGACY" >&2
+  exit 1
+fi
+echo "ok   /api/v2/legacy/preview"
 
 echo "QA passed"

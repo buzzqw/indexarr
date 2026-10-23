@@ -573,6 +573,60 @@ func (s *Store) RecordIndexerHistory(ctx context.Context, in IndexerHistory) (in
 	return id, nil
 }
 
+// CountIndexerHistory counts history rows of the given kinds for one indexer
+// that started at or after since. An empty kinds slice counts every kind. It is
+// used by the query and grab limits, so the caller decides the time window.
+func (s *Store) CountIndexerHistory(ctx context.Context, indexerID int64, kinds []string, since time.Time) (int, error) {
+	query := `SELECT COUNT(*) FROM indexer_history WHERE indexer_id = ?`
+	args := []any{indexerID}
+	if len(kinds) > 0 {
+		placeholders := make([]string, len(kinds))
+		for i, kind := range kinds {
+			placeholders[i] = "?"
+			args = append(args, kind)
+		}
+		query += ` AND kind IN (` + strings.Join(placeholders, ", ") + `)`
+	}
+	query += ` AND started_at >= ?`
+	args = append(args, since.Unix())
+	var count int
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count indexer history %d: %w", indexerID, err)
+	}
+	return count, nil
+}
+
+// IndexerForRelease returns the indexer that most recently supplied a release,
+// joined through release_sources. A release without provenance reports false
+// with a nil error, matching the sql.ErrNoRows convention without exposing it.
+func (s *Store) IndexerForRelease(ctx context.Context, releaseID int64) (Indexer, bool, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT `+qualifiedIndexerColumns("i")+`
+		FROM release_sources rs
+		JOIN indexers i ON i.id = rs.indexer_id
+		WHERE rs.release_id = ?
+		ORDER BY rs.last_seen_at DESC, rs.indexer_id DESC
+		LIMIT 1`, releaseID)
+	out, err := scanIndexer(row)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return Indexer{}, false, nil
+		}
+		return Indexer{}, false, fmt.Errorf("indexer for release %d: %w", releaseID, err)
+	}
+	return out, true, nil
+}
+
+// qualifiedIndexerColumns prefixes the shared column list with a table alias so
+// it can be used in joins.
+func qualifiedIndexerColumns(alias string) string {
+	columns := strings.Split(indexerColumns, ",")
+	for i, column := range columns {
+		columns[i] = alias + "." + strings.TrimSpace(column)
+	}
+	return strings.Join(columns, ", ")
+}
+
 // ListIndexerHistory returns the newest history rows for one indexer.
 func (s *Store) ListIndexerHistory(ctx context.Context, indexerID int64, limit int) ([]IndexerHistory, error) {
 	if limit <= 0 {

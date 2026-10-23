@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<caps xmlns:torznab="http://torznab.com/schemas/2015/feed">
+  <server version="1.0" title="Example Torznab Indexer"/>
+  <limits max="100" default="50"/>
+  <searching>
+    <search available="yes" supportedParams="q"/>
+    <tv-search available="yes" supportedParams="q,season,ep,imdbid,tvdbid"/>
+    <movie-search available="yes" supportedParams="q,imdbid,tmdbid"/>
+    <music-search available="yes" supportedParams="q,artist,album,rid"/>
+    <book-search available="no" supportedParams="q,author,title"/>
+  </searching>
+  <categories>
+    <category id="2000" name="Movies">
+      <subcat id="2040" name="Movies/HD"/>
+      <subcat id="2045" name="Movies/UHD"/>
+    </category>
+    <category id="5000" name="TV">
+      <subcat id="5040" name="TV/HD"/>
+    </category>
+  </categories>
+</caps>

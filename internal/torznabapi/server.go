@@ -33,6 +33,19 @@ type Server struct {
 	liveSearch func(context.Context, store.Filter) (int, error)
 
 	downloadResolver func(context.Context, int64) ([]byte, string, string, error)
+
+	grabCheck  func(context.Context, int64) error
+	grabRecord func(context.Context, int64, int64, string) error
+}
+
+// SetGrabGuard installs the optional grab policy. check is called before a
+// stored or resolved payload is served; a non-nil error is reported as a grab
+// limit and blocks the download. record is called after a GET response was
+// written successfully. HEAD requests are checked but never recorded.
+// Missing releases or releases without provenance are not blocked.
+func (s *Server) SetGrabGuard(check func(context.Context, int64) error, record func(context.Context, int64, int64, string) error) {
+	s.grabCheck = check
+	s.grabRecord = record
 }
 
 // SetLiveSearch installs the callback used when the cache has no results.
@@ -349,6 +362,27 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		}
 		return
 	}
+
+	// A grab is a payload delivery: resolve the indexer that supplied the
+	// release and apply its daily grab budget before writing anything.
+	var grabIndexerID int64
+	if s.grabCheck != nil || s.grabRecord != nil {
+		indexer, found, err := s.store.IndexerForRelease(r.Context(), release.ID)
+		if err != nil {
+			s.log.Warn("torznab: resolve grab indexer", "component", "indexarr",
+				"subsystem", "torznab", "release_id", release.ID)
+		} else if found {
+			grabIndexerID = indexer.ID
+			if s.grabCheck != nil {
+				if err := s.grabCheck(r.Context(), indexer.ID); err != nil {
+					w.Header().Set("Retry-After", "3600")
+					s.writeError(w, http.StatusTooManyRequests, "grab limit reached")
+					return
+				}
+			}
+		}
+	}
+
 	if strings.TrimSpace(contentType) == "" {
 		contentType = "application/x-bittorrent"
 		if usenet {
@@ -372,6 +406,15 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 	}
 	if _, err := w.Write(body); err != nil {
 		s.log.Debug("torznab: write payload", "error", err)
+		return
+	}
+	if grabIndexerID > 0 && s.grabRecord != nil {
+		recordCtx := context.WithoutCancel(r.Context())
+		if err := s.grabRecord(recordCtx, grabIndexerID, release.ID, release.Title); err != nil {
+			s.log.Warn("torznab: record grab", "component", "indexarr",
+				"subsystem", "torznab", "indexer_id", grabIndexerID,
+				"release_id", release.ID)
+		}
 	}
 }
 
