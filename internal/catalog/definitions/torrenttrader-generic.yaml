@@ -1,0 +1,40 @@
+# BOZZA (draft). Generic TorrentTrader/TBDev family definition.
+#
+# The torrenttrader family connector logs in with the form, parses the table
+# and downloads via download.php. Default selectors and paths are drafts and
+# are intentionally configurable in the connector profile.
+schema: 1
+connector: torrenttrader
+
+meta:
+  id: torrenttrader-generic
+  name: TorrentTrader (generic)
+  language: en-US
+  type: private
+  protocol: torrent
+  author: indexarr
+  description: Generic TorrentTrader/TBDev tracker; form login and HTML search.
+  urls:
+    - https://torrenttrader.example.invalid/
+  updated: "2026-10-23"
+
+settings:
+  - { name: url, type: text, label: Base URL, help: "Tracker base URL", required: true }
+  - { name: username, type: text, label: Username, required: true }
+  - { name: password, type: password, label: Password, required: true }
+  - { name: passkey, type: password, label: Passkey, help: "Optional passkey appended to download links", required: false }
+
+categories:
+  - { site: "1", standard: 2000, desc: "Movies" }
+  - { site: "2", standard: 5000, desc: "TV" }
+  - { site: "3", standard: 3000, desc: "Audio" }
+  - { site: "4", standard: 7000, desc: "Books" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep]
+  movie-search: [q, imdbid]
+
+health:
+  query: test
+  min_rows: 0

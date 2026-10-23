@@ -1,0 +1,30 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: Synthetic JSON Usenet
+name: Synthetic JSON Usenet API
+description: A made-up JSON API used to exercise nested paths and warnings.
+type: semi-private
+protocol: usenet
+links:
+  - https://json.example/api
+settings:
+  - { name: apikey, type: password, label: API Key }
+search:
+  count: 25
+  paths:
+    - path: /api/v1/search
+      method: get
+  inputs:
+    q: "{{ .Keywords }}"
+    apikey: "{{ .Config.apikey }}"
+  response:
+    type: json
+    rows: { selector: "$.data.results" }
+    fields:
+      title: { selector: name, filters: [trim] }
+      download: { path: download.url }
+      size: { path: size }
+      seeders: { path: stats.seeders }
+      date: { path: published, filters: [{ name: dateparse, args: ["2006-01-02T15:04:05Z07:00"] }] }
+      category: { path: category }
+      imdb: { path: ids.imdb }
+      description: { selector: summary, attribute: href }

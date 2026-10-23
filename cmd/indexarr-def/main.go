@@ -4,12 +4,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
+	"github.com/buzzqw/indexarr/internal/cardigann"
 	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/deftool"
 )
@@ -43,6 +46,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runFingerprint(args[1:], stdout, stderr)
 	case "check-fixtures":
 		return runCheckFixtures(args[1:], stdout, stderr)
+	case "convert-cardigann":
+		return runConvertCardigann(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "indexarr-def: unknown command %q\n", args[0])
 		usage(stderr)
@@ -59,10 +64,13 @@ commands:
   fmt [-w] <file>                   print or rewrite canonical YAML
   fingerprint <file>                print the SHA-256 of the raw file
   check-fixtures <file>             verify tests[].fixture files exist
+  convert-cardigann [flags] <path>  convert local Cardigann YAML to native v1
 
 flags:
   -json      validate: emit a machine-readable array
   -w         fmt: rewrite the file in place
+  -o <dir>   convert-cardigann: output directory (default stdout for one file)
+  -author    convert-cardigann: author recorded in the native definition
   -version   print the version and exit
 `)
 }
@@ -219,6 +227,95 @@ func runCheckFixtures(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "FAIL %s: %v\n", result.Path, result.Err)
 	}
 	if failed {
+		return 1
+	}
+	return 0
+}
+
+// runConvertCardigann converts local Cardigann YAML (Jackett/Prowlarr) into
+// native v1 definitions. This is a local migration tool: indexarr never
+// executes Cardigann at runtime and never ships converted definitions.
+func runConvertCardigann(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("convert-cardigann", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	outDir := flags.String("o", "", "output directory (default stdout for one file)")
+	author := flags.String("author", "cardigann-import", "author recorded in the native definition")
+	flags.Usage = func() {
+		fmt.Fprintln(stderr, "usage: indexarr-def convert-cardigann [-o dir] [-author name] <file-or-dir>...")
+	}
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if flags.NArg() == 0 {
+		flags.Usage()
+		return 2
+	}
+
+	var results []cardigann.Result
+	var failures int
+	add := func(result cardigann.Result) {
+		results = append(results, result)
+		for _, warning := range result.Warnings {
+			fmt.Fprintf(stderr, "warning %s: %s\n", result.SourceID, warning)
+		}
+		for _, unsupported := range result.Unsupported {
+			fmt.Fprintf(stderr, "unsupported %s: %s\n", result.SourceID, unsupported)
+		}
+	}
+	for _, path := range flags.Args() {
+		info, err := os.Stat(path)
+		if err != nil {
+			fmt.Fprintf(stderr, "FAIL %s: %v\n", path, err)
+			failures++
+			continue
+		}
+		if info.IsDir() {
+			converted, errs := cardigann.ConvertDirectory(context.Background(), path, cardigann.Options{Author: *author})
+			for _, result := range converted {
+				add(result)
+			}
+			for _, err := range errs {
+				fmt.Fprintf(stderr, "FAIL %s: %v\n", path, err)
+				failures++
+			}
+			continue
+		}
+		result, err := cardigann.ConvertFile(path)
+		if err != nil {
+			fmt.Fprintf(stderr, "FAIL %s: %v\n", path, err)
+			failures++
+			continue
+		}
+		add(result)
+	}
+
+	if *outDir == "" {
+		if len(results) != 1 {
+			fmt.Fprintln(stderr, "indexarr-def: use -o <dir> when converting more than one definition")
+			return 2
+		}
+		if _, err := stdout.Write(results[0].Body); err != nil {
+			fmt.Fprintf(stderr, "indexarr-def: write output: %v\n", err)
+			return 2
+		}
+	} else {
+		if err := os.MkdirAll(*outDir, 0o755); err != nil {
+			fmt.Fprintf(stderr, "indexarr-def: create output directory: %v\n", err)
+			return 2
+		}
+		for _, result := range results {
+			name := result.Definition.Meta.ID + ".yaml"
+			target := filepath.Join(*outDir, name)
+			if err := os.WriteFile(target, result.Body, 0o644); err != nil {
+				fmt.Fprintf(stderr, "indexarr-def: write %s: %v\n", target, err)
+				failures++
+				continue
+			}
+			fmt.Fprintf(stdout, "ok %s -> %s (id=%s, %d warnings, %d unsupported)\n",
+				result.SourceID, target, result.Definition.Meta.ID, len(result.Warnings), len(result.Unsupported))
+		}
+	}
+	if failures > 0 {
 		return 1
 	}
 	return 0

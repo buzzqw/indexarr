@@ -1,0 +1,17 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-dynamic-template
+name: Synthetic Dynamic Template
+description: A made-up tracker whose search needs a dynamic date template.
+type: private
+links:
+  - https://dynamic.example/
+search:
+  paths:
+    - path: search.php
+  inputs:
+    q: "{{ .Keywords }}"
+    when: "{{ .Today }}"
+  rows: { selector: table.results tr }
+  fields:
+    title: { selector: a.title }
+    download: { selector: a.dl, attribute: href }

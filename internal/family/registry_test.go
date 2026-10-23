@@ -12,7 +12,13 @@ func TestRegister(t *testing.T) {
 	if err := Register(registry); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
-	for _, name := range []string{ConnectorUnit3D, ConnectorNewznab, ConnectorTorznab} {
+	for _, name := range []string{
+		ConnectorUnit3D,
+		ConnectorNewznab,
+		ConnectorTorznab,
+		ConnectorGazelle,
+		ConnectorNexusPHP,
+	} {
 		if _, ok := registry.Factory(name); !ok {
 			t.Errorf("factory %q was not registered", name)
 		}
@@ -78,6 +84,46 @@ func TestRegister(t *testing.T) {
 		t.Errorf("torznab categories = %v", torznabCaps.Categories)
 	}
 
+	gazelle, err := registry.NewConnector(ConnectorGazelle, engine.Config{
+		Indexer: engine.IndexerRef{Slug: "gazelle"},
+		Settings: map[string]string{
+			"base_url":   "https://gazelle.example",
+			"apikey":     "gazelle-key",
+			"categories": "3000",
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewConnector(gazelle): %v", err)
+	}
+	gazelleCaps := gazelle.Capabilities()
+	if gazelleCaps.Protocol != engine.ProtocolTorrent {
+		t.Errorf("gazelle protocol = %q", gazelleCaps.Protocol)
+	}
+	if len(gazelleCaps.Categories) != 1 || gazelleCaps.Categories[0] != 3000 {
+		t.Errorf("gazelle categories = %v", gazelleCaps.Categories)
+	}
+
+	nexus, err := registry.NewConnector(ConnectorNexusPHP, engine.Config{
+		Indexer: engine.IndexerRef{Slug: "nexus"},
+		Settings: map[string]string{
+			"url":        "https://nexus.example",
+			"username":   "user",
+			"password":   "pass",
+			"passkey":    "pk",
+			"categories": "401, 402",
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewConnector(nexusphp): %v", err)
+	}
+	nexusCaps := nexus.Capabilities()
+	if nexusCaps.Protocol != engine.ProtocolTorrent {
+		t.Errorf("nexusphp protocol = %q", nexusCaps.Protocol)
+	}
+	if len(nexusCaps.Categories) != 2 || nexusCaps.Categories[0] != 401 || nexusCaps.Categories[1] != 402 {
+		t.Errorf("nexusphp categories = %v", nexusCaps.Categories)
+	}
+
 	if err := Register(registry); err == nil {
 		t.Fatal("duplicate Register succeeded, want error")
 	}
@@ -118,5 +164,31 @@ func TestRegisterFactoryErrors(t *testing.T) {
 	})
 	if err == nil {
 		t.Error("missing Torznab base URL did not fail")
+	}
+
+	_, err = registry.NewConnector(ConnectorGazelle, engine.Config{
+		Settings: map[string]string{"categories": "not-a-number"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "categories") {
+		t.Errorf("invalid gazelle categories error = %v", err)
+	}
+	_, err = registry.NewConnector(ConnectorGazelle, engine.Config{
+		Settings: map[string]string{"base_url": "https://gazelle.example"},
+	})
+	if err == nil {
+		t.Error("missing gazelle API key did not fail")
+	}
+
+	_, err = registry.NewConnector(ConnectorNexusPHP, engine.Config{
+		Settings: map[string]string{"categories": "not-a-number"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "categories") {
+		t.Errorf("invalid nexusphp categories error = %v", err)
+	}
+	_, err = registry.NewConnector(ConnectorNexusPHP, engine.Config{
+		Settings: map[string]string{"username": "user", "password": "pass"},
+	})
+	if err == nil {
+		t.Error("missing NexusPHP base URL did not fail")
 	}
 }

@@ -367,7 +367,17 @@ Il campo opzionale `connector` delega l'interpretazione a un connettore nativo.
 I nomi registrati da `internal/family` sono:
 
 - `unit3d` — tracker basati su UNIT3D (API JSON, torrent);
-- `newznab` — API Newznab generica (usenet).
+- `newznab` — API Newznab generica (usenet);
+- `torznab` — API Torznab generica (torrent);
+- `gazelle` — software Gazelle e derivati (musica, API JSON);
+- `nexusphp` — tracker basati su NexusPHP (HTML, login form);
+- `torrenttrader` — TorrentTrader/TBDev e derivati (HTML);
+- `xbtit` — Xbtit/BtiTracker e derivati (HTML).
+
+Le famiglie HTML (`nexusphp`, `torrenttrader`, `xbtit`) hanno selettori e
+percorsi predefiniti marcati `bozza`: vanno verificati sul sito reale e, se
+diversi, si sovrascrivono con le opzioni del profilo (non serve una definizione
+per sito).
 
 Con `connector` valorizzato, `search` può essere omesso. Le impostazioni tipiche
 delle famiglie sono URL, API key, categorie e opzioni del transport; nel YAML i
@@ -412,6 +422,7 @@ indexarr-def schema
 indexarr-def fmt [-w] <file>
 indexarr-def fingerprint <file>
 indexarr-def check-fixtures <file>
+indexarr-def convert-cardigann [-o dir] [-author name] <file-or-dir>...
 indexarr-def -version
 ```
 
@@ -447,6 +458,28 @@ Stampa lo SHA-256 dei byte grezzi del file, senza parsare né normalizzare.
 
 Elenca ogni fixture con `ok <path> (<byte>)` o `FAIL <path>: <errore>`; exit 1
 se una fixture manca, è vuota o non è un file regolare.
+
+### `convert-cardigann`
+
+Converte **in locale** definizioni Cardigann (Jackett/Prowlarr) nel formato
+nativo v1. Non è un runtime Cardigann: indexarr non esegue mai questi file e non
+li distribuisce. Il convertitore copre un sottoinsieme documentato in
+`internal/cardigann/MAPPING.md`; ciò che non è rappresentabile finisce in
+`warning`/`unsupported` e la definizione prodotta resta `bozza`.
+
+```bash
+# una definizione: YAML nativo su stdout
+indexarr-def convert-cardigann ~/.config/Jackett/Indexers/example.yml
+
+# una directory: un file per definizione, poi validazione
+indexarr-def convert-cardigann -o ./native ~/.config/Jackett/Indexers
+indexarr-def validate ./native
+```
+
+Le definizioni prodotte non hanno fixture: prima di entrare nel catalogo vanno
+verificate su pagine reali e corredate di test offline. Le credenziali non
+vengono copiate nel YAML: restano impostazioni che l'utente compila e che il
+vault cifra.
 
 ## Sicurezza e scrittura pulita
 

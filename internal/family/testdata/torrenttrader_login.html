@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>TorrentTrader Login</title></head>
+<body>
+<form method="post" action="takelogin.php">
+  <input type="hidden" name="csrf_token" value="tt-csrf-token">
+  <input type="hidden" name="returnto" value="/torrents.php">
+  <input type="text" name="username" value="">
+  <input type="password" name="password" value="">
+  <input type="submit" name="login" value="Login">
+</form>
+</body>
+</html>

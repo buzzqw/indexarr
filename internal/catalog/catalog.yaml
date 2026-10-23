@@ -18,3 +18,19 @@ definitions:
     file: definitions/newznab-generic.yaml
     state: bozza
     author: indexarr
+  - id: gazelle-generic
+    file: definitions/gazelle-generic.yaml
+    state: bozza
+    author: indexarr
+  - id: nexusphp-generic
+    file: definitions/nexusphp-generic.yaml
+    state: bozza
+    author: indexarr
+  - id: torrenttrader-generic
+    file: definitions/torrenttrader-generic.yaml
+    state: bozza
+    author: indexarr
+  - id: xbtit-generic
+    file: definitions/xbtit-generic.yaml
+    state: bozza
+    author: indexarr

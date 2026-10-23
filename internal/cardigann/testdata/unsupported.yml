@@ -1,0 +1,49 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-unsupported
+name: Synthetic Unsupported Features
+description: A made-up tracker with features native v1 cannot represent.
+type: private
+links:
+  - https://unsupported.example/
+settings:
+  - { name: username, type: text, label: Username }
+  - { name: password, type: password, label: Password }
+login:
+  path: login.php
+  method: post
+  captcha:
+    type: image
+  inputs:
+    username: "{{ .Config.username }}"
+    password: "{{ .Config.password }}"
+  error:
+    - selector: div.error
+search:
+  keywordsfilters:
+    - { name: trim }
+  prefilter: "custom prefilter"
+  paths:
+    - path: search.php
+  inputs:
+    q: "{{ .Keywords }}"
+  rows: { selector: table.results tr }
+  fields:
+    title:
+      selector: a.title
+      filters:
+        - { name: customfilter, args: ["x"] }
+    download: { selector: a.dl, attribute: href }
+    date:
+      selector: td.date
+      filters:
+        - { name: split, args: [" ", 0] }
+    description: { selector: td.desc }
+  response:
+    type: html
+    count: 10
+download:
+  method: post
+  path: download.php
+  selectors:
+    - selector: a.dl
+      attribute: href

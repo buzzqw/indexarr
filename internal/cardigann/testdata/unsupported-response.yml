@@ -1,0 +1,23 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-unsupported-extra
+name: Synthetic Extra Unsupported Features
+description: A made-up tracker with unsupported request fields.
+type: public
+links:
+  - https://extra.example/
+caps:
+  modes:
+    search: [q, limit]
+  categorymappings:
+    - { id: 7, cat: Unknown Category, desc: Unknown }
+search:
+  paths:
+    - path: search
+  inputs:
+    q: "{{ .Keywords }}"
+  rows: { selector: table tr }
+  fields:
+    title: { selector: a.title }
+    download: { selector: a.dl, attribute: href }
+  response:
+    type: rss

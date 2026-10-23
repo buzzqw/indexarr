@@ -1,0 +1,49 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-filters
+name: Synthetic Filters
+description: A made-up tracker that exercises filter and template translation.
+type: public
+links:
+  - https://filters.example/
+caps:
+  modes:
+    search: [q]
+search:
+  paths:
+    - path: search
+      method: post
+  inputs:
+    q: "{{ .Query }}"
+    cat: "{{ .Categories }}"
+    page: "{{ .Page }}"
+    offset: "{{ .Offset }}"
+    apikey: "{{ .Config.apikey }}"
+  rows: { selector: "table.results tr" }
+  fields:
+    title:
+      selector: a.title
+      filters:
+        - trim
+        - tolower
+        - { name: replace, args: ["foo", "bar"] }
+        - { name: append, args: [" (x)"] }
+        - { name: prepend, args: ["[x] "] }
+        - { name: regexp, args: ["^\\[(.*)\\]"] }
+    date:
+      selector: td.date
+      filters:
+        - { name: dateparse, args: ["02-01-2006"] }
+    link:
+      selector: a.dl
+      attribute: href
+      filters:
+        - { name: querystring, args: ["id"] }
+    category:
+      selector: a.cat
+      attribute: href
+      filters:
+        - { querystring: cat }
+download:
+  selectors:
+    - selector: a.direct
+      attribute: href

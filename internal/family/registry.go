@@ -3,20 +3,26 @@ package family
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/buzzqw/indexarr/internal/engine"
 )
 
 // Connector names registered by Register.
 const (
-	ConnectorUnit3D  = "unit3d"
-	ConnectorNewznab = "newznab"
-	ConnectorTorznab = "torznab"
+	ConnectorUnit3D        = "unit3d"
+	ConnectorNewznab       = "newznab"
+	ConnectorTorznab       = "torznab"
+	ConnectorGazelle       = "gazelle"
+	ConnectorNexusPHP      = "nexusphp"
+	ConnectorTorrentTrader = "torrenttrader"
+	ConnectorXbtit         = "xbtit"
 )
 
-// Register adds the UNIT3D, generic Newznab and generic Torznab connector
-// factories to r. Settings understood by all factories are base_url (or url),
-// api_key (or api_token), categories, user_agent and allow_private.
+// Register adds the native family connector factories to r. Settings
+// understood by all factories are base_url (or url), categories, user_agent
+// and allow_private. Gazelle additionally reads api_key (or apikey); NexusPHP
+// reads username, password and passkey.
 func Register(r *engine.Registry) error {
 	if r == nil {
 		return fmt.Errorf("family: nil registry")
@@ -30,7 +36,79 @@ func Register(r *engine.Registry) error {
 	if err := r.RegisterConnector(ConnectorTorznab, torznabFactory); err != nil {
 		return fmt.Errorf("family: register %q: %w", ConnectorTorznab, err)
 	}
+	if err := r.RegisterConnector(ConnectorGazelle, gazelleFactory); err != nil {
+		return fmt.Errorf("family: register %q: %w", ConnectorGazelle, err)
+	}
+	if err := r.RegisterConnector(ConnectorNexusPHP, nexusphpFactory); err != nil {
+		return fmt.Errorf("family: register %q: %w", ConnectorNexusPHP, err)
+	}
+	if err := r.RegisterConnector(ConnectorTorrentTrader, TorrentTraderFactory); err != nil {
+		return fmt.Errorf("family: register %q: %w", ConnectorTorrentTrader, err)
+	}
+	if err := r.RegisterConnector(ConnectorXbtit, XbtitFactory); err != nil {
+		return fmt.Errorf("family: register %q: %w", ConnectorXbtit, err)
+	}
 	return nil
+}
+
+func gazelleFactory(cfg engine.Config) (engine.Connector, error) {
+	settings := cfg.Settings
+	categories, err := parseCategoryList(settings["categories"])
+	if err != nil {
+		return nil, fmt.Errorf("gazelle: categories: %w", err)
+	}
+	return NewGazelle(GazelleConfig{
+		Indexer:      cfg.Indexer,
+		BaseURL:      firstNonEmpty(settings["base_url"], settings["url"]),
+		APIKey:       firstNonEmpty(settings["api_key"], settings["apikey"]),
+		Transport:    transportFromSettings(cfg.Transport, settings),
+		Categories:   categories,
+		UserAgent:    settings["user_agent"],
+		BrowsePath:   settings["browse_path"],
+		DownloadPath: settings["download_path"],
+	})
+}
+
+func nexusphpFactory(cfg engine.Config) (engine.Connector, error) {
+	settings := cfg.Settings
+	categories, err := parseCategoryList(settings["categories"])
+	if err != nil {
+		return nil, fmt.Errorf("nexusphp: categories: %w", err)
+	}
+	profile := DefaultNexusPHPProfile()
+	setting := func(target *string, key string) {
+		if value := strings.TrimSpace(settings[key]); value != "" {
+			*target = value
+		}
+	}
+	setting(&profile.LoginPath, "login_path")
+	setting(&profile.LoginUserField, "login_user_field")
+	setting(&profile.LoginPassField, "login_pass_field")
+	setting(&profile.LoginSuccessSelector, "login_success_selector")
+	setting(&profile.LoginErrorSelector, "login_error_selector")
+	setting(&profile.SearchPath, "search_path")
+	setting(&profile.RowsSelector, "rows_selector")
+	setting(&profile.TitleSelector, "title_selector")
+	setting(&profile.DetailsSelector, "details_selector")
+	setting(&profile.DownloadSelector, "download_selector")
+	setting(&profile.SizeSelector, "size_selector")
+	setting(&profile.SeedersSelector, "seeders_selector")
+	setting(&profile.LeechersSelector, "leechers_selector")
+	setting(&profile.DateSelector, "date_selector")
+	setting(&profile.CategorySelector, "category_selector")
+	setting(&profile.PageParam, "page_param")
+
+	return NewNexusPHP(NexusPHPConfig{
+		Indexer:    cfg.Indexer,
+		BaseURL:    firstNonEmpty(settings["base_url"], settings["url"]),
+		Username:   settings["username"],
+		Password:   settings["password"],
+		Passkey:    settings["passkey"],
+		Transport:  transportFromSettings(cfg.Transport, settings),
+		Categories: categories,
+		UserAgent:  settings["user_agent"],
+		Profile:    profile,
+	})
 }
 
 func unit3dFactory(cfg engine.Config) (engine.Connector, error) {

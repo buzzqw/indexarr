@@ -1,0 +1,83 @@
+{
+  "status": "success",
+  "response": {
+    "currentPage": 1,
+    "pages": 3,
+    "results": [
+      {
+        "groupId": 101,
+        "groupName": "Artist - Album",
+        "groupYear": 2024,
+        "categoryId": 1,
+        "groupTime": 1700000000,
+        "torrents": [
+          {
+            "torrentId": 1001,
+            "infoHash": "0123456789ABCDEF0123456789ABCDEF01234567",
+            "size": 524288000,
+            "seeders": 12,
+            "leechers": 3,
+            "filePath": "Artist - Album/01 - Track.flac",
+            "format": "FLAC",
+            "encoding": "Lossless",
+            "media": "CD",
+            "addedTime": 1700000100,
+            "downloadLink": "torrents.php?action=download&id=1001"
+          },
+          {
+            "torrentId": "1002",
+            "infoHash": "abcdefabcdefabcdefabcdefabcdefabcdefabcd",
+            "size": "1048576",
+            "seeders": "4",
+            "leechers": "1",
+            "format": "MP3"
+          }
+        ]
+      },
+      {
+        "groupId": "202",
+        "groupName": "Some.Movie.2023.1080p",
+        "groupYear": "2023",
+        "categoryId": "2",
+        "torrents": [
+          {
+            "torrentId": 2001,
+            "infoHash": "1111111111111111111111111111111111111111",
+            "size": "2147483648",
+            "seeders": "7",
+            "leechers": "2",
+            "format": "1080p",
+            "addedTime": "2024-02-03 04:05:06"
+          }
+        ]
+      },
+      {
+        "groupId": 303,
+        "groupName": "Malformed.Group",
+        "categoryId": 1,
+        "torrents": [
+          {
+            "torrentId": 0,
+            "infoHash": "",
+            "size": 100
+          }
+        ]
+      },
+      {
+        "groupId": 404,
+        "groupName": "Object.Group",
+        "categoryId": "8",
+        "torrents": {
+          "a": {
+            "torrentId": "4001",
+            "infoHash": "2222222222222222222222222222222222222222",
+            "size": "1 GB",
+            "seeders": 1,
+            "leechers": 0,
+            "format": "MKV"
+          }
+        }
+      }
+    ]
+  }
+}

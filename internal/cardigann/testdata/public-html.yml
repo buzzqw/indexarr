@@ -1,0 +1,26 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-public
+name: Synthetic Public Tracker
+description: A made-up public HTML tracker.
+type: public
+links:
+  - https://public.example/
+categories:
+  TV/HD: 5040
+  Movies/HD: 2040
+caps:
+  modes:
+    search:
+      supportedParams: [q]
+unexpectedCardigannField: ignored
+search:
+  paths:
+    - path: search
+  inputs:
+    q: "{{ .Query }}"
+  rows:
+    selector: table.results tr
+  fields:
+    title: { selector: a.title, filters: [trim] }
+    link: { selector: a.download, attribute: href }
+    size: { selector: td.size }

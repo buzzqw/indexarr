@@ -29,8 +29,8 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 3 {
-		t.Fatalf("len(Builtins()) = %d, want 3", len(entries))
+	if len(entries) != 7 {
+		t.Fatalf("len(Builtins()) = %d, want 7", len(entries))
 	}
 
 	seen := make(map[string]bool, len(entries))
@@ -90,7 +90,7 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	want := []string{"example-html", "unit3d-generic", "newznab-generic"}
+	want := []string{"example-html", "unit3d-generic", "newznab-generic", "gazelle-generic", "nexusphp-generic", "torrenttrader-generic", "xbtit-generic"}
 	if len(entries) != len(want) {
 		t.Fatalf("len(Builtins()) = %d, want %d", len(entries), len(want))
 	}
@@ -110,8 +110,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 3 {
-		t.Fatalf("manifest has %d definitions, want 3", len(items))
+	if len(items) != 7 {
+		t.Fatalf("manifest has %d definitions, want 7", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")
@@ -254,8 +254,8 @@ func TestSyncNeverOverwritesLocal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	if n != 2 {
-		t.Fatalf("Sync wrote %d, want 2 (the local entry must be skipped)", n)
+	if n != 6 {
+		t.Fatalf("Sync wrote %d, want 6 (the local entry must be skipped)", n)
 	}
 
 	got, err := st.GetDefinition(ctx, local.ID)

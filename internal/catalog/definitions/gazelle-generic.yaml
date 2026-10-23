@@ -1,0 +1,38 @@
+# BOZZA (draft). Generic Gazelle family definition.
+#
+# The gazelle family connector reads URL and API token from the settings and
+# talks to the JSON API directly. The definition is data-only and has not been
+# verified against a live site, so it must not be presented as production
+# ready. Per-site differences (categories, browse/download paths) are settings
+# of the connector, not new definitions.
+schema: 1
+connector: gazelle
+
+meta:
+  id: gazelle-generic
+  name: Gazelle (generic)
+  language: en-US
+  type: private
+  protocol: torrent
+  author: indexarr
+  description: Generic Gazelle tracker; the family connector reads URL and API token.
+  urls:
+    - https://gazelle.example.invalid/
+  updated: "2026-10-23"
+
+settings:
+  - { name: url, type: text, label: Base URL, help: "Tracker base URL, for example https://tracker.example/", required: true }
+  - { name: apikey, type: password, label: API token, help: "Personal API token (or authkey:torrent_pass)", required: true }
+
+categories:
+  - { site: "1", standard: 3000, desc: "Music" }
+  - { site: "2", standard: 3010, desc: "Music/MP3" }
+  - { site: "3", standard: 3040, desc: "Music/Lossless" }
+
+capabilities:
+  search: [q]
+  music-search: [q, artist, album]
+
+health:
+  query: test
+  min_rows: 0

@@ -748,7 +748,7 @@ go build ./...
 go vet ./...
 go test ./...
 go test -race ./...
-make def-validate          # 6 definizioni: 3 esempi + 3 built-in
+make def-validate          # 10 definizioni: 3 esempi + 7 built-in
 ./scripts/qa.sh            # HTTP, Torznab, /api/v2, vault create/delete
 ```
 
@@ -794,28 +794,37 @@ allo stesso tempo, per non perdere nessun sito durante la transizione.
 Cosa esiste oggi:
 
 - motore nativo v1 (HTML/JSON/XML, login, paginazione, tipi, fixture);
-- connettori di famiglia `unit3d`, `newznab`, `torznab`;
+- connettori di famiglia `unit3d`, `newznab`, `torznab`, `gazelle`,
+  `nexusphp`, `torrenttrader`, `xbtit`;
+- **convertitore Cardigann locale** (`internal/cardigann` + comando
+  `indexarr-def convert-cardigann`): legge le definizioni già installate
+  dall'utente e produce definizioni native v1 per il sottoinsieme supportato,
+  con warning espliciti per ciò che non è convertibile. Non è un runtime
+  Cardigann e non distribuisce definizioni copiate;
 - ponte legacy: indexarr interroga l'endpoint Torznab di Jackett/Prowlarr, che
   resta la copertura "giorno uno";
 - `legacyimport`: converte le sorgenti Torznab dirette in indexer nativi, con
   anteprima, apply e revert;
 - `importers`: legge Prowlarr/Jackett e produce un piano (non applicato);
-- catalogo built-in: 3 definizioni `bozza` + esempi. **Non sono centinaia.**
+- catalogo built-in: 7 definizioni `bozza` (esempio HTML, UNIT3D, Newznab,
+  Gazelle, NexusPHP, TorrentTrader, Xbtit) + esempi. **Non sono ancora
+  centinaia**: i connettori di famiglia coprono molti siti, ma mancano le
+  definizioni/pacchetti che li istanziano.
 
 Cosa serve per arrivare a centinaia di siti, in ordine di leva:
 
 1. **Connettori di famiglia** (una correzione copre molti siti):
-   - Gazelle e derivati (musica e non solo);
-   - NexusPHP (molti tracker cinesi);
-   - TorrentTrader/TBDev e derivati;
-   - Xbtit, BtiTracker, PHP-Torrent;
-   - software AVISTAZ/AsianDVDClub e altri gruppi.
-   Ogni famiglia va scritta osservando il software (o la sua documentazione) e
-   testata su almeno due siti/fixture.
-2. **Import Cardigann come migrazione, non come runtime**:
-   - leggere le definizioni già installate dall'utente (Prowlarr/Jackett) e
-     convertirle nel formato nativo v1 per il sottoinsieme supportato;
-   - marcare `bozza` ciò che non è convertibile e lasciarlo al ponte;
+   - Gazelle e derivati (fatto, `bozza`);
+   - NexusPHP (fatto, `bozza`);
+   - TorrentTrader/TBDev (fatto, `bozza`);
+   - Xbtit/BtiTracker (fatto, `bozza`);
+   - restano AVISTAZ/AsianDVDClub e altri software minori.
+   Ogni famiglia va verificata su almeno due siti/fixture reali prima di
+   dichiararla `verificata`.
+2. **Import Cardigann applicato**:
+   - il convertitore esiste ed è usabile da CLI;
+   - manca il collegamento a UI/API che, dopo l'anteprima, crei davvero
+     definizioni e indexer e lasci il resto al ponte;
    - nessuna distribuzione di definizioni copiate: si convertono localmente i
      dati dell'utente, con tracciamento di autore/origine;
    - il runtime di indexarr continua a non eseguire Cardigann.
@@ -825,6 +834,9 @@ Cosa serve per arrivare a centinaia di siti, in ordine di leva:
    verificata, il sito continua a funzionare via Jackett/Prowlarr.
 5. **Studio delle definizioni** nella UI: selettori guidati, anteprima,
    fixture generate, condivisione con il catalogo.
+6. **Inventario**: misurare quali siti sono realmente usati (sources locali,
+   import Prowlarr/Jackett, statistiche anonime opt-in) e ordinare il lavoro
+   per copertura reale, non per numero di definizioni.
 
 Priorità: prima le famiglie che coprono i siti realmente presenti nelle
 istanze degli utenti (inventario da `sources`, import Prowlarr/Jackett e

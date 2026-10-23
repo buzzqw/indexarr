@@ -693,6 +693,7 @@ Il CLI delle definizioni è `indexarr-def`:
 ```bash
 go run ./cmd/indexarr-def validate examples/definitions
 go run ./cmd/indexarr-def check-fixtures examples/definitions/html-forum.yaml
+go run ./cmd/indexarr-def convert-cardigann -o ./native ~/.config/Jackett/Indexers
 go run ./cmd/indexarr-def fmt -w examples/definitions/html-forum.yaml
 go run ./cmd/indexarr-def fingerprint examples/definitions/html-forum.yaml
 go run ./cmd/indexarr-def schema

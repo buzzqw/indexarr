@@ -1,0 +1,69 @@
+# Synthetic fixture written for indexarr tests. Not derived from a real tracker.
+id: synthetic-private
+name: Synthetic Private Tracker
+description: A made-up private HTML tracker used by the converter tests.
+language: en-US
+type: private
+links:
+  - https://private.example/
+  - http://private-mirror.example/
+legacyLinks:
+  - https://private.example/
+caps:
+  categorymappings:
+    - { id: 1, cat: TV/HD, desc: TV HD }
+    - { id: 2, cat: Movies/HD, desc: Movies HD }
+  modes:
+    search: [q]
+    tv-search: [q, season, ep, imdbid]
+settings:
+  - name: username
+    type: text
+    label: Username
+  - name: password
+    type: password
+    label: Password
+  - name: sort
+    type: select
+    label: Sort
+    default: seeders
+    options:
+      seeders: Seeders
+      date: Date
+login:
+  path: login.php
+  method: post
+  form: form#login
+  inputs:
+    username: "{{ .Config.username }}"
+    password: "{{ .Config.password }}"
+    csrf_token: "{{ .Config.csrf_token }}"
+    action: login
+  error:
+    - selector: div.error
+      message: text
+  test:
+    path: index.php
+    selector: a.logout
+  cookies:
+    session: "{{ .Config.cookie_session }}"
+search:
+  paths:
+    - path: torrents.php
+      method: get
+  inputs:
+    q: "{{ .Keywords }}"
+    cat: "{{ .Categories }}"
+    page: "{{ .Page }}"
+    order: "{{ .Config.sort }}"
+  rows:
+    selector: table.torrents > tbody > tr
+  fields:
+    title: { selector: ["a.title", "td.name a"], filters: [trim] }
+    details: { selector: a.title, attribute: href }
+    download: { selector: a.download, attribute: href }
+    category: { selector: a.cat, attribute: href, filters: [{ name: querystring, args: [cat] }] }
+    size: { selector: td.size }
+    seeders: { selector: td.seeders }
+    leechers: { selector: td.leechers }
+    date: { selector: td.date, filters: [{ name: dateparse, args: ["02-01-2006 15:04"] }] }

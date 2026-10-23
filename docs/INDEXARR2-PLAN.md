@@ -523,11 +523,11 @@ rimosse.
 | Contratti `Connector`, `Module`, pipeline a 9 stadi | `internal/engine` | test + race |
 | Transport: rate limit per host, circuit breaker, `Retry-After`, SSRF, limiti | `internal/engine` | test + race |
 | Motore definizioni: HTML/JSON/XML, login/CSRF/cookie/token/basic, paginazione, tipi, fallback, dedup | `internal/engine` | test + fixture |
-| Connettori di famiglia UNIT3D, Newznab generico e Torznab generico | `internal/family` | test + fixture |
+| Connettori di famiglia UNIT3D, Newznab, Torznab, Gazelle, NexusPHP, TorrentTrader, Xbtit | `internal/family` | test + fixture (stato `bozza`) |
 | Limiti query/grab per indexer e proxy HTTP/SOCKS per indexer | `internal/indexer`, `internal/engine`, `internal/torznabapi` | test + race |
 | Runtime store+vault+definizione+connettore, run e provenance | `internal/indexer` | test + race |
 | Scheduler degli indexer nativi, skip del ponte legacy | `internal/native` | test + race |
-| Catalogo built-in (bozza) e sync nel DB | `internal/catalog` | test |
+| Catalogo built-in (bozza) e sync nel DB | `internal/catalog` | test (7 definizioni) |
 | UI web per definizioni e indexer nativi (form dai `settings`, test/run) | `internal/web`, `internal/indexersvc` | test + QA |
 | UI web per applicazioni e anteprima import Prowlarr/Jackett | `internal/web` | test + QA |
 | API `/api/v2`: definizioni, catalogo, indexer, applicazioni, import, legacy preview | `internal/adminapi` | test + QA reale |
@@ -539,6 +539,7 @@ rimosse.
 | Apply/revert della migrazione legacy con vault e disattivazione della sorgente | `internal/legacyimport`, `internal/adminapi` | test + QA |
 | Provenance multi-indexer (`indexers`, `provenance`), seeders massimi, `StaleProvenance` | `internal/store`, `internal/torznabapi` | test + race |
 | Simulazione end-to-end locale e Docker (Torznab, Prowlarr, Sonarr, client, tracker HTML) | `internal/simmock`, `cmd/simmock`, `sim/` | test + `sim/run.sh` + Docker |
+| Conversione locale Cardigann → nativo v1 (sottoinsieme, warning espliciti) | `internal/cardigann`, `indexarr-def convert-cardigann` | test + race |
 | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr e reconcile | `internal/appsync` | test + race |
 | CLI `indexarr-def`, esempi, documentazione | `cmd/indexarr-def`, `internal/deftool` | test + CI |
 | Alias Jackett/Newznab, routing per indexer, filtri aggregati, errori 100–900 | `internal/torznabapi` | test + QA |
@@ -566,9 +567,10 @@ rimosse.
 
 ### Prossimi passi (non ancora fatti)
 
-1. **Copertura siti**: connettori di famiglia per Gazelle, NexusPHP,
-   TorrentTrader/TBDev, Xbtit e derivati; import Cardigann come migrazione
-   locale; pacchetti di definizioni con fixture e stato.
+1. **Copertura siti**: le famiglie Gazelle/NexusPHP/TorrentTrader/Xbtit ci
+   sono ma sono `bozza`; servono verifica su siti reali, altri software minori,
+   applicazione dell'import Cardigann da UI/API e pacchetti di definizioni con
+   fixture e stato.
 2. **Catalogo reale**: le definizioni built-in sono `bozza`; servono fixture
    osservate dai siti e health check live prima di dichiararle `verificate`.
 3. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
