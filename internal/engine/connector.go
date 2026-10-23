@@ -158,6 +158,10 @@ type SearchRequest struct {
 	Categories []int
 	Limit      int
 	Offset     int
+	// SkipDetails keeps a live search from opening details pages even when
+	// the definition declares resolve_on: search. The download reference is
+	// resolved by the grab path instead.
+	SkipDetails bool
 }
 
 // LatestRequest asks for recent releases, optionally in specific categories.

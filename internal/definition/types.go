@@ -47,9 +47,21 @@ type Meta struct {
 	// as "15m"). An empty value means the definition has no recommendation and
 	// the global default interval applies.
 	Interval Duration `yaml:"interval,omitempty" json:"interval,omitempty"`
+	// Latest marks an indexer that publishes a list or a feed of new releases.
+	// It is optional and additive: absent means true, so every definition
+	// written before the field existed keeps its scheduled run. A site that
+	// can only answer a query sets it to false and is queried by the live
+	// search instead of by the periodic scheduler.
+	Latest *bool `yaml:"latest,omitempty" json:"latest,omitempty"`
 	// DerivedFrom marks a draft produced by a conversion tool. Derived drafts
 	// are writing aids: they stay local and the built-in catalog rejects them.
 	DerivedFrom string `yaml:"derived_from,omitempty" json:"derived_from,omitempty"`
+}
+
+// HasLatest reports whether the indexer publishes a list of new releases. The
+// field is additive: an absent value keeps the historical behaviour (true).
+func (m Meta) HasLatest() bool {
+	return m.Latest == nil || *m.Latest
 }
 
 // cardigannImportAuthor is the default author written by the Cardigann

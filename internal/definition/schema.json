@@ -118,6 +118,11 @@
           "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
           "description": "Optional suggested refresh interval as a Go duration, for example 15m. Empty means no recommendation; the global default applies."
         },
+        "latest": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the site publishes a list or feed of new releases. Absent means true. A search-only site sets false: it has no scheduled run and is queried by the live search."
+        },
         "derived_from": {
           "type": "string",
           "pattern": "^[a-z0-9][a-z0-9-]*$",

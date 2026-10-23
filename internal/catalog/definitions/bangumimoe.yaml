@@ -27,6 +27,7 @@ meta:
   urls:
     - https://bangumi.moe/
   updated: "2026-10-23"
+  latest: false
 
 categories:
   - { site: "549ef207fe682f7549f1ea90", standard: 5070, desc: "Anime" }

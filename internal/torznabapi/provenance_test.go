@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/xml"
 	"io"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -136,5 +137,33 @@ func TestItemMultiIndexerProvenance(t *testing.T) {
 		if strings.Contains(body, forbidden) {
 			t.Errorf("item leaks %q:\n%s", forbidden, body)
 		}
+	}
+}
+
+func TestItemWithoutMagnetLinksToDownloadRef(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	// No infohash, no magnet, no stored payload: only the sealed reference
+	// that the resolver opens at grab time. This is what a live search leaves
+	// behind when the listing has no magnet.
+	release := store.Release{
+		DedupKey: "details-ref", Title: "Details Only Show S02E05",
+		SearchTitle: store.NormalizeSearch("Details Only Show S02E05"),
+		Size:        900, Seeders: 3, Leechers: 1, Category: "5040",
+		PublishedAt: time.Now(), FirstSeenAt: time.Now(), LastSeenAt: time.Now(),
+	}
+	if _, err := st.UpsertRelease(ctx, &release); err != nil {
+		t.Fatalf("UpsertRelease: %v", err)
+	}
+	indexer := provenanceIndexer(t, st, "ref", "Ref Indexer")
+	if err := st.RecordReleaseSource(ctx, store.ReleaseSource{
+		ReleaseID: release.ID, IndexerID: indexer,
+		FirstSeenAt: time.Now(), LastSeenAt: time.Now(), DownloadRef: "sealed-ref",
+	}); err != nil {
+		t.Fatalf("RecordReleaseSource: %v", err)
+	}
+	body := do(t, api, "/api?t=search&apikey=secret&q=Details").Body.String()
+	if !strings.Contains(body, "/dl/"+strconv.FormatInt(release.ID, 10)+".torrent?apikey=secret") {
+		t.Errorf("download reference is not exposed through /dl:\n%s", body)
 	}
 }

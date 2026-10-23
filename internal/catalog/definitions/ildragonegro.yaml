@@ -23,6 +23,7 @@ meta:
     - https://www.ildragonero2.info/
     - http://www.ildragonero2.info/
   updated: "2026-10-23"
+  latest: false
 
 settings:
   - { name: username, type: text, label: "Username", required: true }

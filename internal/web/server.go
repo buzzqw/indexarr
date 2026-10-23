@@ -486,6 +486,7 @@ func New(cfg Config) *Server {
 	}
 	if cfg.Native != nil {
 		srv.torznab.SetLiveSearch(cfg.Native.SearchLive)
+		srv.torznab.SetLatestIndexers(cfg.Native.LatestIndexerIDs)
 	}
 	srv.torznab.SetDownloadResolver(cfg.DownloadResolver)
 	if cfg.GrabGuard != nil {

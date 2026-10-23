@@ -613,7 +613,7 @@ Questi punti integrano i contratti dei §3 e vanno considerati vincolanti:
 - **Politeness.** `engine.Politeness` è l'unico budget per host condiviso da
   percorso nativo e legacy (limiter, breaker, Retry-After). Le impostazioni
   `host_rate` (1/s), `host_burst` (4), `breaker_threshold` (5),
-  `breaker_cooldown` (60s) sono modificabili e non applicano SSRF al percorso
+  `breaker_cooldown` (default 10 min dal WP20; 60s nella prima stesura) sono modificabili e non applicano SSRF al percorso
   legacy, che deve raggiungere Jackett/Prowlarr in LAN.
 - **Vault e segreti legacy.** La chiave si risolve da env, env-file, config,
   file legacy, user config, fallback; `SecretCodec` cifra `api_key`, `password`

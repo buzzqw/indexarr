@@ -70,12 +70,16 @@ type Manager struct {
 
 	mu    sync.Mutex
 	cache map[int64]cachedConnector
+
+	// liveSem is the global fan-out limit shared by every Torznab request.
+	liveSem chan struct{}
 }
 
 type cachedConnector struct {
 	key       string
 	connector engine.Connector
 	secrets   []string
+	transport *engine.Transport
 }
 
 // RunStats is what one Run did. Items is capped to keep memory bounded.
@@ -143,6 +147,7 @@ func New(cfg Config) (*Manager, error) {
 		logger:      logger,
 		maxTorrents: maxTorrents,
 		cache:       make(map[int64]cachedConnector),
+		liveSem:     make(chan struct{}, liveGlobalConcurrency),
 	}, nil
 }
 
@@ -269,7 +274,7 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 		}
 	}
 
-	entry := cachedConnector{key: key, connector: connector, secrets: secretValues}
+	entry := cachedConnector{key: key, connector: connector, secrets: secretValues, transport: transport}
 	m.mu.Lock()
 	// A concurrent build may have won the race. Reuse it so callers always
 	// observe one cached connector per indexer.
@@ -563,6 +568,20 @@ func dedupeCategories(in []int) []int {
 		out = append(out, id)
 	}
 	return out
+}
+
+// breakerOpen reports whether the existing per-indexer breaker is open for the
+// transport that actually serves this indexer (the shared one, or the private
+// transport built for a local/proxied site).
+func (m *Manager) breakerOpen(indexerID int64, slug string) bool {
+	m.mu.Lock()
+	entry, ok := m.cache[indexerID]
+	m.mu.Unlock()
+	transport := m.transport
+	if ok && entry.transport != nil {
+		transport = entry.transport
+	}
+	return transport != nil && transport.BreakerState(slug) == engine.BreakerOpen
 }
 
 // redact removes every known secret value of the indexer and the usual

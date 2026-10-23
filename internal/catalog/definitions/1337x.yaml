@@ -23,6 +23,7 @@ meta:
     - https://1337x.tube/
     - https://1337x.to/
   updated: "2026-10-23"
+  latest: false
 
 categories:
   - { site: "movies", standard: 2000, desc: "Movies" }

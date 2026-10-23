@@ -22,6 +22,7 @@ meta:
   urls:
     - https://www.torrentleech.org/
   updated: "2026-10-23"
+  latest: false
 
 settings:
   - { name: username, type: text, label: "Username", required: true }

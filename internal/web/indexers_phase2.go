@@ -1710,6 +1710,11 @@ type indexerDetailView struct {
 	RunItems          []engine.Item
 	Test              *engine.TestResult
 	Problem           *uiProblem
+	SlowProblem       *uiProblem
+	Latest            bool
+	SearchOnly        bool
+	LatencyP50        string
+	LatencyP95        string
 	HostRequests      []hostRequestView
 	ApplicationCount  int
 	NextStep          uiNextStep
@@ -1765,12 +1770,15 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		Public:         publicConfig(in.ConfigJSON),
 	}
 	def := s.definitionCache(r)[in.DefinitionID]
+	data.Latest = true
 	if def != nil {
 		data.DefinitionName = def.Meta.Name
 		data.Connector = def.Connector
 		data.DefinitionVersion = def.Schema
 		data.Categories = s.definitionCategoryLabels(r, definitionCategoryIDs(def))
+		data.Latest = def.Meta.HasLatest()
 	}
+	data.SearchOnly = !data.Latest
 	if selected := splitCategoryList(publicConfigMap(in.ConfigJSON)["categories"]); len(selected) > 0 {
 		labels := make([]string, 0, len(selected))
 		for _, raw := range selected {
@@ -1829,8 +1837,26 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	if data.Status.State == "problem" {
 		data.Problem = s.problemFor(r, in, data.State, data.LastRun)
 	}
-	if data.LastRun != nil {
-		settings, _ := s.store.LoadSettings(r.Context())
+	settings, settingsErr := s.store.LoadSettings(r.Context())
+	if settingsErr != nil {
+		settings = store.DefaultSettings()
+	}
+	if latency, found, latencyErr := s.store.IndexerLatency(r.Context(), in.ID, 50); latencyErr == nil && found {
+		data.LatencyP50 = formatLatency(latency.P50MS)
+		data.LatencyP95 = formatLatency(latency.P95MS)
+		timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
+		if timeout <= 0 {
+			timeout = 20 * time.Second
+		}
+		if time.Duration(latency.P95MS)*time.Millisecond > timeout {
+			data.SlowProblem = &uiProblem{
+				Text:        s.translate(r, "idx.detail.slow", timeout.Seconds()),
+				ActionLabel: s.translate(r, "idx.detail.data"),
+				ActionURL:   "/indexers/" + strconv.FormatInt(in.ID, 10) + "?tab=data",
+			}
+		}
+	}
+	if data.LastRun != nil && data.Latest {
 		interval := settings.DefaultInterval()
 		if in.IntervalSeconds > 0 {
 			interval = time.Duration(in.IntervalSeconds) * time.Second
@@ -1906,6 +1932,16 @@ func averageLatency(history []store.IndexerHistory) string {
 		return "—"
 	}
 	ms := total / count
+	if ms < 1000 {
+		return fmt.Sprintf("%d ms", ms)
+	}
+	return fmt.Sprintf("%.1f s", float64(ms)/1000)
+}
+
+func formatLatency(ms int64) string {
+	if ms <= 0 {
+		return "—"
+	}
 	if ms < 1000 {
 		return fmt.Sprintf("%d ms", ms)
 	}

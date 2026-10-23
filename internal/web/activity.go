@@ -45,11 +45,26 @@ type appSearchView struct {
 	Query       string
 	Indexers    string
 	ResultRows  []appSearchResult
+	Live        []appSearchLiveView
 	Total       int64
 	Duration    string
 	Error       string
 	CreatedAt   time.Time
 	HasDuration bool
+}
+
+// appSearchLiveView is one indexer of the live fan-out: effective mode,
+// fallback, results, time and whether it exceeded the request timeout.
+type appSearchLiveView struct {
+	Name     string
+	Mode     string
+	Query    string
+	Results  int64
+	Duration string
+	Fallback bool
+	TimedOut bool
+	Skipped  bool
+	Error    string
 }
 
 type appSearchResult struct {
@@ -178,6 +193,26 @@ func (s *Server) activitySearches(r *http.Request) (*activitySearchesView, error
 			Total:     search.TotalResults,
 			Error:     search.Error,
 			CreatedAt: search.CreatedAt,
+		}
+		for _, entry := range search.Live {
+			view := appSearchLiveView{
+				Name:     entry.Name,
+				Mode:     entry.Mode,
+				Query:    entry.Query,
+				Results:  entry.Results,
+				Fallback: entry.Fallback,
+				TimedOut: entry.TimedOut,
+				Skipped:  entry.Skipped,
+				Error:    entry.Error,
+			}
+			if entry.Duration > 0 {
+				if entry.Duration < 1000 {
+					view.Duration = strconv.FormatInt(entry.Duration, 10) + " ms"
+				} else {
+					view.Duration = strconv.FormatFloat(float64(entry.Duration)/1000, 'f', 1, 64) + " s"
+				}
+			}
+			row.Live = append(row.Live, view)
 		}
 		if search.DurationMS > 0 {
 			row.HasDuration = true

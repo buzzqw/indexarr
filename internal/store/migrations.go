@@ -15,6 +15,7 @@ const (
 	indexarr2DropLegacyVersion    = 3
 	indexarr2IntervalVersion      = 4
 	indexarr2ActivityVersion      = 5
+	indexarr2LiveSearchVersion    = 6
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

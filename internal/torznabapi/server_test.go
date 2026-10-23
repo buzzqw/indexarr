@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -209,7 +210,7 @@ func TestAdditionalAPIKeyAndRateLimit(t *testing.T) {
 	}
 }
 
-func TestLiveSearchOnCacheMiss(t *testing.T) {
+func TestLiveSearchRunsOnEveryQuery(t *testing.T) {
 	api, st := newAPI(t)
 	ctx := context.Background()
 	settings, _ := st.LoadSettings(ctx)
@@ -219,11 +220,18 @@ func TestLiveSearchOnCacheMiss(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	api.SetLiveSearch(func(ctx context.Context, filter store.Filter) (int, error) {
+	var modes []string
+	api.SetLiveSearch(func(ctx context.Context, req indexer.LiveQuery) (indexer.LiveResult, error) {
 		calls++
+		modes = append(modes, req.Mode)
 		hash := "7777777777777777777777777777777777777777"
 		insertRelease(t, st, "Live Result 1080p", "5040", hash, "magnet:?xt=urn:btih:"+hash, nil)
-		return 1, nil
+		return indexer.LiveResult{
+			Stored: 1,
+			Indexers: []indexer.LiveIndexerResult{{
+				IndexerID: 1, Name: "Fake", Mode: req.Mode, Results: 1,
+			}},
+		}, nil
 	})
 	first := do(t, api, "/api?t=search&apikey=secret&q=Live")
 	if first.Code != http.StatusOK || !strings.Contains(first.Body.String(), "Live Result 1080p") {
@@ -232,12 +240,14 @@ func TestLiveSearchOnCacheMiss(t *testing.T) {
 	if calls != 1 {
 		t.Errorf("live callback calls = %d", calls)
 	}
+	// The cache now already has the result, and the live fan-out still runs:
+	// the cache is merged with the live answer, not used as a short-circuit.
 	second := do(t, api, "/api?t=search&apikey=secret&q=Live")
 	if second.Code != http.StatusOK || !strings.Contains(second.Body.String(), "Live Result 1080p") {
 		t.Fatalf("cached response = %d", second.Code)
 	}
-	if calls != 1 {
-		t.Errorf("live callback called again on a cache hit: %d", calls)
+	if calls != 2 {
+		t.Errorf("live callback calls on a cache hit = %d, want 2", calls)
 	}
 
 	settings.TorznabLiveSearch = false
@@ -247,6 +257,9 @@ func TestLiveSearchOnCacheMiss(t *testing.T) {
 	miss := do(t, api, "/api?t=search&apikey=secret&q=nothing-here")
 	if miss.Code != http.StatusOK || strings.Contains(miss.Body.String(), "Live Result") {
 		t.Errorf("disabled live search response = %d", miss.Code)
+	}
+	if calls != 2 {
+		t.Errorf("disabled live search called the callback: %d", calls)
 	}
 }
 
@@ -336,5 +349,39 @@ func TestTorznabAliasAndFunctions(t *testing.T) {
 	api.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK || recorder.Body.Len() != 0 {
 		t.Errorf("HEAD download = %d, body %d", recorder.Code, recorder.Body.Len())
+	}
+}
+
+func TestRSSRequestsNeverSynthesizeAQuery(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	settings, _ := st.LoadSettings(ctx)
+	settings.TorznabLiveSearch = true
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	api.SetLiveSearch(func(ctx context.Context, req indexer.LiveQuery) (indexer.LiveResult, error) {
+		calls++
+		if req.Query == "test" {
+			t.Errorf("synthetic query %q reached the fan-out", req.Query)
+		}
+		return indexer.LiveResult{}, nil
+	})
+	for _, path := range []string{
+		"/api?t=search&apikey=secret",
+		"/api?t=tvsearch&apikey=secret&cat=5000",
+	} {
+		rec := do(t, api, path)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s = %d", path, rec.Code)
+		}
+	}
+	if calls != 0 {
+		t.Errorf("RSS requests called the live fan-out %d times, want 0", calls)
+	}
+	do(t, api, "/api?t=search&apikey=secret&q=real")
+	if calls != 1 {
+		t.Errorf("query search calls = %d, want 1", calls)
 	}
 }

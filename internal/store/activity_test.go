@@ -180,7 +180,7 @@ func TestActivityMigrationFromPreviousSchema(t *testing.T) {
 		t.Fatalf("open raw: %v", err)
 	}
 	for _, statement := range []string{
-		`DELETE FROM schema_migrations WHERE version = ` + strconv.Itoa(indexarr2ActivityVersion),
+		`DELETE FROM schema_migrations WHERE version IN (` + strconv.Itoa(indexarr2ActivityVersion) + `, ` + strconv.Itoa(indexarr2LiveSearchVersion) + `)`,
 		`DROP TABLE IF EXISTS indexer_history_metrics`,
 		`DROP TABLE IF EXISTS indexer_samples`,
 		`DROP TABLE IF EXISTS app_searches`,
@@ -201,7 +201,7 @@ func TestActivityMigrationFromPreviousSchema(t *testing.T) {
 	}
 	defer migrated.Close()
 	version, err := migrated.schemaVersion(ctx)
-	if err != nil || version != indexarr2ActivityVersion {
+	if err != nil || version != indexarr2LiveSearchVersion {
 		t.Fatalf("schema version = %d, %v", version, err)
 	}
 	for _, table := range []string{"indexer_history_metrics", "indexer_samples", "app_searches"} {
@@ -272,5 +272,57 @@ func TestFeedReleasesProvenanceAndFilter(t *testing.T) {
 	}
 	if total != 2 || len(page) != 1 || page[0].ID != firstRelease.ID {
 		t.Fatalf("page = %+v total=%d", page, total)
+	}
+}
+
+func TestAppSearchLiveFanOutRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	id, err := st.RecordAppSearch(ctx, AppSearch{
+		App: "sonarr", Mode: "tvsearch", Query: "Show",
+		IndexerIDs: []int64{1, 2}, IndexerNames: []string{"One", "Two"},
+		Results: map[string]int64{"One": 2}, TotalResults: 2, DurationMS: 20,
+		Live: []AppSearchLive{
+			{IndexerID: 1, Name: "One", Mode: "tvsearch", Results: 2, Duration: 10},
+			{IndexerID: 2, Name: "Two", Mode: "search", Fallback: true, TimedOut: true, Duration: 20},
+		},
+	})
+	if err != nil {
+		t.Fatalf("RecordAppSearch: %v", err)
+	}
+	if id <= 0 {
+		t.Fatalf("id = %d", id)
+	}
+	rows, err := st.ListAppSearches(ctx, 10, 0)
+	if err != nil {
+		t.Fatalf("ListAppSearches: %v", err)
+	}
+	if len(rows) != 1 || len(rows[0].Live) != 2 {
+		t.Fatalf("live rows = %+v", rows)
+	}
+	if rows[0].Live[1].Mode != "search" || !rows[0].Live[1].Fallback || !rows[0].Live[1].TimedOut {
+		t.Errorf("fallback/timeout not preserved: %+v", rows[0].Live[1])
+	}
+}
+
+func TestIndexerLatencyPercentiles(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	mustCreateDefinition(t, st, "latency-def")
+	indexerID := mustCreateIndexer(t, st, "latency-def", "latency-one", "Latency One")
+	for _, latency := range []int64{10, 20, 30, 40, 1000} {
+		if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+			IndexerID: indexerID, Kind: "search", Status: "ok", LatencyMS: latency,
+			StartedAt: time.Now(),
+		}); err != nil {
+			t.Fatalf("RecordIndexerHistory: %v", err)
+		}
+	}
+	latency, found, err := st.IndexerLatency(ctx, indexerID, 50)
+	if err != nil || !found {
+		t.Fatalf("IndexerLatency: %v found=%v", err, found)
+	}
+	if latency.P50MS != 30 || latency.P95MS != 1000 || latency.Count != 5 {
+		t.Errorf("latency = %+v, want p50 30 p95 1000", latency)
 	}
 }

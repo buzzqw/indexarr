@@ -36,7 +36,8 @@ const (
 
 // Skip reasons reported in RunOutcome.Reason.
 const (
-	ReasonDisabled = "disabled"
+	ReasonDisabled   = "disabled"
+	ReasonSearchOnly = "search_only"
 )
 
 var (
@@ -208,6 +209,7 @@ func (r *Runner) runDuePass(ctx context.Context) {
 		r.logger.Warn("native: list indexers", "error", err)
 		return
 	}
+	indexers = r.latestIndexers(ctx, indexers)
 	settings, err := r.store.LoadSettings(ctx)
 	if err != nil {
 		r.logger.Warn("native: load settings, using the default interval", "error", err)
@@ -224,6 +226,26 @@ func (r *Runner) runDuePass(ctx context.Context) {
 		return
 	}
 	r.logSummary(outcomes)
+}
+
+// latestIndexers drops the search-only sites from a periodic pass. They have
+// no list of new releases: the live Torznab fan-out queries them when an app
+// searches. A definition that cannot be parsed stays in the list so its error
+// remains visible instead of silently disappearing from the scheduler.
+func (r *Runner) latestIndexers(ctx context.Context, indexers []store.Indexer) []store.Indexer {
+	out := make([]store.Indexer, 0, len(indexers))
+	for _, indexerRow := range indexers {
+		latest, err := r.manager.LatestSupported(ctx, indexerRow)
+		switch {
+		case err != nil:
+			r.logger.Warn("native: latest capability",
+				"indexer", indexerRow.Slug, "error", r.managerRedacted(indexerRow.ID, err))
+			out = append(out, indexerRow)
+		case latest:
+			out = append(out, indexerRow)
+		}
+	}
+	return out
 }
 
 // dueIndexers filters the enabled indexers whose next run is due. A positive
@@ -297,7 +319,7 @@ func (r *Runner) RunOnce(ctx context.Context) []RunOutcome {
 		r.logger.Warn("native: list indexers", "error", err)
 		return nil
 	}
-	return r.runCandidates(ctx, sortCandidates(indexers))
+	return r.runCandidates(ctx, sortCandidates(r.latestIndexers(ctx, indexers)))
 }
 
 // runCandidates runs an explicit candidate list and preserves the ascending
@@ -365,6 +387,7 @@ func (r *Runner) RunAll(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	indexers = r.latestIndexers(ctx, indexers)
 	enabled := 0
 	for _, indexerRow := range indexers {
 		if indexerRow.Enabled {
@@ -467,6 +490,11 @@ func (r *Runner) runOne(ctx context.Context, indexerRow store.Indexer) (outcome 
 	if !indexerRow.Enabled {
 		outcome.Skipped = true
 		outcome.Reason = ReasonDisabled
+		return outcome
+	}
+	if latest, err := r.manager.LatestSupported(ctx, indexerRow); err == nil && !latest {
+		outcome.Skipped = true
+		outcome.Reason = ReasonSearchOnly
 		return outcome
 	}
 

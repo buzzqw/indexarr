@@ -9,16 +9,19 @@
       {{range .Badges}}<span class="badge badge-{{.Kind}}">{{.Label}}</span>{{end}}
     </div>
     {{if .Problem}}{{template "problem" .Problem}}{{end}}
+    {{if .SlowProblem}}{{template "problem" .SlowProblem}}{{end}}
   </div>
   <div class="actions">
     <form method="post" action="/indexers/{{.Indexer.ID}}/test">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn primary" type="submit">{{T "idx.test"}}</button>
     </form>
+    {{if .Latest}}
     <form method="post" action="/indexers/{{.Indexer.ID}}/run">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn" type="submit">{{T "idx.updateNow"}}</button>
     </form>
+    {{end}}
     <details class="row-menu">
       <summary aria-label="{{T "idx.menu" .Indexer.Name}}">⋯</summary>
       <div class="row-menu-list">
@@ -77,9 +80,18 @@
     <dd>{{.Stats.Queries}}</dd>
     <dt>{{T "idx.detail.avgLatency"}}</dt>
     <dd>{{.Stats.AvgLatency}}</dd>
+    <dt>{{T "idx.detail.latencyP50"}}</dt>
+    <dd>{{.LatencyP50}}</dd>
+    <dt>{{T "idx.detail.latencyP95"}}</dt>
+    <dd>{{.LatencyP95}}</dd>
+    <dt>{{T "idx.detail.latestCapability"}}</dt>
+    <dd>{{if .Latest}}{{T "common.yes"}}{{else}}{{T "common.no"}}{{end}}</dd>
     <dt>{{T "idx.detail.grabs"}}</dt>
     <dd>{{.Stats.Grabs}}</dd>
   </dl>
+  {{if .SearchOnly}}
+  <p class="help">{{T "idx.detail.searchOnly"}}</p>
+  {{end}}
 
   {{if .Run}}
   <div class="panel-head"><h2>{{T "idx.detail.runSummary"}}</h2></div>

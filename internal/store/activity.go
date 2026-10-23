@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -105,6 +106,24 @@ type AppSearch struct {
 	DurationMS   int64
 	Error        string
 	CreatedAt    time.Time
+	// Live records the live fan-out of this request: one row per indexer with
+	// the effective mode (including the fallback), how many results it stored,
+	// how long it took and whether it missed the request deadline.
+	Live []AppSearchLive
+}
+
+// AppSearchLive is one indexer of a live fan-out as shown in Activity.
+type AppSearchLive struct {
+	IndexerID int64  `json:"indexer_id"`
+	Name      string `json:"name"`
+	Mode      string `json:"mode"`
+	Fallback  bool   `json:"fallback,omitempty"`
+	Query     string `json:"query,omitempty"`
+	Results   int64  `json:"results"`
+	Duration  int64  `json:"duration_ms"`
+	TimedOut  bool   `json:"timed_out,omitempty"`
+	Skipped   bool   `json:"skipped,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 // RunMetricRow is one history row joined with its metrics.
@@ -247,6 +266,105 @@ func (s *Store) ListRunMetrics(ctx context.Context, indexerID int64, limit int) 
 	return out, rows.Err()
 }
 
+// IndexerLatency is the latency picture of one indexer over its last live
+// searches. The UI uses it to mark a site "slow" when p95 exceeds the live
+// request timeout.
+type IndexerLatency struct {
+	IndexerID int64
+	Count     int
+	P50MS     int64
+	P95MS     int64
+	LastMS    int64
+}
+
+// ListIndexerLatencies computes p50/p95 from the newest searches of every
+// indexer. since limits the window; a zero time covers all rows. perIndexer
+// defaults to 50 and is capped at 500.
+func (s *Store) ListIndexerLatencies(ctx context.Context, since time.Time, perIndexer int) (map[int64]IndexerLatency, error) {
+	if perIndexer <= 0 {
+		perIndexer = 50
+	}
+	if perIndexer > 500 {
+		perIndexer = 500
+	}
+	query := `SELECT indexer_id, latency_ms FROM (
+			SELECT indexer_id, latency_ms,
+				ROW_NUMBER() OVER (
+					PARTITION BY indexer_id
+					ORDER BY started_at DESC, id DESC
+				) AS rn
+			FROM indexer_history
+			WHERE kind = 'search' AND indexer_id IS NOT NULL`
+	args := []any{}
+	if !since.IsZero() {
+		query += ` AND started_at >= ?`
+		args = append(args, since.Unix())
+	}
+	query += `) WHERE rn <= ?`
+	args = append(args, perIndexer)
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list indexer latencies: %w", err)
+	}
+	defer rows.Close()
+	samples := make(map[int64][]int64)
+	for rows.Next() {
+		var indexerID, latency int64
+		if err := rows.Scan(&indexerID, &latency); err != nil {
+			return nil, fmt.Errorf("scan indexer latency: %w", err)
+		}
+		samples[indexerID] = append(samples[indexerID], latency)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make(map[int64]IndexerLatency, len(samples))
+	for indexerID, values := range samples {
+		out[indexerID] = latencyFromSamples(indexerID, values)
+	}
+	return out, nil
+}
+
+// IndexerLatency returns the same picture for one indexer.
+func (s *Store) IndexerLatency(ctx context.Context, indexerID int64, limit int) (IndexerLatency, bool, error) {
+	if indexerID <= 0 {
+		return IndexerLatency{}, false, nil
+	}
+	all, err := s.ListIndexerLatencies(ctx, time.Time{}, limit)
+	if err != nil {
+		return IndexerLatency{}, false, err
+	}
+	value, ok := all[indexerID]
+	return value, ok, nil
+}
+
+func latencyFromSamples(indexerID int64, values []int64) IndexerLatency {
+	out := IndexerLatency{IndexerID: indexerID, Count: len(values)}
+	if len(values) == 0 {
+		return out
+	}
+	sorted := append([]int64(nil), values...)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	out.LastMS = values[0] // rows are ordered newest first per indexer
+	out.P50MS = percentile(sorted, 50)
+	out.P95MS = percentile(sorted, 95)
+	return out
+}
+
+func percentile(sorted []int64, p int) int64 {
+	if len(sorted) == 0 {
+		return 0
+	}
+	rank := (p*len(sorted) + 99) / 100 // ceil(p/100 * n)
+	if rank < 1 {
+		rank = 1
+	}
+	if rank > len(sorted) {
+		rank = len(sorted)
+	}
+	return sorted[rank-1]
+}
+
 // RunSeries returns the runs that started at or after since, oldest first, for
 // the 7-day chart. A zero indexerID covers every indexer.
 func (s *Store) RunSeries(ctx context.Context, indexerID int64, since time.Time) ([]RunSeriesPoint, error) {
@@ -375,15 +493,23 @@ func (s *Store) RecordAppSearch(ctx context.Context, in AppSearch) (int64, error
 	if err != nil {
 		return 0, fmt.Errorf("encode app search results: %w", err)
 	}
+	live := in.Live
+	if live == nil {
+		live = []AppSearchLive{}
+	}
+	encodedLive, err := json.Marshal(live)
+	if err != nil {
+		return 0, fmt.Errorf("encode app search live: %w", err)
+	}
 	var id int64
 	err = s.db.QueryRowContext(ctx, `
 		INSERT INTO app_searches(app, mode, query, indexer_ids, indexer_names,
-			results_json, total_results, duration_ms, error, created_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			results_json, total_results, duration_ms, error, live_json, created_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
 		strings.TrimSpace(in.App), in.Mode, in.Query, string(ids),
 		string(names), string(encodedResults), in.TotalResults, in.DurationMS,
-		in.Error, in.CreatedAt.Unix()).Scan(&id)
+		in.Error, string(encodedLive), in.CreatedAt.Unix()).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("record app search: %w", err)
 	}
@@ -403,7 +529,7 @@ func (s *Store) ListAppSearches(ctx context.Context, limit, offset int) ([]AppSe
 	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, app, mode, query, indexer_ids, indexer_names, results_json,
-			total_results, duration_ms, error, created_at
+			total_results, duration_ms, error, live_json, created_at
 		FROM app_searches ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,
 		limit, offset)
 	if err != nil {
@@ -413,16 +539,17 @@ func (s *Store) ListAppSearches(ctx context.Context, limit, offset int) ([]AppSe
 	var out []AppSearch
 	for rows.Next() {
 		var item AppSearch
-		var ids, names, results string
+		var ids, names, results, live string
 		var created int64
 		if err := rows.Scan(&item.ID, &item.App, &item.Mode, &item.Query,
 			&ids, &names, &results, &item.TotalResults, &item.DurationMS,
-			&item.Error, &created); err != nil {
+			&item.Error, &live, &created); err != nil {
 			return nil, fmt.Errorf("scan app search: %w", err)
 		}
 		_ = json.Unmarshal([]byte(ids), &item.IndexerIDs)
 		_ = json.Unmarshal([]byte(names), &item.IndexerNames)
 		_ = json.Unmarshal([]byte(results), &item.Results)
+		_ = json.Unmarshal([]byte(live), &item.Live)
 		item.CreatedAt = unixTime(created)
 		out = append(out, item)
 	}

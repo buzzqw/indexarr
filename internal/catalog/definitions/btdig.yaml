@@ -20,6 +20,7 @@ meta:
   urls:
     - https://btdig.com/
   updated: "2026-10-23"
+  latest: false
   interval: 15m
 
 categories:

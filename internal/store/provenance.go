@@ -17,6 +17,11 @@ type ReleaseProvenance struct {
 	Seeders    int64
 	Leechers   int64
 	LastSeenAt time.Time
+	// HasDownloadRef reports that at least one provenance row carries a sealed
+	// download reference. The Torznab item then links to indexarr's /dl route
+	// even when no magnet or .torrent is cached: the resolver fetches the
+	// payload at grab time.
+	HasDownloadRef bool
 }
 
 // StaleRelease is one provenance row whose swarm counters are older than the
@@ -70,7 +75,8 @@ func (s *Store) loadProvenanceChunk(ctx context.Context, ids []int64, out map[in
 		args[i] = id
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT rs.release_id, i.name, rs.seeders, rs.leechers, rs.last_seen_at
+		SELECT rs.release_id, i.name, rs.seeders, rs.leechers, rs.last_seen_at,
+			rs.download_ref
 		FROM release_sources rs
 		JOIN indexers i ON i.id = rs.indexer_id
 		WHERE rs.release_id IN (`+strings.Join(placeholders, ", ")+`)
@@ -83,13 +89,18 @@ func (s *Store) loadProvenanceChunk(ctx context.Context, ids []int64, out map[in
 		var releaseID int64
 		var name string
 		var seeders, leechers, lastSeen int64
-		if err := rows.Scan(&releaseID, &name, &seeders, &leechers, &lastSeen); err != nil {
+		var downloadRef string
+		if err := rows.Scan(&releaseID, &name, &seeders, &leechers, &lastSeen,
+			&downloadRef); err != nil {
 			return fmt.Errorf("scan release provenance: %w", err)
 		}
 		prov := out[releaseID]
 		prov.ReleaseID = releaseID
 		prov.Indexers++
 		prov.Names = append(prov.Names, name)
+		if strings.TrimSpace(downloadRef) != "" {
+			prov.HasDownloadRef = true
+		}
 		if seeders > prov.Seeders {
 			prov.Seeders = seeders
 		}

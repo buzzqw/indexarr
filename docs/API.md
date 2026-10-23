@@ -25,7 +25,7 @@ risposta è `429` con `Retry-After: 60`.
 | `caps` | — | Capacità, categorie e limiti; non richiede la chiave |
 | `search` | `q`, `cat`, `limit`, `offset` | Ricerca generica |
 | `tvsearch` | `q`, `season`, `ep`, `cat`, `imdbid`, `tvdbid`, `tmdbid` | Filtro stagione/episodio anche sui season pack |
-| `movie` | `q`, `cat`, `imdbid`, `tmdbid` | Film |
+| `movie` | `q`, `year`, `cat`, `imdbid`, `tmdbid` | Film |
 | `get` | `id` | Scarica il `.torrent` salvato (alternativa a `/dl/{id}`) |
 
 `music` e `book` rispondono come `search`: la cache non distingue ancora quei
@@ -45,6 +45,7 @@ tipi con filtri propri, ma le categorie 3000 e 7000 sono disponibili.
 | `imdbid` | vuoto | Con o senza prefisso `tt` |
 | `tmdbid` | vuoto | |
 | `tvdbid` | vuoto | |
+| `year` | 0 | Solo `movie`, usato anche nel ripiego testuale |
 
 `q` e gli id esterni sono combinati in OR: una release che corrisponde all'id viene
 restituita anche se il titolo è diverso.
@@ -54,12 +55,20 @@ l'API Torznab usa il solo parametro `q` standard.
 
 ### Ricerca live
 
-Con `torznab_live_search` attivo, se la cache restituisce `total="0"` e la
-richiesta ha un `q`, indexarr interroga al momento le sorgenti Torznab abilitate,
-salva i risultati e ripete la ricerca. La deadline complessiva è
-`torznab_live_timeout_seconds` (default 20). Le sorgenti RSS/HTML sono escluse;
-una richiesta con soli id esterni (senza `q`) non attiva la ricerca live. La
-ricerca live è spenta per default perché può allungare la risposta del client.
+Con `torznab_live_search` attivo, **ogni** richiesta con una query (`search`,
+`tvsearch`, `movie`, `music`, `book`) interroga dal vivo tutti gli indexer
+abilitati che dichiarano la modalità: non solo quando la cache è vuota. Il
+fan-out ha concorrenza globale 8 e rispetta il limite per host; la deadline
+complessiva è `torznab_live_timeout_seconds` (default 20). I risultati che
+arrivano in tempo si uniscono alla cache con la provenance esistente; chi è in
+ritardo continua in background (fino a 3 minuti) e il suo risultato entra in
+cache per la richiesta successiva.
+
+Ripiego: `tvsearch` senza supporto diventa `search` con `SxxEyy` (o `Sxx`);
+`movie` aggiunge l'anno; una richiesta con soli id non supportati e senza `q`
+salta quell'indexer. Le richieste RSS (`t=search`/`tvsearch` senza `q`)
+rispondono solo dalla cache degli indexer con `meta.latest` e non generano
+query sintetiche. L'endpoint per singolo indexer interroga solo quello.
 
 ## Esempi
 

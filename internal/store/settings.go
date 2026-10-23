@@ -121,13 +121,13 @@ func DefaultSettings() Settings {
 		BackupEnabled:          true,
 		BackupIntervalHours:    24,
 		BackupKeep:             7,
-		TorznabLiveSearch:      false,
+		TorznabLiveSearch:      true,
 		TorznabLiveTimeout:     20,
 		DownloadClient:         "none",
 		HostRate:               1,
 		HostBurst:              4,
 		BreakerThreshold:       5,
-		BreakerCooldownSeconds: 60,
+		BreakerCooldownSeconds: 600,
 	}
 }
 
@@ -213,7 +213,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.BackupEnabled = boolValue(values, KeyBackupEnabled, true)
 	out.BackupIntervalHours = intValue(values, KeyBackupInterval, 24, 6, 168)
 	out.BackupKeep = intValue(values, KeyBackupKeep, 7, 1, 60)
-	out.TorznabLiveSearch = boolValue(values, KeyTorznabLive, false)
+	out.TorznabLiveSearch = boolValue(values, KeyTorznabLive, true)
 	out.TorznabLiveTimeout = intValue(values, KeyTorznabLiveTimeout, 20, 5, 120)
 	out.DownloadClient = strings.ToLower(strings.TrimSpace(values[KeyDownloadClient]))
 	switch out.DownloadClient {
@@ -232,7 +232,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.HostRate = floatValue(values, KeyHostRate, 1, 0, 100)
 	out.HostBurst = intValue(values, KeyHostBurst, 4, 1, 100)
 	out.BreakerThreshold = intValue(values, KeyBreakerThreshold, 5, 1, 100)
-	out.BreakerCooldownSeconds = intValue(values, KeyBreakerCooldown, 60, 1, 3600)
+	out.BreakerCooldownSeconds = intValue(values, KeyBreakerCooldown, 600, 1, 3600)
 	if raw, ok := values[KeyFetchTorrents]; ok {
 		out.FetchTorrents = raw == "1" || strings.EqualFold(raw, "true")
 	}

@@ -19,6 +19,7 @@ meta:
     - https://www7.torrent9.to/
     - https://torrent9.to/
   updated: "2026-10-23"
+  latest: false
 
 categories:
   - { site: "film", standard: 2000, desc: "Films" }

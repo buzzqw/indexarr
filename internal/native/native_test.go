@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -531,5 +532,33 @@ func TestMaintenanceHonoursActivityRetention(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("history rows after retention 1 = %d, want 0", count)
+	}
+}
+
+func TestSchedulerSkipsSearchOnlyIndexers(t *testing.T) {
+	st, runner := newHarness(t, 2, nil)
+	server := newNativeServer(t, 0, nil)
+
+	latestID := seedNative(t, st, "native-latest", "native-latest", "Latest", server.URL, true)
+	body := strings.Replace(nativeDefinition("native-search-only", server.URL),
+		"capabilities:", "  latest: false\ncapabilities:", 1)
+	putDefinition(t, st, store.Definition{ID: "native-search-only", Body: body})
+	searchOnlyID := createIndexer(t, st, "native-search-only", "native-search-only",
+		"Search only", nativeConfig(server.URL), true)
+
+	outcomes := runner.RunOnce(context.Background())
+	if len(outcomes) != 1 {
+		t.Fatalf("outcomes = %d, want only the latest indexer", len(outcomes))
+	}
+	if outcomes[0].IndexerID != latestID || outcomes[0].Skipped {
+		t.Fatalf("outcome = %+v, want latest indexer %d ran", outcomes[0], latestID)
+	}
+
+	manual, err := runner.RunIndexer(context.Background(), searchOnlyID)
+	if err != nil {
+		t.Fatalf("RunIndexer: %v", err)
+	}
+	if !manual.Skipped || manual.Reason != ReasonSearchOnly {
+		t.Fatalf("manual outcome = %+v, want skipped search_only", manual)
 	}
 }

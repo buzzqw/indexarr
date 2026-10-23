@@ -44,6 +44,7 @@ deve contenere un solo documento YAML.
 | `updated` | no | data dell'ultima revisione, per esempio `"2026-10-23"` |
 | `derived_from` | no | slug dello strumento che ha prodotto una bozza, per esempio `cardigann`; una bozza derivata resta locale e il catalogo la rifiuta |
 | `interval` | no | durata Go, per esempio `15m`; è un suggerimento per l'intervallo di aggiornamento dell'indexer. Vuoto = nessun suggerimento, vale il valore globale. Il minimo è 60s |
+| `latest` | no | `true` (predefinito) se il sito pubblica un elenco o un feed delle novità; `false` se sa solo rispondere a una ricerca |
 
 ### Bozze derivate
 
@@ -66,6 +67,27 @@ può suggerire una durata Go (`15m`, `2h`). Alla creazione dell'indexer il campo
 "Intervallo" in Avanzate è precompilato con questo valore; l'utente può
 cambiarlo o impostarlo a `0` per usare l'intervallo globale. Un valore inferiore
 a 60s è rifiutato. Il formato resta `schema: 1`.
+
+### Elenco delle novità
+
+`meta.latest` è additivo e facoltativo. Assente vale `true`: la definizione ha
+un elenco o un feed delle novità e lo scheduler può eseguire un run periodico.
+Un sito che sa **solo cercare** (per esempio The Pirate Bay, TorrentsCSV,
+LimeTorrents) dichiara `latest: false`: non ha run schedulati, non compare nei
+feed RSS delle *arr e viene interrogato dalla ricerca dal vivo quando un'app
+cerca. I connettori `torznab`, `newznab` e i feed lasciano il valore assente,
+quindi restano `true`.
+
+```yaml
+meta:
+  id: thepiratebay
+  # ...
+  latest: false
+```
+
+Il campo non cambia le capacità di ricerca: una definizione `latest: false`
+resta interrogabile per `search`, `tv-search`, `movie-search`, ecc. secondo
+`capabilities`.
 
 ## `settings`
 

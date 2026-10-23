@@ -21,6 +21,7 @@ meta:
     - https://apibay.org/
     - https://thepiratebay.org/
   updated: "2026-10-23"
+  latest: false
 
 categories:
   - { site: "100", standard: 3000, desc: "Audio" }

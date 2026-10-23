@@ -264,6 +264,17 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 6 stores the live fan-out of each app search: which indexers
+	// answered, with which effective mode, how many results they stored, how
+	// long they took and who missed the request deadline. It is additive and
+	// old rows read as an empty fan-out.
+	if err := s.applyMigration(context.Background(), indexarr2LiveSearchVersion,
+		"app search live fan-out", func(tx *sql.Tx) error {
+			_, err := tx.Exec(`ALTER TABLE app_searches ADD COLUMN live_json TEXT NOT NULL DEFAULT '[]'`)
+			return err
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

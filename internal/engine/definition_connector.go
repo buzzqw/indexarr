@@ -393,8 +393,10 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 	if req.Limit > 0 && len(items) > req.Limit {
 		items = items[:req.Limit]
 	}
-	if err := c.resolveSearchDetails(ctx, items); err != nil {
-		return nil, err
+	if !req.SkipDetails {
+		if err := c.resolveSearchDetails(ctx, items); err != nil {
+			return nil, err
+		}
 	}
 	return items, nil
 }

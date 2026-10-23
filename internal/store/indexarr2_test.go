@@ -56,8 +56,8 @@ func TestIndexarr2Schema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2ActivityVersion {
-		t.Fatalf("schema version = %d, want %d", version, indexarr2ActivityVersion)
+	if version != indexarr2LiveSearchVersion {
+		t.Fatalf("schema version = %d, want %d", version, indexarr2LiveSearchVersion)
 	}
 	var name string
 	if err := st.DB().QueryRowContext(ctx,
@@ -139,7 +139,7 @@ func TestMigrationIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2ActivityVersion {
+	if version != indexarr2LiveSearchVersion {
 		t.Fatalf("schema version = %d", version)
 	}
 	if err := second.DB().QueryRowContext(ctx,
@@ -157,7 +157,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	st := newTestStore(t)
 
 	wantErr := errors.New("boom")
-	err := st.applyMigration(ctx, 6, "broken", func(tx *sql.Tx) error {
+	err := st.applyMigration(ctx, 99, "broken", func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `CREATE TABLE migration_should_rollback (id INTEGER)`); err != nil {
 			return err
 		}
@@ -170,7 +170,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2ActivityVersion {
+	if version != indexarr2LiveSearchVersion {
 		t.Fatalf("schema version after failure = %d", version)
 	}
 	var tables int
@@ -184,7 +184,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	}
 	var rows int
 	if err := st.DB().QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM schema_migrations WHERE version = 6`).Scan(&rows); err != nil {
+		`SELECT COUNT(*) FROM schema_migrations WHERE version = 99`).Scan(&rows); err != nil {
 		t.Fatalf("check migration row: %v", err)
 	}
 	if rows != 0 {
@@ -715,7 +715,7 @@ func TestDropLegacySourcesMigration(t *testing.T) {
 	}
 	defer migrated.Close()
 	version, err := migrated.schemaVersion(ctx)
-	if err != nil || version != indexarr2ActivityVersion {
+	if err != nil || version != indexarr2LiveSearchVersion {
 		t.Fatalf("schema version = %d, %v", version, err)
 	}
 	for _, table := range []string{"sources", "runs"} {

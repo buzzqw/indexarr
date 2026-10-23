@@ -472,8 +472,17 @@ func releaseKey(hash string, item engine.Item, slug string) string {
 	case strings.TrimSpace(item.DownloadURL) != "":
 		sum := sha256.Sum256([]byte(item.DownloadURL))
 		return "url:" + hex.EncodeToString(sum[:])
+	case strings.TrimSpace(item.DetailsURL) != "":
+		sum := sha256.Sum256([]byte("details:" + item.DetailsURL))
+		return "details:" + hex.EncodeToString(sum[:])
 	default:
-		return ""
+		title := strings.TrimSpace(item.Title)
+		if title == "" {
+			return ""
+		}
+		sum := sha256.Sum256([]byte(slug + "\x00" + strings.ToLower(title) +
+			"\x00" + strconv.FormatInt(item.Size, 10)))
+		return "title:" + hex.EncodeToString(sum[:])
 	}
 }
 

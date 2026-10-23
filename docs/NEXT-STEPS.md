@@ -162,6 +162,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP17 | Vedere i dati che nutrono indexarr | fatto (metriche, campioni, scheda Dati, Prova come Sonarr, Attività) | `f296d69` |
 | WP18 | I siti che l'utente usa davvero (fase 1) | fase 1 e 2 fatte: 36 verificati totali, 27 pubblici aggiunti in fase 2, 3 privati in prova, MirCrew via Torznab | `9c8ebae`, `cc52f87`, `5cafc04`, `fb6b77d`, `a4d74d3`, `b54361f` |
 | WP19 | Elenco dei siti come Jackett/Prowlarr | fatto (indice a build time, elenco filtrabile, aggiunta rapida) | `25b7f97` |
+| WP20 | Ricerca dal vivo come Jackett/Prowlarr | fatto (fan-out live, `latest`, ripiego, scheduler, attività) | |
 
 ---
 
@@ -334,7 +335,7 @@ sulle pagine di dettaglio: è il caso tipico che porta a 429 e ban.
 
 1. Impostazioni (con default prudenti, modificabili in UI): `host_rate`
    (default 1 richiesta/s), `host_burst` (default 4), `breaker_threshold` (5),
-   `breaker_cooldown` (60s). Valori passati al transport nativo in
+   `breaker_cooldown` (default 10 min dal WP20; 60s nella prima stesura). Valori passati al transport nativo in
    `cmd/indexarr`.
 2. Esporre dal package `engine` un `http.RoundTripper` "educato" che applica
    limiter per host + breaker per host + `Retry-After`, **senza** guard SSRF
@@ -1086,6 +1087,99 @@ aggiunta rapida singola o multipla dei soli siti pubblici senza campi
 obbligatori e blocco "Non trovi il sito?" con i tipi generici, Jackett/Prowlarr,
 feed RSS e Torznab/Newznab. La pagina e la ricerca da indirizzo incollato
 leggono solo l'indice; i YAML vengono analizzati alla creazione e all'esecuzione.
+
+---
+
+## WP20 — Ricerca dal vivo come Jackett/Prowlarr
+
+**Perché.** indexarr risponde alle *arr come una cache: il percorso Torznab
+interroga gli indexer dal vivo solo quando la cache non ha nessun risultato, e
+`SearchLive` considera solo la famiglia `torznab`. Le definizioni native (HTML,
+JSON, XML) non vengono mai interrogate per una ricerca; i siti solo-ricerca
+(TPB, TorrentsCSV, LimeTorrents) restano in vita con `query=test`, che in
+produzione riempirebbe il DB di release finte; `t=tvsearch` fallisce sui siti
+senza `tv-search` invece di ripiegare su una ricerca testuale. Jackett e
+Prowlarr fanno l'opposto: ogni ricerca va dal vivo agli indexer capaci, in
+parallelo, con un tempo massimo. La cache resta per i feed e per i risultati già
+visti.
+
+**Cosa fare.**
+
+1. **Capacità per indexer**, derivate dalla definizione e dalla famiglia:
+   modalità supportate (`search`, `tv-search`, `movie-search`, `music-search`,
+   `book-search`), parametri (q, season, ep, imdbid, tvdbid, tmdbid…) e
+   `latest`: true se il sito ha un elenco o un feed delle novità, false se sa
+   solo cercare. Il formato v1 esprime già modalità e parametri; aggiungi a
+   `meta` il campo opzionale additivo `latest` (default true), con JSON
+   Schema, validazione e `DEFINITIONS.md`. Aggiorna le definizioni solo-ricerca
+   (The Pirate Bay, TorrentsCSV, LimeTorrents e le altre senza elenco novità) a
+   `latest: false`. Per `torznab`/`newznab` e i feed il default resta true.
+2. **Fan-out per ogni richiesta Torznab con una query** (`t=search`,
+   `tvsearch`, `movie`, `music`, `book`):
+   - interroga **tutti** gli indexer abilitati che supportano la modalità, in
+     parallelo, con concorrenza globale 8 e il limite per host già esistente;
+   - un tempo massimo per la richiesta da `torznab_live_timeout_seconds`
+     (default 20 s, Impostazioni → Avanzate, sotto i timeout delle *arr);
+   - chi risponde in tempo entra nella risposta; chi è in ritardo continua in
+     background, entro un limite di sicurezza, e il suo risultato va in cache
+     per la volta dopo;
+   - i risultati in cache che corrispondono si **uniscono** a quelli live, con
+     deduplica tramite la provenance esistente; non si sostituiscono e il live
+     non parte solo su cache vuota;
+   - l'endpoint per singolo indexer (`/api/v2.0/indexers/<id>/...` e gli alias)
+     interroga solo quell'indexer.
+3. **Ripiego della modalità**, come Jackett e Prowlarr:
+   - `tvsearch` con q+season+ep su un indexer senza `tv-search` → `search` con
+     `q SxxEyy` (o `q Sxx`);
+   - `movie` → `q` con l'anno quando è noto;
+   - se arrivano solo ID (imdbid/tvdbid) senza q e l'indexer non supporta gli
+     ID, si salta quell'indexer: non si inventa una query. La modalità effettiva
+     (originale o ripiego) si registra nell'attività.
+4. **RSS delle *arr** (`t=search` senza q, oppure `tvsearch` senza q):
+   risponde solo la cache degli indexer con `latest`; i solo-ricerca non
+   partecipano e non si genera nessuna query sintetica. `query=test` e simili
+   vanno tolti dal percorso e dal seed.
+5. **Scheduler:** run periodici solo per gli indexer con `latest`. I
+   solo-ricerca non hanno run; il dettaglio spiega "Questo sito non ha un
+   elenco delle novità: viene interrogato quando un'app cerca" (i18n in 7
+   lingue).
+6. **Niente dettagli durante una ricerca dal vivo.** Nel percorso live
+   `resolve_on: search` non apre pagine di dettaglio: il link di download punta
+   all'endpoint di indexarr e il resolver esistente risolve al grab. Se il
+   magnet è costruibile dall'infohash del listing, costruiscilo; altrimenti
+   salva `SealDownloadRef` e lascia il download ref. Una ricerca LimeTorrents
+   non deve fare 40 richieste di dettaglio.
+7. **Indexer lenti:** p50/p95 per indexer dalle ultime ricerche (dati WP17);
+   se p95 supera il tempo massimo, l'indexer resta interrogato ma è marcato
+   "lento" nella UI con il componente `problem`; il breaker per indexer
+   esistente (5 errori di fila → escluso dal fan-out per 10 minuti) si riusa,
+   non si duplica. Internet Archive (~116 s) è il caso di prova.
+8. **Attività → Ricerche:** per ogni richiesta registra indexer interrogati,
+   modalità effettiva (con il ripiego), risultati, tempo e chi ha superato il
+   tempo massimo. Estendi `app_searches` con una migrazione additiva se serve.
+
+**Accettazione.**
+
+- **Test offline:** fan-out con 5 indexer finti (lento, in errore, senza
+  `tv-search`, solo-feed, risultati già in cache); risposta entro il tempo
+  massimo con i risultati attesi; il lento finisce in cache dopo; il ripiego
+  tvsearch→search produce la query attesa; RSS *arr senza query sintetiche; lo
+  scheduler salta i solo-ricerca; nessuna richiesta di dettaglio nel percorso
+  live.
+- `go test ./...`, race sui package toccati, build incrociate,
+  `make def-validate`, `scripts/qa.sh`, `sim/run.sh` (aggiorna le asserzioni
+  Sonarr se presumevano la vecchia logica cache-first), `ui-smoke`
+  normal+strict su porta temporanea, `scripts/budget.sh`.
+- Test live Prowlarr/Jackett solo se serve, con GET e chiavi da
+  `~/.config/indexarr-dev/managers.env`, mai nei test o nei commit. Se fatti,
+  riportare solo numeri.
+
+**Commit:** `Search indexers live on every query like Jackett and Prowlarr`.
+
+**Non fare.** Non sostituire la cache con il live; non interrogare i
+solo-ricerca nei run periodici; non aprire pagine di dettaglio nel percorso
+live; non duplicare il breaker; non mettere chiavi o URL con passkey in test,
+fixture, log o commit.
 
 ---
 

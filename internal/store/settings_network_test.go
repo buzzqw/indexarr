@@ -23,11 +23,11 @@ func TestNetworkSettingsDefaults(t *testing.T) {
 	if settings.BreakerThreshold != 5 {
 		t.Errorf("BreakerThreshold = %d, want 5", settings.BreakerThreshold)
 	}
-	if settings.BreakerCooldownSeconds != 60 {
-		t.Errorf("BreakerCooldownSeconds = %d, want 60", settings.BreakerCooldownSeconds)
+	if settings.BreakerCooldownSeconds != 600 {
+		t.Errorf("BreakerCooldownSeconds = %d, want 600", settings.BreakerCooldownSeconds)
 	}
-	if got := settings.BreakerCooldown(); got != time.Minute {
-		t.Errorf("BreakerCooldown() = %s, want 1m", got)
+	if got := settings.BreakerCooldown(); got != 10*time.Minute {
+		t.Errorf("BreakerCooldown() = %s, want 10m", got)
 	}
 }
 
@@ -80,7 +80,7 @@ func TestNetworkSettingsRejectOutOfRange(t *testing.T) {
 		t.Fatalf("LoadSettings: %v", err)
 	}
 	if settings.HostRate != 1 || settings.HostBurst != 4 ||
-		settings.BreakerThreshold != 5 || settings.BreakerCooldownSeconds != 60 {
+		settings.BreakerThreshold != 5 || settings.BreakerCooldownSeconds != 600 {
 		t.Errorf("invalid values did not fall back to defaults: %#v", settings)
 	}
 }

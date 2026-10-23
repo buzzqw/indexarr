@@ -90,16 +90,46 @@ func (s *Server) recordAppSearch(ctx context.Context, r *http.Request, mode stri
 	if len(query) > 500 {
 		query = query[:500]
 	}
+	live := make([]store.AppSearchLive, 0, len(out.Live))
+	names := make([]string, 0, len(out.Live))
+	ids := make([]int64, 0, len(out.Live))
+	for _, entry := range out.Live {
+		live = append(live, store.AppSearchLive{
+			IndexerID: entry.IndexerID,
+			Name:      entry.Name,
+			Mode:      entry.Mode,
+			Fallback:  entry.Fallback,
+			Query:     entry.Query,
+			Results:   int64(entry.Results),
+			Duration:  entry.Duration.Milliseconds(),
+			TimedOut:  entry.TimedOut,
+			Skipped:   entry.Skipped,
+			Error:     entry.Err,
+		})
+		if entry.Name != "" {
+			names = append(names, entry.Name)
+		}
+		if entry.IndexerID > 0 {
+			ids = append(ids, entry.IndexerID)
+		}
+	}
+	indexerNames := out.IndexerNames
+	indexerIDs := out.IndexerIDs
+	if len(names) > 0 {
+		indexerNames = names
+		indexerIDs = ids
+	}
 	in := store.AppSearch{
 		App:          appFromRequest(r),
 		Mode:         mode,
 		Query:        query,
-		IndexerIDs:   out.IndexerIDs,
-		IndexerNames: out.IndexerNames,
+		IndexerIDs:   indexerIDs,
+		IndexerNames: indexerNames,
 		Results:      results,
 		TotalResults: out.Total,
 		DurationMS:   time.Since(started).Milliseconds(),
 		Error:        errorText,
+		Live:         live,
 		CreatedAt:    time.Now(),
 	}
 	if _, err := s.store.RecordAppSearch(context.WithoutCancel(ctx), in); err != nil {

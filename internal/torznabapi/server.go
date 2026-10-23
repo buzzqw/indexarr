@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/buzzqw/indexarr/internal/categories"
+	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -32,7 +33,10 @@ type Server struct {
 	version    string
 	started    time.Time
 	limits     *minuteLimiter
-	liveSearch func(context.Context, store.Filter) (int, error)
+	liveSearch func(context.Context, indexer.LiveQuery) (indexer.LiveResult, error)
+	// latestIndexers restricts the *arr RSS path to the sites that publish a
+	// latest list. Nil means no restriction (the historical cache response).
+	latestIndexers func(context.Context) ([]int64, error)
 
 	downloadResolver func(context.Context, int64) ([]byte, string, string, error)
 
@@ -50,9 +54,17 @@ func (s *Server) SetGrabGuard(check func(context.Context, int64) error, record f
 	s.grabRecord = record
 }
 
-// SetLiveSearch installs the callback used when the cache has no results.
-func (s *Server) SetLiveSearch(fn func(context.Context, store.Filter) (int, error)) {
+// SetLiveSearch installs the callback used by the live fan-out. It runs on
+// every search that carries a query, not only when the cache is empty.
+func (s *Server) SetLiveSearch(fn func(context.Context, indexer.LiveQuery) (indexer.LiveResult, error)) {
 	s.liveSearch = fn
+}
+
+// SetLatestIndexers installs the list used by the *arr RSS path. Only the
+// indexers that publish a new-releases list contribute to an empty-query
+// request; a search-only site never does.
+func (s *Server) SetLatestIndexers(fn func(context.Context) ([]int64, error)) {
+	s.latestIndexers = fn
 }
 
 // SetDownloadResolver installs the callback used to fetch a payload that is
@@ -194,6 +206,7 @@ type searchOutcome struct {
 	Query        string
 	IndexerIDs   []int64
 	IndexerNames []string
+	Live         []indexer.LiveIndexerResult
 	Err          string
 	Duration     time.Duration
 }
@@ -233,6 +246,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		Sort:    "recent",
 		Season:  positiveInt(query.Get("season")),
 		Episode: positiveInt(query.Get("ep")),
+		Year:    positiveInt(query.Get("year")),
 		IMDbID:  query.Get("imdbid"),
 		TMDbID:  query.Get("tmdbid"),
 		TVDbID:  query.Get("tvdbid"),
@@ -250,27 +264,58 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			filter.IndexerIDs = append(filter.IndexerIDs, id)
 		}
 	}
+	// An *arr RSS request (t=search or t=tvsearch without q) reads only the
+	// cache of the sites that publish a latest list. Search-only sites do not
+	// participate and no synthetic query is generated for them.
+	if !liveQueryEligible(mode, filter) && (mode == "search" || mode == "tvsearch") && s.latestIndexers != nil {
+		latest, latestErr := s.latestIndexers(ctx)
+		if latestErr != nil {
+			s.log.Warn("torznab: load latest indexers", "component", "indexarr",
+				"subsystem", "torznab", "error", latestErr)
+		} else {
+			filter.IndexerIDs = intersectIndexerIDs(filter.IndexerIDs, latest)
+			if len(filter.IndexerIDs) == 0 {
+				out.Body = s.searchXML(base, settings, apiKey, nil, 0, filter.Offset, nil)
+				return out
+			}
+		}
+	}
 	releases, total, err := s.store.SearchReleases(ctx, filter)
 	if err != nil {
 		s.log.Error("torznab: search", "component", "indexarr", "subsystem", "torznab", "error", err)
 		return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 	}
-	if total == 0 && settings.TorznabLiveSearch && s.liveSearch != nil &&
-		strings.TrimSpace(filter.Query) != "" {
+	// The live fan-out runs on every request that carries a query. The cache
+	// is not replaced: what came back in time is stored, then the same cache
+	// query runs again and provenance deduplicates the union.
+	if settings.TorznabLiveSearch && s.liveSearch != nil && liveQueryEligible(mode, filter) {
 		timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
 		if timeout <= 0 {
 			timeout = 20 * time.Second
 		}
 		liveCtx, cancel := context.WithTimeout(ctx, timeout)
-		stored, liveErr := s.liveSearch(liveCtx, filter)
+		liveResult, liveErr := s.liveSearch(liveCtx, indexer.LiveQuery{
+			Mode:       mode,
+			Query:      filter.Query,
+			Season:     filter.Season,
+			Episode:    filter.Episode,
+			Year:       filter.Year,
+			IMDbID:     filter.IMDbID,
+			TMDbID:     filter.TMDbID,
+			TVDbID:     filter.TVDbID,
+			Categories: standardCategoryIDs(filter.Categories),
+			Limit:      filter.Limit,
+			IndexerIDs: filter.IndexerIDs,
+		})
 		cancel()
+		out.Live = liveResult.Indexers
 		if liveErr != nil {
 			// The manager redacts connector errors; the app search row keeps a
 			// stable message so a URL or key can never reach it.
 			out.Err = "live search failed"
 			s.log.Warn("torznab: live search", "component", "indexer", "subsystem", "torznab", "error", liveErr)
 		}
-		if stored > 0 {
+		if liveResult.Stored > 0 {
 			releases, total, err = s.store.SearchReleases(ctx, filter)
 			if err != nil {
 				s.log.Error("torznab: search after live", "component", "indexarr", "subsystem", "torznab", "error", err)
@@ -284,6 +329,63 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	out.Releases = releases
 	out.Total = total
 	out.Body = s.searchXML(base, settings, apiKey, releases, total, filter.Offset, out.Provenance)
+	return out
+}
+
+// liveQueryEligible decides whether a Torznab function is a real search or an
+// RSS request. The *arr RSS calls t=search or t=tvsearch without q: they read
+// the cache of the indexers that publish a latest list, and the fan-out must
+// never invent a query for them.
+func liveQueryEligible(mode string, filter store.Filter) bool {
+	switch mode {
+	case "search", "tvsearch":
+		return strings.TrimSpace(filter.Query) != ""
+	case "movie":
+		return strings.TrimSpace(filter.Query) != "" ||
+			strings.TrimSpace(filter.IMDbID) != "" ||
+			strings.TrimSpace(filter.TMDbID) != ""
+	case "music", "book":
+		return strings.TrimSpace(filter.Query) != ""
+	default:
+		return false
+	}
+}
+
+// intersectIndexerIDs keeps the request selection when present, otherwise the
+// full allowed set. An empty selection means "all indexers" in the store, so
+// the caller must check the length before querying.
+func intersectIndexerIDs(selected, allowed []int64) []int64 {
+	allowedSet := make(map[int64]struct{}, len(allowed))
+	for _, id := range allowed {
+		allowedSet[id] = struct{}{}
+	}
+	if len(selected) == 0 {
+		out := make([]int64, 0, len(allowed))
+		for _, id := range allowed {
+			out = append(out, id)
+		}
+		return out
+	}
+	out := make([]int64, 0, len(selected))
+	for _, id := range selected {
+		if _, ok := allowedSet[id]; ok {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+func standardCategoryIDs(values []string) []int {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]int, 0, len(values))
+	for _, value := range values {
+		id, err := strconv.Atoi(strings.TrimSpace(value))
+		if err == nil && id > 0 {
+			out = append(out, id)
+		}
+	}
 	return out
 }
 
@@ -694,6 +796,11 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 		link = base + "/dl/" + id + ".nzb?apikey=" + key
 	case release.Magnet != "":
 		link = release.Magnet
+	case provenance.HasDownloadRef:
+		// The listing had no magnet: the sealed reference resolves the real
+		// download only when the client grabs, so a live search never opens a
+		// details page.
+		link = base + "/dl/" + id + ".torrent?apikey=" + key
 	}
 	if link == "" {
 		return

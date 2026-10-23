@@ -27,6 +27,7 @@ meta:
     - https://torrentgalaxy.one/
     - https://torrentgalaxy.info/
   updated: "2026-10-23"
+  latest: false
 
 categories:
   - { site: "Movies", standard: 2000, desc: "Movies" }

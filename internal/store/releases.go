@@ -57,6 +57,7 @@ type Filter struct {
 	Categories    []string
 	Season        int
 	Episode       int
+	Year          int
 	IMDbID        string
 	TMDbID        string
 	TVDbID        string

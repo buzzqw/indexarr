@@ -1,6 +1,7 @@
 package definition
 
 import (
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -303,6 +304,39 @@ func TestAllTestdataDefinitionsValidate(t *testing.T) {
 		t.Run(filepath.Base(file), func(t *testing.T) {
 			if _, err := Load(file); err != nil {
 				t.Errorf("Load(%s): %v", file, err)
+			}
+		})
+	}
+}
+
+func TestMetaLatestDefaultsToTrue(t *testing.T) {
+	base := `schema: 1
+connector: torznab
+meta:
+  id: latest-test
+  name: Latest test
+  type: public
+  protocol: torrent
+  urls: ["https://example.test/"]
+%s
+capabilities:
+  search: [q]
+`
+	for name, tc := range map[string]struct {
+		extra string
+		want  bool
+	}{
+		"absent": {"", true},
+		"true":   {"  latest: true", true},
+		"false":  {"  latest: false", false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			def, err := Parse([]byte(fmt.Sprintf(base, tc.extra)))
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			if got := def.Meta.HasLatest(); got != tc.want {
+				t.Errorf("HasLatest() = %v, want %v", got, tc.want)
 			}
 		})
 	}

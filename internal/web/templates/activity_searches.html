@@ -12,6 +12,7 @@
           <th scope="col">{{T "activity.searches.app"}}</th>
           <th scope="col">{{T "activity.searches.query"}}</th>
           <th scope="col">{{T "activity.searches.indexers"}}</th>
+          <th scope="col">{{T "activity.searches.live"}}</th>
           <th scope="col">{{T "activity.searches.results"}}</th>
           <th scope="col">{{T "activity.searches.total"}}</th>
           <th scope="col">{{T "activity.searches.duration"}}</th>
@@ -25,6 +26,19 @@
           <td><strong>{{textOrDash .App}}</strong><div class="sub">{{.Mode}}</div></td>
           <td>{{if .Query}}{{truncate .Query 70}}{{else}}<span class="muted">—</span>{{end}}</td>
           <td>{{if .Indexers}}{{.Indexers}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td class="app-live">
+            {{range .Live}}
+            <div class="sub">
+              <strong>{{.Name}}</strong>
+              <span class="chip">{{.Mode}}{{if .Fallback}} · {{T "activity.searches.fallback"}}{{end}}</span>
+              {{if .Query}}<code>{{truncate .Query 40}}</code>{{end}}
+              · {{.Results}} {{T "activity.searches.resultsShort"}}
+              {{if .Duration}}· {{.Duration}}{{end}}
+              {{if .TimedOut}}<span class="chip danger">{{T "activity.searches.timeout"}}</span>{{end}}
+              {{if .Skipped}}<span class="chip">{{T "activity.searches.skipped"}}</span>{{end}}
+            </div>
+            {{else}}<span class="muted">—</span>{{end}}
+          </td>
           <td class="app-results">
             {{range .ResultRows}}<span class="chip">{{.Name}} · {{.Count}}</span>{{else}}<span class="muted">—</span>{{end}}
           </td>

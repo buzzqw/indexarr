@@ -158,9 +158,11 @@ offre una deduplica esplicita che conserva la riga più vecchia e i dati miglior
 - Notifiche webhook/Telegram per nuove release o fallimenti. Se
   `auto_disable_after` è impostato e gli ultimi run sono tutti falliti, l'indexer
   viene disabilitato e l'evento viene notificato.
-- La ricerca Torznab live (`torznab_live_search`) usa `indexer.SearchLive`: quando
-  la cache è vuota interroga gli indexer Torznab in parallelo (max 3), salva i
-  risultati e lascia che il server ripeta la query.
+- La ricerca Torznab live (`torznab_live_search`) usa `indexer.SearchLive` a ogni
+  richiesta con una query: fan-out su tutti gli indexer capaci, concorrenza
+  globale 8, deadline `torznab_live_timeout_seconds`; chi è in ritardo continua
+  in background e cachea il risultato. Gli indexer `meta.latest: false` non
+  hanno run periodici e partecipano solo alla ricerca dal vivo.
 - I backup automatici (`backup_enabled`) vengono creati ogni
   `backup_interval_hours` con `VACUUM INTO`, ruotati a `backup_keep` e non
   bloccano i worker. Il ripristino viene preparato come `<db>.restore` e applicato
