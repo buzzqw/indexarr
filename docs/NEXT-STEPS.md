@@ -27,6 +27,21 @@ l'agente adatta nomi e dettagli al codice reale e lo verifica con i test.
 > - la compatibilità con installazioni precedenti non è un vincolo di
 >   sviluppo; resta un vincolo solo il formato delle definizioni v1 e i
 >   contratti Torznab/Newznab verso le *arr.
+>
+> **Decisioni del coordinatore (23/10 sera, dopo `88188be`).**
+>
+> - **Memoria:** 40 MiB non è più un vincolo. Jackett e Prowlarr usano
+>   centinaia di MiB: indexarr deve restare molto più leggero **per
+>   progetto** (niente cache illimitate, streaming invece di caricare tutto,
+>   strutture dati semplici), ma le ottimizzazioni puntuali vengono dopo le
+>   funzioni. `scripts/budget.sh`: avviso sopra 64 MiB, errore in CI sopra
+>   128 MiB.
+> - **Priorità alle funzioni visibili:** (1) vedere i dati che entrano in
+>   indexarr (WP17); (2) aggiungere siti da un elenco ampio come quello di
+>   Jackett/Prowlarr (WP18, WP19).
+> - **Messa in produzione:** quando WP17–WP19 sono pronti si azzera la
+>   configurazione attuale (WP8 passo 5) e si abilitano i siti presenti oggi
+>   in Jackett e Prowlarr.
 
 ---
 
