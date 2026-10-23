@@ -178,6 +178,29 @@ func (s *Store) ReleaseByKey(ctx context.Context, key string) (Release, bool, er
 	return rel, err == nil, err
 }
 
+// ReleaseByExternalID resolves a Torznab item identifier that is not a
+// numeric row id: clients may call t=get with the <guid> (an infohash or the
+// fallback dedup key), or with the infohash itself.
+func (s *Store) ReleaseByExternalID(ctx context.Context, id string) (Release, bool, error) {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return Release{}, false, nil
+	}
+	lower := strings.ToLower(id)
+	// Torznab items without an infohash use "indexarr-<dedup_key>" as guid.
+	key := strings.TrimPrefix(id, "indexarr-")
+	row := s.db.QueryRowContext(ctx,
+		`SELECT `+releaseColumns+` FROM releases
+		 WHERE guid = ? OR infohash = ? OR dedup_key = ? OR dedup_key = ? OR dedup_key = ?
+		 ORDER BY id LIMIT 1`,
+		id, lower, id, key, "indexarr-"+key)
+	rel, err := scanRelease(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Release{}, false, nil
+	}
+	return rel, err == nil, err
+}
+
 // GetRelease loads one release by id.
 func (s *Store) GetRelease(ctx context.Context, id int64) (Release, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT `+releaseColumns+` FROM releases WHERE id = ?`, id)

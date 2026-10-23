@@ -89,8 +89,22 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request) {
 		if _, ok := s.authorize(w, r, settings); !ok {
 			return
 		}
-		id, _ := strconv.ParseInt(query.Get("id"), 10, 64)
-		s.serveTorrentByID(w, r, id)
+		rawID := strings.TrimSpace(query.Get("id"))
+		if id, err := strconv.ParseInt(rawID, 10, 64); err == nil && id > 0 {
+			s.serveTorrentByID(w, r, id)
+			return
+		}
+		release, found, err := s.store.ReleaseByExternalID(r.Context(), rawID)
+		if err != nil {
+			s.log.Error("torznab: get by external id", "component", "indexarr", "subsystem", "torznab", "error", err)
+			s.writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		if !found {
+			s.writeError(w, http.StatusNotFound, "release not found")
+			return
+		}
+		s.serveTorrent(w, r, release)
 		return
 	}
 	apiKey, ok := s.authorize(w, r, settings)
@@ -217,6 +231,10 @@ func (s *Server) serveTorrentByID(w http.ResponseWriter, r *http.Request, id int
 		s.writeError(w, http.StatusNotFound, "release not found")
 		return
 	}
+	s.serveTorrent(w, r, release)
+}
+
+func (s *Server) serveTorrent(w http.ResponseWriter, r *http.Request, release store.Release) {
 	if len(release.Torrent) == 0 {
 		s.writeError(w, http.StatusNotFound, "no .torrent stored for this release; use the magnet link")
 		return

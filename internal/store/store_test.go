@@ -558,3 +558,30 @@ func TestNormalizeSearch(t *testing.T) {
 		}
 	}
 }
+
+func TestReleaseByExternalID(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	rel := Release{
+		DedupKey: "external-1", GUID: "guid-1234",
+		InfoHash: "0123456789abcdef0123456789abcdef01234567",
+		Title:    "External", SearchTitle: "external",
+	}
+	if _, err := st.UpsertRelease(ctx, &rel); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{
+		"guid-1234",
+		"0123456789ABCDEF0123456789ABCDEF01234567",
+		"external-1",
+		"indexarr-external-1",
+	} {
+		found, ok, err := st.ReleaseByExternalID(ctx, id)
+		if err != nil || !ok || found.ID != rel.ID {
+			t.Errorf("ReleaseByExternalID(%q) = %#v, %v, %v", id, found, ok, err)
+		}
+	}
+	if _, ok, err := st.ReleaseByExternalID(ctx, "missing"); err != nil || ok {
+		t.Errorf("missing external id = %v, %v", ok, err)
+	}
+}

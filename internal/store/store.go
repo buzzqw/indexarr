@@ -169,6 +169,7 @@ func (s *Store) migrate() error {
 			value TEXT NOT NULL DEFAULT ''
 		)`,
 		`CREATE INDEX IF NOT EXISTS releases_infohash ON releases(infohash)`,
+		`CREATE INDEX IF NOT EXISTS releases_guid ON releases(guid)`,
 		`CREATE INDEX IF NOT EXISTS releases_published ON releases(published_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS releases_source ON releases(source_id)`,
 		`CREATE INDEX IF NOT EXISTS releases_category ON releases(category)`,

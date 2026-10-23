@@ -129,6 +129,15 @@ func TestSearchAndDownload(t *testing.T) {
 	if byGet.Code != http.StatusOK || byGet.Body.String() != string(torrent) {
 		t.Errorf("t=get failed: %d", byGet.Code)
 	}
+	// Some clients call t=get with the item GUID (the infohash here) instead
+	// of indexarr's numeric row id.
+	byGUID := do(t, api, "/api?t=get&id="+hash+"&apikey=secret")
+	if byGUID.Code != http.StatusOK || byGUID.Body.String() != string(torrent) {
+		t.Errorf("t=get by guid failed: %d", byGUID.Code)
+	}
+	if missing := do(t, api, "/api?t=get&id=does-not-exist&apikey=secret"); missing.Code != http.StatusNotFound {
+		t.Errorf("t=get missing id status = %d", missing.Code)
+	}
 }
 
 func TestAuthentication(t *testing.T) {
@@ -302,4 +311,31 @@ func TestTorrentFilename(t *testing.T) {
 
 func itoa(value int64) string {
 	return strconv.FormatInt(value, 10)
+}
+
+func TestTorznabAliasAndFunctions(t *testing.T) {
+	api, st := newAPI(t)
+	hash := "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
+	insertRelease(t, st, "Show S01E02 1080p", "5040", hash, "", []byte("d4:infod4:name4:testee"))
+
+	for _, target := range []string{
+		"/torznab/api?t=search&apikey=secret&q=Show",
+		"/torznab/api?t=tvsearch&apikey=secret&q=Show&season=1&ep=2",
+		"/torznab/api?t=movie&apikey=secret&q=Show",
+	} {
+		recorder := do(t, api, target)
+		if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "Show S01E02 1080p") {
+			t.Errorf("%s = %d\n%s", target, recorder.Code, recorder.Body.String())
+		}
+	}
+	if recorder := do(t, api, "/torznab/api?t=caps"); recorder.Code != http.StatusOK ||
+		!strings.Contains(recorder.Body.String(), "<caps>") {
+		t.Errorf("alias caps = %d", recorder.Code)
+	}
+	request := httptest.NewRequest(http.MethodHead, "/dl/1.torrent?apikey=secret", nil)
+	recorder := httptest.NewRecorder()
+	api.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || recorder.Body.Len() != 0 {
+		t.Errorf("HEAD download = %d, body %d", recorder.Code, recorder.Body.Len())
+	}
 }
