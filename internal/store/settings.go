@@ -13,45 +13,46 @@ import (
 // Setting keys. They are stored one row per key so a new option can be added
 // without a schema migration.
 const (
-	KeyAPIKey              = "api_key"
-	KeyPublicURL           = "public_url"
-	KeyFlareSolverr        = "flaresolverr_url"
-	KeyDefaultInterval     = "default_interval_seconds"
-	KeyRetentionDays       = "retention_days"
-	KeyMaxTorrentBytes     = "max_torrent_bytes"
-	KeyFetchTimeout        = "fetch_timeout_seconds"
-	KeyWorkers             = "workers"
-	KeyMaxTorrentsPerRun   = "max_torrents_per_run"
-	KeyFetchTorrents       = "fetch_torrents"
-	KeyUserAgent           = "user_agent"
-	KeyUIUser              = "ui_user"
-	KeyUIPasswordHash      = "ui_password_hash"
-	KeyTorznabDownloadFac  = "torznab_download_factor"
-	KeyTorznabUploadFactor = "torznab_upload_factor"
-	KeyNotifyWebhook       = "notify_webhook_url"
-	KeyNotifyTelegramToken = "notify_telegram_token"
-	KeyNotifyTelegramChat  = "notify_telegram_chat_id"
-	KeyNotifyNewReleases   = "notify_new_releases"
-	KeyNotifyFailures      = "notify_failures"
-	KeyAutoDisableAfter    = "auto_disable_after"
-	KeyLogLevel            = "log_level"
-	KeyAPIRateLimit        = "api_rate_limit_per_minute"
-	KeyBackupEnabled       = "backup_enabled"
-	KeyBackupInterval      = "backup_interval_hours"
-	KeyBackupKeep          = "backup_keep"
-	KeyTorznabLive         = "torznab_live_search"
-	KeyTorznabLiveTimeout  = "torznab_live_timeout_seconds"
-	KeyDownloadClient      = "download_client"
-	KeyDownloadClientURL   = "download_client_url"
-	KeyDownloadClientUser  = "download_client_user"
-	KeyDownloadClientPass  = "download_client_password"
-	KeyDownloadClientCat   = "download_client_category"
-	KeyDownloadClientPath  = "download_client_save_path"
-	KeyDownloadClientPause = "download_client_paused"
-	KeyHostRate            = "host_rate"
-	KeyHostBurst           = "host_burst"
-	KeyBreakerThreshold    = "breaker_threshold"
-	KeyBreakerCooldown     = "breaker_cooldown"
+	KeyAPIKey               = "api_key"
+	KeyPublicURL            = "public_url"
+	KeyFlareSolverr         = "flaresolverr_url"
+	KeyDefaultInterval      = "default_interval_seconds"
+	KeyRetentionDays        = "retention_days"
+	KeyHistoryRetentionDays = "history_retention_days"
+	KeyMaxTorrentBytes      = "max_torrent_bytes"
+	KeyFetchTimeout         = "fetch_timeout_seconds"
+	KeyWorkers              = "workers"
+	KeyMaxTorrentsPerRun    = "max_torrents_per_run"
+	KeyFetchTorrents        = "fetch_torrents"
+	KeyUserAgent            = "user_agent"
+	KeyUIUser               = "ui_user"
+	KeyUIPasswordHash       = "ui_password_hash"
+	KeyTorznabDownloadFac   = "torznab_download_factor"
+	KeyTorznabUploadFactor  = "torznab_upload_factor"
+	KeyNotifyWebhook        = "notify_webhook_url"
+	KeyNotifyTelegramToken  = "notify_telegram_token"
+	KeyNotifyTelegramChat   = "notify_telegram_chat_id"
+	KeyNotifyNewReleases    = "notify_new_releases"
+	KeyNotifyFailures       = "notify_failures"
+	KeyAutoDisableAfter     = "auto_disable_after"
+	KeyLogLevel             = "log_level"
+	KeyAPIRateLimit         = "api_rate_limit_per_minute"
+	KeyBackupEnabled        = "backup_enabled"
+	KeyBackupInterval       = "backup_interval_hours"
+	KeyBackupKeep           = "backup_keep"
+	KeyTorznabLive          = "torznab_live_search"
+	KeyTorznabLiveTimeout   = "torznab_live_timeout_seconds"
+	KeyDownloadClient       = "download_client"
+	KeyDownloadClientURL    = "download_client_url"
+	KeyDownloadClientUser   = "download_client_user"
+	KeyDownloadClientPass   = "download_client_password"
+	KeyDownloadClientCat    = "download_client_category"
+	KeyDownloadClientPath   = "download_client_save_path"
+	KeyDownloadClientPause  = "download_client_paused"
+	KeyHostRate             = "host_rate"
+	KeyHostBurst            = "host_burst"
+	KeyBreakerThreshold     = "breaker_threshold"
+	KeyBreakerCooldown      = "breaker_cooldown"
 )
 
 // Settings are the runtime options edited from the web interface.
@@ -61,6 +62,9 @@ type Settings struct {
 	FlareSolverrURL        string
 	DefaultIntervalSeconds int
 	RetentionDays          int
+	// HistoryRetentionDays is how long run history, its metrics, app
+	// searches and indexer samples are kept. Zero keeps them forever.
+	HistoryRetentionDays   int
 	MaxTorrentBytes        int64
 	FetchTimeoutSeconds    int
 	Workers                int
@@ -102,6 +106,7 @@ func DefaultSettings() Settings {
 	return Settings{
 		DefaultIntervalSeconds: 3600,
 		RetentionDays:          0,
+		HistoryRetentionDays:   30,
 		MaxTorrentBytes:        8 << 20,
 		FetchTimeoutSeconds:    45,
 		Workers:                2,
@@ -185,6 +190,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	}
 	out.DefaultIntervalSeconds = intValue(values, KeyDefaultInterval, 3600, 60, 30*24*3600)
 	out.RetentionDays = intValue(values, KeyRetentionDays, 0, 0, 3650)
+	out.HistoryRetentionDays = intValue(values, KeyHistoryRetentionDays, 30, 0, 3650)
 	out.MaxTorrentBytes = int64(intValue(values, KeyMaxTorrentBytes, 8<<20, 64<<10, 64<<20))
 	out.FetchTimeoutSeconds = intValue(values, KeyFetchTimeout, 45, 5, 300)
 	out.Workers = intValue(values, KeyWorkers, 2, 1, 16)
@@ -236,44 +242,45 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 // SaveSettings writes every option.
 func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 	pairs := map[string]string{
-		KeyAPIKey:              in.APIKey,
-		KeyPublicURL:           strings.TrimRight(strings.TrimSpace(in.PublicURL), "/"),
-		KeyFlareSolverr:        strings.TrimRight(strings.TrimSpace(in.FlareSolverrURL), "/"),
-		KeyDefaultInterval:     strconv.Itoa(in.DefaultIntervalSeconds),
-		KeyRetentionDays:       strconv.Itoa(in.RetentionDays),
-		KeyMaxTorrentBytes:     strconv.FormatInt(in.MaxTorrentBytes, 10),
-		KeyFetchTimeout:        strconv.Itoa(in.FetchTimeoutSeconds),
-		KeyWorkers:             strconv.Itoa(in.Workers),
-		KeyMaxTorrentsPerRun:   strconv.Itoa(in.MaxTorrentsPerRun),
-		KeyUserAgent:           strings.TrimSpace(in.UserAgent),
-		KeyUIUser:              strings.TrimSpace(in.UIUser),
-		KeyUIPasswordHash:      in.UIPasswordHash,
-		KeyTorznabDownloadFac:  strconv.Itoa(in.TorznabDownloadFactor),
-		KeyTorznabUploadFactor: strconv.Itoa(in.TorznabUploadFactor),
-		KeyNotifyWebhook:       strings.TrimSpace(in.NotifyWebhookURL),
-		KeyNotifyTelegramToken: strings.TrimSpace(in.NotifyTelegramToken),
-		KeyNotifyTelegramChat:  strings.TrimSpace(in.NotifyTelegramChatID),
-		KeyNotifyNewReleases:   boolString(in.NotifyNewReleases),
-		KeyNotifyFailures:      boolString(in.NotifyFailures),
-		KeyAutoDisableAfter:    strconv.Itoa(in.AutoDisableAfter),
-		KeyLogLevel:            strings.ToLower(strings.TrimSpace(in.LogLevel)),
-		KeyAPIRateLimit:        strconv.Itoa(in.APIRateLimit),
-		KeyBackupEnabled:       boolString(in.BackupEnabled),
-		KeyBackupInterval:      strconv.Itoa(in.BackupIntervalHours),
-		KeyBackupKeep:          strconv.Itoa(in.BackupKeep),
-		KeyTorznabLive:         boolString(in.TorznabLiveSearch),
-		KeyTorznabLiveTimeout:  strconv.Itoa(in.TorznabLiveTimeout),
-		KeyDownloadClient:      strings.ToLower(strings.TrimSpace(in.DownloadClient)),
-		KeyDownloadClientURL:   strings.TrimRight(strings.TrimSpace(in.DownloadClientURL), "/"),
-		KeyDownloadClientUser:  strings.TrimSpace(in.DownloadClientUser),
-		KeyDownloadClientPass:  in.DownloadClientPassword,
-		KeyDownloadClientCat:   strings.TrimSpace(in.DownloadClientCategory),
-		KeyDownloadClientPath:  strings.TrimSpace(in.DownloadClientSavePath),
-		KeyDownloadClientPause: boolString(in.DownloadClientPaused),
-		KeyHostRate:            strconv.FormatFloat(in.HostRate, 'f', -1, 64),
-		KeyHostBurst:           strconv.Itoa(in.HostBurst),
-		KeyBreakerThreshold:    strconv.Itoa(in.BreakerThreshold),
-		KeyBreakerCooldown:     strconv.Itoa(in.BreakerCooldownSeconds),
+		KeyAPIKey:               in.APIKey,
+		KeyPublicURL:            strings.TrimRight(strings.TrimSpace(in.PublicURL), "/"),
+		KeyFlareSolverr:         strings.TrimRight(strings.TrimSpace(in.FlareSolverrURL), "/"),
+		KeyDefaultInterval:      strconv.Itoa(in.DefaultIntervalSeconds),
+		KeyRetentionDays:        strconv.Itoa(in.RetentionDays),
+		KeyHistoryRetentionDays: strconv.Itoa(in.HistoryRetentionDays),
+		KeyMaxTorrentBytes:      strconv.FormatInt(in.MaxTorrentBytes, 10),
+		KeyFetchTimeout:         strconv.Itoa(in.FetchTimeoutSeconds),
+		KeyWorkers:              strconv.Itoa(in.Workers),
+		KeyMaxTorrentsPerRun:    strconv.Itoa(in.MaxTorrentsPerRun),
+		KeyUserAgent:            strings.TrimSpace(in.UserAgent),
+		KeyUIUser:               strings.TrimSpace(in.UIUser),
+		KeyUIPasswordHash:       in.UIPasswordHash,
+		KeyTorznabDownloadFac:   strconv.Itoa(in.TorznabDownloadFactor),
+		KeyTorznabUploadFactor:  strconv.Itoa(in.TorznabUploadFactor),
+		KeyNotifyWebhook:        strings.TrimSpace(in.NotifyWebhookURL),
+		KeyNotifyTelegramToken:  strings.TrimSpace(in.NotifyTelegramToken),
+		KeyNotifyTelegramChat:   strings.TrimSpace(in.NotifyTelegramChatID),
+		KeyNotifyNewReleases:    boolString(in.NotifyNewReleases),
+		KeyNotifyFailures:       boolString(in.NotifyFailures),
+		KeyAutoDisableAfter:     strconv.Itoa(in.AutoDisableAfter),
+		KeyLogLevel:             strings.ToLower(strings.TrimSpace(in.LogLevel)),
+		KeyAPIRateLimit:         strconv.Itoa(in.APIRateLimit),
+		KeyBackupEnabled:        boolString(in.BackupEnabled),
+		KeyBackupInterval:       strconv.Itoa(in.BackupIntervalHours),
+		KeyBackupKeep:           strconv.Itoa(in.BackupKeep),
+		KeyTorznabLive:          boolString(in.TorznabLiveSearch),
+		KeyTorznabLiveTimeout:   strconv.Itoa(in.TorznabLiveTimeout),
+		KeyDownloadClient:       strings.ToLower(strings.TrimSpace(in.DownloadClient)),
+		KeyDownloadClientURL:    strings.TrimRight(strings.TrimSpace(in.DownloadClientURL), "/"),
+		KeyDownloadClientUser:   strings.TrimSpace(in.DownloadClientUser),
+		KeyDownloadClientPass:   in.DownloadClientPassword,
+		KeyDownloadClientCat:    strings.TrimSpace(in.DownloadClientCategory),
+		KeyDownloadClientPath:   strings.TrimSpace(in.DownloadClientSavePath),
+		KeyDownloadClientPause:  boolString(in.DownloadClientPaused),
+		KeyHostRate:             strconv.FormatFloat(in.HostRate, 'f', -1, 64),
+		KeyHostBurst:            strconv.Itoa(in.HostBurst),
+		KeyBreakerThreshold:     strconv.Itoa(in.BreakerThreshold),
+		KeyBreakerCooldown:      strconv.Itoa(in.BreakerCooldownSeconds),
 	}
 	if in.FetchTorrents {
 		pairs[KeyFetchTorrents] = "1"

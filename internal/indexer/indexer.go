@@ -79,6 +79,12 @@ type cachedConnector struct {
 }
 
 // RunStats is what one Run did. Items is capped to keep memory bounded.
+//
+// Skipped is the legacy "not stored" counter: it includes duplicates, which
+// are also reported separately, so existing callers keep their meaning. The
+// Discarded* counters partition the real discard reasons and sum to
+// Discarded. Completeness is measured on the normalized items the connector
+// returned, before any run-level filter.
 type RunStats struct {
 	Seen     int
 	New      int
@@ -87,6 +93,22 @@ type RunStats struct {
 	Skipped  int
 	Torrents int
 	Items    []engine.Item
+
+	Duplicates      int
+	Discarded       int
+	DiscardNoLink   int
+	DiscardTooOld   int
+	DiscardCategory int
+	DiscardParse    int
+	DiscardOther    int
+	FieldTotal      int
+	FieldSize       int
+	FieldSeeders    int
+	FieldCategory   int
+	FieldDate       int
+	FieldHash       int
+	SampleItems     []store.SampleItem
+	maxSampleItems  int
 }
 
 // New builds a Manager.

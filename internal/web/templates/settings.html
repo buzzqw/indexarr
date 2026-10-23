@@ -304,6 +304,11 @@
     <input id="retention_days" name="retention_days" type="number" min="0" max="3650" required value="{{.Settings.RetentionDays}}">
     <p class="help">{{T "settings.retentionHelp"}}</p>
   </div>
+  <div class="field">
+    <label for="history_retention_days">{{T "settings.historyRetentionDays"}}</label>
+    <input id="history_retention_days" name="history_retention_days" type="number" min="0" max="3650" required value="{{.Settings.HistoryRetentionDays}}">
+    <p class="help">{{T "settings.historyRetentionHelp"}}</p>
+  </div>
 
   <div class="panel-head"><h2>{{T "settings.webAccess"}}</h2></div>
   {{if not .Settings.UIUser}}<p class="flash warn" role="status">{{T "settings.openWarning"}}</p>{{end}}

@@ -1,0 +1,45 @@
+{{define "activity_searches_body"}}
+<div class="section-head">
+  <p class="muted">{{T "activity.searches.subtitle"}}</p>
+</div>
+
+<section class="panel">
+  {{if .Searches}}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "activity.searches.app"}}</th>
+          <th scope="col">{{T "activity.searches.query"}}</th>
+          <th scope="col">{{T "activity.searches.indexers"}}</th>
+          <th scope="col">{{T "activity.searches.results"}}</th>
+          <th scope="col">{{T "activity.searches.total"}}</th>
+          <th scope="col">{{T "activity.searches.duration"}}</th>
+          <th scope="col">{{T "activity.searches.error"}}</th>
+          <th scope="col">{{T "activity.searches.when"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Searches}}
+        <tr>
+          <td><strong>{{textOrDash .App}}</strong><div class="sub">{{.Mode}}</div></td>
+          <td>{{if .Query}}{{truncate .Query 70}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td>{{if .Indexers}}{{.Indexers}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td class="app-results">
+            {{range .ResultRows}}<span class="chip">{{.Name}} · {{.Count}}</span>{{else}}<span class="muted">—</span>{{end}}
+          </td>
+          <td>{{.Total}}</td>
+          <td class="nowrap">{{if .HasDuration}}{{.Duration}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td class="error-cell">{{if .Error}}<span title="{{.Error}}">{{truncate .Error 90}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+          <td class="nowrap">{{ago .CreatedAt}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{template "pager" .Pager}}
+  {{else}}
+  {{template "empty" .Empty}}
+  {{end}}
+</section>
+{{end}}

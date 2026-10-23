@@ -67,15 +67,20 @@ func statusFor(ctx context.Context, err error) string {
 	return "ok"
 }
 
-// recordHistory appends one indexer_history row. It never fails the caller: a
-// history write error is logged and ignored.
-func (m *Manager) recordHistory(ctx context.Context, indexerID int64, kind, query, status string, started time.Time, bytes int64, opErr error) {
+// recordHistory appends one indexer_history row and, when stats is not nil,
+// the matching metrics row in the same transaction. It never fails the caller:
+// a history write error is logged and ignored.
+func (m *Manager) recordHistory(ctx context.Context, indexerID int64, kind, query, status string, started time.Time, bytes int64, opErr error, stats *RunStats) int64 {
 	base := context.WithoutCancel(ctx)
 	errorValue := ""
 	if opErr != nil {
 		errorValue = m.redact(indexerID, errorText(opErr))
 	}
-	_, err := m.store.RecordIndexerHistory(base, store.IndexerHistory{
+	var metrics *store.RunMetrics
+	if stats != nil {
+		metrics = stats.Metrics()
+	}
+	id, err := m.store.RecordIndexerHistory(base, store.IndexerHistory{
 		IndexerID: indexerID,
 		Kind:      kind,
 		Query:     truncate(query, 300),
@@ -84,11 +89,13 @@ func (m *Manager) recordHistory(ctx context.Context, indexerID int64, kind, quer
 		Bytes:     bytes,
 		Error:     errorValue,
 		StartedAt: started,
+		Metrics:   metrics,
 	})
 	if err != nil {
 		m.logger.Warn("indexer: record history",
 			"indexer_id", indexerID, "kind", kind, "error", err)
 	}
+	return id
 }
 
 // queryHistoryKinds are the indexer operations counted against the daily query
@@ -156,42 +163,75 @@ func (m *Manager) RecordGrab(ctx context.Context, indexerID int64, releaseID int
 	return nil
 }
 
-// Search runs a search through the cached connector and records history.
+// Search runs a search through the cached connector and records history,
+// metrics and the last successful sample.
 func (m *Manager) Search(ctx context.Context, indexerID int64, req engine.SearchRequest) ([]engine.Item, error) {
 	started := time.Now()
+	stats := &RunStats{}
 	if err := m.checkQueryLimit(ctx, indexerID); err != nil {
 		return nil, err
 	}
 	connector, indexer, err := m.Connector(ctx, indexerID)
 	if err != nil {
-		m.recordHistory(ctx, indexerID, "search", req.Query, statusFor(ctx, err), started, 0, err)
+		m.recordHistory(ctx, indexerID, "search", req.Query, statusFor(ctx, err), started, 0, err, stats)
 		return nil, err
 	}
+	capture := newRunCapture(m.sampleSecrets(ctx, indexer.ID))
+	ctx = engine.WithResponseObserver(ctx, capture.observe)
+	ctx = engine.WithNormalizeObserver(ctx, func(observation engine.NormalizeObservation) {
+		if !observation.OK {
+			stats.discardParse()
+		}
+	})
 	items, err := connector.Search(ctx, req)
 	if err != nil {
 		err = fmt.Errorf("indexer %s: search: %w", indexer.Slug, err)
+	} else {
+		stats.Seen = len(items)
+		for _, item := range items {
+			stats.observeItem(item, capture.secrets)
+		}
 	}
-	m.recordHistory(ctx, indexer.ID, "search", req.Query, statusFor(ctx, err), started, 0, err)
+	m.recordHistory(ctx, indexer.ID, "search", req.Query, statusFor(ctx, err), started, 0, err, stats)
+	if err == nil {
+		m.recordSample(context.WithoutCancel(ctx), indexer.ID, capture, stats)
+	}
 	return items, err
 }
 
 // Latest runs a latest feed request through the cached connector and records
-// history.
+// history, metrics and the last successful sample.
 func (m *Manager) Latest(ctx context.Context, indexerID int64, req engine.LatestRequest) ([]engine.Item, error) {
 	started := time.Now()
+	stats := &RunStats{}
 	if err := m.checkQueryLimit(ctx, indexerID); err != nil {
 		return nil, err
 	}
 	connector, indexer, err := m.Connector(ctx, indexerID)
 	if err != nil {
-		m.recordHistory(ctx, indexerID, "latest", "", statusFor(ctx, err), started, 0, err)
+		m.recordHistory(ctx, indexerID, "latest", "", statusFor(ctx, err), started, 0, err, stats)
 		return nil, err
 	}
+	capture := newRunCapture(m.sampleSecrets(ctx, indexer.ID))
+	ctx = engine.WithResponseObserver(ctx, capture.observe)
+	ctx = engine.WithNormalizeObserver(ctx, func(observation engine.NormalizeObservation) {
+		if !observation.OK {
+			stats.discardParse()
+		}
+	})
 	items, err := connector.Latest(ctx, req)
 	if err != nil {
 		err = fmt.Errorf("indexer %s: latest: %w", indexer.Slug, err)
+	} else {
+		stats.Seen = len(items)
+		for _, item := range items {
+			stats.observeItem(item, capture.secrets)
+		}
 	}
-	m.recordHistory(ctx, indexer.ID, "latest", "", statusFor(ctx, err), started, 0, err)
+	m.recordHistory(ctx, indexer.ID, "latest", "", statusFor(ctx, err), started, 0, err, stats)
+	if err == nil {
+		m.recordSample(context.WithoutCancel(ctx), indexer.ID, capture, stats)
+	}
 	return items, err
 }
 
@@ -201,14 +241,14 @@ func (m *Manager) Download(ctx context.Context, indexerID int64, item engine.Ite
 	started := time.Now()
 	connector, indexer, err := m.Connector(ctx, indexerID)
 	if err != nil {
-		m.recordHistory(ctx, indexerID, "download", "", statusFor(ctx, err), started, 0, err)
+		m.recordHistory(ctx, indexerID, "download", "", statusFor(ctx, err), started, 0, err, nil)
 		return engine.Payload{}, err
 	}
 	payload, err := connector.Download(ctx, item)
 	if err != nil {
 		err = fmt.Errorf("indexer %s: download: %w", indexer.Slug, err)
 	}
-	m.recordHistory(ctx, indexer.ID, "download", "", statusFor(ctx, err), started, int64(len(payload.Body)), err)
+	m.recordHistory(ctx, indexer.ID, "download", "", statusFor(ctx, err), started, int64(len(payload.Body)), err, nil)
 	return payload, err
 }
 
@@ -216,11 +256,19 @@ func (m *Manager) Download(ctx context.Context, indexerID int64, item engine.Ite
 // column carries a compact phase summary only when the test fails.
 func (m *Manager) Test(ctx context.Context, indexerID int64) (engine.TestResult, error) {
 	started := time.Now()
+	stats := &RunStats{}
 	connector, indexer, err := m.Connector(ctx, indexerID)
 	if err != nil {
-		m.recordHistory(ctx, indexerID, "test", "", statusFor(ctx, err), started, 0, err)
+		m.recordHistory(ctx, indexerID, "test", "", statusFor(ctx, err), started, 0, err, stats)
 		return engine.TestResult{}, err
 	}
+	capture := newRunCapture(m.sampleSecrets(ctx, indexer.ID))
+	ctx = engine.WithResponseObserver(ctx, capture.observe)
+	ctx = engine.WithNormalizeObserver(ctx, func(observation engine.NormalizeObservation) {
+		if !observation.OK {
+			stats.discardParse()
+		}
+	})
 	result, err := connector.Test(ctx)
 	if err != nil {
 		err = fmt.Errorf("indexer %s: test: %w", indexer.Slug, err)
@@ -229,7 +277,10 @@ func (m *Manager) Test(ctx context.Context, indexerID int64) (engine.TestResult,
 	if historyErr == nil && !result.OK {
 		historyErr = errors.New(phasesSummary(result))
 	}
-	m.recordHistory(ctx, indexer.ID, "test", "", statusFor(ctx, historyErr), started, 0, historyErr)
+	m.recordHistory(ctx, indexer.ID, "test", "", statusFor(ctx, historyErr), started, 0, historyErr, stats)
+	if historyErr == nil {
+		m.recordSample(context.WithoutCancel(ctx), indexer.ID, capture, stats)
+	}
 	return result, err
 }
 

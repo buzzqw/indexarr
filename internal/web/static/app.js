@@ -4,6 +4,41 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
+// Reload pages such as Activity → New releases only while the tab is visible.
+// Hiding the tab clears the timer, so a background tab never polls indexarr.
+(() => {
+  const seconds = Number(document.body.dataset.liveRefresh || "0");
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return;
+  }
+  let timer = null;
+  const start = () => {
+    if (timer !== null || document.visibilityState !== "visible") {
+      return;
+    }
+    timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        window.location.reload();
+      }
+    }, seconds * 1000);
+  };
+  const stop = () => {
+    if (timer === null) {
+      return;
+    }
+    window.clearInterval(timer);
+    timer = null;
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      start();
+    } else {
+      stop();
+    }
+  });
+  start();
+})();
+
 (() => {
   // The mobile stylesheet turns tables into stacked cards and uses
   // data-label as the visible field name. Deriving it from <thead> keeps the

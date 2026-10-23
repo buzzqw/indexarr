@@ -76,8 +76,9 @@ func (s *Server) resolveIndexer(ctx context.Context, slug string) (store.Indexer
 // releaseSelection is the resolved set of indexers a request may see. Release
 // provenance lives in release_sources, so the selection is pushed into SQL.
 type releaseSelection struct {
-	all bool
-	ids map[int64]struct{}
+	all   bool
+	ids   map[int64]struct{}
+	names map[int64]string
 }
 
 func (sel releaseSelection) empty() bool {
@@ -88,7 +89,10 @@ func selectionForIndexer(indexer store.Indexer) releaseSelection {
 	if indexer.ID <= 0 {
 		return releaseSelection{}
 	}
-	return releaseSelection{ids: map[int64]struct{}{indexer.ID: {}}}
+	return releaseSelection{
+		ids:   map[int64]struct{}{indexer.ID: {}},
+		names: map[int64]string{indexer.ID: indexer.Name},
+	}
 }
 
 // aggregateFilters are the Jackett-style indexer filters accepted by the
@@ -134,12 +138,16 @@ func (s *Server) resolveAggregateSelection(ctx context.Context, filters aggregat
 			definitions[definition.ID] = definition
 		}
 	}
-	selected := releaseSelection{ids: map[int64]struct{}{}}
+	selected := releaseSelection{
+		ids:   map[int64]struct{}{},
+		names: map[int64]string{},
+	}
 	for _, indexer := range indexers {
 		if !filters.matchIndexer(indexer, definitions) {
 			continue
 		}
 		selected.ids[indexer.ID] = struct{}{}
+		selected.names[indexer.ID] = indexer.Name
 	}
 	return selected, nil
 }

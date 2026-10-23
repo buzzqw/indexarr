@@ -10,6 +10,12 @@
   <a class="tab{{if eq .Tab "runs"}} active{{end}}" href="/activity?tab=runs"{{if eq .Tab "runs"}} aria-current="page"{{end}}>
     {{T "activity.runs"}} <span class="chip">{{len .Runs.Runs}}</span>
   </a>
+  <a class="tab{{if eq .Tab "feed"}} active{{end}}" href="/activity?tab=feed"{{if eq .Tab "feed"}} aria-current="page"{{end}}>
+    {{T "activity.feed"}}{{if .Feed}} <span class="chip">{{.Feed.Pager.Total}}</span>{{end}}
+  </a>
+  <a class="tab{{if eq .Tab "searches"}} active{{end}}" href="/activity?tab=searches"{{if eq .Tab "searches"}} aria-current="page"{{end}}>
+    {{T "activity.searches"}}{{if .Searches}} <span class="chip">{{.Searches.Pager.Total}}</span>{{end}}
+  </a>
   <a class="tab{{if eq .Tab "logs"}} active{{end}}" href="/activity?tab=logs"{{if eq .Tab "logs"}} aria-current="page"{{end}}>
     {{T "activity.logs"}} <span class="chip">{{.Logs.BufferSize}}</span>
   </a>
@@ -50,6 +56,10 @@
 
 {{if eq .Tab "logs"}}
 {{template "logs_body" .Logs}}
+{{else if eq .Tab "feed"}}
+{{template "activity_feed_body" .Feed}}
+{{else if eq .Tab "searches"}}
+{{template "activity_searches_body" .Searches}}
 {{else}}
 {{template "runs_body" .Runs}}
 {{end}}

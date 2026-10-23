@@ -1,0 +1,147 @@
+{{define "indexer_data_body"}}
+<section class="panel" id="run-chart">
+  <div class="panel-head">
+    <h2>{{T "idx.data.chartTitle"}}</h2>
+  </div>
+  <p class="help">{{T "idx.data.chartHelp"}}</p>
+  {{if .Data.HasChart}}
+  <div class="chart-wrap">{{.Data.Chart}}</div>
+  <p class="chart-legend">
+    <span class="chart-key chart-new"></span> {{T "idx.data.chartNew"}}
+    <span class="chart-key chart-old"></span> {{T "idx.data.chartDiscarded"}}
+  </p>
+  {{else}}
+  <p class="muted">{{T "idx.data.chartEmpty"}}</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "idx.data.runsTitle"}}</h2></div>
+  <p class="help">{{T "idx.data.runsHelp"}}</p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "idx.data.started"}}</th>
+          <th scope="col">{{T "idx.data.kind"}}</th>
+          <th scope="col">{{T "idx.data.outcome"}}</th>
+          <th scope="col">{{T "idx.data.seen"}}</th>
+          <th scope="col">{{T "idx.data.new"}}</th>
+          <th scope="col">{{T "idx.data.duplicates"}}</th>
+          <th scope="col">{{T "idx.data.discarded"}}</th>
+          <th scope="col">{{T "idx.data.reasons"}}</th>
+          <th scope="col">{{T "idx.data.latency"}}</th>
+          <th scope="col">{{T "idx.data.error"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Data.Runs}}
+        <tr>
+          <td class="nowrap">{{date .StartedAt}}<div class="sub">{{ago .StartedAt}}</div></td>
+          <td>{{kindLabel .Kind}}</td>
+          <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
+          <td>{{.Metrics.Seen}}</td>
+          <td>{{.Metrics.ItemsNew}}</td>
+          <td>{{.Metrics.Duplicates}}</td>
+          <td>{{.Metrics.Discarded}}</td>
+          <td class="reason-cell">
+            {{if .Metrics.DiscardNoLink}}<span class="badge soft">{{T "idx.data.discardNoLink"}} {{.Metrics.DiscardNoLink}}</span>{{end}}
+            {{if .Metrics.DiscardBlocked}}<span class="badge soft">{{T "idx.data.discardBlocked"}} {{.Metrics.DiscardBlocked}}</span>{{end}}
+            {{if .Metrics.DiscardTooOld}}<span class="badge soft">{{T "idx.data.discardTooOld"}} {{.Metrics.DiscardTooOld}}</span>{{end}}
+            {{if .Metrics.DiscardCategory}}<span class="badge soft">{{T "idx.data.discardCategory"}} {{.Metrics.DiscardCategory}}</span>{{end}}
+            {{if .Metrics.DiscardParse}}<span class="badge soft">{{T "idx.data.discardParse"}} {{.Metrics.DiscardParse}}</span>{{end}}
+            {{if .Metrics.DiscardOther}}<span class="badge soft">{{T "idx.data.discardOther"}} {{.Metrics.DiscardOther}}</span>{{end}}
+            {{if not .Metrics.Discarded}}<span class="muted">—</span>{{end}}
+          </td>
+          <td class="nowrap">{{.LatencyMS}} ms</td>
+          <td class="error-cell">{{if .Error}}<span title="{{.Error}}">{{truncate .Error 60}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="10" class="empty">{{T "idx.data.runsEmpty"}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel" id="completeness">
+  <div class="panel-head"><h2>{{T "idx.data.completenessTitle"}}</h2></div>
+  <p class="help">{{T "idx.data.completenessHelp"}}</p>
+  {{if .Data.HasMetrics}}
+  <div class="completeness">
+    {{range .Data.Completeness}}
+    <div class="completeness-row{{if .Missing}} is-missing{{end}}">
+      <div class="completeness-head">
+        <span class="completeness-label">{{.Label}}</span>
+        <span class="completeness-value">{{pct .Found .Total}}</span>
+      </div>
+      <div class="completeness-track" role="img" aria-label="{{.Label}} {{pct .Found .Total}}">
+        <span class="completeness-bar" style="width: {{.Percent}}%"></span>
+      </div>
+      <p class="help">{{T "idx.data.completenessValue" .Found .Total}}</p>
+    </div>
+    {{end}}
+  </div>
+  {{range .Data.Problems}}{{template "problem" .}}{{end}}
+  {{else}}
+  <p class="muted">{{T "idx.data.completenessEmpty"}}</p>
+  {{end}}
+</section>
+
+{{template "advanced-open" (advanced (T "idx.data.sampleTitle"))}}
+  {{if .Data.HasSample}}
+  <dl class="detail">
+    <dt>{{T "idx.data.sampleRequest"}}</dt>
+    <dd><code>{{.Data.Sample.Method}} {{.Data.Sample.RequestURL}}</code></dd>
+    <dt>{{T "idx.data.sampleStatus"}}</dt>
+    <dd>{{.Data.Sample.Status}}</dd>
+    <dt>{{T "idx.data.sampleLatency"}}</dt>
+    <dd>{{.Data.Sample.LatencyMS}} ms</dd>
+    <dt>{{T "idx.data.sampleSize"}}</dt>
+    <dd>{{bytes .Data.Sample.BodyBytes}}{{if .Data.Sample.Truncated}} <span class="chip warn">{{T "idx.data.sampleTruncated"}}</span>{{end}}</dd>
+    <dt>{{T "idx.data.sampleFetched"}}</dt>
+    <dd>{{date .Data.Sample.FetchedAt}} <span class="muted">({{ago .Data.Sample.FetchedAt}})</span></dd>
+    <dt>{{T "idx.data.sampleItems"}}</dt>
+    <dd>{{T "idx.data.sampleItemsCount" .Data.Sample.ItemsCount}}</dd>
+  </dl>
+  <div class="sample-grid">
+    <section class="sample-side">
+      <h3 class="sub-head">{{T "idx.data.sampleRaw"}}</h3>
+      <p class="help">{{T "idx.data.sampleRawHelp"}}</p>
+      <pre class="sample-body">{{.Data.Sample.Body}}</pre>
+    </section>
+    <section class="sample-side">
+      <h3 class="sub-head">{{T "idx.data.sampleNormalized"}}</h3>
+      <p class="help">{{T "idx.data.sampleNormalizedHelp"}}</p>
+      <ol class="sample-items">
+        {{range .Data.Sample.Items}}
+        <li class="sample-item">
+          <p class="sample-title">{{if .Item.Title}}{{.Item.Title}}{{else}}<span class="muted">—</span>{{end}}</p>
+          <p class="sample-meta">
+            <span>{{T "indexer.size"}}: {{sizeOrDash .Item.Size}}</span>
+            <span>{{T "indexer.seeders"}}: {{numOrDash .Item.Seeders}}</span>
+            <span>{{T "indexer.categories"}}: {{if .Categories}}{{range .Categories}}<span class="chip">{{.}}</span> {{end}}{{else}}<span class="muted">—</span>{{end}}</span>
+            <span>{{T "idx.data.fieldDate"}}: {{if .Item.Published}}{{.Item.Published}}{{else}}<span class="muted">—</span>{{end}}</span>
+            <span>{{T "idx.data.fieldHash"}}: {{if .Item.InfoHash}}<code>{{.Item.InfoHash}}</code>{{else}}<span class="muted">—</span>{{end}}</span>
+          </p>
+          <p class="sample-fields">
+            {{range .Fields}}<span class="chip {{if .Found}}ok{{else}}warn{{end}}">{{.Label}}{{if not .Found}} ✕{{end}}</span>{{end}}
+          </p>
+          <p class="sample-found">
+            <strong>{{T "idx.data.sampleFound"}}</strong>: {{if .Found}}{{.Found}}{{else}}<span class="muted">—</span>{{end}}
+          </p>
+          <p class="sample-missing">
+            <strong>{{T "idx.data.sampleMissing"}}</strong>: {{if .Missing}}{{.Missing}}{{else}}<span class="muted">—</span>{{end}}
+          </p>
+        </li>
+        {{else}}
+        <li class="muted">{{T "idx.data.sampleNoItems"}}</li>
+        {{end}}
+      </ol>
+    </section>
+  </div>
+  {{else}}
+  <p class="muted">{{T "idx.data.sampleEmpty"}}</p>
+  {{end}}
+{{template "advanced-close"}}
+{{end}}

@@ -115,6 +115,12 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		renderInvalid(parseErr.Error())
 		return
 	}
+	// The history retention field lives in Settings → Maintenance. It keeps
+	// the current value when a form that predates WP17 is submitted.
+	if in.HistoryRetentionDays, parseErr = s.formInt(r, "history_retention_days", current.HistoryRetentionDays, 0, 3650); parseErr != nil {
+		renderInvalid(parseErr.Error())
+		return
+	}
 	if in.FetchTimeoutSeconds, parseErr = s.formInt(r, "fetch_timeout_seconds", 45, 5, 300); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return

@@ -63,6 +63,12 @@
   </div>
 </section>{{end}}
 
+{{define "pager"}}{{if gt .Pages 1}}<div class="pager">
+  {{if .Prev}}<a class="btn small" href="{{.Prev}}">{{T "releases.previous"}}</a>{{else}}<span class="btn small disabled">{{T "releases.previous"}}</span>{{end}}
+  <span class="muted">{{T "releases.pageSummary" .Page .Pages .FirstItem .LastItem .Total}}</span>
+  {{if .Next}}<a class="btn small" href="{{.Next}}">{{T "releases.next"}}</a>{{else}}<span class="btn small disabled">{{T "releases.next"}}</span>{{end}}
+</div>{{end}}{{end}}
+
 {{define "confirm"}}<form method="post" action="{{.Action}}" data-confirm="{{.Message}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="btn {{.Class}}" type="submit">{{.Label}}</button></form>{{end}}
 
 {{define "secret-field"}}<div class="secret-field" data-secret-field data-secret-url="{{.URL}}">

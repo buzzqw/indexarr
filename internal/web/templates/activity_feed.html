@@ -1,0 +1,57 @@
+{{define "activity_feed_body"}}
+<div class="section-head">
+  <p class="muted">{{T "activity.feed.subtitle"}}</p>
+</div>
+
+<form class="filters" method="get" action="/activity">
+  <input type="hidden" name="tab" value="feed">
+  <div class="field">
+    <label for="feed-indexer">{{T "activity.feed.indexer"}}</label>
+    <select id="feed-indexer" name="indexer">
+      <option value="0">{{T "activity.feed.allIndexers"}}</option>
+      {{range .Indexers}}<option value="{{.ID}}"{{if eq $.IndexerID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </div>
+  <div class="field actions-field">
+    <button class="btn primary" type="submit">{{T "activity.feed.filter"}}</button>
+    <a class="btn" href="/activity?tab=feed">{{T "activity.feed.reset"}}</a>
+  </div>
+</form>
+
+<section class="panel">
+  {{if .Releases}}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "activity.feed.release"}}</th>
+          <th scope="col">{{T "activity.feed.provenance"}}</th>
+          <th scope="col">{{T "indexer.size"}}</th>
+          <th scope="col">{{T "indexer.seeders"}}</th>
+          <th scope="col">{{T "activity.feed.category"}}</th>
+          <th scope="col">{{T "activity.feed.firstSeen"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Releases}}
+        <tr>
+          <td><a href="/releases/{{.Release.ID}}">{{truncate .Release.Title 90}}</a></td>
+          <td class="feed-provenance">
+            <span class="chip">{{T "activity.feed.indexerCount" .IndexerCount}}</span>
+            {{if .Names}}<span class="sub">{{.Names}}</span>{{end}}
+          </td>
+          <td>{{sizeOrDash .Release.Size}}</td>
+          <td>{{numOrDash .Release.Seeders}}</td>
+          <td>{{if .Release.Category}}{{catName .Release.Category}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td class="nowrap">{{ago .Release.FirstSeenAt}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{template "pager" .Pager}}
+  {{else}}
+  {{template "empty" .Empty}}
+  {{end}}
+</section>
+{{end}}

@@ -20,6 +20,11 @@ const (
 	defaultCooldown     = 60 * time.Second
 	defaultUserAgent    = "indexarr/2.0"
 	maxRedirects        = 5
+
+	// ObservationBodyLimit is the largest response prefix handed to a
+	// context observer. An indexer sample stores at most this much, so a run
+	// never keeps a 16 MiB page around after the extractor is done.
+	ObservationBodyLimit = 256 << 10
 )
 
 // Sentinel errors returned by the transport. They are wrapped with context,
@@ -233,6 +238,7 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 	if err := t.polite.before(ctx, host); err != nil {
 		return nil, fmt.Errorf("engine: host %s: %w", host, err)
 	}
+	started := time.Now()
 
 	key := breakerKey
 	if key == "" {
@@ -288,6 +294,8 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 		URL:    response.Request.URL,
 	}
 
+	observeResponse(ctx, observationOf(req, result, started))
+
 	if response.StatusCode == http.StatusTooManyRequests ||
 		response.StatusCode == http.StatusServiceUnavailable {
 		now := t.clock.Now()
@@ -308,6 +316,33 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 		t.breaker.success(key)
 	}
 	return result, nil
+}
+
+// observationOf copies at most ObservationBodyLimit bytes so the observer
+// never keeps the full response alive after the run is done.
+func observationOf(req *http.Request, response *Response, started time.Time) ResponseObservation {
+	body := response.Body
+	if len(body) > ObservationBodyLimit {
+		body = body[:ObservationBodyLimit]
+	}
+	copied := append([]byte(nil), body...)
+	method := http.MethodGet
+	if req != nil && req.Method != "" {
+		method = req.Method
+	}
+	rawURL := ""
+	if response.URL != nil {
+		rawURL = response.URL.String()
+	} else if req != nil && req.URL != nil {
+		rawURL = req.URL.String()
+	}
+	return ResponseObservation{
+		Method:   method,
+		URL:      rawURL,
+		Status:   response.Status,
+		Duration: time.Since(started),
+		Body:     copied,
+	}
 }
 
 // checkRedirect revalidates every redirect target, enforces the hop limit and

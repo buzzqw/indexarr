@@ -25,7 +25,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 
 	indexer, loadErr := m.store.GetIndexer(ctx, indexerID)
 	if loadErr != nil {
-		m.finishRun(ctx, indexerID, "", started, 0, loadErr)
+		m.finishRun(ctx, indexerID, "", started, 0, loadErr, stats)
 		return stats, fmt.Errorf("indexer %d: %w", indexerID, loadErr)
 	}
 
@@ -35,8 +35,12 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		query = queryFromConfig(config)
 	}
 	var payloadBytes int64
+	var capture *runCapture
 	defer func() {
-		m.finishRun(ctx, indexer.ID, query, started, payloadBytes, err)
+		if err == nil && capture != nil {
+			m.recordSample(context.WithoutCancel(ctx), indexer.ID, capture, stats)
+		}
+		m.finishRun(ctx, indexer.ID, query, started, payloadBytes, err, stats)
 	}()
 
 	if configErr != nil {
@@ -51,6 +55,14 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	if err != nil {
 		return stats, err
 	}
+	capture = newRunCapture(m.sampleSecrets(ctx, indexer.ID))
+	ctx = engine.WithResponseObserver(ctx, capture.observe)
+	ctx = engine.WithNormalizeObserver(ctx, func(observation engine.NormalizeObservation) {
+		if !observation.OK {
+			stats.discardParse()
+		}
+	})
+	runRules := newRunFilter(config, time.Now())
 
 	categories := categoriesFromValue(config["categories"])
 	if len(categories) == 0 {
@@ -93,8 +105,9 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 
 		item := raw
+		stats.observeItem(item, capture.secrets)
 		if usenet {
-			if err := m.runUsenetItem(ctx, indexer, item, stats, seen, matcher, &payloadBytes); err != nil {
+			if err := m.runUsenetItem(ctx, indexer, item, stats, seen, matcher, runRules, &payloadBytes); err != nil {
 				return stats, err
 			}
 			continue
@@ -111,10 +124,19 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 
 		if key := itemIdentity(item); key != "" {
 			if _, duplicate := seen[key]; duplicate {
-				stats.Skipped++
+				stats.duplicate()
 				continue
 			}
 			seen[key] = struct{}{}
+		}
+
+		if tooOld, excluded := runRules.reject(item); tooOld || excluded {
+			if tooOld {
+				stats.discardTooOld()
+			} else {
+				stats.discardCategory()
+			}
+			continue
 		}
 
 		category := itemCategory(item)
@@ -134,7 +156,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 				m.logger.Warn("indexer: torrent download failed",
 					"indexer", indexer.Slug,
 					"error", m.redact(indexer.ID, downloadErr.Error()))
-				stats.Skipped++
+				stats.discardOther()
 				continue
 			}
 			payloadBytes += int64(len(payload.Body))
@@ -168,13 +190,13 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 
 		if magnet == "" && len(torrent) == 0 {
-			stats.Skipped++
+			stats.discardNoLink()
 			continue
 		}
 
 		dedupKey := releaseKey(hash, item, indexer.Slug)
 		if dedupKey == "" {
-			stats.Skipped++
+			stats.discardOther()
 			continue
 		}
 
@@ -240,20 +262,29 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 // the identity and the downloaded .nzb (or an opaque, vault-sealed download
 // reference) is the link the Newznab API later serves.
 func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item engine.Item, stats *RunStats,
-	seen map[string]struct{}, matcher *store.BlocklistMatcher, payloadBytes *int64) error {
+	seen map[string]struct{}, matcher *store.BlocklistMatcher, rules runFilter, payloadBytes *int64) error {
 	item.Protocol = engine.ProtocolUsenet
 	guid := strings.TrimSpace(item.GUID)
 	downloadURL := strings.TrimSpace(item.DownloadURL)
 	if guid == "" && downloadURL == "" {
-		stats.Skipped++
+		stats.discardNoLink()
 		return nil
 	}
 	if key := usenetIdentity(item); key != "" {
 		if _, duplicate := seen[key]; duplicate {
-			stats.Skipped++
+			stats.duplicate()
 			return nil
 		}
 		seen[key] = struct{}{}
+	}
+
+	if tooOld, excluded := rules.reject(item); tooOld || excluded {
+		if tooOld {
+			stats.discardTooOld()
+		} else {
+			stats.discardCategory()
+		}
+		return nil
 	}
 
 	category := itemCategory(item)
@@ -264,7 +295,7 @@ func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item
 
 	dedupKey := releaseKey("", item, indexer.Slug)
 	if dedupKey == "" {
-		stats.Skipped++
+		stats.discardOther()
 		return nil
 	}
 
@@ -297,7 +328,7 @@ func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item
 			m.logger.Warn("indexer: usenet download failed",
 				"indexer", indexer.Slug,
 				"error", m.redact(indexer.ID, downloadErr.Error()))
-			stats.Skipped++
+			stats.discardOther()
 			return nil
 		}
 		if len(payload.Body) > 0 {
@@ -322,20 +353,20 @@ func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item
 	downloadRef := ""
 	if len(body) == 0 && magnet == "" && downloadURL != "" {
 		if m.vault == nil {
-			stats.Skipped++
+			stats.discardOther()
 			return nil
 		}
 		ref, refErr := SealDownloadRef(m.vault, indexer.ID, item)
 		if refErr != nil {
 			m.logger.Warn("indexer: seal download reference",
 				"indexer", indexer.Slug, "error", refErr)
-			stats.Skipped++
+			stats.discardOther()
 			return nil
 		}
 		downloadRef = ref
 	}
 	if len(body) == 0 && magnet == "" && downloadRef == "" {
-		stats.Skipped++
+		stats.discardNoLink()
 		return nil
 	}
 
@@ -459,10 +490,10 @@ func itemCategory(item engine.Item) string {
 
 // finishRun always records the run and refreshes the indexer state. It uses a
 // context that survives cancellation so a canceled run is still auditable.
-func (m *Manager) finishRun(ctx context.Context, indexerID int64, query string, started time.Time, payloadBytes int64, runErr error) {
+func (m *Manager) finishRun(ctx context.Context, indexerID int64, query string, started time.Time, payloadBytes int64, runErr error, stats *RunStats) {
 	base := context.WithoutCancel(ctx)
 	status := statusFor(ctx, runErr)
-	m.recordHistory(base, indexerID, "run", query, status, started, payloadBytes, runErr)
+	m.recordHistory(base, indexerID, "run", query, status, started, payloadBytes, runErr, stats)
 
 	if indexerID <= 0 {
 		return

@@ -202,8 +202,9 @@ func TestOwnedTemplatesUseCatalog(t *testing.T) {
 	files := []string{
 		"layout", "dashboard", "indexers", "indexer", "indexer_form",
 		"definitions", "definition", "definition_form", "applications",
-		"application_form", "import", "activity", "runs", "logs", "error",
-		"components",
+		"application_form", "import", "activity", "activity_feed",
+		"activity_searches", "indexer_data", "indexer_try", "runs", "logs",
+		"error", "components",
 	}
 	allowed := map[string]bool{
 		"indexarr": true,

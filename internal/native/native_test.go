@@ -490,3 +490,46 @@ func TestDuePassSkipsRecentlyRunIndexer(t *testing.T) {
 		t.Fatalf("requests = %d, want only the indexer without a recent run", got)
 	}
 }
+
+// TestMaintenanceHonoursActivityRetention covers the 0 = keep forever rule:
+// the scheduler must not fall back to a hidden 90-day cleanup when the
+// operator explicitly asks to keep the activity history.
+func TestMaintenanceHonoursActivityRetention(t *testing.T) {
+	ctx := context.Background()
+	st, runner := newHarness(t, 1, nil)
+	old := time.Now().AddDate(0, 0, -100)
+	if _, err := st.RecordIndexerHistory(ctx, store.IndexerHistory{
+		Kind: "run", Status: "ok", StartedAt: old,
+	}); err != nil {
+		t.Fatalf("RecordIndexerHistory: %v", err)
+	}
+
+	settings, err := st.LoadSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.HistoryRetentionDays = 0
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	runner.maintenance(ctx)
+	var count int
+	if err := st.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM indexer_history`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("history rows after retention 0 = %d, want 1 (keep forever)", count)
+	}
+
+	settings.HistoryRetentionDays = 1
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	runner.maintenance(ctx)
+	if err := st.DB().QueryRowContext(ctx, `SELECT COUNT(*) FROM indexer_history`).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("history rows after retention 1 = %d, want 0", count)
+	}
+}

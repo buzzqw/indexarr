@@ -31,6 +31,15 @@
   </div>
 </section>
 
+<nav class="tabs" aria-label="{{T "idx.detail.tabsLabel"}}">
+  <a class="tab{{if eq .Tab "overview"}} active{{end}}" href="/indexers/{{.Indexer.ID}}"{{if eq .Tab "overview"}} aria-current="page"{{end}}>{{T "idx.detail.overview"}}</a>
+  <a class="tab{{if eq .Tab "data"}} active{{end}}" href="/indexers/{{.Indexer.ID}}?tab=data"{{if eq .Tab "data"}} aria-current="page"{{end}}>{{T "idx.detail.data"}}</a>
+</nav>
+
+{{if eq .Tab "data"}}
+{{template "indexer_data_body" .}}
+{{else}}
+
 {{if .Test}}
 <section class="panel">
   <div class="panel-head">
@@ -100,6 +109,8 @@
   {{end}}
   {{end}}
 </section>
+
+{{template "indexer_try_body" .}}
 
 <section class="panel">
   <div class="panel-head">
@@ -173,4 +184,5 @@
     {{range .Public}}<dt><code>{{.Key}}</code></dt><dd>{{if .Value}}{{.Value}}{{else}}<span class="muted">—</span>{{end}}</dd>{{end}}
   </dl>
 {{template "advanced-close"}}
+{{end}}{{/* overview tab */}}
 {{end}}

@@ -1,0 +1,86 @@
+{{define "indexer_try_body"}}
+<section class="panel" id="try-as-app">
+  <div class="panel-head"><h2>{{T "idx.try.title"}}</h2></div>
+  <p class="help">{{T "idx.try.subtitle"}}</p>
+  <form class="try-form" method="get" action="/indexers/{{.Indexer.ID}}">
+    <input type="hidden" name="try" value="1">
+    <div class="field">
+      <label for="try-mode">{{T "idx.try.mode"}}</label>
+      <select id="try-mode" name="mode">
+        <option value="search"{{if eq .Try.Mode "search"}} selected{{end}}>{{T "idx.try.modeSearch"}}</option>
+        <option value="tvsearch"{{if eq .Try.Mode "tvsearch"}} selected{{end}}>{{T "idx.try.modeSeries"}}</option>
+        <option value="movie"{{if eq .Try.Mode "movie"}} selected{{end}}>{{T "idx.try.modeMovie"}}</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="try-query">{{T "idx.try.query"}}</label>
+      <input id="try-query" name="q" type="text" value="{{if .Try}}{{.Try.Query}}{{end}}" placeholder="{{T "idx.try.queryPlaceholder"}}" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="try-season">{{T "idx.try.season"}}</label>
+      <input id="try-season" name="season" type="number" min="0" value="{{if .Try}}{{.Try.Season}}{{end}}">
+    </div>
+    <div class="field">
+      <label for="try-episode">{{T "idx.try.episode"}}</label>
+      <input id="try-episode" name="ep" type="number" min="0" value="{{if .Try}}{{.Try.Episode}}{{end}}">
+    </div>
+    <div class="field">
+      <label for="try-imdb">{{T "idx.try.imdb"}}</label>
+      <input id="try-imdb" name="imdbid" type="text" value="{{if .Try}}{{.Try.IMDbID}}{{end}}" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="try-tvdb">{{T "idx.try.tvdb"}}</label>
+      <input id="try-tvdb" name="tvdbid" type="text" value="{{if .Try}}{{.Try.TVDbID}}{{end}}" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="field actions-field">
+      <button class="btn primary" type="submit">{{T "idx.try.submit"}}</button>
+    </div>
+  </form>
+
+  {{if .Try.Ran}}
+  <div class="try-result">
+    <dl class="detail detail-grid">
+      <dt>{{T "idx.try.status"}}</dt>
+      <dd>{{.Try.Status}}</dd>
+      <dt>{{T "idx.try.duration"}}</dt>
+      <dd>{{.Try.Duration}}</dd>
+      <dt>{{T "idx.try.total"}}</dt>
+      <dd>{{.Try.Total}}</dd>
+    </dl>
+    {{if .Try.Err}}<p class="flash err" role="alert">{{.Try.Err}}</p>{{end}}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{{T "indexer.titleColumn"}}</th>
+            <th scope="col">{{T "indexer.size"}}</th>
+            <th scope="col">{{T "indexer.seeders"}}</th>
+            <th scope="col">{{T "indexer.categories"}}</th>
+            <th scope="col">{{T "idx.try.published"}}</th>
+            <th scope="col">{{T "idx.try.guid"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Try.Releases}}
+          <tr>
+            <td><a href="/releases/{{.ID}}">{{truncate .Title 90}}</a></td>
+            <td>{{sizeOrDash .Size}}</td>
+            <td>{{numOrDash .Seeders}}</td>
+            <td>{{if .Category}}<span class="chip">{{catName .Category}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+            <td class="nowrap">{{if .PublishedAt}}{{date .PublishedAt}}{{else}}<span class="muted">—</span>{{end}}</td>
+            <td><code>{{truncate .GUID 40}}</code></td>
+          </tr>
+          {{else}}
+          <tr><td colspan="6" class="empty">{{T "idx.try.empty"}}</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{template "advanced-open" (advanced (T "idx.try.xml"))}}
+    <p class="help">{{T "idx.try.xmlHelp"}}</p>
+    <pre class="sample-body">{{.Try.XML}}</pre>
+    {{template "advanced-close"}}
+  </div>
+  {{end}}
+</section>
+{{end}}

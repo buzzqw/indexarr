@@ -195,6 +195,75 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 5 records what each run read and discarded. The metrics live
+	// in a child table so indexer_history keeps its narrow, append-only shape
+	// and a row without metrics still reads as "unknown". Samples are one row
+	// per indexer, overwritten by every successful run: no unbounded files.
+	// app_searches is the app-facing view of the Torznab requests.
+	if err := s.applyMigration(context.Background(), indexarr2ActivityVersion,
+		"indexer activity", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`CREATE TABLE IF NOT EXISTS indexer_history_metrics (
+					history_id            INTEGER PRIMARY KEY
+						REFERENCES indexer_history(id) ON DELETE CASCADE,
+					seen                  INTEGER NOT NULL DEFAULT 0,
+					items_new             INTEGER NOT NULL DEFAULT 0,
+					updated               INTEGER NOT NULL DEFAULT 0,
+					duplicates            INTEGER NOT NULL DEFAULT 0,
+					discarded             INTEGER NOT NULL DEFAULT 0,
+					discarded_no_link     INTEGER NOT NULL DEFAULT 0,
+					discarded_blocked     INTEGER NOT NULL DEFAULT 0,
+					discarded_too_old     INTEGER NOT NULL DEFAULT 0,
+					discarded_category    INTEGER NOT NULL DEFAULT 0,
+					discarded_parse       INTEGER NOT NULL DEFAULT 0,
+					discarded_other       INTEGER NOT NULL DEFAULT 0,
+					field_total           INTEGER NOT NULL DEFAULT 0,
+					field_size            INTEGER NOT NULL DEFAULT 0,
+					field_seeders         INTEGER NOT NULL DEFAULT 0,
+					field_category        INTEGER NOT NULL DEFAULT 0,
+					field_date            INTEGER NOT NULL DEFAULT 0,
+					field_hash            INTEGER NOT NULL DEFAULT 0
+				)`,
+				`CREATE TABLE IF NOT EXISTS indexer_samples (
+					indexer_id  INTEGER PRIMARY KEY
+						REFERENCES indexers(id) ON DELETE CASCADE,
+					request_url TEXT    NOT NULL DEFAULT '',
+					method      TEXT    NOT NULL DEFAULT 'GET',
+					status      INTEGER NOT NULL DEFAULT 0,
+					latency_ms  INTEGER NOT NULL DEFAULT 0,
+					body        TEXT    NOT NULL DEFAULT '',
+					body_bytes  INTEGER NOT NULL DEFAULT 0,
+					truncated   INTEGER NOT NULL DEFAULT 0,
+					items_json  TEXT    NOT NULL DEFAULT '[]',
+					items_count INTEGER NOT NULL DEFAULT 0,
+					fetched_at  INTEGER NOT NULL DEFAULT 0
+				)`,
+				`CREATE TABLE IF NOT EXISTS app_searches (
+					id            INTEGER PRIMARY KEY AUTOINCREMENT,
+					app           TEXT    NOT NULL DEFAULT '',
+					mode          TEXT    NOT NULL DEFAULT '',
+					query         TEXT    NOT NULL DEFAULT '',
+					indexer_ids   TEXT    NOT NULL DEFAULT '[]',
+					indexer_names TEXT    NOT NULL DEFAULT '[]',
+					results_json  TEXT    NOT NULL DEFAULT '{}',
+					total_results INTEGER NOT NULL DEFAULT 0,
+					duration_ms   INTEGER NOT NULL DEFAULT 0,
+					error         TEXT    NOT NULL DEFAULT '',
+					created_at    INTEGER NOT NULL DEFAULT 0
+				)`,
+				`CREATE INDEX IF NOT EXISTS app_searches_created
+					ON app_searches(created_at)`,
+				`CREATE INDEX IF NOT EXISTS indexer_samples_fetched
+					ON indexer_samples(fetched_at)`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

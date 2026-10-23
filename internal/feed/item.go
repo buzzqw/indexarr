@@ -244,6 +244,19 @@ func redactSecrets(text string) string {
 	return urlPattern.ReplaceAllStringFunc(text, redactURLPath)
 }
 
+// RedactText makes arbitrary response text safe to store: every known secret
+// value is removed first, then the usual URL query parameters and opaque path
+// segments are masked. It suits a raw sample body that may quote tracker links
+// next to ordinary release metadata.
+func RedactText(text string, secrets []string) string {
+	for _, secret := range secrets {
+		if len(secret) >= 3 {
+			text = strings.ReplaceAll(text, secret, "[redacted]")
+		}
+	}
+	return redactSecrets(text)
+}
+
 func redactURLPath(raw string) string {
 	trimmed := strings.TrimRight(raw, ".,;:!?)]}")
 	suffix := raw[len(trimmed):]

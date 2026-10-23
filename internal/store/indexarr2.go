@@ -86,6 +86,10 @@ type IndexerHistory struct {
 	Error     string
 	App       string
 	StartedAt time.Time
+	// Metrics is written with the history row when the caller measured the
+	// execution. It is nil for rows recorded before migration 5 and for
+	// operations that have nothing to measure (a download, a grab).
+	Metrics *RunMetrics
 }
 
 // Application is a downstream *arr instance.
@@ -546,29 +550,6 @@ func (s *Store) ListReleaseSources(ctx context.Context, releaseID int64) ([]Rele
 	return out, rows.Err()
 }
 
-// RecordIndexerHistory appends one history row and returns its id.
-func (s *Store) RecordIndexerHistory(ctx context.Context, in IndexerHistory) (int64, error) {
-	if in.StartedAt.IsZero() {
-		in.StartedAt = time.Now()
-	}
-	var indexer any
-	if in.IndexerID > 0 {
-		indexer = in.IndexerID
-	}
-	var id int64
-	err := s.db.QueryRowContext(ctx, `
-		INSERT INTO indexer_history(indexer_id, kind, query, status, latency_ms,
-			bytes, error, app, started_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
-		RETURNING id`,
-		indexer, in.Kind, in.Query, in.Status, in.LatencyMS, in.Bytes, in.Error,
-		in.App, in.StartedAt.Unix()).Scan(&id)
-	if err != nil {
-		return 0, fmt.Errorf("record indexer history: %w", err)
-	}
-	return id, nil
-}
-
 // CountIndexerHistory counts history rows of the given kinds for one indexer
 // that started at or after since. An empty kinds slice counts every kind. It is
 // used by the query and grab limits, so the caller decides the time window.
@@ -656,10 +637,12 @@ func (s *Store) ListIndexerHistory(ctx context.Context, indexerID int64, limit i
 		limit = 500
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, indexer_id, kind, query, status, latency_ms, bytes, error, app,
-			started_at
-		FROM indexer_history WHERE indexer_id = ?
-		ORDER BY started_at DESC, id DESC LIMIT ?`, indexerID, limit)
+		SELECT h.id, h.indexer_id, h.kind, h.query, h.status, h.latency_ms,
+			h.bytes, h.error, h.app, h.started_at, `+indexerMetricsColumns+`
+		FROM indexer_history h
+		LEFT JOIN indexer_history_metrics m ON m.history_id = h.id
+		WHERE h.indexer_id = ?
+		ORDER BY h.started_at DESC, h.id DESC LIMIT ?`, indexerID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -669,14 +652,23 @@ func (s *Store) ListIndexerHistory(ctx context.Context, indexerID int64, limit i
 		var item IndexerHistory
 		var indexer sql.NullInt64
 		var started int64
+		var metrics RunMetrics
 		if err := rows.Scan(&item.ID, &indexer, &item.Kind, &item.Query,
 			&item.Status, &item.LatencyMS, &item.Bytes, &item.Error, &item.App,
-			&started); err != nil {
+			&started, &metrics.Seen, &metrics.ItemsNew, &metrics.Updated,
+			&metrics.Duplicates, &metrics.Discarded, &metrics.DiscardNoLink,
+			&metrics.DiscardBlocked, &metrics.DiscardTooOld,
+			&metrics.DiscardCategory, &metrics.DiscardParse,
+			&metrics.DiscardOther, &metrics.FieldTotal, &metrics.FieldSize,
+			&metrics.FieldSeeders, &metrics.FieldCategory, &metrics.FieldDate,
+			&metrics.FieldHash); err != nil {
 			return nil, err
 		}
 		if indexer.Valid {
 			item.IndexerID = indexer.Int64
 		}
+		metrics.HistoryID = item.ID
+		item.Metrics = &metrics
 		item.StartedAt = unixTime(started)
 		out = append(out, item)
 	}

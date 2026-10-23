@@ -204,6 +204,24 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 	funcs["phaseLabel"] = func(name string) string {
 		return phaseLabel(lang, name)
 	}
+	funcs["kindLabel"] = func(kind string) string {
+		switch strings.ToLower(strings.TrimSpace(kind)) {
+		case "run":
+			return i18n.T(lang, "idx.data.kind.run")
+		case "search":
+			return i18n.T(lang, "idx.data.kind.search")
+		case "latest":
+			return i18n.T(lang, "idx.data.kind.latest")
+		case "test":
+			return i18n.T(lang, "idx.data.kind.test")
+		case "grab":
+			return i18n.T(lang, "idx.data.kind.grab")
+		case "health":
+			return i18n.T(lang, "idx.data.kind.health")
+		default:
+			return kind
+		}
+	}
 	funcs["phaseMessage"] = func(message string) string {
 		switch strings.ToLower(strings.TrimSpace(message)) {
 		case "not required":
@@ -238,8 +256,12 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 		case "releases":
 			files = append(files, "templates/releases_results.html")
 		case "activity":
-			// Activity embeds the Run and Log panels.
-			files = append(files, "templates/runs.html", "templates/logs.html")
+			// Activity embeds the Run, Log, Feed and Searches panels.
+			files = append(files, "templates/runs.html", "templates/logs.html",
+				"templates/activity_feed.html", "templates/activity_searches.html")
+		case "indexer":
+			// The detail page embeds the Data tab and the Sonarr/Radarr try form.
+			files = append(files, "templates/indexer_data.html", "templates/indexer_try.html")
 		}
 		tmpl := template.New("layout.html").Funcs(funcs)
 		tmpl = template.Must(tmpl.ParseFS(templateFiles, files...))
@@ -275,6 +297,9 @@ type base struct {
 	PublicURLSet bool
 	Uptime       string
 	AutoRefresh  int
+	// LiveRefresh is the polling interval for pages that must reload only
+	// while the browser tab is visible. app.js checks document.visibilityState.
+	LiveRefresh int
 }
 
 func requestLanguage(r *http.Request) i18n.Language {

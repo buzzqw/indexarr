@@ -159,7 +159,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | `b0abb6c` |
 | WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
 | WP16 | Rimozione del percorso legacy | fatto | `4a11fb8` |
-| WP17 | Vedere i dati che nutrono indexarr | da fare | |
+| WP17 | Vedere i dati che nutrono indexarr | dati fatti (metriche, campioni, ricerche, Try); scheda Dati in B2 | |
 | WP18 | I siti che l'utente usa davvero (fase 1) | da fare | |
 | WP19 | Elenco dei siti come Jackett/Prowlarr | da fare | |
 

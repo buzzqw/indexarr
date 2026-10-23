@@ -1181,6 +1181,9 @@ type hostRequestView struct {
 
 type indexerDetailView struct {
 	base
+	Tab               string
+	Data              *indexerDataView
+	Try               *indexerTryView
 	Indexer           store.Indexer
 	Status            statusDot
 	Badges            []uiBadge
@@ -1224,6 +1227,26 @@ func (s *Server) indexerUnifiedDetail(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, statusForIndexerError(err), s.indexerErrorMessage(r, err))
 		return
 	}
+	tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab")))
+	switch tab {
+	case "data":
+		data.Tab = "data"
+		data.Data, err = s.buildIndexerData(r, id)
+		if err != nil {
+			s.renderError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+	default:
+		data.Tab = "overview"
+	}
+	if r.URL.Query().Get("try") != "" {
+		data.Tab = "overview"
+		data.Try, err = s.buildIndexerTry(r, data.Indexer)
+		if err != nil {
+			s.renderError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
 	s.render(w, r, "indexer", data, http.StatusOK)
 }
 
@@ -1234,6 +1257,8 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	}
 	data := indexerDetailView{
 		base:           s.newBase(r, in.Name, "indexers"),
+		Tab:            "overview",
+		Try:            &indexerTryView{Mode: "search"},
 		Indexer:        in,
 		DefinitionID:   in.DefinitionID,
 		DefinitionName: in.DefinitionID,

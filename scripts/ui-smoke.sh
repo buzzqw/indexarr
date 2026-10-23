@@ -441,6 +441,9 @@ check_html_route "/maintenance"
 # New information architecture: still pending while the redesign is in progress.
 check_activity_route "/activity?tab=runs"
 check_activity_route "/activity?tab=logs"
+# WP17 tabs: the feed and the requests received from apps.
+check_html_route "/activity?tab=feed"
+check_html_route "/activity?tab=searches"
 
 say ""
 say "==> API and static assets"

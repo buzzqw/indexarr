@@ -94,6 +94,8 @@ check /maintenance "Maintenance"
 check /maintenance "Database report"
 check "/activity?tab=logs" "Log"
 check "/activity?tab=logs&component=indexer" "Indexer"
+check "/activity?tab=feed" "New releases"
+check "/activity?tab=searches" "Searches"
 check /healthz '"status":"ok"'
 check /static/app.css "max-width: 720px"
 check /static/manifest.webmanifest '"name": "indexarr"'

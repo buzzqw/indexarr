@@ -372,6 +372,7 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 			if err != nil {
 				return nil, err
 			}
+			observeNormalize(ctx, NormalizeObservation{OK: ok})
 			if ok {
 				items = append(items, item)
 			}

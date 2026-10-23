@@ -623,11 +623,20 @@ func (r *Runner) maintenance(ctx context.Context) {
 			r.logger.Info("retention prune", "removed", removed, "days", settings.RetentionDays)
 		}
 	}
-	if removed, err := r.store.ClearRunHistory(ctx, time.Now().AddDate(0, 0, -90)); err != nil {
-		r.logger.Warn("run history cleanup failed", "subsystem", "maintenance", "error", err)
-	} else if removed > 0 {
-		r.logger.Info("run history cleanup", "removed", removed)
+	historyDays := settings.HistoryRetentionDays
+	// The setting is 30 by default; zero is an explicit "keep forever".
+	if historyDays > 0 {
+		before := time.Now().AddDate(0, 0, -historyDays)
+		pruned, err := r.store.PruneActivity(ctx, before)
+		if err != nil {
+			r.logger.Warn("activity retention cleanup failed", "subsystem", "maintenance", "error", err)
+		} else if pruned.History > 0 || pruned.Samples > 0 || pruned.Searches > 0 {
+			r.logger.Info("activity retention cleanup",
+				"history", pruned.History, "samples", pruned.Samples,
+				"searches", pruned.Searches, "days", historyDays)
+		}
 	}
+	// historyDays == 0 is an explicit "keep forever": no fallback cleanup.
 	if err := r.store.Optimize(ctx); err != nil {
 		r.logger.Warn("database optimize failed", "subsystem", "maintenance", "error", err)
 	}

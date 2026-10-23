@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -172,28 +173,58 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 		return
 	}
 
+	started := time.Now()
+	outcome := s.runSearch(r.Context(), slug, query, settings, apiKey,
+		s.baseURL(r, settings), function)
+	outcome.Duration = time.Since(started)
+	s.recordAppSearch(r.Context(), r, function, outcome, started)
+	s.writeSearchOutcome(w, outcome)
+}
+
+// searchOutcome is one search response produced by the exact /api code path.
+// Keeping the XML and the rows together lets "Try as Sonarr" show the result
+// table and the real client document without running the search twice.
+type searchOutcome struct {
+	Status       int
+	Body         []byte
+	Releases     []store.Release
+	Total        int64
+	Provenance   map[int64]store.ReleaseProvenance
+	Mode         string
+	Query        string
+	IndexerIDs   []int64
+	IndexerNames []string
+	Err          string
+	Duration     time.Duration
+}
+
+// runSearch implements every search function of /api, /torznab/api and
+// /newznab/api. The HTTP handler and Try both call it, so the XML shown in the
+// UI is byte-for-byte the document Sonarr receives.
+func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, settings store.Settings, apiKey, base, mode string) searchOutcome {
+	out := searchOutcome{Status: http.StatusOK, Mode: mode,
+		Query: strings.TrimSpace(query.Get("q"))}
+	aggregate := isAggregateSlug(slug)
 	var selection releaseSelection
+	var err error
 	if aggregate {
-		filters := parseAggregateFilters(query)
-		selection, err = s.resolveAggregateSelection(r.Context(), filters)
+		selection, err = s.resolveAggregateSelection(ctx, parseAggregateFilters(query))
 		if err != nil {
 			s.log.Error("torznab: resolve filters", "component", "indexarr", "subsystem", "torznab", "error", err)
-			writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
-			return
+			return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 		}
 	} else {
-		indexer, found, err := s.resolveIndexer(r.Context(), slug)
-		if err != nil {
-			s.log.Error("torznab: resolve indexer", "component", "indexarr", "subsystem", "torznab", "error", err)
-			writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
-			return
+		indexer, found, lookupErr := s.resolveIndexer(ctx, slug)
+		if lookupErr != nil {
+			s.log.Error("torznab: resolve indexer", "component", "indexarr", "subsystem", "torznab", "error", lookupErr)
+			return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 		}
 		if !found {
-			writeTorznabError(w, http.StatusNotFound, torznabIncorrectParameter, "indexer not found: "+slug)
-			return
+			return s.errorOutcome(http.StatusNotFound, torznabIncorrectParameter, "indexer not found: "+slug)
 		}
 		selection = selectionForIndexer(indexer)
 	}
+	out.IndexerIDs, out.IndexerNames = selectionLists(selection)
 
 	filter := store.Filter{
 		Query:   strings.TrimSpace(query.Get("q")),
@@ -209,10 +240,9 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 	if rawCategories := strings.TrimSpace(query.Get("cat")); rawCategories != "" {
 		filter.Categories = splitCategories(rawCategories)
 	}
-	base := s.baseURL(r, settings)
 	if selection.empty() {
-		s.writeSearch(w, base, settings, apiKey, nil, 0, filter.Offset, nil)
-		return
+		out.Body = s.searchXML(base, settings, apiKey, nil, 0, filter.Offset, nil)
+		return out
 	}
 	if len(selection.ids) > 0 {
 		filter.IndexerIDs = make([]int64, 0, len(selection.ids))
@@ -220,11 +250,10 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 			filter.IndexerIDs = append(filter.IndexerIDs, id)
 		}
 	}
-	releases, total, err := s.store.SearchReleases(r.Context(), filter)
+	releases, total, err := s.store.SearchReleases(ctx, filter)
 	if err != nil {
 		s.log.Error("torznab: search", "component", "indexarr", "subsystem", "torznab", "error", err)
-		writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
-		return
+		return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 	}
 	if total == 0 && settings.TorznabLiveSearch && s.liveSearch != nil &&
 		strings.TrimSpace(filter.Query) != "" {
@@ -232,25 +261,147 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 		if timeout <= 0 {
 			timeout = 20 * time.Second
 		}
-		liveCtx, cancel := context.WithTimeout(r.Context(), timeout)
+		liveCtx, cancel := context.WithTimeout(ctx, timeout)
 		stored, liveErr := s.liveSearch(liveCtx, filter)
 		cancel()
 		if liveErr != nil {
+			// The manager redacts connector errors; the app search row keeps a
+			// stable message so a URL or key can never reach it.
+			out.Err = "live search failed"
 			s.log.Warn("torznab: live search", "component", "indexer", "subsystem", "torznab", "error", liveErr)
 		}
 		if stored > 0 {
-			releases, total, err = s.store.SearchReleases(r.Context(), filter)
+			releases, total, err = s.store.SearchReleases(ctx, filter)
 			if err != nil {
 				s.log.Error("torznab: search after live", "component", "indexarr", "subsystem", "torznab", "error", err)
-				writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
-				return
+				return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 			}
 		}
 	}
 	// Provenance is fetched once for the whole page: writeItem never queries
 	// the store, so a page of N results stays at a constant query count.
-	provenance := s.pageProvenance(r.Context(), releases)
-	s.writeSearch(w, base, settings, apiKey, releases, total, filter.Offset, provenance)
+	out.Provenance = s.pageProvenance(ctx, releases)
+	out.Releases = releases
+	out.Total = total
+	out.Body = s.searchXML(base, settings, apiKey, releases, total, filter.Offset, out.Provenance)
+	return out
+}
+
+func (s *Server) errorOutcome(status, code int, message string) searchOutcome {
+	return searchOutcome{Status: status, Body: torznabErrorBody(code, message), Err: message}
+}
+
+func selectionLists(selection releaseSelection) ([]int64, []string) {
+	if len(selection.ids) == 0 {
+		return nil, nil
+	}
+	ids := make([]int64, 0, len(selection.ids))
+	for id := range selection.ids {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	names := make([]string, 0, len(ids))
+	for _, id := range ids {
+		names = append(names, selection.names[id])
+	}
+	return ids, names
+}
+
+func (s *Server) writeSearchOutcome(w http.ResponseWriter, out searchOutcome) {
+	status := out.Status
+	if status == 0 {
+		status = http.StatusOK
+	}
+	body := out.Body
+	if body == nil {
+		body = torznabErrorBody(torznabInternalError, "internal error")
+		status = http.StatusInternalServerError
+	}
+	writeXMLBody(w, status, body)
+}
+
+// TryRequest is one "Try as Sonarr/Radarr" request. APIKey is optional: when
+// empty the server uses the primary Torznab key, which is what a fresh app
+// configuration would use.
+type TryRequest struct {
+	IndexerSlug string
+	Mode        string
+	Query       string
+	Season      int
+	Episode     int
+	IMDbID      string
+	TVDbID      string
+	TMDbID      string
+	Limit       int
+	APIKey      string
+}
+
+// TryResult is the exact XML and the rows behind it.
+type TryResult struct {
+	Status     int
+	XML        []byte
+	Releases   []store.Release
+	Total      int64
+	Provenance map[int64]store.ReleaseProvenance
+	Duration   time.Duration
+	Err        string
+}
+
+// Try runs the same code as /api and returns the document a Torznab client
+// would receive. It never changes the external contract: the HTTP handler
+// calls runSearch too.
+func (s *Server) Try(ctx context.Context, base string, req TryRequest) (TryResult, error) {
+	settings, err := s.store.LoadSettings(ctx)
+	if err != nil {
+		return TryResult{}, fmt.Errorf("try: load settings: %w", err)
+	}
+	mode := strings.ToLower(strings.TrimSpace(req.Mode))
+	if mode == "" {
+		mode = "search"
+	}
+	switch mode {
+	case "search", "tvsearch", "movie", "music", "book":
+	default:
+		return TryResult{}, fmt.Errorf("try: unsupported function %q", mode)
+	}
+	query := url.Values{}
+	query.Set("t", mode)
+	if value := strings.TrimSpace(req.Query); value != "" {
+		query.Set("q", value)
+	}
+	if req.Season > 0 {
+		query.Set("season", strconv.Itoa(req.Season))
+	}
+	if req.Episode > 0 {
+		query.Set("ep", strconv.Itoa(req.Episode))
+	}
+	if value := strings.TrimSpace(req.IMDbID); value != "" {
+		query.Set("imdbid", value)
+	}
+	if value := strings.TrimSpace(req.TVDbID); value != "" {
+		query.Set("tvdbid", value)
+	}
+	if value := strings.TrimSpace(req.TMDbID); value != "" {
+		query.Set("tmdbid", value)
+	}
+	if req.Limit > 0 {
+		query.Set("limit", strconv.Itoa(req.Limit))
+	}
+	apiKey := strings.TrimSpace(req.APIKey)
+	if apiKey == "" {
+		apiKey = settings.APIKey
+	}
+	started := time.Now()
+	out := s.runSearch(ctx, req.IndexerSlug, query, settings, apiKey, base, mode)
+	return TryResult{
+		Status:     out.Status,
+		XML:        out.Body,
+		Releases:   out.Releases,
+		Total:      out.Total,
+		Provenance: out.Provenance,
+		Duration:   time.Since(started),
+		Err:        out.Err,
+	}, nil
 }
 
 // authorize checks the primary key and every additional key. It returns the
@@ -501,7 +652,7 @@ func (s *Server) pageProvenance(ctx context.Context, releases []store.Release) m
 	return provenance
 }
 
-func (s *Server) writeSearch(w http.ResponseWriter, base string, settings store.Settings, apiKey string, releases []store.Release, total int64, offset int, provenance map[int64]store.ReleaseProvenance) {
+func (s *Server) searchXML(base string, settings store.Settings, apiKey string, releases []store.Release, total int64, offset int, provenance map[int64]store.ReleaseProvenance) []byte {
 	var b bytes.Buffer
 	// One item is roughly 1.3 KiB with a magnet and provenance attributes;
 	// reserving the estimated size avoids the repeated slice growth of a 100
@@ -525,7 +676,7 @@ func (s *Server) writeSearch(w http.ResponseWriter, base string, settings store.
 		s.writeItem(&b, base, &settings, key, release, provenance[release.ID])
 	}
 	b.WriteString(`</channel></rss>`)
-	s.writeXML(w, b.Bytes())
+	return b.Bytes()
 }
 
 func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Settings, key string, release store.Release, provenance store.ReleaseProvenance) {
@@ -637,13 +788,26 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 }
 
 func (s *Server) writeXML(w http.ResponseWriter, body []byte) {
+	writeXMLBody(w, http.StatusOK, body)
+}
+
+// writeXMLBody writes a complete Torznab document with an explicit status.
+// Search errors used to call writeTorznabError directly; going through one
+// writer keeps the headers identical for /api and Try.
+func writeXMLBody(w http.ResponseWriter, status int, body []byte) {
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write(body); err != nil {
-		s.log.Debug("torznab: write response", "error", err)
-	}
+	w.WriteHeader(status)
+	_, _ = w.Write(body)
+}
+
+// torznabErrorBody is the error document without any header side effect.
+func torznabErrorBody(code int, message string) []byte {
+	var b bytes.Buffer
+	b.WriteString(xml.Header)
+	fmt.Fprintf(&b, `<error code="%d" description="%s"/>`, code, esc(message))
+	return b.Bytes()
 }
 
 // Torznab/Newznab protocol error codes.
@@ -691,14 +855,7 @@ func torznabCodeForStatus(status int) int {
 // writeTorznabError writes the standard Torznab XML error document while
 // keeping the HTTP status the endpoint has always used.
 func writeTorznabError(w http.ResponseWriter, httpStatus int, code int, message string) {
-	var b bytes.Buffer
-	b.WriteString(xml.Header)
-	fmt.Fprintf(&b, `<error code="%d" description="%s"/>`, code, esc(message))
-	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(httpStatus)
-	_, _ = w.Write(b.Bytes())
+	writeXMLBody(w, httpStatus, torznabErrorBody(code, message))
 }
 
 // writeError is kept for the /dl proxy and maps the HTTP status to the closest

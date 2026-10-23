@@ -486,7 +486,10 @@ func TestHelpersRecordHistory(t *testing.T) {
 
 // fakeConnector lets the run deduplication be tested without the engine's own
 // in-search dedupe.
-type fakeConnector struct{ items []engine.Item }
+type fakeConnector struct {
+	items       []engine.Item
+	downloadErr error
+}
 
 func (f *fakeConnector) Capabilities() engine.Capabilities {
 	return engine.Capabilities{
@@ -505,6 +508,9 @@ func (f *fakeConnector) Latest(context.Context, engine.LatestRequest) ([]engine.
 }
 
 func (f *fakeConnector) Download(context.Context, engine.Item) (engine.Payload, error) {
+	if f.downloadErr != nil {
+		return engine.Payload{}, f.downloadErr
+	}
 	return engine.Payload{Magnet: feed.MagnetFromHash(hashB, "Two")}, nil
 }
 
