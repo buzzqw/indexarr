@@ -721,17 +721,18 @@ strict) e `./sim/run.sh`.
 | WP5 | fatto | `download.resolve`: magnet/torrent dalla pagina di dettaglio |
 | WP6 | fatto | famiglia RSS/Atom nativa, cache feed, filtro client-side |
 | WP7 | fatto | ExtTo, TorrentGalaxy, Corsaro e Knaben verificate; TorrentLeech in bozza |
-| WP8 | passi 1–4 fatti; script e prova generale fatti | import in sola lettura da Jackett/Prowlarr in indexer nativi; `fresh-start.sh` provato su copia; scambio produzione da eseguire |
+| WP8 | passi 1–4 fatti; script, `--build` e tre prove generali fatte | import in sola lettura da Jackett/Prowlarr in indexer nativi; `fresh-start.sh` provato tre volte su copia con il binario del tip (9 indexer, 0 doppioni, TorrentLeech RSS >0), rollback di dati e binario; checklist pronta; scambio produzione da eseguire |
 | WP9–WP11 | da fare | health, refresh seeders, FlareSolverr nativo |
 | WP12 | fatto | CI multipiattaforma e budget |
 | WP13 | da fare | parità residua (import applicato completo, Mylar3/LazyLibrarian, rollback sync, notifiche health/grab) |
-| WP14 | fasi 1, 1b, 1c e 2 fatte; 3–5 da fare | UI da pannello tecnico a prodotto semplice |
+| WP14 | fasi 1, 1b, 1c, 2 e 3 fatte; 4–5 da fare | UI da pannello tecnico a prodotto semplice |
 | WP-R | fatto | dettagli dopo limit/dedup, fixture senza symlink, build Windows, redazione, `example-html` |
 | WP15 | da fare | parametri condizionali nelle definizioni (v1.1) |
 | WP16 | fatto | rimosso il percorso legacy: `sources`, `internal/ingest`, `internal/legacyimport`, `SealLegacySecrets`, rotte `/sources*` (302), `legacy/apply|revert`, tab Nativi/Legacy, definizioni `legacy-*`, chiavi i18n orfane |
 | WP17 | fatto | metriche per esecuzione, campioni redatti, scheda Dati, Prova come Sonarr/Radarr, feed release e ricerche app |
 | WP18 | fase 1 e 2 fatte | 36 definizioni verificate totali, 27 pubbliche aggiunte in fase 2, 3 private in prova, MirCrew via Torznab |
 | WP19 | fatto | indice di catalogo a build time, elenco siti filtrabile e aggiunta rapida idempotente |
+| WP20 | fatto | ricerca dal vivo su ogni query come Jackett/Prowlarr: capacità e `latest`, fan-out con tempo massimo, ripiego, scheduler solo per i feed, niente dettagli durante la ricerca, attività per richiesta |
 
 ### 15.8 Come lavorare (per il prossimo agente)
 

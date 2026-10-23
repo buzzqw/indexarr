@@ -5,8 +5,9 @@
 # would take, without touching the data directory, the service or the network.
 #
 #   ./scripts/fresh-start.sh                       # dry run
-#   sudo ./scripts/fresh-start.sh --apply          # the real switch
-#   ./scripts/fresh-start.sh --rollback            # restore the last data.old-*
+#   ./scripts/fresh-start.sh --apply --build      # the real switch (user unit)
+#   sudo ./scripts/fresh-start.sh --apply --build # system unit instead
+#   ./scripts/fresh-start.sh --rollback            # restore data.old-* and the old binary
 #
 # What --apply does:
 #   1. stops the service (systemd unit or the local process in indexarr.pid);
@@ -20,9 +21,17 @@
 #      environment (never on the command line, never printed);
 #   6. starts the service again and waits for /healthz.
 #
+# With --build, step 0 compiles cmd/indexarr from this checkout into a temporary
+# file, and the real --apply installs it as the binary after saving the previous
+# one as <binary>.old-<timestamp>. A dry run with --build only prints the plan:
+# it never compiles, never installs and never touches the current binary.
+# --rollback restores <binary>.old-<timestamp> that matches the data.old-*
+# directory it is restoring, when that backup exists.
+#
 # On any error after the data directory has been moved, the script stops the
 # new service, moves the failed directory aside as data.failed-<timestamp>/,
-# restores data.old-<timestamp>/ and starts the old service again.
+# restores data.old-<timestamp>/, restores the previous binary when it was
+# replaced, and starts the old service again.
 #
 # The Jackett import reads the live t=indexers list from --jackett (or
 # JACKETT_URL). --jackett-copy is only a fallback used when that API does not
@@ -39,6 +48,8 @@
 # Options:
 #   --apply                   execute (default: dry run)
 #   --rollback                stop, move data/ to data.failed-*, restore data.old-*
+#   --build                   build cmd/indexarr from this checkout; install the
+#                             binary only with --apply, saving the old one
 #   --data-dir DIR            data directory (default: <repo>/data)
 #   --unit NAME               systemd unit (default: indexarr)
 #   --binary FILE             indexarr binary (default: <repo>/bin/indexarr)
@@ -68,6 +79,10 @@ IMPORTER="$ROOT/bin/indexarr-import"
 LISTEN=""
 PORT=""
 NO_SYSTEMD=0
+BUILD=0
+BUILD_TMP=""
+BINARY_OLD=""
+BINARY_INSTALLED=0
 MODE="dry-run"
 JACKETT_URL="${JACKETT_URL:-}"
 PROWLARR_URL="${PROWLARR_URL:-}"
@@ -78,7 +93,7 @@ SKIP_IMPORT=0
 ASSUME_YES=0
 
 usage() {
-	sed -n '2,58p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+	sed -n '2,69p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 die() {
@@ -98,6 +113,13 @@ note() {
 	printf '    %s\n' "$*"
 }
 
+cleanup_build() {
+	if [[ -n "$BUILD_TMP" ]]; then
+		rm -f "$BUILD_TMP" 2>/dev/null || true
+	fi
+}
+trap cleanup_build EXIT
+
 need_value() {
 	[[ $# -ge 2 && -n "$2" ]] || die "$1 requires a value"
 }
@@ -110,6 +132,10 @@ while (($#)); do
 		;;
 	--rollback)
 		MODE="rollback"
+		shift
+		;;
+	--build)
+		BUILD=1
 		shift
 		;;
 	--data-dir)
@@ -225,6 +251,9 @@ PROWLARR_KEY="${PROWLARR_API_KEY:-}"
 
 if [[ -n "$PORT" && -n "$LISTEN" ]]; then
 	die "--port and --listen are mutually exclusive"
+fi
+if [[ "$MODE" == "rollback" && "$BUILD" == "1" ]]; then
+	die "--build is only for --apply; --rollback restores the matching old binary by itself"
 fi
 if [[ -n "$PORT" ]]; then
 	[[ "$PORT" =~ ^[0-9]+$ ]] || die "--port must be a number, got '$PORT'"
@@ -380,6 +409,74 @@ read_torrentleech_feed() {
 		ORDER BY (lower(name) LIKE '%rss%') DESC, id DESC LIMIT 1;" 2>/dev/null || true
 }
 
+# --- binary build and rollback -------------------------------------------
+
+# build_binary compiles the current checkout into a temporary file next to the
+# target binary. It never installs anything: install_binary does that only in
+# the real --apply, after the service has stopped.
+build_binary() {
+	[[ "$BUILD" == "1" ]] || return 0
+	command -v go >/dev/null 2>&1 || die "--build requires go in PATH"
+	[[ -d "$ROOT/cmd/indexarr" ]] || die "--build requires the source tree at $ROOT"
+	mkdir -p "$(dirname "$BINARY")"
+	BUILD_TMP="$(mktemp "$(dirname "$BINARY")/.indexarr-build.XXXXXX")"
+	local version
+	version="$(cd "$ROOT" && git describe --tags --always --dirty 2>/dev/null || echo dev)"
+	step "building indexarr from $ROOT ($version)"
+	if ! (cd "$ROOT" && CGO_ENABLED=0 go build -trimpath \
+		-ldflags "-s -w -X main.version=$version" -o "$BUILD_TMP" ./cmd/indexarr); then
+		rm -f "$BUILD_TMP"
+		BUILD_TMP=""
+		die "go build failed; nothing was changed"
+	fi
+	chmod 0755 "$BUILD_TMP"
+	note "build ready (temporary; not installed yet)"
+}
+
+# install_binary saves the previous binary and installs the compiled one. The
+# timestamp is the same as the data backup, so --rollback can pair them.
+install_binary() {
+	[[ "$BUILD" == "1" ]] || return 0
+	[[ -n "$BUILD_TMP" && -f "$BUILD_TMP" ]] || die "the built binary is missing"
+	if [[ -e "$BINARY" ]]; then
+		[[ ! -e "$BINARY_OLD" ]] || die "binary backup already exists: $BINARY_OLD"
+		cp -p "$BINARY" "$BINARY_OLD" || die "cannot save the previous binary as $BINARY_OLD"
+		note "previous binary saved as $BINARY_OLD"
+	else
+		note "no previous binary at $BINARY; nothing to save"
+	fi
+	install -m 0755 "$BUILD_TMP" "$BINARY" || die "cannot install the new binary at $BINARY"
+	BINARY_INSTALLED=1
+	rm -f "$BUILD_TMP"
+	BUILD_TMP=""
+	note "installed the binary built from this checkout"
+}
+
+# binary_backup_for_data prints <binary>.old-<timestamp> matching a data.old-*
+# backup, or nothing when the data backup was not created by this script.
+binary_backup_for_data() {
+	local backup="$1" suffix
+	case "$backup" in
+	"$DATA_DIR".old-*) suffix="${backup#"$DATA_DIR".old-}" ;;
+	*) return 0 ;;
+	esac
+	[[ -n "$suffix" ]] || return 0
+	printf '%s.old-%s' "$BINARY" "$suffix"
+}
+
+# restore_binary_for_data puts back the binary saved with the data backup, if
+# both exist. It is used by --rollback and by the automatic error path.
+restore_binary_for_data() {
+	local backup="$1" oldbin
+	oldbin="$(binary_backup_for_data "$backup")"
+	if [[ -z "$oldbin" || ! -f "$oldbin" ]]; then
+		note "no binary backup matches $backup; the binary is left unchanged"
+		return 0
+	fi
+	install -m 0755 "$oldbin" "$BINARY" || die "cannot restore the previous binary from $oldbin"
+	note "previous binary restored from $oldbin"
+}
+
 # --- preflight ------------------------------------------------------------
 
 # Manager values are resolved once, before anything destructive happens.
@@ -392,7 +489,9 @@ DB_OLD=""
 preflight_common() {
 	[[ -d "$DATA_DIR" ]] || die "data directory not found: $DATA_DIR"
 	[[ ! -L "$DATA_DIR" ]] || die "refusing to move a symlinked data directory: $DATA_DIR"
-	[[ -x "$BINARY" ]] || die "binary not found or not executable: $BINARY"
+	if [[ "$BUILD" != "1" ]]; then
+		[[ -x "$BINARY" ]] || die "binary not found or not executable: $BINARY (use --build to compile it)"
+	fi
 	if [[ "$MODE" == "apply" && "$SKIP_IMPORT" != "1" ]]; then
 		[[ -x "$IMPORTER" ]] || die "importer not found or not executable: $IMPORTER"
 	fi
@@ -409,7 +508,14 @@ preflight_dry_run() {
 	else
 		note "old database missing: $DB (--apply would stop here)"
 	fi
-	if [[ -x "$BINARY" ]]; then
+	if [[ "$BUILD" == "1" ]]; then
+		note "binary: $BINARY (--build would compile it from $ROOT; nothing is built in a dry run)"
+		if command -v go >/dev/null 2>&1; then
+			note "build tool: $(command -v go)"
+		else
+			note "build tool: go not found (--apply --build would stop here)"
+		fi
+	elif [[ -x "$BINARY" ]]; then
 		note "binary: $BINARY"
 	else
 		note "binary missing: $BINARY (--apply would stop here)"
@@ -449,6 +555,12 @@ preflight_apply() {
 	FAILED_DIR="$DATA_DIR.failed-$STAMP"
 	[[ ! -e "$OLD_DIR" ]] || die "backup directory already exists: $OLD_DIR"
 	[[ ! -e "$FAILED_DIR" ]] || die "failed directory already exists: $FAILED_DIR"
+	if [[ "$BUILD" == "1" ]]; then
+		BINARY_OLD="$BINARY.old-$STAMP"
+		[[ ! -e "$BINARY_OLD" ]] || die "binary backup already exists: $BINARY_OLD"
+	fi
+
+	build_binary
 
 	if [[ "$SKIP_IMPORT" != "1" ]]; then
 		TL_RSS_URL="$(read_torrentleech_feed)"
@@ -545,6 +657,12 @@ apply_error() {
 	set +e
 	printf 'error: apply failed (exit %s); attempting automatic rollback\n' "$code" >&2
 	service_stop >/dev/null 2>&1 || true
+	if [[ "$BINARY_INSTALLED" == "1" && -n "${BINARY_OLD:-}" && -f "${BINARY_OLD:-}" ]]; then
+		if install -m 0755 "$BINARY_OLD" "$BINARY"; then
+			printf 'rollback: restored the previous binary %s\n' "$BINARY_OLD" >&2
+			BINARY_INSTALLED=0
+		fi
+	fi
 	if [[ -n "${OLD_DIR:-}" && -d "${OLD_DIR:-}" ]]; then
 		local failed
 		failed="$DATA_DIR.failed-$(date +%Y%m%d-%H%M%S)"
@@ -635,6 +753,8 @@ do_apply() {
 	install -d -m 0700 "$DATA_DIR"
 	write_config
 
+	install_binary
+
 	step "creating the new database"
 	service_start
 	wait_health >/dev/null || die "new instance is not healthy"
@@ -659,6 +779,9 @@ do_apply() {
 	printf 'fresh start complete\n'
 	printf '  data:    %s\n' "$DATA_DIR"
 	printf '  old:     %s (kept; delete it after a week)\n' "$OLD_DIR"
+	if [[ "$BINARY_INSTALLED" == "1" && -n "$BINARY_OLD" ]]; then
+		printf '  binary:  %s (previous kept as %s)\n' "$BINARY" "$BINARY_OLD"
+	fi
 	printf '  listen:  %s\n' "$LISTEN"
 	printf '  health:  %s\n' "$HEALTH_URL"
 	printf '  next:    open the UI, enable the sites you need and verify Sonarr/Radarr\n'
@@ -683,6 +806,9 @@ do_rollback() {
 	step "stopping the service"
 	service_stop
 
+	step "restoring the binary that matches $backup"
+	restore_binary_for_data "$backup"
+
 	step "moving $DATA_DIR to $failed"
 	mv "$DATA_DIR" "$failed"
 	step "restoring $backup to $DATA_DIR"
@@ -703,7 +829,11 @@ show_plan() {
 	printf 'fresh-start plan (dry run; nothing will change)\n'
 	printf '  mode:       apply\n'
 	printf '  data:       %s\n' "$DATA_DIR"
-	printf '  binary:     %s\n' "$BINARY"
+	if [[ "$BUILD" == "1" ]]; then
+		printf '  binary:     %s (built from %s; dry run does not compile or install)\n' "$BINARY" "$ROOT"
+	else
+		printf '  binary:     %s\n' "$BINARY"
+	fi
 	printf '  importer:   %s\n' "$IMPORTER"
 	if [[ "$NO_SYSTEMD" == "1" ]]; then
 		printf '  service:    local process, PID file %s\n' "$PIDFILE"
@@ -715,6 +845,10 @@ show_plan() {
 	printf '\n'
 	preflight_dry_run
 	printf '\nsteps:\n'
+	if [[ "$BUILD" == "1" ]]; then
+		printf '  0. build %s from %s; save the old one as %s.old-<timestamp>\n' "$BINARY" "$ROOT" "$BINARY"
+		printf '     (only --apply installs it; this dry run does neither)\n'
+	fi
 	printf '  1. stop the service\n'
 	printf '  2. move %s to %s.old-<timestamp>/\n' "$DATA_DIR" "$DATA_DIR"
 	printf '  3. create a fresh %s and database\n' "$DATA_DIR"

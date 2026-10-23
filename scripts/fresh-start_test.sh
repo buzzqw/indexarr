@@ -107,6 +107,26 @@ exit 0
 FAKE
 chmod +x "$TMP/fake-import"
 
+# Fake go: records the invocation and writes an executable that behaves like
+# fake-indexarr plus a marker comment, so old and new binaries are distinguishable.
+mkdir -p "$TMP/fake-go-bin"
+cat >"$TMP/fake-go-bin/go" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"${FAKE_GO_MARKER:?}"
+out=""
+prev=""
+for arg in "$@"; do
+	[[ "$prev" == "-o" ]] && out="$arg"
+	prev="$arg"
+done
+[[ -n "$out" ]] || { echo "fake go: missing -o" >&2; exit 2; }
+cp "${FAKE_BUILD_SOURCE:?}" "$out"
+printf '# built by fake go\n' >>"$out"
+chmod +x "$out"
+FAKE
+chmod +x "$TMP/fake-go-bin/go"
+
 make_data() {
 	local dir="$1" key="$2" marker="$3"
 	mkdir -p "$dir"
@@ -183,6 +203,75 @@ if grep -q -- "$OLD_KEY" "$OUT"; then
 	fail "dry run printed the Torznab key"
 fi
 ok "dry run does not touch the data directory or print the key"
+
+# --- 1b. --build in a dry run compiles and installs nothing ----------------
+
+BIN_DIR="$TMP/build/bin"
+mkdir -p "$BIN_DIR"
+cp "$TMP/fake-indexarr" "$BIN_DIR/indexarr"
+printf '# old binary\n' >>"$BIN_DIR/indexarr"
+chmod +x "$BIN_DIR/indexarr"
+OLD_BIN_SHA="$(sha256sum "$BIN_DIR/indexarr" | cut -d' ' -f1)"
+DATA="$TMP/builddry/data"
+make_data "$DATA" "$OLD_KEY" "old-marker"
+export FAKE_GO_MARKER="$TMP/go-build.log"
+export FAKE_BUILD_SOURCE="$TMP/fake-indexarr"
+: >"$FAKE_GO_MARKER"
+OUT="$TMP/builddry.out"
+PATH="$TMP/fake-go-bin:$PATH" "$SCRIPT" --data-dir "$DATA" \
+	--binary "$BIN_DIR/indexarr" --importer "$TMP/fake-import" \
+	--port "$(free_port)" --no-systemd --build >"$OUT" 2>&1
+[[ ! -s "$FAKE_GO_MARKER" ]] || fail "dry run invoked go build"
+[[ "$(sha256sum "$BIN_DIR/indexarr" | cut -d' ' -f1)" == "$OLD_BIN_SHA" ]] || fail "dry run changed the binary"
+if compgen -G "$BIN_DIR/indexarr.old-*" >/dev/null; then
+	fail "dry run created a binary backup"
+fi
+if compgen -G "$BIN_DIR/.indexarr-build.*" >/dev/null; then
+	fail "dry run left a build file"
+fi
+grep -q 'dry run does not compile or install' "$OUT" || { cat "$OUT" >&2; fail "build dry run output missing the plan"; }
+ok "--build in a dry run compiles nothing, installs nothing and keeps the binary"
+
+# --- 1c. --build installs on apply and --rollback restores the old binary ---
+
+DATA="$TMP/buildapply/data"
+make_data "$DATA" "$OLD_KEY" "old-marker"
+PORT="$(free_port)"
+: >"$FAKE_GO_MARKER"
+OUT="$TMP/buildapply.out"
+PATH="$TMP/fake-go-bin:$PATH" "$SCRIPT" --apply --yes --no-systemd --data-dir "$DATA" \
+	--binary "$BIN_DIR/indexarr" --importer "$TMP/fake-import" \
+	--port "$PORT" --skip-import --build >"$OUT" 2>&1
+grep -q 'fresh start complete' "$OUT" || { cat "$OUT" >&2; fail "build apply did not complete"; }
+grep -q -- '-trimpath' "$FAKE_GO_MARKER" || fail "apply did not run go build"
+NEW_BIN_SHA="$(sha256sum "$BIN_DIR/indexarr" | cut -d' ' -f1)"
+[[ "$NEW_BIN_SHA" != "$OLD_BIN_SHA" ]] || fail "apply did not install the built binary"
+BIN_BACKUP="$(compgen -G "$BIN_DIR/indexarr.old-*" | head -n 1)"
+[[ -n "$BIN_BACKUP" && -f "$BIN_BACKUP" ]] || fail "apply did not save the old binary"
+[[ "$(sha256sum "$BIN_BACKUP" | cut -d' ' -f1)" == "$OLD_BIN_SHA" ]] || fail "the saved binary is not the old one"
+STAMP="${BIN_BACKUP##*/indexarr.old-}"
+[[ -d "$DATA.old-$STAMP" ]] || fail "the binary and data backups do not share the timestamp"
+wait_for_health "http://127.0.0.1:$PORT" || fail "built instance is not healthy"
+kill_from_pidfile "$DATA/indexarr.pid"
+ok "apply --build compiles, saves the old binary and installs the new one"
+
+OUT="$TMP/buildrollback.out"
+"$SCRIPT" --rollback --yes --no-systemd --data-dir "$DATA" \
+	--binary "$BIN_DIR/indexarr" --importer "$TMP/fake-import" \
+	--port "$PORT" >"$OUT" 2>&1
+grep -q 'rollback complete' "$OUT" || { cat "$OUT" >&2; fail "build rollback did not complete"; }
+[[ "$(sha256sum "$BIN_DIR/indexarr" | cut -d' ' -f1)" == "$OLD_BIN_SHA" ]] || fail "rollback did not restore the old binary"
+[[ "$(db_value "$DATA/indexarr.db" marker)" == "old-marker" ]] || fail "build rollback did not restore the old data"
+grep -q 'previous binary restored' "$OUT" || { cat "$OUT" >&2; fail "rollback did not report the binary restore"; }
+kill_from_pidfile "$DATA/indexarr.pid"
+ok "rollback restores both the old data and the matching old binary"
+
+set +e
+"$SCRIPT" --rollback --yes --no-systemd --data-dir "$DATA" --build >/dev/null 2>&1
+STATUS=$?
+set -e
+[[ "$STATUS" != "0" ]] || fail "--build was accepted with --rollback"
+ok "--build is rejected with --rollback"
 
 # --- 2. apply + rollback (skip import) -----------------------------------
 

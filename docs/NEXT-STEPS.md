@@ -149,20 +149,20 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP5 | `download.resolve`: magnet/torrent dalla pagina di dettaglio | fatto | `4e429e5` |
 | WP6 | Famiglia RSS/Atom nativa | fatto | `4e429e5` |
 | WP7 | Prime definizioni native verificate (ExtTo, TorrentGalaxy, Corsaro, Knaben, TorrentLeech RSS) | fatto (4/5 verificati; TorrentLeech bozza) | `4e429e5` |
-| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; `scripts/fresh-start.sh` con chiavi da env-file, Jackett dal vivo, dedup e `torrentleech-rss` nativo; tre prove su copia; scambio produzione da eseguire | `5c4a470` |
+| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; `scripts/fresh-start.sh` con chiavi da env-file, Jackett dal vivo, dedup, `torrentleech-rss` nativo, `--build` e rollback del binario; tre prove su copia con il binario del tip (9 indexer, 0 doppioni, TorrentLeech RSS >0); checklist del giorno dello scambio pronta; scambio produzione da eseguire | `5c4a470`, `9b48543` |
 | WP9 | Health check e transizioni di stato del catalogo | da fare | |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
 | WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI: avviso 64 MiB, errore 128 MiB) | `d267576` |
 | WP13 | Parità residua | da fare | |
-| WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1, 1b, 1c, 2 e 3 fatte; 4–5 da fare | `45ead7d` |
+| WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1, 1b, 1c, 2 e 3 fatte; 4–5 da fare | `c793966` |
 | WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | `b0abb6c` |
 | WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
 | WP16 | Rimozione del percorso legacy | fatto | `4a11fb8` |
 | WP17 | Vedere i dati che nutrono indexarr | fatto (metriche, campioni, scheda Dati, Prova come Sonarr, Attività) | `f296d69` |
 | WP18 | I siti che l'utente usa davvero (fase 1) | fase 1 e 2 fatte: 36 verificati totali, 27 pubblici aggiunti in fase 2, 3 privati in prova, MirCrew via Torznab | `9c8ebae`, `cc52f87`, `5cafc04`, `fb6b77d`, `a4d74d3`, `b54361f` |
 | WP19 | Elenco dei siti come Jackett/Prowlarr | fatto (indice a build time, elenco filtrabile, aggiunta rapida) | `25b7f97` |
-| WP20 | Ricerca dal vivo come Jackett/Prowlarr | fatto (fan-out live, `latest`, ripiego, scheduler, attività) | |
+| WP20 | Ricerca dal vivo come Jackett/Prowlarr | fatto (fan-out live, `latest`, ripiego, scheduler, attività) | `6325145` |
 
 ---
 
@@ -729,122 +729,151 @@ produzione: stessa API key Torznab, nessun errore nuovo in Sonarr/Radarr,
 **Non fare.** Non scrivere su Jackett/Prowlarr, non copiare i loro file
 Cardigann, non cancellare `data/` (si sposta).
 
-### WP8 passo 5 — scambio della produzione (procedura per il coordinatore)
+### WP8 passo 5 — scambio della produzione (lista di controllo per il coordinatore)
 
 Questa procedura **non è stata eseguita** dall'agente: tocca `:8484`, `data/`
-e il servizio systemd. Eseguirla solo con il coordinatore presente. Il
-database attuale è usa e getta, ma `data.old-<data>/` si conserva per una
-settimana come rete di sicurezza.
+e il servizio systemd. Eseguirla solo con il coordinatore presente. Il database
+attuale è usa e getta, ma `data.old-<data>/` e il binario precedente si
+conservano per una settimana come rete di sicurezza.
 
-**Stato (23/10, ciclo 4):** `scripts/fresh-start.sh` implementa il passo 5
-(dry-run predefinito, `--apply`, `--rollback`, override `--data-dir`, `--unit`,
+**Stato (23/10, ciclo 4).** `scripts/fresh-start.sh` implementa il passo 5:
+dry-run predefinito, `--apply`, `--rollback`, override `--data-dir`, `--unit`,
 `--binary`, `--listen`/`--port`, `--no-systemd`, `--env-file`, `--jackett`,
-`--prowlarr`, `--jackett-copy`, `--skip-import`, `--yes`). Le chiavi di
-Jackett/Prowlarr arrivano da `--env-file` (default
-`~/.config/indexarr-dev/managers.env`) o dalle variabili; il DB vecchio serve
-solo per la API key Torznab di indexarr e per l'URL del feed TorrentLeech, che
-viene creato come indexer nativo `torrentleech-rss` e sigillato nel vault.
-L'elenco Jackett si legge dal vivo con
-`GET /api/v2.0/indexers/all/results/torznab/api?t=indexers&configured=true`;
-`--jackett-copy` è solo il ripiego quando l'API non risponde. La prova
-generale è stata fatta tre volte su copie del DB con porta `18510` e processo
-locale; ogni ciclo ha importato dal vivo, creato 9 indexer senza doppioni e
-fatto almeno un ciclo del feed TorrentLeech con release nuove > 0. Per il
-giorno dello scambio restano validi i comandi qui sotto; con `--no-systemd`
-lo script usa un PID file e non tocca systemd.
+`--prowlarr`, `--jackett-copy`, `--skip-import`, `--yes` e **`--build`**.
+`--build` compila `cmd/indexarr` dal checkout corrente in un file temporaneo e
+lo installa in `bin/indexarr` **solo dentro `--apply`**, dopo aver salvato il
+precedente come `bin/indexarr.old-<timestamp>`; un dry-run con `--build` non
+compila e non installa. `--rollback` ripristina il binario
+`bin/indexarr.old-<timestamp>` che corrisponde al `data.old-<timestamp>`
+ripristinato, quando esiste.
 
-Prerequisiti: il binario nuovo è già compilato e installato come
-`bin/indexarr` (fuori da questa procedura); Jackett/Prowlarr sono raggiungibili
-in sola lettura; `~/.config/indexarr-dev/managers.env` contiene le quattro
-variabili `JACKETT_URL`, `JACKETT_API_KEY`, `PROWLARR_URL`,
-`PROWLARR_API_KEY`.
+La prova generale è stata rifatta tre volte su copie del DB con il binario
+costruito dal tip, porta `18510` e processo locale (`--no-systemd`). Ogni ciclo
+ha importato dal vivo da Jackett e Prowlarr, creato **9 indexer senza
+doppioni** (6 nativi, di cui 5 dal catalogo più `torrentleech-rss`; 1 via
+Prowlarr; 1 via Jackett; `torrentscsv` disattivato) e chiuso il primo giro
+dello scheduler con 145, 146 e 146 release; il feed TorrentLeech RSS ha
+prodotto **30 release nuove in tutti e tre i cicli**. La tabella di parità con
+Prowlarr (10 ricerche, GET) è nel report del ciclo: l'obiettivo del 90% non è
+raggiunto sulle query generiche perché indexarr rispetta il tetto Torznab di
+100 risultati totali mentre Prowlarr restituisce 140 risultati (70 per
+indexer, `limit` ignorato) e non deduplica; sulle `tvsearch` con stagione ed
+episodio indexarr è pari o superiore in 3 casi su 4 (il quarto è 0 su 0).
+
+Prerequisiti: `go` disponibile (per `--build`), il repository al tip del
+branch, Jackett/Prowlarr raggiungibili in sola lettura,
+`~/.config/indexarr-dev/managers.env` (permessi 600) con le quattro variabili
+`JACKETT_URL`, `JACKETT_API_KEY`, `PROWLARR_URL`, `PROWLARR_API_KEY`, e le
+credenziali dei siti privati a portata di mano.
+
+Su questa macchina il servizio è un'unità **utente**
+(`~/.config/systemd/user/indexarr.service`): eseguire i comandi **senza
+`sudo`**, altrimenti `systemctl --user` non vede l'unità e `$HOME` cambia. Se
+il servizio fosse un'unità di sistema, usare `sudo` e passare `--unit` con il
+nome giusto.
+
+#### 0. Controllo senza modifiche (dry-run)
 
 ```bash
 cd /home/andres/indexarr
-
-# 0. Fermare il servizio e verificare che sia fermo.
-sudo systemctl stop indexarr
-systemctl is-active indexarr    # deve stampare "inactive" o "failed"
-
-# 1. Data dello scambio, chiave Torznab attuale e copia di sicurezza, a
-#    servizio fermo. La directory vera viene comunque spostata al passo 2.
-STAMP=$(date +%Y%m%d-%H%M%S)
-OLD_KEY=$(sqlite3 -readonly data/indexarr.db \
-  "SELECT value FROM settings WHERE key='api_key';")
-test -n "$OLD_KEY" && echo "chiave Torznab letta: ${#OLD_KEY} caratteri"
-cp -a data "data.copy-$STAMP"
-
-# 2. Spostare (non cancellare) la directory dati e crearne una vuota.
-mv data "data.old-$STAMP"
-install -d -m 0700 data
+git rev-parse --short HEAD        # deve essere c793966 o successivo
+./scripts/fresh-start.sh --build
 ```
 
+Atteso: `fresh-start plan (dry run; nothing will change)`, la riga
+`binary: ... (built from ...; dry run does not compile or install)`, il file
+dei manager trovato, i siti che l'import creerebbe e
+`No command was executed.` Non deve comparire nessuna chiave. Se il dry-run
+segnala binario, database o env-file mancanti, fermarsi: `--apply` si
+fermerebbe nello stesso punto.
+
+#### 1. Scambio con import dal vivo e binario costruito dal tip
+
 ```bash
-# 3. Avviare la nuova istanza: crea un DB nuovo e una chiave Torznab nuova.
-sudo systemctl start indexarr
+./scripts/fresh-start.sh --apply --build \
+  --env-file /home/andres/.config/indexarr-dev/managers.env
+# rispondere "yes" alla conferma
+```
+
+Lo script, in quest'ordine: ferma il servizio; sposta `data/` in
+`data.old-<timestamp>/`; crea il DB nuovo; compila e installa
+`bin/indexarr`, salvando il precedente come `bin/indexarr.old-<timestamp>`;
+mantiene la API key Torznab; importa dal vivo Jackett/Prowlarr e il feed
+TorrentLeech (solo GET, chiavi dall'env-file, URL del feed sigillato nel
+vault); riavvia e attende `/healthz`. In caso di errore dopo lo spostamento
+dei dati ripristina automaticamente dati e binario.
+
+Annotare dall'output `data.old-*` e `bin/indexarr.old-*`: servono al rollback.
+
+#### 2. Verifiche (5 minuti)
+
+```bash
 curl -fsS http://127.0.0.1:8484/healthz
-
-# 4. Rimettere la STESSA chiave Torznab nel nuovo DB, così Sonarr/Radarr non
-#    vanno riconfigurati. Il servizio va fermato per l'UPDATE.
-sudo systemctl stop indexarr
-sqlite3 data/indexarr.db \
-  "UPDATE settings SET value='$OLD_KEY' WHERE key='api_key';"
-sudo systemctl start indexarr
-
-# Controllo: il nuovo DB risponde con la vecchia chiave.
+OLD_DIR=$(ls -1dt data.old-* | head -n 1)
+OLD_KEY=$(sqlite3 -readonly "$OLD_DIR/indexarr.db" \
+  "SELECT value FROM settings WHERE key='api_key';")
+NEW_KEY=$(sqlite3 -readonly data/indexarr.db \
+  "SELECT value FROM settings WHERE key='api_key';")
+test "$OLD_KEY" = "$NEW_KEY" && echo "API key Torznab invariata"
 curl -fsS "http://127.0.0.1:8484/api?t=caps&apikey=$OLD_KEY" | head -n 5
+sqlite3 -readonly data/indexarr.db "SELECT count(*) FROM indexers;"
 ```
 
-Se l'indirizzo pubblico non è ancora configurato, aprirlo in
-**Impostazioni → Generale** e salvarlo; `/import` mostra l'indirizzo effettivo
-e ricorda di verificare che le app lo raggiungano.
+La chiave non va stampata: il confronto e `caps` bastano. Poi, **dall'interfaccia**
+(`http://<host>:8484`):
+
+1. **Indexer** → aprire un sito abilitato → **Prova come Sonarr/Radarr**;
+2. eseguire cinque ricerche realistiche:
+   - `tvsearch` — The Last of Us, stagione 1, episodio 1;
+   - `tvsearch` — Severance, stagione 2, episodio 3;
+   - `movie` — Dune 2021, `imdbid=tt1160419`;
+   - `search` — `ubuntu`;
+   - `search` — `NCIS`;
+3. per ognuna verificare risultati > 0 (un singolo sito può legittimamente
+   dare 0 su una query: l'importante è che la ricerca parta dal vivo e che
+   almeno 4 su 5 abbiano risultati), tempo entro il massimo di 20 s e la voce
+   corrispondente in **Attività → Ricerche** con gli indexer interrogati.
+
+Se Sonarr/Radarr sono già configurati, fare anche un `Test` dell'indexer
+dall'app: deve usare la stessa API key, senza riconfigurare nulla.
+
+#### 3. Credenziali dei siti privati
+
+- **TorrentLeech:** non re-inserire la rsskey. L'import ha creato
+  `torrentleech-rss` dal feed del DB vecchio; controllare in **Attività → Feed**
+  che le release nuove siano > 0 e che l'indexer sia abilitato.
+- **Corsaro (reCAPTCHA):** **Indexer → Corsaro → Modifica**, incollare il
+  **Cookie di sessione** copiato dal browser (`login.method: cookie`, aiuto di
+  una riga nel form), salvare e provare una ricerca. Il cookie va nel vault.
+- **ilDraGoNeRo / MirCrew e gli altri privati:** stessi passi dal form
+  dell'indexer (cookie o utente/password secondo la definizione). Non mettere
+  credenziali in file del repository, riga di comando o messaggi.
+- Dopo l'inserimento, eseguire **Test** sull'indexer e una ricerca di prova.
+
+#### 4. Rollback di dati e binario
 
 ```bash
-# 5. Import dalla UI: http://<host>:8484/import
-#    - Prowlarr: URL dell'istanza + API key (sola lettura).
-#    - Jackett: URL vivo (t=indexers); la copia della directory dati è solo il
-#      ripiego se l'API non risponde.
-#    Anteprima -> selezionare i siti -> Importa selezionati -> riepilogo.
-#    Lo stesso sito da più sorgenti entra una volta sola: nativo verificato >
-#    Prowlarr > Jackett; gli altri compaiono come "già coperto da …".
+./scripts/fresh-start.sh --rollback
+# rispondere "yes" alla conferma
 ```
 
-Alternativa da riga di comando, con il servizio fermo (stesso servizio di
-apply della UI, nessuna riga in `sources`):
+Lo script ferma il servizio, ripristina il binario
+`bin/indexarr.old-<timestamp>` abbinato al `data.old-<timestamp>` scelto,
+sposta la nuova `data/` in `data.failed-<timestamp>/`, ripristina la vecchia
+`data/` e riavvia. Atteso: `previous binary restored`, `rollback complete`,
+`/healthz` verde e la vecchia API key ancora valida.
 
 ```bash
-sudo systemctl stop indexarr
-set -a; . ~/.config/indexarr-dev/managers.env; set +a
-go build -o /tmp/indexarr-import ./cmd/indexarr-import
-INDEXARR_JACKETT_KEY="$JACKETT_API_KEY" INDEXARR_PROWLARR_KEY="$PROWLARR_API_KEY" \
-  /tmp/indexarr-import -jackett-url "$JACKETT_URL" -prowlarr "$PROWLARR_URL" \
-  -db data/indexarr.db -apply
-# Il feed TorrentLeech personale si aggiunge con l'URL letto dal DB vecchio:
-# INDEXARR_TORRENTLEECH_RSS_URL="https://rss24h.torrentleech.org/<rsskey>" ...
-sudo systemctl start indexarr
-```
-
-```bash
-# 6. Verifica finale.
 curl -fsS http://127.0.0.1:8484/healthz
 sqlite3 -readonly data/indexarr.db \
-  "SELECT count(*) FROM indexers; SELECT count(*) FROM sqlite_master WHERE type='table' AND name='sources';"
-# Atteso: indexer importati; la tabella sources non esiste più (0).
+  "SELECT count(*) FROM indexers;"   # il numero del DB vecchio
 ```
 
-**Rollback** (la vecchia istanza torna esattamente com'era):
+Se lo scambio era stato fatto senza `--build`, non esiste un binario
+abbinato: lo script lo lascia invariato e lo dice. Non cancellare
+`data.old-*`, `data.failed-*` e `bin/indexarr.old-*` finché la nuova istanza
+non ha girato una settimana.
 
-```bash
-sudo systemctl stop indexarr
-mv data "data.failed-$STAMP"
-mv "data.old-$STAMP" data
-sudo systemctl start indexarr
-curl -fsS http://127.0.0.1:8484/healthz
-```
-
-Non cancellare `data.old-*` e `data.failed-*` finché la nuova istanza non ha
-girato una settimana. Se è stato sostituito anche `bin/indexarr`, ripristinare
-il binario precedente prima del rollback: questa procedura non lo modifica.
 
 ---
 
