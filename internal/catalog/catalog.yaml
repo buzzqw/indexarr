@@ -206,3 +206,43 @@ definitions:
     file: definitions/academictorrents.yaml
     state: verificata
     author: indexarr
+
+  - id: shanaproject
+    file: definitions/shanaproject.yaml
+    state: verificata
+    author: indexarr
+
+  - id: anirena
+    file: definitions/anirena.yaml
+    state: verificata
+    author: indexarr
+
+  - id: audiobookbay
+    file: definitions/audiobookbay.yaml
+    state: verificata
+    author: indexarr
+
+  - id: internetarchive
+    file: definitions/internetarchive.yaml
+    state: verificata
+    author: indexarr
+
+  - id: eztv
+    file: definitions/eztv.yaml
+    state: verificata
+    author: indexarr
+
+  - id: torrent9
+    file: definitions/torrent9.yaml
+    state: verificata
+    author: indexarr
+
+  - id: librivox
+    file: definitions/librivox.yaml
+    state: verificata
+    author: indexarr
+
+  - id: fosstorrents
+    file: definitions/fosstorrents.yaml
+    state: verificata
+    author: indexarr

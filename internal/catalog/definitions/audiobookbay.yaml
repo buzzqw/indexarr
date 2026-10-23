@@ -1,0 +1,75 @@
+# VERIFICATA (verified). AudioBook Bay public search.
+#
+# Written from the public search page and one release page captured on
+# 2026-10-23 in fixtures/audiobookbay/search.html and
+# fixtures/audiobookbay/detail.html (https://audiobookbay.lu/?s=test). The
+# listing has the size and date; the info hash lives on the release page, so
+# the download section builds the magnet while searching. Uploader names and
+# the direct-download links were removed from the fixture.
+schema: 1
+
+meta:
+  id: audiobookbay
+  name: AudioBook Bay
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public AudioBook Bay search; magnets from the release info hash.
+  urls:
+    - https://audiobookbay.lu/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "Adults", standard: 3030, desc: "Audio books" }
+  - { site: "Sci-Fi", standard: 3030, desc: "Audio books" }
+  - { site: "Fantasy", standard: 3030, desc: "Audio books" }
+  - { site: "Humor", standard: 3030, desc: "Audio books" }
+  - { site: "Contemporary", standard: 3030, desc: "Audio books" }
+  - { site: "Misc.", standard: 3030, desc: "Audio books" }
+  - { site: "Mystery", standard: 3030, desc: "Audio books" }
+  - { site: "Romance", standard: 3030, desc: "Audio books" }
+  - { site: "Thriller", standard: 3030, desc: "Audio books" }
+  - { site: "Bestsellers", standard: 3030, desc: "Audio books" }
+  - { site: "History", standard: 3030, desc: "Audio books" }
+  - { site: "Science", standard: 3030, desc: "Audio books" }
+  - { site: "Self-help", standard: 3030, desc: "Audio books" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /
+    params:
+      s: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.post" }
+    fields:
+      title:    { selector: "div.postTitle h2 a", filters: [trim] }
+      details:  { selector: "div.postTitle h2 a", attr: href, type: url }
+      size:     { selector: 'p[style*="text-align:center"]', filters: [{ regex: 'File Size:\s*([0-9.,]+ ?[KMGTP]B)' }], type: size }
+      category: { selector: "div.postInfo", filters: [{ regex: 'Category:\s*([A-Za-z.-]+)' }], type: category }
+      date:     { selector: 'p[style*="text-align:center"]', filters: [{ regex: 'Posted:\s*([0-9]{1,2} [A-Z][a-z]+ [0-9]{4})' }], type: date, layouts: ["2 Jan 2006"] }
+    required: [title, details, size]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet: { selector: 'tr:contains("Info Hash") td:nth-of-type(2)', filters: [{ prefix: "magnet:?xt=urn:btih:" }] }
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/audiobookbay/search.html
+    expect: { min_rows: 5, required: [title, details, size, category] }
+  - name: detail
+    fixture: fixtures/audiobookbay/detail.html
+    expect: { min_rows: 0 }

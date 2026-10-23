@@ -1,0 +1,76 @@
+{
+  "response": {
+    "docs": [
+      {
+        "identifier": "pubmed-PMC4119369",
+        "item_size": 959498,
+        "mediatype": "texts",
+        "publicdate": "2014-10-10T23:21:44Z",
+        "title": "Effects of diclofenac and celecoxib on osteoclastogenesis during alveolar bone healing, in vivo."
+      },
+      {
+        "identifier": "9.3build",
+        "item_size": 160416583,
+        "mediatype": "texts",
+        "publicdate": "2016-09-04T04:30:31Z",
+        "title": "9.3build"
+      },
+      {
+        "identifier": "pubmed-PMC3940002",
+        "item_size": 12869785,
+        "mediatype": "texts",
+        "publicdate": "2014-10-23T20:24:53Z",
+        "title": "Evaluation of canine and feline leishmaniasis by the association of blood culture, immunofluorescent antibody test and polymerase chain reaction."
+      },
+      {
+        "identifier": "bwb_S0-DGA-279",
+        "item_size": 504610446,
+        "mediatype": "texts",
+        "publicdate": "2025-12-16T14:53:53Z",
+        "title": "Excel test: Preparation for the SAT & PSAT"
+      },
+      {
+        "identifier": "lib_20241008",
+        "item_size": 23172,
+        "mediatype": "software",
+        "publicdate": "2024-10-08T11:58:54Z",
+        "title": "lib"
+      },
+      {
+        "identifier": "lordstest18841980000lync",
+        "item_size": 989029732,
+        "mediatype": "texts",
+        "publicdate": "2023-02-07T02:29:32Z",
+        "title": "The Lord's test, 1884-1989"
+      },
+      {
+        "identifier": "microsoft-internet-explorer-6.0-service-pack-1-6.00.2800.1067-2002-07-beta-5-windows-2000-windows-xp",
+        "item_size": 34368798,
+        "mediatype": "software",
+        "publicdate": "2020-12-04T22:19:52Z",
+        "title": "Microsoft Internet Explorer 6.0 Service Pack Betas"
+      },
+      {
+        "identifier": "plugin.video.mykodibuildwizard_20170311",
+        "item_size": 259071,
+        "mediatype": "texts",
+        "publicdate": "2017-03-11T21:32:08Z",
+        "title": "plugin.video.mykodibuildwizard"
+      },
+      {
+        "identifier": "Stickers_201506",
+        "item_size": 9212658,
+        "mediatype": "texts",
+        "publicdate": "2015-06-04T07:04:08Z",
+        "title": "Stickers"
+      },
+      {
+        "identifier": "1-mm-nombres",
+        "item_size": 23410660,
+        "mediatype": "texts",
+        "publicdate": "2025-07-24T23:31:47Z",
+        "title": "1 MM Nombres"
+      }
+    ]
+  }
+}

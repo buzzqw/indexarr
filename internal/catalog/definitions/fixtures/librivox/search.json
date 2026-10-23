@@ -1,0 +1,29 @@
+{
+  "books": [
+    {
+      "id": "200",
+      "title": "Alice's Adventures in Wonderland",
+      "description": "In this children's classic, a girl named Alice follows falls down a rabbit-hole into a fantasy realm full of talking creatures. She attends a never-ending tea party and plays croquet at the court of the anthropomorphic playing cards. (Summary written by Gesine)<br /><br />\"I loved all the voices in this project and probably wouldn’t have put the time into checking into this book without this LibriVox version of it. Great project and well done by all. What people can do really amazes me from time to time. This reminds me of how beautiful the world can be.\" — skinned mink",
+      "url_text_source": "https://www.gutenberg.org/etext/11",
+      "language": "English",
+      "copyright_year": "1865",
+      "num_sections": "12",
+      "url_rss": "https://librivox.org/rss/200",
+      "url_zip_file": "https://archive.org/compress/alice_in_wonderland_librivox/formats=64KBPS MP3&file=/alice_in_wonderland_librivox.zip",
+      "url_project": "https://en.wikipedia.org/wiki/Alice’s_Adventures_in_Wonderland",
+      "url_librivox": "/alices-adventures-in-wonderland-by-lewis-carroll/",
+      "url_other": "",
+      "totaltime": "2:58:51",
+      "totaltimesecs": 10731,
+      "authors": [
+        {
+          "id": "71",
+          "first_name": "Lewis",
+          "last_name": "Carroll",
+          "dob": "1832",
+          "dod": "1898"
+        }
+      ]
+    }
+  ]
+}

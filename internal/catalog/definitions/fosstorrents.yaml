@@ -1,0 +1,66 @@
+# VERIFICATA (verified). FOSS Torrents public distribution search.
+#
+# Written from the public search page and one download page captured on
+# 2026-10-23 in fixtures/fosstorrents/search.html and
+# fixtures/fosstorrents/detail.html
+# (https://fosstorrents.com/search/?query=ubuntu). The search redirects a
+# complete project name to the project page; its release rows link a
+# /thankyou/ page that carries the official .torrent link. Exact project names
+# are therefore the supported search form. The row title is the project name
+# (the edition and version live on the download page), which keeps the query
+# and the Torznab result titles aligned.
+schema: 1
+
+meta:
+  id: fosstorrents
+  name: FOSS Torrents
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public FOSS Torrents distribution catalogue (exact project name).
+  urls:
+    - https://fosstorrents.com/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "fa-hard-drive", standard: 4000, desc: "Software" }
+  - { site: "0", standard: 4000, desc: "Software" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search/
+    params:
+      query: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.columns.is-vcentered[style]" }
+    fields:
+      title:    { selector: 'a[href^="/thankyou/"]', attr: href, filters: [{ query_param: "name" }, { trim }] }
+      details:  { selector: 'a[href^="/thankyou/"]', attr: href, filters: [{ replace: " :%20" }], type: url }
+      size:     { selector: "div.columns.is-multiline.is-mobile div.column.is-half-mobile:nth-of-type(3)", type: size }
+      category: { selector: "i.fa-hard-drive", attr: class, filters: [{ regex: "(fa-hard-drive)" }], type: category }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 2
+  extract:
+    - torrent: { selector: 'a[href*=".torrent"]', attr: href, type: url }
+
+health:
+  query: ubuntu
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/fosstorrents/search.html
+    expect: { min_rows: 1, required: [title, details] }
+  - name: detail
+    fixture: fixtures/fosstorrents/detail.html
+    expect: { min_rows: 0 }

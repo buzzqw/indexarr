@@ -1,0 +1,71 @@
+# VERIFICATA (verified). LibriVox public audiobook API.
+#
+# Written from the public API response and one book page captured on
+# 2026-10-23 in fixtures/librivox/search.json and
+# fixtures/librivox/detail.html
+# (https://librivox.org/api/feed/audiobooks/?title=Alice%27s+Adventures+in+Wonderland&format=json).
+# The API title parameter matches a complete title, so this indexer is an
+# exact-title catalogue rather than a free-text search. Each book page links
+# the Internet Archive torrent, which the download section resolves while
+# searching.
+schema: 1
+
+meta:
+  id: librivox
+  name: LibriVox
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public LibriVox audiobook catalogue (exact title) with archive torrents.
+  urls:
+    - https://librivox.org/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "English", standard: 3030, desc: "Audio books" }
+  - { site: "French", standard: 3030, desc: "Audio books" }
+  - { site: "German", standard: 3030, desc: "Audio books" }
+  - { site: "Spanish", standard: 3030, desc: "Audio books" }
+  - { site: "Italian", standard: 3030, desc: "Audio books" }
+  - { site: "Dutch", standard: 3030, desc: "Audio books" }
+  - { site: "Portuguese", standard: 3030, desc: "Audio books" }
+  - { site: "Russian", standard: 3030, desc: "Audio books" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /api/feed/audiobooks/
+    params:
+      title: "{{ query.keywords }}"
+      format: json
+  pagination: { type: none }
+  response:
+    type: json
+    rows: { path: books }
+    fields:
+      title:    { path: title, filters: [trim] }
+      details:  { path: url_librivox, type: url }
+      category: { path: language, type: category }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 1
+  extract:
+    - torrent: { selector: 'a[href$="_archive.torrent"]', attr: href, type: url }
+
+health:
+  query: "Alice's Adventures in Wonderland"
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/librivox/search.json
+    expect: { min_rows: 1, required: [title, details, category] }
+  - name: detail
+    fixture: fixtures/librivox/detail.html
+    expect: { min_rows: 0 }

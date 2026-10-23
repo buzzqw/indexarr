@@ -1,0 +1,56 @@
+# VERIFICATA (verified). Shana Project public HTML search.
+#
+# Written from the public search page captured on 2026-10-23 in
+# fixtures/shanaproject/search.html
+# (https://www.shanaproject.com/search/?title=test). The listing shows a
+# per-release /download/<id>/ link that redirects to a .torrent, so the file
+# URL is taken from the row. The full release name is the "original" filename
+# in the collapsed detail block.
+schema: 1
+
+meta:
+  id: shanaproject
+  name: Shana Project
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Shana Project anime search with direct .torrent links.
+  urls:
+    - https://www.shanaproject.com/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "HD", standard: 5070, desc: "Anime HD" }
+  - { site: "SD", standard: 5070, desc: "Anime SD" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+
+search:
+  request:
+    get: /search/
+    params:
+      title: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: 'div.release_block[id^="rel"]' }
+    fields:
+      title:    { selector: "div.release_original div.release_text_contents", filters: [trim] }
+      details:  { selector: "div.release_info a", attr: href, type: url }
+      download: { selector: 'a[href^="/download/"]', attr: href, type: url }
+      size:     { selector: "div.release_size", type: size }
+      category: { selector: ["div.release_quality_hd", "div.release_quality_sd"], type: category }
+      date:     { selector: "div.release_20.release_last", type: date, layouts: ["Jan. 2, 2006, 3:04 p.m."] }
+    required: [title, download, size]
+
+health:
+  query: test
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/shanaproject/search.html
+    expect: { min_rows: 3, required: [title, download, size, category] }

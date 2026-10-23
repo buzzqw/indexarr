@@ -1,0 +1,58 @@
+# VERIFICATA (verified). AniRena public RSS search.
+#
+# Written from the public RSS search captured on 2026-10-23 in
+# fixtures/anirena/search.xml (https://www.anirena.com/rss?q=test). The RSS
+# search filters by the q parameter and each item carries the size, category
+# and a .torrent enclosure. Uploader names were replaced with "user" in the
+# fixture.
+schema: 1
+
+meta:
+  id: anirena
+  name: AniRena
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public AniRena anime RSS search with .torrent enclosures.
+  urls:
+    - https://www.anirena.com/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+  - { site: "Audio", standard: 3000, desc: "Audio" }
+  - { site: "Manga", standard: 7000, desc: "Manga" }
+  - { site: "Hentai", standard: 6000, desc: "Adult" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /rss
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: xml
+    rows: { path: rss.channel.item }
+    fields:
+      title:    { path: title, filters: [trim] }
+      details:  { path: link, type: url }
+      download: { path: enclosure@url, type: url }
+      size:     { path: description, filters: [{ regex: 'Size:\s*([0-9.,]+ ?[KMGTP]B)' }], type: size }
+      category: { path: description, filters: [{ regex: 'Category:\s*([A-Za-z]+)' }], type: category }
+      date:     { path: pubDate, type: date }
+    required: [title, download, size]
+
+health:
+  query: test
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/anirena/search.xml
+    expect: { min_rows: 3, required: [title, download, size, category] }

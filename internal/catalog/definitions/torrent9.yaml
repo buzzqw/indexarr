@@ -1,0 +1,76 @@
+# VERIFICATA (verified). Torrent9 public French search.
+#
+# Written from the public search results and one release page captured on
+# 2026-10-23 in fixtures/torrent9/search.html and fixtures/torrent9/detail.html
+# (https://www7.torrent9.to/search_torrent/, POST keywords=test). The listing
+# has size, seeders and leechers in French units; the release page carries the
+# magnet, so the download section resolves it during the search.
+schema: 1
+
+meta:
+  id: torrent9
+  name: Torrent9
+  language: fr-FR
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Torrent9 French search; magnets from the release page.
+  urls:
+    - https://www7.torrent9.to/
+    - https://torrent9.to/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "film", standard: 2000, desc: "Films" }
+  - { site: "video-camera", standard: 2000, desc: "Films" }
+  - { site: "tv", standard: 5000, desc: "Séries" }
+  - { site: "music", standard: 3000, desc: "Musique" }
+  - { site: "book", standard: 7000, desc: "Ebooks" }
+  - { site: "gamepad", standard: 4000, desc: "Jeux" }
+  - { site: "windows", standard: 4000, desc: "Logiciels" }
+  - { site: "apple", standard: 4000, desc: "Logiciels" }
+  - { site: "android", standard: 4000, desc: "Logiciels" }
+  - { site: "linux", standard: 4000, desc: "Logiciels" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    post: /search_torrent/
+    form:
+      keywords: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table tbody tr" }
+    fields:
+      title:    { selector: 'a[href^="/torrent/"]', filters: [trim] }
+      details:  { selector: 'a[href^="/torrent/"]', attr: href, type: url }
+      category: { selector: 'i[class^="fa fa-"]', attr: class, filters: [{ regex: "fa-([a-z-]+)" }], type: category }
+      size:     { selector: "td:nth-of-type(3)", filters: [{ replace: "Mo:MB" }, { replace: "Go:GB" }, { replace: "Ko:KB" }], type: size }
+      seeders:  { selector: "span.seed_ok", type: int }
+      leechers: { selector: "td:nth-of-type(5)", type: int }
+      date:     { selector: "td:nth-of-type(2)", type: date, layouts: ["02/01/2006"] }
+    required: [title, details, size]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/torrent9/search.html
+    expect: { min_rows: 5, required: [title, details, size, seeders] }
+  - name: detail
+    fixture: fixtures/torrent9/detail.html
+    expect: { min_rows: 0 }

@@ -1,0 +1,56 @@
+# VERIFICATA (verified). EZTV public RSS feed.
+#
+# Written from the public feed captured on 2026-10-23 in
+# fixtures/eztv/feed.xml (https://myrss.org/eztv, the EZTVx.to official RSS
+# bridge). Items carry the show title, publication date, .torrent enclosure
+# and size; the EZTV HTML search is behind Cloudflare, so this definition uses
+# the feed with the RSS family's client-side title filter.
+schema: 1
+connector: rss
+
+meta:
+  id: eztv
+  name: EZTV
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public EZTV TV feed with .torrent enclosures (client-side title filter).
+  urls:
+    - https://eztvx.to/
+    - https://myrss.org/eztv
+  updated: "2026-10-23"
+
+settings:
+  - name: url
+    type: text
+    label: "Feed URL"
+    help: "EZTV RSS feed, for example https://myrss.org/eztv"
+    default: "https://myrss.org/eztv"
+    required: true
+  - name: default-category
+    type: text
+    label: "Default category"
+    help: "Standard Torznab category used when the feed has only text categories."
+    default: "5000"
+  - name: query
+    type: text
+    label: "Title filter (optional)"
+    help: "Keep only feed items whose title contains these words."
+
+categories:
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+
+health:
+  query: "a"
+  min_rows: 5
+
+tests:
+  - name: feed
+    fixture: fixtures/eztv/feed.xml
+    expect: { min_rows: 5, required: [title, download, size] }

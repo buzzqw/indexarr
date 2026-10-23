@@ -1,0 +1,74 @@
+# VERIFICATA (verified). Internet Archive advanced search (texts and software).
+#
+# Written from the public JSON response captured on 2026-10-23 in
+# fixtures/internetarchive/search.json
+# (https://archive.org/advancedsearch.php?q=test+AND+(mediatype:texts+OR+mediatype:software)&fl=identifier,title,mediatype,publicdate,item_size&rows=10&output=json).
+# Every item page links an archive torrent at
+# /download/<identifier>/<identifier>_archive.torrent; the download section
+# reads that link while searching. The query is restricted to texts and
+# software because web crawl items do not publish a torrent.
+schema: 1
+
+meta:
+  id: internetarchive
+  name: Internet Archive
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Internet Archive search for texts and software with archive torrents.
+  urls:
+    - https://archive.org/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "texts", standard: 7000, desc: "Books" }
+  - { site: "software", standard: 4000, desc: "Software" }
+  - { site: "audio", standard: 3000, desc: "Audio" }
+  - { site: "etree", standard: 3000, desc: "Live music" }
+  - { site: "movies", standard: 2000, desc: "Movies" }
+  - { site: "data", standard: 8000, desc: "Data" }
+  - { site: "image", standard: 8000, desc: "Images" }
+
+capabilities:
+  search: [q]
+  book-search: [q]
+
+search:
+  request:
+    get: /advancedsearch.php
+    params:
+      q: "{{ query.keywords }} AND (mediatype:texts OR mediatype:software)"
+      fl: "identifier,title,mediatype,publicdate,item_size"
+      rows: "20"
+      output: json
+  pagination: { type: page, start: 1, step: 1, max_pages: 1, param: page }
+  response:
+    type: json
+    rows: { path: response.docs }
+    fields:
+      title:    { path: title, filters: [trim] }
+      details:  { path: identifier, filters: [{ prefix: "/details/" }], type: url }
+      size:     { path: item_size, type: size }
+      category: { path: mediatype, type: category }
+      date:     { path: publicdate, type: date }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 2
+  extract:
+    - torrent: { selector: 'a[href$="_archive.torrent"]', attr: href, type: url }
+
+health:
+  query: test
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/internetarchive/search.json
+    expect: { min_rows: 3, required: [title, details, size, category] }
+  - name: detail
+    fixture: fixtures/internetarchive/detail.html
+    expect: { min_rows: 0 }
