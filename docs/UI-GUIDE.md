@@ -460,8 +460,8 @@ da fare insieme a WP-R o all'inizio della fase 2 (**1c**):
 La fase 1b non deve investire nelle pagine che WP16 elimina (sorgenti,
 tab legacy, form sorgente): lì basta la redazione degli URL di WP-R.
 
-**Stato 1c (23/10): fatta**, esclusi i punti delle pagine legacy che WP16
-elimina. Cerca applica §4.5 (titolo più largo, seconda riga con leechers e
+**Stato 1c (23/10): fatta** (`d112bea`), esclusi i punti delle pagine legacy
+che WP16 elimina. Cerca applica §4.5 (titolo più largo, seconda riga con leechers e
 categoria, data relativa, pulsante "Scarica", filtri numerici vuoti, pannello
 filtri secondari con contatore); Impostazioni non mette più token Telegram e
 password del client nell'HTML (campo vuoto = invariato, "Cambia" per
