@@ -52,14 +52,19 @@ func redactError(err error, values []string) error {
 	return &redactedError{message: message, cause: err}
 }
 
-// statusFor classifies an operation. Cancellation wins over a generic error so
-// the history shows why the run stopped.
+// statusFor classifies an operation. A caller cancellation wins over every
+// other classification because it says why the run actually stopped. A
+// Cloudflare challenge is "blocked": it is not a generic failure and it has
+// its own cause and remedy in the interface.
 func statusFor(ctx context.Context, err error) string {
+	if ctx != nil && ctx.Err() != nil {
+		return "canceled"
+	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return "canceled"
 	}
-	if ctx != nil && ctx.Err() != nil {
-		return "canceled"
+	if errors.Is(err, engine.ErrChallenge) {
+		return "blocked"
 	}
 	if err != nil {
 		return "error"

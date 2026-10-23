@@ -16,6 +16,7 @@ const (
 	KeyAPIKey               = "api_key"
 	KeyPublicURL            = "public_url"
 	KeyFlareSolverr         = "flaresolverr_url"
+	KeyFlareSolverrTimeout  = "flaresolverr_timeout_seconds"
 	KeyDefaultInterval      = "default_interval_seconds"
 	KeyRetentionDays        = "retention_days"
 	KeyHistoryRetentionDays = "history_retention_days"
@@ -58,11 +59,12 @@ const (
 
 // Settings are the runtime options edited from the web interface.
 type Settings struct {
-	APIKey                 string
-	PublicURL              string
-	FlareSolverrURL        string
-	DefaultIntervalSeconds int
-	RetentionDays          int
+	APIKey                     string
+	PublicURL                  string
+	FlareSolverrURL            string
+	FlareSolverrTimeoutSeconds int
+	DefaultIntervalSeconds     int
+	RetentionDays              int
 	// HistoryRetentionDays is how long run history, its metrics, app
 	// searches and indexer samples are kept. Zero keeps them forever.
 	HistoryRetentionDays   int
@@ -108,30 +110,31 @@ type Settings struct {
 // DefaultSettings returns the options used before the first save.
 func DefaultSettings() Settings {
 	return Settings{
-		DefaultIntervalSeconds: 3600,
-		RetentionDays:          0,
-		HistoryRetentionDays:   30,
-		MaxTorrentBytes:        8 << 20,
-		FetchTimeoutSeconds:    45,
-		Workers:                2,
-		MaxTorrentsPerRun:      30,
-		FetchTorrents:          true,
-		UserAgent:              "indexarr/1.0",
-		TorznabDownloadFactor:  0,
-		TorznabUploadFactor:    1,
-		NotifyNewReleases:      true,
-		NotifyFailures:         true,
-		AutoDisableAfter:       0,
-		BackupEnabled:          true,
-		BackupIntervalHours:    24,
-		BackupKeep:             7,
-		TorznabLiveSearch:      true,
-		TorznabLiveTimeout:     20,
-		DownloadClient:         "none",
-		HostRate:               1,
-		HostBurst:              4,
-		BreakerThreshold:       5,
-		BreakerCooldownSeconds: 600,
+		DefaultIntervalSeconds:     3600,
+		RetentionDays:              0,
+		HistoryRetentionDays:       30,
+		MaxTorrentBytes:            8 << 20,
+		FlareSolverrTimeoutSeconds: 60,
+		FetchTimeoutSeconds:        45,
+		Workers:                    2,
+		MaxTorrentsPerRun:          30,
+		FetchTorrents:              true,
+		UserAgent:                  "indexarr/1.0",
+		TorznabDownloadFactor:      0,
+		TorznabUploadFactor:        1,
+		NotifyNewReleases:          true,
+		NotifyFailures:             true,
+		AutoDisableAfter:           0,
+		BackupEnabled:              true,
+		BackupIntervalHours:        24,
+		BackupKeep:                 7,
+		TorznabLiveSearch:          true,
+		TorznabLiveTimeout:         20,
+		DownloadClient:             "none",
+		HostRate:                   1,
+		HostBurst:                  4,
+		BreakerThreshold:           5,
+		BreakerCooldownSeconds:     600,
 	}
 }
 
@@ -196,6 +199,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.RetentionDays = intValue(values, KeyRetentionDays, 0, 0, 3650)
 	out.HistoryRetentionDays = intValue(values, KeyHistoryRetentionDays, 30, 0, 3650)
 	out.MaxTorrentBytes = int64(intValue(values, KeyMaxTorrentBytes, 8<<20, 64<<10, 64<<20))
+	out.FlareSolverrTimeoutSeconds = intValue(values, KeyFlareSolverrTimeout, 60, 5, 300)
 	out.FetchTimeoutSeconds = intValue(values, KeyFetchTimeout, 45, 5, 300)
 	out.Workers = intValue(values, KeyWorkers, 2, 1, 16)
 	out.MaxTorrentsPerRun = intValue(values, KeyMaxTorrentsPerRun, 30, 0, 200)
@@ -250,6 +254,7 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyAPIKey:               in.APIKey,
 		KeyPublicURL:            strings.TrimRight(strings.TrimSpace(in.PublicURL), "/"),
 		KeyFlareSolverr:         strings.TrimRight(strings.TrimSpace(in.FlareSolverrURL), "/"),
+		KeyFlareSolverrTimeout:  strconv.Itoa(in.FlareSolverrTimeoutSeconds),
 		KeyDefaultInterval:      strconv.Itoa(in.DefaultIntervalSeconds),
 		KeyRetentionDays:        strconv.Itoa(in.RetentionDays),
 		KeyHistoryRetentionDays: strconv.Itoa(in.HistoryRetentionDays),

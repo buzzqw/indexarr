@@ -132,7 +132,7 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 	for _, in := range indexers {
 		view := s.indexerRowView(r, in, defs)
 		data.Total++
-		attention := view.Status.State == "problem" || view.Status.State == "degraded"
+		attention := view.Status.State == "problem" || view.Status.State == "degraded" || view.Status.State == "blocked"
 		if attention {
 			data.Problems++
 		}
@@ -230,10 +230,99 @@ func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[stri
 		row.LastUpdate = state.LastRun.StartedAt
 	}
 	row.Status = s.statusDotFor(r, state)
-	if row.Status.State == "problem" || row.Status.State == "degraded" {
+	if row.Status.State == "problem" || row.Status.State == "degraded" || row.Status.State == "blocked" {
 		row.Problem = s.healthProblem(r, state)
+		if row.Problem == nil {
+			row.Problem = s.problemFor(r, in, state.State, state.LastRun)
+		}
 	}
 	return row
+}
+
+func (s *Server) indexerStatus(r *http.Request, in store.Indexer, state store.IndexerState, hasState bool, lastRun *store.IndexerHistory) statusDot {
+	switch {
+	case !in.Enabled:
+		return statusDot{State: "disabled", Label: s.translate(r, "idx.statusDisabled")}
+	case lastRun != nil && lastRun.Status == "blocked":
+		return statusDot{State: "blocked", Label: s.translate(r, "idx.statusBlocked")}
+	case hasState && isChallengeText(state.LastError):
+		// A challenge recorded outside a scheduled run (a live app search,
+		// for example) still shows up as blocked, not as a generic problem.
+		return statusDot{State: "blocked", Label: s.translate(r, "idx.statusBlocked")}
+	case (hasState && (strings.TrimSpace(state.LastError) != "" || strings.EqualFold(state.Circuit, "open"))) ||
+		(lastRun != nil && lastRun.Status == "error"):
+		return statusDot{State: "problem", Label: s.translate(r, "idx.statusProblem")}
+	case lastRun == nil:
+		return statusDot{State: "testing", Label: s.translate(r, "idx.statusTesting")}
+	default:
+		return statusDot{State: "ok", Label: s.translate(r, "idx.statusOk")}
+	}
+}
+
+// problemFor turns a known error into one sentence plus an action. The raw
+// error stays in the diagnostics block of the detail page.
+func isChallengeText(text string) bool {
+	lower := strings.ToLower(text)
+	return strings.Contains(lower, "cloudflare") || strings.Contains(lower, "challenge") ||
+		strings.Contains(lower, "flaresolverr")
+}
+
+func (s *Server) problemFor(r *http.Request, in store.Indexer, state store.IndexerState, lastRun *store.IndexerHistory) *uiProblem {
+	raw := strings.ToLower(strings.TrimSpace(state.LastError))
+	if raw == "" && lastRun != nil {
+		raw = strings.ToLower(strings.TrimSpace(lastRun.Error))
+	}
+	detail := "/indexers/" + strconv.FormatInt(in.ID, 10)
+	switch {
+	case strings.Contains(raw, "flaresolverr") && (strings.Contains(raw, "unreachable") ||
+		strings.Contains(raw, "connection refused") || strings.Contains(raw, "no such host") ||
+		strings.Contains(raw, "timeout") || strings.Contains(raw, "deadline") ||
+		strings.Contains(raw, "solver failed")):
+		return &uiProblem{
+			Text:        s.translate(r, "idx.problem.blockedSolver"),
+			ActionLabel: s.translate(r, "idx.problem.blockedAction"),
+			ActionURL:   "/settings?section=network",
+		}
+	case isChallengeText(raw):
+		return &uiProblem{
+			Text:        s.translate(r, "idx.problem.blocked"),
+			ActionLabel: s.translate(r, "idx.problem.blockedAction"),
+			ActionURL:   "/settings?section=network",
+		}
+	case strings.Contains(raw, "429") || strings.Contains(raw, "rate limit") || strings.Contains(raw, "too many"):
+		return &uiProblem{
+			Text:        s.translate(r, "idx.problem.rate"),
+			ActionLabel: s.translate(r, "idx.problem.rateAction"),
+			ActionURL:   "/settings",
+		}
+	case strings.Contains(raw, "403") || strings.Contains(raw, "forbidden") || strings.Contains(raw, "cloudflare"):
+		return &uiProblem{
+			Text:        s.translate(r, "idx.problem.forbidden"),
+			ActionLabel: s.translate(r, "idx.problem.forbiddenAction"),
+			ActionURL:   "/settings",
+		}
+	case strings.Contains(raw, "401") || strings.Contains(raw, "unauthorized") ||
+		strings.Contains(raw, "login") || strings.Contains(raw, "credential") || strings.Contains(raw, "password"):
+		return &uiProblem{
+			Text:        s.translate(r, "idx.problem.auth"),
+			ActionLabel: s.translate(r, "idx.problem.authAction"),
+			ActionURL:   detail + "/edit",
+		}
+	case strings.Contains(raw, "timeout") || strings.Contains(raw, "deadline") ||
+		strings.Contains(raw, "no such host") || strings.Contains(raw, "connection refused") ||
+		strings.Contains(raw, "unreachable") || strings.Contains(raw, "dial"):
+		return &uiProblem{
+			Text:        s.translate(r, "idx.problem.unreachable"),
+			ActionLabel: s.translate(r, "idx.problem.unreachableAction"),
+			ActionURL:   detail,
+		}
+	default:
+		return &uiProblem{
+			Text:        s.translate(r, "idx.problem.generic"),
+			ActionLabel: s.translate(r, "idx.problem.genericAction"),
+			ActionURL:   detail,
+		}
+	}
 }
 
 func (s *Server) indexerBadges(r *http.Request, in store.Indexer, def *definition.Definition) []uiBadge {
@@ -304,7 +393,8 @@ func indexerFilterValues(in store.Indexer) map[string]string {
 	config := publicConfigMap(in.ConfigJSON)
 	for key, value := range config {
 		switch key {
-		case "url", "categories", "query", "user_agent", "allow_private", "default_category":
+		case "url", "categories", "query", "user_agent", "allow_private", "default_category",
+			"challenge", "flaresolverr_url", "flaresolverr_timeout":
 			continue
 		}
 		if strings.TrimSpace(value) != "" {
@@ -1146,40 +1236,44 @@ func (s *Server) categoryLabel(r *http.Request, id int) string {
 
 type compactFormView struct {
 	base
-	Choosing        bool
-	Picker          *sitePickerView
-	IsNew           bool
-	Indexer         store.Indexer
-	DefinitionID    string
-	DefinitionName  string
-	Derived         bool
-	Name            string
-	Protocol        string
-	Slug            string
-	Priority        int
-	Tags            string
-	Query           string
-	DefaultCategory string
-	UserAgent       string
-	AllowPrivate    bool
-	Enabled         bool
-	URLValue        string
-	URLPlaceholder  string
-	URLSecret       bool
-	URLChoices      []indexerSettingOption
-	ShowURL         bool
-	URLLabel        string
-	IntervalSeconds int
-	Categories      []categoryChoice
-	CategoryHelp    string
-	Help            string
-	RequiredFields  []indexerSettingField
-	AdvancedFields  []indexerSettingField
-	Problems        []string
-	Note            string
-	StateWarning    string
-	MirrorWarning   string
-	ChangeSiteURL   string
+	Choosing            bool
+	Picker              *sitePickerView
+	IsNew               bool
+	Indexer             store.Indexer
+	DefinitionID        string
+	DefinitionName      string
+	Derived             bool
+	Name                string
+	Protocol            string
+	Slug                string
+	Priority            int
+	Tags                string
+	Query               string
+	DefaultCategory     string
+	UserAgent           string
+	AllowPrivate        bool
+	Challenge           string
+	ChallengeOptions    []indexerSettingOption
+	FlareSolverrURL     string
+	FlareSolverrTimeout string
+	Enabled             bool
+	URLValue            string
+	URLPlaceholder      string
+	URLSecret           bool
+	URLChoices          []indexerSettingOption
+	ShowURL             bool
+	URLLabel            string
+	IntervalSeconds     int
+	Categories          []categoryChoice
+	CategoryHelp        string
+	Help                string
+	RequiredFields      []indexerSettingField
+	AdvancedFields      []indexerSettingField
+	Problems            []string
+	Note                string
+	StateWarning        string
+	MirrorWarning       string
+	ChangeSiteURL       string
 }
 
 func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current *store.Indexer, in *indexersvc.Input, problems []string, prefillURL string) (compactFormView, error) {
@@ -1274,6 +1368,19 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	data.DefaultCategory = value("default_category")
 	data.UserAgent = value("user_agent")
 	data.AllowPrivate = truthy(value("allow_private"))
+	data.Challenge = strings.ToLower(strings.TrimSpace(value("challenge")))
+	switch data.Challenge {
+	case "none", "flaresolverr":
+	default:
+		data.Challenge = ""
+	}
+	data.ChallengeOptions = []indexerSettingOption{
+		{Value: "", Label: s.translate(r, "indexerForm.challengeGlobal"), Selected: data.Challenge == ""},
+		{Value: "none", Label: s.translate(r, "indexerForm.challengeNone"), Selected: data.Challenge == "none"},
+		{Value: "flaresolverr", Label: s.translate(r, "indexerForm.challengeFlareSolverr"), Selected: data.Challenge == "flaresolverr"},
+	}
+	data.FlareSolverrURL = value("flaresolverr_url")
+	data.FlareSolverrTimeout = value("flaresolverr_timeout")
 	if current != nil && secretKeys["url"] {
 		data.URLSecret = true
 		data.URLPlaceholder = s.redactedSecretURL(r, current.ID, "url")
@@ -1789,6 +1896,8 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	data.Problems = s.healthProblems(r, healthView)
 	if len(data.Problems) > 0 {
 		data.Problem = &data.Problems[0]
+	} else if data.Status.State == "problem" || data.Status.State == "blocked" || data.Status.State == "degraded" {
+		data.Problem = s.problemFor(r, in, data.State, data.LastRun)
 	}
 	settings, settingsErr := s.store.LoadSettings(r.Context())
 	if settingsErr != nil {

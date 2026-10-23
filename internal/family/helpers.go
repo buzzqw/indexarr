@@ -186,15 +186,29 @@ func redact(text string, secrets ...string) string {
 	return text
 }
 
+// redactedError keeps the transport error chain reachable through errors.Is
+// while its message is the redacted one. The original error may quote a full
+// URL, so its text never reaches the caller.
+type redactedError struct {
+	message string
+	cause   error
+}
+
+func (e *redactedError) Error() string { return e.message }
+func (e *redactedError) Unwrap() error { return e.cause }
+
 // redactError wraps err with prefix and redacts credentials from its message.
-// It deliberately does not use %w because the wrapped error may quote a full
-// URL; callers need errors.Is only for transport sentinels, which they can
-// inspect before wrapping.
+// The returned error keeps the cause for errors.Is (the challenge sentinels,
+// for example) without exposing the original text.
 func redactError(prefix string, err error, secrets ...string) error {
 	if err == nil {
 		return nil
 	}
-	return fmt.Errorf("%s: %s", prefix, redact(err.Error(), secrets...))
+	message := prefix + ": " + redact(err.Error(), secrets...)
+	if message == err.Error() {
+		return err
+	}
+	return &redactedError{message: message, cause: err}
 }
 
 // parseBaseURL validates an indexer base URL.

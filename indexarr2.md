@@ -94,7 +94,7 @@ attive; resta in lista finché esistono utenti.
 |---|---|---|
 | Aggiunta da catalogo con form generato dai `settings` della definizione | Test UI su definizioni di ciascun tipo di login | fatto; usabilità rifatta (UI fase 2) |
 | Test indexer (login, ricerca, download) con esito strutturato | Esito per fase, non solo "ok/errore" | parziale |
-| Proxy per indexer: HTTP, SOCKS4/5, FlareSolverr | Test con proxy simulati | parziale: FlareSolverr nativo da fare (WP11) |
+| Proxy per indexer: HTTP, SOCKS4/5, FlareSolverr | Test con proxy simulati | fatto: FlareSolverr nativo con retry sulla challenge e stato `blocked` (WP11) |
 | Limiti per indexer: query/giorno, grab/giorno | Le \*arr ricevono l'errore Torznab corretto al superamento | fatto |
 | Priorità, tag, abilitazione, redirect del download | Test | parziale |
 | Storico query e grab, statistiche per indexer | Visibili in UI e API | parziale: statistiche nel dettaglio (UI fase 2) |
@@ -722,7 +722,9 @@ strict) e `./sim/run.sh`.
 | WP6 | fatto | famiglia RSS/Atom nativa, cache feed, filtro client-side |
 | WP7 | fatto | ExtTo, TorrentGalaxy, Corsaro e Knaben verificate; TorrentLeech in bozza |
 | WP8 | passi 1–4 fatti; script, `--build` e tre prove generali fatte | import in sola lettura da Jackett/Prowlarr in indexer nativi; `fresh-start.sh` provato tre volte su copia con il binario del tip (9 indexer, 0 doppioni, TorrentLeech RSS >0), rollback di dati e binario; checklist pronta; scambio produzione da eseguire |
-| WP9–WP11 | da fare | health, refresh seeders, FlareSolverr nativo |
+| WP9 | fatto | health check, stato `degradata`, transizioni del catalogo |
+| WP10 | da fare | refresh periodico dei seeders |
+| WP11 | fatto | FlareSolverr nativo e stato `blocked` |
 | WP12 | fatto | CI multipiattaforma e budget |
 | WP13 | da fare | parità residua (import applicato completo, Mylar3/LazyLibrarian, rollback sync, notifiche health/grab) |
 | WP14 | fasi 1, 1b, 1c, 2 e 3 fatte; 4–5 da fare | UI da pannello tecnico a prodotto semplice |

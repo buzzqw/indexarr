@@ -152,7 +152,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; `scripts/fresh-start.sh` con chiavi da env-file, Jackett dal vivo, dedup, `torrentleech-rss` nativo, `--build` e rollback del binario; tre prove su copia con il binario del tip (9 indexer, 0 doppioni, TorrentLeech RSS >0); checklist del giorno dello scambio pronta; scambio produzione da eseguire | `5c4a470`, `9b48543` |
 | WP9 | Health check e transizioni di stato del catalogo | fatto (job 6 h, modello condiviso, stato `degradata` in Home/elenco/dettaglio) | `ce4c866` |
 | WP10 | Refresh periodico dei seeders | da fare | |
-| WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
+| WP11 | FlareSolverr per indexer nativi e stato `blocked` | fatto (globale e per indexer, stato `blocked` in UI; nessuna definizione Cloudflare aggiunta: manca la prova reale) | |
 | WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI: avviso 64 MiB, errore 128 MiB) | `d267576` |
 | WP13 | Parità residua | da fare | |
 | WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1, 1b, 1c, 2 e 3 fatte; 4–5 da fare | `c793966` |

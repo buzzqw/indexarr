@@ -65,6 +65,10 @@ func dotState(view indexerHealthView) string {
 }
 
 func (s *Server) statusDotFor(r *http.Request, view indexerHealthView) statusDot {
+	if (view.LastRun != nil && view.LastRun.Status == "blocked") ||
+		(view.HasState && isChallengeText(view.State.LastError)) {
+		return statusDot{State: "blocked", Label: s.translate(r, "idx.statusBlocked")}
+	}
 	state := dotState(view)
 	label := map[string]string{
 		"ok":       "idx.statusOk",
@@ -80,6 +84,12 @@ func (s *Server) statusDotFor(r *http.Request, view indexerHealthView) statusDot
 // carries the action that can fix it: open the site, edit the query or reduce
 // the request rate.
 func (s *Server) healthProblems(r *http.Request, view indexerHealthView) []uiProblem {
+	if (view.LastRun != nil && view.LastRun.Status == "blocked") ||
+		(view.HasState && isChallengeText(view.State.LastError)) {
+		if problem := s.problemFor(r, view.Indexer, view.State, view.LastRun); problem != nil {
+			return []uiProblem{*problem}
+		}
+	}
 	detail := "/indexers/" + strconv.FormatInt(view.Indexer.ID, 10)
 	edit := detail + "/edit"
 	out := make([]uiProblem, 0, len(view.Assessment.Reasons))

@@ -40,9 +40,24 @@ type reply struct {
 	} `json:"solution"`
 }
 
+// Options carries the per-call settings of a solve. Headers are forwarded to
+// FlareSolverr so a request that needs Basic auth, a token or a session cookie
+// keeps working when it is retried through the solver. The caller is expected
+// to hand over only the headers the site needs; hop-by-hop headers are dropped.
+type Options struct {
+	Headers http.Header
+	Timeout time.Duration
+}
+
 // Get asks FlareSolverr to fetch rawURL and returns the solved body and the
 // status of the solved page. endpoint may be a base URL or a /v1 URL.
 func Get(ctx context.Context, client *http.Client, endpoint, rawURL string, timeout time.Duration) ([]byte, int, error) {
+	return Fetch(ctx, client, endpoint, rawURL, Options{Timeout: timeout})
+}
+
+// Fetch is Get with forwarded headers. It returns the body FlareSolverr read
+// from rawURL and the status code of that page.
+func Fetch(ctx context.Context, client *http.Client, endpoint, rawURL string, options Options) ([]byte, int, error) {
 	command := Endpoint(endpoint)
 	if command == "" {
 		return nil, 0, fmt.Errorf("flaresolverr: empty endpoint")
@@ -50,17 +65,22 @@ func Get(ctx context.Context, client *http.Client, endpoint, rawURL string, time
 	if strings.TrimSpace(rawURL) == "" {
 		return nil, 0, fmt.Errorf("flaresolverr: empty URL")
 	}
+	timeout := options.Timeout
 	if timeout <= 0 {
 		timeout = DefaultTimeout
 	}
 	if client == nil {
 		client = http.DefaultClient
 	}
-	payload, err := json.Marshal(map[string]any{
+	requestBody := map[string]any{
 		"cmd":        "request.get",
 		"url":        rawURL,
 		"maxTimeout": int(timeout / time.Millisecond),
-	})
+	}
+	if headers := forwardableHeaders(options.Headers); len(headers) > 0 {
+		requestBody["headers"] = headers
+	}
+	payload, err := json.Marshal(requestBody)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -105,6 +125,28 @@ func Get(ctx context.Context, client *http.Client, endpoint, rawURL string, time
 		status = http.StatusOK
 	}
 	return []byte(parsed.Solution.Response), status, nil
+}
+
+// forwardableHeaders copies the headers that describe the page request.
+// Content-Length and the other hop-by-hop fields are owned by the client that
+// talks to FlareSolverr, not by the request being solved.
+func forwardableHeaders(header http.Header) map[string]string {
+	if len(header) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(header))
+	for name, values := range header {
+		switch strings.ToLower(name) {
+		case "host", "content-length", "content-type", "connection", "transfer-encoding",
+			"upgrade", "te", "trailer", "proxy-authorization", "proxy-authenticate":
+			continue
+		}
+		if len(values) == 0 {
+			continue
+		}
+		out[name] = strings.Join(values, ", ")
+	}
+	return out
 }
 
 func shortBody(body []byte) string {

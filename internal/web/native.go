@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,12 +24,15 @@ import (
 // fixedSettingNames are rendered as explicit fields of the indexer form, so a
 // definition setting with the same name is not repeated.
 var fixedSettingNames = map[string]bool{
-	"url":              true,
-	"categories":       true,
-	"query":            true,
-	"user_agent":       true,
-	"allow_private":    true,
-	"default_category": true,
+	"url":                  true,
+	"categories":           true,
+	"query":                true,
+	"user_agent":           true,
+	"allow_private":        true,
+	"default_category":     true,
+	"challenge":            true,
+	"flaresolverr_url":     true,
+	"flaresolverr_timeout": true,
 }
 
 // ---------------------------------------------------------------- definitions
@@ -569,12 +573,35 @@ func indexerInputFromForm(r *http.Request, parsed *definition.Definition) (index
 		}
 		categories = strings.Join(joined, ",")
 	}
+	challenge := strings.ToLower(strings.TrimSpace(r.FormValue("challenge")))
+	switch challenge {
+	case "", "none", "flaresolverr":
+	default:
+		return indexersvc.Input{}, errors.New("La gestione Cloudflare deve essere globale, nessuna o FlareSolverr")
+	}
+	flareURL := strings.TrimSpace(r.FormValue("flaresolverr_url"))
+	if flareURL != "" {
+		parsed, err := url.Parse(flareURL)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+			return indexersvc.Input{}, errors.New("L'URL di FlareSolverr deve essere un indirizzo http:// o https:// assoluto")
+		}
+	}
+	flareTimeout := strings.TrimSpace(r.FormValue("flaresolverr_timeout"))
+	if flareTimeout != "" {
+		value, err := strconv.Atoi(flareTimeout)
+		if err != nil || value < 5 || value > 300 {
+			return indexersvc.Input{}, errors.New("Il timeout di FlareSolverr deve essere tra 5 e 300 secondi")
+		}
+	}
 	settings := map[string]string{
-		"categories":       categories,
-		"query":            strings.TrimSpace(r.FormValue("query")),
-		"user_agent":       strings.TrimSpace(r.FormValue("user_agent")),
-		"default_category": strings.TrimSpace(r.FormValue("default_category")),
-		"allow_private":    "false",
+		"categories":           categories,
+		"query":                strings.TrimSpace(r.FormValue("query")),
+		"user_agent":           strings.TrimSpace(r.FormValue("user_agent")),
+		"default_category":     strings.TrimSpace(r.FormValue("default_category")),
+		"allow_private":        "false",
+		"challenge":            challenge,
+		"flaresolverr_url":     flareURL,
+		"flaresolverr_timeout": flareTimeout,
 	}
 	// An empty URL means "keep the stored value" when the URL is a vault
 	// secret; a new value replaces it. On create the field is required, so an

@@ -61,6 +61,9 @@ type TransportConfig struct {
 	Cooldown         time.Duration
 	ProxyURL         string // optional HTTP/SOCKS5 proxy; empty = direct
 	Clock            Clock
+	// Solver retries a request that hit a Cloudflare challenge. Nil disables
+	// the retry; the caller still receives ErrChallenge.
+	Solver ChallengeSolver
 	// Politeness is the per-host budget shared with the legacy HTTP path. When
 	// nil the transport builds a private one from RatePerSecond, Burst,
 	// FailureThreshold, Cooldown and Clock.
@@ -296,26 +299,78 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 
 	observeResponse(ctx, observationOf(req, result, started))
 
-	if response.StatusCode == http.StatusTooManyRequests ||
-		response.StatusCode == http.StatusServiceUnavailable {
+	if ChallengeDetected(result) {
+		solved, solveErr := t.solveChallenge(ctx, key, host, outgoing, result, started)
+		if solveErr != nil {
+			return nil, solveErr
+		}
+		result = solved
+	}
+
+	if result.Status == http.StatusTooManyRequests ||
+		result.Status == http.StatusServiceUnavailable {
 		now := t.clock.Now()
-		wait := retryAfter(response.Header.Get("Retry-After"), now, t.cfg.Cooldown)
+		wait := retryAfter(result.Header.Get("Retry-After"), now, t.cfg.Cooldown)
 		t.breaker.openUntil(key, now.Add(wait))
-		t.polite.observe(host, response.StatusCode, response.Header)
+		t.polite.observe(host, result.Status, result.Header)
 		if statusAsResponse {
 			return result, nil
 		}
 		return nil, fmt.Errorf("engine: %s returned %d, retry after %s: %w",
-			host, response.StatusCode, wait.Round(time.Millisecond), ErrRateLimited)
+			host, result.Status, wait.Round(time.Millisecond), ErrRateLimited)
 	}
 
-	t.polite.observe(host, response.StatusCode, response.Header)
-	if response.StatusCode >= 500 {
+	t.polite.observe(host, result.Status, result.Header)
+	if result.Status >= 500 {
 		t.breaker.failure(key)
 	} else {
 		t.breaker.success(key)
 	}
 	return result, nil
+}
+
+// solveChallenge retries a Cloudflare interstitial through the configured
+// solver. The original 403/503 still counts as the site's answer for the
+// per-host counters; a failed solve also counts as a failure of the
+// per-indexer breaker. A successful solve returns the page FlareSolverr read,
+// which then goes through the normal rate-limit and breaker accounting.
+func (t *Transport) solveChallenge(ctx context.Context, key, host string, req *http.Request, original *Response, started time.Time) (*Response, error) {
+	if t.cfg.Solver == nil {
+		t.polite.observe(host, original.Status, original.Header)
+		t.breaker.failure(key)
+		return nil, &challengeError{host: host, status: original.Status}
+	}
+
+	solved, err := t.cfg.Solver.Solve(ctx, req)
+	if err != nil {
+		if ctx.Err() != nil {
+			t.breaker.release(key)
+			t.polite.release(host)
+			return nil, fmt.Errorf("engine: request %s: %w", host, ctx.Err())
+		}
+		t.polite.observe(host, original.Status, original.Header)
+		t.breaker.failure(key)
+		return nil, &challengeError{host: host, status: original.Status, solver: true, cause: err}
+	}
+	if solved == nil {
+		t.polite.observe(host, original.Status, original.Header)
+		t.breaker.failure(key)
+		return nil, &challengeError{host: host, status: original.Status, solver: true}
+	}
+	if solved.URL == nil {
+		solved.URL = req.URL
+	}
+	if solved.Header == nil {
+		solved.Header = make(http.Header)
+	}
+	observeResponse(ctx, observationOf(req, solved, started))
+
+	if ChallengeDetected(solved) {
+		t.polite.observe(host, solved.Status, solved.Header)
+		t.breaker.failure(key)
+		return nil, &challengeError{host: host, status: solved.Status, solver: true}
+	}
+	return solved, nil
 }
 
 // observationOf copies at most ObservationBodyLimit bytes so the observer

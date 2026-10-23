@@ -310,6 +310,11 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		var parseErr error
+		if in.FlareSolverrTimeoutSeconds, parseErr = s.formInt(r, "flaresolverr_timeout_seconds",
+			current.FlareSolverrTimeoutSeconds, 5, 300); parseErr != nil {
+			renderInvalid(parseErr.Error())
+			return false
+		}
 		if in.HostRate, parseErr = s.formFloat(r, "host_rate", 1, 0, 100); parseErr != nil {
 			renderInvalid(parseErr.Error())
 			return false
@@ -473,6 +478,11 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		renderInvalid(err.Error())
 		return
 	}
+	if section == "network" && s.native != nil {
+		// FlareSolverr URL and timeout are read when a connector is built.
+		// Drop the cached connectors so a saved change applies immediately.
+		s.native.InvalidateAll()
+	}
 	target := "/settings?section=" + section
 	redirect(w, r, target, s.translate(r, "settings.saved"), "")
 }
@@ -525,10 +535,14 @@ func (s *Server) settingsTestFlareSolverr(w http.ResponseWriter, r *http.Request
 		redirect(w, r, "/settings", "", s.translate(r, "settings.error.flaresolverrInvalid"))
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 100*time.Second)
+	timeout := flaresolverr.DefaultTimeout
+	if value, parseErr := strconv.Atoi(strings.TrimSpace(r.FormValue("flaresolverr_timeout_seconds"))); parseErr == nil && value >= 5 && value <= 300 {
+		timeout = time.Duration(value) * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), timeout+40*time.Second)
 	defer cancel()
-	client := &http.Client{Timeout: 100 * time.Second}
-	body, status, err := flaresolverr.Get(ctx, client, endpoint, "https://example.com/", flaresolverr.DefaultTimeout)
+	client := &http.Client{Timeout: timeout + 40*time.Second}
+	body, status, err := flaresolverr.Get(ctx, client, endpoint, "https://example.com/", timeout)
 	if err != nil {
 		s.log.Warn("FlareSolverr test failed", "component", "indexarr", "subsystem", "flaresolverr", "endpoint", endpoint, "error", err)
 		redirect(w, r, "/settings", "", s.translate(r, "settings.flaresolverrTestFailed", err.Error()))

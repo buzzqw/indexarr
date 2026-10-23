@@ -196,6 +196,11 @@
         </div>
       </div>
       <div class="field">
+        <label for="flaresolverr_timeout_seconds">{{T "settings.flaresolverrTimeout"}}</label>
+        <input id="flaresolverr_timeout_seconds" name="flaresolverr_timeout_seconds" type="number" min="5" max="300" step="1" required value="{{.Settings.FlareSolverrTimeoutSeconds}}">
+        <p class="help">{{T "settings.flaresolverrTimeoutHelp"}}</p>
+      </div>
+      <div class="field">
         <label for="host_rate">{{T "settings.hostRate"}}</label>
         <input id="host_rate" name="host_rate" type="number" min="0" max="100" step="0.1" required value="{{.Settings.HostRate}}">
         <p class="help">{{T "settings.hostRateHelp"}}</p>

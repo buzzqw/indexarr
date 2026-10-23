@@ -559,7 +559,9 @@ func allErrors(statuses []string) bool {
 		return false
 	}
 	for _, status := range statuses {
-		if status != "error" {
+		// A blocked run (Cloudflare challenge) is a failure for the
+		// auto-disable policy even though its history status is distinct.
+		if status != "error" && status != "blocked" {
 			return false
 		}
 	}

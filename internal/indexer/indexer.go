@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/engine"
@@ -212,6 +213,15 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 	}
 	applyDefaults(indexer, parsed, settings)
 
+	network, err := m.store.LoadSettings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("indexer %s: load network settings: %w", indexer.Slug, err)
+	}
+	solver, solverOverride, err := challengeSolver(settings, network)
+	if err != nil {
+		return nil, redactError(fmt.Errorf("indexer %s: %w", indexer.Slug, err), secretValues)
+	}
+
 	proxyURL, proxySecrets, err := m.proxyURLFor(ctx, indexer)
 	if err != nil {
 		return nil, redactError(err, append(secretValues, proxySecrets...))
@@ -235,13 +245,19 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 	transport := m.transport
 	transportCfg := m.transport.Config()
 	allowPrivate := settingBool(settings["allow_private"])
-	if allowPrivate || proxyURL != "" {
+	// Settings are read on every connector build, so changing the global
+	// FlareSolverr URL or its timeout takes effect without a restart.
+	if solver != nil || transportCfg.Solver != nil {
+		solverOverride = true
+	}
+	if allowPrivate || proxyURL != "" || solverOverride {
 		if allowPrivate {
 			transportCfg.AllowPrivate = true
 		}
 		if proxyURL != "" {
 			transportCfg.ProxyURL = proxyURL
 		}
+		transportCfg.Solver = solver
 		transport = engine.NewTransport(transportCfg)
 	}
 
@@ -543,6 +559,50 @@ func appendCategories(out []int, raw string) []int {
 		out = append(out, id)
 	}
 	return out
+}
+
+// challengeSolver resolves the Cloudflare retry for one indexer. The
+// per-indexer "challenge" setting is "none" or "flaresolverr"; empty follows
+// the global FlareSolverr URL. A per-indexer URL and timeout override the
+// global values. The second return value says whether the connector needs a
+// private transport even when it has no proxy and no private-address opt-in.
+func challengeSolver(settings map[string]string, network store.Settings) (engine.ChallengeSolver, bool, error) {
+	mode := strings.ToLower(strings.TrimSpace(settings["challenge"]))
+	switch mode {
+	case "", "auto", "none", "flaresolverr":
+	default:
+		return nil, false, fmt.Errorf("challenge: unsupported value %q", mode)
+	}
+	perSiteURL := strings.TrimSpace(settings["flaresolverr_url"])
+	perSiteTimeout := strings.TrimSpace(settings["flaresolverr_timeout"])
+	override := mode != "" || perSiteURL != "" || perSiteTimeout != ""
+
+	if mode == "none" {
+		return nil, true, nil
+	}
+
+	endpoint := perSiteURL
+	if endpoint == "" {
+		endpoint = strings.TrimSpace(network.FlareSolverrURL)
+	}
+	timeoutSeconds := network.FlareSolverrTimeoutSeconds
+	if perSiteTimeout != "" {
+		value, err := strconv.Atoi(perSiteTimeout)
+		if err != nil || value < 5 || value > 300 {
+			return nil, override, fmt.Errorf("challenge: FlareSolverr timeout must be 5-300 seconds")
+		}
+		timeoutSeconds = value
+	}
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 60
+	}
+	if endpoint == "" {
+		if mode == "flaresolverr" {
+			return nil, override, errors.New("challenge: FlareSolverr is enabled but no URL is configured")
+		}
+		return nil, override, nil
+	}
+	return engine.NewFlareSolverrSolver(endpoint, time.Duration(timeoutSeconds)*time.Second), override, nil
 }
 
 func settingBool(value string) bool {

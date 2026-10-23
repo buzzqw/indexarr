@@ -177,6 +177,7 @@ func main() {
 		FailureThreshold: settings.BreakerThreshold,
 		Cooldown:         settings.BreakerCooldown(),
 		Politeness:       politeness,
+		Solver:           coreengine.NewFlareSolverrSolver(settings.FlareSolverrURL, time.Duration(settings.FlareSolverrTimeoutSeconds)*time.Second),
 	})
 	registry := coreengine.NewRegistry()
 	if err := family.Register(registry); err != nil {

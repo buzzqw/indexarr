@@ -145,6 +145,26 @@
     {{end}}
 
     <div class="form-grid">
+      <div class="field">
+        <label for="challenge">{{T "indexerForm.challenge"}}</label>
+        <select id="challenge" name="challenge">
+          {{range .ChallengeOptions}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+        <p class="help">{{T "indexerForm.challengeHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="flaresolverr_url">{{T "indexerForm.flareSolverrURL"}}</label>
+        <input id="flaresolverr_url" name="flaresolverr_url" type="url" value="{{.FlareSolverrURL}}" placeholder="{{T "settings.flaresolverrURLPlaceholder"}}">
+        <p class="help">{{T "indexerForm.flareSolverrURLHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="flaresolverr_timeout">{{T "indexerForm.flareSolverrTimeout"}}</label>
+        <input id="flaresolverr_timeout" name="flaresolverr_timeout" type="number" min="5" max="300" step="1" value="{{.FlareSolverrTimeout}}">
+        <p class="help">{{T "indexerForm.flareSolverrTimeoutHelp"}}</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
       <div class="field checkbox">
         <input id="allow_private" name="allow_private" type="checkbox"{{if .AllowPrivate}} checked{{end}}>
         <label for="allow_private">{{T "idx.allowPrivate"}}</label>

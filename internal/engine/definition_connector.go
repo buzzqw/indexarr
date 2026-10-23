@@ -688,6 +688,11 @@ func (c *DefinitionConnector) requestError(err error) error {
 		return fmt.Errorf("request failed: %w", ErrBodyTooLarge)
 	case errors.Is(err, ErrBlockedAddress):
 		return fmt.Errorf("request failed: %w", ErrBlockedAddress)
+	case errors.Is(err, ErrChallenge):
+		// The transport message names the host and the status, never the URL,
+		// so it is safe to keep and it tells the operator whether FlareSolverr
+		// was missing, unreachable or simply did not solve the check.
+		return fmt.Errorf("request blocked by a cloudflare challenge: %w", err)
 	default:
 		return errors.New("request failed")
 	}

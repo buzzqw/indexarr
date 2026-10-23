@@ -61,6 +61,43 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestFetchForwardsHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload struct {
+			Headers map[string]string `json:"headers"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.Headers["Cookie"] != "session=synthetic" {
+			t.Errorf("cookie = %q", payload.Headers["Cookie"])
+		}
+		if payload.Headers["Authorization"] != "Bearer synthetic" {
+			t.Errorf("authorization = %q", payload.Headers["Authorization"])
+		}
+		if _, present := payload.Headers["Content-Length"]; present {
+			t.Error("hop-by-hop content-length forwarded")
+		}
+		_, _ = w.Write([]byte(`{"status":"ok","solution":{"status":200,"response":"page"}}`))
+	}))
+	defer server.Close()
+
+	headers := http.Header{
+		"Cookie":         []string{"session=synthetic"},
+		"Authorization":  []string{"Bearer synthetic"},
+		"Content-Length": []string{"12"},
+		"Accept":         []string{"text/html"},
+	}
+	body, status, err := Fetch(context.Background(), server.Client(), server.URL,
+		"https://indexer.example/", Options{Headers: headers, Timeout: time.Second})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if string(body) != "page" || status != http.StatusOK {
+		t.Errorf("body/status = %q/%d", body, status)
+	}
+}
+
 func TestGetErrors(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"status":"error","message":"Challenge not detected"}`))
