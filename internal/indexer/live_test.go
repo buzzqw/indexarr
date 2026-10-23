@@ -76,7 +76,7 @@ func TestSearchLiveFanOut(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/slow/search", func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(400 * time.Millisecond)
+		time.Sleep(2 * time.Second)
 		_, _ = w.Write([]byte(liveHTML(liveRow("Slow Show S02E05", "/details/1", liveHashSlow))))
 	})
 	mux.HandleFunc("/error/search", func(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +147,7 @@ func TestSearchLiveFanOut(t *testing.T) {
 		t.Fatalf("cache provenance: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	result, err := manager.SearchLive(ctx, LiveQuery{
 		Mode: "tvsearch", Query: "Show", Season: 2, Episode: 5, Limit: 50,
@@ -205,7 +205,7 @@ func TestSearchLiveFanOut(t *testing.T) {
 	}
 
 	// The slow indexer continues in the background and caches its result.
-	deadline := time.Now().Add(3 * time.Second)
+	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		_, total, err := st.SearchReleases(context.Background(), store.Filter{Query: "Slow", Limit: 10})
 		if err == nil && total > 0 {

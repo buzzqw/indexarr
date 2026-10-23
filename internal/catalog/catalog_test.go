@@ -144,7 +144,10 @@ func TestIndexMatchesDefinitions(t *testing.T) {
 		t.Fatalf("encode index: %v", err)
 	}
 	want = append(want, '\n')
-	if !bytes.Equal(indexJSON, want) {
+	// The embedded index can be materialised with CRLF on a Windows
+	// checkout; the generated document is always LF.
+	gotIndex := bytes.ReplaceAll(indexJSON, []byte("\r\n"), []byte("\n"))
+	if !bytes.Equal(gotIndex, want) {
 		t.Fatalf("catalog index is stale: run go generate ./internal/catalog")
 	}
 }
