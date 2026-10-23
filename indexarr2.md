@@ -725,7 +725,7 @@ strict) e `./sim/run.sh`.
 | WP9–WP11 | da fare | health, refresh seeders, FlareSolverr nativo |
 | WP12 | fatto | CI multipiattaforma e budget |
 | WP13 | da fare | parità residua (import applicato completo, Mylar3/LazyLibrarian, rollback sync, notifiche health/grab) |
-| WP14 | fasi 1, 1b, 1c fatte; 2–5 dopo WP16 | UI da pannello tecnico a prodotto semplice |
+| WP14 | fasi 1, 1b, 1c e 2 fatte; 3–5 da fare | UI da pannello tecnico a prodotto semplice |
 | WP-R | fatto | dettagli dopo limit/dedup, fixture senza symlink, build Windows, redazione, `example-html` |
 | WP15 | da fare | parametri condizionali nelle definizioni (v1.1) |
 | WP16 | fatto | rimosso il percorso legacy: `sources`, `internal/ingest`, `internal/legacyimport`, `SealLegacySecrets`, rotte `/sources*` (302), `legacy/apply|revert`, tab Nativi/Legacy, definizioni `legacy-*`, chiavi i18n orfane |

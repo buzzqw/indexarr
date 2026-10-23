@@ -138,7 +138,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP9 | Health check e transizioni di stato del catalogo | da fare | |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
-| WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI 80 MiB fino a WP3) | `4e429e5` |
+| WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI 40 MiB) | `4e429e5` |
 | WP13 | Parità residua | da fare | |
 | WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1, 1b, 1c e 2 fatte; 3–5 da fare | `45ead7d` |
 | WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | `b0abb6c` |
@@ -784,8 +784,8 @@ sudo systemctl start indexarr
 # 6. Verifica finale.
 curl -fsS http://127.0.0.1:8484/healthz
 sqlite3 -readonly data/indexarr.db \
-  "SELECT count(*) FROM indexers; SELECT count(*) FROM sources;"
-# Atteso: indexer importati; sources = 0.
+  "SELECT count(*) FROM indexers; SELECT count(*) FROM sqlite_master WHERE type='table' AND name='sources';"
+# Atteso: indexer importati; la tabella sources non esiste più (0).
 ```
 
 **Rollback** (la vecchia istanza torna esattamente com'era):
@@ -1142,7 +1142,7 @@ type IndexerRow struct {
     LastRun time.Time
 }
 
-func (s *Server) indexerRows(ctx context.Context) ([]IndexerRow, error) // merges indexers + legacy sources
+func (s *Server) indexerRows(ctx context.Context) ([]IndexerRow, error) // one row per native indexer
 
 // internal/web/catalog_search.go
 // SiteChoice is one result of the "search a site or paste a URL" box.

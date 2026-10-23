@@ -434,13 +434,13 @@ La UI semplice dipende da dati che oggi non ci sono o sono sparsi:
 | Fase | Quando | Contenuto | File principali |
 |---|---|---|---|
 | **1b** | subito, in parallelo a WP-R | V1 skip link; V6 tabella Release dentro il contenitore e etichette "Indexer"/"Tipo di rip"; V7 "—" per valori sconosciuti; V8 API key mascherata + `secret-field`; stringhe inglesi di Impostazioni/Release in i18n; selettore lingua compatto nel piede | `layout.html`, `app.css`, `releases.html`, `settings.html`, locales |
-| **2** | dopo WP16 | Elenco Indexer unico (§4.2), aggiunta con ricerca sito (§4.3), dettaglio (§4.4), componenti §5 | `indexers*.html`, nuovi partial, `internal/web/indexers*.go` |
+| **2** | fatta il 23/10 (`45ead7d`) | Elenco Indexer unico (§4.2), aggiunta con ricerca sito (§4.3), dettaglio (§4.4), componenti §5 | `indexers*.html`, nuovi partial, `internal/web/indexers*.go` |
 | **3** | dopo fase 2 | Navigazione a 6 voci con redirect (§3), Home (§4.1), Impostazioni a sezioni (§4.8), App con più client (§4.6) | `layout.html`, `dashboard.html`, `settings*.html`, `applications*.html`, store per i client |
 | **4** | dopo WP9 | `ExplainError`, problemi in Home/Indexer/Attività, primo avvio (§4.9), Attività con Ricerche e Grab | `internal/web`, `internal/indexer` |
 | **5** | dopo fase 4 | Test di usabilità (WP14) con persona nuova, correzioni, `docs/UI-USABILITY.md` | — |
 
-**Stato 1b (23/10): fatta** (report in revisione, non committata). Restano,
-da fare insieme a WP-R o all'inizio della fase 2 (**1c**):
+**Stato 1b (23/10): fatta** (`b9597b4`). I punti rimasti sono stati chiusi
+dalla fase 1c:
 
 - Cerca: il titolo è troncato a ~280 px mentre quattro colonne mostrano solo
   "—"; applicare §4.5 (leechers e categoria in seconda riga, data relativa
