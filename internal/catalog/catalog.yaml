@@ -91,3 +91,35 @@ definitions:
     file: definitions/ildragonegro.yaml
     state: bozza
     author: indexarr
+  - id: 1337x
+    file: definitions/1337x.yaml
+    state: verificata
+    author: indexarr
+  - id: animetosho
+    file: definitions/animetosho.yaml
+    state: verificata
+    author: indexarr
+  - id: kickasstorrents
+    file: definitions/kickasstorrents.yaml
+    state: verificata
+    author: indexarr
+  - id: nyaa
+    file: definitions/nyaa.yaml
+    state: verificata
+    author: indexarr
+  - id: subsplease
+    file: definitions/subsplease.yaml
+    state: verificata
+    author: indexarr
+  - id: tokyotosho
+    file: definitions/tokyotosho.yaml
+    state: verificata
+    author: indexarr
+  - id: torrentdownloads
+    file: definitions/torrentdownloads.yaml
+    state: verificata
+    author: indexarr
+  - id: yts
+    file: definitions/yts.yaml
+    state: verificata
+    author: indexarr

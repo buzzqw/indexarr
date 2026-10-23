@@ -1,0 +1,145 @@
+{
+  "status": "ok",
+  "status_message": "Query was successful. NOTICE: Base URL moving to https://movies-api.accel.li/api/v2/",
+  "data": {
+    "movie_count": 29,
+    "limit": 5,
+    "page_number": 1,
+    "movies": [
+      {
+        "id": 75006,
+        "url": "https://yts.gg/movies/this-is-not-a-test-2025",
+        "title": "This Is Not a Test",
+        "title_long": "This Is Not a Test (2025)",
+        "year": 2025,
+        "date_uploaded_unix": 1773383784,
+        "torrents": [
+          {
+            "hash": "0DD8ACAB51BF907ACA45F4DF8FFE920DDB9AB7B2",
+            "quality": "720p",
+            "size_bytes": 992487670,
+            "seeds": 29,
+            "peers": 5
+          },
+          {
+            "hash": "C27EBD03767EF91322E596428EDEFFB9D003045B",
+            "quality": "1080p",
+            "size_bytes": 2040109466,
+            "seeds": 58,
+            "peers": 3
+          },
+          {
+            "hash": "617C197864F62B67F11B873DB2E6F79A210CFEA4",
+            "quality": "1080p",
+            "size_bytes": 1846835937,
+            "seeds": 26,
+            "peers": 7
+          },
+          {
+            "hash": "C9E50D99D0741FCB3F8674348546B348C41E18FC",
+            "quality": "2160p",
+            "size_bytes": 4939212390,
+            "seeds": 24,
+            "peers": 8
+          }
+        ]
+      },
+      {
+        "id": 68087,
+        "url": "https://yts.gg/movies/test-2025",
+        "title": "Test",
+        "title_long": "Test (2025)",
+        "year": 2025,
+        "date_uploaded_unix": 1743765407,
+        "torrents": [
+          {
+            "hash": "CEF993ECE12935945708DEEA418743DC6138C5DC",
+            "quality": "720p",
+            "size_bytes": 1406601789,
+            "seeds": 3,
+            "peers": 2
+          },
+          {
+            "hash": "8798D298857415C21BFE90DA843C646E7F815CF5",
+            "quality": "1080p",
+            "size_bytes": 2888365507,
+            "seeds": 2,
+            "peers": 2
+          }
+        ]
+      },
+      {
+        "id": 59230,
+        "url": "https://yts.gg/movies/casey-anthonys-parents-the-lie-detector-test-2024",
+        "title": "Casey Anthony's Parents: The Lie Detector Test",
+        "title_long": "Casey Anthony's Parents: The Lie Detector Test (2024)",
+        "year": 2024,
+        "date_uploaded_unix": 1705227744,
+        "torrents": [
+          {
+            "hash": "F291668C936A0ACCF416C9E3C78C4F30418D2416",
+            "quality": "720p",
+            "size_bytes": 817375478,
+            "seeds": 0,
+            "peers": 1
+          },
+          {
+            "hash": "B85D38B24AB22481A6DB5ECCB7E4A16D5B176475",
+            "quality": "1080p",
+            "size_bytes": 1513975972,
+            "seeds": 1,
+            "peers": 3
+          }
+        ]
+      },
+      {
+        "id": 58342,
+        "url": "https://yts.gg/movies/acid-test-2021",
+        "title": "Acid Test",
+        "title_long": "Acid Test (2021)",
+        "year": 2021,
+        "date_uploaded_unix": 1702040634,
+        "torrents": [
+          {
+            "hash": "4D364D31F9D3405F5A977DD67A5BDAAD72436DD2",
+            "quality": "720p",
+            "size_bytes": 930495857,
+            "seeds": 0,
+            "peers": 5
+          },
+          {
+            "hash": "E3C9629FDDE983808205D23D64DA6F3E6CE111CC",
+            "quality": "1080p",
+            "size_bytes": 1728724337,
+            "seeds": 1,
+            "peers": 2
+          }
+        ]
+      },
+      {
+        "id": 54530,
+        "url": "https://yts.gg/movies/el-test-2022",
+        "title": "El Test",
+        "title_long": "El Test (2022)",
+        "year": 2022,
+        "date_uploaded_unix": 1692367711,
+        "torrents": [
+          {
+            "hash": "82FB8E00C7298087FED59986A333BB9021B7A1F2",
+            "quality": "720p",
+            "size_bytes": 1019048100,
+            "seeds": 1,
+            "peers": 0
+          },
+          {
+            "hash": "84F021AD22C185ADC1FD053FC7F96B3F04006EF9",
+            "quality": "1080p",
+            "size_bytes": 2093796557,
+            "seeds": 2,
+            "peers": 2
+          }
+        ]
+      }
+    ]
+  }
+}

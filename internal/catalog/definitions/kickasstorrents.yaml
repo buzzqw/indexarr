@@ -1,0 +1,70 @@
+# VERIFICATA (verified). Kickass Torrents (KAT) public HTML search.
+#
+# The canonical Kickass domains answer HTTP 451 from this network, so the
+# mirror https://thekat.info/ was used. The keyword page
+# (/usearch/?q=test) was captured on 2026-10-23 in
+# fixtures/kickasstorrents/listing.html. The magnet anchor points at a
+# click-through host (mylink.cloud/?url=<encoded magnet>); the `url` query
+# parameter is URL-decoded by the engine's query_param filter and yields the
+# real magnet, from which the infohash is taken. There is no detail page
+# request and no login. Dates are relative ("5 months ago") and are left out
+# rather than invented.
+schema: 1
+
+meta:
+  id: kickasstorrents
+  name: Kickass Torrents (KAT mirror)
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Kickass Torrents search through the thekat.info mirror.
+  urls:
+    - https://thekat.info/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "movies", standard: 2000, desc: "Movies" }
+  - { site: "tv", standard: 5000, desc: "TV" }
+  - { site: "music", standard: 3000, desc: "Audio" }
+  - { site: "games", standard: 4000, desc: "Games" }
+  - { site: "apps", standard: 4000, desc: "Applications" }
+  - { site: "software", standard: 4000, desc: "Software" }
+  - { site: "books", standard: 7000, desc: "Books" }
+  - { site: "anime", standard: 5070, desc: "Anime" }
+  - { site: "xxx", standard: 6000, desc: "Adult" }
+  - { site: "other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /usearch/
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.data > tbody > tr" }
+    fields:
+      title:    { selector: "a.cellMainLink", filters: [trim] }
+      details:  { selector: "a.cellMainLink", attr: href, type: url }
+      magnet:   { selector: 'a[title="Torrent magnet link"]', attr: href, filters: [{ query_param: url }] }
+      infohash: { selector: 'a[title="Torrent magnet link"]', attr: href, filters: [{ query_param: url }, { regex: "btih:([0-9A-Fa-f]+)" }] }
+      category: { selector: 'span[id^="cat_"] a', attr: href, filters: [{ regex: "/([a-z]+)$" }], type: category }
+      size:     { selector: "td:nth-child(2)", type: size }
+      seeders:  { selector: "td.green.center", type: int }
+      leechers: { selector: "td.red.lasttd.center", type: int }
+    required: [title, details, magnet, size]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/kickasstorrents/listing.html
+    expect: { min_rows: 5, required: [title, details, magnet, size, category, seeders] }

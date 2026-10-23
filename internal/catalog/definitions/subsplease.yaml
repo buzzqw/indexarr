@@ -1,0 +1,55 @@
+# VERIFICATA (verified). SubsPlease public RSS listing.
+#
+# SubsPlease publishes one RSS feed per resolution at
+# https://subsplease.org/rss/?r=1080; the public 1080p feed was captured on
+# 2026-10-23 in fixtures/subsplease/feed.xml. Items carry the magnet as
+# <link> and the infohash as <guid>, so the RSS family builds a complete
+# release. The feed has no search endpoint: `query` filters titles
+# client-side over the same document. Every item is an anime release, hence
+# the 5070 default category.
+schema: 1
+connector: rss
+
+meta:
+  id: subsplease
+  name: SubsPlease
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public SubsPlease anime RSS feed with magnets.
+  urls:
+    - https://subsplease.org/
+  updated: "2026-10-23"
+
+settings:
+  - name: url
+    type: text
+    label: "Feed URL"
+    help: "SubsPlease feed, for example https://subsplease.org/rss/?r=1080 (480, 720 or 1080)."
+    default: "https://subsplease.org/rss/?r=1080"
+    required: true
+  - name: default-category
+    type: text
+    label: "Default category"
+    help: "Standard Torznab category used when the feed has only text categories."
+    default: "5070"
+  - name: query
+    type: text
+    label: "Title filter (optional)"
+    help: "Keep only feed items whose title contains these words."
+
+categories:
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: "1080p"
+  min_rows: 1
+
+tests:
+  - name: feed
+    fixture: fixtures/subsplease/feed.xml
+    expect: { min_rows: 5, required: [title, magnet] }

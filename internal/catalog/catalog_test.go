@@ -32,8 +32,8 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 21 {
-		t.Fatalf("len(Builtins()) = %d, want 21", len(entries))
+	if len(entries) != 29 {
+		t.Fatalf("len(Builtins()) = %d, want 29", len(entries))
 	}
 
 	verified := map[string]bool{
@@ -46,6 +46,14 @@ func TestBuiltinsValid(t *testing.T) {
 		"thepiratebay":       true,
 		"torrentscsv":        true,
 		"showrss":            true,
+		"1337x":              true,
+		"animetosho":         true,
+		"kickasstorrents":    true,
+		"nyaa":               true,
+		"subsplease":         true,
+		"tokyotosho":         true,
+		"torrentdownloads":   true,
+		"yts":                true,
 	}
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
@@ -127,8 +135,8 @@ func TestIndexShapeIsStable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Index: %v", err)
 	}
-	if len(index) != 21 {
-		t.Fatalf("len(Index()) = %d, want 21", len(index))
+	if len(index) != 29 {
+		t.Fatalf("len(Index()) = %d, want 29", len(index))
 	}
 	for i := 1; i < len(index); i++ {
 		if index[i-1].ID >= index[i].ID {
@@ -161,11 +169,11 @@ func TestIndexShapeIsStable(t *testing.T) {
 			t.Errorf("corsaro categories = %v, want %q", corsaro.Categories, group)
 		}
 	}
-	if index[0].ID != "corsaro" {
-		t.Errorf("first index id = %q, want corsaro", index[0].ID)
+	if index[0].ID != "1337x" {
+		t.Errorf("first index id = %q, want 1337x", index[0].ID)
 	}
-	if last := index[len(index)-1].ID; last != "xbtit-generic" {
-		t.Errorf("last index id = %q, want xbtit-generic", last)
+	if last := index[len(index)-1].ID; last != "yts" {
+		t.Errorf("last index id = %q, want yts", last)
 	}
 }
 
@@ -189,7 +197,8 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 		"extto", "torrentgalaxy", "corsaro", "knaben", "torrentleech",
 		"torrentleech-rss", "torrentgalaxyclone", "limetorrents",
 		"thepiratebay", "torrentscsv", "showrss", "corsaro-account",
-		"ildragonegro",
+		"ildragonegro", "1337x", "animetosho", "kickasstorrents", "nyaa",
+		"subsplease", "tokyotosho", "torrentdownloads", "yts",
 	}
 	if len(entries) != len(want) {
 		t.Fatalf("len(Builtins()) = %d, want %d", len(entries), len(want))
@@ -210,8 +219,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 21 {
-		t.Fatalf("manifest has %d definitions, want 21", len(items))
+	if len(items) != 29 {
+		t.Fatalf("manifest has %d definitions, want 29", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")

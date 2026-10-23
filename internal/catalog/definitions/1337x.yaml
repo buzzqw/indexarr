@@ -1,0 +1,79 @@
+# VERIFICATA (verified). 1337x public HTML search.
+#
+# The official 1337x.to (and the 1337x.st / x1337x.ws proxies) answer the
+# Cloudflare challenge from this network. The reachable mirror 1337x.tube
+# serves the same layout and was captured on 2026-10-23 in
+# fixtures/1337x/listing.html (https://1337x.tube/search/?q=test) and
+# fixtures/1337x/detail.html. The row link text is truncated on the mirror,
+# so the title is rebuilt from the full URL slug (hyphens to spaces). The
+# listing has no magnet: the release page exposes it as a#openPopup, so the
+# download section resolves it during the search (the mirror returns 40 rows,
+# fetched with the transport's per-host rate limit).
+schema: 1
+
+meta:
+  id: 1337x
+  name: 1337x
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public 1337x keyword search through the 1337x.tube mirror.
+  urls:
+    - https://1337x.tube/
+    - https://1337x.to/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "movies", standard: 2000, desc: "Movies" }
+  - { site: "movie", standard: 2000, desc: "Movies" }
+  - { site: "tv", standard: 5000, desc: "TV" }
+  - { site: "music", standard: 3000, desc: "Audio" }
+  - { site: "games", standard: 4000, desc: "Games" }
+  - { site: "apps", standard: 4000, desc: "Applications" }
+  - { site: "anime", standard: 5070, desc: "Anime" }
+  - { site: "documentary", standard: 5080, desc: "Documentaries" }
+  - { site: "xxx", standard: 6000, desc: "Adult" }
+  - { site: "other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /search/
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.table-list > tbody > tr" }
+    fields:
+      title:    { selector: "td.name a[id-text]:not(.icon)", attr: href, filters: [{ regex: "/torrent/[0-9]+/(.+)" }, { replace: "-: " }] }
+      details:  { selector: "td.name a[id-text]:not(.icon)", attr: href, type: url }
+      category: { selector: "td.name a.icon i", attr: class, filters: [{ regex: "flaticon-([a-z]+)" }], type: category }
+      size:     { selector: "td.coll-4.size", type: size }
+      seeders:  { selector: "td.coll-2.seeds", type: int }
+      leechers: { selector: "td.coll-3.leeches", type: int }
+    required: [title, details, size]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet: { selector: 'a#openPopup[href^="magnet:"]', attr: href }
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/1337x/listing.html
+    expect: { min_rows: 5, required: [title, details, size, category, seeders] }
+  - name: detail
+    fixture: fixtures/1337x/detail.html
+    expect: { min_rows: 0 }

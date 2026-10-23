@@ -1,0 +1,64 @@
+# VERIFICATA (verified). YTS public JSON API.
+#
+# Written from the public response captured on 2026-10-23 in
+# fixtures/yts/search.json
+# (https://yts.gg/api/v2/list_movies.json?query_term=test&limit=5).
+# yts.mx no longer resolves; the yts.gg domain (and its yts.lt/yts.am/yts.ag
+# redirects) serves the same API. Each movie has a torrents array; the
+# definition takes the first torrent (the API orders them by quality) for the
+# hash, size and health. Movies are one row each; the details URL carries the
+# /movies/ namespace used to map the Movies category.
+schema: 1
+
+meta:
+  id: yts
+  name: YTS
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public YTS movie API (JSON) with hash, size and health.
+  urls:
+    - https://yts.gg/
+    - https://yts.lt/
+    - https://yts.am/
+    - https://yts.ag/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "movies", standard: 2000, desc: "Movies" }
+
+capabilities:
+  search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /api/v2/list_movies.json
+    params:
+      query_term: "{{ query.keywords }}"
+      limit: "50"
+  pagination: { type: page, start: 1, max_pages: 2, param: page, stop_when: empty_rows }
+  response:
+    type: json
+    rows: { path: data.movies }
+    fields:
+      title:    { path: title_long, filters: [trim] }
+      details:  { path: url, type: url }
+      magnet:   { path: torrents.0.hash, filters: [{ prefix: "magnet:?xt=urn:btih:" }] }
+      infohash: { path: torrents.0.hash }
+      category: { path: url, filters: [{ regex: "(movies)" }], type: category }
+      size:     { path: torrents.0.size_bytes, type: size }
+      seeders:  { path: torrents.0.seeds, type: int }
+      leechers: { path: torrents.0.peers, type: int }
+      date:     { path: date_uploaded_unix, type: date }
+    required: [title, details, magnet, size]
+
+health:
+  query: test
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/yts/search.json
+    expect: { min_rows: 5, required: [title, details, magnet, size, category, seeders] }

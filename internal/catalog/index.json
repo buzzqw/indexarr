@@ -1,5 +1,42 @@
 [
   {
+    "id": "1337x",
+    "name": "1337x",
+    "description": "Public 1337x keyword search through the 1337x.tube mirror.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "1337x.to",
+      "1337x.tube"
+    ]
+  },
+  {
+    "id": "animetosho",
+    "name": "AnimeTosho",
+    "description": "Public AnimeTosho HTML search; anime releases with magnets.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "animetosho.org"
+    ]
+  },
+  {
     "id": "corsaro",
     "name": "Corsaro (ilCorSaRoBlu)",
     "description": "Public Corsaro HTML listing with magnets in the row.",
@@ -116,6 +153,28 @@
     ]
   },
   {
+    "id": "kickasstorrents",
+    "name": "Kickass Torrents (KAT mirror)",
+    "description": "Public Kickass Torrents search through the thekat.info mirror.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "thekat.info"
+    ]
+  },
+  {
     "id": "knaben",
     "name": "Knaben (ITA feed)",
     "description": "Knaben public RSS feed; releases carry a magnet link.",
@@ -207,6 +266,26 @@
     ]
   },
   {
+    "id": "nyaa",
+    "name": "Nyaa",
+    "description": "Public Nyaa HTML search with magnets in the result row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "nyaa.si"
+    ]
+  },
+  {
     "id": "showrss",
     "name": "showRSS",
     "description": "showRSS TV feed (public show feed or personal showRSS feed).",
@@ -222,6 +301,24 @@
     "state": "verificata",
     "hosts": [
       "showrss.info"
+    ]
+  },
+  {
+    "id": "subsplease",
+    "name": "SubsPlease",
+    "description": "Public SubsPlease anime RSS feed with magnets.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "subsplease.org"
     ]
   },
   {
@@ -244,6 +341,46 @@
     "hosts": [
       "apibay.org",
       "thepiratebay.org"
+    ]
+  },
+  {
+    "id": "tokyotosho",
+    "name": "TokyoTosho",
+    "description": "Public TokyoTosho anime RSS listing (search page is Cloudflare-protected).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "tokyotosho.info"
+    ]
+  },
+  {
+    "id": "torrentdownloads",
+    "name": "TorrentDownloads",
+    "description": "Public TorrentDownloads RSS search results with infohash and health.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentdownloads.me",
+      "torrentdownloads.pro"
     ]
   },
   {
@@ -439,6 +576,24 @@
     "state": "bozza",
     "hosts": [
       "xbtit.example.invalid"
+    ]
+  },
+  {
+    "id": "yts",
+    "name": "YTS",
+    "description": "Public YTS movie API (JSON) with hash, size and health.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "yts.ag",
+      "yts.am",
+      "yts.gg",
+      "yts.lt"
     ]
   }
 ]

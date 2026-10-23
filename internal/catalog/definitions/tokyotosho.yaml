@@ -1,0 +1,56 @@
+# VERIFICATA (verified). TokyoTosho public RSS listing.
+#
+# The site's search.php is behind a Cloudflare challenge (HTTP 403 observed on
+# 2026-10-23), but the public RSS feed at
+# https://www.tokyotosho.info/rss.php?filter=1 is reachable and was captured in
+# fixtures/tokyotosho/feed.xml. It is an anime listing with a .torrent link per
+# item and a magnet in the description. The RSS family filters titles
+# client-side, so `query` narrows the same document instead of calling a
+# search endpoint. There is no numeric category in the feed: every item is
+# anime, hence the 5070 default.
+schema: 1
+connector: rss
+
+meta:
+  id: tokyotosho
+  name: TokyoTosho
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public TokyoTosho anime RSS listing (search page is Cloudflare-protected).
+  urls:
+    - https://www.tokyotosho.info/
+  updated: "2026-10-23"
+
+settings:
+  - name: url
+    type: text
+    label: "Feed URL"
+    help: "TokyoTosho RSS feed, for example https://www.tokyotosho.info/rss.php?filter=1"
+    default: "https://www.tokyotosho.info/rss.php?filter=1"
+    required: true
+  - name: default-category
+    type: text
+    label: "Default category"
+    help: "Standard Torznab category used for feed items; the feed has no numeric category."
+    default: "5070"
+  - name: query
+    type: text
+    label: "Title filter (optional)"
+    help: "Keep only feed items whose title contains these words."
+
+categories:
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: "1080p"
+  min_rows: 1
+
+tests:
+  - name: feed
+    fixture: fixtures/tokyotosho/feed.xml
+    expect: { min_rows: 5, required: [title] }

@@ -417,7 +417,11 @@ func TestCatalogVerifiedDefinitionsExist(t *testing.T) {
 	for _, entry := range entries {
 		states[entry.ID] = entry.State
 	}
-	for _, id := range []string{"extto", "torrentgalaxy", "corsaro", "knaben"} {
+	for _, id := range []string{
+		"extto", "torrentgalaxy", "corsaro", "knaben",
+		"1337x", "animetosho", "kickasstorrents", "nyaa",
+		"subsplease", "tokyotosho", "torrentdownloads", "yts",
+	} {
 		if states[id] != "verificata" {
 			t.Errorf("%s: state = %q, want verificata", id, states[id])
 		}

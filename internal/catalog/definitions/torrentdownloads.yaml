@@ -1,0 +1,70 @@
+# VERIFICATA (verified). TorrentDownloads public RSS search.
+#
+# The HTML search page only returns ad click-throughs to /td/, but the site
+# publishes the same query as an RSS document:
+#   https://www.torrentdownloads.pro/rss.xml?type=search&search=test
+# captured on 2026-10-23 in fixtures/torrentdownloads/search.xml. The feed
+# declares ISO-8859-1 (handled by the engine's charset reader) and exposes
+# info_hash, size, seeders, leechers and pubDate, so the row is a complete
+# release without opening a detail page. The search feed has no category
+# element; rows use the 8000 fallback, while the definition still advertises
+# the site's browse categories.
+schema: 1
+
+meta:
+  id: torrentdownloads
+  name: TorrentDownloads
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public TorrentDownloads RSS search results with infohash and health.
+  urls:
+    - https://www.torrentdownloads.pro/
+    - https://www.torrentdownloads.me/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "TV Shows", standard: 5000, desc: "TV" }
+  - { site: "Music", standard: 3000, desc: "Audio" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Software", standard: 4000, desc: "Applications" }
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /rss.xml
+    params:
+      type: search
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: xml
+    rows: { path: rss.channel.item }
+    fields:
+      title:    { path: title, filters: [trim] }
+      details:  { path: link, type: url }
+      magnet:   { path: info_hash, filters: [{ prefix: "magnet:?xt=urn:btih:" }] }
+      infohash: { path: info_hash }
+      size:     { path: size, type: size }
+      seeders:  { path: seeders, type: int }
+      leechers: { path: leechers, type: int }
+      date:     { path: pubDate, type: date }
+    required: [title, details, magnet, size]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/torrentdownloads/search.xml
+    expect: { min_rows: 5, required: [title, details, magnet, size, seeders] }

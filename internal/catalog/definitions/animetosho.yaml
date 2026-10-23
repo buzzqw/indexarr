@@ -1,0 +1,60 @@
+# VERIFICATA (verified). AnimeTosho public HTML search.
+#
+# Written from the public search page captured on 2026-10-23 in
+# fixtures/animetosho/listing.html (https://animetosho.org/search?q=test).
+# The archive is anime-only. Each row links an /view/ release page and carries
+# the magnet, size and seeders/leechers in the row, so no detail page is
+# needed. The site exposes no category cell; the release URL namespace
+# (/view/, /series/, /episodes/) is the stable per-row marker mapped to Anime.
+schema: 1
+
+meta:
+  id: animetosho
+  name: AnimeTosho
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public AnimeTosho HTML search; anime releases with magnets.
+  urls:
+    - https://animetosho.org/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "view", standard: 5070, desc: "Anime release" }
+  - { site: "series", standard: 5070, desc: "Anime series" }
+  - { site: "episodes", standard: 5070, desc: "Anime episodes" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: page, start: 1, max_pages: 2, param: page, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "div.home_list_entry" }
+    fields:
+      title:    { selector: "div.link a", filters: [trim] }
+      details:  { selector: "div.link a", attr: href, type: url }
+      magnet:   { selector: 'div.links a[href^="magnet:"]', attr: href }
+      category: { selector: "div.link a", attr: href, filters: [{ regex: "animetosho\\.org/(view|series|episodes)" }], type: category }
+      size:     { selector: "div.size", type: size }
+      seeders:  { selector: 'span[title^="Seeders:"]', attr: title, filters: [{ regex: "Seeders:\\s*([0-9]+)" }], type: int }
+      leechers: { selector: 'span[title^="Seeders:"]', attr: title, filters: [{ regex: "Seeders:\\s*[0-9]+\\s*/\\s*Leechers:\\s*([0-9]+)" }], type: int }
+      date:     { selector: "div.date", attr: title, filters: [{ regex: "submitted:\\s*(.+)" }], type: date }
+    required: [title, details, magnet, size]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/animetosho/listing.html
+    expect: { min_rows: 5, required: [title, details, magnet, size, category, seeders] }

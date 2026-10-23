@@ -105,6 +105,11 @@ func LooksLikeTorrentURL(raw string, contentType string) bool {
 	if strings.HasSuffix(path, ".torrent") {
 		return true
 	}
+	// Nyaa (and feeds that republish its items) serves the torrent file at
+	// /view/<id>/torrent with Content-Type application/x-bittorrent.
+	if strings.HasSuffix(path, "/torrent") {
+		return true
+	}
 	if strings.Contains(path, "/download") || strings.Contains(path, "/dl/") ||
 		strings.Contains(path, "torrent/download") {
 		return true

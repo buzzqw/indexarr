@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/buzzqw/indexarr/internal/definition"
 )
@@ -52,8 +53,13 @@ func (n *xmlNode) textContent() string {
 
 func parseXML(body []byte) (*xmlNode, error) {
 	decoder := xml.NewDecoder(bytes.NewReader(body))
+	// Public feeds still declare legacy encodings (TorrentDownloads uses
+	// ISO-8859-1). Without a CharsetReader encoding/xml refuses the document
+	// before any row can be extracted.
+	decoder.CharsetReader = xmlCharsetReader
 	root := &xmlNode{Name: "#document"}
 	stack := []*xmlNode{root}
+	sawRoot := false
 	for {
 		token, err := decoder.Token()
 		if err == io.EOF {
@@ -68,15 +74,64 @@ func parseXML(body []byte) (*xmlNode, error) {
 			parent := stack[len(stack)-1]
 			parent.Children = append(parent.Children, node)
 			stack = append(stack, node)
+			if len(stack) == 2 {
+				sawRoot = true
+			}
 		case xml.EndElement:
 			if len(stack) > 1 {
 				stack = stack[:len(stack)-1]
+			}
+			// Some public feeds append a tracking script after the closing
+			// root tag. The rows are already complete, and that script often
+			// contains raw '&' characters that are not valid XML.
+			if sawRoot && len(stack) == 1 {
+				return root, nil
 			}
 		case xml.CharData:
 			stack[len(stack)-1].Text += string(typed)
 		}
 	}
 	return root, nil
+}
+
+// xmlCharsetReader decodes the small set of legacy charsets still found in
+// public feed declarations. UTF-8 and ASCII pass through; ISO-8859-1 and its
+// common Windows-1252 variant are widened to UTF-8. Unknown encodings are an
+// explicit error rather than silently corrupted text.
+func xmlCharsetReader(charset string, input io.Reader) (io.Reader, error) {
+	switch strings.ToLower(strings.TrimSpace(charset)) {
+	case "", "utf-8", "utf8", "us-ascii", "ascii":
+		return input, nil
+	case "iso-8859-1", "iso8859-1", "latin1", "latin-1", "windows-1252", "cp1252":
+		raw, err := io.ReadAll(input)
+		if err != nil {
+			return nil, err
+		}
+		return bytes.NewReader(latin1ToUTF8(raw)), nil
+	default:
+		return nil, fmt.Errorf("unsupported charset %q", charset)
+	}
+}
+
+// cp1252High maps the bytes Windows-1252 replaces in the 0x80–0x9F range.
+// The mapping is part of the public Windows-1252 code page.
+var cp1252High = [32]rune{
+	'\u20ac', '\u0081', '\u201a', '\u0192', '\u201e', '\u2026', '\u2020', '\u2021',
+	'\u02c6', '\u2030', '\u0160', '\u2039', '\u0152', '\u008d', '\u017d', '\u008f',
+	'\u0090', '\u2018', '\u2019', '\u201c', '\u201d', '\u2022', '\u2013', '\u2014',
+	'\u02dc', '\u2122', '\u0161', '\u203a', '\u0153', '\u009d', '\u017e', '\u0178',
+}
+
+func latin1ToUTF8(raw []byte) []byte {
+	out := make([]byte, 0, len(raw)+len(raw)/8)
+	for _, b := range raw {
+		r := rune(b)
+		if b >= 0x80 && b <= 0x9f {
+			r = cp1252High[b-0x80]
+		}
+		out = utf8.AppendRune(out, r)
+	}
+	return out
 }
 
 func extractXMLRows(body []byte, schema definition.Response, base *url.URL) ([]map[string]string, error) {

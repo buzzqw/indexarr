@@ -52,20 +52,16 @@ func TestNativeTargetsFromJackettFixture(t *testing.T) {
 	}
 
 	torrent := findTarget(t, targets, "1337x")
-	if torrent.DefinitionID != nativeDefinition || torrent.ViaManager != "jackett" {
+	// 1337x is now a verified native definition, so the verified catalog wins
+	// over the manager bridge for the same hint.
+	if torrent.DefinitionID != "1337x" || torrent.ViaManager != "" {
 		t.Fatalf("1337x target = %+v", torrent)
 	}
-	if torrent.BaseURL != "http://127.0.0.1:9117/api/v2.0/indexers/1337x/results/torznab/" {
+	if torrent.BaseURL != "https://1337x.example.invalid/" {
 		t.Fatalf("1337x endpoint = %q", torrent.BaseURL)
 	}
-	if torrent.Secrets["api_key"] != jackettAPIKey {
-		t.Fatalf("1337x API key was not carried as a secret")
-	}
-	if torrent.Config["url"] != torrent.BaseURL {
-		t.Fatalf("1337x config url = %q, want %q", torrent.Config["url"], torrent.BaseURL)
-	}
-	if torrent.Config["categories"] != "2000,5000" {
-		t.Fatalf("1337x categories = %q", torrent.Config["categories"])
+	if _, ok := torrent.Secrets["api_key"]; ok {
+		t.Fatalf("the native definition must not carry the Jackett API key")
 	}
 	if !torrent.Enabled || torrent.Priority != 25 {
 		t.Fatalf("1337x enabled/priority = %t/%d", torrent.Enabled, torrent.Priority)
@@ -75,6 +71,9 @@ func TestNativeTargetsFromJackettFixture(t *testing.T) {
 	}
 	if torrent.RemoteID != "1337x" || torrent.Slug != "1337x" {
 		t.Fatalf("1337x remote id/slug = %q/%q", torrent.RemoteID, torrent.Slug)
+	}
+	if torrent.Protocol != ProtocolTorrent {
+		t.Fatalf("1337x protocol = %q", torrent.Protocol)
 	}
 
 	usenet := findTarget(t, targets, "Test Usenet")

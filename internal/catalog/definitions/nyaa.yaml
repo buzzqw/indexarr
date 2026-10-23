@@ -1,0 +1,83 @@
+# VERIFICATA (verified). Nyaa public HTML search.
+#
+# Written from the public search page captured on 2026-10-23 in
+# fixtures/nyaa/listing.html (https://nyaa.si/?f=0&c=0_0&q=test&s=seeders&o=desc).
+# Every row carries the magnet and a .torrent link, so no detail page is
+# needed. The category is the numeric path pair in the category link
+# (1_2 = Anime, English-translated); it is mapped below to the standard ids.
+schema: 1
+
+meta:
+  id: nyaa
+  name: Nyaa
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Nyaa HTML search with magnets in the result row.
+  urls:
+    - https://nyaa.si/
+  updated: "2026-10-23"
+
+categories:
+  - { site: "1_0", standard: 5070, desc: "Anime" }
+  - { site: "1_1", standard: 5070, desc: "Anime music video" }
+  - { site: "1_2", standard: 5070, desc: "Anime English-translated" }
+  - { site: "1_3", standard: 5070, desc: "Anime non-English-translated" }
+  - { site: "1_4", standard: 5070, desc: "Anime raw" }
+  - { site: "2_0", standard: 3000, desc: "Audio" }
+  - { site: "2_1", standard: 3040, desc: "Audio lossless" }
+  - { site: "2_2", standard: 3000, desc: "Audio lossy" }
+  - { site: "3_0", standard: 7000, desc: "Literature" }
+  - { site: "3_1", standard: 7000, desc: "Literature English" }
+  - { site: "3_2", standard: 7000, desc: "Literature non-English" }
+  - { site: "3_3", standard: 7000, desc: "Literature raw" }
+  - { site: "4_0", standard: 2000, desc: "Live action" }
+  - { site: "4_1", standard: 2000, desc: "Live action English" }
+  - { site: "4_2", standard: 2000, desc: "Live action non-English" }
+  - { site: "4_3", standard: 2000, desc: "Live action raw" }
+  - { site: "4_4", standard: 2000, desc: "Live action idol/PV" }
+  - { site: "5_0", standard: 8000, desc: "Pictures" }
+  - { site: "5_1", standard: 8000, desc: "Pictures graphics" }
+  - { site: "5_2", standard: 8000, desc: "Pictures photos" }
+  - { site: "6_0", standard: 4000, desc: "Software" }
+  - { site: "6_1", standard: 4000, desc: "Applications" }
+  - { site: "6_2", standard: 4000, desc: "Games" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /
+    params:
+      f: "0"
+      c: "0_0"
+      q: "{{ query.keywords }}"
+      s: seeders
+      o: desc
+  pagination: { type: page, start: 1, max_pages: 3, param: page, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.torrent-list > tbody > tr" }
+    fields:
+      title:    { selector: 'td:nth-child(2) a[href^="/view/"]', filters: [trim] }
+      details:  { selector: 'td:nth-child(2) a[href^="/view/"]', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      category: { selector: 'a[href^="/?c="]', attr: href, filters: [{ query_param: c }], type: category }
+      size:     { selector: "td:nth-child(4)", type: size }
+      date:     { selector: "td:nth-child(5)", attr: data-timestamp, type: date }
+      seeders:  { selector: "td:nth-child(6)", type: int }
+      leechers: { selector: "td:nth-child(7)", type: int }
+    required: [title, details, magnet]
+
+health:
+  query: test
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/nyaa/listing.html
+    expect: { min_rows: 5, required: [title, details, magnet, size, category, seeders] }
