@@ -92,8 +92,8 @@ func TestCatalogFiltersCombine(t *testing.T) {
 		{
 			name: "semi-private Italian",
 			path: "/indexers/new?type=semi-private&cat=movies&language=it-IT",
-			want: []string{"Corsaro (account)"},
-			not:  []string{"ExtTo", "TorrentLeech"},
+			want: []string{"No site matches"},
+			not:  []string{"Corsaro (account)", "ExtTo", "TorrentLeech"},
 		},
 		{
 			name: "search by name",

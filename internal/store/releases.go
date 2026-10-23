@@ -1087,27 +1087,43 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 	}
 	if f.Season > 0 {
 		nonText = true
-		var patterns []string
+		var seasonClauses []string
 		if f.Episode > 0 {
-			patterns = []string{
+			for _, pattern := range []string{
 				fmt.Sprintf("%%s%02de%02d%%", f.Season, f.Episode),
 				fmt.Sprintf("%%s%02d e%02d%%", f.Season, f.Episode),
 				fmt.Sprintf("%%%dx%02d%%", f.Season, f.Episode),
+			} {
+				seasonClauses = append(seasonClauses, `search_title LIKE ? ESCAPE '\'`)
+				args = append(args, pattern)
 			}
-		}
-		// A season pack satisfies an episode request too. Titles are stored
-		// normalized (punctuation becomes a space), so both S04 and Season 4
-		// are accepted.
-		patterns = append(patterns,
-			fmt.Sprintf("%%s%02d%%", f.Season),
-			fmt.Sprintf("%%season %d%%", f.Season),
-			fmt.Sprintf("%%season %02d%%", f.Season),
-			fmt.Sprintf("%%%dx%%", f.Season),
-		)
-		var seasonClauses []string
-		for _, pattern := range patterns {
-			seasonClauses = append(seasonClauses, `search_title LIKE ? ESCAPE '\'`)
-			args = append(args, pattern)
+			// A season pack satisfies an episode request, but an episode from
+			// another week must not flood the result list. A pack has the
+			// season marker and no episode marker.
+			packPatterns := []string{
+				fmt.Sprintf("%%s%02d%%", f.Season),
+				fmt.Sprintf("%%season %d%%", f.Season),
+				fmt.Sprintf("%%season %02d%%", f.Season),
+			}
+			var packLike []string
+			for _, pattern := range packPatterns {
+				packLike = append(packLike, `search_title LIKE ? ESCAPE '\'`)
+				args = append(args, pattern)
+			}
+			packClause := "(" + strings.Join(packLike, " OR ") + ")" +
+				` AND search_title NOT LIKE ? ESCAPE '\' AND search_title NOT LIKE ? ESCAPE '\'`
+			args = append(args, fmt.Sprintf("%%s%02de%%", f.Season), fmt.Sprintf("%%%dx%%", f.Season))
+			seasonClauses = append(seasonClauses, "("+packClause+")")
+		} else {
+			for _, pattern := range []string{
+				fmt.Sprintf("%%s%02d%%", f.Season),
+				fmt.Sprintf("%%season %d%%", f.Season),
+				fmt.Sprintf("%%season %02d%%", f.Season),
+				fmt.Sprintf("%%%dx%%", f.Season),
+			} {
+				seasonClauses = append(seasonClauses, `search_title LIKE ? ESCAPE '\'`)
+				args = append(args, pattern)
+			}
 		}
 		clauses = append(clauses, "("+strings.Join(seasonClauses, " OR ")+")")
 	}

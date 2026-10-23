@@ -162,7 +162,7 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 		{"indexers paginated", Filter{IndexerIDs: []int64{sourceID, otherID}, Limit: 1, Offset: 1}, 3},
 		{"season and episode", Filter{Query: "show", Season: 1, Episode: 2}, 1},
 		{"another episode", Filter{Query: "show", Season: 2, Episode: 1}, 1},
-		{"missing episode", Filter{Query: "show", Season: 2, Episode: 9}, 1},
+		{"missing episode", Filter{Query: "show", Season: 2, Episode: 9}, 0},
 		{"exclude normal", Filter{Query: "show", Exclude: []string{"1080p"}}, 1},
 		{"only exclusion", Filter{Exclude: []string{"1080p"}}, 1},
 		{"regex include and exclude", Filter{Regex: true, Include: []string{"(?i)^the show"}, Exclude: []string{"(?i)1080p"}}, 1},

@@ -59,6 +59,7 @@
         {{if .URL}}<p class="site-domain"><a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.URL}}</a></p>{{end}}
         {{if .Mirrors}}<p class="site-mirrors sub">{{T "idx.otherAddresses"}}: {{range $i, $m := .Mirrors}}{{if $i}} · {{end}}<a href="{{$m}}" target="_blank" rel="noopener noreferrer">{{$m}}</a>{{end}}</p>{{end}}
         {{if .Description}}<p class="site-description muted">{{.Description}}</p>{{end}}
+        {{if .OptionalID}}<p class="sub"><a class="link" href="/indexers/new?definition={{.OptionalID}}">{{T "idx.catalog.optionalLogin"}}</a></p>{{end}}
         <div class="site-meta">
           <span class="badge badge-type-{{.Type}}">{{.TypeLabel}}</span>
           {{if .LanguageBadge}}<span class="badge soft" title="{{.Language}}">{{.LanguageBadge}}</span>{{end}}
@@ -70,7 +71,8 @@
       <div class="catalog-actions">
         {{if .Added}}<a class="btn small" href="/indexers/{{.AddedID}}">{{T "idx.catalog.alreadyAdded"}}</a>
         {{else if .QuickAdd}}<form method="post" action="/indexers/catalog/add"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small primary" type="submit">{{T "idx.catalog.add"}}</button></form>
-        {{else}}<a class="btn small" href="/indexers/new?definition={{.ID}}">{{T "idx.catalog.configure"}}</a>{{end}}
+        {{else if .Configurable}}<a class="btn small" href="/indexers/new?definition={{.ID}}">{{T "idx.catalog.configure"}}</a>
+        {{else}}<span class="chip">{{T "idx.catalog.familyMissing"}}</span>{{end}}
       </div>
     </li>
     {{end}}

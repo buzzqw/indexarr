@@ -211,7 +211,7 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (LiveResult, er
 			result.Stored += outcome.Results
 			completed++
 			stored += outcome.Results
-			if softFired && stored == 0 && completed >= 5 {
+			if softFired && stored == 0 && completed >= 3 {
 				return finishPartial(), nil
 			}
 		case <-softTimer.C:
@@ -220,7 +220,7 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (LiveResult, er
 			// results waits for the full configured window so late sites can
 			// contribute.
 			softFired = true
-			if stored == 0 && completed >= 5 {
+			if stored == 0 && completed >= 3 {
 				return finishPartial(), nil
 			}
 		case <-ctx.Done():

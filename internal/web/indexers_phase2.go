@@ -494,7 +494,7 @@ func indexerFilterValues(in store.Indexer) map[string]string {
 	config := publicConfigMap(in.ConfigJSON)
 	for key, value := range config {
 		switch key {
-		case "url", "categories", "query", "user_agent", "allow_private", "default_category",
+		case "url", "categories", "query", "user_agent", "allow_private", "default_category", "default-category",
 			"challenge", "flaresolverr_url", "flaresolverr_timeout", "site", "channel", "latest":
 			continue
 		}
@@ -541,6 +541,8 @@ type siteChoice struct {
 	Italian       bool
 	Usage         int
 	QuickAdd      bool
+	Configurable  bool
+	OptionalID    string
 	Added         bool
 	AddedID       int64
 }
@@ -850,7 +852,7 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	var sites []catalog.IndexEntry
 	var types []catalog.IndexEntry
 	for _, entry := range index {
-		if entry.ID == "example-html" || entry.State == "morta" {
+		if entry.ID == "example-html" || entry.State == "morta" || entry.ID == "corsaro-account" {
 			continue
 		}
 		if isGenericDefinition(entry.ID) {
@@ -956,6 +958,7 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		Categories:    s.catalogCategoryLabels(r, entry.Categories),
 		AccessLabel:   s.catalogAccessLabel(r, entry.Required),
 		QuickAdd:      catalogQuickAdd(entry),
+		Configurable:  entry.Source == "" || entry.Source == "native" || entry.Family != "",
 		Italian:       entry.Italian || strings.HasPrefix(strings.ToLower(entry.Language), "it"),
 		Usage:         entry.Usage,
 	}
@@ -966,6 +969,9 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		}
 	}
 	choice.Description = s.catalogDescription(r, entry, choice.Categories)
+	if entry.ID == "corsaro" {
+		choice.OptionalID = "corsaro-account"
+	}
 	if added.ID != 0 {
 		choice.Added = true
 		choice.AddedID = added.ID
@@ -1013,7 +1019,7 @@ func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry
 		}
 		for _, language := range languages {
 			label := catalogLanguageName(language)
-			if names[label] > 1 && strings.HasPrefix(strings.ToLower(language), "zh") {
+			if names[label] > 1 {
 				label += " (" + catalogLanguageBadge(language) + ")"
 			}
 			group.Chips = append(group.Chips, siteFilterChip{
