@@ -659,6 +659,13 @@ make build   # bin/indexarr
 make release # binari linux/amd64, linux/arm64, windows/amd64, darwin/arm64
 ```
 
+Per diagnosi di memoria/goroutine si può esporre pprof solo su localhost:
+
+```bash
+INDEXARR_PPROF=127.0.0.1:6060 ./bin/indexarr -config data/indexarr.json
+go tool pprof -top http://127.0.0.1:6060/debug/pprof/heap
+```
+
 Struttura dei pacchetti e scelte di progetto: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Suite di test e smoke test: [docs/QA.md](docs/QA.md).
 Audit operativo del 23/10/2026: [docs/AUDIT-2026-10-23.md](docs/AUDIT-2026-10-23.md).
