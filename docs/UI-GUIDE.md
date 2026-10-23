@@ -471,7 +471,7 @@ tutte le 7 lingue. La definizione TorrentGalaxy estrae dimensione e
 seeders/leechers dalla fixture WP7; la fixture non ha categorie, quindi la
 definizione non ne inventa (resta il fallback generico 8000 "Other").
 
-**Stato fase 2 (23/10): fatta** (`HASH`). `/indexers` è un elenco unico per
+**Stato fase 2 (23/10): fatta** (`45ead7d`). `/indexers` è un elenco unico per
 sito, con badge Pubblico/Privato/Via Jackett/Via Prowlarr/Feed, pallino di
 stato, problema scritto sotto la riga, menu "⋯" e azioni di massa solo dopo la
 selezione. `/indexers/new` parte dalla ricerca del sito o da un indirizzo
