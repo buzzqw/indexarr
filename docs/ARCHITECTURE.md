@@ -216,7 +216,8 @@ reti private e metadata cloud salvo `allow_private`) e redirect rivalidati.
 | `internal/syncjob` | Riconciliazione periodica delle applicazioni \*arr con `appsync`, persistenza di `app_indexers` e gestione dei livelli di sync |
 | `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.torrent`/`.nzb` non ancora in cache |
 | `internal/importers` | Piano di import da Prowlarr e Jackett (indexer, applicazioni, proxy, categorie) |
-| `internal/legacyimport` | Anteprima di migrazione delle `sources` legacy verso un indexer Torznab nativo |
+| `internal/legacyimport` | Anteprima, apply e revert della migrazione delle `sources` legacy verso un indexer Torznab nativo |
+| `internal/simmock`, `cmd/simmock`, `sim/` | Simulazione end-to-end deterministica: finti Torznab/Newznab, Prowlarr, Sonarr, client di download e tracker HTML; esecuzione locale e Docker |
 | `internal/appsync` | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr (API Servarr) e Mylar3/LazyLibrarian, con livelli di sync |
 | `internal/downloadclient` | Invio a qBittorrent, Transmission, Deluge, rTorrent, SABnzbd e NZBGet |
 | `internal/deftool` | Logica testabile del CLI: validazione, formattazione, controllo fixture |

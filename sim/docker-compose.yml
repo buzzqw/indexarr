@@ -1,0 +1,90 @@
+name: indexarr-sim
+
+services:
+  simmock:
+    build:
+      context: ..
+      dockerfile: sim/Dockerfile.mock
+    image: indexarr-sim-mock:local
+    container_name: indexarr-sim-mock
+    command:
+      - "-addr"
+      - ":19080"
+      - "-apikey"
+      - "demo-key"
+      - "-sonarr-key"
+      - "demo-sonarr"
+      - "-prowlarr-key"
+      - "demo-prowlarr"
+    ports:
+      - "19080:19080"
+    networks:
+      - simnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:19080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  seed:
+    build:
+      context: ..
+      dockerfile: sim/Dockerfile.mock
+    image: indexarr-sim-mock:local
+    container_name: indexarr-sim-seed
+    entrypoint:
+      - "/usr/local/bin/seed"
+      - "-db"
+      - "/data/indexarr.db"
+      - "-public-url"
+      - "http://127.0.0.1:18484"
+    volumes:
+      - sim-data:/data
+    depends_on:
+      simmock:
+        condition: service_started
+    networks:
+      - simnet
+    restart: "no"
+
+  indexarr:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: indexarr-sim:local
+    container_name: indexarr-sim
+    environment:
+      INDEXARR_MASTER_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    command:
+      - "-config"
+      - "/data/indexarr.json"
+      - "-listen"
+      - ":8484"
+      - "-db"
+      - "/data/indexarr.db"
+    ports:
+      - "18484:8484"
+    volumes:
+      - sim-data:/data
+    depends_on:
+      simmock:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    networks:
+      - simnet
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8484/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: "no"
+
+networks:
+  simnet:
+    driver: bridge
+
+volumes:
+  sim-data:

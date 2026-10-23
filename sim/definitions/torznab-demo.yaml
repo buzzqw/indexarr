@@ -1,0 +1,38 @@
+schema: 1
+connector: torznab
+meta:
+  id: sim-torznab
+  name: Sim Torznab
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr simulation
+  description: Deterministic Torznab indexer served by simmock.
+  urls:
+    - http://127.0.0.1:19080/torznab/api
+  updated: "2026-10-23"
+
+settings:
+  - name: url
+    type: text
+    label: API URL
+    required: true
+  - name: apikey
+    type: password
+    label: API key
+    required: true
+  - name: categories
+    type: text
+    label: Categories
+    help: Comma separated Torznab category ids.
+
+categories:
+  - { site: "2040", standard: 2040, desc: Movies HD }
+  - { site: "3040", standard: 3040, desc: Audio Lossless }
+  - { site: "5040", standard: 5040, desc: TV HD }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep]
+  movie-search: [q]
+  music-search: [q, artist, album]

@@ -104,6 +104,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v2/import/prowlarr", s.handleImportProwlarr)
 	mux.HandleFunc("POST /api/v2/import/jackett", s.handleImportJackett)
 	mux.HandleFunc("GET /api/v2/legacy/preview", s.handleLegacyPreview)
+	mux.HandleFunc("POST /api/v2/legacy/apply", s.handleLegacyApply)
+	mux.HandleFunc("POST /api/v2/legacy/revert", s.handleLegacyRevert)
 
 	// JSON for unknown routes, so clients never receive an HTML body.
 	notFound := func(w http.ResponseWriter, _ *http.Request) {

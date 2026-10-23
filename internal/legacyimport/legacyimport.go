@@ -1,16 +1,18 @@
-// Package legacyimport builds a read-only preview of the migration from the
-// legacy sources table to native indexers.
+// Package legacyimport migrates the legacy sources table to native indexers.
 //
-// The preview only classifies what the coordinator can migrate and how. It
-// never disables a source, never writes to the store and never copies a
-// credential: API keys and HTTP Basic passwords are reported as booleans, and
-// URLs are stripped of userinfo and credential-bearing query parameters.
+// Preview classifies what the coordinator can migrate and how. It never
+// disables a source, never writes to the store and never copies a credential:
+// API keys and HTTP Basic passwords are reported as booleans, and URLs are
+// stripped of userinfo and credential-bearing query parameters.
 //
-// Applying the preview is future work: the coordinator will create a native
-// Torznab indexer for every Native candidate, move its API key into the vault,
-// keep its bridged slug when one already exists, and only then disable the
-// legacy source. RSS sources stay on the bridge until a native RSS family
-// exists.
+// Apply turns the preview into a migration: it creates the deterministic
+// native-<id> definition, updates the existing bridged indexer in place, seals
+// the API key in the vault and only then disables the legacy source. Revert
+// restores the legacy-<id> bridge and re-enables the source. Every failure is
+// compensated so a broken migration never loses a working bridge. RSS sources
+// stay on the bridge until a native RSS family exists, and Torznab sources
+// with HTTP Basic credentials are skipped because the Torznab family
+// connector does not send them.
 package legacyimport
 
 import (
@@ -157,8 +159,7 @@ func sanitizedURL(raw string) string {
 }
 
 func isSecretParam(name string) bool {
-	normalized := strings.ToLower(strings.TrimSpace(name))
-	normalized = strings.NewReplacer("_", "", "-", "", ".", "").Replace(normalized)
+	normalized := normalizeParam(name)
 	for _, secret := range secretParams {
 		if normalized == secret || strings.Contains(normalized, secret) {
 			return true

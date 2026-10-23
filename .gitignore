@@ -12,3 +12,7 @@ coverage.out
 
 # Chiavi del vault generate localmente
 *.key
+
+# Simulazione end-to-end
+sim/.bin/
+sim/.data/

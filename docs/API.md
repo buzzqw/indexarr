@@ -242,6 +242,8 @@ del server Torznab, senza cookie e senza CSRF.
 | POST | `/api/v2/import/prowlarr` | anteprima import da Prowlarr, senza segreti |
 | POST | `/api/v2/import/jackett` | anteprima import da una cartella Jackett |
 | GET | `/api/v2/legacy/preview` | quali `sources` possono diventare Torznab native |
+| POST | `/api/v2/legacy/apply` | applica la migrazione (dry-run supportato) |
+| POST | `/api/v2/legacy/revert` | ripristina il ponte legacy |
 
 Esempio:
 

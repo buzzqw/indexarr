@@ -97,3 +97,12 @@ va controllata a mano quando si modificano i template:
 
 Ogni nuova utility di manutenzione deve avere almeno un test nello store e uno
 nell'handler web che ne verifichi redirect ed effetto sul database.
+
+## Simulazione end-to-end
+
+Oltre ai test di package, `sim/` contiene una simulazione deterministica con
+servizi finti (Torznab/Newznab, Prowlarr, Sonarr, SABnzbd, NZBGet, Deluge,
+rTorrent e un tracker HTML) e asserzioni con exit code non zero. Si esegue in
+locale con `./sim/run.sh` oppure in Docker con `./sim/run-docker.sh`, sulle
+porte isolate 18484 e 19080. Dettagli, asserzioni e reset in
+[`sim/README.md`](../sim/README.md).

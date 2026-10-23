@@ -640,7 +640,8 @@ definizioni è descritto in [`docs/DEFINITIONS.md`](docs/DEFINITIONS.md).
 | `internal/syncjob` | Riconciliazione periodica con Sonarr/Radarr/Lidarr/Readarr/Whisparr; scrive `app_indexers` | sì |
 | `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.nzb`/`.torrent` su richiesta | sì |
 | `internal/importers` | Piano di import da Prowlarr e Jackett (definizioni, indexer, applicazioni, proxy) | sì |
-| `internal/legacyimport` | Anteprima di migrazione delle `sources` legacy verso Torznab nativo (solo lettura) | sì |
+| `internal/legacyimport` | Anteprima, applicazione e rollback della migrazione delle `sources` legacy verso Torznab nativo | sì |
+| `internal/simmock`, `cmd/simmock`, `sim/` | Simulazione end-to-end: finti Torznab/Newznab, Prowlarr, Sonarr, SABnzbd, NZBGet, Deluge, rTorrent e tracker HTML; stack locale e Docker | sì |
 | `internal/torznabapi` | Distribuzione Torznab: alias Jackett, routing per indexer, filtri aggregati, errori 100–900 | sì |
 | `internal/appsync` | Client Servarr (Sonarr/Radarr/Lidarr/Readarr/Whisparr), Mylar3/LazyLibrarian per il test, reconcile puro | sì |
 | `internal/deftool`, `cmd/indexarr-def` | CLI `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` | sì |
@@ -717,6 +718,8 @@ Nessun cookie, nessun CSRF. Errori JSON.
 | POST | `/api/v2/import/prowlarr` |
 | POST | `/api/v2/import/jackett` |
 | GET | `/api/v2/legacy/preview` |
+| POST | `/api/v2/legacy/apply` |
+| POST | `/api/v2/legacy/revert` |
 
 Le risposte non contengono mai `api_key`, password, cookie o URL del tracker.
 La ricerca restituisce solo titolo, GUID, dimensione, seeders/leechers,
@@ -756,26 +759,77 @@ lo possa decifrare; crea e cancella un'applicazione Sonarr con sync
 `/api/v2/applications`. Il runner nativo, su una copia del DB reale, salta 37
 indexer ponte su 37 e non tocca il percorso legacy.
 
+Inoltre `./sim/run.sh` e `./sim/run-docker.sh` eseguono una simulazione
+deterministica completa: definizione/indexer nativo, run, ricerca Torznab,
+download `.torrent` e `.nzb`, sync verso un Sonarr finto e invio ai client
+SABnzbd/NZBGet/Deluge/rTorrent. Lo stack Docker è stato costruito ed eseguito
+sulle porte isolate 18484/19080, senza toccare il Jackett già presente.
+
 ### 15.7 Limiti noti e prossima ondata
 
 Ancora da fare, in ordine di valore:
 
-1. **Catalogo reale**: sostituire le definizioni `bozza` con definizioni
-   `verificate` su fixture osservate; health check live e canary.
-2. **Migrazione legacy applicata**: `legacyimport` produce solo l'anteprima;
-   mancano conversione delle sorgenti in definizioni Torznab native,
-   spostamento dei segreti nel vault e disattivazione con rollback.
-3. **Provenance in uscita**: “visto su N indexer”, scelta del link migliore,
-   refresh dei seeders con TTL.
-4. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
+1. **Catalogo reale e copertura siti**: sostituire le definizioni `bozza` con
+   definizioni `verificate` su fixture osservate e aumentare la copertura con
+   connettori di famiglia e import delle definizioni Cardigann (vedi §15.9).
+2. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
    (oggi `ErrUnsupported`), filtri per tag.
-5. **Import applicato**: oggi la UI mostra il piano Prowlarr/Jackett ma non
-   crea definizioni/indexer; manca l'apply con anteprima e rollback.
-6. **FlareSolverr per indexer** (i proxy HTTP/SOCKS sono fatti), stato
+3. **Import applicato**: la UI mostra il piano Prowlarr/Jackett ma non crea
+   ancora definizioni/indexer; manca l'apply con anteprima e rollback.
+4. **FlareSolverr per indexer** (i proxy HTTP/SOCKS sono fatti), stato
    `blocked` per CAPTCHA, firma del catalogo remoto, studio delle definizioni,
    riparazione assistita, rete di salute opt-in.
-7. **Catalogo e stato**: health check per definizione, transizioni
+5. **Catalogo e stato**: health check per definizione, transizioni
    `verificata`/`degradata`, notifiche.
+6. **Provenance**: il dato c'è e Torznab espone `indexers`/`provenance`;
+   manca il job periodico che aggiorna i seeders con TTL usando
+   `StaleProvenance`.
+
+### 15.9 Copertura siti e Cardigann: stato e piano
+
+**Risposta breve: non è stata avviata una riscrittura dei Cardigann.** Il
+lavoro fatto finora costruisce le fondamenta per non dipendere da Cardigann e,
+allo stesso tempo, per non perdere nessun sito durante la transizione.
+
+Cosa esiste oggi:
+
+- motore nativo v1 (HTML/JSON/XML, login, paginazione, tipi, fixture);
+- connettori di famiglia `unit3d`, `newznab`, `torznab`;
+- ponte legacy: indexarr interroga l'endpoint Torznab di Jackett/Prowlarr, che
+  resta la copertura "giorno uno";
+- `legacyimport`: converte le sorgenti Torznab dirette in indexer nativi, con
+  anteprima, apply e revert;
+- `importers`: legge Prowlarr/Jackett e produce un piano (non applicato);
+- catalogo built-in: 3 definizioni `bozza` + esempi. **Non sono centinaia.**
+
+Cosa serve per arrivare a centinaia di siti, in ordine di leva:
+
+1. **Connettori di famiglia** (una correzione copre molti siti):
+   - Gazelle e derivati (musica e non solo);
+   - NexusPHP (molti tracker cinesi);
+   - TorrentTrader/TBDev e derivati;
+   - Xbtit, BtiTracker, PHP-Torrent;
+   - software AVISTAZ/AsianDVDClub e altri gruppi.
+   Ogni famiglia va scritta osservando il software (o la sua documentazione) e
+   testata su almeno due siti/fixture.
+2. **Import Cardigann come migrazione, non come runtime**:
+   - leggere le definizioni già installate dall'utente (Prowlarr/Jackett) e
+     convertirle nel formato nativo v1 per il sottoinsieme supportato;
+   - marcare `bozza` ciò che non è convertibile e lasciarlo al ponte;
+   - nessuna distribuzione di definizioni copiate: si convertono localmente i
+     dati dell'utente, con tracciamento di autore/origine;
+   - il runtime di indexarr continua a non eseguire Cardigann.
+3. **Pacchetti di definizioni** con inventario, fixture, stato
+   `bozza/verificata/degradata`, test CI e quote per famiglia.
+4. **Ponte come rete di sicurezza**: finché una definizione nativa non è
+   verificata, il sito continua a funzionare via Jackett/Prowlarr.
+5. **Studio delle definizioni** nella UI: selettori guidati, anteprima,
+   fixture generate, condivisione con il catalogo.
+
+Priorità: prima le famiglie che coprono i siti realmente presenti nelle
+istanze degli utenti (inventario da `sources`, import Prowlarr/Jackett e
+statistiche anonime), poi la coda lunga. Non ha senso scrivere 500 definizioni
+singole se 20 famiglie coprono l'80% dell'uso reale.
 
 ### 15.8 Come lavorare (per il prossimo agente)
 

@@ -495,7 +495,9 @@ func (s *Store) GetIndexerState(ctx context.Context, indexerID int64) (IndexerSt
 }
 
 // RecordReleaseSource stores provenance, keeping the original first_seen_at on
-// conflict and refreshing last_seen_at and the swarm counters.
+// conflict and refreshing last_seen_at and the swarm counters. The parent
+// release keeps the best swarm values ever observed: a source with fewer
+// seeders never lowers them.
 func (s *Store) RecordReleaseSource(ctx context.Context, in ReleaseSource) error {
 	now := time.Now()
 	first := in.FirstSeenAt
@@ -520,6 +522,16 @@ func (s *Store) RecordReleaseSource(ctx context.Context, in ReleaseSource) error
 		in.Leechers, in.DownloadRef)
 	if err != nil {
 		return fmt.Errorf("record release source: %w", err)
+	}
+	// Keep the cached release row in sync with the healthiest source. The
+	// source row itself keeps its own counters, so per-indexer history is not
+	// lost.
+	if _, err := s.db.ExecContext(ctx, `
+		UPDATE releases SET seeders = MAX(seeders, ?), leechers = MAX(leechers, ?),
+			last_seen_at = MAX(last_seen_at, ?)
+		WHERE id = ?`,
+		in.Seeders, in.Leechers, last.Unix(), in.ReleaseID); err != nil {
+		return fmt.Errorf("update release swarm counters: %w", err)
 	}
 	return nil
 }

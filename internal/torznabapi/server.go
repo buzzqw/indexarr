@@ -217,7 +217,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 	}
 	base := s.baseURL(r, settings)
 	if selection.empty() {
-		s.writeSearch(w, base, settings, apiKey, nil, 0, filter.Offset)
+		s.writeSearch(w, base, settings, apiKey, nil, 0, filter.Offset, nil)
 		return
 	}
 	if sqlSourceID > 0 {
@@ -257,7 +257,10 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 			releases, total = applySelection(selection, sqlSourceID, releases, total)
 		}
 	}
-	s.writeSearch(w, base, settings, apiKey, releases, total, filter.Offset)
+	// Provenance is fetched once for the whole page: writeItem never queries
+	// the store, so a page of N results stays at a constant query count.
+	provenance := s.pageProvenance(r.Context(), releases)
+	s.writeSearch(w, base, settings, apiKey, releases, total, filter.Offset, provenance)
 }
 
 // authorize checks the primary key and every additional key. It returns the
@@ -475,7 +478,29 @@ func (s *Server) writeCaps(w http.ResponseWriter, settings store.Settings) {
 	s.writeXML(w, b.Bytes())
 }
 
-func (s *Server) writeSearch(w http.ResponseWriter, base string, settings store.Settings, apiKey string, releases []store.Release, total int64, offset int) {
+// pageProvenance loads the aggregated provenance of one result page with a
+// single store call. A failure degrades gracefully to the release row counters:
+// the search response is still served.
+func (s *Server) pageProvenance(ctx context.Context, releases []store.Release) map[int64]store.ReleaseProvenance {
+	if len(releases) == 0 {
+		return nil
+	}
+	ids := make([]int64, 0, len(releases))
+	for _, release := range releases {
+		if release.ID > 0 {
+			ids = append(ids, release.ID)
+		}
+	}
+	provenance, err := s.store.ReleaseProvenance(ctx, ids)
+	if err != nil {
+		s.log.Warn("torznab: load provenance", "component", "indexarr",
+			"subsystem", "torznab", "error", err)
+		return nil
+	}
+	return provenance
+}
+
+func (s *Server) writeSearch(w http.ResponseWriter, base string, settings store.Settings, apiKey string, releases []store.Release, total int64, offset int, provenance map[int64]store.ReleaseProvenance) {
 	var b bytes.Buffer
 	b.WriteString(xml.Header)
 	b.WriteString(`<rss version="2.0" xmlns:torznab="http://torznab.com/schemas/2015/feed" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/">`)
@@ -485,13 +510,13 @@ func (s *Server) writeSearch(w http.ResponseWriter, base string, settings store.
 	b.WriteString(`<description>indexarr Torznab index</description>`)
 	fmt.Fprintf(&b, `<newznab:response offset="%d" total="%d"/>`, offset, total)
 	for _, release := range releases {
-		s.writeItem(&b, base, settings, apiKey, release)
+		s.writeItem(&b, base, settings, apiKey, release, provenance[release.ID])
 	}
 	b.WriteString(`</channel></rss>`)
 	s.writeXML(w, b.Bytes())
 }
 
-func (s *Server) writeItem(b *bytes.Buffer, base string, settings store.Settings, apiKey string, release store.Release) {
+func (s *Server) writeItem(b *bytes.Buffer, base string, settings store.Settings, apiKey string, release store.Release, provenance store.ReleaseProvenance) {
 	if apiKey == "" {
 		apiKey = settings.APIKey
 	}
@@ -545,14 +570,31 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings store.Settings
 	fmt.Fprintf(b, `<enclosure url="%s" length="%d" type="%s"/>`, esc(link), size, enclosureType)
 	fmt.Fprintf(b, `<torznab:attr name="category" value="%s"/>`, esc(category))
 	fmt.Fprintf(b, `<torznab:attr name="size" value="%d"/>`, size)
-	if release.Seeders >= 0 {
-		fmt.Fprintf(b, `<torznab:attr name="seeders" value="%d"/>`, release.Seeders)
+	// The release row is the fallback; provenance can be fresher because a
+	// single indexer may have reported a bigger swarm.
+	seeders, leechers := release.Seeders, release.Leechers
+	if provenance.Seeders > seeders {
+		seeders = provenance.Seeders
 	}
-	if release.Leechers >= 0 {
-		fmt.Fprintf(b, `<torznab:attr name="leechers" value="%d"/>`, release.Leechers)
+	if provenance.Leechers > leechers {
+		leechers = provenance.Leechers
 	}
-	if release.Seeders >= 0 && release.Leechers >= 0 {
-		fmt.Fprintf(b, `<torznab:attr name="peers" value="%d"/>`, release.Seeders+release.Leechers)
+	if seeders >= 0 {
+		fmt.Fprintf(b, `<torznab:attr name="seeders" value="%d"/>`, seeders)
+	}
+	if leechers >= 0 {
+		fmt.Fprintf(b, `<torznab:attr name="leechers" value="%d"/>`, leechers)
+	}
+	if seeders >= 0 && leechers >= 0 {
+		fmt.Fprintf(b, `<torznab:attr name="peers" value="%d"/>`, seeders+leechers)
+	}
+	if provenance.Indexers > 1 {
+		// Additive attributes: *arr clients ignore unknown names, while a
+		// provenance-aware client can prefer a release seen by many indexers.
+		// download_ref and tracker URLs are never part of this output.
+		fmt.Fprintf(b, `<torznab:attr name="indexers" value="%d"/>`, provenance.Indexers)
+		fmt.Fprintf(b, `<torznab:attr name="provenance" value="%s"/>`,
+			esc(strings.Join(provenance.Names, "|")))
 	}
 	if release.InfoHash != "" {
 		fmt.Fprintf(b, `<torznab:attr name="infohash" value="%s"/>`, esc(release.InfoHash))

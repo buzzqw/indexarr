@@ -536,6 +536,9 @@ rimosse.
 | Client Deluge, rTorrent, SABnzbd, NZBGet | `internal/downloadclient` | test + race |
 | Import da Prowlarr e Jackett (piano di migrazione) | `internal/importers` | test + race |
 | Anteprima di migrazione delle sorgenti legacy verso Torznab nativo | `internal/legacyimport` | test + race |
+| Apply/revert della migrazione legacy con vault e disattivazione della sorgente | `internal/legacyimport`, `internal/adminapi` | test + QA |
+| Provenance multi-indexer (`indexers`, `provenance`), seeders massimi, `StaleProvenance` | `internal/store`, `internal/torznabapi` | test + race |
+| Simulazione end-to-end locale e Docker (Torznab, Prowlarr, Sonarr, client, tracker HTML) | `internal/simmock`, `cmd/simmock`, `sim/` | test + `sim/run.sh` + Docker |
 | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr e reconcile | `internal/appsync` | test + race |
 | CLI `indexarr-def`, esempi, documentazione | `cmd/indexarr-def`, `internal/deftool` | test + CI |
 | Alias Jackett/Newznab, routing per indexer, filtri aggregati, errori 100–900 | `internal/torznabapi` | test + QA |
@@ -563,22 +566,20 @@ rimosse.
 
 ### Prossimi passi (non ancora fatti)
 
-1. **Catalogo reale**: le definizioni built-in sono `bozza`; servono fixture
+1. **Copertura siti**: connettori di famiglia per Gazelle, NexusPHP,
+   TorrentTrader/TBDev, Xbtit e derivati; import Cardigann come migrazione
+   locale; pacchetti di definizioni con fixture e stato.
+2. **Catalogo reale**: le definizioni built-in sono `bozza`; servono fixture
    osservate dai siti e health check live prima di dichiararle `verificate`.
-2. **Migrazione legacy applicata**: `legacyimport` produce solo l'anteprima;
-   mancano conversione `sources` → definizione Torznab nativa, spostamento dei
-   segreti nel vault e disattivazione della sorgente con rollback.
-3. **Provenance in uscita**: “visto su N indexer”, scelta del link migliore,
-   refresh seeders con TTL.
-4. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
+3. **App sync**: snapshot per il rollback in un clic, sync Mylar3/LazyLibrarian
    (oggi `ErrUnsupported`), filtri per tag.
-5. **Import applicato**: endpoint/UI che creino definizioni e indexer dal piano
+4. **Import applicato**: endpoint/UI che creino definizioni e indexer dal piano
    Prowlarr/Jackett, non solo l'anteprima.
-6. **FlareSolverr per indexer** (i proxy HTTP/SOCKS sono fatti), stato `blocked`
+5. **FlareSolverr per indexer** (i proxy HTTP/SOCKS sono fatti), stato `blocked`
    per CAPTCHA, firma del catalogo remoto, studio delle definizioni, canary e
    rete di salute opt-in.
-7. **Catalogo e stato**: health check per definizione, transizioni
-   `verificata`/`degradata`, notifiche.
+6. **Provenance refresh**: il dato e gli attributi Torznab ci sono; manca il job
+   periodico che usa `StaleProvenance` per aggiornare i seeders.
 
 ### Verifica
 
