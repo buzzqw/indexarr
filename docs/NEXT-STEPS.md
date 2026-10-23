@@ -143,7 +143,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1, 1b e 1c fatte; 2–5 dopo WP16 | `d112bea` |
 | WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | `b0abb6c` |
 | WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
-| WP16 | Rimozione del percorso legacy | da fare | |
+| WP16 | Rimozione del percorso legacy | fatto | `4a11fb8` |
 
 ---
 
