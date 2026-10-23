@@ -63,6 +63,7 @@ func ApplyTargets(ctx context.Context, st *store.Store, secretVault *vault.Vault
 		return result, err
 	}
 
+	targets = PairChannels(targets)
 	targets, result.Dropped = Deduplicate(targets)
 	result.Skipped = len(result.Dropped)
 	seen := make(map[string]bool, len(targets))

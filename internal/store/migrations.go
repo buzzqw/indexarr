@@ -3,7 +3,9 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -17,6 +19,7 @@ const (
 	indexarr2ActivityVersion        = 5
 	indexarr2LiveSearchVersion      = 6
 	indexarr2DownloadClientsVersion = 7
+	indexarr2PairChannelsVersion    = 8
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -215,4 +218,61 @@ func (s *Store) migrationApplied(ctx context.Context, version int) (bool, error)
 		return false, fmt.Errorf("check migration %d: %w", version, err)
 	}
 	return count > 0, nil
+}
+
+// pairChannelsMigration updates the existing TorrentLeech rows without
+// deleting anything: the RSS indexer becomes the latest channel and the bridge
+// becomes the search channel. The general importer applies the same rule to
+// new imports; this migration only repairs databases created before it.
+func pairChannelsMigration(tx *sql.Tx) error {
+	rows, err := tx.Query(`SELECT id, slug, config_json FROM indexers
+		WHERE slug IN ('torrentleech', 'torrentleech-rss')`)
+	if err != nil {
+		return err
+	}
+	type row struct {
+		id     int64
+		slug   string
+		config map[string]string
+	}
+	var changes []row
+	for rows.Next() {
+		var item row
+		var raw string
+		if err := rows.Scan(&item.id, &item.slug, &raw); err != nil {
+			rows.Close()
+			return err
+		}
+		item.config = map[string]string{}
+		if strings.TrimSpace(raw) != "" {
+			if err := json.Unmarshal([]byte(raw), &item.config); err != nil {
+				rows.Close()
+				return fmt.Errorf("indexer %s config: %w", item.slug, err)
+			}
+		}
+		changes = append(changes, item)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, item := range changes {
+		item.config["site"] = "torrentleech.org"
+		if item.slug == "torrentleech-rss" {
+			item.config["channel"] = "latest"
+			item.config["latest"] = "true"
+		} else {
+			item.config["channel"] = "search"
+			item.config["latest"] = "false"
+		}
+		encoded, err := json.Marshal(item.config)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`UPDATE indexers SET config_json = ?, updated_at = ? WHERE id = ?`,
+			string(encoded), time.Now().Unix(), item.id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

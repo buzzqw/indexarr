@@ -345,6 +345,12 @@ func (s *Server) indexerBadges(r *http.Request, in store.Indexer, def *definitio
 	rawURL := ""
 	if config := publicConfigMap(in.ConfigJSON); config != nil {
 		rawURL = config["url"]
+		switch strings.ToLower(strings.TrimSpace(config["channel"])) {
+		case "latest":
+			out = append(out, uiBadge{Kind: "channel", Label: s.translate(r, "idx.channelLatest")})
+		case "search":
+			out = append(out, uiBadge{Kind: "channel", Label: s.translate(r, "idx.channelSearch")})
+		}
 	}
 	lower := strings.ToLower(rawURL)
 	switch {

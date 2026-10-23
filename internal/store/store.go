@@ -312,6 +312,14 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 8 pairs an existing native RSS feed with its search bridge:
+	// the feed keeps the scheduled latest run and the bridge answers searches.
+	// It is a data-only, non-destructive migration for the TorrentLeech pair
+	// created before the general pairing rule existed.
+	if err := s.applyMigration(context.Background(), indexarr2PairChannelsVersion,
+		"pair latest and search channels", pairChannelsMigration); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

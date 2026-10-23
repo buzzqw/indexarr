@@ -21,11 +21,16 @@ const nativeDefinition = "torznab-generic"
 // Secrets are carried in the target because the caller seals them in the
 // vault; they must never be logged or included in errors.
 type NativeTarget struct {
-	Name           string
-	Slug           string
-	DefinitionID   string            // verified catalog id, or "torznab-generic"
-	ViaManager     string            // "jackett" | "prowlarr" | "" (direct)
-	SiteKey        string            // stable site identity used to drop duplicates
+	Name         string
+	Slug         string
+	DefinitionID string // verified catalog id, or "torznab-generic"
+	ViaManager   string // "jackett" | "prowlarr" | "" (direct)
+	SiteKey      string // stable site identity used to drop duplicates
+	// SiteGroup and Channel pair the search bridge with a native latest feed
+	// of the same site. A site can therefore have two channels (search and
+	// latest) without being treated as a duplicate.
+	SiteGroup      string
+	Channel        string            // "search", "latest" or empty
 	BaseURL        string            // per-indexer Torznab endpoint when ViaManager != ""
 	Config         map[string]string // non-secret settings for config_json
 	Secrets        map[string]string // sealed by the caller, never logged
@@ -45,8 +50,12 @@ func (t NativeTarget) Key() string {
 	if slug == "" {
 		slug = slugify(t.Name)
 	}
-	return strings.ToLower(strings.TrimSpace(t.DefinitionID)) + "|" +
+	key := strings.ToLower(strings.TrimSpace(t.DefinitionID)) + "|" +
 		normalizeTargetURL(t.BaseURL) + "|" + slug
+	if channel := strings.ToLower(strings.TrimSpace(t.Channel)); channel != "" {
+		key += "|" + channel
+	}
+	return key
 }
 
 // Targets maps every indexer of the plan to a native target. The built-in
@@ -221,6 +230,7 @@ func catalogTarget(entry catalog.Entry, indexer Indexer) NativeTarget {
 		Slug:           slugify(indexer.Name),
 		DefinitionID:   entry.ID,
 		SiteKey:        siteKeyForIndexer(indexer, entry.ID),
+		SiteGroup:      siteKeyForIndexer(indexer, entry.ID),
 		ViaManager:     "",
 		BaseURL:        firstNonEmpty(indexer.SiteURL, firstMetaURL(def)),
 		Config:         config,
@@ -274,6 +284,7 @@ func bridgeTarget(source, managerURL, managerAPIKey string, indexer Indexer) Nat
 		Slug:           slugify(indexer.Name),
 		DefinitionID:   nativeDefinition,
 		SiteKey:        siteKeyForIndexer(indexer, ""),
+		SiteGroup:      siteKeyForIndexer(indexer, ""),
 		ViaManager:     manager,
 		BaseURL:        endpoint,
 		Config:         config,
@@ -370,6 +381,52 @@ func targetRank(target NativeTarget) int {
 	}
 }
 
+// PairChannels implements the general rule for a site that has both a native
+// latest feed and a search bridge: the feed handles latest, the bridge handles
+// searches, and the two are one site with two channels rather than duplicates.
+func PairChannels(targets []NativeTarget) []NativeTarget {
+	groups := make(map[string][]int)
+	for i := range targets {
+		group := strings.TrimSpace(targets[i].SiteGroup)
+		if group == "" {
+			group = strings.TrimSpace(targets[i].SiteKey)
+			targets[i].SiteGroup = group
+		}
+		if group != "" {
+			groups[group] = append(groups[group], i)
+		}
+	}
+	for group, indexes := range groups {
+		hasFeed := false
+		for _, i := range indexes {
+			if strings.EqualFold(strings.TrimSpace(targets[i].Channel), "latest") {
+				hasFeed = true
+				break
+			}
+		}
+		for _, i := range indexes {
+			target := &targets[i]
+			if target.Config == nil {
+				target.Config = make(map[string]string)
+			}
+			target.Config["site"] = group
+			if !hasFeed {
+				continue
+			}
+			if strings.EqualFold(strings.TrimSpace(target.Channel), "latest") {
+				target.Channel = "latest"
+				target.Config["channel"] = "latest"
+				target.Config["latest"] = "true"
+				continue
+			}
+			target.Channel = "search"
+			target.Config["channel"] = "search"
+			target.Config["latest"] = "false"
+		}
+	}
+	return targets
+}
+
 // Deduplicate keeps one target per site. The first target wins only on equal
 // rank; otherwise the higher-preference source replaces it and the loser is
 // returned in dropped. Ordering is stable, so an idempotent re-import sees the
@@ -380,6 +437,9 @@ func Deduplicate(targets []NativeTarget) ([]NativeTarget, []DroppedTarget) {
 	position := make(map[string]int, len(targets))
 	for _, target := range targets {
 		key := strings.TrimSpace(target.SiteKey)
+		if channel := strings.ToLower(strings.TrimSpace(target.Channel)); channel != "" {
+			key += "|" + channel
+		}
 		if key == "" {
 			kept = append(kept, target)
 			continue
@@ -410,8 +470,10 @@ func TorrentLeechRSSTarget(feedURL string) NativeTarget {
 		Slug:         "torrentleech-rss",
 		DefinitionID: "torrentleech-rss",
 		SiteKey:      "torrentleech-rss",
+		SiteGroup:    "torrentleech.org",
+		Channel:      "latest",
 		ViaManager:   "",
-		Config:       map[string]string{"default-category": "8000"},
+		Config:       map[string]string{"default-category": "8000", "site": "torrentleech.org", "channel": "latest", "latest": "true"},
 		Secrets:      map[string]string{"url": strings.TrimSpace(feedURL)},
 		Enabled:      true,
 		Priority:     25,

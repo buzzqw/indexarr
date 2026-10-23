@@ -205,3 +205,33 @@ func TestTorrentLeechRSSTargetKeepsTheFeedInSecrets(t *testing.T) {
 		t.Fatalf("feed URL leaked into config: %v", target.Config)
 	}
 }
+
+func TestPairChannelsKeepsFeedAndSearchForOneSite(t *testing.T) {
+	feed := NativeTarget{
+		Name: "Site (RSS)", Slug: "site-rss", DefinitionID: "site-rss",
+		SiteKey: "site.example", SiteGroup: "site.example", Channel: "latest",
+		Config: map[string]string{"latest": "true"},
+	}
+	bridge := NativeTarget{
+		Name: "Site", Slug: "site", DefinitionID: nativeDefinition,
+		SiteKey: "site.example", SiteGroup: "site.example", ViaManager: "prowlarr",
+	}
+	targets := PairChannels([]NativeTarget{feed, bridge})
+	kept, dropped := Deduplicate(targets)
+	if len(kept) != 2 || len(dropped) != 0 {
+		t.Fatalf("kept=%d dropped=%d targets=%+v", len(kept), len(dropped), kept)
+	}
+	byChannel := map[string]NativeTarget{}
+	for _, target := range kept {
+		byChannel[target.Channel] = target
+	}
+	if byChannel["latest"].Config["latest"] != "true" {
+		t.Errorf("feed latest = %q", byChannel["latest"].Config["latest"])
+	}
+	if byChannel["search"].Config["latest"] != "false" {
+		t.Errorf("bridge latest = %q", byChannel["search"].Config["latest"])
+	}
+	if byChannel["search"].Config["site"] != "site.example" {
+		t.Errorf("bridge site = %q", byChannel["search"].Config["site"])
+	}
+}
