@@ -12,6 +12,7 @@ import (
 const (
 	indexarr2FoundationVersion    = 1
 	indexarr2UsenetPayloadVersion = 2
+	indexarr2DropLegacyVersion    = 3
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -60,12 +61,9 @@ var indexarr2FoundationSchema = []string{
 		tags             TEXT    NOT NULL DEFAULT '',
 		query_limit      INTEGER NOT NULL DEFAULT 0,
 		grab_limit       INTEGER NOT NULL DEFAULT 0,
-		legacy_source_id INTEGER,
 		created_at       INTEGER NOT NULL DEFAULT 0,
 		updated_at       INTEGER NOT NULL DEFAULT 0
 	)`,
-	`CREATE UNIQUE INDEX IF NOT EXISTS indexers_legacy_source
-		ON indexers(legacy_source_id) WHERE legacy_source_id IS NOT NULL`,
 	`CREATE INDEX IF NOT EXISTS indexers_definition ON indexers(definition_id)`,
 	`CREATE INDEX IF NOT EXISTS indexers_proxy ON indexers(proxy_id)`,
 	`CREATE INDEX IF NOT EXISTS indexers_enabled ON indexers(enabled)`,

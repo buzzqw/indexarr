@@ -176,7 +176,6 @@ func TestReleaseTableLayoutModel(t *testing.T) {
 		Seeders:     1204,
 		Leechers:    35,
 		Category:    "5040",
-		SourceName:  "ExtTo",
 		PublishedAt: time.Now().Add(-2 * time.Hour),
 		Magnet:      "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567",
 		FirstSeenAt: time.Now(),
@@ -186,8 +185,8 @@ func TestReleaseTableLayoutModel(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := get(t, env.handler, "/releases?q=very+long+release").Body.String()
-	if strings.Count(body, `<th scope="col"`) != 7 {
-		t.Errorf("the release table has %d columns, want 7", strings.Count(body, `<th scope="col"`))
+	if strings.Count(body, `<th scope="col"`) != 6 {
+		t.Errorf("the release table has %d columns, want 6", strings.Count(body, `<th scope="col"`))
 	}
 	for _, want := range []string{
 		`class="release-title"`,

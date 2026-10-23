@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -56,8 +57,8 @@ func TestSearchTextFastPathMatchesReference(t *testing.T) {
 			filter: store.Filter{Query: "1080p", MinSize: 900_000_000, Limit: 40},
 		},
 		{
-			name:   "source",
-			filter: store.Filter{Query: "1080p", SourceID: 1, Limit: 40},
+			name:   "indexer",
+			filter: store.Filter{Query: "1080p", IndexerID: 1, Limit: 40},
 		},
 		{
 			name:   "favorites only",
@@ -109,8 +110,13 @@ func referenceIDs(t *testing.T, st *store.Store, f store.Filter) []int64 {
 	if f.Sort == "seen" {
 		order = "last_seen_at DESC, id DESC"
 	}
-	rows, err := st.DB().Query(
-		`SELECT id, search_title, hidden, favorite, category, size, source_id FROM releases ORDER BY ` + order)
+	query := `SELECT id, search_title, hidden, favorite, category, size FROM releases`
+	if f.IndexerID > 0 {
+		query += ` WHERE EXISTS (SELECT 1 FROM release_sources rs
+			WHERE rs.release_id = releases.id AND rs.indexer_id = ` + strconv.FormatInt(f.IndexerID, 10) + `)`
+	}
+	query += ` ORDER BY ` + order
+	rows, err := st.DB().Query(query)
 	if err != nil {
 		t.Fatalf("reference query: %v", err)
 	}
@@ -137,9 +143,8 @@ func referenceIDs(t *testing.T, st *store.Store, f store.Filter) []int64 {
 			favorite int
 			category string
 			size     int64
-			sourceID int64
 		)
-		if err := rows.Scan(&id, &title, &hidden, &favorite, &category, &size, &sourceID); err != nil {
+		if err := rows.Scan(&id, &title, &hidden, &favorite, &category, &size); err != nil {
 			t.Fatalf("reference scan: %v", err)
 		}
 		if hidden != 0 && !f.IncludeHidden {
@@ -152,9 +157,6 @@ func referenceIDs(t *testing.T, st *store.Store, f store.Filter) []int64 {
 			continue
 		}
 		if f.MaxSize > 0 && size > f.MaxSize {
-			continue
-		}
-		if f.SourceID > 0 && sourceID != f.SourceID {
 			continue
 		}
 		if len(f.Categories) > 0 && !categoryMatches(category, f.Categories) {

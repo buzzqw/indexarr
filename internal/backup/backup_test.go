@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"os"
 	"path/filepath"
@@ -117,17 +118,40 @@ func TestBackupRestoreSecretsWithVaultKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	st.SetSecretCodec(v)
 	const (
-		secretURL  = "https://tracker.example/rss/0123456789abcdef0123456789abcdef"
 		secretKey  = "restore-api-key-secret"
 		secretPass = "restore-password-secret"
 	)
-	if _, err := st.CreateSource(ctx, store.Source{
-		Name: "restored", Kind: "rss", URL: secretURL, APIKey: secretKey,
-		Password: secretPass, Enabled: true,
+	if err := st.UpsertDefinition(ctx, store.Definition{
+		ID: "backup-def", SchemaVersion: 1, Family: "torznab", State: "verificata",
+		Origin: "local", Author: "test", Body: "schema: 1\nconnector: torznab\n", Hash: strings.Repeat("a", 64),
 	}); err != nil {
-		t.Fatalf("CreateSource: %v", err)
+		t.Fatalf("UpsertDefinition: %v", err)
+	}
+	indexerID, err := st.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "backup-def", Protocol: "torrent", Slug: "restored",
+		Name: "restored", Enabled: true, ConfigJSON: `{"url":"https://tracker.example/"}`,
+	})
+	if err != nil {
+		t.Fatalf("CreateIndexer: %v", err)
+	}
+	for _, secret := range []struct{ key, value string }{
+		{"api_key", secretKey}, {"password", secretPass},
+	} {
+		blob, err := v.SealString(secret.value)
+		if err != nil {
+			t.Fatalf("SealString: %v", err)
+		}
+		raw, err := base64.StdEncoding.DecodeString(blob)
+		if err != nil {
+			t.Fatalf("decode sealed value: %v", err)
+		}
+		if err := st.PutSecret(ctx, store.Secret{
+			IndexerID: indexerID, Key: secret.key,
+			Nonce: raw[:12], Ciphertext: raw[12:],
+		}); err != nil {
+			t.Fatalf("PutSecret: %v", err)
+		}
 	}
 	info, err := Create(ctx, st, sourceDB)
 	if err != nil {
@@ -140,7 +164,7 @@ func TestBackupRestoreSecretsWithVaultKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, secret := range map[string]string{
-		"api key": secretKey, "password": secretPass, "url path": "0123456789abcdef0123456789abcdef",
+		"api key": secretKey, "password": secretPass,
 	} {
 		if strings.Contains(string(raw), secret) {
 			t.Errorf("backup file contains the plaintext %s", name)
@@ -181,18 +205,17 @@ func TestBackupRestoreSecretsWithVaultKey(t *testing.T) {
 			t.Fatalf("open restored store: %v", err)
 		}
 		defer restored.Close()
-		restored.SetSecretCodec(v)
-		opened, err := restored.VerifySecretCodec(ctx)
-		if err != nil || opened == 0 {
-			t.Fatalf("VerifySecretCodec = %d, %v; want a positive count", opened, err)
-		}
-		sources, err := restored.ListSources(ctx)
+		secrets, err := restored.ListSecrets(ctx, indexerID)
 		if err != nil {
-			t.Fatalf("ListSources: %v", err)
+			t.Fatalf("ListSecrets: %v", err)
 		}
-		if len(sources) != 1 || sources[0].URL != secretURL ||
-			sources[0].APIKey != secretKey || sources[0].Password != secretPass {
-			t.Fatal("restored source secrets are not readable with the original key")
+		if len(secrets) != 2 {
+			t.Fatalf("restored secrets = %d, want 2", len(secrets))
+		}
+		for _, secret := range secrets {
+			if _, err := v.Open(secret.Nonce, secret.Ciphertext); err != nil {
+				t.Fatal("restored secret is not readable with the original key")
+			}
 		}
 	})
 
@@ -214,14 +237,15 @@ func TestBackupRestoreSecretsWithVaultKey(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		restored.SetSecretCodec(wrong)
-		if _, err := restored.VerifySecretCodec(ctx); err == nil {
-			t.Fatal("VerifySecretCodec accepted the wrong key")
-		} else if strings.Contains(err.Error(), secretKey) || strings.Contains(err.Error(), secretPass) {
-			t.Fatal("verification error leaks a secret value")
+		secrets, err := restored.ListSecrets(ctx, indexerID)
+		if err != nil {
+			t.Fatalf("ListSecrets: %v", err)
 		}
-		if _, err := restored.GetSource(ctx, 1); err == nil {
-			t.Fatal("GetSource decrypted a secret with the wrong key")
+		if len(secrets) == 0 {
+			t.Fatal("restored database has no secrets")
+		}
+		if _, err := wrong.Open(secrets[0].Nonce, secrets[0].Ciphertext); err == nil {
+			t.Fatal("wrong key opened a sealed secret")
 		}
 	})
 }

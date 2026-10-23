@@ -18,8 +18,8 @@ import (
 // scraping the startup log.
 const DefaultAPIKey = "bench0000000000000000000000000000000000000000000000000000000000"
 
-// trackers are the synthetic legacy sources every seeded release belongs to.
-// Ten sources make the source filter selective enough to be realistic.
+// trackers are the synthetic native indexers every seeded release belongs to.
+// Ten indexers make the provenance filter selective enough to be realistic.
 var trackers = []string{
 	"alpha-tracker", "beta-tracker", "gamma-tracker", "delta-tracker",
 	"epsilon-tracker", "zeta-tracker", "eta-tracker", "theta-tracker",
@@ -65,14 +65,14 @@ func Seed(ctx context.Context, st *store.Store, opts Options) error {
 		}
 	}
 
-	sourceIDs, err := insertSources(ctx, st)
+	indexerIDs, err := insertIndexers(ctx, st)
 	if err != nil {
 		return err
 	}
-	if err := insertReleases(ctx, st, opts, sourceIDs); err != nil {
+	if err := insertReleases(ctx, st, opts, indexerIDs); err != nil {
 		return err
 	}
-	if err := insertProvenance(ctx, st); err != nil {
+	if err := insertProvenance(ctx, st, indexerIDs); err != nil {
 		return err
 	}
 	_, _ = st.DB().ExecContext(ctx, "ANALYZE")
@@ -90,33 +90,43 @@ func SeedFile(ctx context.Context, path string, opts Options) error {
 	return Seed(ctx, st, opts)
 }
 
-func insertSources(ctx context.Context, st *store.Store) ([]int64, error) {
+func insertIndexers(ctx context.Context, st *store.Store) ([]int64, error) {
+	if _, err := st.DB().ExecContext(ctx, `
+		INSERT INTO definitions(id, schema_version, family, state, origin, author, body, hash, updated_at)
+		VALUES('bench-def', 1, 'torznab', 'stabile', 'local', 'bench', 'schema: 1
+meta:
+  id: bench-def
+  name: Bench
+  type: private
+  protocol: torrent
+  urls: [http://bench.test/]
+', 'bench', 0)
+		ON CONFLICT(id) DO NOTHING`); err != nil {
+		return nil, fmt.Errorf("seed definition: %w", err)
+	}
 	ids := make([]int64, 0, len(trackers))
 	for _, name := range trackers {
-		res, err := st.DB().ExecContext(ctx,
-			`INSERT INTO sources(name, kind, manager, url, enabled)
-			 VALUES(?, 'torznab', 'auto', ?, 1)`,
-			name, fmt.Sprintf("http://%s.test/api", name))
+		slug := strings.ReplaceAll(name, " ", "-")
+		res, err := st.DB().ExecContext(ctx, `
+			INSERT INTO indexers(definition_id, protocol, slug, name, enabled, created_at, updated_at)
+			VALUES('bench-def', 'torrent', ?, ?, 1, 0, 0)
+			ON CONFLICT(slug) DO NOTHING`, slug, name)
 		if err != nil {
-			// A re-run on an existing database keeps the source already there.
-			var id int64
-			if scanErr := st.DB().QueryRowContext(ctx,
-				`SELECT id FROM sources WHERE name = ?`, name).Scan(&id); scanErr != nil {
-				return nil, fmt.Errorf("insert source %s: %w", name, err)
-			}
-			ids = append(ids, id)
-			continue
+			return nil, fmt.Errorf("insert indexer %s: %w", name, err)
 		}
-		id, err := res.LastInsertId()
-		if err != nil {
-			return nil, fmt.Errorf("source id %s: %w", name, err)
+		id, _ := res.LastInsertId()
+		if id == 0 {
+			if err := st.DB().QueryRowContext(ctx,
+				`SELECT id FROM indexers WHERE slug = ?`, slug).Scan(&id); err != nil {
+				return nil, fmt.Errorf("indexer id %s: %w", name, err)
+			}
 		}
 		ids = append(ids, id)
 	}
 	return ids, nil
 }
 
-func insertReleases(ctx context.Context, st *store.Store, opts Options, sourceIDs []int64) error {
+func insertReleases(ctx context.Context, st *store.Store, opts Options, indexerIDs []int64) error {
 	tx, err := st.DB().BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -125,10 +135,10 @@ func insertReleases(ctx context.Context, st *store.Store, opts Options, sourceID
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO releases(
 			dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title, search_title,
-			size, seeders, leechers, category, published_at, source_id, source_name,
+			size, seeders, leechers, category, published_at,
 			guid, magnet, torrent, torrent_size, torrent_fetched_at, first_seen_at,
 			last_seen_at, times_seen, hidden, protocol)
-		VALUES(?, ?, '', '', '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'torrent')`)
+		VALUES(?, ?, '', '', '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 'torrent')`)
 	if err != nil {
 		return err
 	}
@@ -138,9 +148,6 @@ func insertReleases(ctx context.Context, st *store.Store, opts Options, sourceID
 	for i := 0; i < opts.Releases; i++ {
 		title := releaseTitle(i)
 		hash := fmt.Sprintf("%040x", i+1)
-		sourceIdx := i % len(sourceIDs)
-		sourceID := sourceIDs[sourceIdx]
-		sourceName := trackers[sourceIdx]
 		published := now.Add(-time.Duration(i) * 90 * time.Second)
 		size := int64(300_000_000 + (i%997)*7_000_000)
 		seeders := int64(i % 500)
@@ -161,7 +168,7 @@ func insertReleases(ctx context.Context, st *store.Store, opts Options, sourceID
 		}
 		if _, err := stmt.ExecContext(ctx,
 			fmt.Sprintf("bench-%d", i), hash, title, textutil.NormalizeTitle(title),
-			size, seeders, leechers, category, published.Unix(), sourceID, sourceName,
+			size, seeders, leechers, category, published.Unix(),
 			hash, magnet, torrent, torrentSize, published.Unix(),
 			published.Unix(), published.Unix(), hidden); err != nil {
 			return fmt.Errorf("seed release %d: %w", i, err)
@@ -175,30 +182,7 @@ func insertReleases(ctx context.Context, st *store.Store, opts Options, sourceID
 
 // insertProvenance gives the first releases one to three indexer rows, which is
 // what a multi-indexer installation looks like.
-func insertProvenance(ctx context.Context, st *store.Store) error {
-	if _, err := st.DB().ExecContext(ctx, `
-		INSERT INTO definitions(id, schema_version, family, state, origin, author, body, hash, updated_at)
-		VALUES('bench-def', 1, 'torznab', 'stabile', 'local', 'bench', 'id: bench-def
-name: bench', 'bench', 0)
-		ON CONFLICT(id) DO NOTHING`); err != nil {
-		return fmt.Errorf("seed definition: %w", err)
-	}
-	indexerIDs := make([]int64, 0, 3)
-	for i, name := range []string{"Alpha Tracker", "Beta Tracker", "Gamma Tracker"} {
-		slug := fmt.Sprintf("bench-indexer-%d", i)
-		if _, err := st.DB().ExecContext(ctx, `
-			INSERT INTO indexers(definition_id, protocol, slug, name, enabled, created_at, updated_at)
-			VALUES('bench-def', 'torrent', ?, ?, 1, 0, 0)
-			ON CONFLICT(slug) DO NOTHING`, slug, name); err != nil {
-			return fmt.Errorf("seed indexer %s: %w", slug, err)
-		}
-		var id int64
-		if err := st.DB().QueryRowContext(ctx,
-			`SELECT id FROM indexers WHERE slug = ?`, slug).Scan(&id); err != nil {
-			return fmt.Errorf("indexer id %s: %w", slug, err)
-		}
-		indexerIDs = append(indexerIDs, id)
-	}
+func insertProvenance(ctx context.Context, st *store.Store, indexerIDs []int64) error {
 	for wanted, indexerID := range indexerIDs {
 		if _, err := st.DB().ExecContext(ctx, `
 			INSERT OR IGNORE INTO release_sources(

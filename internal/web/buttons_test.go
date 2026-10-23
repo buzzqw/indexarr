@@ -58,14 +58,11 @@ func TestFlareSolverrTestButtonEmptyURL(t *testing.T) {
 	}
 }
 
-func TestTestAllSourcesWithoutSources(t *testing.T) {
+func TestTestAllIndexersWithoutScheduler(t *testing.T) {
 	env := newTestEnv(t)
-	token, cookie := csrfFrom(t, env.handler, "/indexers?tab=legacy")
-	recorder := postForm(t, env.handler, "/sources/test-all", url.Values{"csrf": {token}}, cookie)
+	token, cookie := csrfFrom(t, env.handler, "/indexers")
+	recorder := postForm(t, env.handler, "/indexers/test-all", url.Values{"csrf": {token}}, cookie)
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d", recorder.Code)
-	}
-	if location := recorder.Header().Get("Location"); !strings.Contains(location, "No+enabled+sources") {
-		t.Errorf("location = %q", location)
 	}
 }

@@ -28,7 +28,6 @@ import (
 	"github.com/buzzqw/indexarr/internal/family"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
-	"github.com/buzzqw/indexarr/internal/ingest"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/store"
@@ -124,9 +123,6 @@ func main() {
 	if settings, err := st.LoadSettings(startupCtx); err == nil && settings.LogLevel != "" {
 		levelVar.Set(parseLevel(settings.LogLevel))
 	}
-	if interrupted, err := st.FinishInterruptedRuns(startupCtx); err == nil && interrupted > 0 {
-		logger.Warn("marked interrupted runs", "count", interrupted)
-	}
 	key, created, err := st.EnsureAPIKey(startupCtx)
 	if err != nil {
 		startupCancel()
@@ -135,40 +131,16 @@ func main() {
 	if created {
 		logger.Info("generated a Torznab API key", "apikey", key)
 	}
-	if secretVault != nil {
-		st.SetSecretCodec(vaultCodec{secretVault})
-		canSeal := true
-		if restored {
-			opened, verifyErr := verifyRestoredSecrets(startupCtx, st, secretVault)
-			switch {
-			case verifyErr != nil:
-				// Do not seal plaintext rows with a key that cannot open the
-				// secrets already in the restored database: that would mix two
-				// keys in one file.
-				canSeal = false
-				logger.Error("restored database: the current vault key does not open the stored secrets", "error", verifyErr)
-			case opened == 0:
-				logger.Info("restored database: no sealed secrets to verify")
-			default:
-				logger.Info("restored database: vault key opens the stored secrets", "secrets", opened)
-			}
+	if secretVault != nil && restored {
+		opened, verifyErr := verifyRestoredSecrets(startupCtx, st, secretVault)
+		switch {
+		case verifyErr != nil:
+			logger.Error("restored database: the current vault key does not open the stored secrets", "error", verifyErr)
+		case opened == 0:
+			logger.Info("restored database: no sealed secrets to verify")
+		default:
+			logger.Info("restored database: vault key opens the stored secrets", "secrets", opened)
 		}
-		if canSeal {
-			if sealed, err := st.SealLegacySecrets(startupCtx); err != nil {
-				logger.Warn("cannot seal legacy source secrets", "error", err)
-			} else if sealed > 0 {
-				logger.Info("sealed legacy source secrets", "count", sealed)
-			}
-			// A sealed URL can only be copied into the legacy bridge once the
-			// vault is available, so retry the idempotent backfill after start-up.
-			if bridged, err := st.BackfillLegacySources(startupCtx); err != nil {
-				logger.Warn("cannot bridge sources after unlocking the vault", "error", err)
-			} else if bridged > 0 {
-				logger.Info("bridged legacy sources", "count", bridged)
-			}
-		}
-	} else if restored {
-		logger.Warn("restored database: no vault key available, sealed secrets are not readable")
 	}
 	startupCancel()
 
@@ -304,33 +276,12 @@ func main() {
 		adminHandler = adminServer.Handler()
 	}
 
-	engine := ingest.New(st, logger)
-	// The legacy path keeps its own base transport (no SSRF guard) so Jackett
-	// and Prowlarr on a LAN address remain reachable, but it shares the same
-	// per-host limiter and breaker as the native transport.
-	legacyTransport := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   10,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: time.Second,
-	}
-	engine.SetHTTPClient(&http.Client{
-		Transport: politeness.RoundTripper(legacyTransport),
-		// The per-run context is the real deadline; this is a safety net.
-		Timeout: 4 * time.Minute,
-	})
-	engine.Start(ctx)
-
 	httpServer := &http.Server{
 		Addr: cfg.Listen,
 		Handler: web.New(web.Config{
-			Store: st, Engine: engine, Logger: logger, Logs: logBuffer, Level: levelVar,
+			Store: st, Logger: logger, Logs: logBuffer, Level: levelVar,
 			Version: version, Started: time.Now(), Admin: adminHandler,
-			Native: indexerManager, Indexers: indexerService,
+			Native: indexerManager, Indexers: indexerService, Scheduler: nativeRunner,
 			DownloadResolver: downloadResolver,
 			Vault:            secretVault, Sync: syncService,
 			GrabGuard: grabGuard, GrabRecord: grabRecord,
@@ -361,7 +312,6 @@ func main() {
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		logger.Warn("HTTP shutdown", "error", err)
 	}
-	engine.Wait()
 	if nativeRunner != nil {
 		nativeRunner.Wait()
 	}
@@ -371,21 +321,10 @@ func main() {
 	logger.Info("stopped")
 }
 
-// vaultCodec adapts *vault.Vault to store.SecretCodec. The adapter lives here so
-// the SQLite layer never imports the vault package.
-type vaultCodec struct{ v *vault.Vault }
-
-func (c vaultCodec) SealString(plaintext string) (string, error) { return c.v.SealString(plaintext) }
-func (c vaultCodec) OpenString(blob string) (string, error)      { return c.v.OpenString(blob) }
-
 // verifyRestoredSecrets confirms that the current key opens every sealed secret
-// in a restored database. It checks the sealed source fields first and then the
-// native indexer secrets. It never returns or logs plaintext.
+// in a restored database. It never returns or logs plaintext.
 func verifyRestoredSecrets(ctx context.Context, st *store.Store, v *vault.Vault) (int, error) {
-	opened, err := st.VerifySecretCodec(ctx)
-	if err != nil {
-		return opened, err
-	}
+	opened := 0
 	indexers, err := st.ListIndexers(ctx)
 	if err != nil {
 		return opened, err

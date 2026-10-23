@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -19,7 +20,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	for _, metric := range []string{
 		"indexarr_up 1",
 		"indexarr_releases ",
-		"indexarr_sources ",
+		"indexarr_indexers ",
 		"indexarr_blocklist_rules ",
 		"indexarr_uptime_seconds ",
 	} {
@@ -35,20 +36,23 @@ func TestMetricsEndpoint(t *testing.T) {
 func TestRunDetail(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := context.Background()
-	sourceID, err := env.store.CreateSource(ctx, store.Source{
-		Name: "Run source", Kind: "torznab", Manager: "auto",
-		URL: "http://run.example/api", Enabled: true,
+	if err := env.store.UpsertDefinition(ctx, store.Definition{
+		ID: "run-def", SchemaVersion: 1, Family: "torznab", State: "verificata",
+		Origin: "local", Author: "test", Body: "schema: 1\nconnector: torznab\n", Hash: strings.Repeat("a", 64),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	indexerID, err := env.store.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "run-def", Protocol: "torrent", Slug: "run",
+		Name: "Run source", Enabled: true, ConfigJSON: `{}`,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	runID, started, err := env.store.BeginSourceRun(ctx, sourceID)
+	runID, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+		IndexerID: indexerID, Kind: "run", Status: "ok", Query: "show", StartedAt: time.Now(),
+	})
 	if err != nil {
-		t.Fatal(err)
-	}
-	source, _ := env.store.GetSource(ctx, sourceID)
-	if err := env.store.FinishSourceRun(ctx, runID, source, started,
-		store.RunResult{Seen: 5, New: 2, Blocked: 1}, nil); err != nil {
 		t.Fatal(err)
 	}
 	recorder := get(t, env.handler, "/runs/"+strconvI(runID))
@@ -56,7 +60,7 @@ func TestRunDetail(t *testing.T) {
 		t.Fatalf("status = %d", recorder.Code)
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"Run source", "Blocked"} {
+	for _, want := range []string{"Run source", "show", "ok"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("run page missing %q", want)
 		}

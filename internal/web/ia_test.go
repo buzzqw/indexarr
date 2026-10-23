@@ -30,8 +30,8 @@ func TestLegacyURLsRedirect(t *testing.T) {
 		tab      string
 		preserve map[string]string
 	}{
-		{"/sources", "legacy", nil},
-		{"/sources?msg=ciao", "legacy", map[string]string{"msg": "ciao"}},
+		{"/sources", "", nil},
+		{"/sources?msg=ciao", "", map[string]string{"msg": "ciao"}},
 		{"/runs", "runs", nil},
 		{"/runs?source=3&errors=1", "runs", map[string]string{"source": "3", "errors": "1"}},
 		{"/logs", "logs", nil},
@@ -44,11 +44,14 @@ func TestLegacyURLsRedirect(t *testing.T) {
 		}
 		parsed, values := locationQuery(t, recorder.Header().Get("Location"))
 		wantPath := "/activity"
-		if tc.tab == "legacy" {
+		if tc.tab == "" {
 			wantPath = "/indexers"
 		}
-		if parsed.Path != wantPath || values.Get("tab") != tc.tab {
-			t.Errorf("GET %s -> %s, want %s?tab=%s", tc.path, parsed, wantPath, tc.tab)
+		if parsed.Path != wantPath {
+			t.Errorf("GET %s -> %s, want %s", tc.path, parsed, wantPath)
+		}
+		if tc.tab != "" && values.Get("tab") != tc.tab {
+			t.Errorf("GET %s lost tab: got %q want %q", tc.path, values.Get("tab"), tc.tab)
 		}
 		for key, want := range tc.preserve {
 			if got := values.Get(key); got != want {
@@ -61,20 +64,23 @@ func TestLegacyURLsRedirect(t *testing.T) {
 func TestActivityTabsReuseRunsAndLogs(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := context.Background()
-	sourceID, err := env.store.CreateSource(ctx, store.Source{
-		Name: "Activity source", Kind: "torznab", Manager: "auto",
-		URL: "http://activity.example/api", Enabled: true,
+	if err := env.store.UpsertDefinition(ctx, store.Definition{
+		ID: "activity-def", SchemaVersion: 1, Family: "torznab", State: "verificata",
+		Origin: "local", Author: "test", Body: "schema: 1\nconnector: torznab\n", Hash: strings.Repeat("a", 64),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	indexerID, err := env.store.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "activity-def", Protocol: "torrent", Slug: "activity",
+		Name: "Activity source", Enabled: true, ConfigJSON: `{}`,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	runID, started, err := env.store.BeginSourceRun(ctx, sourceID)
+	runID, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+		IndexerID: indexerID, Kind: "run", Status: "ok", StartedAt: time.Now(),
+	})
 	if err != nil {
-		t.Fatal(err)
-	}
-	source, _ := env.store.GetSource(ctx, sourceID)
-	if err := env.store.FinishSourceRun(ctx, runID, source, started,
-		store.RunResult{Seen: 4, New: 1}, nil); err != nil {
 		t.Fatal(err)
 	}
 	env.logs.Add(logbuffer.Entry{Time: time.Now(), Level: slog.LevelInfo, Message: "activity log line"})
@@ -113,66 +119,34 @@ func TestActivityTabsReuseRunsAndLogs(t *testing.T) {
 	}
 }
 
-func TestUnifiedIndexersTabs(t *testing.T) {
+func TestUnifiedIndexersPage(t *testing.T) {
 	env := newTestEnv(t)
-	ctx := context.Background()
-	if _, err := env.store.CreateSource(ctx, store.Source{
-		Name: "Legacy Jackett", Kind: "torznab", Manager: "jackett",
-		URL: "http://jackett:9117", Enabled: true,
-	}); err != nil {
-		t.Fatal(err)
-	}
 
 	native := get(t, env.handler, "/indexers")
 	if native.Code != http.StatusOK {
 		t.Fatalf("GET /indexers = %d: %s", native.Code, native.Body.String())
 	}
 	nativeBody := native.Body.String()
-	for _, want := range []string{
-		"Native indexers use indexarr definitions and connectors",
-		"New native indexer",
-		"Native",
-		"Legacy bridge",
-		`class="tab active" href="/indexers?tab=native"`,
-	} {
+	for _, want := range []string{"New native indexer", "vault", "/indexers/export"} {
 		if !strings.Contains(nativeBody, want) {
-			t.Errorf("native tab missing %q", want)
+			t.Errorf("indexers page missing %q", want)
 		}
 	}
-	if strings.Contains(nativeBody, "Legacy Jackett") {
-		t.Error("the native tab rendered the legacy source list")
+	for _, unwanted := range []string{"Legacy bridge", "Add legacy source", "/sources"} {
+		if strings.Contains(nativeBody, unwanted) {
+			t.Errorf("indexers page still contains %q", unwanted)
+		}
 	}
 
 	legacy := get(t, env.handler, "/indexers?tab=legacy")
-	if legacy.Code != http.StatusOK {
-		t.Fatalf("GET /indexers?tab=legacy = %d: %s", legacy.Code, legacy.Body.String())
-	}
-	legacyBody := legacy.Body.String()
-	for _, want := range []string{
-		"Legacy Jackett",
-		"Add legacy source",
-		`class="tab active" href="/indexers?tab=legacy"`,
-	} {
-		if !strings.Contains(legacyBody, want) {
-			t.Errorf("legacy tab missing %q", want)
-		}
-	}
-	if strings.Contains(legacyBody, "New native indexer") {
-		t.Error("the legacy tab still shows the native CTA")
+	if legacy.Code != http.StatusFound || legacy.Header().Get("Location") != "/indexers" {
+		t.Fatalf("GET /indexers?tab=legacy = %d %q", legacy.Code, legacy.Header().Get("Location"))
 	}
 
-	sources, err := env.store.ListSources(ctx)
-	if err != nil || len(sources) != 1 {
-		t.Fatalf("sources = %#v, %v", sources, err)
-	}
-	for _, path := range []string{
-		"/sources/new",
-		"/sources/bulk",
-		"/sources/" + strconvI(sources[0].ID) + "/edit",
-	} {
+	for _, path := range []string{"/sources/new", "/sources/bulk", "/sources/1/edit"} {
 		recorder := get(t, env.handler, path)
-		if recorder.Code != http.StatusOK {
-			t.Errorf("GET %s = %d: %s", path, recorder.Code, recorder.Body.String())
+		if recorder.Code != http.StatusFound || recorder.Header().Get("Location") != "/indexers" {
+			t.Errorf("GET %s = %d %q, want 302 /indexers", path, recorder.Code, recorder.Header().Get("Location"))
 		}
 	}
 }
@@ -185,10 +159,9 @@ func TestDashboardQuickActions(t *testing.T) {
 	}
 	body := recorder.Body.String()
 	for _, want := range []string{
-		"Configuration", "Status", "Native indexers", "Legacy sources",
+		"Configuration", "Status", "Indexers",
 		"Applications", "Errors (24h)", "Database",
 		"New native indexer", `href="/indexers/new"`,
-		"Add legacy source", `href="/sources/new"`,
 		"Import from Prowlarr/Jackett", `href="/import"`,
 		"Connect application", `href="/applications/new"`,
 	} {
@@ -252,26 +225,27 @@ func TestNavigationEnglishGroupedAndNoSourcesDuplicate(t *testing.T) {
 	}
 }
 
-func TestOldPOSTRoutesStillWork(t *testing.T) {
-	env := newTestEnv(t)
-	ctx := context.Background()
-
-	token, cookie := csrfFrom(t, env.handler, "/indexers?tab=legacy")
-	created := postForm(t, env.handler, "/sources/quick", url.Values{
+func TestQuickAddCreatesNativeIndexer(t *testing.T) {
+	env := newNativeEnv(t)
+	token, cookie := csrfFrom(t, env.handler, "/indexers")
+	created := postForm(t, env.handler, "/indexers/quick", url.Values{
 		"csrf": {token},
-		"url":  {"https://legacy.example/feed.xml"},
-		"kind": {"rss"},
-		"name": {"Legacy POST feed"},
+		"url":  {"https://feed.example/feed.xml"},
+		"name": {"POST feed"},
 	}, cookie)
 	if created.Code != http.StatusSeeOther {
-		t.Fatalf("POST /sources/quick = %d: %s", created.Code, created.Body.String())
+		t.Fatalf("POST /indexers/quick = %d: %s", created.Code, created.Body.String())
 	}
-	sources, err := env.store.ListSources(ctx)
-	if err != nil || len(sources) != 1 {
-		t.Fatalf("sources = %#v, %v", sources, err)
+	indexers, err := env.store.ListIndexers(context.Background())
+	if err != nil || len(indexers) != 1 {
+		t.Fatalf("indexers = %#v, %v; location=%q", indexers, err, created.Header().Get("Location"))
 	}
+}
 
-	token, cookie = csrfFrom(t, env.handler, "/activity?tab=logs")
+func TestModernPOSTRoutesStillWork(t *testing.T) {
+	env := newTestEnv(t)
+
+	token, cookie := csrfFrom(t, env.handler, "/activity?tab=logs")
 	level := postForm(t, env.handler, "/logs/level", url.Values{
 		"csrf":          {token},
 		"runtime_level": {"debug"},

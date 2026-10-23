@@ -31,7 +31,7 @@ func TestMigration2AddsPayloadColumnsToLegacyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open seeded: %v", err)
 	}
-	release := payloadTestRelease("legacy-release", "torrent")
+	release := payloadTestRelease("native-release", "torrent")
 	if _, err := seeded.UpsertRelease(ctx, release); err != nil {
 		t.Fatalf("UpsertRelease: %v", err)
 	}
@@ -70,8 +70,8 @@ func TestMigration2AddsPayloadColumnsToLegacyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2UsenetPayloadVersion {
-		t.Fatalf("schema version = %d, want %d", version, indexarr2UsenetPayloadVersion)
+	if version != indexarr2DropLegacyVersion {
+		t.Fatalf("schema version = %d, want %d", version, indexarr2DropLegacyVersion)
 	}
 	for _, column := range []string{"protocol", "payload", "payload_type"} {
 		exists, err := migrated.columnExists("releases", column)

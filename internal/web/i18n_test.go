@@ -147,7 +147,7 @@ func TestItalianCatalogOnOwnedPages(t *testing.T) {
 		path string
 		want []string
 	}{
-		{"/indexers?lang=it", []string{"Indexer", "Nativi", "Ponte legacy", "Nuovo indexer nativo"}},
+		{"/indexers?lang=it", []string{"Indexer", "Nuovo indexer nativo"}},
 		{"/definitions?lang=it", []string{"Definizioni", "Catalogo built-in", "Azione"}},
 		{"/applications?lang=it", []string{"Applicazioni", "Livelli di sincronizzazione", "Sincronizza tutte"}},
 		{"/import?lang=it", []string{"Importa", "Anteprima, nessuna modifica", "Genera piano da Prowlarr"}},
@@ -186,10 +186,10 @@ func TestUnknownLanguageRouteRedirectsHome(t *testing.T) {
 
 func TestSidebarActiveSection(t *testing.T) {
 	env := newTestEnv(t)
-	body := get(t, env.handler, "/indexers?tab=legacy").Body.String()
+	body := get(t, env.handler, "/indexers").Body.String()
 	aside := body[strings.Index(body, `<aside class="sidebar"`):strings.Index(body, "</aside>")]
 	if !strings.Contains(aside, `href="/indexers" class="active" aria-current="page"`) {
-		t.Error("Indexers is not active on /indexers?tab=legacy")
+		t.Error("Indexers is not active on /indexers")
 	}
 	if strings.Count(aside, `href="/indexers"`) != 1 {
 		t.Error("the sidebar lists Indexers more than once")

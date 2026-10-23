@@ -1,19 +1,12 @@
 package store
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
-
-	"gopkg.in/yaml.v3"
 )
 
 // Definition is a native or catalog indexer definition stored as YAML text.
@@ -31,21 +24,20 @@ type Definition struct {
 
 // Indexer is one configured instance of a definition.
 type Indexer struct {
-	ID             int64
-	DefinitionID   string
-	Protocol       string
-	Slug           string
-	Name           string
-	Enabled        bool
-	Priority       int
-	ConfigJSON     string
-	Tags           string
-	ProxyID        *int64
-	QueryLimit     int
-	GrabLimit      int
-	LegacySourceID int64
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID           int64
+	DefinitionID string
+	Protocol     string
+	Slug         string
+	Name         string
+	Enabled      bool
+	Priority     int
+	ConfigJSON   string
+	Tags         string
+	ProxyID      *int64
+	QueryLimit   int
+	GrabLimit    int
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // Secret is one vault-sealed value belonging to an indexer.
@@ -133,7 +125,7 @@ const definitionColumns = `id, schema_version, family, state, origin, author,
 	body, hash, updated_at`
 
 const indexerColumns = `id, definition_id, protocol, slug, name, enabled, priority,
-	config_json, tags, proxy_id, query_limit, grab_limit, legacy_source_id,
+	config_json, tags, proxy_id, query_limit, grab_limit,
 	created_at, updated_at`
 
 // UpsertDefinition inserts or replaces a definition by id.
@@ -239,20 +231,16 @@ func createIndexer(ctx context.Context, db dbExecer, in Indexer) (int64, error) 
 	if in.ProxyID != nil {
 		proxy = *in.ProxyID
 	}
-	var legacy any
-	if in.LegacySourceID > 0 {
-		legacy = in.LegacySourceID
-	}
 	var id int64
 	err := db.QueryRowContext(ctx, `
 		INSERT INTO indexers(definition_id, protocol, slug, name, enabled, priority,
-			config_json, proxy_id, tags, query_limit, grab_limit, legacy_source_id,
+			config_json, proxy_id, tags, query_limit, grab_limit,
 			created_at, updated_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
 		in.DefinitionID, in.Protocol, strings.TrimSpace(in.Slug), strings.TrimSpace(in.Name),
 		boolInt(in.Enabled), in.Priority, in.ConfigJSON, proxy, in.Tags,
-		in.QueryLimit, in.GrabLimit, legacy, created.Unix(), updated.Unix()).Scan(&id)
+		in.QueryLimit, in.GrabLimit, created.Unix(), updated.Unix()).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create indexer: %w", err)
 	}
@@ -307,20 +295,17 @@ func (s *Store) ListIndexers(ctx context.Context) ([]Indexer, error) {
 func scanIndexer(scanner interface{ Scan(...any) error }) (Indexer, error) {
 	var out Indexer
 	var enabled int
-	var proxy, legacy sql.NullInt64
+	var proxy sql.NullInt64
 	var created, updated int64
 	if err := scanner.Scan(&out.ID, &out.DefinitionID, &out.Protocol, &out.Slug,
 		&out.Name, &enabled, &out.Priority, &out.ConfigJSON, &out.Tags, &proxy,
-		&out.QueryLimit, &out.GrabLimit, &legacy, &created, &updated); err != nil {
+		&out.QueryLimit, &out.GrabLimit, &created, &updated); err != nil {
 		return Indexer{}, err
 	}
 	out.Enabled = enabled != 0
 	if proxy.Valid {
 		id := proxy.Int64
 		out.ProxyID = &id
-	}
-	if legacy.Valid {
-		out.LegacySourceID = legacy.Int64
 	}
 	out.CreatedAt = unixTime(created)
 	out.UpdatedAt = unixTime(updated)
@@ -339,18 +324,14 @@ func (s *Store) UpdateIndexer(ctx context.Context, in Indexer) error {
 	if in.ProxyID != nil {
 		proxy = *in.ProxyID
 	}
-	var legacy any
-	if in.LegacySourceID > 0 {
-		legacy = in.LegacySourceID
-	}
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE indexers SET definition_id = ?, protocol = ?, slug = ?, name = ?,
 			enabled = ?, priority = ?, config_json = ?, proxy_id = ?, tags = ?,
-			query_limit = ?, grab_limit = ?, legacy_source_id = ?, updated_at = ?
+			query_limit = ?, grab_limit = ?, updated_at = ?
 		WHERE id = ?`,
 		in.DefinitionID, in.Protocol, strings.TrimSpace(in.Slug), strings.TrimSpace(in.Name),
 		boolInt(in.Enabled), in.Priority, in.ConfigJSON, proxy, in.Tags,
-		in.QueryLimit, in.GrabLimit, legacy, time.Now().Unix(), in.ID)
+		in.QueryLimit, in.GrabLimit, time.Now().Unix(), in.ID)
 	if err != nil {
 		return fmt.Errorf("update indexer %d: %w", in.ID, err)
 	}
@@ -886,236 +867,4 @@ func (s *Store) DeleteProxy(ctx context.Context, id int64) error {
 		return fmt.Errorf("delete proxy %d: %w", id, err)
 	}
 	return nil
-}
-
-// BackfillLegacySources creates one definition and one indexer for every row
-// in sources that does not have a bridged indexer yet. It never copies
-// api_key, username or password. The operation is idempotent and runs inside
-// a single transaction.
-func (s *Store) BackfillLegacySources(ctx context.Context) (int, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("begin source backfill: %w", err)
-	}
-	defer tx.Rollback()
-
-	rows, err := tx.QueryContext(ctx, `
-		SELECT id, name, kind, manager, url, categories, default_category, query,
-			enabled, interval_seconds
-		FROM sources ORDER BY id`)
-	if err != nil {
-		return 0, fmt.Errorf("list sources for backfill: %w", err)
-	}
-	type legacySource struct {
-		id              int64
-		name            string
-		kind            string
-		manager         string
-		url             string
-		categories      string
-		defaultCategory string
-		query           string
-		enabled         bool
-		intervalSeconds int
-	}
-	var pending []legacySource
-	for rows.Next() {
-		var src legacySource
-		var enabled int
-		if err := rows.Scan(&src.id, &src.name, &src.kind, &src.manager, &src.url,
-			&src.categories, &src.defaultCategory, &src.query, &enabled,
-			&src.intervalSeconds); err != nil {
-			rows.Close()
-			return 0, fmt.Errorf("scan source for backfill: %w", err)
-		}
-		src.enabled = enabled != 0
-		if strings.HasPrefix(src.url, sealedPrefix) {
-			// Legacy source URLs are sealed at rest. The numbered migration
-			// runs before a codec is installed, so a sealed row can only be
-			// bridged after start-up has resolved the vault; deferring it is
-			// safer than copying ciphertext into a definition.
-			opened, openErr := s.openField(src.url)
-			if openErr != nil {
-				continue
-			}
-			src.url = opened
-		}
-		pending = append(pending, src)
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return 0, fmt.Errorf("list sources for backfill: %w", err)
-	}
-	rows.Close()
-
-	created := 0
-	for _, src := range pending {
-		var bridged int
-		if err := tx.QueryRowContext(ctx,
-			`SELECT COUNT(*) FROM indexers WHERE legacy_source_id = ?`, src.id).Scan(&bridged); err != nil {
-			return 0, fmt.Errorf("check backfill for source %d: %w", src.id, err)
-		}
-		// The legacy definition is created in the same transaction as the
-		// indexer. If it exists while the indexer does not, the bridge was
-		// migrated and then deliberately removed: do not recreate it on the
-		// next start.
-		var migrated int
-		if err := tx.QueryRowContext(ctx,
-			`SELECT COUNT(*) FROM definitions WHERE id = ?`, legacyDefinitionID(src.id)).Scan(&migrated); err != nil {
-			return 0, fmt.Errorf("check legacy definition for source %d: %w", src.id, err)
-		}
-		if bridged > 0 || migrated > 0 {
-			continue
-		}
-		body, err := legacyDefinitionBody(src.id, src.name, src.kind, src.url)
-		if err != nil {
-			return 0, fmt.Errorf("render legacy definition %d: %w", src.id, err)
-		}
-		sum := sha256.Sum256(body)
-		now := time.Now()
-		def := Definition{
-			ID:            legacyDefinitionID(src.id),
-			SchemaVersion: 1,
-			Family:        src.kind,
-			State:         "verificata",
-			Origin:        "local",
-			Author:        "migration",
-			Body:          string(body),
-			Hash:          hex.EncodeToString(sum[:]),
-			UpdatedAt:     now,
-		}
-		if err := upsertDefinition(ctx, tx, def); err != nil {
-			return 0, fmt.Errorf("create legacy definition %d: %w", src.id, err)
-		}
-		slug, err := uniqueLegacySlug(ctx, tx, legacySlug(src.name), src.id)
-		if err != nil {
-			return 0, err
-		}
-		categories := Source{Categories: src.categories}.CategoryIDs()
-		if categories == nil {
-			categories = []int{}
-		}
-		config, err := json.Marshal(struct {
-			Kind            string `json:"kind"`
-			Manager         string `json:"manager"`
-			URL             string `json:"url"`
-			Categories      []int  `json:"categories"`
-			DefaultCategory string `json:"default_category"`
-			Query           string `json:"query"`
-			IntervalSeconds int    `json:"interval_seconds"`
-		}{
-			Kind: src.kind, Manager: src.manager, URL: src.url,
-			Categories: categories, DefaultCategory: src.defaultCategory,
-			Query: src.query, IntervalSeconds: src.intervalSeconds,
-		})
-		if err != nil {
-			return 0, fmt.Errorf("encode legacy config %d: %w", src.id, err)
-		}
-		if _, err := createIndexer(ctx, tx, Indexer{
-			DefinitionID:   def.ID,
-			Protocol:       "torrent",
-			Slug:           slug,
-			Name:           src.name,
-			Enabled:        src.enabled,
-			Priority:       25,
-			ConfigJSON:     string(config),
-			Tags:           "",
-			LegacySourceID: src.id,
-			CreatedAt:      now,
-			UpdatedAt:      now,
-		}); err != nil {
-			return 0, fmt.Errorf("create legacy indexer %d: %w", src.id, err)
-		}
-		created++
-	}
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit source backfill: %w", err)
-	}
-	return created, nil
-}
-
-func legacyDefinitionID(sourceID int64) string {
-	return "legacy-" + strconv.FormatInt(sourceID, 10)
-}
-
-type legacyDefinitionYAML struct {
-	Schema    int        `yaml:"schema"`
-	Connector string     `yaml:"connector"`
-	Meta      legacyMeta `yaml:"meta"`
-}
-
-type legacyMeta struct {
-	ID       string   `yaml:"id"`
-	Name     string   `yaml:"name"`
-	Type     string   `yaml:"type"`
-	Protocol string   `yaml:"protocol"`
-	URLs     []string `yaml:"urls"`
-}
-
-func legacyDefinitionBody(sourceID int64, name, kind, url string) ([]byte, error) {
-	doc := legacyDefinitionYAML{
-		Schema:    1,
-		Connector: kind,
-		Meta: legacyMeta{
-			ID:       legacyDefinitionID(sourceID),
-			Name:     name,
-			Type:     "private",
-			Protocol: "torrent",
-			URLs:     []string{url},
-		},
-	}
-	var buf bytes.Buffer
-	enc := yaml.NewEncoder(&buf)
-	enc.SetIndent(2)
-	if err := enc.Encode(doc); err != nil {
-		return nil, err
-	}
-	if err := enc.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-// legacySlug lowercases a name and turns every run of non-ASCII-alphanumeric
-// characters into a single dash.
-func legacySlug(name string) string {
-	var b strings.Builder
-	dash := false
-	for _, r := range strings.ToLower(name) {
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
-			b.WriteRune(r)
-			dash = false
-		case b.Len() > 0 && !dash:
-			b.WriteByte('-')
-			dash = true
-		}
-	}
-	slug := strings.Trim(b.String(), "-")
-	if slug == "" {
-		slug = "indexer"
-	}
-	return slug
-}
-
-func uniqueLegacySlug(ctx context.Context, db dbExecer, base string, sourceID int64) (string, error) {
-	if base == "" {
-		base = "indexer"
-	}
-	candidate := base
-	for attempt := 0; ; attempt++ {
-		var exists int
-		if err := db.QueryRowContext(ctx,
-			`SELECT COUNT(*) FROM indexers WHERE slug = ?`, candidate).Scan(&exists); err != nil {
-			return "", fmt.Errorf("check slug %q: %w", candidate, err)
-		}
-		if exists == 0 {
-			return candidate, nil
-		}
-		if attempt == 0 {
-			candidate = base + "-" + strconv.FormatInt(sourceID, 10)
-			continue
-		}
-		candidate = fmt.Sprintf("%s-%d-%d", base, sourceID, attempt+1)
-	}
 }

@@ -173,7 +173,6 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 	}
 
 	var selection releaseSelection
-	var sqlSourceID int64
 	if aggregate {
 		filters := parseAggregateFilters(query)
 		selection, err = s.resolveAggregateSelection(r.Context(), filters)
@@ -194,12 +193,6 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 			return
 		}
 		selection = selectionForIndexer(indexer)
-		sqlSourceID = indexer.LegacySourceID
-	}
-	if !selection.all && sqlSourceID == 0 && len(selection.ids) == 1 && len(selection.names) == 0 {
-		for id := range selection.ids {
-			sqlSourceID = id
-		}
 	}
 
 	filter := store.Filter{
@@ -221,12 +214,10 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 		s.writeSearch(w, base, settings, apiKey, nil, 0, filter.Offset, nil)
 		return
 	}
-	if sqlSourceID > 0 {
-		filter.SourceID = sqlSourceID
-	} else if len(selection.ids) > 0 {
-		filter.SourceIDs = make([]int64, 0, len(selection.ids))
+	if len(selection.ids) > 0 {
+		filter.IndexerIDs = make([]int64, 0, len(selection.ids))
 		for id := range selection.ids {
-			filter.SourceIDs = append(filter.SourceIDs, id)
+			filter.IndexerIDs = append(filter.IndexerIDs, id)
 		}
 	}
 	releases, total, err := s.store.SearchReleases(r.Context(), filter)
@@ -235,7 +226,6 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 		writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
 		return
 	}
-	releases, total = applySelection(selection, sqlSourceID, releases, total)
 	if total == 0 && settings.TorznabLiveSearch && s.liveSearch != nil &&
 		strings.TrimSpace(filter.Query) != "" {
 		timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
@@ -255,7 +245,6 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 				writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
 				return
 			}
-			releases, total = applySelection(selection, sqlSourceID, releases, total)
 		}
 	}
 	// Provenance is fetched once for the whole page: writeItem never queries

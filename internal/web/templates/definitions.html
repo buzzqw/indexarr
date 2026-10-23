@@ -23,7 +23,6 @@
     <h2>{{T "definitions.local"}} <span class="chip">{{len .LocalRows}}</span></h2>
     <span class="muted">{{T "definitions.localHint"}}</span>
   </div>
-  {{if .LegacyCount}}<p class="muted">{{T "definitions.legacyNotice" .LegacyCount}} <a href="/indexers?tab=legacy">{{T "indexers.legacy"}}</a>.</p>{{end}}
   {{template "definition_table" .LocalRows}}
 </section>
 

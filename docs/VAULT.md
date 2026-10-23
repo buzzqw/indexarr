@@ -1,7 +1,7 @@
 # Vault e chiave maestra
 
 Il vault di indexarr cifra con AES-256-GCM i segreti degli indexer nativi e le
-credenziali delle sorgenti legacy (`api_key`, `password` e l'intero URL, che su
+credenziali degli indexer (`api_key`, `password` e gli URL che possono contenere
 alcuni tracker contiene la `rsskey`). La chiave maestra **non** sta nel database
 e **non** è inclusa nei backup.
 
@@ -32,7 +32,7 @@ esadecimali. La chiave non compare mai nei log, negli errori o nella UI.
 # Stampa la chiave risolta in base64 su stdout (l'avviso va su stderr).
 indexarr vault export-key -config /etc/indexarr/indexarr.json
 
-# Sposta il file legacy <db>.key in una directory fuori dai dati.
+# Sposta il vecchio file <db>.key in una directory fuori dai dati.
 indexarr vault move-key -config /etc/indexarr/indexarr.json -to /etc/indexarr/master.key
 ```
 
@@ -50,7 +50,7 @@ e chiave**.
 
 Dopo un restore, al primo avvio indexarr verifica che la chiave corrente apra
 almeno un segreto cifrato. Se la chiave è sbagliata lo scrive nel log con un
-errore esplicito e continua ad avviarsi: il percorso legacy resta disponibile,
+errore esplicito e continua ad avviarsi; gli indexer con segreti restano non leggibili,
 ma i segreti cifrati non sono leggibili. Il log non contiene mai il valore dei
 segreti.
 
@@ -72,16 +72,14 @@ Il volume dati contiene `indexarr.json` e il database, non la chiave. Chi copia
 il volume senza il secret ottiene un database i cui segreti non sono
 decifrabili.
 
-## Segreti delle sorgenti legacy
+## Segreti degli indexer
 
-Con un vault disponibile, `CreateSource`/`UpdateSource` cifrano URL, API key e
-password con il prefisso versionato `vault:v1:`. All'avvio la migrazione
-`SealLegacySecrets` cifra una volta i valori ancora in chiaro; è idempotente.
-Senza chiave i valori restano in chiaro e il percorso legacy continua a
-funzionare: la cifratura non è un requisito per l'avvio.
+I segreti degli indexer vivono in `indexer_secrets`, cifrati con AES-256-GCM.
+`indexersvc` decide quali impostazioni sono segrete (`api_key`, `apikey`,
+`password`, `token`, `passkey`, `secret`, `cookie`) e non le scrive mai in
+`config_json`, nei log, negli export o nelle risposte API. Senza vault gli
+indexer che richiedono un segreto non possono essere creati o aggiornati; il
+resto dell'applicazione continua a funzionare.
 
-## Cosa non fa
-
-- Non protegge da un attaccante con accesso completo alla macchina.
-- Non ruota la chiave e non cifra il database: cifra i singoli campi sensibili.
-- Non include la chiave nei backup né nelle risposte HTTP.
+Il backup del database contiene i segreti cifrati ma non la chiave: per
+ripristinare su un'altra macchina serve la stessa chiave del vault.

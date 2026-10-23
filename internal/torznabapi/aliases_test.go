@@ -35,51 +35,30 @@ func seedDefinition(t *testing.T, st *store.Store, id, family, language string) 
 	}
 }
 
-func seedSource(t *testing.T, st *store.Store, name string) store.Source {
-	t.Helper()
-	id, err := st.CreateSource(context.Background(), store.Source{
-		Name:    name,
-		Kind:    "torznab",
-		Manager: "torznab",
-		URL:     "http://tracker.example/api",
-		Enabled: true,
-	})
-	if err != nil {
-		t.Fatalf("CreateSource(%s): %v", name, err)
-	}
-	source, err := st.GetSource(context.Background(), id)
-	if err != nil {
-		t.Fatalf("GetSource(%s): %v", name, err)
-	}
-	return source
-}
-
-func seedIndexer(t *testing.T, st *store.Store, definitionID, slug, name, tags, protocol string, enabled bool, legacySourceID int64) store.Indexer {
+func seedIndexer(t *testing.T, st *store.Store, definitionID, slug, name, tags, protocol string, enabled bool) store.Indexer {
 	t.Helper()
 	if protocol == "" {
 		protocol = "torrent"
 	}
 	id, err := st.CreateIndexer(context.Background(), store.Indexer{
-		DefinitionID:   definitionID,
-		Protocol:       protocol,
-		Slug:           slug,
-		Name:           name,
-		Enabled:        enabled,
-		Tags:           tags,
-		LegacySourceID: legacySourceID,
+		DefinitionID: definitionID,
+		Protocol:     protocol,
+		Slug:         slug,
+		Name:         name,
+		Enabled:      enabled,
+		Tags:         tags,
 	})
 	if err != nil {
 		t.Fatalf("CreateIndexer(%s): %v", slug, err)
 	}
-	indexer, err := st.GetIndexerBySlug(context.Background(), slug)
+	indexer, err := st.GetIndexer(context.Background(), id)
 	if err != nil {
-		t.Fatalf("GetIndexerBySlug(%s): %v", slug, err)
+		t.Fatalf("GetIndexer(%s): %v", slug, err)
 	}
-	_ = id
 	return indexer
 }
 
-func insertScopedRelease(t *testing.T, st *store.Store, index int, title string, source store.Source, withTorrent bool) int64 {
+func insertScopedRelease(t *testing.T, st *store.Store, index int, title string, indexer store.Indexer, withTorrent bool) int64 {
 	t.Helper()
 	hash := fmt.Sprintf("%040x", index+1)
 	release := store.Release{
@@ -92,8 +71,6 @@ func insertScopedRelease(t *testing.T, st *store.Store, index int, title string,
 		Leechers:    1,
 		Category:    "5040",
 		PublishedAt: time.Now().Add(-time.Hour),
-		SourceID:    source.ID,
-		SourceName:  source.Name,
 		Magnet:      "magnet:?xt=urn:btih:" + hash + "&dn=" + strings.ReplaceAll(title, " ", "+"),
 		FirstSeenAt: time.Now().Add(-time.Hour),
 		LastSeenAt:  time.Now(),
@@ -104,15 +81,20 @@ func insertScopedRelease(t *testing.T, st *store.Store, index int, title string,
 	if _, err := st.UpsertRelease(context.Background(), &release); err != nil {
 		t.Fatalf("UpsertRelease(%s): %v", title, err)
 	}
+	if err := st.RecordReleaseSource(context.Background(), store.ReleaseSource{
+		ReleaseID: release.ID, IndexerID: indexer.ID,
+		FirstSeenAt: release.FirstSeenAt, LastSeenAt: release.LastSeenAt,
+		Seeders: release.Seeders, Leechers: release.Leechers,
+	}); err != nil {
+		t.Fatalf("RecordReleaseSource(%s): %v", title, err)
+	}
 	return release.ID
 }
 
-// seedScopedIndexer creates a legacy source plus the matching indexer.
-func seedScopedIndexer(t *testing.T, st *store.Store, definitionID, slug, name string) (store.Source, store.Indexer) {
+// seedScopedIndexer creates one native indexer.
+func seedScopedIndexer(t *testing.T, st *store.Store, definitionID, slug, name string) store.Indexer {
 	t.Helper()
-	source := seedSource(t, st, name)
-	indexer := seedIndexer(t, st, definitionID, slug, name, "", "torrent", true, source.ID)
-	return source, indexer
+	return seedIndexer(t, st, definitionID, slug, name, "", "torrent", true)
 }
 
 func wantError(t *testing.T, recorder *httptest.ResponseRecorder, status, code int) {
@@ -128,7 +110,7 @@ func wantError(t *testing.T, recorder *httptest.ResponseRecorder, status, code i
 func TestJackettAliases(t *testing.T) {
 	api, st := newAPI(t)
 	seedDefinition(t, st, "alias-def", "torznab", "")
-	source, _ := seedScopedIndexer(t, st, "alias-def", "test-indexer", "Test Source")
+	source := seedScopedIndexer(t, st, "alias-def", "test-indexer", "Test Source")
 	id := insertScopedRelease(t, st, 0, "Alias Show 1080p", source, true)
 
 	searchPaths := []string{
@@ -199,8 +181,8 @@ func TestJackettAliases(t *testing.T) {
 func TestPerIndexerRouting(t *testing.T) {
 	api, st := newAPI(t)
 	seedDefinition(t, st, "routing-def", "torznab", "")
-	alpha, _ := seedScopedIndexer(t, st, "routing-def", "alpha", "Alpha")
-	beta, _ := seedScopedIndexer(t, st, "routing-def", "beta", "Beta")
+	alpha := seedScopedIndexer(t, st, "routing-def", "alpha", "Alpha")
+	beta := seedScopedIndexer(t, st, "routing-def", "beta", "Beta")
 	insertScopedRelease(t, st, 1, "Alpha Show 1080p", alpha, true)
 	insertScopedRelease(t, st, 2, "Beta Show 1080p", beta, true)
 
@@ -237,8 +219,7 @@ func TestPerIndexerRouting(t *testing.T) {
 
 	// An indexer without legacy_source_id still matches releases by source name.
 	seedDefinition(t, st, "name-def", "torznab", "")
-	named := seedSource(t, st, "Name Only")
-	seedIndexer(t, st, "name-def", "name-only", "Name Only", "", "torrent", true, 0)
+	named := seedIndexer(t, st, "name-def", "name-only", "Name Only", "", "torrent", true)
 	insertScopedRelease(t, st, 3, "Name Only Show", named, true)
 	byNameOnly := do(t, api, "/torznab/name-only/api?t=search&apikey=secret")
 	if byNameOnly.Code != http.StatusOK || !strings.Contains(byNameOnly.Body.String(), "Name Only Show") {
@@ -254,7 +235,7 @@ func TestPerIndexerRouting(t *testing.T) {
 func TestTorznabErrorCodes(t *testing.T) {
 	api, st := newAPI(t)
 	seedDefinition(t, st, "error-def", "torznab", "")
-	source, _ := seedScopedIndexer(t, st, "error-def", "error-indexer", "Error Source")
+	source := seedScopedIndexer(t, st, "error-def", "error-indexer", "Error Source")
 	id := insertScopedRelease(t, st, 10, "Error Show", source, true)
 
 	badKey := do(t, api, "/api?t=search&apikey=wrong")
@@ -308,10 +289,8 @@ func TestAggregateFilters(t *testing.T) {
 	api, st := newAPI(t)
 	seedDefinition(t, st, "filter-unit", "unit3d", "en")
 	seedDefinition(t, st, "filter-torznab", "torznab", "it")
-	movies := seedSource(t, st, "Movies")
-	tv := seedSource(t, st, "TV")
-	seedIndexer(t, st, "filter-unit", "movies-indexer", "Movies", "movies,hd", "torrent", true, movies.ID)
-	seedIndexer(t, st, "filter-torznab", "tv-indexer", "TV", "tv", "usenet", false, tv.ID)
+	movies := seedIndexer(t, st, "filter-unit", "movies-indexer", "Movies", "movies,hd", "torrent", true)
+	tv := seedIndexer(t, st, "filter-torznab", "tv-indexer", "TV", "tv", "usenet", false)
 	insertScopedRelease(t, st, 20, "Movie Release", movies, true)
 	insertScopedRelease(t, st, 21, "TV Release", tv, true)
 
@@ -377,10 +356,8 @@ func TestAggregateFilters(t *testing.T) {
 func TestAggregateFiltersPagination(t *testing.T) {
 	api, st := newAPI(t)
 	seedDefinition(t, st, "page-def", "unit3d", "en")
-	first := seedSource(t, st, "First")
-	second := seedSource(t, st, "Second")
-	seedIndexer(t, st, "page-def", "first", "First", "common", "torrent", true, first.ID)
-	seedIndexer(t, st, "page-def", "second", "Second", "common", "torrent", true, second.ID)
+	first := seedIndexer(t, st, "page-def", "first", "First", "common", "torrent", true)
+	second := seedIndexer(t, st, "page-def", "second", "Second", "common", "torrent", true)
 	insertScopedRelease(t, st, 40, "First A", first, true)
 	insertScopedRelease(t, st, 41, "First B", first, true)
 	insertScopedRelease(t, st, 42, "Second A", second, true)

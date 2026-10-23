@@ -50,8 +50,9 @@ func isAggregateSlug(slug string) bool {
 	return slug == "" || strings.EqualFold(slug, slugAll)
 }
 
-// resolveIndexer finds a per-indexer route target. New-style slugs live in the
-// indexers table; during the migration the legacy source name is accepted too.
+// resolveIndexer finds a per-indexer route target. The slug is the native
+// indexer slug; a legacy client that still uses the old source name is matched
+// against the indexer name as a compatibility fallback.
 func (s *Server) resolveIndexer(ctx context.Context, slug string) (store.Indexer, bool, error) {
 	indexer, err := s.store.GetIndexerBySlug(ctx, slug)
 	if err == nil {
@@ -60,56 +61,34 @@ func (s *Server) resolveIndexer(ctx context.Context, slug string) (store.Indexer
 	if !errors.Is(err, sql.ErrNoRows) {
 		return store.Indexer{}, false, err
 	}
-	sources, err := s.store.ListSources(ctx)
+	indexers, err := s.store.ListIndexers(ctx)
 	if err != nil {
 		return store.Indexer{}, false, err
 	}
-	for _, source := range sources {
-		if strings.EqualFold(strings.TrimSpace(source.Name), strings.TrimSpace(slug)) {
-			return store.Indexer{
-				Slug:           slug,
-				Name:           source.Name,
-				Enabled:        source.Enabled,
-				Protocol:       "torrent",
-				LegacySourceID: source.ID,
-			}, true, nil
+	for _, candidate := range indexers {
+		if strings.EqualFold(strings.TrimSpace(candidate.Name), strings.TrimSpace(slug)) {
+			return candidate, true, nil
 		}
 	}
 	return store.Indexer{}, false, nil
 }
 
-// releaseSelection is the resolved set of releases a request may see. It is
-// built once per request so no per-release store lookups are needed.
+// releaseSelection is the resolved set of indexers a request may see. Release
+// provenance lives in release_sources, so the selection is pushed into SQL.
 type releaseSelection struct {
-	all   bool
-	ids   map[int64]struct{}
-	names map[string]struct{}
+	all bool
+	ids map[int64]struct{}
 }
 
 func (sel releaseSelection) empty() bool {
-	return !sel.all && len(sel.ids) == 0 && len(sel.names) == 0
-}
-
-func (sel releaseSelection) match(release store.Release) bool {
-	if sel.all {
-		return true
-	}
-	if _, ok := sel.ids[release.SourceID]; ok {
-		return true
-	}
-	_, ok := sel.names[strings.ToLower(strings.TrimSpace(release.SourceName))]
-	return ok
+	return !sel.all && len(sel.ids) == 0
 }
 
 func selectionForIndexer(indexer store.Indexer) releaseSelection {
-	if indexer.LegacySourceID > 0 {
-		return releaseSelection{ids: map[int64]struct{}{indexer.LegacySourceID: {}}}
-	}
-	name := strings.ToLower(strings.TrimSpace(indexer.Name))
-	if name == "" {
+	if indexer.ID <= 0 {
 		return releaseSelection{}
 	}
-	return releaseSelection{names: map[string]struct{}{name: {}}}
+	return releaseSelection{ids: map[int64]struct{}{indexer.ID: {}}}
 }
 
 // aggregateFilters are the Jackett-style indexer filters accepted by the
@@ -135,8 +114,7 @@ func (f aggregateFilters) active() bool {
 }
 
 // resolveAggregateSelection resolves tag, indexer_type, status and lang against
-// the indexers table once per request. Indexers without a legacy source cannot
-// own legacy releases yet, so they are skipped.
+// the indexers table once per request.
 func (s *Server) resolveAggregateSelection(ctx context.Context, filters aggregateFilters) (releaseSelection, error) {
 	if !filters.active() {
 		return releaseSelection{all: true}, nil
@@ -161,10 +139,7 @@ func (s *Server) resolveAggregateSelection(ctx context.Context, filters aggregat
 		if !filters.matchIndexer(indexer, definitions) {
 			continue
 		}
-		if indexer.LegacySourceID <= 0 {
-			continue
-		}
-		selected.ids[indexer.LegacySourceID] = struct{}{}
+		selected.ids[indexer.ID] = struct{}{}
 	}
 	return selected, nil
 }
@@ -260,21 +235,4 @@ func splitListValues(values []string) []string {
 		out = append(out, splitList(value)...)
 	}
 	return out
-}
-
-// applySelection post-filters a page only when the store query could not
-// express the selection. A name-only match (legacy sources resolved by name)
-// cannot be pushed into SQL; id selections are pushed down through
-// Filter.SourceIDs, so totals and pagination stay correct.
-func applySelection(sel releaseSelection, sqlSourceID int64, releases []store.Release, total int64) ([]store.Release, int64) {
-	if sel.all || sqlSourceID > 0 || len(sel.ids) > 0 {
-		return releases, total
-	}
-	filtered := releases[:0]
-	for _, release := range releases {
-		if sel.match(release) {
-			filtered = append(filtered, release)
-		}
-	}
-	return filtered, int64(len(filtered))
 }

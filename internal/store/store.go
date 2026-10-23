@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -19,9 +20,8 @@ import (
 // driver is serialised per connection and indexarr mixes a web UI with
 // background writers.
 type Store struct {
-	db    *sql.DB
-	path  string
-	codec SecretCodec
+	db   *sql.DB
+	path string
 }
 
 // Open opens (and creates when missing) the database at path.
@@ -81,30 +81,6 @@ func (s *Store) DB() *sql.DB { return s.db }
 // migrate creates the schema. Every statement is idempotent.
 func (s *Store) migrate() error {
 	statements := []string{
-		`CREATE TABLE IF NOT EXISTS sources (
-			id               INTEGER PRIMARY KEY AUTOINCREMENT,
-			name             TEXT    NOT NULL UNIQUE,
-			kind             TEXT    NOT NULL DEFAULT 'torznab',
-			manager          TEXT    NOT NULL DEFAULT 'auto',
-			url              TEXT    NOT NULL,
-			api_key          TEXT    NOT NULL DEFAULT '',
-			username         TEXT    NOT NULL DEFAULT '',
-			password         TEXT    NOT NULL DEFAULT '',
-			categories       TEXT    NOT NULL DEFAULT '',
-			query            TEXT    NOT NULL DEFAULT '',
-			enabled          INTEGER NOT NULL DEFAULT 1,
-			interval_seconds INTEGER NOT NULL DEFAULT 0,
-			last_run_at      INTEGER NOT NULL DEFAULT 0,
-			last_ok_at       INTEGER NOT NULL DEFAULT 0,
-			last_error       TEXT    NOT NULL DEFAULT '',
-			last_duration_ms INTEGER NOT NULL DEFAULT 0,
-			last_items       INTEGER NOT NULL DEFAULT 0,
-			total_items      INTEGER NOT NULL DEFAULT 0,
-			created_at       INTEGER NOT NULL DEFAULT 0,
-			updated_at       INTEGER NOT NULL DEFAULT 0,
-			consecutive_errors INTEGER NOT NULL DEFAULT 0,
-			default_category TEXT NOT NULL DEFAULT ''
-		)`,
 		`CREATE TABLE IF NOT EXISTS releases (
 			id                 INTEGER PRIMARY KEY AUTOINCREMENT,
 			dedup_key          TEXT    NOT NULL UNIQUE,
@@ -119,8 +95,6 @@ func (s *Store) migrate() error {
 			leechers           INTEGER NOT NULL DEFAULT 0,
 			category           TEXT    NOT NULL DEFAULT '',
 			published_at       INTEGER NOT NULL DEFAULT 0,
-			source_id          INTEGER REFERENCES sources(id) ON DELETE SET NULL,
-			source_name        TEXT    NOT NULL DEFAULT '',
 			guid               TEXT    NOT NULL DEFAULT '',
 			magnet             TEXT    NOT NULL DEFAULT '',
 			torrent            BLOB,
@@ -131,21 +105,6 @@ func (s *Store) migrate() error {
 			times_seen         INTEGER NOT NULL DEFAULT 1,
 			favorite           INTEGER NOT NULL DEFAULT 0,
 			hidden             INTEGER NOT NULL DEFAULT 0
-		)`,
-		`CREATE TABLE IF NOT EXISTS runs (
-			id              INTEGER PRIMARY KEY AUTOINCREMENT,
-			source_id       INTEGER REFERENCES sources(id) ON DELETE SET NULL,
-			source_name     TEXT    NOT NULL DEFAULT '',
-			started_at      INTEGER NOT NULL DEFAULT 0,
-			finished_at     INTEGER NOT NULL DEFAULT 0,
-			status          TEXT    NOT NULL DEFAULT 'running',
-			items_seen      INTEGER NOT NULL DEFAULT 0,
-			items_new       INTEGER NOT NULL DEFAULT 0,
-			items_updated   INTEGER NOT NULL DEFAULT 0,
-			items_blocked   INTEGER NOT NULL DEFAULT 0,
-			torrents_fetched INTEGER NOT NULL DEFAULT 0,
-			error           TEXT    NOT NULL DEFAULT '',
-			duration_ms     INTEGER NOT NULL DEFAULT 0
 		)`,
 		`CREATE TABLE IF NOT EXISTS blocklist (
 			id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,54 +135,18 @@ func (s *Store) migrate() error {
 		`CREATE INDEX IF NOT EXISTS releases_infohash ON releases(infohash)`,
 		`CREATE INDEX IF NOT EXISTS releases_guid ON releases(guid)`,
 		`CREATE INDEX IF NOT EXISTS releases_published ON releases(published_at DESC)`,
-		`CREATE INDEX IF NOT EXISTS releases_source ON releases(source_id)`,
 		`CREATE INDEX IF NOT EXISTS releases_category ON releases(category)`,
 		`CREATE INDEX IF NOT EXISTS releases_last_seen ON releases(last_seen_at)`,
 		`CREATE INDEX IF NOT EXISTS releases_imdb ON releases(imdb_id)`,
 		`CREATE INDEX IF NOT EXISTS releases_tmdb ON releases(tmdb_id)`,
 		`CREATE INDEX IF NOT EXISTS releases_tvdb ON releases(tvdb_id)`,
-		`CREATE INDEX IF NOT EXISTS runs_started ON runs(started_at DESC)`,
-		`CREATE INDEX IF NOT EXISTS runs_source ON runs(source_id)`,
 	}
 	for _, statement := range statements {
 		if _, err := s.db.Exec(statement); err != nil {
 			return fmt.Errorf("migrate: %w", err)
 		}
 	}
-	if err := s.ensureSourceColumns(); err != nil {
-		return err
-	}
 	if err := s.ensureReleaseColumns(); err != nil {
-		return err
-	}
-	if err := s.ensureRunColumns(); err != nil {
-		return err
-	}
-	// These indexes depend on columns added by ensureReleaseColumns, so they
-	// cannot live in the statements above: an existing database does not have
-	// hidden/favorite until the ALTER TABLE has run. The published/seen indexes
-	// carry id so ORDER BY <date> DESC, id DESC is satisfied by the index and
-	// LIMIT can stop early instead of sorting every matching row.
-	for _, statement := range []string{
-		`CREATE INDEX IF NOT EXISTS releases_hidden ON releases(hidden)`,
-		`CREATE INDEX IF NOT EXISTS releases_favorite ON releases(favorite)`,
-		`CREATE INDEX IF NOT EXISTS releases_visible_published_id
-			ON releases(hidden, published_at DESC, id DESC)`,
-		`CREATE INDEX IF NOT EXISTS releases_visible_seen_id
-			ON releases(hidden, last_seen_at DESC, id DESC)`,
-		`CREATE INDEX IF NOT EXISTS releases_visible_source_published
-			ON releases(hidden, source_id, published_at DESC, id DESC)`,
-		`CREATE INDEX IF NOT EXISTS releases_visible_category_published
-			ON releases(hidden, category, published_at DESC, id DESC)`,
-		// Superseded by the *_id variants, which also order the id tie-break.
-		`DROP INDEX IF EXISTS releases_visible_published`,
-		`DROP INDEX IF EXISTS releases_visible_seen`,
-	} {
-		if _, err := s.db.Exec(statement); err != nil {
-			return fmt.Errorf("migrate index: %w", err)
-		}
-	}
-	if err := s.migrateFTS(); err != nil {
 		return err
 	}
 	// Numbered migrations start here. The baseline above remains idempotent so
@@ -256,10 +179,195 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
-	// Existing installations are bridged automatically: every legacy source
-	// becomes a definition plus an indexer exactly once.
-	if _, err := s.BackfillLegacySources(context.Background()); err != nil {
-		return fmt.Errorf("backfill sources: %w", err)
+	// Migration 3 removes the legacy sources path from databases created before
+	// WP16. Fresh databases already have the final schema.
+	if err := s.applyMigration(context.Background(), indexarr2DropLegacyVersion,
+		"drop legacy sources", s.dropLegacySources); err != nil {
+		return err
+	}
+	// These indexes depend on columns added by ensureReleaseColumns, and the
+	// release table may have been rebuilt by migration 3, so they are created
+	// after the numbered migrations.
+	for _, statement := range []string{
+		`CREATE INDEX IF NOT EXISTS releases_hidden ON releases(hidden)`,
+		`CREATE INDEX IF NOT EXISTS releases_favorite ON releases(favorite)`,
+		`CREATE INDEX IF NOT EXISTS releases_visible_published_id
+			ON releases(hidden, published_at DESC, id DESC)`,
+		`CREATE INDEX IF NOT EXISTS releases_visible_seen_id
+			ON releases(hidden, last_seen_at DESC, id DESC)`,
+		`CREATE INDEX IF NOT EXISTS releases_visible_category_published
+			ON releases(hidden, category, published_at DESC, id DESC)`,
+		// Superseded by the *_id variants, which also order the id tie-break.
+		`DROP INDEX IF EXISTS releases_visible_published`,
+		`DROP INDEX IF EXISTS releases_visible_seen`,
+	} {
+		if _, err := s.db.Exec(statement); err != nil {
+			return fmt.Errorf("migrate index: %w", err)
+		}
+	}
+	if err := s.migrateFTS(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// dropLegacySources migrates a pre-WP16 database to the native-only schema.
+// The production database is disposable, so cached releases and run history
+// that depend on the legacy model are dropped rather than converted. A fresh
+// database has none of these objects and the migration is a no-op.
+func (s *Store) dropLegacySources(tx *sql.Tx) error {
+	hasTable := func(name string) (bool, error) {
+		var count int
+		err := tx.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, name).Scan(&count)
+		return count > 0, err
+	}
+	hasColumn := func(table, column string) (bool, error) {
+		rows, err := tx.Query(`PRAGMA table_info(` + table + `)`)
+		if err != nil {
+			return false, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var (
+				cid        int
+				name       string
+				ctype      string
+				notNull    int
+				defaultV   sql.NullString
+				primaryKey int
+			)
+			if err := rows.Scan(&cid, &name, &ctype, &notNull, &defaultV, &primaryKey); err != nil {
+				return false, err
+			}
+			if strings.EqualFold(name, column) {
+				return true, nil
+			}
+		}
+		return false, rows.Err()
+	}
+
+	if has, err := hasColumn("indexers", "legacy_source_id"); err != nil {
+		return err
+	} else if has {
+		if _, err := tx.Exec(`DELETE FROM indexers WHERE legacy_source_id IS NOT NULL`); err != nil {
+			return fmt.Errorf("delete legacy bridge indexers: %w", err)
+		}
+		if _, err := tx.Exec(`DROP INDEX IF EXISTS indexers_legacy_source`); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`ALTER TABLE indexers DROP COLUMN legacy_source_id`); err != nil {
+			return fmt.Errorf("drop indexers.legacy_source_id: %w", err)
+		}
+	}
+	if _, err := tx.Exec(`DELETE FROM definitions
+		WHERE origin = 'local' AND author = 'migration'
+		  AND id NOT IN (SELECT DISTINCT definition_id FROM indexers)`); err != nil {
+		return fmt.Errorf("delete legacy definitions: %w", err)
+	}
+
+	releaseHasSource, err := hasColumn("releases", "source_id")
+	if err != nil {
+		return err
+	}
+	if !releaseHasSource {
+		if has, err := hasTable("runs"); err != nil {
+			return err
+		} else if !has {
+			if has, err := hasTable("sources"); err != nil {
+				return err
+			} else if !has {
+				return nil
+			}
+		}
+	}
+
+	// Drop the children of releases before rebuilding the parent.
+	for _, statement := range []string{
+		`DROP TABLE IF EXISTS release_sources`,
+		`DROP TRIGGER IF EXISTS releases_fts_ai`,
+		`DROP TRIGGER IF EXISTS releases_fts_ad`,
+		`DROP TRIGGER IF EXISTS releases_fts_au`,
+		`DROP TABLE IF EXISTS releases_fts`,
+		`DROP TABLE IF EXISTS runs`,
+	} {
+		if _, err := tx.Exec(statement); err != nil {
+			return err
+		}
+	}
+
+	if releaseHasSource {
+		if _, err := tx.Exec(`CREATE TABLE releases_new (
+			id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+			dedup_key          TEXT    NOT NULL UNIQUE,
+			infohash           TEXT    NOT NULL DEFAULT '',
+			imdb_id            TEXT    NOT NULL DEFAULT '',
+			tmdb_id            TEXT    NOT NULL DEFAULT '',
+			tvdb_id            TEXT    NOT NULL DEFAULT '',
+			title              TEXT    NOT NULL,
+			search_title       TEXT    NOT NULL DEFAULT '',
+			size               INTEGER NOT NULL DEFAULT 0,
+			seeders            INTEGER NOT NULL DEFAULT 0,
+			leechers           INTEGER NOT NULL DEFAULT 0,
+			category           TEXT    NOT NULL DEFAULT '',
+			published_at       INTEGER NOT NULL DEFAULT 0,
+			guid               TEXT    NOT NULL DEFAULT '',
+			magnet             TEXT    NOT NULL DEFAULT '',
+			torrent            BLOB,
+			torrent_size       INTEGER NOT NULL DEFAULT 0,
+			torrent_fetched_at INTEGER NOT NULL DEFAULT 0,
+			first_seen_at      INTEGER NOT NULL DEFAULT 0,
+			last_seen_at       INTEGER NOT NULL DEFAULT 0,
+			times_seen         INTEGER NOT NULL DEFAULT 1,
+			favorite           INTEGER NOT NULL DEFAULT 0,
+			hidden             INTEGER NOT NULL DEFAULT 0,
+			protocol           TEXT    NOT NULL DEFAULT 'torrent',
+			payload            BLOB,
+			payload_type       TEXT    NOT NULL DEFAULT ''
+		)`); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`INSERT INTO releases_new(
+			id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title, search_title,
+			size, seeders, leechers, category, published_at, guid, magnet, torrent,
+			torrent_size, torrent_fetched_at, first_seen_at, last_seen_at, times_seen,
+			favorite, hidden, protocol, payload, payload_type)
+			SELECT id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title, search_title,
+			size, seeders, leechers, category, published_at, guid, magnet, torrent,
+			torrent_size, torrent_fetched_at, first_seen_at, last_seen_at, times_seen,
+			favorite, hidden, protocol, payload, payload_type
+			FROM releases`); err != nil {
+			return fmt.Errorf("copy releases: %w", err)
+		}
+		if _, err := tx.Exec(`DROP TABLE releases`); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`ALTER TABLE releases_new RENAME TO releases`); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.Exec(`DROP TABLE IF EXISTS sources`); err != nil {
+		return err
+	}
+	// Recreate the provenance table dropped above; it now references only the
+	// native indexers.
+	for _, statement := range []string{
+		`CREATE TABLE IF NOT EXISTS release_sources (
+			release_id   INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+			indexer_id   INTEGER NOT NULL REFERENCES indexers(id) ON DELETE CASCADE,
+			first_seen_at INTEGER NOT NULL DEFAULT 0,
+			last_seen_at  INTEGER NOT NULL DEFAULT 0,
+			seeders      INTEGER NOT NULL DEFAULT 0,
+			leechers     INTEGER NOT NULL DEFAULT 0,
+			download_ref TEXT    NOT NULL DEFAULT '',
+			PRIMARY KEY (release_id, indexer_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS release_sources_indexer ON release_sources(indexer_id)`,
+		`CREATE INDEX IF NOT EXISTS release_sources_last_seen ON release_sources(last_seen_at)`,
+	} {
+		if _, err := tx.Exec(statement); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -338,46 +446,21 @@ func (s *Store) ensureReleaseColumns() error {
 	return nil
 }
 
-// ensureRunColumns adds the blocked counter to a database created by an older
-// version.
-func (s *Store) ensureRunColumns() error {
-	exists, err := s.columnExists("runs", "items_blocked")
-	if err != nil {
-		return err
+// boolInt stores a Go bool as the 0/1 integer SQLite expects.
+func boolInt(value bool) int {
+	if value {
+		return 1
 	}
-	if exists {
-		return nil
-	}
-	if _, err := s.db.Exec("ALTER TABLE runs ADD COLUMN items_blocked INTEGER NOT NULL DEFAULT 0"); err != nil {
-		return fmt.Errorf("migrate runs.items_blocked: %w", err)
-	}
-	return nil
+	return 0
 }
 
-// ensureSourceColumns adds the HTTP Basic columns to a database created by an
-// older version. New databases get them from CREATE TABLE.
-func (s *Store) ensureSourceColumns() error {
-	for _, column := range []struct {
-		name string
-		ddl  string
-	}{
-		{"username", "TEXT NOT NULL DEFAULT ''"},
-		{"password", "TEXT NOT NULL DEFAULT ''"},
-		{"consecutive_errors", "INTEGER NOT NULL DEFAULT 0"},
-		{"default_category", "TEXT NOT NULL DEFAULT ''"},
-	} {
-		exists, err := s.columnExists("sources", column.name)
-		if err != nil {
-			return err
-		}
-		if exists {
-			continue
-		}
-		if _, err := s.db.Exec("ALTER TABLE sources ADD COLUMN " + column.name + " " + column.ddl); err != nil {
-			return fmt.Errorf("migrate sources.%s: %w", column.name, err)
-		}
+// unixTime converts a stored Unix timestamp to a time. Zero stays the zero
+// time so callers can distinguish "never" from the epoch.
+func unixTime(value int64) time.Time {
+	if value <= 0 {
+		return time.Time{}
 	}
-	return nil
+	return time.Unix(value, 0)
 }
 
 func (s *Store) columnExists(table, column string) (bool, error) {

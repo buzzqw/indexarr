@@ -7,29 +7,29 @@ import (
 	"time"
 )
 
+func testIndexer(t *testing.T, st *Store, slug, name string) int64 {
+	t.Helper()
+	mustCreateDefinition(t, st, "def-"+slug)
+	return mustCreateIndexer(t, st, "def-"+slug, slug, name)
+}
+
 func TestDBReportAndChecks(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
-	sourceID, err := st.CreateSource(ctx, testSource("Report"))
-	if err != nil {
-		t.Fatalf("CreateSource: %v", err)
-	}
+	indexerID := testIndexer(t, st, "report", "Report")
 	now := time.Now()
 	releases := []Release{
 		{
 			DedupKey: "with-torrent", Title: "With torrent", SearchTitle: "with torrent",
-			Torrent: []byte("d4ta"), SourceID: sourceID, SourceName: "Report",
-			FirstSeenAt: now, LastSeenAt: now,
+			Torrent: []byte("d4ta"), FirstSeenAt: now, LastSeenAt: now,
 		},
 		{
 			DedupKey: "with-magnet", Title: "With magnet", SearchTitle: "with magnet",
-			Magnet:   "magnet:?xt=urn:btih:" + strings.Repeat("a", 40),
-			SourceID: sourceID, SourceName: "Report",
+			Magnet:      "magnet:?xt=urn:btih:" + strings.Repeat("a", 40),
 			FirstSeenAt: now, LastSeenAt: now,
 		},
 		{
 			DedupKey: "dead", Title: "Dead", SearchTitle: "dead",
-			SourceID: sourceID, SourceName: "Report",
 			FirstSeenAt: now, LastSeenAt: now,
 		},
 	}
@@ -37,6 +37,7 @@ func TestDBReportAndChecks(t *testing.T) {
 		if _, err := st.UpsertRelease(ctx, &releases[i]); err != nil {
 			t.Fatalf("UpsertRelease: %v", err)
 		}
+		recordProvenance(t, st, releases[i].ID, indexerID)
 	}
 	if _, err := st.SetReleaseFlags(ctx, releases[2].ID, false, true); err != nil {
 		t.Fatalf("SetReleaseFlags: %v", err)
@@ -55,7 +56,7 @@ func TestDBReportAndChecks(t *testing.T) {
 	if report.JournalMode != "wal" {
 		t.Errorf("journal mode = %q", report.JournalMode)
 	}
-	if report.Releases != 3 || report.Sources != 1 {
+	if report.Releases != 3 || report.Indexers != 1 {
 		t.Errorf("row counts = %#v", report)
 	}
 	if report.ReleasesTorrent != 1 || report.ReleasesMagnet != 1 {
@@ -89,50 +90,50 @@ func TestDBReportAndChecks(t *testing.T) {
 func TestMaintenanceCleanup(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
-	a, err := st.CreateSource(ctx, testSource("Source A"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := st.CreateSource(ctx, testSource("Source B"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	a := testIndexer(t, st, "source-a", "Source A")
+	b := testIndexer(t, st, "source-b", "Source B")
 	now := time.Now()
 	old := now.AddDate(0, 0, -10)
-	insert := func(rel Release) Release {
+	insert := func(rel Release, indexerID int64) Release {
 		t.Helper()
 		if _, err := st.UpsertRelease(ctx, &rel); err != nil {
 			t.Fatalf("UpsertRelease: %v", err)
+		}
+		if err := st.RecordReleaseSource(ctx, ReleaseSource{
+			ReleaseID: rel.ID, IndexerID: indexerID,
+			FirstSeenAt: rel.FirstSeenAt, LastSeenAt: rel.LastSeenAt,
+		}); err != nil {
+			t.Fatalf("RecordReleaseSource: %v", err)
 		}
 		return rel
 	}
 	insert(Release{
 		DedupKey: "a-magnet", Title: "A magnet", SearchTitle: "a magnet",
-		Magnet:   "magnet:?xt=urn:btih:" + strings.Repeat("b", 40),
-		SourceID: a, SourceName: "Source A", FirstSeenAt: now, LastSeenAt: now,
-	})
+		Magnet:      "magnet:?xt=urn:btih:" + strings.Repeat("b", 40),
+		FirstSeenAt: now, LastSeenAt: now,
+	}, a)
 	insert(Release{
 		DedupKey: "a-dead", Title: "A dead", SearchTitle: "a dead",
-		SourceID: a, SourceName: "Source A", FirstSeenAt: now, LastSeenAt: now,
-	})
+		FirstSeenAt: now, LastSeenAt: now,
+	}, a)
 	hidden := insert(Release{
 		DedupKey: "b-hidden", Title: "B hidden", SearchTitle: "b hidden",
-		Magnet:   "magnet:?xt=urn:btih:" + strings.Repeat("c", 40),
-		SourceID: b, SourceName: "Source B", FirstSeenAt: now, LastSeenAt: now,
-	})
+		Magnet:      "magnet:?xt=urn:btih:" + strings.Repeat("c", 40),
+		FirstSeenAt: now, LastSeenAt: now,
+	}, b)
 	if _, err := st.SetReleaseFlags(ctx, hidden.ID, false, true); err != nil {
 		t.Fatal(err)
 	}
 	insert(Release{
 		DedupKey: "b-torrent", Title: "B torrent", SearchTitle: "b torrent",
-		Torrent: []byte("x"), SourceID: b, SourceName: "Source B",
+		Torrent:     []byte("x"),
 		FirstSeenAt: now, LastSeenAt: now,
-	})
+	}, b)
 	insert(Release{
 		DedupKey: "a-old", Title: "A old", SearchTitle: "a old",
-		Magnet:   "magnet:?xt=urn:btih:" + strings.Repeat("d", 40),
-		SourceID: a, SourceName: "Source A", FirstSeenAt: old, LastSeenAt: old,
-	})
+		Magnet:      "magnet:?xt=urn:btih:" + strings.Repeat("d", 40),
+		FirstSeenAt: old, LastSeenAt: old,
+	}, a)
 
 	if n, err := st.DeleteReleasesWithoutLinks(ctx); err != nil || n != 1 {
 		t.Fatalf("DeleteReleasesWithoutLinks = %d, %v", n, err)
@@ -143,23 +144,11 @@ func TestMaintenanceCleanup(t *testing.T) {
 	if n, err := st.PruneReleases(ctx, now.AddDate(0, 0, -5)); err != nil || n != 1 {
 		t.Fatalf("PruneReleases = %d, %v", n, err)
 	}
-	if n, err := st.DeleteReleasesBySource(ctx, a); err != nil || n != 1 {
-		t.Fatalf("DeleteReleasesBySource = %d, %v", n, err)
+	if n, err := st.DeleteReleasesByIndexer(ctx, a); err != nil || n != 1 {
+		t.Fatalf("DeleteReleasesByIndexer = %d, %v", n, err)
 	}
-	if _, err := st.DeleteReleasesBySource(ctx, 0); err == nil {
-		t.Error("DeleteReleasesBySource(0) must fail")
-	}
-
-	if _, err := st.DB().ExecContext(ctx, `UPDATE sources SET total_items = 999`); err != nil {
-		t.Fatal(err)
-	}
-	if n, err := st.RecalculateSourceCounts(ctx); err != nil || n != 2 {
-		t.Fatalf("RecalculateSourceCounts = %d, %v", n, err)
-	}
-	sourceA, _ := st.GetSource(ctx, a)
-	sourceB, _ := st.GetSource(ctx, b)
-	if sourceA.TotalItems != 0 || sourceB.TotalItems != 1 {
-		t.Errorf("recounted totals = A %d, B %d", sourceA.TotalItems, sourceB.TotalItems)
+	if _, err := st.DeleteReleasesByIndexer(ctx, 0); err == nil {
+		t.Error("DeleteReleasesByIndexer(0) must fail")
 	}
 
 	key, err := st.AddAPIKey(ctx, "QA client")
@@ -191,7 +180,7 @@ func TestForeignKeyCheckDetectsOrphans(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := st.DB().ExecContext(ctx,
-		`INSERT INTO releases(dedup_key, title, source_id) VALUES('orphan', 'Orphan', 9999)`); err != nil {
+		`INSERT INTO release_sources(release_id, indexer_id) VALUES(9999, 9999)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.DB().ExecContext(ctx, "PRAGMA foreign_keys=ON"); err != nil {
@@ -201,32 +190,30 @@ func TestForeignKeyCheckDetectsOrphans(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ForeignKeyCheck: %v", err)
 	}
-	if violations != 1 {
-		t.Errorf("violations = %d, want 1", violations)
+	if violations != 2 {
+		t.Errorf("violations = %d, want 2", violations)
 	}
 }
 
 func TestMaintenanceHelpers(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
-	id, err := st.CreateSource(ctx, testSource("Broken"))
-	if err != nil {
+	id := testIndexer(t, st, "broken", "Broken")
+	if err := st.UpsertIndexerState(ctx, IndexerState{
+		IndexerID: id, Circuit: "open", LastError: "boom",
+	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.DB().ExecContext(ctx,
-		`UPDATE sources SET last_error = 'boom', consecutive_errors = 3 WHERE id = ?`, id); err != nil {
-		t.Fatal(err)
-	}
-	reset, err := st.ResetSourceErrors(ctx)
+	reset, err := st.ResetIndexerErrors(ctx)
 	if err != nil || reset != 1 {
-		t.Fatalf("ResetSourceErrors = %d, %v", reset, err)
+		t.Fatalf("ResetIndexerErrors = %d, %v", reset, err)
 	}
-	source, err := st.GetSource(ctx, id)
+	state, err := st.GetIndexerState(ctx, id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if source.LastError != "" || source.ConsecutiveErrors != 0 {
-		t.Errorf("source after reset = %#v", source)
+	if state.LastError != "" || state.Circuit != "closed" {
+		t.Errorf("state after reset = %#v", state)
 	}
 	if err := st.Optimize(ctx); err != nil {
 		t.Fatalf("Optimize: %v", err)

@@ -278,10 +278,9 @@ check_activity_route() {
 }
 
 # check_navigation inspects the first <nav> block (preferring aria-label="Main")
-# for duplicated entries and for the sources/indexers add-indexer ambiguity.
+# for duplicated entries in the main navigation.
 check_navigation() {
   local src="${ROOT_BODY:-$FIRST_HTML_BODY}" nav flat anchor href label path
-  local base_path sources_add=0 indexers_add=0
   if [[ -z "$src" ]]; then
     warn "navigation: no HTML page available for the <nav> checks"
     return
@@ -328,36 +327,6 @@ check_navigation() {
     warn "navigation: $path is linked with different labels: $label"
   done < <(cut -f2 "$NAV_ENTRIES" | sort | uniq -d)
 
-  # The redesign must not expose two different "add indexer" entries, one for
-  # /sources (legacy) and one for /indexers (native).
-  while IFS=$'\t' read -r label path; do
-    base_path="${path%%\?*}"
-    base_path="${base_path%/}"
-    case "$base_path" in
-      /sources)
-        case "$label" in
-          *aggiungi*|*nuovo*|*nuova*|*nuovi*|*add*|new|new[[:space:]]*|new-*|*crea*)
-            case "$label" in
-              *indexer*|*sorgent*|*source*|*feed*) sources_add=1 ;;
-            esac
-            ;;
-        esac
-        ;;
-      /indexers)
-        case "$label" in
-          *aggiungi*|*nuovo*|*nuova*|*nuovi*|*add*|new|new[[:space:]]*|new-*|*crea*)
-            case "$label" in
-              *indexer*|*sorgent*|*source*|*feed*) indexers_add=1 ;;
-            esac
-            ;;
-        esac
-        ;;
-    esac
-  done <"$NAV_ENTRIES"
-
-  if [[ "$sources_add" == "1" && "$indexers_add" == "1" ]]; then
-    fail_nav "/sources and /indexers are both presented as add-indexer entries"
-  fi
 }
 
 # check_links checks every distinct internal path once. Paths already covered by
@@ -460,7 +429,6 @@ check_html_route "/definitions/new"
 check_html_route "/definitions/example-html"
 check_html_route "/indexers"
 check_html_route "/indexers/new"
-check_html_route "/indexers?tab=legacy"
 check_html_route "/applications"
 check_html_route "/applications/new"
 check_html_route "/import"

@@ -52,9 +52,6 @@ func TestRunPersistsProvenanceHistoryAndState(t *testing.T) {
 		if release.Category != "5040" {
 			t.Errorf("release %d category = %q", release.ID, release.Category)
 		}
-		if release.SourceName != "Native Test" {
-			t.Errorf("release %d source name = %q", release.ID, release.SourceName)
-		}
 		if release.SearchTitle == "" {
 			t.Errorf("release %d has no search title", release.ID)
 		}

@@ -10,10 +10,10 @@
 <form class="filters" method="get" action="/activity">
   <input type="hidden" name="tab" value="runs">
   <div class="field">
-    <label for="source">{{T "runs.source"}}</label>
-    <select id="source" name="source">
-      <option value="0">{{T "runs.allSources"}}</option>
-      {{range .Sources}}<option value="{{.ID}}"{{if eq $.SourceID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+    <label for="indexer">{{T "runs.indexer"}}</label>
+    <select id="indexer" name="indexer">
+      <option value="0">{{T "runs.allIndexers"}}</option>
+      {{range .Indexers}}<option value="{{.ID}}"{{if eq $.IndexerID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
     </select>
   </div>
   <div class="field checkbox">
@@ -32,13 +32,9 @@
       <thead>
         <tr>
           <th scope="col">{{T "runs.started"}}</th>
-          <th scope="col">{{T "runs.source"}}</th>
+          <th scope="col">{{T "runs.indexer"}}</th>
           <th scope="col">{{T "runs.outcome"}}</th>
-          <th scope="col">{{T "runs.seen"}}</th>
-          <th scope="col">{{T "runs.new"}}</th>
-          <th scope="col">{{T "runs.updated"}}</th>
-          <th scope="col">{{T "runs.blocked"}}</th>
-          <th scope="col">{{T "runs.torrents"}}</th>
+          <th scope="col">{{T "runs.query"}}</th>
           <th scope="col">{{T "runs.duration"}}</th>
           <th scope="col">{{T "runs.error"}}</th>
         </tr>
@@ -47,18 +43,14 @@
         {{range .Runs}}
         <tr>
           <td class="nowrap"><a href="/runs/{{.ID}}">{{date .StartedAt}}</a><div class="sub">{{ago .StartedAt}}</div></td>
-          <td>{{.SourceName}}</td>
-          <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "running"}}<span class="chip warn">{{T "common.running"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
-          <td>{{.ItemsSeen}}</td>
-          <td>{{.ItemsNew}}</td>
-          <td>{{.ItemsUpdated}}</td>
-          <td>{{.ItemsBlocked}}</td>
-          <td>{{.TorrentsFetched}}</td>
-          <td class="nowrap">{{.DurationMS}} ms</td>
+          <td>{{textOrDash .IndexerName}}</td>
+          <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
+          <td>{{if .Query}}{{truncate .Query 60}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td class="nowrap">{{.LatencyMS}} ms</td>
           <td class="error-cell">{{if .Error}}<span title="{{.Error}}">{{truncate .Error 90}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
         </tr>
         {{else}}
-        <tr><td colspan="10" class="empty">{{T "runs.empty"}}</td></tr>
+        <tr><td colspan="6" class="empty">{{T "runs.empty"}}</td></tr>
         {{end}}
       </tbody>
     </table>

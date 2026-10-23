@@ -120,7 +120,7 @@ Il runner:
    le tre release;
 7. crea un indexer Torznab in Prowlarr verso `http://simmock:19080/torznab/api`,
    lo testa con `POST /api/v1/indexer/test` e verifica il feed per-indexer;
-8. crea una source legacy in indexarr verso il feed Torznab di Prowlarr
+8. crea un indexer Torznab nativo in indexarr verso il feed di Prowlarr
    (`http://prowlarr:9696/{id}/api?apikey=...`), la esegue e verifica
    l'ingestion nel log di indexarr;
 9. collega Sonarr e Radarr via `/api/v2/applications` e chiama il sync;
@@ -148,8 +148,8 @@ La simulazione verifica:
   Torznab con `total="3"`;
 - Prowlarr: test dell'indexer Torznab verso simmock, `baseUrl` conservato,
   `enable=true`, API key mascherata, feed per-indexer con 3 item;
-- ponte: source legacy creata, run completato e `seen=2` (i due torrent; il
-  `.nzb` non fa parte del percorso torrent legacy), ricerca ancora con 3 item;
+- via Prowlarr: indexer Torznab nativo creato, run completato e `seen=2` (i due
+  torrent; il `.nzb` non fa parte del percorso torrent), ricerca ancora con 3 item;
 - app sync: applicazioni Sonarr/Radarr create, chiamata di sync osservata e,
   quando il sync riesce, presenza dell'indexer con nome `indexarr · Sim
   Torznab`, `implementation=Torznab`, `configContract=TorznabSettings`,
@@ -195,8 +195,8 @@ questa directory).
   simmock deve essere healthy prima della creazione. L'indexer usa
   `baseUrl=http://simmock:19080/torznab/api` e `apiPath` vuoto, perché
   Prowlarr concatena `baseUrl` e `apiPath`.
-- Il ponte legacy vede 2 release su 3: il terzo risultato è un `.nzb` e non
-  rientra nel percorso torrent della source Torznab legacy.
+- L'indexer Torznab vede 2 release su 3: il terzo risultato è un `.nzb` e non
+  rientra nel percorso torrent.
 - Le \*arr possono impiegare 10–30 secondi al primo avvio per creare il
   database; il runner attende `config.xml`, non solo la porta.
 - Se il working tree ha modifiche non compilabili in altri package, la build

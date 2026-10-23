@@ -24,8 +24,8 @@ type DBReport struct {
 	ReleasesNoLink  int64
 	Hidden          int64
 	Favorites       int64
-	Sources         int64
-	Runs            int64
+	Indexers        int64
+	History         int64
 	Blocklist       int64
 	SavedSearches   int64
 	APIKeys         int64
@@ -60,13 +60,13 @@ func (s *Store) LoadDBReport(ctx context.Context) (DBReport, error) {
 	if err := s.db.QueryRowContext(ctx, `
 		SELECT
 			(SELECT COUNT(*) FROM releases),
-			(SELECT COUNT(*) FROM sources),
-			(SELECT COUNT(*) FROM runs),
+			(SELECT COUNT(*) FROM indexers),
+			(SELECT COUNT(*) FROM indexer_history),
 			(SELECT COUNT(*) FROM blocklist),
 			(SELECT COUNT(*) FROM saved_searches),
 			(SELECT COUNT(*) FROM api_keys),
 			(SELECT COUNT(*) FROM settings)`,
-	).Scan(&r.Releases, &r.Sources, &r.Runs, &r.Blocklist, &r.SavedSearches, &r.APIKeys, &r.Settings); err != nil {
+	).Scan(&r.Releases, &r.Indexers, &r.History, &r.Blocklist, &r.SavedSearches, &r.APIKeys, &r.Settings); err != nil {
 		return r, fmt.Errorf("count rows: %w", err)
 	}
 
@@ -123,12 +123,12 @@ func (s *Store) Reindex(ctx context.Context) error {
 	return nil
 }
 
-// ResetSourceErrors clears the last error and the consecutive-failure counter
-// of every source. It does not re-enable a source that was disabled.
-func (s *Store) ResetSourceErrors(ctx context.Context) (int64, error) {
+// ResetIndexerErrors clears the last error and the open circuit of every
+// indexer. It does not re-enable an indexer that was disabled.
+func (s *Store) ResetIndexerErrors(ctx context.Context) (int64, error) {
 	res, err := s.db.ExecContext(ctx,
-		`UPDATE sources SET last_error = '', consecutive_errors = 0, updated_at = ?
-		 WHERE last_error <> '' OR consecutive_errors <> 0`, time.Now().Unix())
+		`UPDATE indexer_state SET last_error = '', circuit = 'closed', disabled_until = 0, updated_at = ?
+		 WHERE last_error <> '' OR circuit <> 'closed' OR disabled_until <> 0`, time.Now().Unix())
 	if err != nil {
 		return 0, err
 	}
@@ -183,14 +183,21 @@ func (s *Store) Checkpoint(ctx context.Context) (busy, logFrames, checkpointed i
 	return busy, logFrames, checkpointed, nil
 }
 
-// DeleteReleasesBySource removes every cached release belonging to a source.
-func (s *Store) DeleteReleasesBySource(ctx context.Context, sourceID int64) (int64, error) {
-	if sourceID <= 0 {
-		return 0, errors.New("store: invalid source id")
+// DeleteReleasesByIndexer removes releases that were seen only through one
+// indexer. A release also supplied by another indexer stays in the cache.
+func (s *Store) DeleteReleasesByIndexer(ctx context.Context, indexerID int64) (int64, error) {
+	if indexerID <= 0 {
+		return 0, errors.New("store: invalid indexer id")
 	}
-	res, err := s.db.ExecContext(ctx, `DELETE FROM releases WHERE source_id = ?`, sourceID)
+	res, err := s.db.ExecContext(ctx, `
+		DELETE FROM releases
+		WHERE id IN (SELECT release_id FROM release_sources WHERE indexer_id = ?)
+		  AND NOT EXISTS (
+			SELECT 1 FROM release_sources rs
+			WHERE rs.release_id = releases.id AND rs.indexer_id <> ?)`,
+		indexerID, indexerID)
 	if err != nil {
-		return 0, fmt.Errorf("delete releases by source: %w", err)
+		return 0, fmt.Errorf("delete releases by indexer: %w", err)
 	}
 	return res.RowsAffected()
 }
@@ -222,19 +229,6 @@ func (s *Store) ResetAPIUsage(ctx context.Context) (int64, error) {
 		 WHERE requests <> 0 OR last_used_at <> 0`)
 	if err != nil {
 		return 0, fmt.Errorf("reset API usage: %w", err)
-	}
-	return res.RowsAffected()
-}
-
-// RecalculateSourceCounts replaces total_items with the number of releases
-// currently cached for each source. Useful after pruning or deleting a source.
-func (s *Store) RecalculateSourceCounts(ctx context.Context) (int64, error) {
-	res, err := s.db.ExecContext(ctx, `
-		UPDATE sources SET total_items = (
-			SELECT COUNT(*) FROM releases WHERE releases.source_id = sources.id
-		), updated_at = ?`, time.Now().Unix())
-	if err != nil {
-		return 0, fmt.Errorf("recalculate source counts: %w", err)
 	}
 	return res.RowsAffected()
 }

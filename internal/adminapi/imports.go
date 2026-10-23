@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/importers"
-	"github.com/buzzqw/indexarr/internal/legacyimport"
 )
 
 // importTimeout bounds a Prowlarr HTTP import and a Jackett directory scan.
@@ -62,41 +61,6 @@ type importResponse struct {
 	Warnings     []string            `json:"warnings"`
 }
 
-type legacyPreviewCounts struct {
-	Native  int `json:"native"`
-	Skipped int `json:"skipped"`
-}
-
-type legacyPreviewResponse struct {
-	Candidates []legacyimport.Candidate `json:"candidates"`
-	Counts     legacyPreviewCounts      `json:"counts"`
-}
-
-type legacyApplyRequest struct {
-	SourceIDs []int64 `json:"source_ids"`
-	DryRun    bool    `json:"dry_run"`
-}
-
-type legacyRevertRequest struct {
-	SourceIDs []int64 `json:"source_ids"`
-}
-
-type legacyActionResponse struct {
-	DryRun  bool               `json:"dry_run"`
-	Results []legacyResultItem `json:"results"`
-}
-
-type legacyResultItem struct {
-	SourceID     int64  `json:"source_id"`
-	Name         string `json:"name"`
-	DefinitionID string `json:"definition_id,omitempty"`
-	IndexerID    int64  `json:"indexer_id,omitempty"`
-	Applied      bool   `json:"applied"`
-	Skipped      bool   `json:"skipped"`
-	Reason       string `json:"reason,omitempty"`
-	Error        string `json:"error,omitempty"`
-}
-
 func (s *Server) handleImportProwlarr(w http.ResponseWriter, r *http.Request) {
 	var req prowlarrImportRequest
 	if !decodeRequest(w, r, &req) {
@@ -145,121 +109,6 @@ func (s *Server) handleImportJackett(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, importPlanResponse(plan))
-}
-
-func (s *Server) handleLegacyPreview(w http.ResponseWriter, r *http.Request) {
-	candidates, err := legacyimport.Preview(r.Context(), s.store)
-	if err != nil {
-		s.logger.Error("adminapi: legacy preview", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	native, skipped := legacyimport.Counts(candidates)
-	writeJSON(w, http.StatusOK, legacyPreviewResponse{
-		Candidates: candidates,
-		Counts:     legacyPreviewCounts{Native: native, Skipped: skipped},
-	})
-}
-
-func (s *Server) handleLegacyApply(w http.ResponseWriter, r *http.Request) {
-	var req legacyApplyRequest
-	if !decodeRequest(w, r, &req) {
-		return
-	}
-	if err := validateLegacySourceIDs(req.SourceIDs, false); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	// Without a vault, refuse the whole request before writing anything when
-	// any selected source needs sealed credentials. A 503 must not follow a
-	// partial apply of the other sources.
-	if s.vault == nil {
-		preflight, err := legacyimport.Apply(r.Context(), s.store, nil, legacyimport.ApplyOptions{
-			SourceIDs: req.SourceIDs,
-			DryRun:    true,
-		})
-		if err != nil {
-			s.logger.Error("adminapi: legacy apply preflight", "error", err)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		for _, result := range preflight {
-			if errors.Is(result.Err, legacyimport.ErrVaultRequired) {
-				writeError(w, http.StatusServiceUnavailable, "vault not configured")
-				return
-			}
-		}
-	}
-
-	results, err := legacyimport.Apply(r.Context(), s.store, s.vault, legacyimport.ApplyOptions{
-		SourceIDs: req.SourceIDs,
-		DryRun:    req.DryRun,
-	})
-	if err != nil {
-		s.logger.Error("adminapi: legacy apply", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	writeJSON(w, http.StatusOK, legacyActionResponse{
-		DryRun:  req.DryRun,
-		Results: legacyResultItems(results),
-	})
-}
-
-func (s *Server) handleLegacyRevert(w http.ResponseWriter, r *http.Request) {
-	var req legacyRevertRequest
-	if !decodeRequest(w, r, &req) {
-		return
-	}
-	if err := validateLegacySourceIDs(req.SourceIDs, true); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	results, err := legacyimport.Revert(r.Context(), s.store, req.SourceIDs)
-	if err != nil {
-		s.logger.Error("adminapi: legacy revert", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	writeJSON(w, http.StatusOK, legacyActionResponse{
-		Results: legacyResultItems(results),
-	})
-}
-
-// validateLegacySourceIDs rejects non-positive ids. Apply accepts an empty
-// list (every source); revert requires at least one id.
-func validateLegacySourceIDs(ids []int64, required bool) error {
-	if required && len(ids) == 0 {
-		return errors.New("source_ids is required")
-	}
-	for _, id := range ids {
-		if id <= 0 {
-			return errors.New("source_ids must contain positive ids")
-		}
-	}
-	return nil
-}
-
-// legacyResultItems converts results to the wire shape. Errors are already
-// redacted by legacyimport; the raw error value never leaves the process.
-func legacyResultItems(results []legacyimport.ApplyResult) []legacyResultItem {
-	out := make([]legacyResultItem, 0, len(results))
-	for _, result := range results {
-		item := legacyResultItem{
-			SourceID:     result.SourceID,
-			Name:         result.Name,
-			DefinitionID: result.DefinitionID,
-			IndexerID:    result.IndexerID,
-			Applied:      result.Applied,
-			Skipped:      result.Skipped,
-			Reason:       result.Reason,
-		}
-		if result.Err != nil {
-			item.Error = result.Err.Error()
-		}
-		out = append(out, item)
-	}
-	return out
 }
 
 // importPlanResponse converts an importers.Plan into a response that never

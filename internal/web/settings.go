@@ -362,9 +362,9 @@ func (s *Server) formFloat(r *http.Request, key string, fallback, min, max float
 
 type runsPage struct {
 	base
-	Runs       []store.Run
-	Sources    []store.Source
-	SourceID   int64
+	Runs       []store.RunHistory
+	Indexers   []store.Indexer
+	IndexerID  int64
 	OnlyErrors bool
 }
 
@@ -374,24 +374,27 @@ func (s *Server) runsRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) runsData(r *http.Request) (runsPage, error) {
-	sourceID := int64Param(r.URL.Query().Get("source"), 0)
+	indexerID := int64Param(r.URL.Query().Get("indexer"), 0)
+	if indexerID == 0 {
+		indexerID = int64Param(r.URL.Query().Get("source"), 0)
+	}
 	onlyErrors := r.URL.Query().Get("errors") == "1"
-	runs, err := s.store.ListRuns(r.Context(), sourceID, onlyErrors, 200)
+	runs, err := s.store.ListRunHistory(r.Context(), indexerID, onlyErrors, 200)
 	if err != nil {
 		return runsPage{}, err
 	}
-	sources, _ := s.store.ListSources(r.Context())
+	indexers, _ := s.store.ListIndexers(r.Context())
 	return runsPage{
 		base:       s.newBase(r, "Run", "activity"),
 		Runs:       runs,
-		Sources:    sources,
-		SourceID:   sourceID,
+		Indexers:   indexers,
+		IndexerID:  indexerID,
 		OnlyErrors: onlyErrors,
 	}, nil
 }
 
 func (s *Server) runsClear(w http.ResponseWriter, r *http.Request) {
-	removed, err := s.store.ClearRuns(r.Context(), time.Now().AddDate(0, 0, -30))
+	removed, err := s.store.ClearRunHistory(r.Context(), time.Now().AddDate(0, 0, -30))
 	if err != nil {
 		redirect(w, r, "/runs", "", err.Error())
 		return
@@ -412,9 +415,7 @@ type maintenancePage struct {
 	BackupEnabled       bool
 	BackupIntervalHours int
 	BackupKeep          int
-	FailedSources       []store.Source
-	Sources             []store.Source
-	SourceErrors        int
+	Indexers            []store.Indexer
 }
 
 func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
@@ -430,20 +431,10 @@ func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
 	}
 	settings, _ := s.store.LoadSettings(r.Context())
 	backups, _ := backup.List(s.store.Path())
-	sources, _ := s.store.ListSources(r.Context())
+	indexers, _ := s.store.ListIndexers(r.Context())
 	purgeDays := settings.RetentionDays
 	if purgeDays <= 0 {
 		purgeDays = 30
-	}
-	var failed []store.Source
-	sourceErrors := 0
-	for _, source := range sources {
-		if source.LastError != "" {
-			sourceErrors++
-			if len(failed) < 20 {
-				failed = append(failed, source)
-			}
-		}
 	}
 	version := ""
 	_ = s.store.DB().QueryRowContext(r.Context(), "SELECT sqlite_version()").Scan(&version)
@@ -460,9 +451,7 @@ func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
 		BackupEnabled:       settings.BackupEnabled,
 		BackupIntervalHours: settings.BackupIntervalHours,
 		BackupKeep:          settings.BackupKeep,
-		FailedSources:       failed,
-		Sources:             sources,
-		SourceErrors:        sourceErrors,
+		Indexers:            indexers,
 	}, http.StatusOK)
 }
 
@@ -533,12 +522,12 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 		}
 		redirect(w, r, "/maintenance", "Indexes rebuilt", "")
 	case "reset_errors":
-		removed, err := s.store.ResetSourceErrors(ctx)
+		removed, err := s.store.ResetIndexerErrors(ctx)
 		if err != nil {
 			redirect(w, r, "/maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/maintenance", fmt.Sprintf("Cleared errors for %d source(s)", removed), "")
+		redirect(w, r, "/maintenance", fmt.Sprintf("Cleared errors for %d indexer(s)", removed), "")
 	case "prune":
 		settings, err := s.store.LoadSettings(ctx)
 		if err != nil {
@@ -571,7 +560,7 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 		}
 		redirect(w, r, "/maintenance", fmt.Sprintf("%d duplicate release(s) merged", removed), "")
 	case "clear_runs":
-		removed, err := s.store.ClearRuns(ctx, time.Now().AddDate(0, 0, -30))
+		removed, err := s.store.ClearRunHistory(ctx, time.Now().AddDate(0, 0, -30))
 		if err != nil {
 			redirect(w, r, "/maintenance", "", err.Error())
 			return
@@ -590,24 +579,24 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 		}
 		redirect(w, r, "/maintenance",
 			fmt.Sprintf("%d release(s) not seen in the last %d day(s) removed", removed, days), "")
-	case "purge_source":
-		sourceID, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("source_id")), 10, 64)
-		if err != nil || sourceID <= 0 {
-			redirect(w, r, "/maintenance", "", "Choose a source to purge")
+	case "purge_indexer":
+		indexerID, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("indexer_id")), 10, 64)
+		if err != nil || indexerID <= 0 {
+			redirect(w, r, "/maintenance", "", "Choose an indexer to purge")
 			return
 		}
-		source, err := s.store.GetSource(ctx, sourceID)
+		indexerRow, err := s.store.GetIndexer(ctx, indexerID)
 		if err != nil {
-			redirect(w, r, "/maintenance", "", "Choose a source to purge")
+			redirect(w, r, "/maintenance", "", "Choose an indexer to purge")
 			return
 		}
-		removed, err := s.store.DeleteReleasesBySource(ctx, sourceID)
+		removed, err := s.store.DeleteReleasesByIndexer(ctx, indexerID)
 		if err != nil {
 			redirect(w, r, "/maintenance", "", err.Error())
 			return
 		}
 		redirect(w, r, "/maintenance",
-			fmt.Sprintf("%d release(s) from %s removed", removed, source.Name), "")
+			fmt.Sprintf("%d release(s) from %s removed", removed, indexerRow.Name), "")
 	case "purge_no_links":
 		removed, err := s.store.DeleteReleasesWithoutLinks(ctx)
 		if err != nil {
@@ -629,7 +618,7 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			redirect(w, r, "/maintenance", "", err.Error())
 			return
 		}
-		removed, err := s.store.ClearRuns(ctx, time.Now().AddDate(0, 0, -days))
+		removed, err := s.store.ClearRunHistory(ctx, time.Now().AddDate(0, 0, -days))
 		if err != nil {
 			redirect(w, r, "/maintenance", "", err.Error())
 			return
@@ -644,14 +633,6 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 		}
 		redirect(w, r, "/maintenance",
 			fmt.Sprintf("API usage counters reset for %d key(s)", removed), "")
-	case "recount_sources":
-		updated, err := s.store.RecalculateSourceCounts(ctx)
-		if err != nil {
-			redirect(w, r, "/maintenance", "", err.Error())
-			return
-		}
-		redirect(w, r, "/maintenance",
-			fmt.Sprintf("Cached item counters recalculated for %d source(s)", updated), "")
 	case "delete_all":
 		if r.FormValue("confirm") != "DELETE" {
 			redirect(w, r, "/maintenance", "", `Type DELETE in the confirmation field`)

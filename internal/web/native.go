@@ -54,7 +54,6 @@ type definitionsPage struct {
 	base
 	CatalogRows []definitionRow
 	LocalRows   []definitionRow
-	LegacyCount int
 }
 
 func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
@@ -76,10 +75,6 @@ func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
 	data := definitionsPage{base: s.newBaseT(r, "definitions.title", "definitions")}
 	seen := make(map[string]bool, len(defs))
 	for _, def := range defs {
-		if strings.HasPrefix(def.ID, "legacy-") {
-			data.LegacyCount++
-			continue
-		}
 		seen[def.ID] = true
 		row := definitionRowFromStore(def, counts[def.ID])
 		if def.Origin == catalog.OriginBuiltin {
@@ -363,29 +358,19 @@ type indexerRow struct {
 
 type indexersPage struct {
 	base
-	Tab         string
 	Rows        []indexerRow
 	Unavailable bool
-	Legacy      sourcesPage
-	NativeCount int
-	LegacyCount int
+	Count       int
 }
 
 func (s *Server) indexersPage(w http.ResponseWriter, r *http.Request) {
-	tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab")))
-	if tab != "legacy" {
-		tab = "native"
-	}
-	legacy, err := s.sourcesData(r)
-	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+	if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("tab")), "legacy") {
+		// The old legacy tab is a bookmark from the pre-WP16 UI.
+		http.Redirect(w, r, "/indexers", http.StatusFound)
 		return
 	}
 	data := indexersPage{
-		base:        s.newBaseT(r, "indexers.title", "indexers"),
-		Tab:         tab,
-		Legacy:      legacy,
-		LegacyCount: len(legacy.Sources),
+		base: s.newBaseT(r, "indexers.title", "indexers"),
 	}
 	if s.svc != nil {
 		indexers, err := s.svc.Indexers(r.Context())
@@ -400,9 +385,6 @@ func (s *Server) indexersPage(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, in := range indexers {
-			if in.LegacySourceID > 0 {
-				continue
-			}
 			row := indexerRow{
 				Indexer:    in,
 				Definition: names[in.DefinitionID],
@@ -424,7 +406,7 @@ func (s *Server) indexersPage(w http.ResponseWriter, r *http.Request) {
 			}
 			data.Rows = append(data.Rows, row)
 		}
-		data.NativeCount = len(data.Rows)
+		data.Count = len(data.Rows)
 	} else {
 		data.Unavailable = true
 	}
@@ -750,10 +732,6 @@ func (s *Server) indexerCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderIndexerFormError(w, r, defID, nil, nil, []string{err.Error()})
 		return
 	}
-	if def, err := s.store.GetDefinition(r.Context(), defID); err == nil && strings.HasPrefix(def.ID, "legacy-") {
-		s.renderIndexerFormError(w, r, defID, nil, &in, []string{s.translate(r, "indexerForm.legacyDefinition")})
-		return
-	}
 	if err := s.ensureStoredDefinition(r, defID); err != nil {
 		s.renderIndexerFormError(w, r, defID, nil, &in, []string{err.Error()})
 		return
@@ -1064,11 +1042,6 @@ func (s *Server) definitionOptions(r *http.Request) ([]definitionOption, error) 
 	installed := make(map[string]bool, len(defs))
 	for _, def := range defs {
 		installed[def.ID] = true
-		// Bridge definitions are generated from legacy sources: they are
-		// read-only and never a valid starting point for a new indexer.
-		if strings.HasPrefix(def.ID, "legacy-") {
-			continue
-		}
 		option := definitionOption{ID: def.ID, Name: definitionName(def), Installed: true}
 		if parsed, err := definition.Parse([]byte(def.Body)); err == nil {
 			option.Protocol = parsed.Meta.Protocol
@@ -1085,7 +1058,7 @@ func (s *Server) definitionOptions(r *http.Request) ([]definitionOption, error) 
 		return options, nil
 	}
 	for _, entry := range entries {
-		if installed[entry.ID] || strings.HasPrefix(entry.ID, "legacy-") {
+		if installed[entry.ID] {
 			continue
 		}
 		options = append(options, definitionOption{

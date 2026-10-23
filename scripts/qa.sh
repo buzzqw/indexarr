@@ -25,7 +25,7 @@ go test ./...
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/indexarr-qa.XXXXXX")"
 # Keep the vault key out of the developer's real user config: WP1 resolves
-# UserConfigDir()/indexarr/master.key when no legacy <db>.key exists.
+# UserConfigDir()/indexarr/master.key when no old <db>.key file exists.
 export XDG_CONFIG_HOME="$TMP/config"
 mkdir -p "$XDG_CONFIG_HOME"
 PORT="${INDEXARR_QA_PORT:-$((20000 + RANDOM % 30000))}"
@@ -89,18 +89,18 @@ check() {
 echo "==> HTTP smoke tests"
 check / "Overview"
 check /releases "Release"
-check "/indexers?tab=legacy" "Legacy bridge"
+check "/indexers" "Indexers"
 check /maintenance "Maintenance"
 check /maintenance "Database report"
 check "/activity?tab=logs" "Log"
-check "/activity?tab=logs&component=indexer" "Source"
+check "/activity?tab=logs&component=indexer" "Indexer"
 check /healthz '"status":"ok"'
 check /static/app.css "max-width: 720px"
 check /static/manifest.webmanifest '"name": "indexarr"'
 check /sw.js "indexarr-static"
 check /definitions "Definitions"
 check /definitions/new "New definition"
-check /indexers "Native"
+check /indexers "Indexers"
 check /indexers/new "New native indexer"
 check /applications "Applications"
 check /import "Import"
@@ -204,11 +204,11 @@ fi
 curl -fsS -X DELETE "$BASE/api/v2/applications/$APP_ID?apikey=$KEY" >/dev/null
 echo "ok   /api/v2/applications (vault + sync)"
 
-LEGACY="$(curl -fsS "$BASE/api/v2/legacy/preview?apikey=$KEY")"
-if ! grep -q '"counts"' <<<"$LEGACY" || ! grep -q '"candidates"' <<<"$LEGACY"; then
-  echo "FAIL /api/v2/legacy/preview: $LEGACY" >&2
+EXPORT="$(curl -fsS "$BASE/indexers/export")"
+if ! grep -q '"indexers"' <<<"$EXPORT"; then
+  echo "FAIL /indexers/export: $EXPORT" >&2
   exit 1
 fi
-echo "ok   /api/v2/legacy/preview"
+echo "ok   /indexers/export"
 
 echo "QA passed"

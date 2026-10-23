@@ -170,83 +170,29 @@ risultato arriva subito nel messaggio, senza passare dalla lista. Il campo
 **Default category** assegna una categoria Torznab alle release RSS/HTML che non
 ne dichiarano una (per esempio una pagina Corsaro o un feed generico).
 
-### Quick add, preset e scoperta feed
+### Aggiunta di un indexer, feed e scoperta
 
-- **Quick add** in cima a Sources: incolla un URL; indexarr riconosce ExtTo,
-  TorrentGalaxy, Corsaro, i feed RSS/Atom e gli endpoint Torznab. Nome e API key
-  sono opzionali, il primo run viene accodato subito.
-- **Preset** nel form sorgente: Prowlarr, Jackett, MirCrew, Torznab diretto, RSS,
-  ExtTo, TorrentGalaxy, Corsaro. Riempiono tipo e manager; l'URL resta da
-  incollare. **Detect type from URL** imposta tipo e manager dal valore scritto.
+- **Aggiungi indexer**: scegli una definizione del catalogo (ExtTo,
+  TorrentGalaxy, Corsaro, Knaben, TorrentLeech o una generica) oppure incolla un
+  endpoint Torznab. I segreti finiscono nel vault, non nel database in chiaro.
+- **RSS**: un feed si aggiunge dalla pagina Indexer o da **Scoperta feed**;
+  diventa un normale indexer della famiglia `rss`.
 - **Discover feeds**: dato l'URL di una pagina, estrae `<link rel="alternate">`
   e i link RSS/Atom e li propone con un pulsante **Add as RSS**.
-- Se **5 o più sorgenti condividono lo stesso host**, la pagina mostra un avviso:
-  i siti possono rispondere `429`; usa le caselle di selezione per disabilitare,
-  unire o eliminare i listing che non servono e allunga l'intervallo. Un URL già
-  presente viene rifiutato dal quick add (la creazione manuale resta possibile).
+- **Jackett/Prowlarr**: un sito senza definizione nativa si importa come indexer
+  Torznab che punta all'endpoint per-indexer del manager. Non serve un percorso
+  separato: l'indexer si comporta come tutti gli altri.
+- **Test all** e **Run all** provano o aggiornano tutti gli indexer abilitati;
+  gli esiti finiscono in **Attività** e nei log.
+- **Export/import JSON** scarica e ricarica la configurazione pubblica degli
+  indexer. I segreti non vengono mai esportati.
 
-### Aggiunta massiva di feed RSS/OPML
+### Definizioni native per ExtTo, TorrentGalaxy e Corsaro
 
-Da **Sources → Bulk add RSS** si incolla un elenco (una URL per riga) oppure un
-file OPML completo:
-
-```text
-https://example.org/feed.xml
-My feed | https://example.org/other.xml
-# le righe che iniziano con # sono ignorate
-https://another.example/rss | Nome alternativo
-```
-
-- `Nome | URL` assegna il nome; senza nome viene usato il dominio
-  (`example.org`, senza `www.`).
-- Usa URL di feed, non pagine del sito, per un RSS normale: una pagina funziona
-  solo se espone un link RSS/Atom (spesso `/rss` o `/feed`); altrimenti il log
-  dice chiaramente che è una pagina HTML. Fanno eccezione le pagine ExtTo,
-  TorrentGalaxy e Corsaro, che hanno un parser dedicato.
-- Un URL già presente viene saltato: reimportare la stessa lista è sicuro.
-- I nomi duplicati ricevono un suffisso (`example.org (2)`).
-- Un OPML viene letto ricorsivamente: ogni `xmlUrl`, anche negli outline
-  annidati, diventa una sorgente; `text`/`title` diventano il nome.
-- Intervallo, **Enabled** e **Run immediately** si applicano a tutti i feed
-  creati.
-- Gli URL non validi finiscono nel report e non bloccano gli altri.
-- Dopo un'importazione parziale la pagina resta aperta con il report:
-  correggi le righe e reinvia; i feed già creati vengono riconosciuti e saltati.
-
-### Gestione massiva e import/export delle sorgenti
-
-Nella pagina **Sources**:
-
-- le caselle di selezione permettono di **abilitare, disabilitare, cambiare
-  intervallo o categorie** e **eliminare** più sorgenti in un colpo;
-- **Clone** duplica una sorgente (disabilitata, con nome univoco) per provare
-  un'altra configurazione;
-- **Export JSON** scarica tutte le sorgenti, comprese API key e credenziali HTTP:
-  conserva il file in un posto sicuro;
-- il pannello **Import / export** accetta lo stesso JSON e salta nome o URL già
-  presenti; le voci non valide sono riportate in **Logs**.
-
-### Liste HTML: ExtTo, TorrentGalaxy e Corsaro
-
-Alcuni siti non espongono RSS né Torznab, ma solo pagine HTML. Per **ExtTo**
-(`extto.org` / `ext.to`), **TorrentGalaxy** e **Corsaro** indexarr usa parser
-dedicati, come Gextto:
-
-- **ExtTo**: ogni riga della listing contiene il link al dettaglio e il magnet;
-  vengono accoppiati senza scaricare le pagine dettaglio.
-- **TorrentGalaxy**: la pagina utente contiene solo link `post-detail`; indexarr
-  scarica i dettagli (6 alla volta), estrae il magnet e lo tiene in cache per
-  6 ore, così i giri successivi non ripetono le stesse richieste.
-- **Corsaro**: parser delle righe con link `/torrent/` o `/torrents/` e dei
-  magnet diretti; i dettagli vengono scaricati in parallelo e memorizzati in
-  cache. Il titolo viene dal testo dell'anchor o dal parametro `dn`.
-- Vengono lette la prima pagina (fino a 50 release) e la categoria dal filtro
-  ExtTo (`filter=c=TV` → 5000, ecc.); per le altre si può usare **Default
-  category** nel form della sorgente.
-- Le URL esistenti funzionano così come sono; non serve cambiarle.
-
-Le altre pagine HTML non vengono scrapate: per quelle servono Jackett/Prowlarr.
-Se il sito cambia layout o richiede il login, il test lo segnala.
+I tre siti HTML hanno definizioni native nel catalogo, con fixture reali
+ripulite e test di equivalenza. Il motore segue i link di dettaglio per ottenere
+il magnet, con concorrenza limitata e cache. Le vecchie impostazioni per singola
+sorgente (uploader, tag, categoria) diventano impostazioni della definizione.
 
 ### MirCrew (`mircrew-indexer`)
 
@@ -400,14 +346,14 @@ L'operazione è registrata nei log.
 
 | Pagina | Contenuto |
 | --- | --- |
-| **Dashboard** | Totali, stato delle sorgenti, ultime release ed esecuzioni |
+| **Dashboard** | Totali, stato degli indexer, ultime release ed esecuzioni |
 | **Releases** | Ricerca live, esclusione `-xxx`, regex, filtri avanzati (qualità, lingua, seeders, dimensione), ricerche salvate, preferiti/nascosti; dettaglio con magnet e `.torrent` |
-| **Sources** | Stato, Run/Test/Clone/Edit, selezione multipla, import/export JSON, import massivo RSS/OPML, quick add, preset, scoperta feed e categoria predefinita |
-| **Runs** | Storico con esito, conteggi (inclusi i bloccati), durata, errore, dettaglio e annullamento |
+| **Indexer** | Elenco unico, Run/Test/Run all/Test all, dettaglio, modifica, export/import JSON e scoperta feed |
+| **Attività** | Storico aggiornamenti da `indexer_history` con esito, query, durata ed errore; log runtime |
 | **Rules** | Blocklist per infohash, titolo, regex, sorgente o categoria; le release bloccate non vengono più inserite |
 | **Logs** | Ultimi 2000 messaggi, filtro per livello/testo, limite righe, auto-refresh, download, pulizia e livello di log runtime |
 | **Settings** | API key primaria e multiple con rate limit, endpoint Torznab, ricerca live, intervalli, limiti, retention, credenziali UI, notifiche, auto-disable, client torrent e backup |
-| **Maintenance** | Integrity check, vacuum, optimize/checkpoint, reindex, deduplica, pulizia `.torrent`, retention, salute sorgenti, backup automatici, download/delete e ripristino |
+| **Maintenance** | Integrity check, vacuum, optimize/checkpoint, reindex, deduplica, pulizia `.torrent`, retention, purge per indexer, backup automatici, download/delete e ripristino |
 
 L'interfaccia è una **PWA**: manifest, icona e service worker che mette in cache
 solo gli asset statici; le pagine HTML restano sempre di rete perché contengono
@@ -480,7 +426,7 @@ In **Settings → Notifications**:
 
 ## Metriche e diagnostica
 
-- `GET /metrics`: formato Prometheus (`indexarr_releases`, `indexarr_sources`,
+- `GET /metrics`: formato Prometheus (`indexarr_releases`, `indexarr_indexers`,
   `indexarr_runs_24h`, `indexarr_errors_24h`, `indexarr_blocklist_rules`,
   `indexarr_db_bytes`, uptime…), senza autenticazione come `/healthz`;
 - **Runs → dettaglio**: conteggi, durata ed errore completo di un singolo run;
@@ -658,8 +604,7 @@ docker run -d --name indexarr -p 8484:8484 \
 Il volume **non** contiene la chiave del vault: in Docker usare
 `INDEXARR_MASTER_KEY_FILE` con un secret montato (esempio in
 [docs/VAULT.md](docs/VAULT.md#docker)) oppure `INDEXARR_MASTER_KEY`. Senza chiave
-il servizio parte e le sorgenti legacy continuano a funzionare, ma i segreti
-cifrati non sono leggibili.
+il servizio parte, ma gli indexer con segreti cifrati non sono leggibili.
 
 ## Sviluppo
 

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -57,8 +56,8 @@ func TestIndexarr2Schema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2UsenetPayloadVersion {
-		t.Fatalf("schema version = %d, want %d", version, indexarr2UsenetPayloadVersion)
+	if version != indexarr2DropLegacyVersion {
+		t.Fatalf("schema version = %d, want %d", version, indexarr2DropLegacyVersion)
 	}
 	var name string
 	if err := st.DB().QueryRowContext(ctx,
@@ -133,7 +132,7 @@ func TestMigrationIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2UsenetPayloadVersion {
+	if version != indexarr2DropLegacyVersion {
 		t.Fatalf("schema version = %d", version)
 	}
 	if err := second.DB().QueryRowContext(ctx,
@@ -151,7 +150,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	st := newTestStore(t)
 
 	wantErr := errors.New("boom")
-	err := st.applyMigration(ctx, 3, "broken", func(tx *sql.Tx) error {
+	err := st.applyMigration(ctx, 4, "broken", func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `CREATE TABLE migration_should_rollback (id INTEGER)`); err != nil {
 			return err
 		}
@@ -164,7 +163,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2UsenetPayloadVersion {
+	if version != indexarr2DropLegacyVersion {
 		t.Fatalf("schema version after failure = %d", version)
 	}
 	var tables int
@@ -178,186 +177,11 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	}
 	var rows int
 	if err := st.DB().QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM schema_migrations WHERE version = 3`).Scan(&rows); err != nil {
+		`SELECT COUNT(*) FROM schema_migrations WHERE version = 4`).Scan(&rows); err != nil {
 		t.Fatalf("check migration row: %v", err)
 	}
 	if rows != 0 {
 		t.Fatal("failed migration was recorded")
-	}
-}
-
-func TestBackfillLegacySources(t *testing.T) {
-	ctx := context.Background()
-	st := newTestStore(t)
-
-	first := testSource("Alpha Tracker")
-	first.Kind = "torznab"
-	first.URL = "http://alpha.test/api"
-	first.APIKey = "super-secret-api-key"
-	first.Username = "user"
-	first.Password = "super-secret-password"
-	first.Categories = "5000,2000"
-	first.DefaultCategory = "5040"
-	first.Query = "alpha"
-	first.IntervalSeconds = 900
-	firstID, err := st.CreateSource(ctx, first)
-	if err != nil {
-		t.Fatalf("CreateSource alpha: %v", err)
-	}
-	second := testSource("Beta RSS")
-	second.Kind = "rss"
-	second.URL = "http://beta.test/feed"
-	second.APIKey = ""
-	second.Enabled = false
-	secondID, err := st.CreateSource(ctx, second)
-	if err != nil {
-		t.Fatalf("CreateSource beta: %v", err)
-	}
-
-	created, err := st.BackfillLegacySources(ctx)
-	if err != nil {
-		t.Fatalf("BackfillLegacySources: %v", err)
-	}
-	if created != 2 {
-		t.Fatalf("created = %d, want 2", created)
-	}
-
-	definitions, err := st.ListDefinitions(ctx)
-	if err != nil {
-		t.Fatalf("ListDefinitions: %v", err)
-	}
-	if len(definitions) != 2 {
-		t.Fatalf("definitions = %d, want 2", len(definitions))
-	}
-	indexers, err := st.ListIndexers(ctx)
-	if err != nil {
-		t.Fatalf("ListIndexers: %v", err)
-	}
-	if len(indexers) != 2 {
-		t.Fatalf("indexers = %d, want 2", len(indexers))
-	}
-
-	byLegacy := map[int64]Indexer{}
-	for _, indexer := range indexers {
-		byLegacy[indexer.LegacySourceID] = indexer
-	}
-	for _, id := range []int64{firstID, secondID} {
-		indexer, ok := byLegacy[id]
-		if !ok {
-			t.Fatalf("no indexer for legacy source %d", id)
-		}
-		if indexer.DefinitionID != legacyDefinitionID(id) {
-			t.Errorf("definition id = %q", indexer.DefinitionID)
-		}
-		if indexer.Protocol != "torrent" || indexer.Priority != 25 {
-			t.Errorf("indexer defaults = %#v", indexer)
-		}
-		if indexer.Slug == "" {
-			t.Errorf("indexer %d has empty slug", id)
-		}
-		var config map[string]any
-		if err := json.Unmarshal([]byte(indexer.ConfigJSON), &config); err != nil {
-			t.Fatalf("config_json for %d is not JSON: %v", id, err)
-		}
-		configJSON := strings.ToLower(indexer.ConfigJSON)
-		for _, forbidden := range []string{"api_key", "password", "username", "super-secret"} {
-			if strings.Contains(configJSON, forbidden) {
-				t.Errorf("config_json leaks %q: %s", forbidden, indexer.ConfigJSON)
-			}
-		}
-		if _, ok := config["url"]; !ok {
-			t.Errorf("config_json has no url: %s", indexer.ConfigJSON)
-		}
-		secrets, err := st.ListSecrets(ctx, indexer.ID)
-		if err != nil {
-			t.Fatalf("ListSecrets: %v", err)
-		}
-		if len(secrets) != 0 {
-			t.Errorf("legacy secrets were copied: %#v", secrets)
-		}
-		def, err := st.GetDefinition(ctx, indexer.DefinitionID)
-		if err != nil {
-			t.Fatalf("GetDefinition: %v", err)
-		}
-		if def.State != "verificata" || def.Origin != "local" || def.Author != "migration" {
-			t.Errorf("definition = %#v", def)
-		}
-		if len(def.Hash) != 64 {
-			t.Errorf("hash = %q", def.Hash)
-		}
-		if !strings.Contains(def.Body, "schema: 1") || !strings.Contains(def.Body, "connector:") {
-			t.Errorf("definition body = %q", def.Body)
-		}
-	}
-	if got := byLegacy[secondID].Enabled; got {
-		t.Errorf("disabled source produced an enabled indexer")
-	}
-
-	again, err := st.BackfillLegacySources(ctx)
-	if err != nil {
-		t.Fatalf("second BackfillLegacySources: %v", err)
-	}
-	if again != 0 {
-		t.Fatalf("second run created %d rows, want 0", again)
-	}
-
-	// Deleting a bridged indexer is permanent: the definition stays as the
-	// migration marker, so the next start does not recreate it.
-	secondBridged := byLegacy[secondID]
-	if err := st.DeleteIndexer(ctx, secondBridged.ID); err != nil {
-		t.Fatalf("DeleteIndexer: %v", err)
-	}
-	afterDelete, err := st.BackfillLegacySources(ctx)
-	if err != nil {
-		t.Fatalf("BackfillLegacySources after delete: %v", err)
-	}
-	if afterDelete != 0 {
-		t.Fatalf("backfill recreated %d deleted indexers", afterDelete)
-	}
-	if _, err := st.GetIndexer(ctx, secondBridged.ID); err == nil {
-		t.Fatal("deleted bridged indexer was recreated")
-	}
-
-	// Removing the legacy source must not remove the bridged indexer.
-	if err := st.DeleteSource(ctx, firstID); err != nil {
-		t.Fatalf("DeleteSource: %v", err)
-	}
-	bridged := byLegacy[firstID]
-	reloaded, err := st.GetIndexer(ctx, bridged.ID)
-	if err != nil {
-		t.Fatalf("indexer disappeared with its source: %v", err)
-	}
-	if reloaded.LegacySourceID != firstID {
-		t.Errorf("legacy_source_id = %d, want %d", reloaded.LegacySourceID, firstID)
-	}
-}
-
-func TestBackfillSlugCollision(t *testing.T) {
-	ctx := context.Background()
-	st := newTestStore(t)
-
-	for _, name := range []string{"Foo Bar", "Foo-Bar"} {
-		if _, err := st.CreateSource(ctx, testSource(name)); err != nil {
-			t.Fatalf("CreateSource(%q): %v", name, err)
-		}
-	}
-	created, err := st.BackfillLegacySources(ctx)
-	if err != nil {
-		t.Fatalf("BackfillLegacySources: %v", err)
-	}
-	if created != 2 {
-		t.Fatalf("created = %d, want 2", created)
-	}
-	indexers, err := st.ListIndexers(ctx)
-	if err != nil {
-		t.Fatalf("ListIndexers: %v", err)
-	}
-	seen := map[string]bool{}
-	for _, indexer := range indexers {
-		if seen[indexer.Slug] {
-			t.Fatalf("duplicate slug %q", indexer.Slug)
-		}
-		seen[indexer.Slug] = true
 	}
 }
 
@@ -824,5 +648,107 @@ func TestIndexerForeignKey(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("orphan indexer rows = %d", count)
+	}
+}
+
+func TestDropLegacySourcesMigration(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "old-schema.db")
+	st, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	mustCreateDefinition(t, st, "keep-def")
+	keepID := mustCreateIndexer(t, st, "keep-def", "keep", "Keep")
+	bridgeID := mustCreateIndexer(t, st, "keep-def", "bridge", "Bridge")
+	release := Release{DedupKey: "keep-release", Title: "Keep release", SearchTitle: "keep release"}
+	if _, err := st.UpsertRelease(ctx, &release); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := sql.Open("sqlite", "file:"+dsnPath(path))
+	if err != nil {
+		t.Fatalf("raw open: %v", err)
+	}
+	for _, statement := range []string{
+		`CREATE TABLE sources (id INTEGER PRIMARY KEY, name TEXT NOT NULL)`,
+		`INSERT INTO sources(id, name) VALUES(1, 'old')`,
+		`ALTER TABLE indexers ADD COLUMN legacy_source_id INTEGER`,
+		`CREATE UNIQUE INDEX indexers_legacy_source ON indexers(legacy_source_id) WHERE legacy_source_id IS NOT NULL`,
+		`CREATE TABLE runs (id INTEGER PRIMARY KEY, source_id INTEGER REFERENCES sources(id))`,
+		`ALTER TABLE releases ADD COLUMN source_id INTEGER REFERENCES sources(id) ON DELETE SET NULL`,
+		`ALTER TABLE releases ADD COLUMN source_name TEXT NOT NULL DEFAULT ''`,
+		`UPDATE releases SET source_id = 1, source_name = 'old' WHERE id = ?`,
+		`UPDATE indexers SET legacy_source_id = 1 WHERE id = ?`,
+		`DELETE FROM schema_migrations WHERE version = 3`,
+	} {
+		var args []any
+		if strings.Contains(statement, "?") {
+			if strings.Contains(statement, "releases") {
+				args = []any{release.ID}
+			} else {
+				args = []any{bridgeID}
+			}
+		}
+		if _, err := raw.Exec(statement, args...); err != nil {
+			_ = raw.Close()
+			t.Fatalf("%s: %v", statement, err)
+		}
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	migrated, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open migrated: %v", err)
+	}
+	defer migrated.Close()
+	version, err := migrated.schemaVersion(ctx)
+	if err != nil || version != indexarr2DropLegacyVersion {
+		t.Fatalf("schema version = %d, %v", version, err)
+	}
+	for _, table := range []string{"sources", "runs"} {
+		var count int
+		if err := migrated.DB().QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?`, table).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Errorf("table %s still exists", table)
+		}
+	}
+	for _, column := range []struct{ table, name string }{
+		{"indexers", "legacy_source_id"},
+		{"releases", "source_id"},
+		{"releases", "source_name"},
+	} {
+		exists, err := migrated.columnExists(column.table, column.name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if exists {
+			t.Errorf("%s.%s still exists", column.table, column.name)
+		}
+	}
+	if _, err := migrated.GetRelease(ctx, release.ID); err != nil {
+		t.Errorf("release was not preserved: %v", err)
+	}
+	if _, err := migrated.GetIndexer(ctx, keepID); err != nil {
+		t.Errorf("native indexer was not preserved: %v", err)
+	}
+	if _, err := migrated.GetIndexer(ctx, bridgeID); err == nil {
+		t.Error("bridge indexer was not removed")
+	}
+	var provenance int
+	if err := migrated.DB().QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='release_sources'`).Scan(&provenance); err != nil {
+		t.Fatal(err)
+	}
+	if provenance != 1 {
+		t.Error("release_sources was not recreated")
 	}
 }

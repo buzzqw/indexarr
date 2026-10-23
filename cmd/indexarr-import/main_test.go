@@ -101,22 +101,6 @@ func TestApplyCreatesNativeIndexersAndSealsSecrets(t *testing.T) {
 		t.Fatalf("got %d indexers, want 3: %+v", len(rows), rows)
 	}
 
-	var sources int
-	if err := st.DB().QueryRowContext(ctx, `SELECT count(*) FROM sources`).Scan(&sources); err != nil {
-		t.Fatalf("count sources: %v", err)
-	}
-	if sources != 0 {
-		t.Fatalf("apply wrote %d legacy sources, want 0", sources)
-	}
-	var legacy int
-	if err := st.DB().QueryRowContext(ctx,
-		`SELECT count(*) FROM indexers WHERE legacy_source_id IS NOT NULL`).Scan(&legacy); err != nil {
-		t.Fatalf("count legacy indexers: %v", err)
-	}
-	if legacy != 0 {
-		t.Fatalf("apply wrote %d indexers with legacy_source_id", legacy)
-	}
-
 	byName := make(map[string]store.Indexer, len(rows))
 	for _, row := range rows {
 		byName[row.Name] = row
@@ -316,8 +300,8 @@ func TestResolveVaultFromEnvironmentAndLegacyFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveVault legacy: %v", err)
 	}
-	if source.Kind != "legacy-data-dir" {
-		t.Fatalf("legacy key source = %q, want legacy-data-dir", source.Kind)
+	if source.Kind != "data-dir-key" {
+		t.Fatalf("legacy key source = %q, want data-dir-key", source.Kind)
 	}
 	if _, err := v.SealString("value"); err != nil {
 		t.Fatalf("legacy vault cannot seal: %v", err)

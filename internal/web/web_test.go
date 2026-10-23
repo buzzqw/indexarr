@@ -15,13 +15,14 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/engine"
-	"github.com/buzzqw/indexarr/internal/ingest"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/vault"
 )
 
 var csrfPattern = regexp.MustCompile(`name="csrf" value="([0-9a-f]{64})"`)
+
+func strconvI(value int64) string { return strconv.FormatInt(value, 10) }
 
 type testEnv struct {
 	store   *store.Store
@@ -49,13 +50,12 @@ func newTestEnv(t *testing.T) *testEnv {
 	level := new(slog.LevelVar)
 	level.Set(slog.LevelInfo)
 	logger := slog.New(logbuffer.NewHandler(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: level}), logs))
-	ingestEngine := ingest.New(st, logger)
 	polite := engine.NewPoliteness(0, 1, 5, time.Minute, engine.RealClock{})
 	secretVault, err := vault.New(bytes.Repeat([]byte{3}, 32))
 	if err != nil {
 		t.Fatalf("vault.New: %v", err)
 	}
-	server := New(Config{Store: st, Engine: ingestEngine, Logger: logger, Logs: logs, Level: level, Version: "test", Started: time.Now(), Politeness: polite, Vault: secretVault})
+	server := New(Config{Store: st, Logger: logger, Logs: logs, Level: level, Version: "test", Started: time.Now(), Politeness: polite, Vault: secretVault})
 	return &testEnv{store: st, server: server, handler: server.Handler(), apiKey: key, logs: logs, level: level, polite: polite}
 }
 
@@ -129,45 +129,6 @@ func TestStaticAndHealth(t *testing.T) {
 		if !strings.Contains(page.Body.String(), asset) {
 			t.Errorf("asset URL without version: %s", asset)
 		}
-	}
-}
-
-func TestCreateSource(t *testing.T) {
-	env := newTestEnv(t)
-	token, cookie := csrfFrom(t, env.handler, "/sources/new")
-	values := url.Values{
-		"csrf":             {token},
-		"name":             {"My indexer"},
-		"kind":             {"torznab"},
-		"manager":          {"auto"},
-		"url":              {"http://indexer.test"},
-		"api_key":          {"k"},
-		"username":         {"feeduser"},
-		"password":         {"feedpass"},
-		"categories":       {"5000, 2000"},
-		"default_category": {"5040"},
-		"query":            {""},
-		"interval_seconds": {"600"},
-		"enabled":          {"on"},
-		"then":             {"run"},
-	}
-	recorder := postForm(t, env.handler, "/sources", values, cookie)
-	if recorder.Code != http.StatusSeeOther {
-		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
-	}
-	sources, err := env.store.ListSources(context.Background())
-	if err != nil || len(sources) != 1 {
-		t.Fatalf("sources = %#v, %v", sources, err)
-	}
-	if sources[0].Name != "My indexer" || sources[0].Categories != "5000,2000" ||
-		sources[0].IntervalSeconds != 600 || sources[0].DefaultCategory != "5040" {
-		t.Errorf("source = %#v", sources[0])
-	}
-	if sources[0].Username != "feeduser" || sources[0].Password != "feedpass" {
-		t.Errorf("HTTP credentials not stored: %#v", sources[0])
-	}
-	if body := get(t, env.handler, "/indexers?tab=legacy").Body.String(); !strings.Contains(body, "My indexer") {
-		t.Error("sources page does not list the new source")
 	}
 }
 
@@ -307,7 +268,7 @@ func TestReleasesPage(t *testing.T) {
 	release := store.Release{
 		DedupKey: "k1", Title: "The Show S01E01 1080p",
 		SearchTitle: store.NormalizeSearch("The Show S01E01 1080p"),
-		Size:        1024, Seeders: 3, Category: "5040", SourceName: "src",
+		Size:        1024, Seeders: 3, Category: "5040",
 		Magnet:      "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567",
 		FirstSeenAt: time.Now(), LastSeenAt: time.Now(),
 	}

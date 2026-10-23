@@ -21,10 +21,10 @@
     </p>
   </div>
   <div class="field">
-    <label for="source">{{T "releases.indexer"}}</label>
-    <select id="source" name="source">
+    <label for="indexer">{{T "releases.indexer"}}</label>
+    <select id="indexer" name="indexer">
       <option value="0">{{T "releases.allIndexers"}}</option>
-      {{range .Sources}}<option value="{{.ID}}"{{if eq $.Source .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+      {{range .Indexers}}<option value="{{.ID}}"{{if eq $.Indexer .ID}} selected{{end}}>{{.Name}}</option>{{end}}
     </select>
   </div>
   <div class="field">

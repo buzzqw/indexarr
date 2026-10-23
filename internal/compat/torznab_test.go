@@ -289,7 +289,7 @@ func TestSearchParameters(t *testing.T) {
 
 func TestLimitUpperBound(t *testing.T) {
 	e := newEnv(t)
-	source := e.sources["alpha"]
+	indexer := e.indexers["alpha"]
 	for i := 0; i < 105; i++ {
 		release := store.Release{
 			DedupKey:    "bound-" + strconv.Itoa(i),
@@ -299,12 +299,15 @@ func TestLimitUpperBound(t *testing.T) {
 			Seeders:     1,
 			Leechers:    0,
 			Category:    "5040",
-			SourceID:    source.ID,
-			SourceName:  source.Name,
 			Magnet:      "magnet:?xt=urn:btih:" + strings.Repeat("a", 40),
 		}
 		if _, err := e.store.UpsertRelease(t.Context(), &release); err != nil {
 			t.Fatalf("UpsertRelease: %v", err)
+		}
+		if err := e.store.RecordReleaseSource(t.Context(), store.ReleaseSource{
+			ReleaseID: release.ID, IndexerID: indexer.ID,
+		}); err != nil {
+			t.Fatalf("RecordReleaseSource: %v", err)
 		}
 	}
 	document := parseRSS(t, e.get("/api?t=search&apikey="+primaryKey+

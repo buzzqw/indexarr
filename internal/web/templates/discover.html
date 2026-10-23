@@ -1,17 +1,17 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>Scoperta dei feed</h1>
+    <h1>Feed discovery</h1>
     <p class="muted">RSS/Atom links advertised by <code>{{.SourceURL}}</code>.</p>
   </div>
-  <a class="btn" href="/indexers?tab=legacy">← Legacy bridge</a>
+  <a class="btn" href="/indexers">← Indexers</a>
 </section>
 
 {{if .Error}}
 <section class="panel">
   <div class="panel-head"><h2>No feeds found</h2></div>
   <p class="flash danger" role="alert">{{.Error}}</p>
-  <p class="help">Try the exact RSS/XML URL, or add the site with <strong>Quick add</strong> if it is ExtTo, TorrentGalaxy or Corsaro.</p>
+  <p class="help">Try the exact RSS/XML URL, or add the site from <strong>Add indexer</strong>.</p>
 </section>
 {{else}}
 <section class="panel">
@@ -26,10 +26,9 @@
           <td><code>{{.URL}}</code></td>
           <td><span class="chip">{{.Type}}</span></td>
           <td class="right">
-            <form method="post" action="/sources/quick">
+            <form method="post" action="/indexers/quick">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
               <input type="hidden" name="url" value="{{.URL}}">
-              <input type="hidden" name="kind" value="rss">
               <input type="hidden" name="name" value="{{.Title}}">
               <button class="btn small" type="submit">Add as RSS</button>
             </form>

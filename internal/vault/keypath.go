@@ -12,7 +12,7 @@ import (
 // KeySource describes where the master key came from, for the UI and logs. It
 // never contains key material.
 type KeySource struct {
-	// Kind is one of: "env", "env-file", "config", "legacy-data-dir",
+	// Kind is one of: "env", "env-file", "config", "data-dir-key",
 	// "user-config", "data-dir-fallback".
 	Kind string
 	// Path is empty for "env" and the key file path otherwise.
@@ -47,14 +47,14 @@ func (k KeySource) Info() Info {
 		info.Hint = "The master key is read from INDEXARR_MASTER_KEY_FILE. Back up that file."
 	case "config":
 		info.Hint = "The master key is read from vault_key_path. Back up that file."
-	case "legacy-data-dir":
+	case "data-dir-key":
 		info.Hint = "The master key is still next to the database: run 'indexarr vault move-key -to <path>'."
 	case "user-config":
 		info.Hint = "The master key lives in the user configuration directory. Back up that file."
 	case "data-dir-fallback":
 		info.Hint = "No user configuration directory is available, so the key lives next to the database. Back it up separately."
 	}
-	if k.InDataDir && k.Kind != "legacy-data-dir" && k.Kind != "data-dir-fallback" {
+	if k.InDataDir && k.Kind != "data-dir-key" && k.Kind != "data-dir-fallback" {
 		info.Hint = "The master key is in the data directory: move it outside before copying the data volume."
 	}
 	return info
@@ -64,7 +64,7 @@ const (
 	keyKindEnv             = "env"
 	keyKindEnvFile         = "env-file"
 	keyKindConfig          = "config"
-	keyKindLegacyDataDir   = "legacy-data-dir"
+	keyKindDataDirKey      = "data-dir-key"
 	keyKindUserConfig      = "user-config"
 	keyKindDataDirFallback = "data-dir-fallback"
 )
@@ -141,19 +141,19 @@ func resolveKey(opts ResolveOptions) ([]byte, KeySource, error) {
 			key, readErr := readKeyFile(legacy)
 			if readErr != nil {
 				return nil, KeySource{
-					Kind:      keyKindLegacyDataDir,
+					Kind:      keyKindDataDirKey,
 					Path:      legacy,
 					InDataDir: true,
 				}, readErr
 			}
 			return key, KeySource{
-				Kind:      keyKindLegacyDataDir,
+				Kind:      keyKindDataDirKey,
 				Path:      legacy,
 				InDataDir: true,
 			}, nil
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return nil, KeySource{
-				Kind:      keyKindLegacyDataDir,
+				Kind:      keyKindDataDirKey,
 				Path:      legacy,
 				InDataDir: true,
 			}, fmt.Errorf("vault: inspect legacy master key file %s: %w", legacy, err)

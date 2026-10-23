@@ -183,21 +183,6 @@ func seedNative(t *testing.T, st *store.Store, definitionID, slug, name, baseURL
 	return createIndexer(t, st, definitionID, slug, name, nativeConfig(baseURL), enabled)
 }
 
-func seedLegacy(t *testing.T, st *store.Store, definitionID, slug, name string) int64 {
-	t.Helper()
-	body := fmt.Sprintf(`schema: 1
-meta:
-  id: %s
-  name: %s
-  type: private
-  protocol: torrent
-  urls: ["https://legacy.example/"]
-connector: torznab
-`, definitionID, name)
-	putDefinition(t, st, store.Definition{ID: definitionID, Family: "torznab", Body: body})
-	return createIndexer(t, st, definitionID, slug, name, `{}`, true)
-}
-
 type inflightTracker struct {
 	current  atomic.Int64
 	max      atomic.Int64
@@ -238,47 +223,33 @@ func newNativeServer(t *testing.T, delay time.Duration, tracker *inflightTracker
 	return server
 }
 
-func TestRunOnceRunsNativeAndSkipsLegacy(t *testing.T) {
+func TestRunOnceRunsEveryNativeIndexer(t *testing.T) {
 	st, runner := newHarness(t, 2, nil)
 	server := newNativeServer(t, 0, nil)
 
 	// The names are chosen so name order differs from id order, proving the
 	// result is deterministic by indexer ID.
-	nativeID := seedNative(t, st, "native-one", "native-one", "Zulu Native", server.URL, true)
-	legacyID := seedLegacy(t, st, "legacy-torznab", "legacy-torznab", "Alpha Legacy")
+	firstID := seedNative(t, st, "native-one", "native-one", "Zulu Native", server.URL, true)
+	secondID := seedNative(t, st, "native-two", "native-two", "Alpha Native", server.URL, true)
 
 	outcomes := runner.RunOnce(context.Background())
 	if len(outcomes) != 2 {
 		t.Fatalf("outcomes = %d, want 2", len(outcomes))
 	}
-	if outcomes[0].IndexerID != nativeID || outcomes[1].IndexerID != legacyID {
+	if outcomes[0].IndexerID != firstID || outcomes[1].IndexerID != secondID {
 		t.Fatalf("outcome ids = [%d, %d], want [%d, %d]",
-			outcomes[0].IndexerID, outcomes[1].IndexerID, nativeID, legacyID)
+			outcomes[0].IndexerID, outcomes[1].IndexerID, firstID, secondID)
 	}
-
-	native := outcomes[0]
-	if native.Skipped || native.Err != nil {
-		t.Fatalf("native outcome = %+v", native)
-	}
-	if native.Slug != "native-one" || native.Name != "Zulu Native" {
-		t.Fatalf("native identity = %+v", native)
-	}
-	if native.Stats == nil || native.Stats.Seen != 1 || native.Stats.New != 1 {
-		t.Fatalf("native stats = %+v", native.Stats)
-	}
-	if native.Duration <= 0 {
-		t.Errorf("native duration = %v", native.Duration)
-	}
-
-	legacy := outcomes[1]
-	if !legacy.Skipped || legacy.Reason != ReasonLegacyBridge {
-		t.Fatalf("legacy outcome = %+v", legacy)
-	}
-	if legacy.Stats != nil || legacy.Err != nil {
-		t.Fatalf("legacy outcome must have nil stats and error: %+v", legacy)
-	}
-	if legacy.Slug != "legacy-torznab" || legacy.Name != "Alpha Legacy" {
-		t.Fatalf("legacy identity = %+v", legacy)
+	for _, outcome := range outcomes {
+		if outcome.Skipped || outcome.Err != nil {
+			t.Fatalf("outcome = %+v", outcome)
+		}
+		if outcome.Stats == nil || outcome.Stats.Seen != 1 || outcome.Stats.New+outcome.Stats.Updated != 1 {
+			t.Fatalf("stats = %+v", outcome.Stats)
+		}
+		if outcome.Duration <= 0 {
+			t.Errorf("duration = %v", outcome.Duration)
+		}
 	}
 }
 
@@ -323,11 +294,8 @@ func TestRunOnceInvalidDefinitionIsSkipped(t *testing.T) {
 		t.Fatalf("outcome ids = [%d, %d]", outcomes[0].IndexerID, outcomes[1].IndexerID)
 	}
 	invalid := outcomes[0]
-	if !invalid.Skipped || invalid.Reason != ReasonInvalidDefinition {
-		t.Fatalf("invalid outcome = %+v", invalid)
-	}
-	if invalid.Stats != nil || invalid.Err != nil {
-		t.Fatalf("invalid outcome must be a clean skip: %+v", invalid)
+	if invalid.Err == nil {
+		t.Fatalf("invalid outcome must report an error: %+v", invalid)
 	}
 	if native := outcomes[1]; native.Skipped || native.Err != nil || native.Stats == nil {
 		t.Fatalf("native outcome did not run after the invalid one: %+v", native)
@@ -363,7 +331,7 @@ func TestRunIndexer(t *testing.T) {
 	st, runner := newHarness(t, 2, nil)
 	server := newNativeServer(t, 0, nil)
 	nativeID := seedNative(t, st, "native-one", "native-one", "Native One", server.URL, true)
-	legacyID := seedLegacy(t, st, "legacy-torznab", "legacy-torznab", "Legacy Torznab")
+	disabledID := seedNative(t, st, "native-disabled", "native-disabled", "Disabled Native", server.URL, false)
 
 	nativeOutcome, err := runner.RunIndexer(context.Background(), nativeID)
 	if err != nil {
@@ -373,12 +341,12 @@ func TestRunIndexer(t *testing.T) {
 		t.Fatalf("native outcome = %+v", nativeOutcome)
 	}
 
-	legacyOutcome, err := runner.RunIndexer(context.Background(), legacyID)
+	disabledOutcome, err := runner.RunIndexer(context.Background(), disabledID)
 	if err != nil {
-		t.Fatalf("RunIndexer(legacy): %v", err)
+		t.Fatalf("RunIndexer(disabled): %v", err)
 	}
-	if !legacyOutcome.Skipped || legacyOutcome.Reason != ReasonLegacyBridge {
-		t.Fatalf("legacy outcome = %+v", legacyOutcome)
+	if !disabledOutcome.Skipped || disabledOutcome.Reason != ReasonDisabled {
+		t.Fatalf("disabled outcome = %+v", disabledOutcome)
 	}
 
 	if _, err := runner.RunIndexer(context.Background(), 999999); err == nil {
@@ -433,7 +401,7 @@ func TestOnResultReceivesOneOutcomePerIndexer(t *testing.T) {
 	})
 	server := newNativeServer(t, 0, nil)
 	nativeID := seedNative(t, st, "native-one", "native-one", "Native One", server.URL, true)
-	legacyID := seedLegacy(t, st, "legacy-torznab", "legacy-torznab", "Legacy Torznab")
+	secondID := seedNative(t, st, "native-two", "native-two", "Native Two", server.URL, true)
 	disabledID := seedNative(t, st, "native-disabled", "native-disabled", "Disabled Native", server.URL, false)
 
 	outcomes := runner.RunOnce(context.Background())
@@ -446,7 +414,7 @@ func TestOnResultReceivesOneOutcomePerIndexer(t *testing.T) {
 	if len(got) != len(outcomes) {
 		t.Fatalf("OnResult calls = %d, want %d", len(got), len(outcomes))
 	}
-	for _, id := range []int64{nativeID, legacyID, disabledID} {
+	for _, id := range []int64{nativeID, secondID, disabledID} {
 		if _, ok := got[id]; !ok {
 			t.Errorf("OnResult did not receive indexer %d", id)
 		}

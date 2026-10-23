@@ -29,9 +29,9 @@
     <span class="hint">retention: {{if .RetentionDays}}{{.RetentionDays}} days{{else}}unlimited{{end}}</span>
   </article>
   <article class="card">
-    <span class="label">Sources with errors</span>
-    <strong>{{.SourceErrors}}</strong>
-    <span class="hint">{{.Stats.EnabledSources}} of {{.Stats.Sources}} enabled</span>
+    <span class="label">Indexers with errors</span>
+    <strong>{{.Report.Indexers}}</strong>
+    <span class="hint">{{.Stats.EnabledIndexers}} of {{.Stats.Indexers}} enabled</span>
   </article>
 </section>
 
@@ -48,7 +48,7 @@
     <dt>Journal</dt>
     <dd>{{.Report.JournalMode}} · auto-vacuum {{if eq .Report.AutoVacuum 1}}full{{else if eq .Report.AutoVacuum 2}}incremental{{else}}off{{end}} · WAL {{bytes .Report.WALBytes}} · SHM {{bytes .Report.SHMBytes}}</dd>
     <dt>Rows</dt>
-    <dd>releases {{.Report.Releases}} · sources {{.Report.Sources}} · runs {{.Report.Runs}} · blocklist {{.Report.Blocklist}} · saved searches {{.Report.SavedSearches}} · API keys {{.Report.APIKeys}} · settings {{.Report.Settings}}</dd>
+    <dd>releases {{.Report.Releases}} · indexers {{.Report.Indexers}} · history {{.Report.History}} · blocklist {{.Report.Blocklist}} · saved searches {{.Report.SavedSearches}} · API keys {{.Report.APIKeys}} · settings {{.Report.Settings}}</dd>
     <dt>Releases</dt>
     <dd>{{.Report.ReleasesTorrent}} with .torrent · {{.Report.ReleasesMagnet}} with magnet · {{.Report.ReleasesNoLink}} without links · {{.Report.Hidden}} hidden · {{.Report.Favorites}} favorites</dd>
   </dl>
@@ -105,11 +105,11 @@
       <button class="btn" type="submit">Rebuild indexes</button>
       <p class="help">Runs <code>REINDEX</code>. Useful after a large deletion; can take a while.</p>
     </form>
-    <form method="post" action="/maintenance" data-confirm="Clear the last error and the consecutive-failure counter of every source? Disabled sources stay disabled.">
+    <form method="post" action="/maintenance" data-confirm="Clear the last error and the open circuit of every indexer? Disabled indexers stay disabled.">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <input type="hidden" name="action" value="reset_errors">
-      <button class="btn" type="submit">Clear source errors</button>
-      <p class="help">Does not re-enable a source; it only resets the error state and backoff.</p>
+      <button class="btn" type="submit">Clear indexer errors</button>
+      <p class="help">Does not re-enable an indexer; it only resets the error state and backoff.</p>
     </form>
   </div>
 </section>
@@ -145,18 +145,18 @@
       <button class="btn" type="submit">Purge by age</button>
       <p class="help">Deletes releases whose <code>last_seen_at</code> is older than the chosen window.</p>
     </form>
-    <form method="post" action="/maintenance" data-confirm="Delete every cached release from the selected source?">
+    <form method="post" action="/maintenance" data-confirm="Delete every cached release from the selected indexer?">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="purge_source">
+      <input type="hidden" name="action" value="purge_indexer">
       <div class="field">
-        <label for="purge_source">Source</label>
-        <select id="purge_source" name="source_id" required>
-          <option value="">Choose a source…</option>
-          {{range .Sources}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+        <label for="purge_indexer">Indexer</label>
+        <select id="purge_indexer" name="indexer_id" required>
+          <option value="">Choose an indexer…</option>
+          {{range .Indexers}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
         </select>
       </div>
-      <button class="btn danger" type="submit">Purge source</button>
-      <p class="help">Removes only that source's releases; the source itself is kept.</p>
+      <button class="btn danger" type="submit">Purge indexer</button>
+      <p class="help">Removes only releases supplied by that indexer; releases also seen elsewhere stay.</p>
     </form>
     <form method="post" action="/maintenance" data-confirm="Delete releases that have neither a magnet nor a .torrent file?">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -178,7 +178,7 @@
         <input id="run_days" name="days" type="number" min="1" max="36500" value="30" required>
       </div>
       <button class="btn" type="submit">Clear run history</button>
-      <p class="help">Only the history is removed; releases and sources are untouched.</p>
+      <p class="help">Only the history is removed; releases and indexers are untouched.</p>
     </form>
     <form method="post" action="/maintenance" data-confirm="Reset request counters and last-used dates for every API key?">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -186,49 +186,7 @@
       <button class="btn" type="submit">Reset API usage</button>
       <p class="help">Clears the per-key request counters; the keys themselves keep working.</p>
     </form>
-    <form method="post" action="/maintenance" data-confirm="Recalculate the cached item counter of every source?">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="recount_sources">
-      <button class="btn" type="submit">Recount source items</button>
-      <p class="help">Replaces <code>total_items</code> with the number of releases currently cached per source.</p>
-    </form>
   </div>
-</section>
-
-<section class="panel">
-  <div class="panel-head">
-    <h2>Sources needing attention <span class="chip">{{.SourceErrors}}</span></h2>
-    <a class="btn small" href="/sources">All sources</a>
-  </div>
-  {{if .FailedSources}}
-  <div class="table-scroll">
-    <table>
-      <thead><tr><th scope="col">Source</th><th scope="col">Last error</th><th scope="col">Failures</th><th scope="col">Last run</th><th scope="col" class="right">Actions</th></tr></thead>
-      <tbody>
-        {{range .FailedSources}}
-        <tr>
-          <td><a href="/sources/{{.ID}}/edit">{{.Name}}</a></td>
-          <td class="error-cell" title="{{.LastError}}">{{truncate .LastError 120}}</td>
-          <td>{{.ConsecutiveErrors}}</td>
-          <td class="nowrap">{{if .LastRunAt}}{{ago .LastRunAt}}{{else}}<span class="muted">never</span>{{end}}</td>
-          <td class="right nowrap">
-            <form method="post" action="/sources/{{.ID}}/test">
-              <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small" type="submit">Test</button>
-            </form>
-            <form method="post" action="/sources/{{.ID}}/run">
-              <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small" type="submit">Run</button>
-            </form>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-  </div>
-  {{else}}
-  <p class="empty">No source is reporting an error.</p>
-  {{end}}
 </section>
 
 <section class="panel">

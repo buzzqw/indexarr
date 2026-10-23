@@ -77,21 +77,6 @@ func TestApplyTargetsCreatesNativeIndexersAndSealsSecrets(t *testing.T) {
 	if len(rows) != 3 {
 		t.Fatalf("got %d indexers, want 3: %+v", len(rows), rows)
 	}
-	var sources int
-	if err := st.DB().QueryRowContext(ctx, `SELECT count(*) FROM sources`).Scan(&sources); err != nil {
-		t.Fatalf("count sources: %v", err)
-	}
-	if sources != 0 {
-		t.Fatalf("apply wrote %d legacy sources, want 0", sources)
-	}
-	var legacy int
-	if err := st.DB().QueryRowContext(ctx,
-		`SELECT count(*) FROM indexers WHERE legacy_source_id IS NOT NULL`).Scan(&legacy); err != nil {
-		t.Fatalf("count legacy indexers: %v", err)
-	}
-	if legacy != 0 {
-		t.Fatalf("apply wrote %d indexers with legacy_source_id", legacy)
-	}
 
 	byName := make(map[string]store.Indexer, len(rows))
 	for _, row := range rows {

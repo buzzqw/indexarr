@@ -12,11 +12,11 @@ import (
 const releasesPerPage = 50
 
 // dashboardStatus is the single error summary of the overview. It merges the
-// current state of every indexer and legacy source with the failed runs of the
-// last 24 hours, so the page cannot say "all clear" while the run counter
-// reports errors (or the other way round).
+// current state of every indexer with the failed runs of the last 24 hours, so
+// the page cannot say "all clear" while the run counter reports errors (or the
+// other way round).
 type dashboardStatus struct {
-	Current   int   // indexers or sources with a non-empty last_error
+	Current   int   // indexers with a non-empty last_error
 	RunErrors int64 // failed runs in the last 24 hours
 	Runs      int64 // runs in the last 24 hours
 }
@@ -28,29 +28,20 @@ func (s dashboardStatus) OK() bool {
 type dashboardPage struct {
 	base
 	Stats          store.Stats
-	Sources        []store.Source
 	Indexers       []store.Indexer
 	Applications   []store.Application
 	Definitions    []store.Definition
-	Running        map[int64]bool
-	Runs           []store.Run
+	Runs           []store.RunHistory
 	Recent         []store.Release
 	Status         dashboardStatus
-	NativeErrors   int
-	LegacyErrors   int
-	NativeCount    int
-	LegacyCount    int
+	IndexerErrors  int
+	IndexerCount   int
 	ApplicationNum int
 }
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	stats, err := s.store.LoadStats(ctx)
-	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-	sources, err := s.store.ListSources(ctx)
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
@@ -70,53 +61,29 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	runs, _ := s.store.ListRuns(ctx, 0, false, 6)
+	runs, _ := s.store.ListRunHistory(ctx, 0, false, 6)
 	recent, _ := s.store.ListRecentReleases(ctx, 10)
-	running := map[int64]bool{}
-	legacyErrors := 0
-	for _, source := range sources {
-		running[source.ID] = s.engine != nil && s.engine.IsRunning(source.ID)
-		if source.LastError != "" {
-			legacyErrors++
-		}
-	}
-	nativeIndexers := make([]store.Indexer, 0, len(indexers))
-	nativeErrors := 0
+	indexerErrors := 0
 	for _, in := range indexers {
-		if in.LegacySourceID > 0 {
-			continue
-		}
-		nativeIndexers = append(nativeIndexers, in)
 		if state, err := s.store.GetIndexerState(ctx, in.ID); err == nil && state.LastError != "" {
-			nativeErrors++
+			indexerErrors++
 		}
-	}
-	localDefinitions := make([]store.Definition, 0, len(definitions))
-	for _, def := range definitions {
-		if strings.HasPrefix(def.ID, "legacy-") {
-			continue
-		}
-		localDefinitions = append(localDefinitions, def)
 	}
 	s.render(w, r, "dashboard", dashboardPage{
 		base:         s.newBaseT(r, "dashboard.title", "dashboard"),
 		Stats:        stats,
-		Sources:      sources,
-		Indexers:     nativeIndexers,
+		Indexers:     indexers,
 		Applications: applications,
-		Definitions:  localDefinitions,
-		Running:      running,
+		Definitions:  definitions,
 		Runs:         runs,
 		Recent:       recent,
 		Status: dashboardStatus{
-			Current:   nativeErrors + legacyErrors,
+			Current:   indexerErrors,
 			RunErrors: stats.Errors24h,
 			Runs:      stats.Runs24h,
 		},
-		NativeErrors:   nativeErrors,
-		LegacyErrors:   legacyErrors,
-		NativeCount:    len(nativeIndexers),
-		LegacyCount:    len(sources),
+		IndexerErrors:  indexerErrors,
+		IndexerCount:   len(indexers),
 		ApplicationNum: len(applications),
 	}, http.StatusOK)
 }
@@ -124,10 +91,10 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 type releasesPage struct {
 	base
 	Releases      []store.Release
-	Sources       []store.Source
+	Indexers      []store.Indexer
 	Pager         pager
 	Query         string
-	Source        int64
+	Indexer       int64
 	Category      string
 	Sort          string
 	Regex         bool
@@ -179,7 +146,11 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	if page < 1 {
 		page = 1
 	}
-	sourceID := int64Param(query.Get("source"), 0)
+	indexerID := int64Param(query.Get("indexer"), 0)
+	if indexerID == 0 {
+		// Keep old ?source= links working.
+		indexerID = int64Param(query.Get("source"), 0)
+	}
 	category := strings.TrimSpace(query.Get("cat"))
 	sortMode := query.Get("sort")
 	favoritesOnly := query.Get("favorites") == "1"
@@ -239,15 +210,15 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		advancedFilterCount++
 	}
 
-	sources, _ := s.store.ListSources(r.Context())
+	indexers, _ := s.store.ListIndexers(r.Context())
 	saved, _ := s.store.ListSavedSearches(r.Context())
 	current := query
 	current.Del("page")
 	data := releasesPage{
 		base:                s.newBaseT(r, "releases.title", "releases"),
-		Sources:             sources,
+		Indexers:            indexers,
 		Query:               searchQuery,
-		Source:              sourceID,
+		Indexer:             indexerID,
 		Category:            category,
 		Sort:                sortMode,
 		Regex:               regexMode,
@@ -273,7 +244,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	}
 
 	filter := store.Filter{
-		SourceID:      sourceID,
+		IndexerID:     indexerID,
 		Sort:          sortMode,
 		Limit:         releasesPerPage,
 		Offset:        (page - 1) * releasesPerPage,

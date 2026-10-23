@@ -24,7 +24,6 @@ func insertUsenetRelease(t *testing.T, st *store.Store, title string, payload []
 		Payload:     payload,
 		PayloadType: "application/x-nzb",
 		PublishedAt: time.Now().Add(-time.Hour),
-		SourceName:  "usenet-source",
 		GUID:        "guid-" + title,
 		FirstSeenAt: time.Now().Add(-time.Hour),
 		LastSeenAt:  time.Now(),

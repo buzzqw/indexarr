@@ -6,7 +6,7 @@
 # It proves two paths that the fake-only simulation cannot prove:
 #
 #   1. Prowlarr bridge: Prowlarr proxies simmock and indexarr ingests the
-#      per-indexer Prowlarr Torznab feed as a legacy source.
+#      per-indexer Prowlarr Torznab feed as a native torznab indexer.
 #   2. App sync: indexarr writes its indexer into real Sonarr and Radarr with
 #      the expected baseUrl, API key, categories, protocol and enable flags.
 #
@@ -178,13 +178,6 @@ assert_field_value() {
     fi
     flat=$(tr -d '[:space:]' <<<"$obj")
     assert_contains "$label: $field" "$flat" "$expected"
-}
-
-# extract_source_id PAGE NAME -> numeric id of the /sources/{id}/edit link
-extract_source_id() {
-    local page=$1 name=$2
-    grep -o "/sources/[0-9][0-9]*/edit\">$name" <<<"$page" \
-        | head -n1 | grep -o '[0-9][0-9]*' | head -n1
 }
 
 clean_build_context() {
@@ -391,76 +384,36 @@ assert_contains "Prowlarr maschera la apiKey" "$prowlarr_indexer" '"value": "***
 prowlarr_feed=$(curl -fsS "$PROWLARR/$PROWLARR_INDEXER_ID/api?apikey=$PROWLARR_KEY&t=search&q=" || true)
 assert_count "feed Torznab di Prowlarr: 3 item" "$prowlarr_feed" '<item>' 3
 
-printf '\n== indexarr: ponte legacy verso Prowlarr ==\n'
+printf '\n== indexarr: indexer torznab nativo verso Prowlarr ==\n'
 jar="$WORK/cookies.txt"
-if ! curl -fsS -c "$jar" "$IDX/sources" -o "$WORK/sources.html"; then
-    fail "pagina /sources non raggiungibile"
+if ! curl -fsS -c "$jar" "$IDX/indexers" -o "$WORK/indexers.html"; then
+    fail "pagina /indexers non raggiungibile"
     exit 1
 fi
-CSRF=$(awk '$6 == "indexarr_csrf" { print $7; exit }' "$jar")
-if [[ -z ${CSRF:-} ]]; then
-    fail "cookie CSRF della UI non trovato"
-    exit 1
-fi
-ok "cookie CSRF della UI ottenuto"
+ok "pagina /indexers raggiungibile"
 
 bridge_url="$PROWLARR_INTERNAL/$PROWLARR_INDEXER_ID/api?apikey=$PROWLARR_KEY"
-code=$(curl -sS -b "$jar" -c "$jar" -o "$WORK/bridge-create.html" -w '%{http_code}' \
-    -X POST --data-urlencode "csrf=$CSRF" \
-    --data-urlencode "name=$BRIDGE_NAME" \
-    --data-urlencode "kind=torznab" \
-    --data-urlencode "manager=prowlarr" \
-    --data-urlencode "url=$bridge_url" \
-    --data-urlencode "api_key=$PROWLARR_KEY" \
-    --data-urlencode "categories=2000,5000" \
-    --data-urlencode "interval_seconds=0" \
-    --data-urlencode "enabled=on" \
-    "$IDX/sources")
-if [[ $code == 303 || $code == 302 || $code == 200 ]]; then
-    ok "creazione source legacy ($code)"
-else
-    fail "creazione source legacy HTTP $code"
+bridge_slug="prowlarr-bridge-${RUN_SUFFIX:-run}"
+bridge_body=$(printf '{"definition_id":"torznab-generic","name":"%s","slug":"%s","settings":{"url":"%s","apikey":"%s"}}' \
+    "$BRIDGE_NAME" "$bridge_slug" "$bridge_url" "$PROWLARR_KEY")
+bridge_resp=$(curl -fsS -X POST -H 'Content-Type: application/json' --data "$bridge_body" \
+    "$IDX/api/v2/indexers?apikey=$KEY" || true)
+BRIDGE_ID=$(grep -o '"id":[0-9]*' <<<"$bridge_resp" | head -n1 | cut -d: -f2 || true)
+if [[ -z ${BRIDGE_ID:-} ]]; then
+    fail "creazione indexer nativo fallita: ${bridge_resp:0:240}"
     exit 1
 fi
+ok "indexer torznab nativo creato (id=$BRIDGE_ID)"
 
-curl -fsS -b "$jar" "$IDX/sources" -o "$WORK/sources.html" || true
-# The legacy preview is a flat JSON document and gives the source_id without
-# parsing the HTML table, which is also stable across re-runs.
-preview=$(curl -fsS "$IDX/api/v2/legacy/preview?apikey=$KEY" || true)
-source_obj=$(grep -o "{[^{}]*\"name\":\"$BRIDGE_NAME\"[^{}]*}" <<<"$preview" | head -n1 || true)
-SOURCE_ID=$(grep -o '"source_id":[0-9]*' <<<"$source_obj" | head -n1 | cut -d: -f2 || true)
-if [[ -z ${SOURCE_ID:-} ]]; then
-    SOURCE_ID=$(extract_source_id "$WORK/sources.html" "$BRIDGE_NAME" || true)
-fi
-if [[ -z ${SOURCE_ID:-} ]]; then
-    fail "id della source legacy non trovato"
-    exit 1
-fi
-ok "source legacy creata (id=$SOURCE_ID)"
+run_resp=$(curl -fsS -X POST "$IDX/api/v2/indexers/$BRIDGE_ID/run?apikey=$KEY" || true)
+assert_contains "indexer nativo Prowlarr: run completato" "$run_resp" '"seen":2'
+assert_contains "indexer nativo Prowlarr: 2 item torrent visti" "$run_resp" '"seen":2'
 
-before_complete=$(docker compose -f "$COMPOSE" logs --no-color indexarr 2>/dev/null \
-    | grep -c 'msg="run complete"' || true)
-curl -sS -b "$jar" -X POST "$IDX/sources/$SOURCE_ID/run?csrf=$CSRF" \
-    -o "$WORK/bridge-run.html" || true
-run_log=""
-for ((i = 1; i <= 90; i++)); do
-    complete_lines=$(docker compose -f "$COMPOSE" logs --no-color indexarr 2>/dev/null \
-        | grep 'msg="run complete"' || true)
-    complete_count=$(grep -c . <<<"$complete_lines" || true)
-    if ((complete_count > before_complete)); then
-        run_log=$(tail -n1 <<<"$complete_lines")
-        break
-    fi
-    sleep 1
-done
-assert_contains "ponte Prowlarr: run completato" "$run_log" 'msg="run complete"'
-assert_contains "ponte Prowlarr: 2 item torrent visti" "$run_log" 'seen=2'
-
-# The bridge writes its releases into the same store; the search endpoint must
-# still answer with the three deterministic releases.
+# The native indexer writes its releases into the same store; the search endpoint
+# must still answer with the three deterministic releases.
 search_after_bridge=$(curl -fsS "$IDX/api?t=search&apikey=$KEY" || true)
-assert_contains "ricerca dopo il ponte: total=3" "$search_after_bridge" 'total="3"'
-assert_count "ricerca dopo il ponte: 3 item" "$search_after_bridge" '<item>' 3
+assert_contains "ricerca dopo l'aggiornamento: total=3" "$search_after_bridge" 'total="3"'
+assert_count "ricerca dopo l'aggiornamento: 3 item" "$search_after_bridge" '<item>' 3
 
 printf '\n== app sync: Sonarr e Radarr reali ==\n'
 create_or_get_application() {
@@ -490,18 +443,6 @@ RADARR_APP_ID=$(create_or_get_application radarr "Real Radarr" "http://radarr:78
     || fatal "creazione applicazione Radarr fallita"
 ok "applicazione Sonarr (id=$SONARR_APP_ID)"
 ok "applicazione Radarr (id=$RADARR_APP_ID)"
-
-# A legacy source created at runtime gets a bridged indexer at the next store
-# open (for example a run.sh -print-key seed). That indexer has no categories
-# and would make the app sync fail for a different reason, so remove the bridge
-# from the desired set: the app sync test is about the native indexer.
-indexer_list=$(curl -fsS "$IDX/api/v2/indexers?apikey=$KEY" || true)
-legacy_ids=$(grep -o '{"id":[0-9]*[^}]*"definition_id":"legacy-[^"]*"[^}]*}' \
-    <<<"$indexer_list" | grep -o '"id":[0-9]*' | cut -d: -f2 || true)
-for legacy_id in $legacy_ids; do
-    curl -sS -o /dev/null -X DELETE "$IDX/api/v2/indexers/$legacy_id?apikey=$KEY" || true
-    ok "rimosso indexer legacy $legacy_id dal set di sync"
-done
 
 sonarr_sync_code=$(curl -sS -o "$WORK/sonarr-sync.json" -w '%{http_code}' -X POST \
     "$IDX/api/v2/applications/$SONARR_APP_ID/sync?apikey=$KEY" || true)

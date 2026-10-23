@@ -1,13 +1,8 @@
 // Package indexer is the integration layer of indexarr 2: it turns a stored
 // definition plus one configured indexer plus its vault secrets into a live
 // engine.Connector, caches the result, and runs one indexer into the release
-// cache.
-//
-// The package deliberately knows nothing about the legacy sources table. A
-// bridged indexer (legacy_source_id set) whose definition asks for the Torznab
-// or RSS connector is reported with ErrLegacyConnector and left to the legacy
-// ingest path until it is migrated. A new native Torznab or RSS indexer uses
-// the corresponding family connector.
+// cache. Every configured indexer goes through its family or definition
+// connector; there is no bridged legacy path.
 package indexer
 
 import (
@@ -37,12 +32,6 @@ const DefaultMaxTorrentsPerRun = 30
 const maxRunItems = 100
 
 var (
-	// ErrLegacyConnector marks a bridged definition (legacy_source_id > 0)
-	// that still names the torznab or rss connector. Those sources keep
-	// working through the legacy ingest path until they are migrated to a
-	// native definition.
-	ErrLegacyConnector = errors.New("indexer: legacy bridged connector must be handled by the legacy ingest path")
-
 	// ErrVaultRequired is returned when an indexer has sealed secrets but the
 	// Manager was built without a vault.
 	ErrVaultRequired = errors.New("indexer: vault required for indexer secrets")
@@ -58,25 +47,6 @@ var (
 	// budget for release downloads.
 	ErrGrabLimit = errors.New("indexer: daily grab limit reached")
 )
-
-// LegacyConnectorError is the typed error returned for a bridged indexer
-// (legacy_source_id > 0) whose connector is torznab or rss. The bridge stays on
-// the legacy ingest path even when a family factory with the same name is
-// registered, so those sources keep working until they are rewritten. It
-// unwraps to ErrLegacyConnector, so errors.Is keeps working.
-type LegacyConnectorError struct {
-	Name string
-}
-
-// Error implements error.
-func (e *LegacyConnectorError) Error() string {
-	return fmt.Sprintf("indexer: connector %q: %v", e.Name, ErrLegacyConnector)
-}
-
-// Unwrap returns ErrLegacyConnector.
-func (e *LegacyConnectorError) Unwrap() error {
-	return ErrLegacyConnector
-}
 
 // Config configures a Manager. Store is required; every other field has a
 // usable default.
@@ -262,13 +232,8 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 			return nil, redactError(fmt.Errorf("indexer %s: build definition connector: %w", indexer.Slug, err), secretValues)
 		}
 	default:
-		// Bridge definitions created by the backfill name torznab or rss and
-		// carry legacy_source_id: they stay on the legacy scheduler until they
-		// are rewritten as native definitions. A new native Torznab or RSS
-		// indexer (no legacy source) uses the corresponding family connector.
-		if (name == "rss" || name == "torznab") && indexer.LegacySourceID > 0 {
-			return nil, &LegacyConnectorError{Name: name}
-		}
+		// Every family connector is native now, including torznab and rss:
+		// the Jackett/Prowlarr bridge is an ordinary torznab indexer.
 		if _, ok := m.registry.Factory(name); !ok {
 			return nil, fmt.Errorf("indexer %s: connector %q is not registered", indexer.Slug, name)
 		}
@@ -580,6 +545,15 @@ func (m *Manager) redact(indexerID int64, text string) string {
 	m.mu.Unlock()
 
 	return redactValues(text, secrets)
+}
+
+// RedactError removes every known secret value of an indexer from an error
+// message. It is safe to call from the scheduler before logging.
+func (m *Manager) RedactError(indexerID int64, err error) string {
+	if err == nil {
+		return ""
+	}
+	return m.redact(indexerID, errorText(err))
 }
 
 func errorText(err error) string {

@@ -5,29 +5,13 @@
     <p class="muted">{{T "indexers.subtitle"}}</p>
   </div>
   <div class="actions">
-    {{if eq .Tab "legacy"}}
-    <a class="btn primary" href="/sources/new">{{T "indexers.addLegacy"}}</a>
-    {{else}}
     <a class="btn primary" href="/indexers/new">{{T "indexers.newNative"}}</a>
     <a class="btn" href="/definitions">{{T "indexers.definitions"}}</a>
-    {{end}}
+    <a class="btn" href="/indexers/export">{{T "indexers.export"}}</a>
   </div>
 </section>
 
-<nav class="tabs" aria-label="{{T "indexers.tabsLabel"}}">
-  <a class="tab{{if eq .Tab "native"}} active{{end}}" href="/indexers?tab=native"{{if eq .Tab "native"}} aria-current="page"{{end}}>
-    {{T "indexers.native"}} <span class="chip">{{.NativeCount}}</span>
-  </a>
-  <a class="tab{{if eq .Tab "legacy"}} active{{end}}" href="/indexers?tab=legacy"{{if eq .Tab "legacy"}} aria-current="page"{{end}}>
-    {{T "indexers.legacy"}} <span class="chip">{{.LegacyCount}}</span>
-  </a>
-</nav>
-
-{{if eq .Tab "legacy"}}
-{{template "sources_body" .Legacy}}
-{{else}}
 {{template "native_body" .}}
-{{end}}
 {{end}}
 
 {{define "native_body"}}
@@ -35,8 +19,18 @@
 
 <section class="panel">
   <div class="panel-head">
-    <h2>{{T "indexers.nativeTitle"}} <span class="chip">{{.NativeCount}}</span></h2>
+    <h2>{{T "indexers.nativeTitle"}} <span class="chip">{{.Count}}</span></h2>
     <span class="muted">{{T "indexers.vaultHint"}}</span>
+  </div>
+  <div class="actions">
+    <form method="post" action="/indexers/run-all" style="display:inline">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">{{T "indexers.runAll"}}</button>
+    </form>
+    <form method="post" action="/indexers/test-all" style="display:inline">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">{{T "indexers.testAll"}}</button>
+    </form>
   </div>
   <div class="table-scroll">
     <table>
@@ -95,5 +89,21 @@
       </tbody>
     </table>
   </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "indexers.configTitle"}}</h2></div>
+  <p class="help">{{T "indexers.exportHelp"}}</p>
+  <div class="actions">
+    <a class="btn" href="/indexers/export">{{T "indexers.export"}}</a>
+  </div>
+  <form method="post" action="/indexers/import">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="field">
+      <label for="indexers_json">{{T "indexers.importLabel"}}</label>
+      <textarea id="indexers_json" name="json" rows="6" spellcheck="false" placeholder="{ &quot;version&quot;: 1, &quot;indexers&quot;: [ … ] }"></textarea>
+    </div>
+    <button class="btn" type="submit">{{T "indexers.importAction"}}</button>
+  </form>
 </section>
 {{end}}

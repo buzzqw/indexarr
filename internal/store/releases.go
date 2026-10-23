@@ -31,8 +31,6 @@ type Release struct {
 	Leechers         int64
 	Category         string
 	PublishedAt      time.Time
-	SourceID         int64
-	SourceName       string
 	GUID             string
 	Magnet           string
 	Torrent          []byte
@@ -54,8 +52,8 @@ type Filter struct {
 	Include       []string // parsed include terms (normal: normalized; regex: patterns)
 	Exclude       []string // parsed exclude terms, applied with NOT
 	Regex         bool
-	SourceID      int64
-	SourceIDs     []int64 // multi-indexer selection (aggregate filters); takes effect when SourceID is zero
+	IndexerID     int64
+	IndexerIDs    []int64 // native provenance selection; takes effect when IndexerID is zero
 	Categories    []string
 	Season        int
 	Episode       int
@@ -76,8 +74,8 @@ type Filter struct {
 }
 
 const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
-	search_title, size, seeders, leechers, category, published_at, source_id,
-	source_name, guid, magnet, torrent, torrent_size, torrent_fetched_at,
+	search_title, size, seeders, leechers, category, published_at,
+	guid, magnet, torrent, torrent_size, torrent_fetched_at,
 	first_seen_at, last_seen_at, times_seen, favorite, hidden,
 	protocol, payload, payload_type`
 
@@ -135,10 +133,6 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 			return false, err
 		}
 	}
-	var sourceID any
-	if rel.SourceID > 0 {
-		sourceID = rel.SourceID
-	}
 	var torrent any
 	if len(rel.Torrent) > 0 {
 		torrent = rel.Torrent
@@ -151,10 +145,10 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 	var timesSeen int64
 	err = s.db.QueryRowContext(ctx, `
 		INSERT INTO releases(dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
-			search_title, size, seeders, leechers, category, published_at, source_id,
-			source_name, guid, magnet, torrent, torrent_size, torrent_fetched_at,
+			search_title, size, seeders, leechers, category, published_at,
+			guid, magnet, torrent, torrent_size, torrent_fetched_at,
 			first_seen_at, last_seen_at, protocol, payload, payload_type, times_seen)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
 		ON CONFLICT(dedup_key) DO UPDATE SET
 			infohash = CASE WHEN excluded.infohash <> '' THEN excluded.infohash ELSE releases.infohash END,
 			imdb_id = CASE WHEN excluded.imdb_id <> '' THEN excluded.imdb_id ELSE releases.imdb_id END,
@@ -167,8 +161,6 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 			leechers = excluded.leechers,
 			category = CASE WHEN excluded.category <> '' THEN excluded.category ELSE releases.category END,
 			published_at = CASE WHEN excluded.published_at > 0 THEN excluded.published_at ELSE releases.published_at END,
-			source_id = COALESCE(excluded.source_id, releases.source_id),
-			source_name = CASE WHEN excluded.source_name <> '' THEN excluded.source_name ELSE releases.source_name END,
 			guid = CASE WHEN excluded.guid <> '' THEN excluded.guid ELSE releases.guid END,
 			magnet = CASE WHEN excluded.magnet <> '' THEN excluded.magnet ELSE releases.magnet END,
 			torrent = COALESCE(excluded.torrent, releases.torrent),
@@ -182,7 +174,7 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 		RETURNING id, times_seen`,
 		rel.DedupKey, rel.InfoHash, rel.IMDbID, rel.TMDbID, rel.TVDbID,
 		rel.Title, rel.SearchTitle, rel.Size, rel.Seeders, rel.Leechers,
-		rel.Category, rel.PublishedAt.Unix(), sourceID, rel.SourceName,
+		rel.Category, rel.PublishedAt.Unix(),
 		rel.GUID, rel.Magnet, torrent, rel.TorrentSize,
 		rel.TorrentFetchedAt.Unix(), rel.FirstSeenAt.Unix(), rel.LastSeenAt.Unix(),
 		rel.Protocol, payload, rel.PayloadType, boolInt(protocolProvided)).Scan(&id, &timesSeen)
@@ -864,16 +856,16 @@ func (s *Store) DedupeByInfoHash(ctx context.Context) (int64, error) {
 
 // Stats is the dashboard summary.
 type Stats struct {
-	Releases       int64
-	Torrents       int64
-	TorrentBytes   int64
-	Sources        int64
-	EnabledSources int64
-	Runs24h        int64
-	Errors24h      int64
-	OldestSeen     time.Time
-	NewestSeen     time.Time
-	DBBytes        int64
+	Releases        int64
+	Torrents        int64
+	TorrentBytes    int64
+	Indexers        int64
+	EnabledIndexers int64
+	Runs24h         int64
+	Errors24h       int64
+	OldestSeen      time.Time
+	NewestSeen      time.Time
+	DBBytes         int64
 }
 
 // LoadStats computes the dashboard summary.
@@ -892,13 +884,14 @@ func (s *Store) LoadStats(ctx context.Context) (Stats, error) {
 	}
 	if err := s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*), COALESCE(SUM(CASE WHEN enabled = 1 THEN 1 ELSE 0 END), 0)
-		FROM sources`).Scan(&out.Sources, &out.EnabledSources); err != nil {
+		FROM indexers`).Scan(&out.Indexers, &out.EnabledIndexers); err != nil {
 		return out, err
 	}
 	cutoff := time.Now().Add(-24 * time.Hour).Unix()
 	if err := s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*), COALESCE(SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END), 0)
-		FROM runs WHERE started_at >= ?`, cutoff).Scan(&out.Runs24h, &out.Errors24h); err != nil {
+		FROM indexer_history WHERE kind = 'run' AND started_at >= ?`, cutoff).
+		Scan(&out.Runs24h, &out.Errors24h); err != nil {
 		return out, err
 	}
 	out.OldestSeen = unixTime(oldest)
@@ -1056,13 +1049,14 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 		nonText = true
 	}
 
-	if f.SourceID > 0 {
-		clauses = append(clauses, `source_id = ?`)
-		args = append(args, f.SourceID)
+	if f.IndexerID > 0 {
+		clauses = append(clauses, `EXISTS (SELECT 1 FROM release_sources rs
+			WHERE rs.release_id = releases.id AND rs.indexer_id = ?)`)
+		args = append(args, f.IndexerID)
 		nonText = true
-	} else if len(f.SourceIDs) > 0 {
-		placeholders := make([]string, 0, len(f.SourceIDs))
-		for _, id := range f.SourceIDs {
+	} else if len(f.IndexerIDs) > 0 {
+		placeholders := make([]string, 0, len(f.IndexerIDs))
+		for _, id := range f.IndexerIDs {
 			if id <= 0 {
 				continue
 			}
@@ -1070,7 +1064,8 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 			args = append(args, id)
 		}
 		if len(placeholders) > 0 {
-			clauses = append(clauses, `source_id IN (`+strings.Join(placeholders, ",")+`)`)
+			clauses = append(clauses, `EXISTS (SELECT 1 FROM release_sources rs
+				WHERE rs.release_id = releases.id AND rs.indexer_id IN (`+strings.Join(placeholders, ",")+`))`)
 			nonText = true
 		}
 	}
@@ -1200,12 +1195,11 @@ func escapeLike(token string) string {
 func scanRelease(scanner interface{ Scan(...any) error }) (Release, error) {
 	var out Release
 	var published, torrentFetched, firstSeen, lastSeen int64
-	var sourceID sql.NullInt64
 	var torrent, payload []byte
 	var favorite, hidden int
 	dest := []any{&out.ID, &out.DedupKey, &out.InfoHash, &out.IMDbID, &out.TMDbID,
 		&out.TVDbID, &out.Title, &out.SearchTitle, &out.Size, &out.Seeders,
-		&out.Leechers, &out.Category, &published, &sourceID, &out.SourceName,
+		&out.Leechers, &out.Category, &published,
 		&out.GUID, &out.Magnet, &torrent, &out.TorrentSize, &torrentFetched,
 		&firstSeen, &lastSeen, &out.TimesSeen, &favorite, &hidden,
 		&out.Protocol, &payload, &out.PayloadType}
@@ -1216,9 +1210,6 @@ func scanRelease(scanner interface{ Scan(...any) error }) (Release, error) {
 	out.TorrentFetchedAt = unixTime(torrentFetched)
 	out.FirstSeenAt = unixTime(firstSeen)
 	out.LastSeenAt = unixTime(lastSeen)
-	if sourceID.Valid {
-		out.SourceID = sourceID.Int64
-	}
 	out.Torrent = torrent
 	out.Payload = payload
 	if strings.TrimSpace(out.Protocol) == "" {

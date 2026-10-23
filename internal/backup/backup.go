@@ -176,7 +176,7 @@ func Validate(path string) error {
 	}
 	var tables int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM sqlite_master
-		WHERE type = 'table' AND name IN ('sources','releases','runs','settings')`).Scan(&tables); err != nil {
+		WHERE type = 'table' AND name IN ('definitions','indexers','releases','settings')`).Scan(&tables); err != nil {
 		return err
 	}
 	if tables != 4 {

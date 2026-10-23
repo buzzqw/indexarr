@@ -163,7 +163,7 @@ La risposta di errore è XML:
 `GET /healthz` non richiede autenticazione e restituisce JSON:
 
 ```json
-{"status":"ok","version":"dev","uptime_seconds":42,"releases":1200,"sources":3,"db_bytes":1048576}
+{"status":"ok","version":"dev","uptime_seconds":42,"releases":1200,"indexers":3,"db_bytes":1048576}
 ```
 
 ## Metriche
@@ -175,10 +175,10 @@ fidata: non esporre l'istanza su Internet senza un reverse proxy autenticato.
 ```text
 # TYPE indexarr_releases gauge
 indexarr_releases 1200
-# TYPE indexarr_sources gauge
-indexarr_sources 3
-# TYPE indexarr_enabled_sources gauge
-indexarr_enabled_sources 2
+# TYPE indexarr_indexers gauge
+indexarr_indexers 3
+# TYPE indexarr_enabled_indexers gauge
+indexarr_enabled_indexers 2
 # TYPE indexarr_runs_24h gauge
 indexarr_runs_24h 14
 # TYPE indexarr_errors_24h gauge
@@ -241,9 +241,6 @@ del server Torznab, senza cookie e senza CSRF.
 | POST | `/api/v2/applications/sync` | riconcilia tutte |
 | POST | `/api/v2/import/prowlarr` | anteprima import da Prowlarr, senza segreti |
 | POST | `/api/v2/import/jackett` | anteprima import da una cartella Jackett |
-| GET | `/api/v2/legacy/preview` | quali `sources` possono diventare Torznab native |
-| POST | `/api/v2/legacy/apply` | applica la migrazione (dry-run supportato) |
-| POST | `/api/v2/legacy/revert` | ripristina il ponte legacy |
 
 Esempio:
 

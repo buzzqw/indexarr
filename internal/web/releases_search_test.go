@@ -20,7 +20,6 @@ func insertSearchRelease(t *testing.T, st *store.Store, title, category string) 
 		SearchTitle: store.NormalizeSearch(title),
 		Size:        1024,
 		Category:    category,
-		SourceName:  "test",
 		Magnet:      "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567",
 		FirstSeenAt: time.Now(),
 		LastSeenAt:  time.Now(),

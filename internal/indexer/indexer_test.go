@@ -304,38 +304,7 @@ func TestMissingSecretAndVaultRequired(t *testing.T) {
 	}
 }
 
-func TestLegacyConnector(t *testing.T) {
-	st := newTestStore(t)
-	v := newTestVault(t, 1)
-	manager := newTestManager(t, st, v)
-
-	body := readTestdata(t, "legacy_torznab.yaml")
-	seedDefinition(t, st, "legacy-torznab", "torznab", body)
-	id := createIndexer(t, st, "legacy-torznab", "legacy-torznab", "Legacy Torznab", "torrent", `{}`)
-	// The backfill marks a bridge indexer with legacy_source_id; a native
-	// Torznab indexer (no legacy source) is handled by the family connector.
-	if err := st.UpdateIndexer(context.Background(), store.Indexer{
-		ID: id, DefinitionID: "legacy-torznab", Slug: "legacy-torznab",
-		Name: "Legacy Torznab", Protocol: "torrent", Enabled: true,
-		Priority: 25, ConfigJSON: `{}`, LegacySourceID: 7,
-	}); err != nil {
-		t.Fatalf("UpdateIndexer: %v", err)
-	}
-
-	_, _, err := manager.Connector(context.Background(), id)
-	if !errors.Is(err, ErrLegacyConnector) {
-		t.Fatalf("error = %v, want ErrLegacyConnector", err)
-	}
-	var legacy *LegacyConnectorError
-	if !errors.As(err, &legacy) {
-		t.Fatalf("error = %T, want *LegacyConnectorError", err)
-	}
-	if !strings.Contains(err.Error(), "legacy ingest path") {
-		t.Fatalf("error does not explain the bridge: %v", err)
-	}
-}
-
-func TestRSSBridgeOnlyWithLegacySource(t *testing.T) {
+func TestNativeRSSConnector(t *testing.T) {
 	st := newTestStore(t)
 	v := newTestVault(t, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -354,7 +323,7 @@ func TestRSSBridgeOnlyWithLegacySource(t *testing.T) {
 	manager := newTestManager(t, st, v)
 
 	body := readTestdata(t, "legacy_torznab.yaml")
-	body = strings.ReplaceAll(body, "id: legacy-torznab", "id: native-rss")
+	body = strings.ReplaceAll(body, "id: native-torznab", "id: native-rss")
 	body = strings.ReplaceAll(body, "name: Legacy Torznab", "name: Native RSS")
 	body = strings.ReplaceAll(body, "connector: torznab", "connector: rss")
 	seedDefinition(t, st, "native-rss", "rss", body)
@@ -377,24 +346,6 @@ func TestRSSBridgeOnlyWithLegacySource(t *testing.T) {
 		t.Fatalf("items = %+v", items)
 	}
 
-	// The same definition with legacy_source_id is a bridge: it must stay on
-	// the legacy ingest path even though the family factory exists.
-	if err := st.UpdateIndexer(context.Background(), store.Indexer{
-		ID: id, DefinitionID: "native-rss", Slug: "native-rss",
-		Name: "Native RSS", Protocol: "torrent", Enabled: true,
-		Priority: 25, ConfigJSON: config, LegacySourceID: 11,
-	}); err != nil {
-		t.Fatalf("UpdateIndexer: %v", err)
-	}
-	manager.Invalidate(id)
-	_, _, err = manager.Connector(context.Background(), id)
-	if !errors.Is(err, ErrLegacyConnector) {
-		t.Fatalf("error = %v, want ErrLegacyConnector", err)
-	}
-	var legacy *LegacyConnectorError
-	if !errors.As(err, &legacy) {
-		t.Fatalf("error = %T, want *LegacyConnectorError", err)
-	}
 }
 
 func TestConnectorCacheAndInvalidation(t *testing.T) {

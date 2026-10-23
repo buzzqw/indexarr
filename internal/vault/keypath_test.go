@@ -123,7 +123,7 @@ func TestResolveKeySources(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Resolve: %v", err)
 		}
-		if source.Kind != keyKindLegacyDataDir || !source.InDataDir || source.Path != dbPath+".key" {
+		if source.Kind != keyKindDataDirKey || !source.InDataDir || source.Path != dbPath+".key" {
 			t.Fatalf("unexpected source: %#v", source)
 		}
 		assertKey(t, v, key, "legacy")
@@ -281,12 +281,12 @@ func TestMoveLegacyKeyRefusesToOverwrite(t *testing.T) {
 
 func TestKeySourceInfoHasNoKeyMaterial(t *testing.T) {
 	source := KeySource{
-		Kind:      keyKindLegacyDataDir,
+		Kind:      keyKindDataDirKey,
 		Path:      "/srv/indexarr/indexarr.db.key",
 		InDataDir: true,
 	}
 	info := source.Info()
-	if !info.Available || info.Kind != keyKindLegacyDataDir || info.Path != source.Path || !info.InDataDir {
+	if !info.Available || info.Kind != keyKindDataDirKey || info.Path != source.Path || !info.InDataDir {
 		t.Fatalf("unexpected info: %#v", info)
 	}
 	if !strings.Contains(info.Hint, "move-key") {

@@ -72,7 +72,6 @@ type env struct {
 	t        *testing.T
 	store    *store.Store
 	server   *torznabapi.Server
-	sources  map[string]store.Source
 	indexers map[string]store.Indexer
 	releases map[string]store.Release
 }
@@ -127,50 +126,27 @@ func newEnv(t *testing.T) *env {
 	e := &env{
 		t:        t,
 		store:    st,
-		sources:  map[string]store.Source{},
 		indexers: map[string]store.Indexer{},
 		releases: map[string]store.Release{},
 	}
-	for _, name := range []string{"Alpha Source", "Beta Source"} {
-		suffix := strings.ToLower(strings.Fields(name)[0])
-		id, err := st.CreateSource(ctx, store.Source{
-			Name:    name,
-			Kind:    "torznab",
-			Manager: "torznab",
-			URL:     trackerURL,
-			APIKey:  sourceKey,
-			Enabled: true,
-		})
-		if err != nil {
-			t.Fatalf("CreateSource(%s): %v", name, err)
-		}
-		source, err := st.GetSource(ctx, id)
-		if err != nil {
-			t.Fatalf("GetSource(%s): %v", name, err)
-		}
-		e.sources[suffix] = source
-	}
-
 	indexerSpecs := []struct {
 		slug     string
 		name     string
 		protocol string
 		tags     string
-		source   string
 	}{
-		{"alpha", "Alpha Source", "torrent", "movies,hd", "alpha"},
-		{"beta", "Beta Source", "usenet", "tv", "beta"},
+		{"alpha", "Alpha Source", "torrent", "movies,hd"},
+		{"beta", "Beta Source", "usenet", "tv"},
 	}
 	for _, spec := range indexerSpecs {
 		id, err := st.CreateIndexer(ctx, store.Indexer{
-			DefinitionID:   "compat-def",
-			Protocol:       spec.protocol,
-			Slug:           spec.slug,
-			Name:           spec.name,
-			Enabled:        true,
-			Priority:       10,
-			Tags:           spec.tags,
-			LegacySourceID: e.sources[spec.source].ID,
+			DefinitionID: "compat-def",
+			Protocol:     spec.protocol,
+			Slug:         spec.slug,
+			Name:         spec.name,
+			Enabled:      true,
+			Priority:     10,
+			Tags:         spec.tags,
 		})
 		if err != nil {
 			t.Fatalf("CreateIndexer(%s): %v", spec.slug, err)
@@ -184,7 +160,6 @@ func newEnv(t *testing.T) *env {
 
 	fixtures := loadFixtures(t)
 	for _, fixture := range fixtures.Releases {
-		source := e.sources[fixture.Source]
 		published, err := time.Parse(time.RFC3339, fixture.Published)
 		if err != nil {
 			t.Fatalf("fixture %s published: %v", fixture.Key, err)
@@ -206,8 +181,6 @@ func newEnv(t *testing.T) *env {
 			Leechers:    fixture.Leechers,
 			Category:    fixture.Category,
 			PublishedAt: published,
-			SourceID:    source.ID,
-			SourceName:  source.Name,
 			GUID:        fixture.GUID,
 			Magnet:      fixture.Magnet,
 			Torrent:     []byte(fixture.Torrent),
@@ -221,6 +194,17 @@ func newEnv(t *testing.T) *env {
 			t.Fatalf("UpsertRelease(%s): %v", fixture.Key, err)
 		}
 		e.releases[fixture.Key] = release
+		indexerSlug := strings.ToLower(strings.Fields(fixture.Source)[0])
+		indexer := e.indexers[indexerSlug]
+		if indexer.ID != 0 {
+			if err := st.RecordReleaseSource(ctx, store.ReleaseSource{
+				ReleaseID: release.ID, IndexerID: indexer.ID,
+				FirstSeenAt: published, LastSeenAt: published,
+				Seeders: fixture.Seeders, Leechers: fixture.Leechers,
+			}); err != nil {
+				t.Fatalf("RecordReleaseSource(%s): %v", fixture.Key, err)
+			}
+		}
 	}
 
 	// The multi-indexer fixture is seen by both indexers. Alpha carries a

@@ -1,7 +1,6 @@
 package adminapi
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,9 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/buzzqw/indexarr/internal/legacyimport"
-	"github.com/buzzqw/indexarr/internal/store"
 )
 
 const (
@@ -234,63 +230,6 @@ func TestImportJackettValidation(t *testing.T) {
 	if body["error"] != "jackett import failed" {
 		t.Fatalf("error = %q, want a generic message", body["error"])
 	}
-}
-
-func TestLegacyPreviewEndpoint(t *testing.T) {
-	e := newEnv(t, true, true)
-	ctx := context.Background()
-
-	if _, err := e.store.CreateSource(ctx, store.Source{
-		Name:     "Native Torznab",
-		Kind:     "torznab",
-		URL:      "https://tracker.example/api",
-		APIKey:   "legacy-API-KEY-SECRET",
-		Password: "legacy-PASSWORD-SECRET",
-	}); err != nil {
-		t.Fatalf("CreateSource torznab: %v", err)
-	}
-	if _, err := e.store.CreateSource(ctx, store.Source{
-		Name: "RSS Feed",
-		Kind: "rss",
-		URL:  "https://feed.example/rss",
-	}); err != nil {
-		t.Fatalf("CreateSource rss: %v", err)
-	}
-	if _, err := e.store.BackfillLegacySources(ctx); err != nil {
-		t.Fatalf("BackfillLegacySources: %v", err)
-	}
-
-	res := e.do(http.MethodGet, "/api/v2/legacy/preview", "")
-	requireStatus(t, res, http.StatusOK)
-	body := decodeJSON[struct {
-		Candidates []legacyimport.Candidate `json:"candidates"`
-		Counts     struct {
-			Native  int `json:"native"`
-			Skipped int `json:"skipped"`
-		} `json:"counts"`
-	}](t, res.body)
-	if len(body.Candidates) != 2 {
-		t.Fatalf("candidates = %+v", body.Candidates)
-	}
-	if body.Counts.Native != 2 || body.Counts.Skipped != 0 {
-		t.Fatalf("counts = %+v", body.Counts)
-	}
-	for _, candidate := range body.Candidates {
-		switch candidate.Kind {
-		case "torznab":
-			if !candidate.Native || candidate.Slug == "" || !candidate.HasAPIKey {
-				t.Errorf("torznab candidate = %+v", candidate)
-			}
-		case "rss":
-			// WP6: a plain RSS/Atom feed is a native candidate.
-			if !candidate.Native || candidate.Reason != "" || candidate.Slug == "" {
-				t.Errorf("rss candidate = %+v", candidate)
-			}
-		default:
-			t.Errorf("unexpected candidate = %+v", candidate)
-		}
-	}
-	assertImportSecretsAbsent(t, res.body, "legacy-API-KEY-SECRET", "legacy-PASSWORD-SECRET")
 }
 
 func writeImportFile(t *testing.T, path, body string) {

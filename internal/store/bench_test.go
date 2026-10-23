@@ -38,7 +38,6 @@ func benchRelease(i int) store.Release {
 		Leechers:    int64(i % 30),
 		Category:    "2040",
 		PublishedAt: now.Add(-time.Duration(i) * time.Minute),
-		SourceName:  "bench-source",
 		GUID:        fmt.Sprintf("guid-%d", i),
 		Magnet:      fmt.Sprintf("magnet:?xt=urn:btih:%040x", 1_000_000+i),
 		FirstSeenAt: now,
@@ -106,7 +105,7 @@ func BenchmarkSearchReleases(b *testing.B) {
 				{"empty", store.Filter{Limit: 100}, 100 * 800},
 				{"text", store.Filter{Query: "1080p", Limit: 100}, 100 * 800},
 				{"filters", store.Filter{
-					SourceID:   1,
+					IndexerID:  1,
 					Categories: []string{"2000"},
 					MinSeeders: 25,
 					Limit:      100,

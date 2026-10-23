@@ -2,7 +2,7 @@
 <section class="page-head">
   <div>
     <h1>{{.Release.Title}}</h1>
-    <p class="muted">{{.Release.SourceName}}{{if .Release.Category}} · {{catName .Release.Category}}{{end}} · {{date .Release.PublishedAt}}</p>
+    <p class="muted">{{if .Release.Category}}{{catName .Release.Category}} · {{end}}{{date .Release.PublishedAt}}</p>
   </div>
   <a class="btn" href="/releases">{{T "release.back"}}</a>
 </section>

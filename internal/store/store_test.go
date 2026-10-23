@@ -19,17 +19,6 @@ func newTestStore(t *testing.T) *Store {
 	return st
 }
 
-func testSource(name string) Source {
-	return Source{
-		Name:    name,
-		Kind:    "torznab",
-		Manager: "auto",
-		URL:     "http://indexer.test/api",
-		APIKey:  "key",
-		Enabled: true,
-	}
-}
-
 func TestSettingsAndAPIKey(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
@@ -87,108 +76,14 @@ func TestSettingsAndAPIKey(t *testing.T) {
 	}
 }
 
-func TestSourceLifecycleAndRuns(t *testing.T) {
-	ctx := context.Background()
-	st := newTestStore(t)
-
-	initial := testSource("Prowlarr")
-	initial.DefaultCategory = "5040"
-	id, err := st.CreateSource(ctx, initial)
-	if err != nil {
-		t.Fatalf("CreateSource: %v", err)
-	}
-	source, err := st.GetSource(ctx, id)
-	if err != nil {
-		t.Fatalf("GetSource: %v", err)
-	}
-	if source.Name != "Prowlarr" || !source.Enabled || source.URL != "http://indexer.test/api" ||
-		source.DefaultCategory != "5040" {
-		t.Fatalf("source = %#v", source)
-	}
-
-	source.Name = "Prowlarr home"
-	source.IntervalSeconds = 600
-	source.Enabled = false
-	if err := st.UpdateSource(ctx, source); err != nil {
-		t.Fatalf("UpdateSource: %v", err)
-	}
-	updated, _ := st.GetSource(ctx, id)
-	if updated.Name != "Prowlarr home" || updated.IntervalSeconds != 600 || updated.Enabled {
-		t.Fatalf("updated = %#v", updated)
-	}
-
-	runID, startedAt, err := st.BeginSourceRun(ctx, id)
-	if err != nil {
-		t.Fatalf("BeginSourceRun: %v", err)
-	}
-	if runID == 0 || startedAt.IsZero() {
-		t.Fatal("invalid run start")
-	}
-	if err := st.FinishSourceRun(ctx, runID, updated, startedAt, RunResult{Seen: 5, New: 2}, nil); err != nil {
-		t.Fatalf("FinishSourceRun: %v", err)
-	}
-	afterOK, _ := st.GetSource(ctx, id)
-	if afterOK.LastOKAt.IsZero() {
-		t.Error("last_ok_at not set")
-	}
-	if afterOK.LastItems != 5 || afterOK.TotalItems != 2 {
-		t.Errorf("last/total items = %d/%d", afterOK.LastItems, afterOK.TotalItems)
-	}
-	if afterOK.LastError != "" {
-		t.Errorf("last error = %q", afterOK.LastError)
-	}
-
-	runErrID, errStart, err := st.BeginSourceRun(ctx, id)
-	if err != nil {
-		t.Fatalf("BeginSourceRun: %v", err)
-	}
-	if err := st.FinishSourceRun(ctx, runErrID, afterOK, errStart, RunResult{Seen: 1}, os.ErrDeadlineExceeded); err != nil {
-		t.Fatalf("FinishSourceRun(error): %v", err)
-	}
-	afterErr, _ := st.GetSource(ctx, id)
-	if afterErr.LastError == "" {
-		t.Error("last_error not set")
-	}
-	if !afterErr.LastOKAt.Equal(afterOK.LastOKAt) {
-		t.Error("a failed run must not move last_ok_at")
-	}
-
-	runs, err := st.ListRuns(ctx, id, false, 10)
-	if err != nil {
-		t.Fatalf("ListRuns: %v", err)
-	}
-	if len(runs) != 2 || runs[0].Status != "error" || runs[1].Status != "ok" {
-		t.Fatalf("runs = %#v", runs)
-	}
-	errorsOnly, _ := st.ListRuns(ctx, 0, true, 10)
-	if len(errorsOnly) != 1 {
-		t.Errorf("errors only = %d", len(errorsOnly))
-	}
-	removed, err := st.ClearRuns(ctx, time.Now().Add(time.Hour))
-	if err != nil || removed != 2 {
-		t.Errorf("ClearRuns = %d, %v", removed, err)
-	}
-
-	if err := st.DeleteSource(ctx, id); err != nil {
-		t.Fatalf("DeleteSource: %v", err)
-	}
-	if _, err := st.GetSource(ctx, id); err == nil {
-		t.Fatal("deleted source is still readable")
-	}
-}
-
 func TestReleaseUpsertAndSearch(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
 
-	sourceID, err := st.CreateSource(ctx, testSource("Source A"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	otherID, err := st.CreateSource(ctx, testSource("Source B"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	mustCreateDefinition(t, st, "def-a")
+	mustCreateDefinition(t, st, "def-b")
+	sourceID := mustCreateIndexer(t, st, "def-a", "source-a", "Source A")
+	otherID := mustCreateIndexer(t, st, "def-b", "source-b", "Source B")
 
 	hash := "0123456789abcdef0123456789abcdef01234567"
 	now := time.Now().Add(-2 * time.Hour)
@@ -202,8 +97,6 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 		Leechers:    1,
 		Category:    "5040",
 		PublishedAt: now,
-		SourceID:    sourceID,
-		SourceName:  "Source A",
 		Magnet:      "magnet:?xt=urn:btih:" + hash,
 		FirstSeenAt: now,
 		LastSeenAt:  now,
@@ -215,6 +108,7 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 	if !isNew || show.TimesSeen != 1 {
 		t.Fatalf("new = %v, times seen = %d", isNew, show.TimesSeen)
 	}
+	recordProvenance(t, st, show.ID, sourceID)
 
 	showAgain := show
 	showAgain.Seeders = 9
@@ -235,14 +129,14 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 		DedupKey: "movie-key", Title: "A Movie 2024 1080p",
 		SearchTitle: NormalizeSearch("A Movie 2024 1080p"),
 		Size:        5000, Seeders: 20, Category: "2040",
-		PublishedAt: now.Add(time.Hour), SourceID: otherID, SourceName: "Source B",
+		PublishedAt: now.Add(time.Hour),
 		FirstSeenAt: now, LastSeenAt: now,
 	}
 	secondShow := Release{
 		DedupKey: "show2-key", Title: "The Show S02E01 720p",
 		SearchTitle: NormalizeSearch("The Show S02E01 720p"),
 		Size:        3000, Seeders: 1, Category: "5030",
-		PublishedAt: now.Add(2 * time.Hour), SourceID: sourceID, SourceName: "Source A",
+		PublishedAt: now.Add(2 * time.Hour),
 		FirstSeenAt: now, LastSeenAt: now,
 	}
 	for _, rel := range []*Release{&movie, &secondShow} {
@@ -250,6 +144,8 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 			t.Fatalf("UpsertRelease: %v", err)
 		}
 	}
+	recordProvenance(t, st, movie.ID, otherID)
+	recordProvenance(t, st, secondShow.ID, sourceID)
 
 	cases := []struct {
 		name  string
@@ -261,9 +157,9 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 		{"query no match", Filter{Query: "nonexistent"}, 0},
 		{"category group", Filter{Categories: []string{"5000"}}, 2},
 		{"category exact", Filter{Categories: []string{"5040"}}, 1},
-		{"source", Filter{SourceID: otherID}, 1},
-		{"sources", Filter{SourceIDs: []int64{sourceID, otherID}}, 3},
-		{"sources paginated", Filter{SourceIDs: []int64{sourceID, otherID}, Limit: 1, Offset: 1}, 3},
+		{"indexer", Filter{IndexerID: otherID}, 1},
+		{"indexers", Filter{IndexerIDs: []int64{sourceID, otherID}}, 3},
+		{"indexers paginated", Filter{IndexerIDs: []int64{sourceID, otherID}, Limit: 1, Offset: 1}, 3},
 		{"season and episode", Filter{Query: "show", Season: 1, Episode: 2}, 1},
 		{"another episode", Filter{Query: "show", Season: 2, Episode: 1}, 1},
 		{"missing episode", Filter{Query: "show", Season: 2, Episode: 9}, 1},
@@ -306,7 +202,7 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadStats: %v", err)
 	}
-	if stats.Releases != 3 || stats.Sources != 2 || stats.EnabledSources != 2 {
+	if stats.Releases != 3 || stats.Indexers != 2 || stats.EnabledIndexers != 2 {
 		t.Errorf("stats = %#v", stats)
 	}
 
@@ -327,12 +223,11 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 func TestDedupeBackupAndClearTorrents(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
-	sourceID, _ := st.CreateSource(ctx, testSource("S"))
 
 	hash := "fedcba9876543210fedcba9876543210fedcba98"
 	first := Release{
 		DedupKey: "first", InfoHash: hash, Title: "First", SearchTitle: "first",
-		Category: "5000", SourceID: sourceID, SourceName: "S",
+		Category: "5000",
 	}
 	if _, err := st.UpsertRelease(ctx, &first); err != nil {
 		t.Fatal(err)
@@ -395,7 +290,7 @@ func TestReleaseFlagsAndBlocklist(t *testing.T) {
 		DedupKey: "flags", Title: "Blocked CAM Release 1080p",
 		SearchTitle: NormalizeSearch("Blocked CAM Release 1080p"),
 		Magnet:      "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567",
-		Category:    "5040", SourceName: "Source A",
+		Category:    "5040",
 	}
 	if _, err := st.UpsertRelease(ctx, &rel); err != nil {
 		t.Fatal(err)
@@ -478,76 +373,6 @@ func TestSavedSearches(t *testing.T) {
 	}
 }
 
-func TestMigrateAddsHTTPAuthColumns(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "old.db")
-	st, err := Open(path)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	for _, column := range []string{"username", "password"} {
-		if _, err := st.DB().Exec("ALTER TABLE sources DROP COLUMN " + column); err != nil {
-			t.Fatalf("drop %s: %v", column, err)
-		}
-	}
-	// Simulate a database created before curation and auto-disable existed.
-	for _, index := range []string{
-		"releases_hidden", "releases_favorite",
-		"releases_visible_published", "releases_visible_seen",
-		"releases_visible_published_id", "releases_visible_seen_id",
-		"releases_visible_source_published", "releases_visible_category_published",
-	} {
-		if _, err := st.DB().Exec("DROP INDEX IF EXISTS " + index); err != nil {
-			t.Fatalf("drop index %s: %v", index, err)
-		}
-	}
-	for _, column := range []string{"favorite", "hidden"} {
-		if _, err := st.DB().Exec("ALTER TABLE releases DROP COLUMN " + column); err != nil {
-			t.Fatalf("drop releases.%s: %v", column, err)
-		}
-	}
-	if _, err := st.DB().Exec("ALTER TABLE runs DROP COLUMN items_blocked"); err != nil {
-		t.Fatalf("drop runs.items_blocked: %v", err)
-	}
-	if _, err := st.DB().Exec("ALTER TABLE sources DROP COLUMN consecutive_errors"); err != nil {
-		t.Fatalf("drop sources.consecutive_errors: %v", err)
-	}
-	if err := st.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	// Reopening runs the migration that restores the columns.
-	st, err = Open(path)
-	if err != nil {
-		t.Fatalf("reopen: %v", err)
-	}
-	t.Cleanup(func() { _ = st.Close() })
-	ctx := context.Background()
-	source := testSource("Old DB")
-	source.Username = "user"
-	source.Password = "secret"
-	id, err := st.CreateSource(ctx, source)
-	if err != nil {
-		t.Fatalf("CreateSource after migration: %v", err)
-	}
-	loaded, err := st.GetSource(ctx, id)
-	if err != nil {
-		t.Fatalf("GetSource after migration: %v", err)
-	}
-	if loaded.Username != "user" || loaded.Password != "secret" {
-		t.Errorf("credentials = %q/%q", loaded.Username, loaded.Password)
-	}
-	// The columns and their indexes must exist after the migration.
-	if _, err := st.DB().Exec("SELECT favorite, hidden FROM releases LIMIT 0"); err != nil {
-		t.Errorf("releases flags missing: %v", err)
-	}
-	if _, err := st.DB().Exec("SELECT items_blocked FROM runs LIMIT 0"); err != nil {
-		t.Errorf("runs.items_blocked missing: %v", err)
-	}
-	if _, err := st.DB().Exec("SELECT consecutive_errors FROM sources LIMIT 0"); err != nil {
-		t.Errorf("sources.consecutive_errors missing: %v", err)
-	}
-}
-
 func TestNormalizeSearch(t *testing.T) {
 	cases := map[string]string{
 		"The.Show.S01E02-1080p":    "the show s01e02 1080p",
@@ -587,5 +412,15 @@ func TestReleaseByExternalID(t *testing.T) {
 	}
 	if _, ok, err := st.ReleaseByExternalID(ctx, "missing"); err != nil || ok {
 		t.Errorf("missing external id = %v, %v", ok, err)
+	}
+}
+
+func recordProvenance(t *testing.T, st *Store, releaseID, indexerID int64) {
+	t.Helper()
+	if err := st.RecordReleaseSource(context.Background(), ReleaseSource{
+		ReleaseID: releaseID, IndexerID: indexerID,
+		FirstSeenAt: time.Now(), LastSeenAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("RecordReleaseSource: %v", err)
 	}
 }

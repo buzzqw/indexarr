@@ -8,123 +8,109 @@ import (
 	"time"
 )
 
-// RunResult is what a single ingestion run did.
-type RunResult struct {
-	Seen      int64
-	New       int64
-	Updated   int64
-	Blocked   int64
-	Torrents  int64
-	NewTitles []string
+// RunHistory is one scheduled run of a native indexer, read from
+// indexer_history. The legacy runs table no longer exists.
+type RunHistory struct {
+	ID          int64
+	IndexerID   int64
+	IndexerName string
+	Query       string
+	Status      string
+	LatencyMS   int64
+	Error       string
+	StartedAt   time.Time
 }
 
-// Run is one row of the run history.
-type Run struct {
-	ID              int64
-	SourceID        int64
-	SourceName      string
-	StartedAt       time.Time
-	FinishedAt      time.Time
-	Status          string
-	ItemsSeen       int64
-	ItemsNew        int64
-	ItemsUpdated    int64
-	ItemsBlocked    int64
-	TorrentsFetched int64
-	Error           string
-	DurationMS      int64
-}
-
-// ListRuns returns the most recent runs, optionally filtered by source.
-func (s *Store) ListRuns(ctx context.Context, sourceID int64, onlyErrors bool, limit int) ([]Run, error) {
+// ListRunHistory returns the most recent run history rows, optionally filtered
+// by indexer and by failures only.
+func (s *Store) ListRunHistory(ctx context.Context, indexerID int64, onlyErrors bool, limit int) ([]RunHistory, error) {
 	if limit <= 0 || limit > 1000 {
 		limit = 200
 	}
-	query := `SELECT id, COALESCE(source_id, 0), source_name, started_at, finished_at,
-		status, items_seen, items_new, items_updated, items_blocked, torrents_fetched, error, duration_ms
-		FROM runs`
-	var clauses []string
+	query := `SELECT h.id, COALESCE(h.indexer_id, 0), COALESCE(i.name, ''),
+		h.query, h.status, h.latency_ms, h.error, h.started_at
+		FROM indexer_history h
+		LEFT JOIN indexers i ON i.id = h.indexer_id
+		WHERE h.kind = 'run'`
 	var args []any
-	if sourceID > 0 {
-		clauses = append(clauses, `source_id = ?`)
-		args = append(args, sourceID)
+	if indexerID > 0 {
+		query += ` AND h.indexer_id = ?`
+		args = append(args, indexerID)
 	}
 	if onlyErrors {
-		clauses = append(clauses, `status = 'error'`)
+		query += ` AND h.status = 'error'`
 	}
-	if len(clauses) > 0 {
-		query += ` WHERE ` + joinAnd(clauses)
-	}
-	query += ` ORDER BY started_at DESC, id DESC LIMIT ?`
+	query += ` ORDER BY h.started_at DESC, h.id DESC LIMIT ?`
 	args = append(args, limit)
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []Run
+	var out []RunHistory
 	for rows.Next() {
-		var run Run
-		var started, finished int64
-		if err := rows.Scan(&run.ID, &run.SourceID, &run.SourceName, &started, &finished,
-			&run.Status, &run.ItemsSeen, &run.ItemsNew, &run.ItemsUpdated,
-			&run.ItemsBlocked, &run.TorrentsFetched, &run.Error, &run.DurationMS); err != nil {
+		var run RunHistory
+		var started int64
+		if err := rows.Scan(&run.ID, &run.IndexerID, &run.IndexerName, &run.Query,
+			&run.Status, &run.LatencyMS, &run.Error, &started); err != nil {
 			return nil, err
 		}
 		run.StartedAt = unixTime(started)
-		run.FinishedAt = unixTime(finished)
 		out = append(out, run)
 	}
 	return out, rows.Err()
 }
 
-// ClearRuns deletes runs older than before and returns how many were removed.
-func (s *Store) ClearRuns(ctx context.Context, before time.Time) (int64, error) {
-	res, err := s.db.ExecContext(ctx, `DELETE FROM runs WHERE started_at < ?`, before.Unix())
-	if err != nil {
-		return 0, err
-	}
-	return res.RowsAffected()
-}
-
-// FinishInterruptedRuns marks runs left "running" by a previous process as
-// interrupted. Called once at startup.
-func (s *Store) FinishInterruptedRuns(ctx context.Context) (int64, error) {
-	res, err := s.db.ExecContext(ctx, `
-		UPDATE runs SET status = 'error', error = 'interrupted: indexarr stopped during the run',
-			finished_at = ?
-		WHERE status = 'running'`, time.Now().Unix())
-	if err != nil {
-		return 0, err
-	}
-	return res.RowsAffected()
-}
-
-// GetRun returns one run by id.
-func (s *Store) GetRun(ctx context.Context, id int64) (Run, error) {
-	var run Run
-	var started, finished int64
+// GetRunHistory returns one run history row by id.
+func (s *Store) GetRunHistory(ctx context.Context, id int64) (RunHistory, error) {
+	var run RunHistory
+	var started int64
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, COALESCE(source_id, 0), source_name, started_at, finished_at,
-			status, items_seen, items_new, items_updated, items_blocked, torrents_fetched, error, duration_ms
-		FROM runs WHERE id = ?`, id).Scan(&run.ID, &run.SourceID, &run.SourceName,
-		&started, &finished, &run.Status, &run.ItemsSeen, &run.ItemsNew,
-		&run.ItemsUpdated, &run.ItemsBlocked, &run.TorrentsFetched, &run.Error, &run.DurationMS)
+		SELECT h.id, COALESCE(h.indexer_id, 0), COALESCE(i.name, ''),
+			h.query, h.status, h.latency_ms, h.error, h.started_at
+		FROM indexer_history h
+		LEFT JOIN indexers i ON i.id = h.indexer_id
+		WHERE h.kind = 'run' AND h.id = ?`, id).Scan(&run.ID, &run.IndexerID,
+		&run.IndexerName, &run.Query, &run.Status, &run.LatencyMS, &run.Error, &started)
 	if errors.Is(err, sql.ErrNoRows) {
-		return Run{}, fmt.Errorf("run %d: %w", id, sql.ErrNoRows)
+		return RunHistory{}, fmt.Errorf("run %d: %w", id, sql.ErrNoRows)
 	}
 	run.StartedAt = unixTime(started)
-	run.FinishedAt = unixTime(finished)
 	return run, err
 }
 
-func joinAnd(clauses []string) string {
-	out := ""
-	for i, clause := range clauses {
-		if i > 0 {
-			out += " AND "
-		}
-		out += clause
+// ClearRunHistory deletes run history older than before.
+func (s *Store) ClearRunHistory(ctx context.Context, before time.Time) (int64, error) {
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM indexer_history WHERE kind = 'run' AND started_at < ?`, before.Unix())
+	if err != nil {
+		return 0, err
 	}
-	return out
+	return res.RowsAffected()
+}
+
+// RecentIndexerRunStatuses returns the statuses of the most recent runs of one
+// indexer, newest first. The native scheduler uses it to auto-disable an
+// indexer after repeated failures.
+func (s *Store) RecentIndexerRunStatuses(ctx context.Context, indexerID int64, limit int) ([]string, error) {
+	if indexerID <= 0 || limit <= 0 {
+		return nil, nil
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT status FROM indexer_history
+		WHERE kind = 'run' AND indexer_id = ?
+		ORDER BY started_at DESC, id DESC LIMIT ?`, indexerID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var status string
+		if err := rows.Scan(&status); err != nil {
+			return nil, err
+		}
+		out = append(out, status)
+	}
+	return out, rows.Err()
 }

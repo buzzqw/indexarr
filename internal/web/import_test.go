@@ -273,14 +273,6 @@ func TestImportApplyImportsOnlySelectedSites(t *testing.T) {
 	if rows[0].DefinitionID != "torznab-generic" {
 		t.Fatalf("Alpha definition = %q", rows[0].DefinitionID)
 	}
-	var sources int
-	if err := env.store.DB().QueryRowContext(t.Context(),
-		`SELECT count(*) FROM sources`).Scan(&sources); err != nil {
-		t.Fatalf("count sources: %v", err)
-	}
-	if sources != 0 {
-		t.Fatalf("apply wrote %d legacy sources", sources)
-	}
 
 	// The token is one-shot.
 	replay := postForm(t, env.handler, "/import/apply", url.Values{

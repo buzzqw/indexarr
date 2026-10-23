@@ -17,7 +17,6 @@
             <th scope="col">{{T "releases.colTitle"}}</th>
             <th scope="col">{{T "releases.colSize"}}</th>
             <th scope="col">{{T "releases.colSeeders"}}</th>
-            <th scope="col">{{T "releases.indexer"}}</th>
             <th scope="col">{{T "releases.colPublished"}}</th>
             <th scope="col" class="right">{{T "releases.download"}}</th>
           </tr>
@@ -32,7 +31,6 @@
             </td>
             <td class="nowrap">{{sizeOrDash .Size}}</td>
             <td>{{numOrDash .Seeders}}</td>
-            <td class="nowrap">{{textOrDash .SourceName}}</td>
             <td class="nowrap">{{if .PublishedAt.IsZero}}—{{else}}<span title="{{date .PublishedAt}}">{{ago .PublishedAt}}</span>{{end}}</td>
             <td class="right nowrap">
               {{if .Torrent}}<a class="btn small primary" href="/releases/{{.ID}}/torrent" title="{{T "releases.downloadTorrent"}}">{{T "releases.download"}}</a>
@@ -41,7 +39,7 @@
             </td>
           </tr>
           {{else}}
-          <tr><td colspan="7" class="empty">{{T "releases.empty"}}</td></tr>
+          <tr><td colspan="6" class="empty">{{T "releases.empty"}}</td></tr>
           {{end}}
         </tbody>
       </table>

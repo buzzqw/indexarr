@@ -18,13 +18,8 @@
   </article>
   <article class="card">
     <span class="label">{{T "dashboard.nativeIndexers"}}</span>
-    <strong>{{.NativeCount}}</strong>
-    <span class="hint">{{if .NativeErrors}}<span class="text-danger">{{T "dashboard.withErrors" .NativeErrors}}</span>{{else}}{{T "dashboard.noCurrentErrors"}}{{end}} · {{T "dashboard.definitionsCount" (len .Definitions)}}</span>
-  </article>
-  <article class="card">
-    <span class="label">{{T "dashboard.legacySources"}}</span>
-    <strong>{{.LegacyCount}}</strong>
-    <span class="hint">{{T "dashboard.enabledCount" .Stats.EnabledSources}} · {{if .LegacyErrors}}<span class="text-danger">{{T "dashboard.withErrors" .LegacyErrors}}</span>{{else}}{{T "dashboard.noCurrentErrors"}}{{end}}</span>
+    <strong>{{.IndexerCount}}</strong>
+    <span class="hint">{{if .IndexerErrors}}<span class="text-danger">{{T "dashboard.withErrors" .IndexerErrors}}</span>{{else}}{{T "dashboard.noCurrentErrors"}}{{end}} · {{T "dashboard.definitionsCount" (len .Definitions)}}</span>
   </article>
   <article class="card">
     <span class="label">{{T "dashboard.applications"}}</span>
@@ -70,10 +65,6 @@
         <strong>{{T "dashboard.newNative"}}</strong>
         <span>{{T "dashboard.newNativeHint"}}</span>
       </a>
-      <a class="quick-action" href="/sources/new">
-        <strong>{{T "dashboard.addLegacy"}}</strong>
-        <span>{{T "dashboard.addLegacyHint"}}</span>
-      </a>
       <a class="quick-action" href="/import">
         <strong>{{T "dashboard.import"}}</strong>
         <span>{{T "dashboard.importHint"}}</span>
@@ -107,17 +98,16 @@
     </div>
     <div class="table-scroll">
       <table>
-        <thead><tr><th scope="col">{{T "dashboard.source"}}</th><th scope="col">{{T "dashboard.outcome"}}</th><th scope="col">{{T "dashboard.items"}}</th><th scope="col">{{T "dashboard.when"}}</th></tr></thead>
+        <thead><tr><th scope="col">{{T "dashboard.indexer"}}</th><th scope="col">{{T "dashboard.outcome"}}</th><th scope="col">{{T "dashboard.when"}}</th></tr></thead>
         <tbody>
           {{range .Runs}}
           <tr>
-            <td>{{.SourceName}}</td>
-            <td>{{if eq .Status "error"}}<span class="chip danger" title="{{.Error}}">{{T "common.error"}}</span>{{else if eq .Status "running"}}<span class="chip warn">{{T "common.running"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
-            <td class="nowrap">{{T "dashboard.itemsValue" .ItemsNew .ItemsSeen}}</td>
+            <td>{{.IndexerName}}</td>
+            <td>{{if eq .Status "error"}}<span class="chip danger" title="{{.Error}}">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
             <td class="nowrap">{{ago .StartedAt}}</td>
           </tr>
           {{else}}
-          <tr><td colspan="4" class="empty">{{T "dashboard.noRuns"}}</td></tr>
+          <tr><td colspan="3" class="empty">{{T "dashboard.noRuns"}}</td></tr>
           {{end}}
         </tbody>
       </table>
@@ -132,17 +122,16 @@
   </div>
   <div class="table-scroll">
     <table>
-      <thead><tr><th scope="col">{{T "dashboard.titleColumn"}}</th><th scope="col">{{T "dashboard.source"}}</th><th scope="col">{{T "dashboard.size"}}</th><th scope="col">{{T "dashboard.seen"}}</th></tr></thead>
+      <thead><tr><th scope="col">{{T "dashboard.titleColumn"}}</th><th scope="col">{{T "dashboard.size"}}</th><th scope="col">{{T "dashboard.seen"}}</th></tr></thead>
       <tbody>
         {{range .Recent}}
         <tr>
           <td><a href="/releases/{{.ID}}">{{truncate .Title 70}}</a></td>
-          <td class="nowrap">{{.SourceName}}</td>
           <td class="nowrap">{{bytes .Size}}</td>
           <td class="nowrap">{{ago .FirstSeenAt}}</td>
         </tr>
         {{else}}
-        <tr><td colspan="4" class="empty">{{T "dashboard.noReleases"}}</td></tr>
+        <tr><td colspan="3" class="empty">{{T "dashboard.noReleases"}}</td></tr>
         {{end}}
       </tbody>
     </table>

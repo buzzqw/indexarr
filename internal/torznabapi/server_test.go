@@ -51,7 +51,6 @@ func insertRelease(t *testing.T, st *store.Store, title, category, infohash, mag
 		Leechers:    2,
 		Category:    category,
 		PublishedAt: time.Now().Add(-time.Hour),
-		SourceName:  "test-source",
 		Magnet:      magnet,
 		Torrent:     torrent,
 		FirstSeenAt: time.Now().Add(-time.Hour),

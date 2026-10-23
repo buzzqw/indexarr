@@ -21,8 +21,8 @@ import (
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
-	"github.com/buzzqw/indexarr/internal/ingest"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
+	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/syncjob"
 	"github.com/buzzqw/indexarr/internal/torznabapi"
@@ -52,7 +52,7 @@ type templateSet struct {
 var templateSets = map[i18n.Language]*templateSet{}
 
 var pageNames = []string{
-	"dashboard", "releases", "release", "source_form", "source_bulk",
+	"dashboard", "releases", "release",
 	"run", "rules", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
 	"applications", "application_form", "import", "activity",
@@ -170,9 +170,6 @@ func init() {
 			switch name {
 			case "releases":
 				files = append(files, "templates/releases_results.html")
-			case "indexers":
-				// The unified page embeds the legacy sources panel.
-				files = append(files, "templates/sources.html")
 			case "activity":
 				// Activity embeds the Run and Log panels.
 				files = append(files, "templates/runs.html", "templates/logs.html")
@@ -279,7 +276,6 @@ func syncLevelLabel(lang i18n.Language, level string) string {
 // Config wires the web interface to the rest of the application.
 type Config struct {
 	Store   *store.Store
-	Engine  *ingest.Engine
 	Logger  *slog.Logger
 	Logs    *logbuffer.Buffer
 	Level   *slog.LevelVar
@@ -290,6 +286,9 @@ type Config struct {
 	// without it the pages still list and configure indexers but cannot run
 	// tests or imports.
 	Native *indexer.Manager
+	// Scheduler is the periodic runner. It powers "run all" and "test all".
+	// Optional: the individual buttons still work through Native.
+	Scheduler *native.Runner
 	// Indexers is the service behind the native indexer pages. It is optional
 	// and the pages degrade with a clear message when it is nil.
 	Indexers *indexersvc.Service
@@ -319,7 +318,6 @@ type Config struct {
 // Server serves the web interface, the Torznab API and the health endpoint.
 type Server struct {
 	store   *store.Store
-	engine  *ingest.Engine
 	log     *slog.Logger
 	version string
 	started time.Time
@@ -330,6 +328,7 @@ type Server struct {
 	restart func()
 	admin   http.Handler
 	native  *indexer.Manager
+	sched   *native.Runner
 	svc     *indexersvc.Service
 	vault   *vault.Vault
 	sync    *syncjob.Service
@@ -360,7 +359,6 @@ func New(cfg Config) *Server {
 	}
 	srv := &Server{
 		store:       cfg.Store,
-		engine:      cfg.Engine,
 		log:         logger,
 		version:     cfg.Version,
 		started:     cfg.Started,
@@ -371,14 +369,15 @@ func New(cfg Config) *Server {
 		restart:     cfg.Restart,
 		admin:       cfg.Admin,
 		native:      cfg.Native,
+		sched:       cfg.Scheduler,
 		svc:         cfg.Indexers,
 		vault:       cfg.Vault,
 		sync:        cfg.Sync,
 		polite:      cfg.Politeness,
 		importPlans: newImportPlanStore(),
 	}
-	if cfg.Engine != nil {
-		srv.torznab.SetLiveSearch(cfg.Engine.SearchLive)
+	if cfg.Native != nil {
+		srv.torznab.SetLiveSearch(cfg.Native.SearchLive)
 	}
 	srv.torznab.SetDownloadResolver(cfg.DownloadResolver)
 	if cfg.GrabGuard != nil {
@@ -404,26 +403,10 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /releases/{id}/send", s.releaseSend)
 	ui.HandleFunc("POST /releases/{id}/delete", s.releaseDelete)
 	ui.HandleFunc("POST /releases/delete", s.releasesDelete)
-	ui.HandleFunc("GET /sources", s.sourcesRedirect)
-	ui.HandleFunc("GET /sources/new", s.sourceNew)
-	ui.HandleFunc("POST /sources/quick", s.sourcesQuickAdd)
-	ui.HandleFunc("GET /sources/discover", s.sourcesDiscover)
-	ui.HandleFunc("GET /sources/bulk", s.sourceBulkNew)
-	ui.HandleFunc("POST /sources/bulk", s.sourceBulkCreate)
-	ui.HandleFunc("POST /sources", s.sourceCreate)
-	ui.HandleFunc("POST /sources/bulk-update", s.sourcesBulk)
-	ui.HandleFunc("POST /sources/bulk-delete", s.sourcesBulkDelete)
-	ui.HandleFunc("GET /sources/export", s.sourcesExport)
-	ui.HandleFunc("POST /sources/import", s.sourcesImport)
-	ui.HandleFunc("GET /sources/{id}/edit", s.sourceEdit)
-	ui.HandleFunc("POST /sources/{id}", s.sourceUpdate)
-	ui.HandleFunc("POST /sources/{id}/clone", s.sourceClone)
-	ui.HandleFunc("POST /sources/{id}/delete", s.sourceDelete)
-	ui.HandleFunc("POST /sources/{id}/run", s.sourceRun)
-	ui.HandleFunc("POST /sources/{id}/test", s.sourceTest)
-	ui.HandleFunc("POST /sources/{id}/cancel", s.sourceCancel)
-	ui.HandleFunc("POST /sources/test-all", s.sourcesTestAll)
-	ui.HandleFunc("POST /sources/run-all", s.sourcesRunAll)
+	// The legacy sources pages are gone. Old bookmarks and links keep working:
+	// every /sources path redirects to the unified indexers page.
+	ui.HandleFunc("/sources", s.sourcesRedirect)
+	ui.HandleFunc("/sources/", s.sourcesRedirect)
 	ui.HandleFunc("GET /definitions", s.definitionsPage)
 	ui.HandleFunc("GET /definitions/new", s.definitionNew)
 	ui.HandleFunc("POST /definitions", s.definitionCreate)
@@ -431,6 +414,12 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /indexers", s.indexersPage)
 	ui.HandleFunc("GET /indexers/new", s.indexerNew)
 	ui.HandleFunc("POST /indexers", s.indexerCreate)
+	ui.HandleFunc("POST /indexers/test-all", s.indexersTestAll)
+	ui.HandleFunc("POST /indexers/run-all", s.indexersRunAll)
+	ui.HandleFunc("GET /indexers/export", s.indexersExport)
+	ui.HandleFunc("POST /indexers/import", s.indexersImport)
+	ui.HandleFunc("GET /indexers/discover", s.indexersDiscover)
+	ui.HandleFunc("POST /indexers/quick", s.indexerQuickAdd)
 	ui.HandleFunc("GET /indexers/{id}", s.indexerPage)
 	ui.HandleFunc("GET /indexers/{id}/edit", s.indexerEdit)
 	ui.HandleFunc("POST /indexers/{id}", s.indexerUpdate)
@@ -759,8 +748,8 @@ func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	fmt.Fprintf(w, `{"status":"ok","version":%q,"uptime_seconds":%d,"releases":%d,"sources":%d,"db_bytes":%d}`,
-		s.version, int64(time.Since(s.started).Seconds()), stats.Releases, stats.Sources, stats.DBBytes)
+	fmt.Fprintf(w, `{"status":"ok","version":%q,"uptime_seconds":%d,"releases":%d,"indexers":%d,"db_bytes":%d}`,
+		s.version, int64(time.Since(s.started).Seconds()), stats.Releases, stats.Indexers, stats.DBBytes)
 }
 
 func humanBytes(value int64) string {

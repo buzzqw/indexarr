@@ -14,25 +14,30 @@ import (
 
 func TestMaintenanceActions(t *testing.T) {
 	env := newTestEnv(t)
-	id, err := env.store.CreateSource(context.Background(), store.Source{
-		Name: "Broken", Kind: "torznab", Manager: "auto",
-		URL: "http://broken.example/api", Enabled: true,
+	ctx := context.Background()
+	if err := env.store.UpsertDefinition(ctx, store.Definition{
+		ID: "maint-def", SchemaVersion: 1, Family: "torznab", State: "verificata",
+		Origin: "local", Author: "test", Body: "schema: 1\nconnector: torznab\n", Hash: strings.Repeat("a", 64),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	id, err := env.store.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "maint-def", Protocol: "torrent", Slug: "broken",
+		Name: "Broken", Enabled: true, ConfigJSON: `{}`,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := env.store.DB().ExecContext(context.Background(),
-		`UPDATE sources SET last_error = 'HTTP 500', consecutive_errors = 2 WHERE id = ?`, id); err != nil {
+	if err := env.store.UpsertIndexerState(ctx, store.IndexerState{
+		IndexerID: id, Circuit: "open", LastError: "HTTP 500",
+	}); err != nil {
 		t.Fatal(err)
 	}
 	token, cookie := csrfFrom(t, env.handler, "/maintenance")
 	page := get(t, env.handler, "/maintenance").Body.String()
-	if !strings.Contains(page, "Sources needing attention") || !strings.Contains(page, "HTTP 500") {
-		t.Fatal("failed source not shown")
-	}
 	for _, want := range []string{
 		"Database report", "Cleanup and retention", "Purge by age",
-		"Purge source", "Delete dead releases", "Recount source items",
+		"Purge indexer", "Delete dead releases",
 	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("maintenance page missing %q", want)
@@ -50,9 +55,9 @@ func TestMaintenanceActions(t *testing.T) {
 			t.Fatalf("%s status = %d: %s", action, recorder.Code, recorder.Body.String())
 		}
 	}
-	source, _ := env.store.GetSource(context.Background(), id)
-	if source.LastError != "" || source.ConsecutiveErrors != 0 {
-		t.Errorf("source after reset = %#v", source)
+	state, _ := env.store.GetIndexerState(ctx, id)
+	if state.LastError != "" || state.Circuit != "closed" {
+		t.Errorf("state after reset = %#v", state)
 	}
 }
 
@@ -78,9 +83,15 @@ func TestServiceWorkerAndManifest(t *testing.T) {
 func TestMaintenanceCleanupActions(t *testing.T) {
 	env := newTestEnv(t)
 	ctx := context.Background()
-	sourceID, err := env.store.CreateSource(ctx, store.Source{
-		Name: "Cleanup", Kind: "torznab", Manager: "auto",
-		URL: "http://cleanup.example/api", Enabled: true,
+	if err := env.store.UpsertDefinition(ctx, store.Definition{
+		ID: "cleanup-def", SchemaVersion: 1, Family: "torznab", State: "verificata",
+		Origin: "local", Author: "test", Body: "schema: 1\nconnector: torznab\n", Hash: strings.Repeat("a", 64),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	indexerID, err := env.store.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "cleanup-def", Protocol: "torrent", Slug: "cleanup",
+		Name: "Cleanup", Enabled: true, ConfigJSON: `{}`,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -90,11 +101,17 @@ func TestMaintenanceCleanupActions(t *testing.T) {
 	makeRelease := func(key, title string, seen time.Time) store.Release {
 		rel := store.Release{
 			DedupKey: key, Title: title, SearchTitle: strings.ToLower(title),
-			Magnet:   "magnet:?xt=urn:btih:" + strings.Repeat("a", 40),
-			SourceID: sourceID, SourceName: "Cleanup", FirstSeenAt: seen, LastSeenAt: seen,
+			Magnet:      "magnet:?xt=urn:btih:" + strings.Repeat("a", 40),
+			FirstSeenAt: seen, LastSeenAt: seen,
 		}
 		if _, err := env.store.UpsertRelease(ctx, &rel); err != nil {
 			t.Fatalf("UpsertRelease: %v", err)
+		}
+		if err := env.store.RecordReleaseSource(ctx, store.ReleaseSource{
+			ReleaseID: rel.ID, IndexerID: indexerID,
+			FirstSeenAt: seen, LastSeenAt: seen,
+		}); err != nil {
+			t.Fatalf("RecordReleaseSource: %v", err)
 		}
 		return rel
 	}
@@ -106,13 +123,13 @@ func TestMaintenanceCleanupActions(t *testing.T) {
 	}
 	if _, err := env.store.UpsertRelease(ctx, &store.Release{
 		DedupKey: "dead", Title: "Dead", SearchTitle: "dead",
-		SourceID: sourceID, SourceName: "Cleanup", FirstSeenAt: now, LastSeenAt: now,
+		FirstSeenAt: now, LastSeenAt: now,
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := env.store.DB().ExecContext(ctx, `
-		INSERT INTO runs(source_id, source_name, started_at, finished_at, status)
-		VALUES(?, 'Cleanup', ?, ?, 'ok')`, sourceID, old.Unix(), old.Unix()); err != nil {
+	if _, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+		IndexerID: indexerID, Kind: "run", Status: "ok", StartedAt: old,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	key, err := env.store.AddAPIKey(ctx, "QA client")
@@ -129,10 +146,9 @@ func TestMaintenanceCleanupActions(t *testing.T) {
 		{"csrf": {token}, "action": {"purge_no_links"}},
 		{"csrf": {token}, "action": {"purge_hidden"}},
 		{"csrf": {token}, "action": {"purge_days"}, "days": {"5"}},
-		{"csrf": {token}, "action": {"purge_source"}, "source_id": {strconv.FormatInt(sourceID, 10)}},
+		{"csrf": {token}, "action": {"purge_indexer"}, "indexer_id": {strconv.FormatInt(indexerID, 10)}},
 		{"csrf": {token}, "action": {"clear_runs_days"}, "days": {"5"}},
 		{"csrf": {token}, "action": {"reset_api_usage"}},
-		{"csrf": {token}, "action": {"recount_sources"}},
 	}
 	for _, values := range actions {
 		recorder := postForm(t, env.handler, "/maintenance", values, cookie)
@@ -147,13 +163,6 @@ func TestMaintenanceCleanupActions(t *testing.T) {
 	}
 	if stats.Releases != 0 {
 		t.Errorf("releases after cleanup = %d", stats.Releases)
-	}
-	source, err := env.store.GetSource(ctx, sourceID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if source.TotalItems != 0 {
-		t.Errorf("source total after recount = %d", source.TotalItems)
 	}
 	keys, err := env.store.ListAPIKeys(ctx)
 	if err != nil {
@@ -170,7 +179,7 @@ func TestMaintenanceRejectsInvalidCleanupInput(t *testing.T) {
 	for _, values := range []url.Values{
 		{"csrf": {token}, "action": {"purge_days"}, "days": {"0"}},
 		{"csrf": {token}, "action": {"clear_runs_days"}, "days": {"-1"}},
-		{"csrf": {token}, "action": {"purge_source"}, "source_id": {"0"}},
+		{"csrf": {token}, "action": {"purge_indexer"}, "indexer_id": {"0"}},
 	} {
 		recorder := postForm(t, env.handler, "/maintenance", values, cookie)
 		if recorder.Code != http.StatusSeeOther {

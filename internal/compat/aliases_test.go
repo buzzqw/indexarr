@@ -93,12 +93,15 @@ func TestPerIndexerSelection(t *testing.T) {
 
 	beta := e.get("/torznab/beta/api?t=search&apikey=" + primaryKey + "&q=" + searchQuery)
 	document := parseRSS(t, beta)
-	if document.Channel.Response.Total != 1 || len(document.Channel.Items) != 1 {
-		t.Fatalf("beta total = %d items = %d, want 1/1",
+	if document.Channel.Response.Total != 2 || len(document.Channel.Items) != 2 {
+		t.Fatalf("beta total = %d items = %d, want 2/2",
 			document.Channel.Response.Total, len(document.Channel.Items))
 	}
 	if !strings.Contains(beta.Body.String(), "Compat.NZB.Album") {
 		t.Error("beta route did not return the usenet release")
+	}
+	if !strings.Contains(beta.Body.String(), "Multi") {
+		t.Error("beta route did not return the release supplied by beta")
 	}
 	if strings.Contains(beta.Body.String(), "Compat.Magnet.Show") {
 		t.Error("beta route returned an alpha release")
@@ -134,10 +137,10 @@ func TestAggregateFilters(t *testing.T) {
 		not   string
 	}{
 		{"tag=hd", 3, "Compat.Magnet.Show", "Compat.NZB.Album"},
-		{"tag=tv", 1, "Compat.NZB.Album", "Compat.Magnet.Show"},
+		{"tag=tv", 2, "Compat.NZB.Album", "Compat.Magnet.Show"},
 		{"status=enabled", 4, "Multi", ""},
 		{"status=disabled", 0, "", "Multi"},
-		{"indexer_type=usenet", 1, "Compat.NZB.Album", "Compat.Magnet.Show"},
+		{"indexer_type=usenet", 2, "Compat.NZB.Album", "Compat.Magnet.Show"},
 	}
 	for _, test := range tests {
 		path := "/api/v2.0/indexers/all/results/torznab/api?t=search&apikey=" +
