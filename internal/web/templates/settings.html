@@ -539,6 +539,16 @@
         <p class="help">{{T "settings.liveSearchTimeoutHelp"}}</p>
       </div>
       <div class="field">
+        <label for="torznab_live_cache_seconds">{{T "settings.liveSearchCache"}}</label>
+        <input id="torznab_live_cache_seconds" name="torznab_live_cache_seconds" type="number" min="0" max="3600" value="{{.Settings.TorznabLiveCache}}">
+        <p class="help">{{T "settings.liveSearchCacheHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="torznab_live_wait_seconds">{{T "settings.liveSearchWait"}}</label>
+        <input id="torznab_live_wait_seconds" name="torznab_live_wait_seconds" type="number" min="1" max="120" value="{{.Settings.TorznabLiveWait}}">
+        <p class="help">{{T "settings.liveSearchWaitHelp"}}</p>
+      </div>
+      <div class="field">
         <label for="auto_disable_after">{{T "settings.autoDisable"}}</label>
         <input id="auto_disable_after" name="auto_disable_after" type="number" min="0" max="100" value="{{.Settings.AutoDisableAfter}}">
         <p class="help">{{T "settings.autoDisableHelp"}}</p>

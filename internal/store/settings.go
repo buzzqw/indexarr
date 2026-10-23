@@ -43,6 +43,8 @@ const (
 	KeyBackupKeep           = "backup_keep"
 	KeyTorznabLive          = "torznab_live_search"
 	KeyTorznabLiveTimeout   = "torznab_live_timeout_seconds"
+	KeyTorznabLiveCache     = "torznab_live_cache_seconds"
+	KeyTorznabLiveWait      = "torznab_live_wait_seconds"
 	KeyDownloadClient       = "download_client"
 	KeyDownloadClientURL    = "download_client_url"
 	KeyDownloadClientUser   = "download_client_user"
@@ -91,6 +93,8 @@ type Settings struct {
 	BackupKeep             int
 	TorznabLiveSearch      bool
 	TorznabLiveTimeout     int
+	TorznabLiveCache       int
+	TorznabLiveWait        int
 	DownloadClient         string
 	DownloadClientURL      string
 	DownloadClientUser     string
@@ -130,6 +134,8 @@ func DefaultSettings() Settings {
 		BackupKeep:                 7,
 		TorznabLiveSearch:          true,
 		TorznabLiveTimeout:         20,
+		TorznabLiveCache:           300,
+		TorznabLiveWait:            2,
 		DownloadClient:             "none",
 		HostRate:                   1,
 		HostBurst:                  4,
@@ -223,6 +229,8 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.BackupKeep = intValue(values, KeyBackupKeep, 7, 1, 60)
 	out.TorznabLiveSearch = boolValue(values, KeyTorznabLive, true)
 	out.TorznabLiveTimeout = intValue(values, KeyTorznabLiveTimeout, 20, 5, 120)
+	out.TorznabLiveCache = intValue(values, KeyTorznabLiveCache, 300, 0, 3600)
+	out.TorznabLiveWait = intValue(values, KeyTorznabLiveWait, 2, 1, 120)
 	out.DownloadClient = strings.ToLower(strings.TrimSpace(values[KeyDownloadClient]))
 	switch out.DownloadClient {
 	case "qbittorrent", "transmission":
@@ -280,6 +288,8 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyBackupKeep:           strconv.Itoa(in.BackupKeep),
 		KeyTorznabLive:          boolString(in.TorznabLiveSearch),
 		KeyTorznabLiveTimeout:   strconv.Itoa(in.TorznabLiveTimeout),
+		KeyTorznabLiveCache:     strconv.Itoa(in.TorznabLiveCache),
+		KeyTorznabLiveWait:      strconv.Itoa(in.TorznabLiveWait),
 		KeyDownloadClient:       strings.ToLower(strings.TrimSpace(in.DownloadClient)),
 		KeyDownloadClientURL:    strings.TrimRight(strings.TrimSpace(in.DownloadClientURL), "/"),
 		KeyDownloadClientUser:   strings.TrimSpace(in.DownloadClientUser),

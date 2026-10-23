@@ -408,6 +408,14 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			renderInvalid(parseErr.Error())
 			return false
 		}
+		if in.TorznabLiveCache, parseErr = s.formInt(r, "torznab_live_cache_seconds", 300, 0, 3600); parseErr != nil {
+			renderInvalid(parseErr.Error())
+			return false
+		}
+		if in.TorznabLiveWait, parseErr = s.formInt(r, "torznab_live_wait_seconds", 2, 1, 120); parseErr != nil {
+			renderInvalid(parseErr.Error())
+			return false
+		}
 		return true
 	}
 
