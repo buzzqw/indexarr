@@ -384,16 +384,38 @@ func indexerFilterValues(in store.Indexer) map[string]string {
 
 // -------------------------------------------------------------- site chooser
 
+type siteFilterChip struct {
+	Label  string
+	URL    string
+	Active bool
+}
+
+type siteFilterGroup struct {
+	Label string
+	Chips []siteFilterChip
+}
+
+type catalogQueryPair struct {
+	Name  string
+	Value string
+}
+
 type siteChoice struct {
-	ID          string
-	Name        string
-	Description string
-	Public      bool
-	State       string
-	StateLabel  string
-	Categories  []string
-	Generic     bool
-	URLs        []string
+	ID            string
+	Name          string
+	Description   string
+	Type          string
+	TypeLabel     string
+	Language      string
+	LanguageBadge string
+	Protocol      string
+	State         string
+	StateLabel    string
+	Categories    []string
+	AccessLabel   string
+	QuickAdd      bool
+	Added         bool
+	AddedID       int64
 }
 
 type sitePickerView struct {
@@ -401,17 +423,127 @@ type sitePickerView struct {
 	Subtitle    string
 	Action      string
 	Query       string
+	CSRF        string
+	Counter     string
+	Filtered    string
+	Groups      []siteFilterGroup
 	Sites       []siteChoice
 	Types       []siteChoice
-	NotFound    bool
-	Message     string
-	SiteSearch  string
-	BrowseLabel string
-	BridgeLabel string
-	FeedLabel   string
+	Pager       pager
+	HasFilters  bool
+	ClearURL    string
+	Hidden      []catalogQueryPair
+	Empty       uiEmpty
 	BridgeURL   string
 	FeedURL     string
-	Empty       uiEmpty
+	TorznabURL  string
+	NewznabURL  string
+	BrowseLabel string
+	NotFound    bool
+	Message     string
+}
+
+// catalogCategoryOrder is the order the filters and row badges use. It is the
+// list in UI-GUIDE §4.3, not the order of the definition file.
+var catalogCategoryOrder = []struct {
+	Key      string
+	LabelKey string
+}{
+	{"movies", "category.2000"},
+	{"tv", "category.5000"},
+	{"music", "category.3000"},
+	{"books", "category.7000"},
+	{"anime", "idx.catalog.cat.anime"},
+	{"games", "category.4000"},
+	{"software", "idx.catalog.cat.software"},
+	{"xxx", "category.6000"},
+}
+
+func (s *Server) indexerCatalogAdd(w http.ResponseWriter, r *http.Request) {
+	if s.svc == nil {
+		redirect(w, r, "/indexers/new", "", s.translate(r, "indexer.error.serviceUnavailable"))
+		return
+	}
+	index, err := s.siteCatalog()
+	if err != nil {
+		redirect(w, r, "/indexers/new", "", err.Error())
+		return
+	}
+	byID := make(map[string]catalog.IndexEntry, len(index))
+	for _, entry := range index {
+		byID[entry.ID] = entry
+	}
+
+	selected := make([]string, 0, len(r.Form["definition_id"]))
+	seen := map[string]bool{}
+	for _, id := range r.Form["definition_id"] {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		selected = append(selected, id)
+	}
+	if len(selected) == 0 {
+		redirect(w, r, "/indexers/new", "", s.translate(r, "idx.catalog.selectFirst"))
+		return
+	}
+
+	addedByDef, _ := s.catalogAlreadyAdded(r, index)
+	added, already, skipped, invalid := 0, 0, 0, 0
+	var lastID int64
+	for _, id := range selected {
+		entry, ok := byID[id]
+		if !ok {
+			invalid++
+			continue
+		}
+		if !catalogQuickAdd(entry) {
+			skipped++
+			continue
+		}
+		if _, ok := addedByDef[id]; ok {
+			already++
+			continue
+		}
+		if err := s.ensureStoredDefinition(r, id); err != nil {
+			invalid++
+			continue
+		}
+		enabled := true
+		priority := 25
+		created, err := s.svc.Create(r.Context(), indexersvc.Input{
+			DefinitionID: id,
+			Name:         entry.Name,
+			Slug:         id,
+			Protocol:     entry.Protocol,
+			Priority:     &priority,
+			Enabled:      &enabled,
+		})
+		if err != nil {
+			skipped++
+			continue
+		}
+		added++
+		lastID = created.ID
+		addedByDef[id] = created
+	}
+
+	if added == 1 && len(selected) == 1 {
+		redirect(w, r, "/indexers/"+strconv.FormatInt(lastID, 10), s.translate(r, "idx.detail.added", byID[selected[0]].Name), "")
+		return
+	}
+
+	switch {
+	case added > 0:
+		redirect(w, r, "/indexers", s.translate(r, "idx.catalog.addedSome", added, already, skipped+invalid), "")
+	case already > 0:
+		redirect(w, r, "/indexers/new", s.translate(r, "idx.catalog.allAlready"), "")
+	case skipped > 0:
+		redirect(w, r, "/indexers/new", "", s.translate(r, "idx.catalog.noneEligible"))
+	default:
+		redirect(w, r, "/indexers/new", "", s.translate(r, "idx.catalog.invalid"))
+	}
 }
 
 func (s *Server) indexerUnifiedNew(w http.ResponseWriter, r *http.Request) {
@@ -461,10 +593,12 @@ type resolvedAddress struct {
 }
 
 // resolveSiteAddress maps a pasted address to the right add form:
-//   - a verified/stabil site whose meta.urls contains the host;
+//   - a verified/stabil site whose hosts are in the catalog index;
 //   - a Jackett/Prowlarr endpoint (the Torznab bridge);
 //   - a Torznab/Newznab endpoint;
 //   - an RSS/Atom feed.
+//
+// It reads the generated index only and never parses the definition YAML.
 func (s *Server) resolveSiteAddress(raw string) (resolvedAddress, bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -479,18 +613,13 @@ func (s *Server) resolveSiteAddress(raw string) (resolvedAddress, bool) {
 		}
 	}
 	host := normalizeSiteHost(parsed.Hostname())
-	entries, err := catalog.Builtins()
-	if err == nil {
-		for _, entry := range entries {
-			if !isUsableSiteState(entry.State) || entry.Definition == nil {
+	if index, err := s.siteCatalog(); err == nil {
+		for _, entry := range index {
+			if !isUsableSiteState(entry.State) || isGenericDefinition(entry.ID) {
 				continue
 			}
-			for _, siteURL := range entry.Definition.Meta.URLs {
-				site, err := url.Parse(siteURL)
-				if err != nil {
-					continue
-				}
-				if normalizeSiteHost(site.Hostname()) == host {
+			for _, siteHost := range entry.Hosts {
+				if siteHost == host {
 					return resolvedAddress{DefinitionID: entry.ID, URL: raw}, true
 				}
 			}
@@ -544,7 +673,11 @@ func siteAddressNote(r *http.Request, raw string) string {
 }
 
 func (s *Server) renderSiteChooser(w http.ResponseWriter, r *http.Request, query, message string) {
-	view := s.sitePickerView(r, query)
+	view, err := s.sitePickerView(r, query)
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
 	view.Message = message
 	data := struct {
 		base
@@ -554,68 +687,466 @@ func (s *Server) renderSiteChooser(w http.ResponseWriter, r *http.Request, query
 	s.render(w, r, "indexer_form", data, http.StatusOK)
 }
 
-func (s *Server) sitePickerView(r *http.Request, query string) *sitePickerView {
+func (s *Server) siteCatalog() ([]catalog.IndexEntry, error) {
+	if s.catalogIndex != nil {
+		return s.catalogIndex()
+	}
+	return catalog.Index()
+}
+
+func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView, error) {
+	index, err := s.siteCatalog()
+	if err != nil {
+		return nil, err
+	}
+	q := parseCatalogQuery(r)
 	view := &sitePickerView{
-		Title:       s.translate(r, "idx.addTitle"),
-		Subtitle:    s.translate(r, "idx.addSubtitle"),
-		Action:      "/indexers/new",
-		Query:       query,
-		SiteSearch:  s.translate(r, "idx.searchSite"),
-		BrowseLabel: s.translate(r, "idx.supportedSites"),
-		BridgeLabel: s.translate(r, "idx.bridge"),
-		FeedLabel:   s.translate(r, "idx.feed"),
-		BridgeURL:   "/indexers/new?definition=torznab-generic",
-		FeedURL:     "/indexers/new?definition=rss",
+		Title:      s.translate(r, "idx.addTitle"),
+		Subtitle:   s.translate(r, "idx.addSubtitle"),
+		Action:     "/indexers/new",
+		Query:      query,
+		CSRF:       csrfToken(r.Context()),
+		ClearURL:   "/indexers/new",
+		BridgeURL:  "/indexers/new?definition=torznab-generic",
+		FeedURL:    "/indexers/new?definition=rss",
+		TorznabURL: "/indexers/new?definition=torznab-generic",
+		NewznabURL: "/indexers/new?definition=newznab-generic",
 	}
 	view.Empty = uiEmpty{
 		Title:       s.translate(r, "idx.noSitesTitle"),
-		Text:        s.translate(r, "idx.noSitesText", query),
-		ActionLabel: s.translate(r, "idx.clearSearch"),
+		Text:        s.translate(r, "idx.noSitesText"),
+		ActionLabel: s.translate(r, "idx.clearFilters"),
 		ActionURL:   "/indexers/new",
 	}
-	entries, err := catalog.Builtins()
-	if err != nil {
-		return view
-	}
-	q := strings.ToLower(strings.TrimSpace(query))
-	for _, entry := range entries {
-		if entry.ID == "example-html" || strings.HasPrefix(entry.ID, "legacy-") {
+
+	added, _ := s.catalogAlreadyAdded(r, index)
+	var sites []catalog.IndexEntry
+	var types []catalog.IndexEntry
+	for _, entry := range index {
+		if entry.ID == "example-html" {
 			continue
 		}
-		def := entry.Definition
-		choice := siteChoice{
-			ID:         entry.ID,
-			Name:       entry.ID,
-			State:      entry.State,
-			StateLabel: s.siteStateLabel(r, entry.State),
-			Public:     !strings.EqualFold(def.Meta.Type, "private"),
-			Generic:    isGenericDefinition(entry.ID),
-			URLs:       def.Meta.URLs,
-		}
-		choice.Name = def.Meta.Name
-		choice.Description = def.Meta.Description
-		choice.Categories = s.definitionCategoryLabels(r, definitionCategoryIDs(def))
-		if q != "" && !siteChoiceMatches(choice, q) {
+		if isGenericDefinition(entry.ID) {
+			types = append(types, entry)
 			continue
 		}
-		if choice.Generic {
-			view.Types = append(view.Types, choice)
-		} else {
-			view.Sites = append(view.Sites, choice)
+		sites = append(sites, entry)
+	}
+
+	counterTotal, counterVerified := 0, 0
+	for _, entry := range append(append([]catalog.IndexEntry{}, sites...), types...) {
+		counterTotal++
+		if isUsableSiteState(entry.State) {
+			counterVerified++
 		}
 	}
-	sort.SliceStable(view.Sites, func(i, j int) bool {
-		left, right := siteStateRank(view.Sites[i].State), siteStateRank(view.Sites[j].State)
-		if left != right {
-			return left < right
+	view.Counter = s.translate(r, "idx.catalog.counter", counterTotal, counterVerified)
+
+	filtered := make([]catalog.IndexEntry, 0, len(sites))
+	for _, entry := range sites {
+		if !catalogEntryMatches(entry, q, query) {
+			continue
 		}
-		return strings.ToLower(view.Sites[i].Name) < strings.ToLower(view.Sites[j].Name)
+		filtered = append(filtered, entry)
+	}
+	sort.SliceStable(filtered, func(i, j int) bool {
+		left, right := strings.ToLower(filtered[i].Name), strings.ToLower(filtered[j].Name)
+		if left == right {
+			return filtered[i].ID < filtered[j].ID
+		}
+		return left < right
 	})
+	view.Filtered = s.translate(r, "idx.catalog.filtered", len(filtered), len(sites))
+	view.HasFilters = query != "" || q.Type != "" || q.Language != "" || q.Category != "" || q.Protocol != "" || q.State != ""
+
+	limit := 50
+	total := len(filtered)
+	pages := (total + limit - 1) / limit
+	if pages < 1 {
+		pages = 1
+	}
+	page := q.Page
+	if page < 1 {
+		page = 1
+	}
+	if page > pages {
+		page = pages
+	}
+	offset := (page - 1) * limit
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	if offset > total {
+		offset = total
+	}
+	for _, entry := range filtered[offset:end] {
+		view.Sites = append(view.Sites, s.siteChoice(r, entry, added[entry.ID]))
+	}
+	view.Pager = newPager(r, "/indexers/new", int64(total), limit, offset)
+	view.NotFound = len(filtered) == 0
+
+	for _, entry := range types {
+		view.Types = append(view.Types, s.siteChoice(r, entry, added[entry.ID]))
+	}
 	sort.SliceStable(view.Types, func(i, j int) bool {
 		return strings.ToLower(view.Types[i].Name) < strings.ToLower(view.Types[j].Name)
 	})
-	view.NotFound = len(view.Sites) == 0 && len(view.Types) == 0
-	return view
+
+	view.Groups = s.catalogFilterGroups(r, index, q)
+	view.Hidden = catalogHiddenFilters(query, q)
+	return view, nil
+}
+
+func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added store.Indexer) siteChoice {
+	choice := siteChoice{
+		ID:            entry.ID,
+		Name:          entry.Name,
+		Description:   entry.Description,
+		Type:          entry.Type,
+		TypeLabel:     s.catalogTypeLabel(r, entry.Type),
+		Language:      entry.Language,
+		LanguageBadge: catalogLanguageBadge(entry.Language),
+		Protocol:      entry.Protocol,
+		State:         entry.State,
+		StateLabel:    s.siteStateLabel(r, entry.State),
+		Categories:    s.catalogCategoryLabels(r, entry.Categories),
+		AccessLabel:   s.catalogAccessLabel(r, entry.Required),
+		QuickAdd:      catalogQuickAdd(entry),
+	}
+	if added.ID != 0 {
+		choice.Added = true
+		choice.AddedID = added.ID
+	}
+	return choice
+}
+
+func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry, current catalogQuery) []siteFilterGroup {
+	groups := []siteFilterGroup{
+		{
+			Label: s.translate(r, "common.type"),
+			Chips: []siteFilterChip{
+				{Label: s.translate(r, "idx.badgePublic"), URL: catalogFilterURL(r, "type", "public"), Active: current.Type == "public"},
+				{Label: s.translate(r, "idx.badgeSemiPrivate"), URL: catalogFilterURL(r, "type", "semi-private"), Active: current.Type == "semi-private"},
+				{Label: s.translate(r, "idx.badgePrivate"), URL: catalogFilterURL(r, "type", "private"), Active: current.Type == "private"},
+			},
+		},
+	}
+	if languages := catalogLanguages(index); len(languages) > 0 {
+		group := siteFilterGroup{Label: s.translate(r, "idx.catalog.language")}
+		for _, language := range languages {
+			group.Chips = append(group.Chips, siteFilterChip{
+				Label:  catalogLanguageName(language),
+				URL:    catalogFilterURL(r, "language", language),
+				Active: strings.EqualFold(current.Language, language),
+			})
+		}
+		groups = append(groups, group)
+	}
+	categoryGroup := siteFilterGroup{Label: s.translate(r, "idx.catalog.category")}
+	for _, category := range catalogCategoryOrder {
+		categoryGroup.Chips = append(categoryGroup.Chips, siteFilterChip{
+			Label:  s.translate(r, category.LabelKey),
+			URL:    catalogFilterURL(r, "cat", category.Key),
+			Active: current.Category == category.Key,
+		})
+	}
+	groups = append(groups,
+		categoryGroup,
+		siteFilterGroup{
+			Label: s.translate(r, "common.protocol"),
+			Chips: []siteFilterChip{
+				{Label: "torrent", URL: catalogFilterURL(r, "proto", "torrent"), Active: current.Protocol == "torrent"},
+				{Label: "usenet", URL: catalogFilterURL(r, "proto", "usenet"), Active: current.Protocol == "usenet"},
+			},
+		},
+		siteFilterGroup{
+			Label: s.translate(r, "common.status"),
+			Chips: []siteFilterChip{
+				{Label: s.translate(r, "idx.siteState.verified"), URL: catalogFilterURL(r, "state", "verified"), Active: current.State == "verified"},
+				{Label: s.translate(r, "idx.siteState.draft"), URL: catalogFilterURL(r, "state", "testing"), Active: current.State == "testing"},
+			},
+		},
+	)
+	return groups
+}
+
+func (s *Server) catalogTypeLabel(r *http.Request, raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "public":
+		return s.translate(r, "idx.badgePublic")
+	case "semi-private":
+		return s.translate(r, "idx.badgeSemiPrivate")
+	default:
+		return s.translate(r, "idx.badgePrivate")
+	}
+}
+
+func (s *Server) catalogAccessLabel(r *http.Request, required []string) string {
+	account, key, address := false, false, false
+	for _, name := range required {
+		switch strings.ToLower(strings.TrimSpace(name)) {
+		case "username", "user", "email", "password", "pass", "login":
+			account = true
+		case "apikey", "api_key", "api-key", "token", "passkey", "key":
+			key = true
+		case "url", "base_url", "feed", "rss":
+			address = true
+		}
+	}
+	switch {
+	case account:
+		return s.translate(r, "idx.catalog.accountRequired")
+	case key:
+		return s.translate(r, "idx.catalog.apiKeyRequired")
+	case address:
+		return s.translate(r, "idx.catalog.urlRequired")
+	default:
+		return ""
+	}
+}
+
+func (s *Server) catalogCategoryLabels(r *http.Request, groups []string) []string {
+	if len(groups) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool, len(groups))
+	for _, group := range groups {
+		seen[group] = true
+	}
+	out := make([]string, 0, len(groups))
+	for _, category := range catalogCategoryOrder {
+		if seen[category.Key] {
+			out = append(out, s.translate(r, category.LabelKey))
+		}
+	}
+	return out
+}
+
+func catalogQuickAdd(entry catalog.IndexEntry) bool {
+	return strings.EqualFold(entry.Type, "public") && len(entry.Required) == 0 &&
+		entry.ID != "example-html" && !isGenericDefinition(entry.ID)
+}
+
+func catalogLanguageBadge(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if index := strings.IndexAny(raw, "-_"); index > 0 {
+		raw = raw[:index]
+	}
+	return strings.ToUpper(raw)
+}
+
+func catalogLanguageName(raw string) string {
+	if lang, ok := i18n.Lookup(raw); ok {
+		return lang.Name()
+	}
+	return raw
+}
+
+func catalogLanguages(index []catalog.IndexEntry) []string {
+	seen := map[string]bool{}
+	for _, entry := range index {
+		language := strings.TrimSpace(entry.Language)
+		if language == "" {
+			continue
+		}
+		key := strings.ToLower(language)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+	}
+	out := make([]string, 0, len(seen))
+	for _, entry := range index {
+		language := strings.TrimSpace(entry.Language)
+		if language == "" || !seen[strings.ToLower(language)] {
+			continue
+		}
+		delete(seen, strings.ToLower(language))
+		out = append(out, language)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return strings.ToLower(out[i]) < strings.ToLower(out[j])
+	})
+	return out
+}
+
+type catalogQuery struct {
+	Type     string
+	Language string
+	Category string
+	Protocol string
+	State    string
+	Page     int
+}
+
+var catalogFilterValues = map[string]map[string]bool{
+	"type":  {"public": true, "semi-private": true, "private": true},
+	"proto": {"torrent": true, "usenet": true},
+	"state": {"verified": true, "testing": true},
+	"cat": {
+		"movies": true, "tv": true, "music": true, "books": true,
+		"anime": true, "games": true, "software": true, "xxx": true,
+	},
+}
+
+func parseCatalogQuery(r *http.Request) catalogQuery {
+	values := r.URL.Query()
+	out := catalogQuery{
+		Type:     catalogFilterValue(values.Get("type"), "type"),
+		Language: strings.ToLower(strings.TrimSpace(values.Get("language"))),
+		Category: catalogFilterValue(values.Get("cat"), "cat"),
+		Protocol: catalogFilterValue(values.Get("proto"), "proto"),
+		State:    catalogFilterValue(values.Get("state"), "state"),
+		Page:     intParam(values.Get("page"), 1),
+	}
+	return out
+}
+
+func catalogFilterValue(raw, key string) string {
+	raw = strings.ToLower(strings.TrimSpace(raw))
+	if raw == "" {
+		return ""
+	}
+	if allowed := catalogFilterValues[key]; allowed != nil && !allowed[raw] {
+		return ""
+	}
+	return raw
+}
+
+func catalogEntryMatches(entry catalog.IndexEntry, q catalogQuery, query string) bool {
+	if q.Type != "" && !strings.EqualFold(entry.Type, q.Type) {
+		return false
+	}
+	if q.Language != "" && !strings.EqualFold(entry.Language, q.Language) {
+		return false
+	}
+	if q.Category != "" && !containsFold(entry.Categories, q.Category) {
+		return false
+	}
+	if q.Protocol != "" && !strings.EqualFold(entry.Protocol, q.Protocol) {
+		return false
+	}
+	switch q.State {
+	case "verified":
+		if !isUsableSiteState(entry.State) {
+			return false
+		}
+	case "testing":
+		if isUsableSiteState(entry.State) {
+			return false
+		}
+	}
+	if query = strings.ToLower(strings.TrimSpace(query)); query != "" {
+		matched := strings.Contains(strings.ToLower(entry.Name), query) ||
+			strings.Contains(strings.ToLower(entry.ID), query) ||
+			strings.Contains(strings.ToLower(entry.Description), query) ||
+			strings.Contains(strings.ToLower(entry.Language), query) ||
+			containsFold(entry.Hosts, query)
+		if !matched {
+			return false
+		}
+	}
+	return true
+}
+
+func containsFold(values []string, want string) bool {
+	for _, value := range values {
+		if strings.EqualFold(value, want) {
+			return true
+		}
+	}
+	return false
+}
+
+func catalogFilterURL(r *http.Request, key, value string) string {
+	values := r.URL.Query()
+	values.Del("page")
+	if strings.EqualFold(values.Get(key), value) {
+		values.Del(key)
+	} else {
+		values.Set(key, value)
+	}
+	if len(values) == 0 {
+		return "/indexers/new"
+	}
+	return "/indexers/new?" + values.Encode()
+}
+
+func catalogHiddenFilters(query string, q catalogQuery) []catalogQueryPair {
+	var out []catalogQueryPair
+	if query != "" {
+		out = append(out, catalogQueryPair{"q", query})
+	}
+	if q.Type != "" {
+		out = append(out, catalogQueryPair{"type", q.Type})
+	}
+	if q.Language != "" {
+		out = append(out, catalogQueryPair{"language", q.Language})
+	}
+	if q.Category != "" {
+		out = append(out, catalogQueryPair{"cat", q.Category})
+	}
+	if q.Protocol != "" {
+		out = append(out, catalogQueryPair{"proto", q.Protocol})
+	}
+	if q.State != "" {
+		out = append(out, catalogQueryPair{"state", q.State})
+	}
+	return out
+}
+
+func (s *Server) catalogAlreadyAdded(r *http.Request, index []catalog.IndexEntry) (map[string]store.Indexer, error) {
+	indexers, err := s.svc.Indexers(r.Context())
+	if err != nil {
+		return nil, err
+	}
+	byDefinition := make(map[string]store.Indexer, len(indexers))
+	bridgeHosts := map[string]store.Indexer{}
+	for _, in := range indexers {
+		if _, exists := byDefinition[in.DefinitionID]; !exists {
+			byDefinition[in.DefinitionID] = in
+		}
+		if !isBridgeDefinition(in.DefinitionID) {
+			continue
+		}
+		for _, raw := range publicConfigMap(in.ConfigJSON) {
+			parsed, err := url.Parse(strings.TrimSpace(raw))
+			if err != nil || parsed.Hostname() == "" {
+				continue
+			}
+			host := normalizeSiteHost(parsed.Hostname())
+			if _, exists := bridgeHosts[host]; !exists {
+				bridgeHosts[host] = in
+			}
+		}
+	}
+	out := make(map[string]store.Indexer, len(index))
+	for _, entry := range index {
+		if in, ok := byDefinition[entry.ID]; ok {
+			out[entry.ID] = in
+			continue
+		}
+		for _, host := range entry.Hosts {
+			if in, ok := bridgeHosts[host]; ok {
+				out[entry.ID] = in
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
+func isBridgeDefinition(id string) bool {
+	switch id {
+	case "torznab-generic", "newznab-generic", "rss":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Server) siteStateLabel(r *http.Request, state string) string {
@@ -629,38 +1160,6 @@ func (s *Server) siteStateLabel(r *http.Request, state string) string {
 	default:
 		return s.translate(r, "idx.siteState.draft")
 	}
-}
-
-func siteStateRank(state string) int {
-	switch strings.ToLower(strings.TrimSpace(state)) {
-	case "verificata":
-		return 0
-	case "stabile":
-		return 1
-	case "degradata":
-		return 2
-	default:
-		return 3
-	}
-}
-
-func siteChoiceMatches(choice siteChoice, q string) bool {
-	if strings.Contains(strings.ToLower(choice.Name), q) ||
-		strings.Contains(strings.ToLower(choice.ID), q) ||
-		strings.Contains(strings.ToLower(choice.Description), q) {
-		return true
-	}
-	for _, raw := range choice.URLs {
-		if strings.Contains(strings.ToLower(raw), q) {
-			return true
-		}
-	}
-	for _, label := range choice.Categories {
-		if strings.Contains(strings.ToLower(label), q) {
-			return true
-		}
-	}
-	return false
 }
 
 func isGenericDefinition(id string) bool {

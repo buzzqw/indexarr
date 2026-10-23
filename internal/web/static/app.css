@@ -1238,6 +1238,33 @@ pre.yaml {
 .site-fallback { padding: 0.9rem 1.1rem 1.1rem; border-top: 1px solid var(--border); }
 .site-fallback p { margin-top: 0; }
 
+.catalog-head { align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; }
+.catalog-head h2 { margin: 0; }
+.catalog-head p { margin: 0.2rem 0 0; }
+.catalog-counter { font-weight: 700; white-space: nowrap; }
+.catalog-filters { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.35rem 1.1rem 0.7rem; border-bottom: 1px solid var(--border); }
+.filter-group { display: flex; align-items: flex-start; gap: 0.6rem; flex-wrap: wrap; }
+.filter-label { min-width: 5.5rem; padding-top: 0.15rem; color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.filter-chips .chip { text-decoration: none; }
+.filter-chips .chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.catalog-filtered { margin: 0.2rem 0 0; font-size: 0.8rem; }
+.catalog-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.65rem 0; }
+.catalog-select { flex: 0 0 1.4rem; }
+.catalog-main { flex: 1 1 auto; min-width: 0; }
+.catalog-main .site-name { text-decoration: none; }
+.site-description { margin: 0.15rem 0 0; font-size: 0.82rem; }
+.catalog-row .site-meta { justify-content: flex-start; margin-top: 0.25rem; }
+.catalog-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 0.4rem; }
+.catalog-actions form { margin: 0; }
+.catalog-bulk-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.7rem; padding: 0.75rem 1.1rem; border-top: 1px solid var(--border); }
+.catalog-generic { margin: 0.6rem 0; }
+.catalog-generic > summary { cursor: pointer; font-weight: 700; }
+.catalog-generic .site-list { padding: 0; }
+.badge-type-public { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, var(--border)); }
+.badge-type-semi-private { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, var(--border)); }
+.badge-type-private { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+
 .badges { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
 .badge {
   display: inline-flex;
@@ -1364,6 +1391,9 @@ pre.yaml {
   .site-search { flex-direction: column; }
   .site-link { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
   .site-meta { justify-content: flex-start; }
+  .catalog-row { align-items: flex-start; flex-wrap: wrap; }
+  .catalog-actions { width: 100%; padding-left: 2.1rem; }
+  .filter-label { min-width: 100%; }
   .indexer-toolbar { align-items: stretch; flex-direction: column; }
   .indexer-search { max-width: none; flex-basis: auto; }
   .detail-grid { grid-template-columns: 1fr; }

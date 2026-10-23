@@ -103,6 +103,81 @@ func TestBuiltinsValid(t *testing.T) {
 	}
 }
 
+// TestIndexMatchesDefinitions fails when a definition or the manifest changed
+// without regenerating index.json. The fix is one command:
+//
+//	go generate ./internal/catalog
+func TestIndexMatchesDefinitions(t *testing.T) {
+	entries, err := Builtins()
+	if err != nil {
+		t.Fatalf("Builtins: %v", err)
+	}
+	want, err := json.MarshalIndent(BuildIndex(entries), "", "  ")
+	if err != nil {
+		t.Fatalf("encode index: %v", err)
+	}
+	want = append(want, '\n')
+	if !bytes.Equal(indexJSON, want) {
+		t.Fatalf("catalog index is stale: run go generate ./internal/catalog")
+	}
+}
+
+func TestIndexShapeIsStable(t *testing.T) {
+	index, err := Index()
+	if err != nil {
+		t.Fatalf("Index: %v", err)
+	}
+	if len(index) != 21 {
+		t.Fatalf("len(Index()) = %d, want 21", len(index))
+	}
+	for i := 1; i < len(index); i++ {
+		if index[i-1].ID >= index[i].ID {
+			t.Errorf("index is not sorted by id: %q before %q", index[i-1].ID, index[i].ID)
+		}
+	}
+	byID := map[string]IndexEntry{}
+	for _, entry := range index {
+		if entry.Name == "" || entry.Type == "" || entry.Protocol == "" || entry.State == "" {
+			t.Errorf("%s: incomplete index row: %+v", entry.ID, entry)
+		}
+		byID[entry.ID] = entry
+	}
+	extto, ok := byID["extto"]
+	if !ok {
+		t.Fatal("extto is missing from the index")
+	}
+	if extto.Language != "en-US" || extto.Type != "public" || len(extto.Hosts) == 0 {
+		t.Errorf("extto index row = %+v", extto)
+	}
+	if len(extto.Required) != 1 || extto.Required[0] != "filter" {
+		t.Errorf("extto required = %v, want [filter]", extto.Required)
+	}
+	corsaro, ok := byID["corsaro"]
+	if !ok {
+		t.Fatal("corsaro is missing from the index")
+	}
+	for _, group := range []string{"movies", "music"} {
+		if !containsString(corsaro.Categories, group) {
+			t.Errorf("corsaro categories = %v, want %q", corsaro.Categories, group)
+		}
+	}
+	if index[0].ID != "corsaro" {
+		t.Errorf("first index id = %q, want corsaro", index[0].ID)
+	}
+	if last := index[len(index)-1].ID; last != "xbtit-generic" {
+		t.Errorf("last index id = %q, want xbtit-generic", last)
+	}
+}
+
+func containsString(list []string, want string) bool {
+	for _, value := range list {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
 func TestBuiltinsManifestOrder(t *testing.T) {
 	entries, err := Builtins()
 	if err != nil {

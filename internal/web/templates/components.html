@@ -13,52 +13,85 @@
 {{define "category-picker"}}<fieldset class="category-picker"><legend>{{T "idx.categories"}}</legend><div class="category-options">{{range .Categories}}<label class="check"><input type="checkbox" name="categories" value="{{.ID}}"{{if .Checked}} checked{{end}}><span>{{.Label}}</span></label>{{end}}</div><p class="help">{{.Help}}</p></fieldset>{{end}}
 
 {{define "site-picker"}}<section class="panel site-picker">
-  <div class="panel-head"><h2>{{.Title}}</h2></div>
+  <div class="panel-head catalog-head">
+    <div>
+      <h2>{{.Title}}</h2>
+      <p class="muted">{{.Subtitle}}</p>
+    </div>
+    <span class="muted catalog-counter">{{.Counter}}</span>
+  </div>
+  {{if .Message}}<p class="flash warn" role="alert">{{.Message}}</p>{{end}}
   <form class="site-search" method="get" action="{{.Action}}" role="search">
-    <label class="sr-only" for="site-search">{{.SiteSearch}}</label>
-    <input id="site-search" name="q" type="text" value="{{.Query}}" placeholder="{{.SiteSearch}}" autocomplete="off">
+    {{range .Hidden}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
+    <label class="sr-only" for="site-search">{{T "idx.searchSite"}}</label>
+    <input id="site-search" name="q" type="text" value="{{.Query}}" placeholder="{{T "idx.searchSite"}}" autocomplete="off">
     <button class="btn primary" type="submit">{{T "idx.searchAction"}}</button>
   </form>
-  {{if .Message}}<p class="flash warn" role="alert">{{.Message}}</p>{{end}}
+  <div class="catalog-filters">
+    {{range .Groups}}
+    <div class="filter-group">
+      <span class="filter-label">{{.Label}}</span>
+      <div class="filter-chips">
+        {{range .Chips}}<a class="chip{{if .Active}} active{{end}}" href="{{.URL}}"{{if .Active}} aria-pressed="true"{{end}}>{{.Label}}</a>{{end}}
+      </div>
+    </div>
+    {{end}}
+    {{if .HasFilters}}<p class="catalog-filtered muted">{{.Filtered}} · <a href="{{.ClearURL}}">{{T "idx.clearFilters"}}</a></p>{{end}}
+  </div>
+
+  <form id="catalog-bulk" method="post" action="/indexers/catalog/add">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+  </form>
+
   {{if .Sites}}
-  <h3 class="site-group">{{.BrowseLabel}}</h3>
-  <ul class="site-list">
+  <h3 class="site-group">{{T "idx.supportedSites"}}</h3>
+  <ul class="site-list catalog-list">
     {{range .Sites}}
-    <li class="site-row">
-      <a class="site-link" href="/indexers/new?definition={{.ID}}">
-        <span class="site-name">{{.Name}}</span>
-        <span class="site-meta">
-          <span class="badge">{{if .Public}}{{T "idx.badgePublic"}}{{else}}{{T "idx.badgePrivate"}}{{end}}</span>
+    <li class="site-row catalog-row">
+      <div class="catalog-select">
+        {{if .QuickAdd}}{{if not .Added}}
+        <input id="pick-{{.ID}}" type="checkbox" name="definition_id" value="{{.ID}}" form="catalog-bulk">
+        <label class="sr-only" for="pick-{{.ID}}">{{T "idx.catalog.selectSite" .Name}}</label>
+        {{end}}{{end}}
+      </div>
+      <div class="catalog-main">
+        {{if .Added}}<a class="site-name" href="/indexers/{{.AddedID}}">{{.Name}}</a>{{else}}<a class="site-name" href="/indexers/new?definition={{.ID}}">{{.Name}}</a>{{end}}
+        {{if .Description}}<p class="site-description muted">{{.Description}}</p>{{end}}
+        <div class="site-meta">
+          <span class="badge badge-type-{{.Type}}">{{.TypeLabel}}</span>
+          {{if .LanguageBadge}}<span class="badge soft" title="{{.Language}}">{{.LanguageBadge}}</span>{{end}}
           {{range .Categories}}<span class="badge soft">{{.}}</span>{{end}}
+          {{if .AccessLabel}}<span class="badge soft catalog-access">{{.AccessLabel}}</span>{{end}}
           <span class="state state-{{.State}}">{{.StateLabel}}</span>
-        </span>
-      </a>
+        </div>
+      </div>
+      <div class="catalog-actions">
+        {{if .Added}}<a class="btn small" href="/indexers/{{.AddedID}}">{{T "idx.catalog.alreadyAdded"}}</a>
+        {{else if .QuickAdd}}<form method="post" action="/indexers/catalog/add"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small primary" type="submit">{{T "idx.catalog.add"}}</button></form>
+        {{else}}<a class="btn small" href="/indexers/new?definition={{.ID}}">{{T "idx.catalog.configure"}}</a>{{end}}
+      </div>
     </li>
     {{end}}
   </ul>
-  {{end}}
-  {{if .Types}}
-  <h3 class="site-group">{{T "idx.siteTypes"}}</h3>
-  <ul class="site-list">
-    {{range .Types}}
-    <li class="site-row">
-      <a class="site-link" href="/indexers/new?definition={{.ID}}">
-        <span class="site-name">{{.Name}}</span>
-        <span class="site-meta">
-          <span class="badge">{{if .Public}}{{T "idx.badgePublic"}}{{else}}{{T "idx.badgePrivate"}}{{end}}</span>
-          <span class="state state-{{.State}}">{{.StateLabel}}</span>
-        </span>
-      </a>
-    </li>
-    {{end}}
-  </ul>
-  {{end}}
-  {{if .NotFound}}{{template "empty" .Empty}}{{end}}
+  <div class="catalog-bulk-bar">
+    <button class="btn primary" type="submit" form="catalog-bulk">{{T "idx.catalog.addSelected"}}</button>
+    <span class="muted">{{T "idx.catalog.bulkHelp"}}</span>
+  </div>
+  {{template "pager" .Pager}}
+  {{else}}{{template "empty" .Empty}}{{end}}
+
   <div class="site-fallback">
     <p class="muted">{{T "idx.notFound"}}</p>
+    <details class="catalog-generic">
+      <summary>{{T "idx.siteTypes"}}</summary>
+      <ul class="site-list">
+        {{range .Types}}<li class="site-row"><a class="site-link" href="/indexers/new?definition={{.ID}}"><span class="site-name">{{.Name}}</span><span class="site-meta"><span class="badge">{{.TypeLabel}}</span><span class="state state-{{.State}}">{{.StateLabel}}</span></span></a></li>{{end}}
+      </ul>
+    </details>
     <div class="actions">
-      <a class="btn" href="{{.BridgeURL}}">{{.BridgeLabel}}</a>
-      <a class="btn" href="{{.FeedURL}}">{{.FeedLabel}}</a>
+      <a class="btn" href="{{.BridgeURL}}">{{T "idx.bridge"}}</a>
+      <a class="btn" href="{{.FeedURL}}">{{T "idx.feed"}}</a>
+      <a class="btn" href="{{.TorznabURL}}">{{T "idx.catalog.torznab"}}</a>
     </div>
   </div>
 </section>{{end}}

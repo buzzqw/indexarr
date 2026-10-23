@@ -485,6 +485,22 @@ release e "Avanzate e diagnostica" chiuso. I componenti di §5 stanno in
 delle impostazioni usano `setting.<name>.label` in tutte le 7 lingue, con la
 `label` della definizione come fallback.
 
+**Stato WP19 (23/10): fatto.** L'aggiunta non è più una dozzina di voci: è un
+elenco di siti sfogliabile come Jackett/Prowlarr, alimentato da
+`internal/catalog/index.json` generato a build time (`go generate
+./internal/catalog`). La ricerca e i filtri (tipo, lingua, categoria,
+protocollo, stato) sono lato server e funzionano con un form GET; la
+paginazione è a 50 righe. Ogni riga mostra nome, descrizione breve, tipo,
+sigla della lingua, categorie, campi richiesti e stato. I siti pubblici senza
+campi obbligatori hanno "Aggiungi" in un clic (con `next-step` sulla pagina di
+dettaglio) e si possono selezionare più righe per "Aggiungi selezionati";
+l'operazione è idempotente. I siti già presenti mostrano "Già aggiunto" con il
+link al dettaglio, confrontando `definition_id` e, per i bridge, l'host. In
+fondo restano i tipi generici, Jackett/Prowlarr, feed RSS e Torznab/Newznab. Il
+contatore "N siti supportati · M verificati" viene dall'indice. La pagina non
+analizza nessun YAML: un test con 1000 voci sintetiche verifica tempi e uso
+esclusivo dell'indice.
+
 ---
 
 ## 8. Come si verifica

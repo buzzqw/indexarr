@@ -38,6 +38,13 @@ def-validate:
 	go run ./cmd/indexarr-def validate examples/definitions
 	go run ./cmd/indexarr-def validate -catalog internal/catalog/definitions
 
+# Regenerate the compact site index read by the "Add indexer" page. The
+# catalog test fails when index.json is stale, so run this after every
+# definition or manifest change.
+.PHONY: catalog-index
+catalog-index:
+	go generate ./internal/catalog
+
 # Resource budget: optimised binary size plus idle RSS on a seeded database.
 .PHONY: budget
 budget:

@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/catalog"
 	"github.com/buzzqw/indexarr/internal/categories"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/feed"
@@ -438,6 +439,10 @@ type Server struct {
 	// importPlans holds short-lived previews between /import and /import/apply.
 	// Secrets stay in this process memory and never reach the HTML.
 	importPlans *importPlanStore
+	// catalogIndex supplies the site catalog. It is catalog.Index in
+	// production; tests replace it with a synthetic index to prove that the
+	// add page never parses the embedded definitions.
+	catalogIndex func() ([]catalog.IndexEntry, error)
 }
 
 // New builds the HTTP server.
@@ -460,23 +465,24 @@ func New(cfg Config) *Server {
 		level.Set(slog.LevelInfo)
 	}
 	srv := &Server{
-		store:       cfg.Store,
-		log:         logger,
-		version:     cfg.Version,
-		started:     cfg.Started,
-		torznab:     torznabapi.New(cfg.Store, logger, cfg.Version),
-		static:      http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
-		logs:        logs,
-		level:       level,
-		restart:     cfg.Restart,
-		admin:       cfg.Admin,
-		native:      cfg.Native,
-		sched:       cfg.Scheduler,
-		svc:         cfg.Indexers,
-		vault:       cfg.Vault,
-		sync:        cfg.Sync,
-		polite:      cfg.Politeness,
-		importPlans: newImportPlanStore(),
+		store:        cfg.Store,
+		log:          logger,
+		version:      cfg.Version,
+		started:      cfg.Started,
+		torznab:      torznabapi.New(cfg.Store, logger, cfg.Version),
+		static:       http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
+		logs:         logs,
+		level:        level,
+		restart:      cfg.Restart,
+		admin:        cfg.Admin,
+		native:       cfg.Native,
+		sched:        cfg.Scheduler,
+		svc:          cfg.Indexers,
+		vault:        cfg.Vault,
+		sync:         cfg.Sync,
+		polite:       cfg.Politeness,
+		importPlans:  newImportPlanStore(),
+		catalogIndex: catalog.Index,
 	}
 	if cfg.Native != nil {
 		srv.torznab.SetLiveSearch(cfg.Native.SearchLive)
@@ -519,6 +525,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /indexers/test-all", s.indexersTestAll)
 	ui.HandleFunc("POST /indexers/run-all", s.indexersRunAll)
 	ui.HandleFunc("POST /indexers/bulk", s.indexersBulk)
+	ui.HandleFunc("POST /indexers/catalog/add", s.indexerCatalogAdd)
 	ui.HandleFunc("GET /indexers/export", s.indexersExport)
 	ui.HandleFunc("POST /indexers/import", s.indexersImport)
 	ui.HandleFunc("GET /indexers/discover", s.indexersDiscover)

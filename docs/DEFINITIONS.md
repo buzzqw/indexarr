@@ -640,9 +640,21 @@ impostazioni che l'utente compila e che il vault cifra.
    make def-validate
    ```
 
-10. Verifica che la definizione passi anche i test del motore e che nessun dato
+10. Se la definizione entra nel catalogo, rigenera l'indice letto dalla UI e
+    dalla ricerca dei siti (non serve toccare il codice: il test di catalogo
+    fallisce se lo dimentichi):
+
+    ```bash
+    go generate ./internal/catalog
+    ```
+
+    Il comando scrive `internal/catalog/index.json` a partire dal manifest e
+    dalle definizioni; la pagina "Aggiungi indexer" legge solo questo file e non
+    analizza i YAML. `make catalog-index` fa la stessa cosa.
+
+11. Verifica che la definizione passi anche i test del motore e che nessun dato
     sensibile sia finito nelle fixture.
-11. Aggiorna `meta.updated`, autore e descrizione; per il catalogo rispetta i
+12. Aggiorna `meta.updated`, autore e descrizione; per il catalogo rispetta i
     requisiti di §7.2 (`health`, test, fixture di login, stato `bozza` →
     `verificata`).
 

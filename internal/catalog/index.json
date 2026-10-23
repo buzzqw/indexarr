@@ -1,0 +1,444 @@
+[
+  {
+    "id": "corsaro",
+    "name": "Corsaro (ilCorSaRoBlu)",
+    "description": "Public Corsaro HTML listing with magnets in the row.",
+    "language": "it-IT",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "music"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "ilcorsaroblu.org"
+    ]
+  },
+  {
+    "id": "corsaro-account",
+    "name": "Corsaro (account)",
+    "description": "ilCorSaRoBlu with login and keyword search (account required).",
+    "language": "it-IT",
+    "type": "semi-private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "music"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "ilcorsaroblu.org"
+    ]
+  },
+  {
+    "id": "example-html",
+    "name": "Example HTML Tracker",
+    "description": "Fictional HTML tracker used to exercise the v1 native format.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "tracker.example.invalid"
+    ]
+  },
+  {
+    "id": "extto",
+    "name": "ExtTo",
+    "description": "Public ExtTo HTML listing with magnets in the row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "filter"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "extto.org"
+    ]
+  },
+  {
+    "id": "gazelle-generic",
+    "name": "Gazelle (generic)",
+    "description": "Generic Gazelle tracker; the family connector reads URL and API token.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "required": [
+      "apikey",
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "gazelle.example.invalid"
+    ]
+  },
+  {
+    "id": "ildragonegro",
+    "name": "ilDraGoNeRo",
+    "description": "ilDraGoNeRo Italian tracker (phpBB login and forum search).",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "ildragonero2.info"
+    ]
+  },
+  {
+    "id": "knaben",
+    "name": "Knaben (ITA feed)",
+    "description": "Knaben public RSS feed; releases carry a magnet link.",
+    "language": "it-IT",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "rss.knaben.org"
+    ]
+  },
+  {
+    "id": "limetorrents",
+    "name": "LimeTorrents",
+    "description": "Public LimeTorrents HTML search with magnets on the release page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "limetorrents.fun",
+      "limetorrents.zone"
+    ]
+  },
+  {
+    "id": "newznab-generic",
+    "name": "Newznab (generic)",
+    "description": "Generic Newznab indexer; the family connector reads URL and API key.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "usenet",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books"
+    ],
+    "required": [
+      "apikey",
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "newznab.example.invalid"
+    ]
+  },
+  {
+    "id": "nexusphp-generic",
+    "name": "NexusPHP (generic)",
+    "description": "Generic NexusPHP tracker; form login and HTML search.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books"
+    ],
+    "required": [
+      "password",
+      "url",
+      "username"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "nexusphp.example.invalid"
+    ]
+  },
+  {
+    "id": "showrss",
+    "name": "showRSS",
+    "description": "showRSS TV feed (public show feed or personal showRSS feed).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "showrss.info"
+    ]
+  },
+  {
+    "id": "thepiratebay",
+    "name": "The Pirate Bay",
+    "description": "Public The Pirate Bay JSON search API (apibay.org).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "apibay.org",
+      "thepiratebay.org"
+    ]
+  },
+  {
+    "id": "torrentgalaxy",
+    "name": "TorrentGalaxy",
+    "description": "Public TorrentGalaxy HTML listing, with magnets in the row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "uploader"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentgalaxy.one"
+    ]
+  },
+  {
+    "id": "torrentgalaxyclone",
+    "name": "TorrentGalaxyClone",
+    "description": "Public TorrentGalaxy keyword search (same layout as TorrentGalaxy).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentgalaxy.info",
+      "torrentgalaxy.one"
+    ]
+  },
+  {
+    "id": "torrentleech",
+    "name": "TorrentLeech",
+    "description": "Private TorrentLeech with login and keyword search.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "torrentleech.org"
+    ]
+  },
+  {
+    "id": "torrentleech-rss",
+    "name": "TorrentLeech (RSS)",
+    "description": "Private TorrentLeech RSS feed; the URL contains a personal rsskey.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "rss.torrentleech.org"
+    ]
+  },
+  {
+    "id": "torrentscsv",
+    "name": "TorrentsCSV",
+    "description": "Public TorrentsCSV JSON search API.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "torrents-csv.com"
+    ]
+  },
+  {
+    "id": "torrenttrader-generic",
+    "name": "TorrentTrader (generic)",
+    "description": "Generic TorrentTrader/TBDev tracker; form login and HTML search.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books"
+    ],
+    "required": [
+      "password",
+      "url",
+      "username"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "torrenttrader.example.invalid"
+    ]
+  },
+  {
+    "id": "torznab-generic",
+    "name": "Torznab (generic)",
+    "description": "Generic Torznab indexer; the family connector reads URL and API key.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books"
+    ],
+    "required": [
+      "apikey",
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "torznab.example.invalid"
+    ]
+  },
+  {
+    "id": "unit3d-generic",
+    "name": "UNIT3D (generic)",
+    "description": "Generic UNIT3D tracker; the family connector reads URL and API key.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books"
+    ],
+    "required": [
+      "apikey",
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "unit3d.example.invalid"
+    ]
+  },
+  {
+    "id": "xbtit-generic",
+    "name": "Xbtit (generic)",
+    "description": "Generic Xbtit/BtiTracker; form login and HTML search.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books"
+    ],
+    "required": [
+      "password",
+      "url",
+      "username"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "xbtit.example.invalid"
+    ]
+  }
+]

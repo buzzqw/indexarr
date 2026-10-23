@@ -161,7 +161,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP16 | Rimozione del percorso legacy | fatto | `4a11fb8` |
 | WP17 | Vedere i dati che nutrono indexarr | fatto (metriche, campioni, scheda Dati, Prova come Sonarr, Attività) | `f296d69` |
 | WP18 | I siti che l'utente usa davvero (fase 1) | fase 1 fatta (5 pubblici verificati, 3 in prova, MirCrew via Torznab) | `9c8ebae` |
-| WP19 | Elenco dei siti come Jackett/Prowlarr | da fare | |
+| WP19 | Elenco dei siti come Jackett/Prowlarr | fatto (indice a build time, elenco filtrabile, aggiunta rapida) | |
 
 ---
 
@@ -1065,6 +1065,17 @@ centinaia di siti.
 - screenshot a 1440 e 390 px.
 
 **Commit:** `Browse and add sites from a searchable catalog index`.
+
+**Stato (23/10): fatto.** `internal/catalog/index.json` è generato da
+`go generate ./internal/catalog` (o `make catalog-index`) e incorporato nel
+binario; un test di catalogo confronta l'indice con le definizioni e fallisce
+se è vecchio. `/indexers/new` è un elenco sfogliabile con ricerca `q`, filtri
+GET per tipo, lingua, categoria, protocollo e stato, paginazione lato server
+(50 righe), contatore "N siti supportati · M verificati", "Già aggiunto",
+aggiunta rapida singola o multipla dei soli siti pubblici senza campi
+obbligatori e blocco "Non trovi il sito?" con i tipi generici, Jackett/Prowlarr,
+feed RSS e Torznab/Newznab. La pagina e la ricerca da indirizzo incollato
+leggono solo l'indice; i YAML vengono analizzati alla creazione e all'esecuzione.
 
 ---
 
