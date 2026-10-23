@@ -30,7 +30,8 @@ RSS / Jackett / Prowlarr ──► scheduler ──► normalizzazione ──►
   esterni. Compatibile con i client Sonarr/Radarr/Lidarr; ricerca live opzionale
   sugli indexer quando la cache è vuota.
 - **Interfaccia web**: dashboard, ricerca live con filtri e ricerche salvate,
-  dettaglio release con preferiti/blocklist e invio al client torrent, CRUD
+  indice full-text **FTS5** (tokenizer trigram) sulla cache, dettaglio release
+  con preferiti/blocklist e invio al client torrent, CRUD
   sorgenti con test, clone, import/export, storico esecuzioni, log in-app,
   impostazioni e manutenzione.
 - **Operatività**: API key multiple con revoca e rate limit, notifiche
@@ -414,6 +415,9 @@ pagina. L'URL resta condivisibile e il modulo funziona anche senza JavaScript.
 
 - **Esclusione**: `-xxx` toglie i risultati che contengono `xxx`. Si combinano più
   termini: `show -1080p -cam`.
+- **Full-text**: i termini di almeno tre caratteri sono cercati con FTS5 e
+  tokenizer trigram, quindi anche come sottostringhe (`how` trova `show`); i
+  termini più corti (`4k`, `tv`) usano il fallback `LIKE`.
 - **Regex**: spunta **Regex**; ogni termine è un'espressione regolare RE2,
   case-insensitive per default. I termini sono in AND, `-pattern` esclude, le
   virgolette mantengono gli spazi (`"the show"`) e `/pattern/` è accettato.
@@ -667,7 +671,6 @@ Funzioni ancora aperte, in ordine di valore:
   italiano e i messaggi del server sono in inglese;
 - motore di selettori CSS configurabili per siti HTML arbitrari (ExtTo,
   TorrentGalaxy e Corsaro hanno già parser dedicati);
-- ricerca full-text FTS5 per cache molto grandi, se `LIKE` non basta più;
 - parser dedicati per altri siti non RSS, da aggiungere quando servono.
 
 ## Limiti

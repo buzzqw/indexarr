@@ -44,8 +44,9 @@ INDEXARR_QA_PORT=18080 make qa
 - **Ingestion**: deduplica, aggiornamento delle release, backoff, auto-disable,
   scheduler, trigger manuale e gestione degli errori.
 - **Store**: schema e migrazioni, CRUD sorgenti, API key, ricerche e filtri,
-  blocklist, ricerche salvate, backup, vacuum, integrità, deduplica,
-  azioni di manutenzione e report del database.
+  indice FTS5 (trigger, rebuild su database esistenti, fallback per termini
+  corti e piano di query), blocklist, ricerche salvate, backup, vacuum,
+  integrità, deduplica, azioni di manutenzione e report del database.
 - **Torznab**: `caps`, `search`, `tvsearch`, `movie`, `get`, paginazione,
   filtri, autenticazione e rate limit.
 - **Web UI**: dashboard, release, dettaglio, sorgenti, quick add, import/export,

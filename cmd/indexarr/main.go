@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -59,6 +60,14 @@ func main() {
 	levelVar.Set(parseLevel(cfg.LogLevel))
 	logger := newLogger(levelVar, logBuffer)
 	logger.Info("starting indexarr", "version", version, "database", cfg.DBPath, "listen", cfg.Listen)
+	if addr := strings.TrimSpace(os.Getenv("INDEXARR_PPROF")); addr != "" {
+		logger.Warn("pprof endpoint enabled", "addr", addr)
+		go func() {
+			if err := http.ListenAndServe(addr, nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				logger.Error("pprof server stopped", "error", err)
+			}
+		}()
+	}
 	if applied, err := backup.ApplyPending(cfg.DBPath); err != nil {
 		logger.Error("cannot apply pending restore", "error", err)
 		rejected := cfg.DBPath + ".restore.rejected"

@@ -173,7 +173,6 @@ func (s *Store) migrate() error {
 		`CREATE INDEX IF NOT EXISTS releases_published ON releases(published_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS releases_source ON releases(source_id)`,
 		`CREATE INDEX IF NOT EXISTS releases_category ON releases(category)`,
-		`CREATE INDEX IF NOT EXISTS releases_search ON releases(search_title)`,
 		`CREATE INDEX IF NOT EXISTS releases_last_seen ON releases(last_seen_at)`,
 		`CREATE INDEX IF NOT EXISTS releases_imdb ON releases(imdb_id)`,
 		`CREATE INDEX IF NOT EXISTS releases_tmdb ON releases(tmdb_id)`,
@@ -206,6 +205,59 @@ func (s *Store) migrate() error {
 	} {
 		if _, err := s.db.Exec(statement); err != nil {
 			return fmt.Errorf("migrate index: %w", err)
+		}
+	}
+	if err := s.migrateFTS(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// migrateFTS creates the full-text index and its triggers. The trigram
+// tokenizer is used because indexarr matches substrings inside normalized
+// titles, not only whole words. The index is external-content, so titles are
+// not duplicated; triggers keep it in sync with every write.
+func (s *Store) migrateFTS() error {
+	var exists int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM sqlite_master
+		WHERE type = 'table' AND name = 'releases_fts'`).Scan(&exists); err != nil {
+		return fmt.Errorf("check FTS table: %w", err)
+	}
+	if exists == 0 {
+		if _, err := s.db.Exec(`CREATE VIRTUAL TABLE releases_fts USING fts5(
+			search_title,
+			content = 'releases',
+			content_rowid = 'id',
+			tokenize = 'trigram'
+		)`); err != nil {
+			return fmt.Errorf("create FTS table: %w", err)
+		}
+		if _, err := s.db.Exec(`INSERT INTO releases_fts(releases_fts) VALUES('rebuild')`); err != nil {
+			return fmt.Errorf("rebuild FTS index: %w", err)
+		}
+	}
+	// The B-tree on search_title cannot serve leading-wildcard LIKE queries;
+	// the trigram index above replaces it.
+	if _, err := s.db.Exec(`DROP INDEX IF EXISTS releases_search`); err != nil {
+		return fmt.Errorf("drop legacy search index: %w", err)
+	}
+	for _, trigger := range []string{
+		`CREATE TRIGGER IF NOT EXISTS releases_fts_ai AFTER INSERT ON releases BEGIN
+			INSERT INTO releases_fts(rowid, search_title) VALUES (new.id, new.search_title);
+		END`,
+		`CREATE TRIGGER IF NOT EXISTS releases_fts_ad AFTER DELETE ON releases BEGIN
+			INSERT INTO releases_fts(releases_fts, rowid, search_title)
+			VALUES ('delete', old.id, old.search_title);
+		END`,
+		`CREATE TRIGGER IF NOT EXISTS releases_fts_au AFTER UPDATE OF search_title ON releases
+		WHEN old.search_title <> new.search_title BEGIN
+			INSERT INTO releases_fts(releases_fts, rowid, search_title)
+			VALUES ('delete', old.id, old.search_title);
+			INSERT INTO releases_fts(rowid, search_title) VALUES (new.id, new.search_title);
+		END`,
+	} {
+		if _, err := s.db.Exec(trigger); err != nil {
+			return fmt.Errorf("create FTS trigger: %w", err)
 		}
 	}
 	return nil

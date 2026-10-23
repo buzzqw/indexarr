@@ -93,6 +93,8 @@ settings (key/value)
 - `releases`: identità (`dedup_key` univoca), infohash, id esterni, titolo e
   `search_title` normalizzato, metadati, magnet, BLOB del `.torrent`,
   `first_seen_at`/`last_seen_at`/`times_seen`, `favorite` e `hidden`.
+- `releases_fts`: tabella virtuale FTS5 external-content su `releases`, con
+  tokenizer trigram e trigger di sincronizzazione; non duplica i titoli.
 - `runs`: storico con stato, conteggi (`items_seen/new/updated/blocked`), durata
   ed errore.
 - `blocklist`: regole `infohash`, `title`, `regex`, `source`, `category`; il
@@ -169,9 +171,11 @@ offre una deduplica esplicita che conserva la riga più vecchia e i dati miglior
 
 ## Scelte
 
-- **SQLite invece di un motore di ricerca**: il volume tipico (decine di migliaia di
-  release) non giustifica un servizio esterno; `LIKE` su titolo normalizzato e gli
-  indici bastano. La ricerca FTS5 potrà essere aggiunta senza cambiare l'API.
+- **SQLite con FTS5 invece di un motore di ricerca esterno**: il volume tipico
+  (decine di migliaia di release) non giustifica un servizio separato. La tabella
+  `releases_fts` è external-content su `releases`, usa il tokenizer **trigram**
+  per mantenere la ricerca a sottostringa e viene sincronizzata da trigger su
+  insert/update/delete. I termini sotto i tre caratteri ricadono su `LIKE`.
 - **Nessun download del contenuto**: indexarr è un indice; il download dei file è
   responsabilità del client torrent.
 - **Un processo**: niente lock distribuiti; il database è il punto di verità.

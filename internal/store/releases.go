@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/buzzqw/indexarr/internal/textutil"
 )
@@ -469,6 +470,14 @@ func buildWhere(f Filter) (string, []any) {
 		}
 	} else {
 		for _, token := range includes {
+			if phrase, ok := ftsPhrase(token); ok {
+				includeClauses = append(includeClauses,
+					`id IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`)
+				args = append(args, phrase)
+				continue
+			}
+			// The trigram tokenizer needs at least three characters; keep the
+			// old substring scan for shorter terms such as "4k" or "tv".
 			includeClauses = append(includeClauses, `search_title LIKE ? ESCAPE '\'`)
 			args = append(args, "%"+escapeLike(token)+"%")
 		}
@@ -489,6 +498,12 @@ func buildWhere(f Filter) (string, []any) {
 		}
 	} else {
 		for _, token := range excludes {
+			if phrase, ok := ftsPhrase(token); ok {
+				clauses = append(clauses,
+					`id NOT IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`)
+				args = append(args, phrase)
+				continue
+			}
 			clauses = append(clauses, `search_title NOT LIKE ? ESCAPE '\'`)
 			args = append(args, "%"+escapeLike(token)+"%")
 		}
@@ -604,6 +619,19 @@ func categoryPattern(raw string) string {
 		return category[:1] + "%"
 	}
 	return category
+}
+
+// ftsPhrase turns one normalized search term into an FTS5 phrase. A phrase
+// keeps FTS operators literal and matches the term as a substring with the
+// trigram tokenizer. Terms shorter than three characters cannot be indexed by
+// trigram and are handled by the LIKE fallback.
+func ftsPhrase(token string) (string, bool) {
+	token = strings.TrimSpace(token)
+	if utf8.RuneCountInString(token) < 3 {
+		return "", false
+	}
+	token = strings.ReplaceAll(token, `"`, `""`)
+	return `"` + token + `"`, true
 }
 
 func searchTokens(query string) []string {

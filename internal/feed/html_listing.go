@@ -388,7 +388,10 @@ func extractMagnet(body []byte) string {
 	for _, candidate := range magnetURLPattern.FindAllString(text, -1) {
 		candidate = strings.TrimRight(candidate, "&;,")
 		if MagnetHash(candidate) != "" {
-			return candidate
+			// candidate is a substring of the unescaped page. Clone it before
+			// returning/caching, otherwise the whole detail page stays alive as
+			// the backing array of every cached magnet.
+			return strings.Clone(candidate)
 		}
 	}
 	return ""
