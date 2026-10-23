@@ -763,7 +763,9 @@ impostazioni manuali; test di equivalenza di WP7 ancora verdi.
 
 ## WP16 — Rimozione del percorso legacy
 
-**Prerequisiti:** WP8 completato in produzione da almeno una settimana.
+**Prerequisiti:** WP8 passi 1–4 (import in indexer nativi). Il vincolo
+"una settimana in produzione" è sospeso dal coordinatore (23/10): il DB è usa
+e getta e il commit `b9597b4` resta come riferimento del codice legacy.
 
 **Perché.** Con il DB usa e getta il doppio modello `sources` + `indexers`
 non protegge più nulla e costa: due scheduler, due client HTTP, tab
