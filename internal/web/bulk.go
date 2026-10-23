@@ -62,7 +62,7 @@ func (s *Server) sourceBulkNew(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) sourceBulkCreate(w http.ResponseWriter, r *http.Request) {
 	text := r.FormValue("feeds")
-	interval, err := formInt(r, "interval_seconds", 0, 0, 30*24*3600)
+	interval, err := s.formInt(r, "interval_seconds", 0, 0, 30*24*3600)
 	if err != nil {
 		s.renderBulk(w, r, text, 0, true, false, bulkReport{Problems: []string{err.Error()}}, http.StatusBadRequest)
 		return

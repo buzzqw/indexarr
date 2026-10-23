@@ -19,17 +19,17 @@ func choiceValue(raw string, allowed ...string) string {
 func (s *Server) savedSearchAdd(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	if name == "" || len(name) > 60 {
-		redirect(w, r, "/releases", "", "A saved search needs a name (max 60 characters)")
+		redirect(w, r, "/releases", "", s.translate(r, "saved.error.name"))
 		return
 	}
 	raw := strings.TrimSpace(r.FormValue("query"))
 	if len(raw) > 2000 {
-		redirect(w, r, "/releases", "", "The saved search is too long")
+		redirect(w, r, "/releases", "", s.translate(r, "saved.error.tooLong"))
 		return
 	}
 	values, err := url.ParseQuery(raw)
 	if err != nil {
-		redirect(w, r, "/releases", "", "Invalid saved search: "+err.Error())
+		redirect(w, r, "/releases", "", s.translate(r, "saved.error.invalid", err.Error()))
 		return
 	}
 	values.Del("page")
@@ -42,18 +42,18 @@ func (s *Server) savedSearchAdd(w http.ResponseWriter, r *http.Request) {
 	if query != "" {
 		target += "?" + query
 	}
-	redirect(w, r, target, "Search saved", "")
+	redirect(w, r, target, s.translate(r, "saved.saved"), "")
 }
 
 func (s *Server) savedSearchDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/releases", "", "invalid saved search id")
+		redirect(w, r, "/releases", "", s.translate(r, "saved.error.invalidID"))
 		return
 	}
 	if _, err := s.store.DeleteSavedSearch(r.Context(), id); err != nil {
 		redirect(w, r, "/releases", "", err.Error())
 		return
 	}
-	redirect(w, r, "/releases", "Saved search deleted", "")
+	redirect(w, r, "/releases", s.translate(r, "saved.deleted"), "")
 }

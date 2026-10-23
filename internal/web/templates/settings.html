@@ -28,8 +28,7 @@
   <div class="field">
     <label for="torznab_url">{{T "settings.torznabEndpointLabel"}}</label>
     <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/torznab">
-      <input id="torznab_url" type="password" readonly value="{{.TorznabMasked}}" spellcheck="false" autocomplete="off">
-      <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>
+      <input id="torznab_url" type="text" readonly value="{{.TorznabMasked}}" spellcheck="false" autocomplete="off">
       <button class="btn" type="button" data-secret-copy>{{T "common.copy"}}</button>
     </div>
     <p class="help">{{T "settings.categoriesHelp"}}: <code>5000</code> {{T "settings.categoryTV"}}, <code>2000</code> {{T "settings.categoryMovies"}}, <code>3000</code> {{T "settings.categoryAudio"}}, <code>7000</code> {{T "settings.categoryBooks"}}. {{T "settings.capsHelp"}}: <code>{{T "settings.torznabCapsExample" .TorznabMasked}}</code>.</p>
@@ -178,8 +177,11 @@
     </div>
     <div class="field">
       <label for="notify_telegram_token">{{T "settings.telegramToken"}}</label>
-      <input id="notify_telegram_token" name="notify_telegram_token" type="password" value="{{.Settings.NotifyTelegramToken}}" autocomplete="new-password">
-      <p class="help">{{T "settings.telegramTokenHelp"}}</p>
+      <div class="secret-field" data-secret-change-field>
+        <input id="notify_telegram_token" name="notify_telegram_token" type="password" value="" placeholder="{{T "settings.secretStored"}}" autocomplete="new-password">
+        <button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>
+      </div>
+      <p class="help">{{T "settings.telegramTokenHelp"}} {{T "settings.secretEmptyHelp"}}</p>
     </div>
     <div class="field">
       <label for="notify_telegram_chat_id">{{T "settings.telegramChatID"}}</label>
@@ -254,7 +256,11 @@
     </div>
     <div class="field">
       <label for="download_client_password">{{T "settings.password"}}</label>
-      <input id="download_client_password" name="download_client_password" type="password" value="{{.Settings.DownloadClientPassword}}" autocomplete="new-password">
+      <div class="secret-field" data-secret-change-field>
+        <input id="download_client_password" name="download_client_password" type="password" value="" placeholder="{{T "settings.secretStored"}}" autocomplete="new-password">
+        <button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>
+      </div>
+      <p class="help">{{T "settings.secretEmptyHelp"}}</p>
     </div>
     <div class="field">
       <label for="download_client_category">{{T "settings.qbittorrentCategory"}}</label>

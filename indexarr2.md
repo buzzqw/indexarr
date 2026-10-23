@@ -855,7 +855,7 @@ accettazione, in [`docs/NEXT-STEPS.md`](docs/NEXT-STEPS.md). Le colonne
 **Lingua.** L'inglese è la lingua di default e il fallback. Le lingue
 supportate sono: inglese, italiano, francese, tedesco, spagnolo, cinese
 semplificato e polacco. I cataloghi sono in `internal/i18n/locales/*.json`
-(427 chiavi ciascuno, parità verificata dai test). La lingua si sceglie dal
+(794 chiavi ciascuno, parità verificata dai test). La lingua si sceglie dal
 selettore nella sidebar, con `?lang=<codice>` o con il cookie
 `indexarr_lang`; l'ordine di risoluzione è query → cookie → `Accept-Language`
 → inglese. La rotta `GET /language/{codice}` salva il cookie e reindirizza.
@@ -869,9 +869,11 @@ restano redirect compatibili.
 
 **Copertura traduzioni.** Le pagine dello shell e le pagine nuove
 (Panoramica, Indexer, Definizioni, Applicazioni, Import, Attività, Log,
-form correlate) usano il catalogo. Le pagine legacy (`Release`, `Rules`,
-`Settings`, `Maintenance`, form sorgenti) sono state riportate in inglese ma
-non ancora migrate a chiavi `T`: è il prossimo lavoro i18n. Ogni nuova stringa
+form correlate) usano il catalogo. Anche `Releases`, `Release` e `Settings`
+sono migrate (fasi 1b/1c), compresi i messaggi di validazione di
+`formInt`/`formFloat` e i flash delle ricerche salvate. Restano da migrare le
+pagine legacy `Rules`, `Maintenance` e i form sorgenti, che WP16 elimina o
+riscrive. Ogni nuova stringa
 deve essere aggiunta a **tutte** le 7 lingue e deve superare
 `go test ./internal/i18n` (parità chiavi e placeholder).
 

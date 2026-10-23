@@ -7,7 +7,11 @@
 #
 # The 13 legacy sources are user pages (/get-posts/user:<name>/), so the
 # uploader setting is what turns them into one definition. The listing has no
-# category column, hence no category mapping.
+# category column and the detail pages carry no category either (verified on the
+# WP7 fixtures), hence no category field: inventing one from the title would be
+# wrong. Rows therefore reach the engine with no category and use its generic
+# 8000 "Other" fallback. Size and seeders/leechers are present in each row and
+# are extracted below.
 schema: 1
 
 meta:

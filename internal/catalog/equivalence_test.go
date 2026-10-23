@@ -254,6 +254,52 @@ func TestTorrentGalaxyEquivalence(t *testing.T) {
 	}
 }
 
+// TestTorrentGalaxyNativeFields verifies the fields the UI needs from the WP7
+// fixture. The listing has size and seeders/leechers cells; it has no category
+// column, so the definition cannot map one without inventing data. That absence
+// is documented in torrentgalaxy.yaml and the fixture README.
+func TestTorrentGalaxyNativeFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/get-posts/user:anonymous/" {
+			serveFile(t, w, "torrentgalaxy/listing.html")
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "torrentgalaxy", server.URL)
+	native, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch})
+	if err != nil {
+		t.Fatalf("native Search: %v", err)
+	}
+	if len(native) == 0 {
+		t.Fatal("no rows extracted from the TorrentGalaxy fixture")
+	}
+	for _, item := range native {
+		if item.Size <= 0 {
+			t.Errorf("%q: size was not extracted", item.Title)
+		}
+		if item.Seeders <= 0 {
+			t.Errorf("%q: seeders were not extracted", item.Title)
+		}
+		if item.Leechers < 0 {
+			t.Errorf("%q: leechers were not extracted", item.Title)
+		}
+		// With no category cell the engine falls back to 8000 "Other". That is
+		// the generic unknown bucket, not a category read from the fixture.
+		if len(item.Categories) != 1 || item.Categories[0] != 8000 {
+			t.Errorf("%q: categories = %v, want the 8000 fallback", item.Title, item.Categories)
+		}
+	}
+	if native[0].Seeders != 107 || native[0].Leechers != 35 {
+		t.Errorf("first row health = %d/%d, want 107/35", native[0].Seeders, native[0].Leechers)
+	}
+	if native[0].Size != 1500000000 {
+		t.Errorf("first row size = %d, want 1500000000", native[0].Size)
+	}
+}
+
 func TestCorsaroEquivalence(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

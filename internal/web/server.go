@@ -98,6 +98,17 @@ var templateFuncMap = template.FuncMap{
 		return strconv.FormatInt(value*100/total, 10) + "%"
 	},
 	"eq": func(a, b any) bool { return fmt.Sprint(a) == fmt.Sprint(b) },
+	// safeURL marks an already validated link scheme as trusted. Magnet links
+	// are otherwise replaced with #ZgotmplZ by html/template.
+	"safeURL": func(raw string) template.URL {
+		lower := strings.ToLower(strings.TrimSpace(raw))
+		for _, prefix := range []string{"http://", "https://", "magnet:?"} {
+			if strings.HasPrefix(lower, prefix) {
+				return template.URL(raw)
+			}
+		}
+		return ""
+	},
 	"truncate": func(text string, max int) string {
 		runes := []rune(text)
 		if len(runes) <= max {

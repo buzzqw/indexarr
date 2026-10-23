@@ -51,7 +51,12 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings) settings
 	}
 	baseURL := torznabapi.BaseURL(r, settings) + "/api"
 	public := settings
+	// Secrets never travel in the initial HTML. The API key, Telegram token
+	// and download-client password are only submitted when the operator enters
+	// a new value; an empty field leaves the stored one untouched.
 	public.APIKey = ""
+	public.NotifyTelegramToken = ""
+	public.DownloadClientPassword = ""
 	return settingsPage{
 		base:           s.newBaseT(r, "shell.settings", "settings"),
 		Settings:       public,
@@ -102,53 +107,53 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if in.DefaultIntervalSeconds, parseErr = formInt(r, "default_interval_seconds", 3600, 60, 30*24*3600); parseErr != nil {
+	if in.DefaultIntervalSeconds, parseErr = s.formInt(r, "default_interval_seconds", 3600, 60, 30*24*3600); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.RetentionDays, parseErr = formInt(r, "retention_days", 0, 0, 3650); parseErr != nil {
+	if in.RetentionDays, parseErr = s.formInt(r, "retention_days", 0, 0, 3650); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.FetchTimeoutSeconds, parseErr = formInt(r, "fetch_timeout_seconds", 45, 5, 300); parseErr != nil {
+	if in.FetchTimeoutSeconds, parseErr = s.formInt(r, "fetch_timeout_seconds", 45, 5, 300); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.HostRate, parseErr = formFloat(r, "host_rate", 1, 0, 100); parseErr != nil {
+	if in.HostRate, parseErr = s.formFloat(r, "host_rate", 1, 0, 100); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.HostBurst, parseErr = formInt(r, "host_burst", 4, 1, 100); parseErr != nil {
+	if in.HostBurst, parseErr = s.formInt(r, "host_burst", 4, 1, 100); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.BreakerThreshold, parseErr = formInt(r, "breaker_threshold", 5, 1, 100); parseErr != nil {
+	if in.BreakerThreshold, parseErr = s.formInt(r, "breaker_threshold", 5, 1, 100); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.BreakerCooldownSeconds, parseErr = formInt(r, "breaker_cooldown", 60, 1, 3600); parseErr != nil {
+	if in.BreakerCooldownSeconds, parseErr = s.formInt(r, "breaker_cooldown", 60, 1, 3600); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.Workers, parseErr = formInt(r, "workers", 2, 1, 16); parseErr != nil {
+	if in.Workers, parseErr = s.formInt(r, "workers", 2, 1, 16); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.MaxTorrentsPerRun, parseErr = formInt(r, "max_torrents_per_run", 30, 0, 200); parseErr != nil {
+	if in.MaxTorrentsPerRun, parseErr = s.formInt(r, "max_torrents_per_run", 30, 0, 200); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	maxMB, err := formInt(r, "max_torrent_mb", 8, 1, 64)
+	maxMB, err := s.formInt(r, "max_torrent_mb", 8, 1, 64)
 	if err != nil {
 		renderInvalid(err.Error())
 		return
 	}
 	in.MaxTorrentBytes = int64(maxMB) << 20
-	if in.TorznabDownloadFactor, parseErr = formInt(r, "torznab_download_factor", 0, 0, 100); parseErr != nil {
+	if in.TorznabDownloadFactor, parseErr = s.formInt(r, "torznab_download_factor", 0, 0, 100); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.TorznabUploadFactor, parseErr = formInt(r, "torznab_upload_factor", 1, 0, 100); parseErr != nil {
+	if in.TorznabUploadFactor, parseErr = s.formInt(r, "torznab_upload_factor", 1, 0, 100); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
@@ -165,7 +170,9 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	in.NotifyTelegramToken = strings.TrimSpace(r.FormValue("notify_telegram_token"))
+	if token := strings.TrimSpace(r.FormValue("notify_telegram_token")); token != "" {
+		in.NotifyTelegramToken = token
+	}
 	in.NotifyTelegramChatID = strings.TrimSpace(r.FormValue("notify_telegram_chat_id"))
 	if (in.NotifyTelegramToken == "") != (in.NotifyTelegramChatID == "") {
 		renderInvalid(s.translate(r, "settings.error.telegramPair"))
@@ -173,25 +180,25 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	}
 	in.NotifyNewReleases = r.FormValue("notify_new_releases") != ""
 	in.NotifyFailures = r.FormValue("notify_failures") != ""
-	if in.AutoDisableAfter, parseErr = formInt(r, "auto_disable_after", 0, 0, 100); parseErr != nil {
+	if in.AutoDisableAfter, parseErr = s.formInt(r, "auto_disable_after", 0, 0, 100); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.APIRateLimit, parseErr = formInt(r, "api_rate_limit_per_minute", 0, 0, 100000); parseErr != nil {
+	if in.APIRateLimit, parseErr = s.formInt(r, "api_rate_limit_per_minute", 0, 0, 100000); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
 	in.BackupEnabled = r.FormValue("backup_enabled") != ""
-	if in.BackupIntervalHours, parseErr = formInt(r, "backup_interval_hours", 24, 6, 168); parseErr != nil {
+	if in.BackupIntervalHours, parseErr = s.formInt(r, "backup_interval_hours", 24, 6, 168); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
-	if in.BackupKeep, parseErr = formInt(r, "backup_keep", 7, 1, 60); parseErr != nil {
+	if in.BackupKeep, parseErr = s.formInt(r, "backup_keep", 7, 1, 60); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
 	in.TorznabLiveSearch = r.FormValue("torznab_live_search") != ""
-	if in.TorznabLiveTimeout, parseErr = formInt(r, "torznab_live_timeout_seconds", 20, 5, 120); parseErr != nil {
+	if in.TorznabLiveTimeout, parseErr = s.formInt(r, "torznab_live_timeout_seconds", 20, 5, 120); parseErr != nil {
 		renderInvalid(parseErr.Error())
 		return
 	}
@@ -213,7 +220,9 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	in.DownloadClientUser = strings.TrimSpace(r.FormValue("download_client_user"))
-	in.DownloadClientPassword = r.FormValue("download_client_password")
+	if password := r.FormValue("download_client_password"); password != "" {
+		in.DownloadClientPassword = password
+	}
 	in.DownloadClientCategory = strings.TrimSpace(r.FormValue("download_client_category"))
 	in.DownloadClientSavePath = strings.TrimSpace(r.FormValue("download_client_save_path"))
 	in.DownloadClientPaused = r.FormValue("download_client_paused") != ""
@@ -321,32 +330,32 @@ func (s *Server) settingsTestFlareSolverr(w http.ResponseWriter, r *http.Request
 	redirect(w, r, "/settings", s.translate(r, "settings.flaresolverrOK", len(body)), "")
 }
 
-func formInt(r *http.Request, key string, fallback, min, max int) (int, error) {
+func (s *Server) formInt(r *http.Request, key string, fallback, min, max int) (int, error) {
 	raw := strings.TrimSpace(r.FormValue(key))
 	if raw == "" {
 		return fallback, nil
 	}
 	value, err := strconv.Atoi(raw)
 	if err != nil {
-		return 0, fmt.Errorf("%s must be a number", key)
+		return 0, fmt.Errorf("%s", s.translate(r, "settings.error.number", key))
 	}
 	if value < min || value > max {
-		return 0, fmt.Errorf("%s must be between %d and %d", key, min, max)
+		return 0, fmt.Errorf("%s", s.translate(r, "settings.error.intRange", key, min, max))
 	}
 	return value, nil
 }
 
-func formFloat(r *http.Request, key string, fallback, min, max float64) (float64, error) {
+func (s *Server) formFloat(r *http.Request, key string, fallback, min, max float64) (float64, error) {
 	raw := strings.TrimSpace(r.FormValue(key))
 	if raw == "" {
 		return fallback, nil
 	}
 	value, err := strconv.ParseFloat(raw, 64)
 	if err != nil {
-		return 0, fmt.Errorf("%s must be a number", key)
+		return 0, fmt.Errorf("%s", s.translate(r, "settings.error.number", key))
 	}
 	if value < min || value > max {
-		return 0, fmt.Errorf("%s must be between %g and %g", key, min, max)
+		return 0, fmt.Errorf("%s", s.translate(r, "settings.error.floatRange", key, min, max))
 	}
 	return value, nil
 }

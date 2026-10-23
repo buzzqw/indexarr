@@ -23,7 +23,7 @@
   <div class="field">
     <label for="source">{{T "releases.indexer"}}</label>
     <select id="source" name="source">
-      <option value="0">{{T "releases.allSources"}}</option>
+      <option value="0">{{T "releases.allIndexers"}}</option>
       {{range .Sources}}<option value="{{.ID}}"{{if eq $.Source .ID}} selected{{end}}>{{.Name}}</option>{{end}}
     </select>
   </div>
@@ -53,7 +53,12 @@
     <button class="btn primary" type="submit">{{T "shell.searchButton"}}</button>
     <a class="btn" href="/releases">{{T "common.reset"}}</a>
   </div>
-  <div class="filter-advanced">
+  <details class="filter-advanced" id="release-advanced-filters">
+    <summary>
+      <span>{{T "releases.filters"}}</span>
+      {{if gt .AdvancedFilterCount 0}}<span class="chip">{{if eq .AdvancedFilterCount 1}}{{T "releases.activeFilter"}}{{else}}{{T "releases.activeFilters" .AdvancedFilterCount}}{{end}}</span>{{end}}
+    </summary>
+    <div class="filter-advanced-body">
     <div class="field">
       <label for="quality">{{T "releases.resolution"}}</label>
       <select id="quality" name="quality">
@@ -83,15 +88,15 @@
     </div>
     <div class="field small">
       <label for="min_seeders">{{T "releases.minSeeders"}}</label>
-      <input id="min_seeders" name="min_seeders" type="number" min="0" value="{{.MinSeeders}}">
+      <input id="min_seeders" name="min_seeders" type="number" min="0" value="{{.MinSeedersText}}">
     </div>
     <div class="field small">
       <label for="min_size_mb">{{T "releases.minSize"}}</label>
-      <input id="min_size_mb" name="min_size_mb" type="number" min="0" value="{{.MinSizeMB}}">
+      <input id="min_size_mb" name="min_size_mb" type="number" min="0" value="{{.MinSizeText}}">
     </div>
     <div class="field small">
       <label for="max_size_mb">{{T "releases.maxSize"}}</label>
-      <input id="max_size_mb" name="max_size_mb" type="number" min="0" value="{{.MaxSizeMB}}">
+      <input id="max_size_mb" name="max_size_mb" type="number" min="0" value="{{.MaxSizeText}}">
     </div>
     <div class="field checkbox">
       <input id="favorites" name="favorites" type="checkbox" value="1"{{if .FavoritesOnly}} checked{{end}}>
@@ -101,7 +106,8 @@
       <input id="hidden" name="hidden" type="checkbox" value="1"{{if .ShowHidden}} checked{{end}}>
       <label for="hidden">{{T "releases.showHidden"}}</label>
     </div>
-  </div>
+    </div>
+  </details>
 </form>
 
 {{if .SavedSearches}}

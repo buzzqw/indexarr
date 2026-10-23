@@ -18,3 +18,8 @@ Cleaning applied before saving:
   cookie, session, passkey or account data was present.
 
 The row markup, selectors and magnet URIs are unmodified.
+
+The listing (and the three detail pages) has no category column or category
+label: the native definition therefore extracts size and seeders/leechers but
+leaves categories empty. `TestTorrentGalaxyNativeFields` records that absence
+instead of inventing a category from the title.

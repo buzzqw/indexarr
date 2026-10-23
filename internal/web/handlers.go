@@ -137,11 +137,17 @@ type releasesPage struct {
 	MinSeeders    int64
 	MinSizeMB     int
 	MaxSizeMB     int
-	Quality       string
-	SourceQuality string
-	Language      string
-	SavedSearches []store.SavedSearch
-	CurrentQuery  string
+	// MinSeedersText, MinSizeText and MaxSizeText are the raw query values. An
+	// unset numeric filter is rendered as an empty field, never as 0.
+	MinSeedersText      string
+	MinSizeText         string
+	MaxSizeText         string
+	Quality             string
+	SourceQuality       string
+	Language            string
+	AdvancedFilterCount int
+	SavedSearches       []store.SavedSearch
+	CurrentQuery        string
 }
 
 func (s *Server) releasesPage(w http.ResponseWriter, r *http.Request) {
@@ -178,9 +184,12 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	sortMode := query.Get("sort")
 	favoritesOnly := query.Get("favorites") == "1"
 	showHidden := query.Get("hidden") == "1"
-	minSeeders := int64Param(query.Get("min_seeders"), 0)
-	minSizeMB := intParam(query.Get("min_size_mb"), 0)
-	maxSizeMB := intParam(query.Get("max_size_mb"), 0)
+	minSeedersRaw := strings.TrimSpace(query.Get("min_seeders"))
+	minSizeRaw := strings.TrimSpace(query.Get("min_size_mb"))
+	maxSizeRaw := strings.TrimSpace(query.Get("max_size_mb"))
+	minSeeders := int64Param(minSeedersRaw, 0)
+	minSizeMB := intParam(minSizeRaw, 0)
+	maxSizeMB := intParam(maxSizeRaw, 0)
 	if minSizeMB < 0 {
 		minSizeMB = 0
 	}
@@ -192,28 +201,70 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	language := choiceValue(query.Get("language"), "ita", "eng")
 	include, exclude, parseErr := parseSearchTerms(searchQuery, regexMode)
 
+	minSeedersText := ""
+	if minSeeders > 0 {
+		minSeedersText = minSeedersRaw
+	}
+	minSizeText := ""
+	if minSizeMB > 0 {
+		minSizeText = minSizeRaw
+	}
+	maxSizeText := ""
+	if maxSizeMB > 0 {
+		maxSizeText = maxSizeRaw
+	}
+	advancedFilterCount := 0
+	if quality != "" {
+		advancedFilterCount++
+	}
+	if sourceQuality != "" {
+		advancedFilterCount++
+	}
+	if language != "" {
+		advancedFilterCount++
+	}
+	if minSeeders > 0 {
+		advancedFilterCount++
+	}
+	if minSizeMB > 0 {
+		advancedFilterCount++
+	}
+	if maxSizeMB > 0 {
+		advancedFilterCount++
+	}
+	if favoritesOnly {
+		advancedFilterCount++
+	}
+	if showHidden {
+		advancedFilterCount++
+	}
+
 	sources, _ := s.store.ListSources(r.Context())
 	saved, _ := s.store.ListSavedSearches(r.Context())
 	current := query
 	current.Del("page")
 	data := releasesPage{
-		base:          s.newBaseT(r, "releases.title", "releases"),
-		Sources:       sources,
-		Query:         searchQuery,
-		Source:        sourceID,
-		Category:      category,
-		Sort:          sortMode,
-		Regex:         regexMode,
-		FavoritesOnly: favoritesOnly,
-		ShowHidden:    showHidden,
-		MinSeeders:    minSeeders,
-		MinSizeMB:     minSizeMB,
-		MaxSizeMB:     maxSizeMB,
-		Quality:       quality,
-		SourceQuality: sourceQuality,
-		Language:      language,
-		SavedSearches: saved,
-		CurrentQuery:  current.Encode(),
+		base:                s.newBaseT(r, "releases.title", "releases"),
+		Sources:             sources,
+		Query:               searchQuery,
+		Source:              sourceID,
+		Category:            category,
+		Sort:                sortMode,
+		Regex:               regexMode,
+		FavoritesOnly:       favoritesOnly,
+		ShowHidden:          showHidden,
+		MinSeeders:          minSeeders,
+		MinSizeMB:           minSizeMB,
+		MaxSizeMB:           maxSizeMB,
+		MinSeedersText:      minSeedersText,
+		MinSizeText:         minSizeText,
+		MaxSizeText:         maxSizeText,
+		Quality:             quality,
+		SourceQuality:       sourceQuality,
+		Language:            language,
+		AdvancedFilterCount: advancedFilterCount,
+		SavedSearches:       saved,
+		CurrentQuery:        current.Encode(),
 	}
 	if parseErr != nil {
 		data.InvalidRegex = parseErr.Error()

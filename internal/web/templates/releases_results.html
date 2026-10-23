@@ -13,35 +13,35 @@
       <table class="releases-table">
         <thead>
           <tr>
-            <th scope="col" class="check"><input type="checkbox" data-select-all aria-label="{{T "releases.selectAll"}}"></th>
+            <th scope="col" class="check" data-label="{{T "releases.selectAllShort"}}"><input type="checkbox" data-select-all aria-label="{{T "releases.selectAll"}}"></th>
             <th scope="col">{{T "releases.colTitle"}}</th>
             <th scope="col">{{T "releases.colSize"}}</th>
             <th scope="col">{{T "releases.colSeeders"}}</th>
-            <th scope="col">{{T "releases.colLeechers"}}</th>
             <th scope="col">{{T "releases.indexer"}}</th>
-            <th scope="col">{{T "releases.category"}}</th>
             <th scope="col">{{T "releases.colPublished"}}</th>
-            <th scope="col" class="right">{{T "releases.colLinks"}}</th>
+            <th scope="col" class="right">{{T "releases.download"}}</th>
           </tr>
         </thead>
         <tbody>
           {{range .Releases}}
           <tr>
             <td class="check"><input type="checkbox" name="ids" value="{{.ID}}" aria-label="{{T "releases.selectRelease" .Title}}"></td>
-            <td><a href="/releases/{{.ID}}">{{.Title}}</a>{{if .Favorite}} <span class="chip" title="{{T "releases.favorite"}}">★</span>{{end}}{{if .Torrent}} <span class="chip">{{T "releases.torrent"}}</span>{{end}}</td>
+            <td class="release-title">
+              <a class="release-title-link" href="/releases/{{.ID}}" title="{{.Title}}">{{.Title}}</a>{{if .Favorite}} <span class="chip" title="{{T "releases.favorite"}}">★</span>{{end}}{{if .Torrent}} <span class="chip">{{T "releases.torrent"}}</span>{{end}}
+              <span class="release-meta">{{T "releases.leechersInline" (numOrDash .Leechers)}} · {{if .Category}}{{catName .Category}}{{else}}—{{end}}</span>
+            </td>
             <td class="nowrap">{{sizeOrDash .Size}}</td>
             <td>{{numOrDash .Seeders}}</td>
-            <td>{{numOrDash .Leechers}}</td>
             <td class="nowrap">{{textOrDash .SourceName}}</td>
-            <td class="nowrap">{{if .Category}}<span class="chip">{{catName .Category}}</span>{{else}}—{{end}}</td>
-            <td class="nowrap">{{date .PublishedAt}}</td>
+            <td class="nowrap">{{if .PublishedAt.IsZero}}—{{else}}<span title="{{date .PublishedAt}}">{{ago .PublishedAt}}</span>{{end}}</td>
             <td class="right nowrap">
-              {{if .Magnet}}<a class="link" href="{{.Magnet}}" title="{{T "releases.magnetLink"}}">{{T "releases.magnet"}}</a>{{end}}
-              {{if .Torrent}}<a class="link" href="/releases/{{.ID}}/torrent" title="{{T "releases.downloadTorrent"}}">{{T "releases.torrent"}}</a>{{end}}
+              {{if .Torrent}}<a class="btn small primary" href="/releases/{{.ID}}/torrent" title="{{T "releases.downloadTorrent"}}">{{T "releases.download"}}</a>
+              {{else if .Magnet}}<a class="btn small primary" href="{{safeURL .Magnet}}" title="{{T "releases.magnetLink"}}">{{T "releases.download"}}</a>
+              {{else}}<span class="muted">—</span>{{end}}
             </td>
           </tr>
           {{else}}
-          <tr><td colspan="9" class="empty">{{T "releases.empty"}}</td></tr>
+          <tr><td colspan="7" class="empty">{{T "releases.empty"}}</td></tr>
           {{end}}
         </tbody>
       </table>

@@ -81,6 +81,45 @@ if ("serviceWorker" in navigator) {
     return String(payload.value || "");
   };
 
+  // Empty secret fields mean "unchanged". The Change button only makes the
+  // field ready for a replacement; it never reveals the stored value.
+  document.addEventListener("click", (event) => {
+    const change = event.target.closest("[data-secret-change]");
+    if (!change) {
+      return;
+    }
+    event.preventDefault();
+    const field = change.closest("[data-secret-change-field]");
+    const input = field && field.querySelector("input");
+    if (!input) {
+      return;
+    }
+    input.value = "";
+    input.focus();
+    change.hidden = true;
+  });
+
+  // Remember whether the secondary release filters were open, as described in
+  // UI-GUIDE §4.5. The panel still works without this enhancement.
+  const advancedFilters = document.getElementById("release-advanced-filters");
+  if (advancedFilters) {
+    const storageKey = "indexarr.releaseFiltersOpen";
+    try {
+      if (window.localStorage.getItem(storageKey) === "1") {
+        advancedFilters.open = true;
+      }
+    } catch {
+      // Storage can be unavailable in private modes; the closed default wins.
+    }
+    advancedFilters.addEventListener("toggle", () => {
+      try {
+        window.localStorage.setItem(storageKey, advancedFilters.open ? "1" : "0");
+      } catch {
+        // Ignore: the panel state is a convenience, not data.
+      }
+    });
+  }
+
   document.addEventListener("click", async (event) => {
     const show = event.target.closest("[data-secret-show]");
     if (show) {
