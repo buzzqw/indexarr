@@ -7,9 +7,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
+
+var importTokenPattern = regexp.MustCompile(`name="token" value="([A-Za-z0-9_-]+)"`)
 
 const webProwlarrIndexersJSON = `[
   {
@@ -202,5 +206,174 @@ func writeImportTestFile(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatalf("WriteFile(%s): %v", path, err)
+	}
+}
+
+func importPlanToken(t *testing.T, body string) string {
+	t.Helper()
+	match := importTokenPattern.FindStringSubmatch(body)
+	if match == nil {
+		t.Fatalf("no plan token in preview: %s", body)
+	}
+	return match[1]
+}
+
+func TestImportApplyImportsOnlySelectedSites(t *testing.T) {
+	env := newTestEnv(t)
+	const apiKey = "prowlarr-key-SECRET"
+	upstream := newWebProwlarr(t, apiKey)
+	defer upstream.Close()
+
+	token, cookie := csrfFrom(t, env.handler, "/import")
+	preview := postForm(t, env.handler, "/import/prowlarr", url.Values{
+		"csrf":     {token},
+		"base_url": {upstream.URL},
+		"api_key":  {apiKey},
+	}, cookie)
+	if preview.Code != http.StatusOK {
+		t.Fatalf("preview = %d: %s", preview.Code, preview.Body.String())
+	}
+	planToken := importPlanToken(t, preview.Body.String())
+	if strings.Contains(preview.Body.String(), apiKey) ||
+		strings.Contains(preview.Body.String(), "alpha-key-SECRET") {
+		t.Fatal("the preview leaked a secret")
+	}
+
+	// Only Alpha is selected. Bravo stays out even though it was in the plan.
+	applied := postForm(t, env.handler, "/import/apply", url.Values{
+		"csrf":  {token},
+		"token": {planToken},
+		"site":  {"0"},
+	}, cookie)
+	if applied.Code != http.StatusOK {
+		t.Fatalf("apply = %d: %s", applied.Code, applied.Body.String())
+	}
+	body := applied.Body.String()
+	for _, want := range []string{
+		"Import result", "Added: 1", "Updated: 0", "Skipped: 0", "Errors: 0",
+		"Alpha", "via Prowlarr", "Connect an app",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("summary missing %q", want)
+		}
+	}
+	for _, secret := range []string{apiKey, "alpha-key-SECRET", "bravo-key-SECRET"} {
+		if strings.Contains(body, secret) {
+			t.Fatalf("the apply result leaked secret %q", secret)
+		}
+	}
+
+	rows, err := env.store.ListIndexers(t.Context())
+	if err != nil {
+		t.Fatalf("ListIndexers: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Name != "Alpha" {
+		t.Fatalf("imported rows = %+v, want only Alpha", rows)
+	}
+	if rows[0].DefinitionID != "torznab-generic" {
+		t.Fatalf("Alpha definition = %q", rows[0].DefinitionID)
+	}
+	var sources int
+	if err := env.store.DB().QueryRowContext(t.Context(),
+		`SELECT count(*) FROM sources`).Scan(&sources); err != nil {
+		t.Fatalf("count sources: %v", err)
+	}
+	if sources != 0 {
+		t.Fatalf("apply wrote %d legacy sources", sources)
+	}
+
+	// The token is one-shot.
+	replay := postForm(t, env.handler, "/import/apply", url.Values{
+		"csrf":  {token},
+		"token": {planToken},
+		"site":  {"0"},
+	}, cookie)
+	if replay.Code != http.StatusGone {
+		t.Fatalf("replayed apply = %d, want 410: %s", replay.Code, replay.Body.String())
+	}
+}
+
+func TestImportApplyUnknownToken(t *testing.T) {
+	env := newTestEnv(t)
+	token, cookie := csrfFrom(t, env.handler, "/import")
+	recorder := postForm(t, env.handler, "/import/apply", url.Values{
+		"csrf":  {token},
+		"token": {"not-a-plan"},
+		"site":  {"0"},
+	}, cookie)
+	if recorder.Code != http.StatusGone {
+		t.Fatalf("status = %d, want 410: %s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), "expired or is unknown") {
+		t.Errorf("missing expiry message: %s", recorder.Body.String())
+	}
+}
+
+func TestImportApplyRequiresSelection(t *testing.T) {
+	env := newTestEnv(t)
+	const apiKey = "prowlarr-key-SECRET"
+	upstream := newWebProwlarr(t, apiKey)
+	defer upstream.Close()
+
+	token, cookie := csrfFrom(t, env.handler, "/import")
+	preview := postForm(t, env.handler, "/import/prowlarr", url.Values{
+		"csrf":     {token},
+		"base_url": {upstream.URL},
+		"api_key":  {apiKey},
+	}, cookie)
+	planToken := importPlanToken(t, preview.Body.String())
+
+	applied := postForm(t, env.handler, "/import/apply", url.Values{
+		"csrf":  {token},
+		"token": {planToken},
+	}, cookie)
+	if applied.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", applied.Code, applied.Body.String())
+	}
+	if !strings.Contains(applied.Body.String(), "at least one site") {
+		t.Errorf("missing selection message: %s", applied.Body.String())
+	}
+}
+
+func TestImportPlanStoreExpiresTokens(t *testing.T) {
+	plans := newImportPlanStore()
+	base := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	plans.now = func() time.Time { return base }
+
+	token, err := plans.put(nil)
+	if err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	if _, ok := plans.get(token); !ok {
+		t.Fatal("fresh token was not found")
+	}
+	if _, ok := plans.get("unknown-token"); ok {
+		t.Fatal("unknown token was accepted")
+	}
+
+	plans.now = func() time.Time { return base.Add(importPlanTTL) }
+	if _, ok := plans.get(token); !ok {
+		t.Fatal("token expired exactly at the TTL boundary")
+	}
+	plans.now = func() time.Time { return base.Add(importPlanTTL + time.Second) }
+	if _, ok := plans.get(token); ok {
+		t.Fatal("expired token was accepted")
+	}
+}
+
+func TestImportPagePrefillsPublicURL(t *testing.T) {
+	env := newTestEnv(t)
+	recorder := get(t, env.handler, "/import")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET /import = %d", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		"http://example.com", "No public URL is configured yet",
+		"Verify that your apps can reach it", `href="/settings"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("import page missing %q", want)
+		}
 	}
 }

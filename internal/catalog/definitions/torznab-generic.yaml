@@ -1,0 +1,49 @@
+# BOZZA (draft). Generic Torznab definition.
+#
+# The torznab family connector reads the URL, API key and categories from the
+# stored settings and queries a Torznab endpoint directly; no HTML search block
+# is needed. It is also the bridge used when an imported Jackett or Prowlarr
+# site has no verified native definition: the per-indexer Torznab endpoint of
+# the manager becomes the URL of a native torznab indexer, with the API key in
+# the vault. The definition has not been verified against a live site and must
+# not be presented as production ready.
+schema: 1
+connector: torznab
+
+meta:
+  id: torznab-generic
+  name: Torznab (generic)
+  language: en-US
+  type: private
+  protocol: torrent
+  author: indexarr
+  description: Generic Torznab indexer; the family connector reads URL and API key.
+  urls:
+    - https://torznab.example.invalid/
+  updated: "2026-10-23"
+
+# v1 setting names are slugs and cannot contain "_", so the API key is named
+# "apikey" here. The engine aliases "apikey" and "api_key", and the torznab
+# family connector reads the canonical api_key setting. When the import tool
+# seals the key it stores it as "api_key" because the connector reads that
+# name.
+settings:
+  - { name: url, type: text, label: Endpoint URL, help: "Torznab API endpoint", required: true }
+  - { name: apikey, type: password, label: API key, help: "Torznab API key", required: true }
+
+categories:
+  - { site: "2000", standard: 2000, desc: "Movies" }
+  - { site: "5000", standard: 5000, desc: "TV" }
+  - { site: "3000", standard: 3000, desc: "Audio" }
+  - { site: "7000", standard: 7000, desc: "Books" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep, imdbid, tvdbid]
+  movie-search: [q, imdbid, tmdbid, year]
+  music-search: [q, artist, album, year]
+  book-search: [q, author, title, year]
+
+health:
+  query: test
+  min_rows: 1

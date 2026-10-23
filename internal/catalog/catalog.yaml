@@ -19,6 +19,10 @@ definitions:
     file: definitions/newznab-generic.yaml
     state: bozza
     author: indexarr
+  - id: torznab-generic
+    file: definitions/torznab-generic.yaml
+    state: bozza
+    author: indexarr
   - id: gazelle-generic
     file: definitions/gazelle-generic.yaml
     state: bozza

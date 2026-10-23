@@ -334,6 +334,9 @@ type Server struct {
 	vault   *vault.Vault
 	sync    *syncjob.Service
 	polite  *engine.Politeness
+	// importPlans holds short-lived previews between /import and /import/apply.
+	// Secrets stay in this process memory and never reach the HTML.
+	importPlans *importPlanStore
 }
 
 // New builds the HTTP server.
@@ -356,22 +359,23 @@ func New(cfg Config) *Server {
 		level.Set(slog.LevelInfo)
 	}
 	srv := &Server{
-		store:   cfg.Store,
-		engine:  cfg.Engine,
-		log:     logger,
-		version: cfg.Version,
-		started: cfg.Started,
-		torznab: torznabapi.New(cfg.Store, logger, cfg.Version),
-		static:  http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
-		logs:    logs,
-		level:   level,
-		restart: cfg.Restart,
-		admin:   cfg.Admin,
-		native:  cfg.Native,
-		svc:     cfg.Indexers,
-		vault:   cfg.Vault,
-		sync:    cfg.Sync,
-		polite:  cfg.Politeness,
+		store:       cfg.Store,
+		engine:      cfg.Engine,
+		log:         logger,
+		version:     cfg.Version,
+		started:     cfg.Started,
+		torznab:     torznabapi.New(cfg.Store, logger, cfg.Version),
+		static:      http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
+		logs:        logs,
+		level:       level,
+		restart:     cfg.Restart,
+		admin:       cfg.Admin,
+		native:      cfg.Native,
+		svc:         cfg.Indexers,
+		vault:       cfg.Vault,
+		sync:        cfg.Sync,
+		polite:      cfg.Politeness,
+		importPlans: newImportPlanStore(),
 	}
 	if cfg.Engine != nil {
 		srv.torznab.SetLiveSearch(cfg.Engine.SearchLive)
@@ -444,6 +448,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /import", s.importPage)
 	ui.HandleFunc("POST /import/prowlarr", s.importProwlarr)
 	ui.HandleFunc("POST /import/jackett", s.importJackett)
+	ui.HandleFunc("POST /import/apply", s.importApply)
 	ui.HandleFunc("GET /activity", s.activityPage)
 	ui.HandleFunc("GET /runs", s.runsRedirect)
 	ui.HandleFunc("GET /runs/{id}", s.runPage)

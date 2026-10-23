@@ -32,8 +32,8 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 12 {
-		t.Fatalf("len(Builtins()) = %d, want 12", len(entries))
+	if len(entries) != 13 {
+		t.Fatalf("len(Builtins()) = %d, want 13", len(entries))
 	}
 
 	verified := map[string]bool{
@@ -104,8 +104,8 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 		t.Fatalf("Builtins: %v", err)
 	}
 	want := []string{
-		"example-html", "unit3d-generic", "newznab-generic", "gazelle-generic",
-		"nexusphp-generic", "torrenttrader-generic", "xbtit-generic",
+		"example-html", "unit3d-generic", "newznab-generic", "torznab-generic",
+		"gazelle-generic", "nexusphp-generic", "torrenttrader-generic", "xbtit-generic",
 		"extto", "torrentgalaxy", "corsaro", "knaben", "torrentleech",
 	}
 	if len(entries) != len(want) {
@@ -127,8 +127,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 12 {
-		t.Fatalf("manifest has %d definitions, want 12", len(items))
+	if len(items) != 13 {
+		t.Fatalf("manifest has %d definitions, want 13", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")

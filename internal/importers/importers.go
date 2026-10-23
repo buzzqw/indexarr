@@ -8,7 +8,9 @@
 // put them in the vault, but they are removed from every warning and error and
 // never written to logs by this package.
 //
-// The package depends only on the standard library.
+// The plan builders depend only on the standard library and the catalog. The
+// apply path in apply.go also uses the store and the vault, so the CLI and the
+// web UI share exactly the same write logic.
 package importers
 
 import (
@@ -36,15 +38,25 @@ type Indexer struct {
 	Implementation string // Prowlarr implementation, e.g. "Torznab", "Cardigann", "Newznab"
 	Protocol       Protocol
 	DefinitionHint string // normalized slug/id suggested for a native definition
-	BaseURL        string
-	APIKey         string // sensitive: never log or include in errors
-	Username       string // sensitive
-	Password       string // sensitive
-	Categories     []int
-	Tags           []string
-	Priority       int
-	Enabled        bool
-	Fields         map[string]string // non-secret Prowlarr/Jackett fields
+	// RemoteID is the indexer id inside the manager: the Prowlarr indexer id
+	// or the Jackett Indexers/<id>.json id. It is the per-indexer endpoint
+	// segment, not a secret.
+	RemoteID string
+	// BaseURL is the per-indexer Torznab endpoint when the manager exposes
+	// one (Jackett), otherwise the site base URL (Prowlarr).
+	BaseURL string
+	// SiteURL is the tracker site URL when the manager exposes it separately
+	// from the API endpoint. It is used to match a verified catalog
+	// definition by host.
+	SiteURL    string
+	APIKey     string // sensitive: never log or include in errors
+	Username   string // sensitive
+	Password   string // sensitive
+	Categories []int
+	Tags       []string
+	Priority   int
+	Enabled    bool
+	Fields     map[string]string // non-secret Prowlarr/Jackett fields
 }
 
 // Application is one downstream *arr instance configured in Prowlarr.
@@ -67,11 +79,18 @@ type Proxy struct {
 // Plan is the neutral result of an import. It contains no database identity:
 // the coordinator decides what already exists and what to create.
 type Plan struct {
-	Source       string // "prowlarr" or "jackett"
-	Indexers     []Indexer
-	Applications []Application
-	Proxies      []Proxy
-	Warnings     []string
+	Source string // "prowlarr" or "jackett"
+	// ManagerURL is the sanitized base URL of the manager (no credentials,
+	// query or fragment). It builds the per-indexer Torznab endpoint.
+	ManagerURL string
+	// ManagerAPIKey is the key that calls the manager's per-indexer Torznab
+	// endpoint (Prowlarr's API key or Jackett's API key). Sensitive: never log
+	// or include in errors.
+	ManagerAPIKey string
+	Indexers      []Indexer
+	Applications  []Application
+	Proxies       []Proxy
+	Warnings      []string
 }
 
 // indexerRecord keeps the source id for deterministic ordering without
@@ -128,6 +147,10 @@ func sortApplications(items []Application) {
 		return items[i].Kind < items[j].Kind
 	})
 }
+
+// Slug normalizes a name into the stable slug used for imported indexers.
+// Importers and the import command share it so a re-run finds the same row.
+func Slug(value string) string { return slugify(value) }
 
 // slugify lowercases a value and turns every run of non-alphanumeric
 // characters into a single dash. It is the same normalisation the store uses

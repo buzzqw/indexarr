@@ -1,7 +1,9 @@
 // Command indexarr-import reads an existing Jackett or Prowlarr installation
-// and prints a redacted import plan. With -apply it creates Torznab bridge
-// sources in a disposable indexarr database, leaving the original
-// Jackett/Prowlarr untouched.
+// and prints a redacted import plan. With -apply it creates native indexers in
+// a disposable indexarr database: a verified catalog definition when one
+// matches the site, otherwise a native torznab indexer pointed at the
+// per-indexer endpoint of Jackett or Prowlarr. The original Jackett/Prowlarr
+// instances are only read, never modified.
 package main
 
 import (
@@ -14,8 +16,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/config"
 	"github.com/buzzqw/indexarr/internal/importers"
 	"github.com/buzzqw/indexarr/internal/store"
+	"github.com/buzzqw/indexarr/internal/vault"
 )
 
 func main() {
@@ -29,22 +33,29 @@ func run(args []string) int {
 	prowlarrURL := flags.String("prowlarr", "", "Prowlarr base URL, e.g. http://127.0.0.1:9696")
 	prowlarrKey := flags.String("prowlarr-key", "", "Prowlarr API key")
 	dbPath := flags.String("db", "", "target indexarr SQLite database for -apply")
-	apply := flags.Bool("apply", false, "write bridge sources into -db (default: print the plan)")
+	configPath := flags.String("config", "", "indexarr JSON configuration (optional, used for vault_key_path)")
+	apply := flags.Bool("apply", false, "write native indexers into -db (default: print the plan)")
 	jsonOut := flags.Bool("json", false, "print machine-readable output")
 	timeout := flags.Duration("timeout", 20*time.Second, "network timeout for Prowlarr")
 	flags.Usage = func() {
 		fmt.Fprint(os.Stderr, `usage: indexarr-import (-jackett DIR | -prowlarr URL -prowlarr-key KEY) [flags]
 
 Reads an existing Jackett or Prowlarr configuration without modifying it.
-With -apply and -db it creates Torznab bridge sources in a disposable
-indexarr database.
+With -apply and -db it creates native indexers in a disposable indexarr
+database: verified catalog definitions where available, otherwise native
+torznab indexers pointed at the manager's per-indexer endpoint.
+
+The vault key is resolved with the same rules as the server: INDEXARR_MASTER_KEY,
+INDEXARR_MASTER_KEY_FILE, -config's vault_key_path, <db>.key, then the user
+configuration directory. Secrets are sealed before they touch the database.
 
 flags:
   -jackett DIR        Jackett data directory or ServerConfig.json
   -prowlarr URL       Prowlarr base URL
   -prowlarr-key KEY   Prowlarr API key
   -db PATH            target indexarr SQLite database
-  -apply              write sources (otherwise only print the plan)
+  -config PATH        indexarr JSON configuration (optional)
+  -apply              write native indexers (otherwise only print the plan)
   -json               machine-readable output
   -timeout 20s        Prowlarr HTTP timeout
 `)
@@ -76,28 +87,41 @@ flags:
 		return 1
 	}
 
-	// Apply before redaction: the importer needs the real API key to create
-	// working bridge sources. The printed plan never contains it.
+	targets, err := importers.Targets(plan)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", err)
+		return 1
+	}
+
 	if *apply {
 		if *dbPath == "" {
 			fmt.Fprintln(os.Stderr, "indexarr-import: -apply requires -db")
 			return 2
 		}
-		ids, applyErr := applyPlan(ctx, plan, *dbPath, *prowlarrURL, *prowlarrKey)
+		secretVault, keySource, vaultErr := resolveVault(*dbPath, *configPath)
+		if vaultErr != nil && targetsNeedVault(targets) {
+			fmt.Fprintf(os.Stderr, "indexarr-import: vault key required to seal indexer secrets: %v\n", vaultErr)
+			return 1
+		}
+		if vaultErr != nil {
+			fmt.Fprintf(os.Stderr, "indexarr-import: warning: secrets vault unavailable (%v); nothing to seal\n", vaultErr)
+		}
+		result, applyErr := applyTargets(ctx, *dbPath, secretVault, targets)
 		if applyErr != nil {
 			fmt.Fprintf(os.Stderr, "indexarr-import: %v\n", applyErr)
 			return 1
 		}
-		fmt.Printf("applied %d sources to %s\n", len(ids), *dbPath)
+		printApplySummary(result, *dbPath, keySource.Kind)
 	}
 
-	printPlan(redactPlan(plan), *jsonOut)
+	printPlan(redactPlan(plan), targets, *jsonOut)
 	return 0
 }
 
 // redactPlan removes the secrets that are only needed to talk to the original
 // service. The plan summary never prints them.
 func redactPlan(plan importers.Plan) importers.Plan {
+	plan.ManagerAPIKey = ""
 	for i := range plan.Indexers {
 		plan.Indexers[i].APIKey = ""
 		plan.Indexers[i].Password = ""
@@ -117,7 +141,7 @@ func redactPlan(plan importers.Plan) importers.Plan {
 	return plan
 }
 
-func printPlan(plan importers.Plan, asJSON bool) {
+func printPlan(plan importers.Plan, targets []importers.NativeTarget, asJSON bool) {
 	if asJSON {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
@@ -129,10 +153,13 @@ func printPlan(plan importers.Plan, asJSON bool) {
 	fmt.Printf("source: %s\n", plan.Source)
 	fmt.Printf("indexers: %d, applications: %d, proxies: %d, warnings: %d\n",
 		len(plan.Indexers), len(plan.Applications), len(plan.Proxies), len(plan.Warnings))
-	for _, indexer := range plan.Indexers {
+	for i, indexer := range plan.Indexers {
 		fmt.Printf("  %-40s protocol=%-7s enabled=%t categories=%s hint=%s\n",
 			indexer.Name, indexer.Protocol, indexer.Enabled,
 			joinInts(indexer.Categories), indexer.DefinitionHint)
+		if i < len(targets) {
+			fmt.Printf("    target: %s\n", targetLabel(targets[i]))
+		}
 	}
 	for _, app := range plan.Applications {
 		fmt.Printf("  app %-30s kind=%s sync=%s\n", app.Name, app.Kind, app.SyncLevel)
@@ -142,70 +169,97 @@ func printPlan(plan importers.Plan, asJSON bool) {
 	}
 }
 
-func applyPlan(ctx context.Context, plan importers.Plan, dbPath, prowlarrBase, prowlarrKey string) ([]int64, error) {
+// targetLabel describes a native target without its secrets.
+func targetLabel(target importers.NativeTarget) string {
+	kind := "native"
+	if target.ViaManager != "" {
+		kind = "torznab bridge"
+	}
+	label := fmt.Sprintf("%-14s %s -> %s", kind, target.Name, target.DefinitionID)
+	if target.ViaManager != "" {
+		label += " (" + target.ViaManager + ")"
+	}
+	if !target.Enabled {
+		label += " [disabled]"
+	}
+	return label
+}
+
+func printApplySummary(result importers.ApplyResult, dbPath, keySource string) {
+	native, bridges := 0, 0
+	for _, item := range result.Applied {
+		if item.ViaManager == "" {
+			native++
+		} else {
+			bridges++
+		}
+	}
+	fmt.Printf("applied %d indexers to %s: %d created, %d updated (%d native, %d torznab bridge)\n",
+		len(result.Applied), dbPath, result.Created, result.Updated, native, bridges)
+	for _, item := range result.Applied {
+		action := "created"
+		if item.Updated {
+			action = "updated"
+		}
+		kind := "native"
+		if item.ViaManager != "" {
+			kind = "torznab bridge"
+		}
+		fmt.Printf("  %-14s %-40s %s (%s)\n", kind, item.Name, action, item.DefinitionID)
+	}
+	if keySource != "" {
+		fmt.Printf("vault key source: %s\n", keySource)
+	}
+}
+
+// resolveVault applies the documented key resolution order. The optional
+// indexarr.json is read only for vault_key_path; an unreadable or invalid file
+// is a hard error so the import never silently seals with another key.
+func resolveVault(dbPath, configPath string) (*vault.Vault, vault.KeySource, error) {
+	keyPath := ""
+	path := strings.TrimSpace(configPath)
+	if path == "" {
+		if info, err := os.Stat("indexarr.json"); err == nil && !info.IsDir() {
+			path = "indexarr.json"
+		}
+	}
+	if path != "" {
+		if _, err := os.Stat(path); err != nil {
+			return nil, vault.KeySource{}, fmt.Errorf("configuration %s: %w", path, err)
+		}
+		cfg, err := config.Load(path)
+		if err != nil {
+			return nil, vault.KeySource{}, err
+		}
+		keyPath = cfg.VaultKeyPath
+	}
+	return vault.Resolve(vault.ResolveOptions{
+		EnvKey:        os.Getenv("INDEXARR_MASTER_KEY"),
+		EnvKeyFile:    os.Getenv("INDEXARR_MASTER_KEY_FILE"),
+		ConfigPath:    keyPath,
+		DBPath:        dbPath,
+		UserConfigDir: os.UserConfigDir,
+	})
+}
+
+func targetsNeedVault(targets []importers.NativeTarget) bool {
+	for _, target := range targets {
+		if len(target.Secrets) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// applyTargets opens the disposable database and delegates to the shared
+// importers.ApplyTargets service, so the CLI and the web UI cannot drift.
+func applyTargets(ctx context.Context, dbPath string, secretVault *vault.Vault, targets []importers.NativeTarget) (importers.ApplyResult, error) {
 	st, err := store.Open(dbPath)
 	if err != nil {
-		return nil, err
+		return importers.ApplyResult{}, err
 	}
 	defer st.Close()
-	existing, err := st.ListSources(ctx)
-	if err != nil {
-		return nil, err
-	}
-	names := make(map[string]bool, len(existing))
-	for _, source := range existing {
-		names[strings.ToLower(source.Name)] = true
-	}
-	unique := func(name string) string {
-		base := strings.TrimSpace(name)
-		if base == "" {
-			base = "imported"
-		}
-		candidate := base
-		for i := 2; names[strings.ToLower(candidate)]; i++ {
-			candidate = base + " (" + strconv.Itoa(i) + ")"
-		}
-		names[strings.ToLower(candidate)] = true
-		return candidate
-	}
-
-	var ids []int64
-	if plan.Source == "prowlarr" {
-		// One aggregate Prowlarr source is the bridge that Prowlarr itself
-		// documents: indexarr asks Prowlarr for every configured indexer.
-		if strings.TrimSpace(prowlarrBase) == "" || strings.TrimSpace(prowlarrKey) == "" {
-			return nil, fmt.Errorf("prowlarr base URL and API key are required")
-		}
-		id, err := st.CreateSource(ctx, store.Source{
-			Name: unique("Prowlarr"), Kind: "torznab", Manager: "prowlarr",
-			URL: strings.TrimRight(prowlarrBase, "/"), APIKey: prowlarrKey, Enabled: true,
-		})
-		if err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
-		return ids, nil
-	}
-
-	for _, indexer := range plan.Indexers {
-		if !indexer.Enabled {
-			continue
-		}
-		id, err := st.CreateSource(ctx, store.Source{
-			Name:       unique(indexer.Name),
-			Kind:       "torznab",
-			Manager:    "jackett",
-			URL:        indexer.BaseURL,
-			APIKey:     indexer.APIKey,
-			Categories: joinInts(indexer.Categories),
-			Enabled:    true,
-		})
-		if err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	return ids, nil
+	return importers.ApplyTargets(ctx, st, secretVault, targets)
 }
 
 func joinInts(values []int) string {

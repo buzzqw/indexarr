@@ -50,6 +50,8 @@ func FromProwlarr(ctx context.Context, baseURL, apiKey string, client *http.Clie
 	if err != nil {
 		return Plan{}, fmt.Errorf("%s: %s", op, redactSecrets(err.Error(), apiKey))
 	}
+	plan.ManagerURL = root
+	plan.ManagerAPIKey = apiKey
 	httpClient := client
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 30 * time.Second}
@@ -208,6 +210,7 @@ func parseProwlarrIndexers(entries []json.RawMessage, warnings *[]string, secret
 		}
 
 		cardigannID := fieldValue(fields, "definitionId", "definitionName")
+		siteURL := fieldValue(fields, "baseUrl", "base_url", "url")
 		record := indexerRecord{
 			sourceID: id,
 			indexer: Indexer{
@@ -215,7 +218,9 @@ func parseProwlarrIndexers(entries []json.RawMessage, warnings *[]string, secret
 				Implementation: implementation,
 				Protocol:       normalizeProtocol(stringValue(object["protocol"]), implementation),
 				DefinitionHint: definitionHint(implementation, name, cardigannID),
-				BaseURL:        fieldValue(fields, "baseUrl", "base_url", "url"),
+				RemoteID:       id,
+				BaseURL:        siteURL,
+				SiteURL:        siteURL,
 				APIKey:         fieldValue(fields, "apiKey", "api_key"),
 				Username:       fieldValue(fields, "username", "user"),
 				Password:       fieldValue(fields, "password"),

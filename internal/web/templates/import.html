@@ -8,6 +8,62 @@
 </section>
 
 <section class="panel">
+  <div class="panel-head"><h2>{{T "import.publicURL"}}</h2></div>
+  <div class="field grow">
+    <label for="import_public_url">{{T "import.publicURLLabel"}}</label>
+    <input id="import_public_url" type="url" readonly value="{{.PublicURL}}">
+    <p class="help">
+      {{if .PublicURLDefault}}{{T "import.publicURLDefault"}} {{end}}{{T "import.publicURLHelp"}}
+    </p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/settings">{{T "import.openSettings"}}</a>
+  </div>
+</section>
+
+{{with .Summary}}
+<section class="panel">
+  <div class="panel-head"><h2>{{T "import.summary"}}</h2></div>
+  {{if .Error}}<p class="text-danger">{{.Error}}</p>{{end}}
+  <p class="prose">{{T "import.summaryCounts" .Created .Updated .Skipped .Errors}}</p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "common.name"}}</th>
+          <th scope="col">{{T "import.target"}}</th>
+          <th scope="col">{{T "import.summaryAction"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td>{{.Name}}</td>
+          <td>
+            {{if .Manager}}<span class="chip">{{T "import.viaManager" .Manager}}</span>{{else}}<span class="chip ok">{{T "import.native"}}</span>{{end}}
+            <code>{{.Target}}</code>
+          </td>
+          <td>
+            {{if eq .Action "created"}}{{T "import.action.created"}}{{else if eq .Action "updated"}}{{T "import.action.updated"}}{{else}}{{T "import.action.failed"}}{{end}}
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="3" class="empty">{{T "import.summaryEmpty"}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>{{T "import.nextStepHelp"}}</p>
+  </div>
+  <div class="actions">
+    <a class="btn primary" href="/applications/new">{{T "import.nextStep"}}</a>
+    <a class="btn" href="/indexers?tab=native">{{T "import.openIndexers"}}</a>
+  </div>
+</section>
+{{end}}
+
+<section class="panel">
   <div class="panel-head"><h2>{{T "import.preview"}}</h2></div>
   <div class="prose">
     <p>{{T "import.previewText1"}}</p>
@@ -53,47 +109,64 @@
   <div class="panel-head"><h2>{{T "import.planFrom" .Source}}</h2></div>
   <div class="prose">
     <p>{{T "import.planPreview"}}</p>
+    <p>{{T "import.selectHint"}}</p>
   </div>
 
-  <h2>{{T "import.indexers" (len .Indexers)}}</h2>
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">{{T "common.name"}}</th>
-          <th scope="col">{{T "import.implementation"}}</th>
-          <th scope="col">{{T "common.protocol"}}</th>
-          <th scope="col">{{T "import.definitionHint"}}</th>
-          <th scope="col">{{T "import.baseURL"}}</th>
-          <th scope="col">{{T "indexer.categories"}}</th>
-          <th scope="col">{{T "common.tags"}}</th>
-          <th scope="col">{{T "common.status"}}</th>
-          <th scope="col">{{T "common.secrets"}}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Indexers}}
-        <tr>
-          <td>{{.Name}}</td>
-          <td>{{.Implementation}}</td>
-          <td>{{.Protocol}}</td>
-          <td><code>{{.DefinitionHint}}</code></td>
-          <td><code>{{.BaseURL}}</code></td>
-          <td>{{if .Categories}}{{.Categories}}{{else}}<span class="muted">—</span>{{end}}</td>
-          <td>{{if .Tags}}{{.Tags}}{{else}}<span class="muted">—</span>{{end}}</td>
-          <td>{{if .Enabled}}<span class="chip ok">{{T "import.enabled"}}</span>{{else}}<span class="chip">{{T "import.disabled"}}</span>{{end}}</td>
-          <td>
-            {{if .HasKey}}<span class="chip ok">{{T "common.key"}}</span>{{end}}
-            {{if .HasCredentials}}<span class="chip warn">{{T "import.credentials"}}</span>{{end}}
-            {{if and (not .HasKey) (not .HasCredentials)}}<span class="muted">—</span>{{end}}
-          </td>
-        </tr>
-        {{else}}
-        <tr><td colspan="9" class="empty">{{T "import.noIndexers"}}</td></tr>
-        {{end}}
-      </tbody>
-    </table>
-  </div>
+  <form method="post" action="/import/apply">
+    <input type="hidden" name="csrf" value="{{$.CSRF}}">
+    <input type="hidden" name="token" value="{{.Token}}">
+
+    <h2>{{T "import.indexers" (len .Indexers)}}</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" class="check"><input type="checkbox" data-select-all data-select-target='input[name="site"]' checked aria-label="{{T "import.selectAll"}}"></th>
+            <th scope="col">{{T "common.name"}}</th>
+            <th scope="col">{{T "import.implementation"}}</th>
+            <th scope="col">{{T "common.protocol"}}</th>
+            <th scope="col">{{T "import.target"}}</th>
+            <th scope="col">{{T "import.definitionHint"}}</th>
+            <th scope="col">{{T "import.baseURL"}}</th>
+            <th scope="col">{{T "indexer.categories"}}</th>
+            <th scope="col">{{T "common.tags"}}</th>
+            <th scope="col">{{T "common.status"}}</th>
+            <th scope="col">{{T "common.secrets"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Indexers}}
+          <tr>
+            <td class="check"><input type="checkbox" name="site" value="{{.Index}}" checked aria-label="{{T "import.selectSite" .Name}}"></td>
+            <td>{{.Name}}</td>
+            <td>{{.Implementation}}</td>
+            <td>{{.Protocol}}</td>
+            <td>
+              {{if .Manager}}<span class="chip">{{T "import.viaManager" .Manager}}</span>{{else}}<span class="chip ok">{{T "import.native"}}</span>{{end}}
+              <code>{{.Target}}</code>
+            </td>
+            <td><code>{{.DefinitionHint}}</code></td>
+            <td><code>{{.BaseURL}}</code></td>
+            <td>{{if .Categories}}{{.Categories}}{{else}}<span class="muted">—</span>{{end}}</td>
+            <td>{{if .Tags}}{{.Tags}}{{else}}<span class="muted">—</span>{{end}}</td>
+            <td>{{if .Enabled}}<span class="chip ok">{{T "import.enabled"}}</span>{{else}}<span class="chip">{{T "import.disabled"}}</span>{{end}}</td>
+            <td>
+              {{if .HasKey}}<span class="chip ok">{{T "common.key"}}</span>{{end}}
+              {{if .HasCredentials}}<span class="chip warn">{{T "import.credentials"}}</span>{{end}}
+              {{if and (not .HasKey) (not .HasCredentials)}}<span class="muted">—</span>{{end}}
+            </td>
+          </tr>
+          {{else}}
+          <tr><td colspan="11" class="empty">{{T "import.noIndexers"}}</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "import.apply"}}</button>
+    </div>
+  </form>
 
   <h2>{{T "import.applications" (len .Applications)}}</h2>
   <div class="table-scroll">

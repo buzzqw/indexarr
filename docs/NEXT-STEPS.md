@@ -134,7 +134,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP5 | `download.resolve`: magnet/torrent dalla pagina di dettaglio | fatto | `4e429e5` |
 | WP6 | Famiglia RSS/Atom nativa | fatto | `4e429e5` |
 | WP7 | Prime definizioni native verificate (ExtTo, TorrentGalaxy, Corsaro, Knaben, TorrentLeech RSS) | fatto (4/5 verificati; TorrentLeech bozza) | `4e429e5` |
-| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | da fare | |
+| WP8 | Ripartenza pulita: nuovo DB, import in sola lettura da Jackett/Prowlarr | passi 1–4 fatti; passo 5 (scambio produzione) pronto, da eseguire | |
 | WP9 | Health check e transizioni di stato del catalogo | da fare | |
 | WP10 | Refresh periodico dei seeders | da fare | |
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | da fare | |
@@ -709,6 +709,98 @@ produzione: stessa API key Torznab, nessun errore nuovo in Sonarr/Radarr,
 
 **Non fare.** Non scrivere su Jackett/Prowlarr, non copiare i loro file
 Cardigann, non cancellare `data/` (si sposta).
+
+### WP8 passo 5 — scambio della produzione (procedura per il coordinatore)
+
+Questa procedura **non è stata eseguita** dall'agente: tocca `:8484`, `data/`
+e il servizio systemd. Eseguirla solo con il coordinatore presente. Il
+database attuale è usa e getta, ma `data.old-<data>/` si conserva per una
+settimana come rete di sicurezza.
+
+Prerequisiti: il binario nuovo è già compilato e installato come
+`bin/indexarr` (fuori da questa procedura); Jackett/Prowlarr sono raggiungibili
+in sola lettura; per Jackett si usa una **copia** della directory dati.
+
+```bash
+cd /home/andres/indexarr
+
+# 0. Fermare il servizio e verificare che sia fermo.
+sudo systemctl stop indexarr
+systemctl is-active indexarr    # deve stampare "inactive" o "failed"
+
+# 1. Data dello scambio, chiave Torznab attuale e copia di sicurezza, a
+#    servizio fermo. La directory vera viene comunque spostata al passo 2.
+STAMP=$(date +%Y%m%d-%H%M%S)
+OLD_KEY=$(sqlite3 -readonly data/indexarr.db \
+  "SELECT value FROM settings WHERE key='api_key';")
+test -n "$OLD_KEY" && echo "chiave Torznab letta: ${#OLD_KEY} caratteri"
+cp -a data "data.copy-$STAMP"
+
+# 2. Spostare (non cancellare) la directory dati e crearne una vuota.
+mv data "data.old-$STAMP"
+install -d -m 0700 data
+```
+
+```bash
+# 3. Avviare la nuova istanza: crea un DB nuovo e una chiave Torznab nuova.
+sudo systemctl start indexarr
+curl -fsS http://127.0.0.1:8484/healthz
+
+# 4. Rimettere la STESSA chiave Torznab nel nuovo DB, così Sonarr/Radarr non
+#    vanno riconfigurati. Il servizio va fermato per l'UPDATE.
+sudo systemctl stop indexarr
+sqlite3 data/indexarr.db \
+  "UPDATE settings SET value='$OLD_KEY' WHERE key='api_key';"
+sudo systemctl start indexarr
+
+# Controllo: il nuovo DB risponde con la vecchia chiave.
+curl -fsS "http://127.0.0.1:8484/api?t=caps&apikey=$OLD_KEY" | head -n 5
+```
+
+Se l'indirizzo pubblico non è ancora configurato, aprirlo in
+**Impostazioni → Generale** e salvarlo; `/import` mostra l'indirizzo effettivo
+e ricorda di verificare che le app lo raggiungano.
+
+```bash
+# 5. Import dalla UI: http://<host>:8484/import
+#    - Prowlarr: URL dell'istanza + API key (sola lettura).
+#    - Jackett: percorso della COPIA della directory dati, mai quella viva.
+#    Anteprima -> selezionare i siti -> Importa selezionati -> riepilogo.
+```
+
+Alternativa da riga di comando, con il servizio fermo (stesso servizio di
+apply della UI, nessuna riga in `sources`):
+
+```bash
+sudo systemctl stop indexarr
+go build -o /tmp/indexarr-import ./cmd/indexarr-import
+/tmp/indexarr-import -prowlarr "http://127.0.0.1:9696" \
+  -prowlarr-key "$PROWLARR_API_KEY" -db data/indexarr.db -apply
+# oppure: /tmp/indexarr-import -jackett /percorso/della/copia -db data/indexarr.db -apply
+sudo systemctl start indexarr
+```
+
+```bash
+# 6. Verifica finale.
+curl -fsS http://127.0.0.1:8484/healthz
+sqlite3 -readonly data/indexarr.db \
+  "SELECT count(*) FROM indexers; SELECT count(*) FROM sources;"
+# Atteso: indexer importati; sources = 0.
+```
+
+**Rollback** (la vecchia istanza torna esattamente com'era):
+
+```bash
+sudo systemctl stop indexarr
+mv data "data.failed-$STAMP"
+mv "data.old-$STAMP" data
+sudo systemctl start indexarr
+curl -fsS http://127.0.0.1:8484/healthz
+```
+
+Non cancellare `data.old-*` e `data.failed-*` finché la nuova istanza non ha
+girato una settimana. Se è stato sostituito anche `bin/indexarr`, ripristinare
+il binario precedente prima del rollback: questa procedura non lo modifica.
 
 ---
 

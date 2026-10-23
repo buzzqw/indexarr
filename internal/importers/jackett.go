@@ -65,6 +65,8 @@ func FromJackettConfig(ctx context.Context, path string) (Plan, error) {
 	}
 	host := jackettHost(lookupString(config, "LocalBindAddress", "localBindAddress", "LocalBind"))
 	base := "http://" + net.JoinHostPort(host, strconv.Itoa(port))
+	plan.ManagerURL = base
+	plan.ManagerAPIKey = apiKey
 
 	if proxy, warning := jackettProxy(config); warning != "" {
 		plan.Warnings = append(plan.Warnings, warning)
@@ -269,7 +271,9 @@ func readJackettIndexer(path, base, apiKey string) (Indexer, string, string) {
 		Implementation: "Cardigann",
 		Protocol:       protocol,
 		DefinitionHint: slugify(id),
+		RemoteID:       id,
 		BaseURL:        base + "/api/v2.0/indexers/" + url.PathEscape(id) + "/results/torznab/",
+		SiteURL:        siteURL,
 		APIKey:         apiKey,
 		Categories:     categories,
 		Tags:           parseTags(lookupValue(object, "tags", "Tags")),

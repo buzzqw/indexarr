@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/ingest"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/store"
+	"github.com/buzzqw/indexarr/internal/vault"
 )
 
 var csrfPattern = regexp.MustCompile(`name="csrf" value="([0-9a-f]{64})"`)
@@ -49,7 +51,11 @@ func newTestEnv(t *testing.T) *testEnv {
 	logger := slog.New(logbuffer.NewHandler(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: level}), logs))
 	ingestEngine := ingest.New(st, logger)
 	polite := engine.NewPoliteness(0, 1, 5, time.Minute, engine.RealClock{})
-	server := New(Config{Store: st, Engine: ingestEngine, Logger: logger, Logs: logs, Level: level, Version: "test", Started: time.Now(), Politeness: polite})
+	secretVault, err := vault.New(bytes.Repeat([]byte{3}, 32))
+	if err != nil {
+		t.Fatalf("vault.New: %v", err)
+	}
+	server := New(Config{Store: st, Engine: ingestEngine, Logger: logger, Logs: logs, Level: level, Version: "test", Started: time.Now(), Politeness: polite, Vault: secretVault})
 	return &testEnv{store: st, server: server, handler: server.Handler(), apiKey: key, logs: logs, level: level, polite: polite}
 }
 

@@ -247,7 +247,9 @@ if ("serviceWorker" in navigator) {
       return;
     }
     const checked = event.target.checked;
-    document.querySelectorAll('input[name="ids"]').forEach((box) => {
+    const selector = event.target.getAttribute("data-select-target") || 'input[name="ids"]';
+    const group = event.target.closest("form") || document;
+    group.querySelectorAll(selector).forEach((box) => {
       box.checked = checked;
     });
   });

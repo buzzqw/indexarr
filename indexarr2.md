@@ -110,7 +110,7 @@ attive; resta in lista finché esistono utenti.
 | Motore: login di ogni tipo (form, CSRF, cookie, token, API key, Basic), flussi a più passi, paginazione, HTML/JSON/XML, categorie, errori del sito, download a più passaggi, mirror | Suite di test del motore con fixture per ogni funzione | fatto (WP5: `download.resolve`) |
 | Connettori di famiglia per i software di tracker più diffusi | Ogni famiglia testata su fixture di almeno due siti | parziale: 8 famiglie (RSS inclusa), verifiche reali su 3 siti |
 | Catalogo nativo che copre l'inventario prioritario (§7.3) | 100% dell'inventario prioritario `verificato` | parziale: 4 verificati (ExtTo, TorrentGalaxy, Corsaro, Knaben), TorrentLeech `bozza` |
-| Ponte verso Jackett/Prowlarr per i siti non ancora riscritti (§7.4) | Ogni indexer importato funziona, nativo o tramite ponte | fatto (37/37 in produzione) |
+| Ponte verso Jackett/Prowlarr per i siti non ancora riscritti (§7.4) | Ogni indexer importato funziona, nativo o tramite ponte | fatto (import in indexer nativi; scambio in produzione al passo 5 di WP8) |
 | Connettore Newznab generico con preset per gli indexer Usenet noti (come i preset di Prowlarr) | Caps importate dall'indexer; test su fixture Newznab | parziale: generico sì, preset no |
 
 La parità del catalogo si misura così: **100% dei siti dell'utente
