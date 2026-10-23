@@ -669,6 +669,7 @@ go tool pprof -top http://127.0.0.1:6060/debug/pprof/heap
 Struttura dei pacchetti e scelte di progetto: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Suite di test e smoke test: [docs/QA.md](docs/QA.md).
 Audit operativo del 23/10/2026: [docs/AUDIT-2026-10-23.md](docs/AUDIT-2026-10-23.md).
+Evoluzione indexarr 2: [indexarr2.md](indexarr2.md).
 
 ## Prossimi passi
 
