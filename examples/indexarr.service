@@ -1,0 +1,26 @@
+[Unit]
+Description=indexarr Torznab indexer
+Documentation=https://github.com/buzzqw/indexarr
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=indexarr
+Group=indexarr
+WorkingDirectory=/var/lib/indexarr
+StateDirectory=indexarr
+# The config file is created on first start in /var/lib/indexarr; the database
+# lives next to it because db_path is relative.
+ExecStart=/usr/local/bin/indexarr -config /var/lib/indexarr/indexarr.json
+Restart=always
+RestartSec=5s
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/indexarr
+
+[Install]
+WantedBy=multi-user.target

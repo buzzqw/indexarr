@@ -1,0 +1,67 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestLoadCreatesDefault(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "indexarr.json")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Listen != ":8484" || cfg.LogLevel != "info" {
+		t.Errorf("cfg = %#v", cfg)
+	}
+	wantDB := filepath.Join(filepath.Dir(path), "indexarr.db")
+	if cfg.DBPath != wantDB {
+		t.Errorf("db = %q, want %q", cfg.DBPath, wantDB)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("config file not created: %v", err)
+	}
+}
+
+func TestLoadCustom(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "custom.json")
+	if err := os.WriteFile(path, []byte(`{"listen":":9000","db_path":"data/cache.db","log_level":"debug"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Listen != ":9000" || cfg.LogLevel != "debug" {
+		t.Errorf("cfg = %#v", cfg)
+	}
+	if cfg.DBPath != filepath.Join(dir, "data/cache.db") {
+		t.Errorf("db = %q", cfg.DBPath)
+	}
+}
+
+func TestLoadRejectsMalformedJSON(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bad.json")
+	if err := os.WriteFile(path, []byte(`{`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected an error")
+	}
+}
+
+func TestLoadNormalisesUnknownLevel(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "x.json")
+	if err := os.WriteFile(path, []byte(`{"log_level":"verbose"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.LogLevel != "info" {
+		t.Errorf("level = %q", cfg.LogLevel)
+	}
+}

@@ -1,0 +1,69 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Runs</h1>
+    <p class="muted">Every scheduled or manual ingestion, with its outcome.</p>
+  </div>
+  <form method="post" action="/runs/clear" data-confirm="Delete runs older than 30 days?">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button class="btn" type="submit">Clear older than 30 days</button>
+  </form>
+</section>
+
+<form class="filters" method="get" action="/runs">
+  <div class="field">
+    <label for="source">Source</label>
+    <select id="source" name="source">
+      <option value="0">All sources</option>
+      {{range .Sources}}<option value="{{.ID}}"{{if eq $.SourceID .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </div>
+  <div class="field checkbox">
+    <input id="errors" name="errors" type="checkbox" value="1"{{if .OnlyErrors}} checked{{end}}>
+    <label for="errors">Only failures</label>
+  </div>
+  <div class="field actions-field">
+    <button class="btn primary" type="submit">Filter</button>
+    <a class="btn" href="/runs">Reset</a>
+  </div>
+</form>
+
+<section class="panel">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Started</th>
+          <th scope="col">Source</th>
+          <th scope="col">Result</th>
+          <th scope="col">Seen</th>
+          <th scope="col">New</th>
+          <th scope="col">Updated</th>
+          <th scope="col">Blocked</th>
+          <th scope="col">Torrents</th>
+          <th scope="col">Duration</th>
+          <th scope="col">Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Runs}}
+        <tr>
+          <td class="nowrap"><a href="/runs/{{.ID}}">{{date .StartedAt}}</a><div class="sub">{{ago .StartedAt}}</div></td>
+          <td>{{.SourceName}}</td>
+          <td>{{if eq .Status "error"}}<span class="chip danger">error</span>{{else if eq .Status "running"}}<span class="chip warn">running</span>{{else}}<span class="chip ok">ok</span>{{end}}</td>
+          <td>{{.ItemsSeen}}</td>
+          <td>{{.ItemsNew}}</td>
+          <td>{{.ItemsUpdated}}</td>
+          <td>{{.ItemsBlocked}}</td>
+          <td>{{.TorrentsFetched}}</td>
+          <td class="nowrap">{{.DurationMS}} ms</td>
+          <td class="error-cell">{{if .Error}}<span title="{{.Error}}">{{truncate .Error 90}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="10" class="empty">No runs match this filter.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}

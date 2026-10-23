@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{.Title}} · indexarr</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="stylesheet" href="/static/app.css?v={{.AssetVersion}}">
+  <script src="/static/app.js?v={{.AssetVersion}}" defer></script>
+  {{if .AutoRefresh}}<meta http-equiv="refresh" content="{{.AutoRefresh}}">{{end}}
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="brand" href="/"><span class="brand-dot" aria-hidden="true"></span>indexarr</a>
+      <nav aria-label="Main">
+        <a href="/"{{if eq .Section "dashboard"}} class="active" aria-current="page"{{end}}>Dashboard</a>
+        <a href="/releases"{{if eq .Section "releases"}} class="active" aria-current="page"{{end}}>Releases</a>
+        <a href="/sources"{{if eq .Section "sources"}} class="active" aria-current="page"{{end}}>Sources</a>
+        <a href="/runs"{{if eq .Section "runs"}} class="active" aria-current="page"{{end}}>Runs</a>
+        <a href="/rules"{{if eq .Section "rules"}} class="active" aria-current="page"{{end}}>Rules</a>
+        <a href="/logs"{{if eq .Section "logs"}} class="active" aria-current="page"{{end}}>Logs</a>
+        <a href="/settings"{{if eq .Section "settings"}} class="active" aria-current="page"{{end}}>Settings</a>
+        <a href="/maintenance"{{if eq .Section "maintenance"}} class="active" aria-current="page"{{end}}>Maintenance</a>
+      </nav>
+      <span class="version" title="indexarr version">v{{.Version}}</span>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    {{if .Message}}<p class="flash ok" role="status">{{.Message}}</p>{{end}}
+    {{if .Error}}<p class="flash err" role="alert">{{.Error}}</p>{{end}}
+    {{template "content" .}}
+  </main>
+
+  <footer class="wrap footer">
+    <span>indexarr {{.Version}} · up {{.Uptime}}</span>
+    <span>Torznab endpoint: <code>{{.TorznabURL}}</code></span>
+  </footer>
+</body>
+</html>

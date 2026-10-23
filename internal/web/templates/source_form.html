@@ -1,0 +1,138 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{if .IsNew}}New source{{else}}Edit source{{end}}</h1>
+    <p class="muted">{{if .IsNew}}Add a Torznab endpoint or an RSS feed.{{else}}{{.Source.Name}}{{end}}</p>
+  </div>
+  <a class="btn" href="/sources">← Back to sources</a>
+</section>
+
+<form class="panel form" method="post" action="{{if .IsNew}}/sources{{else}}/sources/{{.Source.ID}}{{end}}" data-source-form>
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="preset">Preset</label>
+      <select id="preset" data-preset>
+        <option value="">Custom</option>
+        <option value="prowlarr" data-kind="torznab" data-manager="prowlarr" data-placeholder="http://192.168.1.10:9696">Prowlarr</option>
+        <option value="jackett" data-kind="torznab" data-manager="jackett" data-placeholder="http://192.168.1.10:9117">Jackett</option>
+        <option value="mircrew" data-kind="torznab" data-manager="mircrew" data-placeholder="http://192.168.1.10:9118/api">MirCrew</option>
+        <option value="torznab" data-kind="torznab" data-manager="auto" data-placeholder="http://indexer:8080/api">Direct Torznab</option>
+        <option value="rss" data-kind="rss" data-manager="auto" data-placeholder="https://example.org/feed.xml">RSS / Atom</option>
+        <option value="extto" data-kind="rss" data-manager="auto" data-placeholder="https://extto.org/browse/?filter=u=USER">ExtTo listing</option>
+        <option value="tgx" data-kind="rss" data-manager="auto" data-placeholder="https://torrentgalaxy.one/get-posts/user:USER/">TorrentGalaxy listing</option>
+        <option value="corsaro" data-kind="rss" data-manager="auto" data-placeholder="https://corsaro.example/user/USER">Corsaro listing</option>
+      </select>
+      <p class="help">Fills type and manager; you still paste the URL.</p>
+    </div>
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" required maxlength="100" value="{{.Source.Name}}" placeholder="Prowlarr, Jackett, My feed">
+      <p class="help">A label for this source. It must be unique.</p>
+    </div>
+
+    <div class="field">
+      <label for="kind">Type</label>
+      <select id="kind" name="kind" data-kind>
+        <option value="torznab"{{if eq .Source.Kind "torznab"}} selected{{end}}>Torznab / indexer</option>
+        <option value="rss"{{if eq .Source.Kind "rss"}} selected{{end}}>RSS / Atom feed</option>
+      </select>
+      <p class="help">Torznab is queried with a search; an RSS feed is read as published.</p>
+    </div>
+    <div class="field">
+      <label for="default_category">Default category</label>
+      <input id="default_category" name="default_category" type="text" inputmode="numeric" value="{{.Source.DefaultCategory}}" list="default_category_options" placeholder="e.g. 5040">
+      <datalist id="default_category_options">
+        <option value="5000">TV</option>
+        <option value="5040">TV / HD</option>
+        <option value="2000">Movies</option>
+        <option value="2040">Movies / HD</option>
+        <option value="3000">Audio</option>
+        <option value="7000">Books</option>
+      </datalist>
+      <p class="help">Used when an RSS/HTML item has no category of its own. Optional.</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="url">URL</label>
+      <input id="url" name="url" type="url" required value="{{.Source.URL}}" placeholder="http://192.168.1.10:9696">
+      <p class="help" data-url-help>Base URL for Jackett/Prowlarr, or the full Torznab/RSS endpoint. ExtTo, TorrentGalaxy and Corsaro pages are recognised by host.</p>
+      <div class="actions">
+        <button class="btn small" type="button" data-detect-kind>Detect type from URL</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="api_key">API key</label>
+      <input id="api_key" name="api_key" type="text" value="{{.Source.APIKey}}" autocomplete="off" spellcheck="false" placeholder="optional for RSS">
+      <p class="help">Sent as <code>apikey</code> and as the <code>X-Api-Key</code> header. It is also appended to .torrent downloads when missing.</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="username">HTTP username</label>
+      <input id="username" name="username" type="text" value="{{.Source.Username}}" autocomplete="off" spellcheck="false">
+      <p class="help">Optional HTTP Basic authentication, for private indexers and feeds. Leave empty for none.</p>
+    </div>
+    <div class="field">
+      <label for="password">HTTP password</label>
+      <input id="password" name="password" type="password" value="{{.Source.Password}}" autocomplete="new-password">
+      <p class="help">Stored in the local SQLite database.</p>
+    </div>
+  </div>
+
+  <div class="form-grid" data-torznab-only>
+    <div class="field">
+      <label for="manager">Manager</label>
+      <select id="manager" name="manager">
+        <option value="auto"{{if eq .Source.Manager "auto"}} selected{{end}}>Auto-detect</option>
+        <option value="jackett"{{if eq .Source.Manager "jackett"}} selected{{end}}>Jackett</option>
+        <option value="prowlarr"{{if eq .Source.Manager "prowlarr"}} selected{{end}}>Prowlarr</option>
+        <option value="mircrew"{{if eq .Source.Manager "mircrew"}} selected{{end}}>MirCrew (direct Torznab)</option>
+        <option value="torznab"{{if eq .Source.Manager "torznab"}} selected{{end}}>Direct Torznab</option>
+      </select>
+      <p class="help">Auto uses port 9696/9117 or the host name to choose the aggregate path.</p>
+    </div>
+    <div class="field">
+      <label for="categories">Categories</label>
+      <input id="categories" name="categories" type="text" value="{{.Source.Categories}}" placeholder="5000, 2000">
+      <p class="help">Comma-separated Torznab category ids. Empty means all.</p>
+    </div>
+    <div class="field grow">
+      <label for="query">Search terms</label>
+      <input id="query" name="query" type="text" value="{{.Source.Query}}" placeholder="optional, e.g. Show S01E01">
+      <p class="help">Optional for Jackett/direct Torznab. Leave empty for the latest releases; Prowlarr then queries every indexer.</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="interval_seconds">Interval (seconds)</label>
+      <input id="interval_seconds" name="interval_seconds" type="number" min="0" max="2592000" step="60" value="{{.Source.IntervalSeconds}}">
+      <p class="help">0 uses the default ({{.DefaultInterval}} seconds). Minimum 60.</p>
+    </div>
+    <div class="field checkbox">
+      <input id="enabled" name="enabled" type="checkbox"{{if .Source.Enabled}} checked{{end}}>
+      <label for="enabled">Enabled</label>
+      <p class="help">Disabled sources keep their history but are never scheduled.</p>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn primary" type="submit">{{if .IsNew}}Create source{{else}}Save source{{end}}</button>
+    <button class="btn" type="submit" name="then" value="test">{{if .IsNew}}Create and test{{else}}Save and test{{end}}</button>
+    <button class="btn" type="submit" name="then" value="run">{{if .IsNew}}Create and run{{else}}Save and run{{end}}</button>
+    <a class="btn" href="/sources">Cancel</a>
+  </div>
+</form>
+
+{{if not .IsNew}}
+<form method="post" action="/sources/{{.Source.ID}}/delete" data-confirm="Delete this source? Its releases remain in the cache.">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <button class="btn danger" type="submit">Delete source</button>
+</form>
+{{end}}
+{{end}}

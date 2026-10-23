@@ -1,0 +1,85 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{.Release.Title}}</h1>
+    <p class="muted">{{.Release.SourceName}}{{if .Release.Category}} · {{catName .Release.Category}}{{end}} · {{date .Release.PublishedAt}}</p>
+  </div>
+  <a class="btn" href="/releases">← Back to releases</a>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Metadata</h2></div>
+  <dl class="detail">
+    <dt>Size</dt><dd>{{bytes .Release.Size}}</dd>
+    <dt>Category</dt><dd>{{catName .Release.Category}} <span class="muted">({{.Release.Category}})</span></dd>
+    <dt>Seeders / leechers</dt><dd>{{num .Release.Seeders}} / {{num .Release.Leechers}}</dd>
+    <dt>Infohash</dt><dd>{{if .Release.InfoHash}}<code>{{.Release.InfoHash}}</code>{{else}}<span class="muted">unknown</span>{{end}}</dd>
+    <dt>External ids</dt><dd>{{if .Release.IMDbID}}IMDb {{.Release.IMDbID}} {{end}}{{if .Release.TMDbID}}TMDB {{.Release.TMDbID}} {{end}}{{if .Release.TVDbID}}TVDB {{.Release.TVDbID}}{{end}}{{if not (or .Release.IMDbID .Release.TMDbID .Release.TVDbID)}}<span class="muted">none</span>{{end}}</dd>
+    <dt>First seen</dt><dd>{{date .Release.FirstSeenAt}} <span class="muted">({{ago .Release.FirstSeenAt}})</span></dd>
+    <dt>Last seen</dt><dd>{{date .Release.LastSeenAt}} <span class="muted">({{ago .Release.LastSeenAt}})</span></dd>
+    <dt>Times seen</dt><dd>{{.Release.TimesSeen}}</dd>
+    <dt>GUID</dt><dd>{{if .Release.GUID}}<code>{{.Release.GUID}}</code>{{else}}<span class="muted">none</span>{{end}}</dd>
+    <dt>Torrent file</dt>
+    <dd>
+      {{if .Release.Torrent}}
+        {{bytes .Release.TorrentSize}} stored · <a class="link" href="{{.TorrentURL}}">download .torrent</a>
+      {{else}}
+        <span class="muted">not stored (magnet only)</span>
+      {{end}}
+    </dd>
+  </dl>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Magnet</h2></div>
+  {{if .Release.Magnet}}
+    <div class="field">
+      <label for="magnet">Magnet link</label>
+      <textarea id="magnet" rows="3" readonly>{{.Release.Magnet}}</textarea>
+    </div>
+    <div class="actions">
+      <button class="btn" type="button" data-copy="{{.Release.Magnet}}">Copy magnet</button>
+      <a class="btn" href="{{.Release.Magnet}}">Open in torrent client</a>
+    </div>
+  {{else}}
+    <p class="muted">This release has no magnet link; use the stored .torrent file.</p>
+  {{end}}
+</section>
+
+{{if .DownloadClient}}
+<section class="panel">
+  <div class="panel-head"><h2>Download client</h2></div>
+  <p class="help">Send this release to {{.DownloadClient}} using the stored .torrent, or the magnet when no file is stored.</p>
+  <form method="post" action="/releases/{{.Release.ID}}/send">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button class="btn primary" type="submit">Send to {{.DownloadClient}}</button>
+  </form>
+</section>
+{{end}}
+
+<section class="panel">
+  <div class="panel-head"><h2>Curation</h2></div>
+  <div class="actions">
+    <form method="post" action="/releases/{{.Release.ID}}/favorite">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">{{if .Release.Favorite}}Remove favorite{{else}}Favorite{{end}}</button>
+    </form>
+    <form method="post" action="/releases/{{.Release.ID}}/hidden">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">{{if .Release.Hidden}}Show release{{else}}Hide release{{end}}</button>
+    </form>
+    <form method="post" action="/releases/{{.Release.ID}}/block"
+      data-confirm="Block this release? It will be hidden and every future run will skip it.">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn danger" type="submit">Block release</button>
+    </form>
+    {{if .Release.Favorite}}<span class="chip ok">★ favorite</span>{{end}}
+    {{if .Release.Hidden}}<span class="chip warn">hidden</span>{{end}}
+  </div>
+</section>
+
+<form method="post" action="/releases/{{.Release.ID}}/delete" data-confirm="Delete this release from the cache?">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <button class="btn danger" type="submit">Delete release</button>
+</form>
+{{end}}

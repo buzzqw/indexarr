@@ -1,0 +1,288 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Settings</h1>
+    <p class="muted">Runtime options are stored in the SQLite database and applied without editing files.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Torznab API</h2></div>
+  <div class="field">
+    <label for="api_key_view">API key</label>
+    <div class="copy-row">
+      <input id="api_key_view" type="text" readonly value="{{.Settings.APIKey}}" spellcheck="false">
+      <button class="btn" type="button" data-copy="{{.Settings.APIKey}}">Copy key</button>
+    </div>
+    <p class="help">Clients send this key as the <code>apikey</code> parameter. Rotating it breaks every configured client until they are updated.</p>
+  </div>
+  <div class="field">
+    <label for="torznab_url">Endpoint to give to Sonarr, Radarr, Lidarr…</label>
+    <div class="copy-row">
+      <input id="torznab_url" type="text" readonly value="{{.TorznabFull}}" spellcheck="false">
+      <button class="btn" type="button" data-copy="{{.TorznabFull}}">Copy URL</button>
+    </div>
+    <p class="help">Categories: <code>5000</code> TV, <code>2000</code> Movies, <code>3000</code> Audio, <code>7000</code> Books. Caps: <code>{{.TorznabFull}}&amp;t=caps</code>.</p>
+  </div>
+  <form method="post" action="/settings/apikey" data-confirm="Generate a new API key? Every Torznab client will stop working until updated.">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button class="btn danger" type="submit">Regenerate primary API key</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Additional API keys</h2></div>
+  <p class="help">Use one key per client (Sonarr, Radarr, Lidarr, a script). The primary key above cannot be revoked here; use the regenerate button.</p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th scope="col">Name</th><th scope="col">Key</th><th scope="col">Created</th><th scope="col">Last used</th><th scope="col">Requests</th><th scope="col" class="right">Actions</th></tr>
+      </thead>
+      <tbody>
+        {{range .AdditionalKeys}}
+        <tr>
+          <td>{{.Name}}</td>
+          <td><code>{{.Key}}</code></td>
+          <td class="nowrap">{{date .CreatedAt}}</td>
+          <td class="nowrap">{{if .LastUsedAt}}{{date .LastUsedAt}}{{else}}<span class="muted">never</span>{{end}}</td>
+          <td>{{.Requests}}</td>
+          <td class="right">
+            <form method="post" action="/settings/apikeys/{{.ID}}/delete" data-confirm="Revoke this API key? Its client will stop working.">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small danger" type="submit">Revoke</button>
+            </form>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="6" class="empty">No additional keys. Add one for each client that should have its own revocable key.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  <form class="inline-form" method="post" action="/settings/apikeys">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="field grow">
+      <label for="key_name">New key name</label>
+      <input id="key_name" name="name" type="text" maxlength="80" required placeholder="Sonarr">
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">Add key</button>
+    </div>
+  </form>
+</section>
+
+<form class="panel form" method="post" action="/settings">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <div class="panel-head"><h2>Ingestion</h2></div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="default_interval_seconds">Default interval (seconds)</label>
+      <input id="default_interval_seconds" name="default_interval_seconds" type="number" min="60" max="2592000" step="60" required value="{{.Settings.DefaultIntervalSeconds}}">
+      <p class="help">Used by sources that do not set their own. 3600 = hourly.</p>
+    </div>
+    <div class="field">
+      <label for="fetch_timeout_seconds">HTTP timeout (seconds)</label>
+      <input id="fetch_timeout_seconds" name="fetch_timeout_seconds" type="number" min="5" max="300" required value="{{.Settings.FetchTimeoutSeconds}}">
+      <p class="help">Per request towards indexers and feeds.</p>
+    </div>
+    <div class="field">
+      <label for="workers">Parallel source workers</label>
+      <input id="workers" name="workers" type="number" min="1" max="16" required value="{{.Settings.Workers}}">
+      <p class="help">Takes effect after a restart.</p>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="max_torrents_per_run">Torrent downloads per run</label>
+      <input id="max_torrents_per_run" name="max_torrents_per_run" type="number" min="0" max="200" required value="{{.Settings.MaxTorrentsPerRun}}">
+      <p class="help">Only items that expose a .torrent link but no magnet need a download.</p>
+    </div>
+    <div class="field">
+      <label for="max_torrent_mb">Max .torrent size (MiB)</label>
+      <input id="max_torrent_mb" name="max_torrent_mb" type="number" min="1" max="64" required value="{{.MaxTorrentMB}}">
+      <p class="help">Larger downloads are rejected instead of stored.</p>
+    </div>
+    <div class="field checkbox">
+      <input id="fetch_torrents" name="fetch_torrents" type="checkbox"{{if .Settings.FetchTorrents}} checked{{end}}>
+      <label for="fetch_torrents">Download .torrent files</label>
+      <p class="help">When off, only magnets and metadata are stored.</p>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="user_agent">User agent</label>
+    <input id="user_agent" name="user_agent" type="text" value="{{.Settings.UserAgent}}">
+  </div>
+
+  <div class="panel-head"><h2>Cloudflare / FlareSolverr</h2></div>
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="flaresolverr_url">FlareSolverr URL</label>
+      <input id="flaresolverr_url" name="flaresolverr_url" type="url" value="{{.Settings.FlareSolverrURL}}" placeholder="http://127.0.0.1:8191">
+      <p class="help">
+        When an RSS feed or a direct indexer answers with a Cloudflare challenge, indexarr retries
+        the same request through FlareSolverr. Leave empty to disable. Jackett and Prowlarr usually
+        handle Cloudflare themselves, and a LAN address is never routed through FlareSolverr.
+        The indexer URL, including its API key, is sent to FlareSolverr.
+      </p>
+      <div class="actions">
+        <button class="btn" type="submit" formaction="/settings/flaresolverr/test" formmethod="post">Test FlareSolverr</button>
+      </div>
+      <p class="help">The test solves <code>https://example.com/</code> through the URL above; it does not save the settings and can take up to a minute.</p>
+    </div>
+  </div>
+
+  <div class="panel-head"><h2>Notifications</h2></div>
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="notify_webhook_url">Webhook URL</label>
+      <input id="notify_webhook_url" name="notify_webhook_url" type="url" value="{{.Settings.NotifyWebhookURL}}" placeholder="https://example.org/indexarr-hook">
+      <p class="help">Receives a JSON POST for new releases and failures. Leave empty to disable.</p>
+    </div>
+    <div class="field">
+      <label for="notify_telegram_token">Telegram bot token</label>
+      <input id="notify_telegram_token" name="notify_telegram_token" type="password" value="{{.Settings.NotifyTelegramToken}}" autocomplete="new-password">
+      <p class="help">Optional; it needs the chat ID too.</p>
+    </div>
+    <div class="field">
+      <label for="notify_telegram_chat_id">Telegram chat ID</label>
+      <input id="notify_telegram_chat_id" name="notify_telegram_chat_id" type="text" value="{{.Settings.NotifyTelegramChatID}}">
+      <p class="help">Set both Telegram fields, or neither.</p>
+    </div>
+  </div>
+  <div class="form-grid">
+    <div class="field checkbox">
+      <input id="notify_new_releases" name="notify_new_releases" type="checkbox"{{if .Settings.NotifyNewReleases}} checked{{end}}>
+      <label for="notify_new_releases">Notify new releases</label>
+    </div>
+    <div class="field checkbox">
+      <input id="notify_failures" name="notify_failures" type="checkbox"{{if .Settings.NotifyFailures}} checked{{end}}>
+      <label for="notify_failures">Notify failures</label>
+    </div>
+    <div class="field">
+      <label for="auto_disable_after">Auto-disable after N consecutive failures</label>
+      <input id="auto_disable_after" name="auto_disable_after" type="number" min="0" max="100" value="{{.Settings.AutoDisableAfter}}">
+      <p class="help">0 = never. A successful run resets the counter.</p>
+    </div>
+  </div>
+
+  <div class="panel-head"><h2>Torznab ratio hints</h2></div>
+  <div class="form-grid">
+    <div class="field">
+      <label for="torznab_download_factor">Download volume factor</label>
+      <input id="torznab_download_factor" name="torznab_download_factor" type="number" min="0" max="100" required value="{{.Settings.TorznabDownloadFactor}}">
+      <p class="help">0 = freeleech. Emitted as <code>downloadvolumefactor</code>.</p>
+    </div>
+    <div class="field">
+      <label for="torznab_upload_factor">Upload volume factor</label>
+      <input id="torznab_upload_factor" name="torznab_upload_factor" type="number" min="0" max="100" required value="{{.Settings.TorznabUploadFactor}}">
+      <p class="help">Normally 1. Emitted as <code>uploadvolumefactor</code>.</p>
+    </div>
+    <div class="field">
+      <label for="api_rate_limit_per_minute">API requests per key per minute</label>
+      <input id="api_rate_limit_per_minute" name="api_rate_limit_per_minute" type="number" min="0" max="100000" value="{{.Settings.APIRateLimit}}">
+      <p class="help">0 = unlimited. Applied to the primary and every additional key; excess requests receive HTTP 429.</p>
+    </div>
+    <div class="field checkbox">
+      <input id="torznab_live_search" name="torznab_live_search" type="checkbox"{{if .Settings.TorznabLiveSearch}} checked{{end}}>
+      <label for="torznab_live_search">Search indexers live on a cache miss</label>
+      <p class="help">When the cache has no result, ask enabled Torznab sources (Jackett, Prowlarr, MirCrew, direct indexers) and store what they return. Off by default: it can make a client wait.</p>
+    </div>
+    <div class="field">
+      <label for="torznab_live_timeout_seconds">Live search timeout (seconds)</label>
+      <input id="torznab_live_timeout_seconds" name="torznab_live_timeout_seconds" type="number" min="5" max="120" value="{{.Settings.TorznabLiveTimeout}}">
+      <p class="help">Overall deadline for all queried sources. Sources that do not answer in time are ignored.</p>
+    </div>
+  </div>
+
+  <div class="panel-head"><h2>Download client</h2></div>
+  <div class="form-grid">
+    <div class="field">
+      <label for="download_client">Client</label>
+      <select id="download_client" name="download_client">
+        <option value="none"{{if eq .Settings.DownloadClient "none"}} selected{{end}}>None</option>
+        <option value="qbittorrent"{{if eq .Settings.DownloadClient "qbittorrent"}} selected{{end}}>qBittorrent</option>
+        <option value="transmission"{{if eq .Settings.DownloadClient "transmission"}} selected{{end}}>Transmission</option>
+      </select>
+      <p class="help">Adds a “Send to…” button on every release detail.</p>
+    </div>
+    <div class="field grow">
+      <label for="download_client_url">Client URL</label>
+      <input id="download_client_url" name="download_client_url" type="url" value="{{.Settings.DownloadClientURL}}" placeholder="http://127.0.0.1:8080">
+      <p class="help">qBittorrent base URL (for example <code>http://host:8080</code>); Transmission RPC URL or base (<code>http://host:9091</code>).</p>
+    </div>
+    <div class="field">
+      <label for="download_client_user">Username</label>
+      <input id="download_client_user" name="download_client_user" type="text" value="{{.Settings.DownloadClientUser}}" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="download_client_password">Password</label>
+      <input id="download_client_password" name="download_client_password" type="password" value="{{.Settings.DownloadClientPassword}}" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="download_client_category">qBittorrent category</label>
+      <input id="download_client_category" name="download_client_category" type="text" value="{{.Settings.DownloadClientCategory}}" placeholder="indexarr">
+    </div>
+    <div class="field">
+      <label for="download_client_save_path">Save path (optional)</label>
+      <input id="download_client_save_path" name="download_client_save_path" type="text" value="{{.Settings.DownloadClientSavePath}}" placeholder="/downloads">
+    </div>
+    <div class="field checkbox">
+      <input id="download_client_paused" name="download_client_paused" type="checkbox"{{if .Settings.DownloadClientPaused}} checked{{end}}>
+      <label for="download_client_paused">Add paused</label>
+    </div>
+  </div>
+
+  <div class="panel-head"><h2>Automatic backups</h2></div>
+  <div class="form-grid">
+    <div class="field checkbox">
+      <input id="backup_enabled" name="backup_enabled" type="checkbox"{{if .Settings.BackupEnabled}} checked{{end}}>
+      <label for="backup_enabled">Create automatic backups</label>
+      <p class="help">A consistent copy of the database, made with SQLite <code>VACUUM INTO</code>.</p>
+    </div>
+    <div class="field">
+      <label for="backup_interval_hours">Interval (hours)</label>
+      <input id="backup_interval_hours" name="backup_interval_hours" type="number" min="6" max="168" value="{{.Settings.BackupIntervalHours}}">
+      <p class="help">Checked every 30 seconds; the first backup runs soon after enabling.</p>
+    </div>
+    <div class="field">
+      <label for="backup_keep">Keep last</label>
+      <input id="backup_keep" name="backup_keep" type="number" min="1" max="60" value="{{.Settings.BackupKeep}}">
+      <p class="help">Older automatic backups are removed. Pre-restore copies are kept.</p>
+    </div>
+  </div>
+  <p class="help">Directory: <code>{{.BackupDir}}</code>. List, download and restore from Maintenance.</p>
+
+  <div class="panel-head"><h2>Data retention</h2></div>
+  <div class="field">
+    <label for="retention_days">Keep releases for (days)</label>
+    <input id="retention_days" name="retention_days" type="number" min="0" max="3650" required value="{{.Settings.RetentionDays}}">
+    <p class="help">0 keeps everything. The cleanup runs every six hours and can be triggered from Maintenance.</p>
+  </div>
+
+  <div class="panel-head"><h2>Web access</h2></div>
+  {{if not .Settings.UIUser}}<p class="flash warn" role="status">The web interface is open to anyone who can reach the port. Set a user and password, or keep it behind a trusted network/reverse proxy.</p>{{end}}
+  <div class="form-grid">
+    <div class="field">
+      <label for="ui_user">User</label>
+      <input id="ui_user" name="ui_user" type="text" value="{{.Settings.UIUser}}" autocomplete="username">
+      <p class="help">Empty disables HTTP Basic authentication.</p>
+    </div>
+    <div class="field">
+      <label for="ui_password">New password</label>
+      <input id="ui_password" name="ui_password" type="password" autocomplete="new-password">
+      <p class="help">At least 8 characters. Leave empty to keep the current one.</p>
+    </div>
+    <div class="field">
+      <label for="ui_password_confirm">Confirm password</label>
+      <input id="ui_password_confirm" name="ui_password_confirm" type="password" autocomplete="new-password">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn primary" type="submit">Save settings</button>
+  </div>
+</form>
+{{end}}

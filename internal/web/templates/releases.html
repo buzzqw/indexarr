@@ -1,0 +1,132 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Releases</h1>
+    <p class="muted">Search the SQLite cache. Results update while you type; the same data is served to Torznab clients.</p>
+  </div>
+</section>
+
+<form class="filters" id="release-filters" method="get" action="/releases" data-live-search role="search">
+  <div class="field grow">
+    <label for="q">Search</label>
+    <input id="q" name="q" type="search" value="{{.Query}}" placeholder="title, -excluded, regex…" autocomplete="off" spellcheck="false">
+    <label class="inline-check" for="regex">
+      <input id="regex" name="regex" type="checkbox" value="1"{{if .Regex}} checked{{end}}>
+      Regex
+    </label>
+    <p class="help">
+      Use <code>-word</code> to exclude it. Regex mode: one case-insensitive pattern per term;
+      quotes keep spaces (<code>"the show"</code>); <code>-pattern</code> excludes a pattern.
+    </p>
+  </div>
+  <div class="field">
+    <label for="source">Source</label>
+    <select id="source" name="source">
+      <option value="0">All sources</option>
+      {{range .Sources}}<option value="{{.ID}}"{{if eq $.Source .ID}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </div>
+  <div class="field">
+    <label for="cat">Category</label>
+    <select id="cat" name="cat">
+      <option value="">All categories</option>
+      {{range categoryGroups}}
+      <optgroup label="{{.Top.Name}}">
+        <option value="{{.Top.ID}}"{{if eq $.Category (printf "%d" .Top.ID)}} selected{{end}}>{{.Top.Name}}</option>
+        {{range .Children}}<option value="{{.ID}}"{{if eq $.Category (printf "%d" .ID)}} selected{{end}}>{{.Name}}</option>{{end}}
+      </optgroup>
+      {{end}}
+    </select>
+  </div>
+  <div class="field">
+    <label for="sort">Sort</label>
+    <select id="sort" name="sort">
+      <option value="recent"{{if or (eq .Sort "") (eq .Sort "recent")}} selected{{end}}>Newest first</option>
+      <option value="seen"{{if eq .Sort "seen"}} selected{{end}}>Recently seen</option>
+      <option value="seeders"{{if eq .Sort "seeders"}} selected{{end}}>Most seeders</option>
+      <option value="size"{{if eq .Sort "size"}} selected{{end}}>Largest</option>
+      <option value="title"{{if eq .Sort "title"}} selected{{end}}>Title A–Z</option>
+    </select>
+  </div>
+  <div class="field actions-field">
+    <button class="btn primary" type="submit">Search</button>
+    <a class="btn" href="/releases">Reset</a>
+  </div>
+  <div class="filter-advanced">
+    <div class="field">
+      <label for="quality">Resolution</label>
+      <select id="quality" name="quality">
+        <option value=""{{if eq .Quality ""}} selected{{end}}>Any</option>
+        <option value="2160p"{{if eq .Quality "2160p"}} selected{{end}}>2160p / 4K</option>
+        <option value="1080p"{{if eq .Quality "1080p"}} selected{{end}}>1080p</option>
+        <option value="720p"{{if eq .Quality "720p"}} selected{{end}}>720p</option>
+        <option value="480p"{{if eq .Quality "480p"}} selected{{end}}>480p</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="source_quality">Source</label>
+      <select id="source_quality" name="source_quality">
+        <option value=""{{if eq .SourceQuality ""}} selected{{end}}>Any</option>
+        <option value="webdl"{{if eq .SourceQuality "webdl"}} selected{{end}}>WEB-DL</option>
+        <option value="bluray"{{if eq .SourceQuality "bluray"}} selected{{end}}>BluRay</option>
+        <option value="hdtv"{{if eq .SourceQuality "hdtv"}} selected{{end}}>HDTV</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="language">Language</label>
+      <select id="language" name="language">
+        <option value=""{{if eq .Language ""}} selected{{end}}>Any</option>
+        <option value="ita"{{if eq .Language "ita"}} selected{{end}}>Italian</option>
+        <option value="eng"{{if eq .Language "eng"}} selected{{end}}>English</option>
+      </select>
+    </div>
+    <div class="field small">
+      <label for="min_seeders">Min seeders</label>
+      <input id="min_seeders" name="min_seeders" type="number" min="0" value="{{.MinSeeders}}">
+    </div>
+    <div class="field small">
+      <label for="min_size_mb">Min size (MB)</label>
+      <input id="min_size_mb" name="min_size_mb" type="number" min="0" value="{{.MinSizeMB}}">
+    </div>
+    <div class="field small">
+      <label for="max_size_mb">Max size (MB)</label>
+      <input id="max_size_mb" name="max_size_mb" type="number" min="0" value="{{.MaxSizeMB}}">
+    </div>
+    <div class="field checkbox">
+      <input id="favorites" name="favorites" type="checkbox" value="1"{{if .FavoritesOnly}} checked{{end}}>
+      <label for="favorites">Favorites</label>
+    </div>
+    <div class="field checkbox">
+      <input id="hidden" name="hidden" type="checkbox" value="1"{{if .ShowHidden}} checked{{end}}>
+      <label for="hidden">Show hidden</label>
+    </div>
+  </div>
+</form>
+
+{{if .SavedSearches}}
+<div class="saved-searches" aria-label="Saved searches">
+  <span class="muted">Saved:</span>
+  {{range .SavedSearches}}
+  <div class="saved-search-chip">
+    <a href="/releases?{{.Query}}">{{.Name}}</a>
+    <form method="post" action="/releases/saved/{{.ID}}/delete">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <button class="link danger" type="submit" aria-label="Delete saved search {{.Name}}">×</button>
+    </form>
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+<form class="saved-search-form" method="post" action="/releases/saved">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <input type="hidden" id="saved-query" name="query" value="{{.CurrentQuery}}">
+  <label for="saved-name">Save this search as</label>
+  <input id="saved-name" name="name" type="text" maxlength="60" required placeholder="e.g. TV 1080p ITA">
+  <button class="btn small" type="submit">Save</button>
+</form>
+
+<div id="releases-results" aria-busy="false">
+  {{template "releases_results" .}}
+</div>
+{{end}}

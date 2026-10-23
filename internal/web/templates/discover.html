@@ -1,0 +1,44 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Feed discovery</h1>
+    <p class="muted">RSS/Atom links advertised by <code>{{.SourceURL}}</code>.</p>
+  </div>
+  <a class="btn" href="/sources">← Sources</a>
+</section>
+
+{{if .Error}}
+<section class="panel">
+  <div class="panel-head"><h2>No feeds found</h2></div>
+  <p class="flash danger" role="alert">{{.Error}}</p>
+  <p class="help">Try the exact RSS/XML URL, or add the site with <strong>Quick add</strong> if it is ExtTo, TorrentGalaxy or Corsaro.</p>
+</section>
+{{else}}
+<section class="panel">
+  <div class="panel-head"><h2>{{len .Feeds}} candidate feed(s)</h2></div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th scope="col">Title</th><th scope="col">URL</th><th scope="col">Found as</th><th scope="col" class="right">Actions</th></tr></thead>
+      <tbody>
+        {{range .Feeds}}
+        <tr>
+          <td>{{.Title}}</td>
+          <td><code>{{.URL}}</code></td>
+          <td><span class="chip">{{.Type}}</span></td>
+          <td class="right">
+            <form method="post" action="/sources/quick">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <input type="hidden" name="url" value="{{.URL}}">
+              <input type="hidden" name="kind" value="rss">
+              <input type="hidden" name="name" value="{{.Title}}">
+              <button class="btn small" type="submit">Add as RSS</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}
+{{end}}

@@ -1,0 +1,73 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Rules</h1>
+    <p class="muted">Blocklist applied while ingesting. Matching releases are not stored, even if an indexer keeps returning them.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Add rule</h2></div>
+  <form class="prose" method="post" action="/rules">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="form-grid">
+      <div class="field">
+        <label for="kind">Rule type</label>
+        <select id="kind" name="kind">
+          <option value="infohash">Infohash</option>
+          <option value="title">Title contains</option>
+          <option value="regex">Title regex</option>
+          <option value="source">Source name</option>
+          <option value="category">Category (e.g. 5000)</option>
+        </select>
+      </div>
+      <div class="field grow">
+        <label for="value">Value</label>
+        <input id="value" name="value" type="text" required spellcheck="false" placeholder="infohash, text, regex, source name or category">
+      </div>
+      <div class="field grow">
+        <label for="note">Note (optional)</label>
+        <input id="note" name="note" type="text" placeholder="why this rule exists">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">Add rule</button>
+    </div>
+    <p class="help">
+      Regexes are case-insensitive and use Go/RE2 syntax. A category rule <code>5000</code>
+      matches the whole <code>5xxx</code> subtree. Use <strong>Block release</strong> on a
+      release to add the rule and hide it at the same time; rules added here affect future
+      runs, not releases already in the cache.
+    </p>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Active rules</h2></div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th scope="col">Type</th><th scope="col">Value</th><th scope="col">Note</th><th scope="col">Created</th><th scope="col" class="right">Actions</th></tr>
+      </thead>
+      <tbody>
+        {{range .Rules}}
+        <tr>
+          <td><span class="chip">{{.Kind}}</span></td>
+          <td><code>{{.Value}}</code></td>
+          <td>{{if .Note}}{{.Note}}{{else}}<span class="muted">—</span>{{end}}</td>
+          <td class="nowrap">{{date .CreatedAt}}</td>
+          <td class="right">
+            <form method="post" action="/rules/{{.ID}}/delete" data-confirm="Delete this rule?">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="5" class="empty">No rules. Releases matching a rule will no longer be added.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}

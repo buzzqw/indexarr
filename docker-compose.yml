@@ -1,0 +1,19 @@
+services:
+  indexarr:
+    build: .
+    image: indexarr:latest
+    container_name: indexarr
+    ports:
+      - "8484:8484"
+    volumes:
+      - indexarr-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8484/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  indexarr-data:

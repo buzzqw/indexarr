@@ -1,0 +1,137 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="muted">Cached releases, source health and the last runs.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/sources/new">Add source</a>
+    <form method="post" action="/sources/run-all">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn primary" type="submit">Run all now</button>
+    </form>
+  </div>
+</section>
+
+<section class="cards" aria-label="Summary">
+  <article class="card">
+    <span class="label">Releases</span>
+    <strong>{{.Stats.Releases}}</strong>
+    <span class="hint">{{.Stats.Torrents}} with .torrent · {{bytes .Stats.TorrentBytes}} stored</span>
+  </article>
+  <article class="card">
+    <span class="label">Sources</span>
+    <strong>{{.Stats.EnabledSources}} / {{.Stats.Sources}}</strong>
+    <span class="hint">enabled / total</span>
+  </article>
+  <article class="card">
+    <span class="label">Runs (24h)</span>
+    <strong>{{.Stats.Runs24h}}</strong>
+    <span class="hint">{{if .Stats.Errors24h}}<span class="text-danger">{{.Stats.Errors24h}} failed</span>{{else}}no failures{{end}}</span>
+  </article>
+  <article class="card">
+    <span class="label">Database</span>
+    <strong>{{bytes .Stats.DBBytes}}</strong>
+    <span class="hint">last new release {{ago .Stats.NewestSeen}}</span>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Sources</h2>
+    <a class="link" href="/sources">Manage sources →</a>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Type</th>
+          <th scope="col">State</th>
+          <th scope="col">Last run</th>
+          <th scope="col">New items</th>
+          <th scope="col" class="right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Sources}}
+        <tr>
+          <td>
+            <a href="/sources/{{.ID}}/edit">{{.Name}}</a>
+            <div class="sub">{{truncate .URL 64}}</div>
+          </td>
+          <td><span class="chip">{{.Kind}}</span></td>
+          <td>
+            {{if not .Enabled}}<span class="chip">disabled</span>
+            {{else if index $.Running .ID}}<span class="chip warn">running</span>
+            {{else if .LastError}}<span class="chip danger" title="{{.LastError}}">error</span>
+            {{else if .LastOKAt}}<span class="chip ok">ok</span>
+            {{else}}<span class="chip">pending</span>{{end}}
+          </td>
+          <td>{{if .LastRunAt}}{{ago .LastRunAt}}<div class="sub">{{date .LastRunAt}}</div>{{else}}<span class="muted">never</span>{{end}}</td>
+          <td>{{.TotalItems}}</td>
+          <td class="right">
+            <form method="post" action="/sources/{{.ID}}/run">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small" type="submit">Run</button>
+            </form>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="6" class="empty">No sources yet. Add a Torznab endpoint (Jackett, Prowlarr or a direct indexer) or an RSS feed.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="two-col">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Recent releases</h2>
+      <a class="link" href="/releases">All releases →</a>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th scope="col">Title</th><th scope="col">Source</th><th scope="col">Size</th><th scope="col">Seen</th></tr></thead>
+        <tbody>
+          {{range .Recent}}
+          <tr>
+            <td><a href="/releases/{{.ID}}">{{truncate .Title 70}}</a></td>
+            <td class="nowrap">{{.SourceName}}</td>
+            <td class="nowrap">{{bytes .Size}}</td>
+            <td class="nowrap">{{ago .FirstSeenAt}}</td>
+          </tr>
+          {{else}}
+          <tr><td colspan="4" class="empty">Nothing cached yet. Run a source to fill the database.</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Recent runs</h2>
+      <a class="link" href="/runs">History →</a>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th scope="col">Source</th><th scope="col">Result</th><th scope="col">Items</th><th scope="col">When</th></tr></thead>
+        <tbody>
+          {{range .Runs}}
+          <tr>
+            <td>{{.SourceName}}</td>
+            <td>{{if eq .Status "error"}}<span class="chip danger" title="{{.Error}}">error</span>{{else if eq .Status "running"}}<span class="chip warn">running</span>{{else}}<span class="chip ok">ok</span>{{end}}</td>
+            <td class="nowrap">{{.ItemsNew}} new / {{.ItemsSeen}} seen</td>
+            <td class="nowrap">{{ago .StartedAt}}</td>
+          </tr>
+          {{else}}
+          <tr><td colspan="4" class="empty">No runs recorded yet.</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{{end}}

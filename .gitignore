@@ -1,0 +1,11 @@
+/bin/
+/indexarr
+/indexarr.json
+/data/
+/data-*/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+backup-*.db
+coverage.out

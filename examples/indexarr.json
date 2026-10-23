@@ -1,0 +1,5 @@
+{
+  "listen": ":8484",
+  "db_path": "indexarr.db",
+  "log_level": "info"
+}

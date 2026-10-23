@@ -1,0 +1,204 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Maintenance</h1>
+    <p class="muted">Database health, retention and backups. Every action runs against the live SQLite file.</p>
+  </div>
+  <a class="btn primary" href="/maintenance/backup">Download backup</a>
+</section>
+
+<section class="cards" aria-label="Database summary">
+  <article class="card">
+    <span class="label">Database size</span>
+    <strong>{{bytes .Stats.DBBytes}}</strong>
+    <span class="hint">{{.DBPath}}</span>
+  </article>
+  <article class="card">
+    <span class="label">Releases</span>
+    <strong>{{.Stats.Releases}}</strong>
+    <span class="hint">{{.Stats.Torrents}} with .torrent</span>
+  </article>
+  <article class="card">
+    <span class="label">Stored .torrent data</span>
+    <strong>{{bytes .Stats.TorrentBytes}}</strong>
+    <span class="hint">included in the database</span>
+  </article>
+  <article class="card">
+    <span class="label">SQLite</span>
+    <strong>{{.SQLiteVersion}}</strong>
+    <span class="hint">retention: {{if .RetentionDays}}{{.RetentionDays}} days{{else}}unlimited{{end}}</span>
+  </article>
+  <article class="card">
+    <span class="label">Sources with errors</span>
+    <strong>{{.SourceErrors}}</strong>
+    <span class="hint">{{.Stats.EnabledSources}} of {{.Stats.Sources}} enabled</span>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Checks and housekeeping</h2></div>
+  <div class="action-grid">
+    <form method="post" action="/maintenance">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="integrity">
+      <button class="btn" type="submit">Integrity check</button>
+      <p class="help">Runs <code>PRAGMA integrity_check</code> and reports the verdict.</p>
+    </form>
+    <form method="post" action="/maintenance">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="vacuum">
+      <button class="btn" type="submit">Vacuum database</button>
+      <p class="help">Rebuilds the file and returns free pages to disk. Can take a while on large caches.</p>
+    </form>
+    <form method="post" action="/maintenance">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="optimize">
+      <button class="btn" type="submit">Optimize / checkpoint</button>
+      <p class="help">Refreshes the query planner and truncates the WAL. Safe while the service runs.</p>
+    </form>
+    <form method="post" action="/maintenance">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="reindex">
+      <button class="btn" type="submit">Rebuild indexes</button>
+      <p class="help">Runs <code>REINDEX</code>. Useful after a large deletion; can take a while.</p>
+    </form>
+    <form method="post" action="/maintenance" data-confirm="Clear the last error and the consecutive-failure counter of every source? Disabled sources stay disabled.">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="reset_errors">
+      <button class="btn" type="submit">Clear source errors</button>
+      <p class="help">Does not re-enable a source; it only resets the error state and backoff.</p>
+    </form>
+    <form method="post" action="/maintenance" data-confirm="Merge rows that share an infohash?">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="dedupe">
+      <button class="btn" type="submit">Merge duplicates</button>
+      <p class="help">Keeps the oldest row per infohash and the best data of the copies.</p>
+    </form>
+    <form method="post" action="/maintenance" data-confirm="Delete stored .torrent files? Magnets and metadata are kept.">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="clear_torrents">
+      <button class="btn" type="submit">Clear .torrent files</button>
+      <p class="help">Shrinks the database; Torznab clients will receive magnets instead of files.</p>
+    </form>
+    <form method="post" action="/maintenance" data-confirm="Delete releases not seen within the retention window?">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="prune">
+      <button class="btn" type="submit">Apply retention now</button>
+      <p class="help">Uses the retention in Settings ({{if .RetentionDays}}{{.RetentionDays}} days{{else}}not set{{end}}).</p>
+    </form>
+    <form method="post" action="/maintenance" data-confirm="Delete run history older than 30 days?">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="action" value="clear_runs">
+      <button class="btn" type="submit">Clear old runs</button>
+      <p class="help">Only the history is removed; releases are untouched.</p>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Sources needing attention <span class="chip">{{.SourceErrors}}</span></h2>
+    <a class="btn small" href="/sources">All sources</a>
+  </div>
+  {{if .FailedSources}}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th scope="col">Source</th><th scope="col">Last error</th><th scope="col">Failures</th><th scope="col">Last run</th><th scope="col" class="right">Actions</th></tr></thead>
+      <tbody>
+        {{range .FailedSources}}
+        <tr>
+          <td><a href="/sources/{{.ID}}/edit">{{.Name}}</a></td>
+          <td class="error-cell" title="{{.LastError}}">{{truncate .LastError 120}}</td>
+          <td>{{.ConsecutiveErrors}}</td>
+          <td class="nowrap">{{if .LastRunAt}}{{ago .LastRunAt}}{{else}}<span class="muted">never</span>{{end}}</td>
+          <td class="right nowrap">
+            <form method="post" action="/sources/{{.ID}}/test">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small" type="submit">Test</button>
+            </form>
+            <form method="post" action="/sources/{{.ID}}/run">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small" type="submit">Run</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="empty">No source is reporting an error.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Backups</h2>
+    <form method="post" action="/maintenance/backup-now">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">Backup now</button>
+    </form>
+  </div>
+  <p class="help">
+    Automatic backups: {{if .BackupEnabled}}every {{.BackupIntervalHours}} hours, keeping {{.BackupKeep}}{{else}}disabled{{end}}.
+    Directory: <code>{{.BackupDir}}</code>. A restore is staged and applied when the service restarts.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th scope="col">File</th><th scope="col">Size</th><th scope="col">Created</th><th scope="col" class="right">Actions</th></tr>
+      </thead>
+      <tbody>
+        {{range .Backups}}
+        <tr>
+          <td><code>{{.Name}}</code>{{if .Automatic}} <span class="chip">automatic</span>{{else}} <span class="chip warn">pre-restore</span>{{end}}</td>
+          <td>{{bytes .Size}}</td>
+          <td class="nowrap">{{date .ModTime}}</td>
+          <td class="right nowrap">
+            <a class="btn small" href="/maintenance/backups/{{.Name}}">Download</a>
+            <form method="post" action="/maintenance/backups/{{.Name}}/delete" data-confirm="Delete this backup file?">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="4" class="empty">No backup files yet. Create one now or enable automatic backups in Settings.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel-head"><h2>Restore from file</h2></div>
+  <p class="help">
+    Upload a validated indexarr <code>.db</code> backup. The file is checked, then staged; the service restarts
+    and applies it before opening the database. The current database is copied to <code>{{.BackupDir}}</code>
+    as <code>pre-restore-*.db</code> first. Use this only with a trusted backup.
+  </p>
+  <form method="post" action="/maintenance/restore?csrf={{.CSRF}}" enctype="multipart/form-data"
+    data-confirm="Restore this backup? The service will restart and replace the current database.">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="field">
+      <label for="backup_file">Backup file</label>
+      <input id="backup_file" name="backup" type="file" accept=".db,application/octet-stream" required>
+    </div>
+    <div class="actions">
+      <button class="btn danger" type="submit">Upload and restore</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel danger-zone">
+  <div class="panel-head"><h2>Danger zone</h2></div>
+  <p>Deleting every release empties the cache. The next source run rebuilds it from the indexers.</p>
+  <form method="post" action="/maintenance" data-confirm="Really delete every cached release?">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="action" value="delete_all">
+    <div class="field">
+      <label for="confirm">Type DELETE to confirm</label>
+      <input id="confirm" name="confirm" type="text" autocomplete="off" spellcheck="false" placeholder="DELETE">
+    </div>
+    <button class="btn danger" type="submit">Delete all releases</button>
+  </form>
+</section>
+{{end}}

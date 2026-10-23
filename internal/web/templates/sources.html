@@ -1,0 +1,162 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Sources</h1>
+    <p class="muted">Torznab endpoints, HTML listings and RSS/Atom feeds, each on its own schedule.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/sources/new">Add source</a>
+    <a class="btn" href="/sources/bulk">Bulk add RSS</a>
+    <a class="btn" href="/sources/export">Export JSON</a>
+    <form method="post" action="/sources/test-all">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit">Test all</button>
+    </form>
+    <form method="post" action="/sources/run-all">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn primary" type="submit">Run all now</button>
+    </form>
+  </div>
+</section>
+
+{{if .HostWarning}}<p class="flash warn" role="status">{{.HostWarning}}</p>{{end}}
+
+<section class="panel">
+  <div class="panel-head"><h2>Quick add</h2></div>
+  <form class="inline-form" method="post" action="/sources/quick">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="field grow">
+      <label for="quick_url">Indexer, site or RSS URL</label>
+      <input id="quick_url" name="url" type="url" required placeholder="https://site.example/ or http://prowlarr:9696 or https://site.example/feed.xml">
+      <p class="help">Kind is detected from the URL: ExtTo, TorrentGalaxy and Corsaro are HTML listings; URLs with RSS/feed/atom/XML are feeds; the rest is a Torznab endpoint.</p>
+    </div>
+    <div class="field">
+      <label for="quick_name">Name (optional)</label>
+      <input id="quick_name" name="name" type="text" placeholder="auto from the host">
+    </div>
+    <div class="field">
+      <label for="quick_key">API key (Torznab, optional)</label>
+      <input id="quick_key" name="api_key" type="password" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="quick_kind">Kind</label>
+      <select id="quick_kind" name="kind">
+        <option value="auto">Auto</option>
+        <option value="torznab">Torznab</option>
+        <option value="rss">RSS / HTML listing</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">Add source</button>
+    </div>
+  </form>
+  <form class="inline-form" method="get" action="/sources/discover">
+    <div class="field grow">
+      <label for="discover_url">Discover feeds on a page</label>
+      <input id="discover_url" name="url" type="url" required placeholder="https://site.example/">
+      <p class="help">Reads <code>&lt;link rel="alternate"&gt;</code> and RSS/Atom anchors.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" type="submit">Discover feeds</button>
+    </div>
+  </form>
+</section>
+
+<form id="sources-bulk" method="post" action="/sources/bulk-update">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <section class="panel">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" class="check"><input type="checkbox" data-select-all aria-label="Select all sources"></th>
+            <th scope="col">Name</th>
+            <th scope="col">Type</th>
+            <th scope="col">State</th>
+            <th scope="col">Last run</th>
+            <th scope="col">Interval</th>
+            <th scope="col">New items</th>
+            <th scope="col" class="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Sources}}
+          <tr>
+            <td class="check"><input type="checkbox" name="ids" value="{{.ID}}" aria-label="Select {{.Name}}"></td>
+            <td>
+              <a href="/sources/{{.ID}}/edit">{{.Name}}</a>
+              <div class="sub">{{truncate .URL 72}}</div>
+              {{if .LastError}}<div class="sub text-danger" title="{{.LastError}}">{{truncate .LastError 100}}</div>{{end}}
+            </td>
+            <td><span class="chip">{{.Kind}}</span>{{if and (eq .Kind "torznab") .Manager}}<div class="sub">{{.Manager}}</div>{{end}}</td>
+            <td>
+              {{if not .Enabled}}<span class="chip">disabled</span>
+              {{else if index $.Running .ID}}<span class="chip warn">running</span>
+              {{else if .LastError}}<span class="chip danger">error</span>
+              {{else if .LastOKAt}}<span class="chip ok">ok</span>
+              {{else}}<span class="chip">pending</span>{{end}}
+            </td>
+            <td>{{if .LastRunAt}}{{ago .LastRunAt}}<div class="sub">{{date .LastRunAt}}</div>{{else}}<span class="muted">never</span>{{end}}</td>
+            <td>{{if .IntervalSeconds}}{{.IntervalSeconds}}s{{else}}default ({{$.DefaultInterval}}s){{end}}</td>
+            <td>{{.TotalItems}}{{if .LastItems}}<div class="sub">{{.LastItems}} last run</div>{{end}}</td>
+            <td class="right nowrap">
+              <button class="btn small" type="submit" formaction="/sources/{{.ID}}/run">Run</button>
+              <button class="btn small" type="submit" formaction="/sources/{{.ID}}/test">Test</button>
+              <button class="btn small" type="submit" formaction="/sources/{{.ID}}/clone">Clone</button>
+              <a class="btn small" href="/sources/{{.ID}}/edit">Edit</a>
+              {{if index $.Running .ID}}<button class="btn small danger" type="submit" formaction="/sources/{{.ID}}/cancel">Cancel</button>{{end}}
+            </td>
+          </tr>
+          {{else}}
+          <tr><td colspan="8" class="empty">No sources configured. Start with your Jackett or Prowlarr URL, an RSS feed, or a MirCrew / ExtTo / TorrentGalaxy listing.</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel-foot bulk-bar">
+      <span class="muted">Selected:</span>
+      <input aria-label="Interval in seconds" name="interval_seconds" type="number" min="0" max="2592000" step="60" placeholder="interval s">
+      <input aria-label="Categories" name="categories" type="text" placeholder="5000,2000">
+      <button class="btn small" type="submit" name="action" value="enable">Enable</button>
+      <button class="btn small" type="submit" name="action" value="disable">Disable</button>
+      <button class="btn small" type="submit" name="action" value="interval">Set interval</button>
+      <button class="btn small" type="submit" name="action" value="categories">Set categories</button>
+      <button class="btn small danger" type="submit" formaction="/sources/bulk-delete"
+        data-confirm="Delete the selected sources? Their releases stay in the cache.">Delete selected</button>
+    </div>
+  </section>
+</form>
+
+<section class="panel">
+  <div class="panel-head"><h2>Import / export</h2></div>
+  <div class="prose">
+    <p>Download a JSON backup of the sources, or paste one to restore them.
+      The file includes URLs, API keys and HTTP credentials: keep it private.</p>
+    <p><a class="btn" href="/sources/export">Download sources JSON</a></p>
+    <form method="post" action="/sources/import">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <div class="field">
+        <label for="sources_json">Sources JSON</label>
+        <textarea id="sources_json" name="json" rows="6" spellcheck="false"
+          placeholder='{"version":1,"sources":[{"name":"...","kind":"torznab","url":"...","enabled":true}]}'></textarea>
+        <p class="help">Sources with the same name or URL are skipped. Invalid entries are reported in Logs.</p>
+      </div>
+      <div class="actions">
+        <button class="btn" type="submit">Import sources</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>How sources work</h2></div>
+  <div class="prose">
+    <p><strong>Jackett / Prowlarr as a manager:</strong> enter the base URL (for example <code>http://192.168.1.10:9696</code>) and the API key. indexarr adds the manager's aggregate path by itself.</p>
+    <p><strong>Direct Torznab indexer:</strong> enter the full endpoint (for example <code>http://indexer:8080/api</code> or a URL containing <code>torznab</code>).</p>
+    <p><strong>Prowlarr without a search term:</strong> indexarr lists the enabled indexers and asks each Torznab feed for its latest releases, so an empty query still fills the cache.</p>
+    <p><strong>ExtTo / TorrentGalaxy:</strong> their page URLs are supported by dedicated HTML parsers, like Gextto.</p>
+    <p><strong>RSS:</strong> enter the feed URL. Items are parsed for title, magnet, .torrent enclosure, size, category and date; entries that contain neither a magnet nor a download link are ignored.</p>
+  </div>
+</section>
+{{end}}

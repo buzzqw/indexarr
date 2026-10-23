@@ -1,0 +1,28 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Run #{{.Run.ID}}</h1>
+    <p class="muted">{{.Run.SourceName}}</p>
+  </div>
+  <a class="btn" href="/runs">← Runs</a>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Details</h2></div>
+  <dl class="detail">
+    <dt>Source</dt><dd>{{.Run.SourceName}}</dd>
+    <dt>Result</dt>
+    <dd>{{if eq .Run.Status "error"}}<span class="chip danger">error</span>{{else if eq .Run.Status "running"}}<span class="chip warn">running</span>{{else}}<span class="chip ok">ok</span>{{end}}</dd>
+    <dt>Started</dt><dd>{{date .Run.StartedAt}} <span class="muted">({{ago .Run.StartedAt}})</span></dd>
+    <dt>Finished</dt><dd>{{date .Run.FinishedAt}}</dd>
+    <dt>Duration</dt><dd>{{.Run.DurationMS}} ms</dd>
+    <dt>Seen</dt><dd>{{.Run.ItemsSeen}}</dd>
+    <dt>New</dt><dd>{{.Run.ItemsNew}}</dd>
+    <dt>Updated</dt><dd>{{.Run.ItemsUpdated}}</dd>
+    <dt>Blocked</dt><dd>{{.Run.ItemsBlocked}}</dd>
+    <dt>Torrents fetched</dt><dd>{{.Run.TorrentsFetched}}</dd>
+    <dt>Error</dt>
+    <dd>{{if .Run.Error}}<code>{{.Run.Error}}</code>{{else}}<span class="muted">—</span>{{end}}</dd>
+  </dl>
+</section>
+{{end}}

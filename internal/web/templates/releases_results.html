@@ -1,0 +1,61 @@
+{{define "releases_results"}}
+{{if .InvalidRegex}}
+<p class="flash err" role="alert">Invalid regular expression: {{.InvalidRegex}}</p>
+{{end}}
+<p class="muted search-status" role="status">
+  {{if .InvalidRegex}}No results{{else}}{{.Pager.Total}} release(s) found{{end}}
+</p>
+
+<form method="post" action="/releases/delete" data-confirm="Delete the selected releases?">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <section class="panel">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" class="check"><input type="checkbox" data-select-all aria-label="Select all releases"></th>
+            <th scope="col">Title</th>
+            <th scope="col">Size</th>
+            <th scope="col">S</th>
+            <th scope="col">L</th>
+            <th scope="col">Source</th>
+            <th scope="col">Category</th>
+            <th scope="col">Published</th>
+            <th scope="col" class="right">Links</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Releases}}
+          <tr>
+            <td class="check"><input type="checkbox" name="ids" value="{{.ID}}" aria-label="Select {{.Title}}"></td>
+            <td><a href="/releases/{{.ID}}">{{.Title}}</a>{{if .Favorite}} <span class="chip" title="Favorite">★</span>{{end}}{{if .Torrent}} <span class="chip">torrent</span>{{end}}</td>
+            <td class="nowrap">{{bytes .Size}}</td>
+            <td>{{num .Seeders}}</td>
+            <td>{{num .Leechers}}</td>
+            <td class="nowrap">{{.SourceName}}</td>
+            <td class="nowrap"><span class="chip">{{catName .Category}}</span></td>
+            <td class="nowrap">{{date .PublishedAt}}</td>
+            <td class="right nowrap">
+              {{if .Magnet}}<a class="link" href="{{.Magnet}}" title="Magnet link">magnet</a>{{end}}
+              {{if .Torrent}}<a class="link" href="/releases/{{.ID}}/torrent" title="Download .torrent">torrent</a>{{end}}
+            </td>
+          </tr>
+          {{else}}
+          <tr><td colspan="9" class="empty">No releases match this filter.</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    <div class="panel-foot">
+      <button class="btn danger" type="submit">Delete selected</button>
+      <span class="muted">Select the releases to delete</span>
+    </div>
+  </section>
+</form>
+
+<nav class="pagination" aria-label="Pagination">
+  {{if .Pager.Prev}}<a class="btn small" href="{{.Pager.Prev}}">← Previous</a>{{else}}<span class="btn small disabled">← Previous</span>{{end}}
+  <span class="muted">Page {{.Pager.Page}} of {{.Pager.Pages}} · showing {{.Pager.FirstItem}}–{{.Pager.LastItem}} of {{.Pager.Total}}</span>
+  {{if .Pager.Next}}<a class="btn small" href="{{.Pager.Next}}">Next →</a>{{else}}<span class="btn small disabled">Next →</span>{{end}}
+</nav>
+{{end}}

@@ -1,0 +1,98 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>Logs</h1>
+    <p class="muted">In-memory log of the running process, newest first. The same lines go to stdout and the systemd journal.</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{.DownloadURL}}">Download .txt</a>
+    <form method="post" action="/logs/clear" data-confirm="Clear the in-memory log buffer?">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn danger" type="submit">Clear</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Runtime verbosity</h2></div>
+  <form class="filters" method="post" action="/logs/level">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="field">
+      <label for="runtime_level">Process log level</label>
+      <select id="runtime_level" name="runtime_level">
+        <option value="debug"{{if eq .RuntimeLevel "debug"}} selected{{end}}>Debug</option>
+        <option value="info"{{if eq .RuntimeLevel "info"}} selected{{end}}>Info</option>
+        <option value="warn"{{if eq .RuntimeLevel "warn"}} selected{{end}}>Warning</option>
+        <option value="error"{{if eq .RuntimeLevel "error"}} selected{{end}}>Error</option>
+      </select>
+      <p class="help">Applied immediately and stored in the database; it survives restarts.</p>
+    </div>
+    <div class="field actions-field">
+      <button class="btn primary" type="submit">Set level</button>
+    </div>
+  </form>
+</section>
+
+<form class="filters" method="get" action="/logs">
+  <div class="field">
+    <label for="level">Level</label>
+    <select id="level" name="level">
+      <option value="debug"{{if eq .Level "debug"}} selected{{end}}>Debug and above</option>
+      <option value="info"{{if eq .Level "info"}} selected{{end}}>Info and above</option>
+      <option value="warn"{{if eq .Level "warn"}} selected{{end}}>Warning and above</option>
+      <option value="error"{{if eq .Level "error"}} selected{{end}}>Errors only</option>
+    </select>
+  </div>
+  <div class="field grow">
+    <label for="q">Search</label>
+    <input id="q" name="q" type="search" value="{{.Query}}" placeholder="message or attribute">
+  </div>
+  <div class="field">
+    <label for="limit">Lines</label>
+    <select id="limit" name="limit">
+      <option value="100"{{if eq .Limit 100}} selected{{end}}>100</option>
+      <option value="300"{{if eq .Limit 300}} selected{{end}}>300</option>
+      <option value="1000"{{if eq .Limit 1000}} selected{{end}}>1000</option>
+    </select>
+  </div>
+  <div class="field checkbox">
+    <input id="auto" name="auto" type="checkbox" value="1"{{if .Auto}} checked{{end}}>
+    <label for="auto">Auto refresh (10s)</label>
+  </div>
+  <div class="field actions-field">
+    <button class="btn primary" type="submit">Apply</button>
+    <a class="btn" href="/logs">Reset</a>
+  </div>
+</form>
+
+<p class="muted log-summary">
+  Showing {{len .Entries}} of {{.BufferSize}} captured (max {{.MaxEntries}}).
+  The process level is <strong>{{.RuntimeLevel}}</strong>; change it above without a restart.
+  API keys, passwords and tokens are redacted.
+</p>
+
+<section class="panel logs-panel">
+  {{range .Entries}}
+  <div class="log-row">
+    <time class="log-time" datetime="{{.Time.Format "2006-01-02T15:04:05Z07:00"}}">{{.Time.Format "2006-01-02 15:04:05"}}</time>
+    <span class="log-level {{.LevelClass}}">{{.LevelName}}</span>
+    <div class="log-body">
+      <div class="log-msg">{{.Message}}</div>
+      {{if .Attrs}}<div class="log-attrs">{{range .Attrs}}<span class="log-attr"><code>{{.Key}}</code>={{.Value}}</span>{{end}}</div>{{end}}
+    </div>
+  </div>
+  {{else}}
+  <p class="empty">No log entries match this filter. The buffer is empty after a restart or a clear.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Where the log lives</h2></div>
+  <div class="prose">
+    <p>This page keeps the last {{.MaxEntries}} records in memory; they disappear on restart or when you press Clear.</p>
+    <p>With the systemd user service the full stream is also in the journal:
+      <code>journalctl --user -u indexarr -f</code>. In Docker use <code>docker logs -f indexarr</code>.</p>
+    <p>To see debug messages select <strong>Debug</strong> in <em>Runtime verbosity</em> above; no restart is needed. The <code>log_level</code> in indexarr.json is only the startup fallback.</p>
+  </div>
+</section>
+{{end}}
