@@ -280,6 +280,10 @@ func TestNewAndResolveErrors(t *testing.T) {
 }
 
 func seedTorrentTorznab(t *testing.T, st *store.Store, v *vault.Vault, baseURL string) int64 {
+	return seedTorrentTorznabNamed(t, st, v, baseURL, "tz-test")
+}
+
+func seedTorrentTorznabNamed(t *testing.T, st *store.Store, v *vault.Vault, baseURL, slug string) int64 {
 	t.Helper()
 	ctx := context.Background()
 	body := `schema: 1
@@ -290,14 +294,14 @@ connector: torznab
 		t.Fatalf("definition.Parse: %v", err)
 	}
 	if err := st.UpsertDefinition(ctx, store.Definition{
-		ID: "tz-test", SchemaVersion: definition.CurrentSchema, Family: "torznab",
+		ID: slug, SchemaVersion: definition.CurrentSchema, Family: "torznab",
 		State: "verificata", Origin: "local", Author: "test", Body: body,
 		Hash: definition.Fingerprint([]byte(body)), UpdatedAt: time.Now(),
 	}); err != nil {
 		t.Fatalf("UpsertDefinition: %v", err)
 	}
 	id, err := st.CreateIndexer(ctx, store.Indexer{
-		DefinitionID: "tz-test", Protocol: "torrent", Slug: "tz-test",
+		DefinitionID: slug, Protocol: "torrent", Slug: slug,
 		Name: "TZ Test", Enabled: true, Priority: 25,
 		ConfigJSON: `{"url":"` + baseURL + `","categories":[5040]}`,
 	})
@@ -433,5 +437,57 @@ func TestRepeated404QuarantinesSource(t *testing.T) {
 	}
 	if _, err := resolver.Resolve(context.Background(), release.ID); !errors.Is(err, ErrQuarantined) {
 		t.Fatalf("quarantined resolve = %v", err)
+	}
+}
+
+func TestGrabFallsBackToAnotherCopy(t *testing.T) {
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	defer bad.Close()
+	good := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := os.ReadFile(filepath.Join("testdata", "valid.torrent"))
+		_, _ = w.Write(body)
+	}))
+	defer good.Close()
+	st := testStore(t)
+	v := testVault(t)
+	manager := testManager(t, st, v)
+	badID := seedTorrentTorznabNamed(t, st, v, bad.URL, "tz-bad")
+	goodID := seedTorrentTorznabNamed(t, st, v, good.URL, "tz-good")
+	resolver, _ := New(Config{Store: st, Vault: v, Manager: manager})
+	release := insertTorrentRelease(t, st, "fallback", "Fallback Release")
+	for _, source := range []struct {
+		id      int64
+		url     string
+		seeders int64
+	}{{badID, bad.URL, 100}, {goodID, good.URL, 1}} {
+		ref, _ := indexer.SealDownloadRef(v, source.id, engine.Item{
+			Title: release.Title, GUID: "rel-1", DownloadURL: source.url + "/download",
+		})
+		if err := st.RecordReleaseSource(context.Background(), store.ReleaseSource{
+			ReleaseID: release.ID, IndexerID: source.id, Seeders: source.seeders, DownloadRef: ref,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	payload, err := resolver.Resolve(context.Background(), release.ID)
+	if err != nil {
+		t.Fatalf("grab did not fall back: %v", err)
+	}
+	if len(payload.Body) == 0 {
+		t.Fatal("fallback returned no payload")
+	}
+	sources, _ := st.ReleaseSourcesFor(context.Background(), release.ID)
+	if len(sources) != 2 {
+		t.Fatalf("sources = %d", len(sources))
+	}
+	for _, source := range sources {
+		if source.IndexerID == badID && source.DownloadFailures != 1 {
+			t.Errorf("failed copy was not recorded: %+v", source)
+		}
+		if source.IndexerID == goodID && source.LastDownloadError != "" {
+			t.Errorf("working copy kept an error: %+v", source)
+		}
 	}
 }
