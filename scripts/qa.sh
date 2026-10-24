@@ -107,10 +107,14 @@ check /indexers/new "Add indexer"
 check /applications "Download clients"
 check /import "Import"
 
-KEY="$(grep -o 'apikey=[0-9a-f]\{64\}' "$LOG" | head -n 1 | cut -d= -f2)"
+# The startup log masks the key, so read it from the isolated QA database.
+KEY="$(python3 - "$TMP/qa.db" <<'PYKEY'
+import sqlite3, sys
+print(sqlite3.connect(sys.argv[1]).execute("select value from settings where key='api_key'").fetchone()[0])
+PYKEY
+)"
 if [[ -z "$KEY" ]]; then
-  echo "FAIL: no Torznab API key in the startup log" >&2
-  cat "$LOG" >&2
+  echo "FAIL: no Torznab API key in the QA database" >&2
   exit 1
 fi
 CAPS="$(curl -fsS "$BASE/api?t=caps&apikey=$KEY")"
