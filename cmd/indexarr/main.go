@@ -30,6 +30,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
+	"github.com/buzzqw/indexarr/internal/logsafe"
 	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/syncjob"
@@ -512,7 +513,7 @@ func parseLevel(raw string) slog.Level {
 // the web interface, so the Logs page can change verbosity without a restart.
 func newLogger(levelVar *slog.LevelVar, buffer *logbuffer.Buffer) *slog.Logger {
 	base := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: levelVar})
-	return slog.New(logbuffer.NewHandler(base, buffer))
+	return slog.New(logsafe.NewHandler(logbuffer.NewHandler(base, buffer)))
 }
 
 // displayURL turns a listen address into a clickable local URL.
