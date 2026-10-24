@@ -11,6 +11,7 @@ import (
 
 var (
 	querySecret = regexp.MustCompile(`(?i)([?&](?:apikey|api_key|passkey|rsskey|torrent_pass|token|password|secret|u|e)=)([^&\s"']+)`)
+	bareSecret  = regexp.MustCompile(`(?i)\b(apikey|api_key|passkey|rsskey|torrent_pass|token|password|secret)=([^\s&"']+)`)
 	userInfo    = regexp.MustCompile(`://[^/\s:@]+:[^/\s@]+@`)
 )
 
@@ -22,6 +23,13 @@ func Redact(text string) string {
 			return match
 		}
 		return parts[1] + mask(parts[2])
+	})
+	text = bareSecret.ReplaceAllStringFunc(text, func(match string) string {
+		parts := bareSecret.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		return parts[1] + "=" + mask(parts[2])
 	})
 	return userInfo.ReplaceAllString(text, "://***:***@")
 }
