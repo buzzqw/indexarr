@@ -68,6 +68,12 @@ definitions:
     italian: true
     note: "Italian priority; XBTIT family confirmed from /jscript/xbtit.js; guest listing verified."
 
+  - id: rss
+    file: definitions/rss.yaml
+    state: bozza
+    author: indexarr
+    note: "Generic RSS/Atom feed; torrent or NZB inferred from the enclosure."
+
   - id: corsaro-user
     file: definitions/corsaro-user.yaml
     state: bozza

@@ -924,3 +924,11 @@ func (s *Store) DeleteProxy(ctx context.Context, id int64) error {
 	}
 	return nil
 }
+
+// SetIndexerProtocol updates the protocol inferred from a generic RSS feed.
+// The next run and the application synchroniser read the new value.
+func (s *Store) SetIndexerProtocol(ctx context.Context, id int64, protocol string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE indexers SET protocol = ?, updated_at = ? WHERE id = ?`,
+		protocol, time.Now().Unix(), id)
+	return err
+}

@@ -209,10 +209,16 @@ func (r *RSS) Download(ctx context.Context, item engine.Item) (engine.Payload, e
 	if resp.Status < 200 || resp.Status >= 300 {
 		return engine.Payload{}, fmt.Errorf("rss: download failed with HTTP status %d", resp.Status)
 	}
+	contentType := "application/x-bittorrent"
+	extension := ".torrent"
+	if item.Protocol == engine.ProtocolUsenet {
+		contentType = "application/x-nzb"
+		extension = ".nzb"
+	}
 	return engine.Payload{
 		Body:        resp.Body,
-		ContentType: "application/x-bittorrent",
-		Filename:    safeFilename(item.Title, ".torrent"),
+		ContentType: contentType,
+		Filename:    safeFilename(item.Title, extension),
 	}, nil
 }
 
@@ -415,8 +421,12 @@ func (r *RSS) mapItem(raw feed.Item) (engine.Item, bool) {
 		attributes["guid"] = raw.GUID
 	}
 
+	protocol := engine.ProtocolTorrent
+	if raw.Usenet {
+		protocol = engine.ProtocolUsenet
+	}
 	item := engine.Item{
-		Protocol:    engine.ProtocolTorrent,
+		Protocol:    protocol,
 		Title:       title,
 		GUID:        firstNonEmpty(raw.GUID, hash),
 		DetailsURL:  details,

@@ -174,3 +174,28 @@ func TestParseTorrentEnclosureDoesNotInventMagnet(t *testing.T) {
 		t.Fatal("torrent URL was lost")
 	}
 }
+
+func TestRSSProtocolInferenceFixtures(t *testing.T) {
+	for _, tc := range []struct {
+		file   string
+		usenet bool
+	}{
+		{"../catalog/definitions/fixtures/rss/torrent.xml", false},
+		{"../catalog/definitions/fixtures/rss/usenet.xml", true},
+	} {
+		body, err := os.ReadFile(tc.file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		items, err := ParseRSS(body)
+		if err != nil || len(items) != 1 {
+			t.Fatalf("%s: %d items, %v", tc.file, len(items), err)
+		}
+		if items[0].Usenet != tc.usenet {
+			t.Errorf("%s: Usenet = %v, want %v", tc.file, items[0].Usenet, tc.usenet)
+		}
+		if items[0].TorrentURL == "" {
+			t.Errorf("%s: download URL missing", tc.file)
+		}
+	}
+}

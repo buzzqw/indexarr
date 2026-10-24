@@ -25,6 +25,7 @@ type Item struct {
 	Link       string
 	Magnet     string
 	TorrentURL string
+	Usenet     bool // TorrentURL is an NZB enclosure/link
 	InfoHash   string
 	Size       int64
 	Seeders    int64
@@ -95,6 +96,18 @@ func MagnetFromHash(hash, title string) string {
 
 // LooksLikeTorrentURL reports whether an RSS link/enclosure is a .torrent
 // download rather than a link to a web page or a media file.
+func LooksLikeNZBURL(raw string, contentType string) bool {
+	lowerType := strings.ToLower(strings.TrimSpace(contentType))
+	if strings.Contains(lowerType, "nzb") {
+		return true
+	}
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	return strings.HasSuffix(strings.ToLower(parsed.Path), ".nzb")
+}
+
 func LooksLikeTorrentURL(raw string, contentType string) bool {
 	parsed, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {

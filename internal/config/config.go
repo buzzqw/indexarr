@@ -29,7 +29,7 @@ func Default() Config {
 		Listen:        ":8484",
 		DBPath:        "indexarr.db",
 		LogLevel:      "info",
-		MemoryLimitMB: 96,
+		MemoryLimitMB: 64,
 	}
 }
 

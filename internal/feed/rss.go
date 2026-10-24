@@ -198,7 +198,14 @@ func convertRSSItem(raw rssItem) (Item, bool) {
 	}
 
 	torrentURL := ""
-	if LooksLikeTorrentURL(raw.Enclosure.URL, raw.Enclosure.Type) {
+	usenet := false
+	if LooksLikeNZBURL(raw.Enclosure.URL, raw.Enclosure.Type) {
+		torrentURL = strings.TrimSpace(raw.Enclosure.URL)
+		usenet = true
+	} else if LooksLikeNZBURL(raw.Link, "") {
+		torrentURL = strings.TrimSpace(raw.Link)
+		usenet = true
+	} else if LooksLikeTorrentURL(raw.Enclosure.URL, raw.Enclosure.Type) {
 		torrentURL = strings.TrimSpace(raw.Enclosure.URL)
 	} else if LooksLikeTorrentURL(raw.Link, "") {
 		torrentURL = strings.TrimSpace(raw.Link)
@@ -213,6 +220,7 @@ func convertRSSItem(raw rssItem) (Item, bool) {
 		Link:       strings.TrimSpace(raw.Link),
 		Magnet:     magnet,
 		TorrentURL: torrentURL,
+		Usenet:     usenet,
 		InfoHash:   hash,
 		Size:       firstSize(attrs["size"], raw.Size, raw.Enclosure.Length),
 		Seeders:    atoiUnknown(attrs["seeders"]),
@@ -248,7 +256,12 @@ func itemsFromAtom(doc atomDocument) []Item {
 		magnet := firstNonEmpty(magnetValue(alternate), magnetValue(enclosureURL))
 		hash := MagnetHash(magnet)
 		torrentURL := ""
-		if LooksLikeTorrentURL(enclosureURL, enclosureType) {
+		usenet := false
+		if LooksLikeNZBURL(enclosureURL, enclosureType) {
+			torrentURL, usenet = enclosureURL, true
+		} else if LooksLikeNZBURL(alternate, "") {
+			torrentURL, usenet = alternate, true
+		} else if LooksLikeTorrentURL(enclosureURL, enclosureType) {
 			torrentURL = enclosureURL
 		} else if LooksLikeTorrentURL(alternate, "") {
 			torrentURL = alternate
@@ -266,6 +279,7 @@ func itemsFromAtom(doc atomDocument) []Item {
 			Link:       alternate,
 			Magnet:     magnet,
 			TorrentURL: torrentURL,
+			Usenet:     usenet,
 			InfoHash:   hash,
 			Size:       firstSize(enclosureLength),
 			Category:   NormalizeCategory(categories...),

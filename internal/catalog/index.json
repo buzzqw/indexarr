@@ -5490,6 +5490,32 @@
     "scheduled": true
   },
   {
+    "id": "rss",
+    "name": "RSS / Atom feed",
+    "description": "Generic RSS or Atom feed; torrent and NZB protocols are inferred per item.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "feed.example.invalid"
+    ],
+    "url": "https://feed.example.invalid/",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
     "id": "shanaproject",
     "name": "Shana Project",
     "description": "Public Shana Project anime search with direct .torrent links.",

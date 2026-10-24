@@ -251,3 +251,10 @@ quelle con origine `local`; riscrive una voce solo quando cambia l'hash.
 - `LiveExcluded` esclude uploader TGx/ExtTo dal live; le liste continuano ad alimentare la cache.
 - Le sorgenti memorizzate hanno avviso misurato, contatore e retention esplicita.
 - Migrazioni 10 (dedup) e 11 (pulizia TGx hashless).
+
+## Memoria
+
+`indexarr` imposta un limite morbido Go di 64 MiB (`memory_limit_mb` in
+`indexarr.json`, 0 per disattivarlo). Il budget `scripts/budget.sh` resta
+avviso a 64 MiB ed errore a 128 MiB, misurato su `RssAnon`; l'RSS totale
+include anche il binario e non è il valore del budget.

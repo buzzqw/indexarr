@@ -131,6 +131,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	matcher := store.NewBlocklistMatcher(rules)
 
 	usenet := engine.Protocol(strings.ToLower(strings.TrimSpace(indexer.Protocol))) == engine.ProtocolUsenet
+	usenetItems, torrentItems := 0, 0
 	seen := make(map[string]struct{}, len(items))
 	for _, raw := range items {
 		if err := ctx.Err(); err != nil {
@@ -144,12 +145,15 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			item.Published = time.Now()
 		}
 		stats.observeItem(item, capture.secrets)
-		if usenet {
+		itemUsenet := item.Protocol == engine.ProtocolUsenet || (usenet && item.Protocol == "")
+		if itemUsenet {
+			usenetItems++
 			if err := m.runUsenetItem(ctx, indexer, item, stats, seen, matcher, runRules, &payloadBytes); err != nil {
 				return stats, err
 			}
 			continue
 		}
+		torrentItems++
 		hash := itemHash(item)
 		if hash != "" {
 			item.InfoHash = hash
@@ -334,6 +338,11 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 
 	if downloadProblem != nil {
 		return stats, downloadProblem
+	}
+	if indexer.DefinitionID == "rss" && usenetItems > 0 && torrentItems == 0 && indexer.Protocol != "usenet" {
+		_ = m.store.SetIndexerProtocol(ctx, indexer.ID, "usenet")
+	} else if indexer.DefinitionID == "rss" && torrentItems > 0 && usenetItems == 0 && indexer.Protocol != "torrent" {
+		_ = m.store.SetIndexerProtocol(ctx, indexer.ID, "torrent")
 	}
 	return stats, nil
 }

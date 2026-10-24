@@ -1,0 +1,36 @@
+# BOZZA (experimental). Generic RSS/Atom feed. The indexer protocol is inferred
+# from the item enclosures: application/x-nzb or a .nzb link makes the source
+# Usenet; otherwise it is a torrent feed. The feed is read from the local cache
+# and is never part of the live fan-out.
+schema: 1
+connector: rss
+meta:
+  id: rss
+  name: RSS / Atom feed
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Generic RSS or Atom feed; torrent and NZB protocols are inferred per item.
+  urls:
+    - https://feed.example.invalid/
+  updated: "2026-10-24"
+settings:
+  - { name: url, type: text, label: Feed URL, required: true }
+categories:
+  - { site: "5000", standard: 5000, desc: "TV" }
+  - { site: "2000", standard: 2000, desc: "Movies" }
+  - { site: "3000", standard: 3000, desc: "Audio" }
+  - { site: "7000", standard: 7000, desc: "Books" }
+capabilities:
+  search: [q]
+health:
+  query: test
+  min_rows: 1
+tests:
+  - name: torrent fixture
+    fixture: fixtures/rss/torrent.xml
+    expect: { min_rows: 1 }
+  - name: usenet fixture
+    fixture: fixtures/rss/usenet.xml
+    expect: { min_rows: 1 }
