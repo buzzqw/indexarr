@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
@@ -743,5 +744,37 @@ func TestRSSWindowFusesDuplicatesAndKeepsTotal(t *testing.T) {
 	}
 	if !strings.Contains(second.Body.String(), `total="`+itoa(int64(want))+`"`) {
 		t.Fatalf("second RSS total changed")
+	}
+}
+
+func TestDownloadErrorsAreReadable(t *testing.T) {
+	api, st := newAPI(t)
+	release := store.Release{
+		DedupKey: "no-payload", Title: "No Payload", SearchTitle: "no payload",
+		Category: "5040", Protocol: "torrent", Size: 10,
+		PublishedAt: time.Now(), FirstSeenAt: time.Now(), LastSeenAt: time.Now(),
+	}
+	if _, err := st.UpsertRelease(context.Background(), &release); err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		err    error
+		status int
+		text   string
+	}{
+		{&downloadproxy.Error{Kind: downloadproxy.ErrLogin, Message: "site requires a login"}, http.StatusUnauthorized, "login"},
+		{&downloadproxy.Error{Kind: downloadproxy.ErrBlocked, Message: "site blocked the download"}, http.StatusForbidden, "blocked"},
+		{&downloadproxy.Error{Kind: downloadproxy.ErrTemporary, Message: "no magnet or .torrent available"}, http.StatusBadGateway, "no magnet"},
+		{&downloadproxy.Error{Kind: downloadproxy.ErrQuarantined, Message: "quarantined", RetryAfter: time.Now().Add(time.Hour)}, http.StatusServiceUnavailable, "quarantined"},
+	}
+	for _, tc := range cases {
+		api.SetDownloadResolver(func(context.Context, int64) ([]byte, string, string, error) { return nil, "", "", tc.err })
+		rec := do(t, api, "/dl/"+itoa(release.ID)+".torrent?apikey=secret")
+		if rec.Code != tc.status {
+			t.Errorf("%v: status = %d, want %d", tc.err, rec.Code, tc.status)
+		}
+		if !strings.Contains(strings.ToLower(rec.Body.String()), tc.text) {
+			t.Errorf("%v: body = %s", tc.err, rec.Body.String())
+		}
 	}
 }

@@ -359,6 +359,24 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 12 records download-attempt health per source. A repeated
+	// 404 quarantines that source with a growing backoff; any success clears
+	// it. Login/challenge errors are informational and do not kill the link.
+	if err := s.applyMigration(context.Background(), indexarr2DownloadStatusVersion,
+		"download status and quarantine", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`ALTER TABLE release_sources ADD COLUMN download_failures INTEGER NOT NULL DEFAULT 0`,
+				`ALTER TABLE release_sources ADD COLUMN quarantined_until INTEGER NOT NULL DEFAULT 0`,
+				`ALTER TABLE release_sources ADD COLUMN last_download_error TEXT NOT NULL DEFAULT ''`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

@@ -25,6 +25,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/categories"
 	"github.com/buzzqw/indexarr/internal/definition"
+	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
@@ -967,7 +968,11 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 	case ".torrent":
 		usenet = false
 	}
-	body, contentType, filename := s.releasePayload(r.Context(), release, usenet)
+	body, contentType, filename, payloadErr := s.releasePayload(r.Context(), release, usenet)
+	if payloadErr != nil {
+		s.writeDownloadError(w, payloadErr)
+		return
+	}
 	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(string(body))), "magnet:") {
 		http.Redirect(w, r, strings.TrimSpace(string(body)), http.StatusFound)
 		return
@@ -1044,31 +1049,57 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 
 // releasePayload returns the stored bytes or asks the download resolver for
 // them. The resolver is only consulted when no matching payload is cached.
-func (s *Server) releasePayload(ctx context.Context, release store.Release, usenet bool) ([]byte, string, string) {
+func (s *Server) releasePayload(ctx context.Context, release store.Release, usenet bool) ([]byte, string, string, error) {
 	if usenet {
 		if len(release.Payload) > 0 {
-			return release.Payload, release.PayloadType, NZBFilename(release.Title)
+			return release.Payload, release.PayloadType, NZBFilename(release.Title), nil
 		}
 	} else {
 		if len(release.Torrent) > 0 {
-			return release.Torrent, "application/x-bittorrent", TorrentFilename(release.Title)
+			if err := downloadproxy.ValidateHTMLBody(release.Torrent); err != nil {
+				return nil, "", "", err
+			}
+			return release.Torrent, "application/x-bittorrent", TorrentFilename(release.Title), nil
 		}
 		if len(release.Payload) > 0 && !isUsenetRelease(release) {
-			return release.Payload, release.PayloadType, TorrentFilename(release.Title)
+			if err := downloadproxy.ValidateHTMLBody(release.Payload); err != nil {
+				return nil, "", "", err
+			}
+			return release.Payload, release.PayloadType, TorrentFilename(release.Title), nil
 		}
 	}
 	if s.downloadResolver == nil {
-		return nil, "", ""
+		return nil, "", "", nil
 	}
 	body, contentType, filename, err := s.downloadResolver(ctx, release.ID)
 	if err != nil {
 		s.log.Warn("torznab: resolve release payload", "release_id", release.ID, "error", err)
-		return nil, "", ""
+		return nil, "", "", err
 	}
 	if len(body) == 0 {
-		return nil, "", ""
+		return nil, "", "", nil
 	}
-	return body, contentType, filename
+	return body, contentType, filename, nil
+}
+
+func (s *Server) writeDownloadError(w http.ResponseWriter, err error) {
+	var classified *downloadproxy.Error
+	if errors.As(err, &classified) {
+		if classified.RetryAfter.After(time.Now()) {
+			seconds := int(time.Until(classified.RetryAfter).Seconds())
+			if seconds < 1 {
+				seconds = 1
+			}
+			w.Header().Set("Retry-After", strconv.Itoa(seconds))
+		}
+		message := strings.TrimSpace(classified.Message)
+		if message == "" {
+			message = classified.Error()
+		}
+		s.writeError(w, classified.HTTPStatus(), message)
+		return
+	}
+	s.writeError(w, http.StatusBadGateway, "download temporarily unavailable")
 }
 
 func isUsenetRelease(release store.Release) bool {

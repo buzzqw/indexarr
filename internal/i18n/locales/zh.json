@@ -1128,6 +1128,8 @@
   "release.source.grabs": "成功抓取",
   "release.source.health": "状态",
   "release.source.healthy": "正常",
+  "release.source.quarantined": "隔离中",
+  "release.source.downloadError": "临时下载错误",
   "release.source.indexer": "索引器",
   "release.source.priority": "优先级",
   "release.source.unhealthy": "问题",

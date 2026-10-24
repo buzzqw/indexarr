@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -248,8 +250,8 @@ func TestResolveErrorsAreGeneric(t *testing.T) {
 	}
 
 	_, err = resolver.Resolve(ctx, release.ID)
-	if !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("Resolve error = %v, want ErrUnavailable", err)
+	if !errors.Is(err, ErrTemporary) && !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("Resolve error = %v, want a temporary/unavailable class", err)
 	}
 	message := err.Error()
 	for _, secret := range []string{server.URL, "leak.nzb", testAPIKey, "apikey"} {
@@ -274,5 +276,156 @@ func TestNewAndResolveErrors(t *testing.T) {
 	}
 	if _, err := resolver.Resolve(context.Background(), 9999); !errors.Is(err, ErrNotFound) {
 		t.Errorf("Resolve missing = %v, want ErrNotFound", err)
+	}
+}
+
+func seedTorrentTorznab(t *testing.T, st *store.Store, v *vault.Vault, baseURL string) int64 {
+	t.Helper()
+	ctx := context.Background()
+	body := `schema: 1
+meta: {id: tz-test, name: TZ Test, type: private, protocol: torrent, urls: ["` + baseURL + `"]}
+connector: torznab
+`
+	if _, err := definition.Parse([]byte(body)); err != nil {
+		t.Fatalf("definition.Parse: %v", err)
+	}
+	if err := st.UpsertDefinition(ctx, store.Definition{
+		ID: "tz-test", SchemaVersion: definition.CurrentSchema, Family: "torznab",
+		State: "verificata", Origin: "local", Author: "test", Body: body,
+		Hash: definition.Fingerprint([]byte(body)), UpdatedAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("UpsertDefinition: %v", err)
+	}
+	id, err := st.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "tz-test", Protocol: "torrent", Slug: "tz-test",
+		Name: "TZ Test", Enabled: true, Priority: 25,
+		ConfigJSON: `{"url":"` + baseURL + `","categories":[5040]}`,
+	})
+	if err != nil {
+		t.Fatalf("CreateIndexer: %v", err)
+	}
+	return id
+}
+
+func insertTorrentRelease(t *testing.T, st *store.Store, key, title string) store.Release {
+	t.Helper()
+	release := store.Release{
+		DedupKey: key, Title: title, SearchTitle: store.NormalizeSearch(title),
+		Size: 12345, Category: "5040", Protocol: "torrent",
+		PublishedAt: time.Now().Add(-time.Hour), FirstSeenAt: time.Now().Add(-time.Hour),
+		LastSeenAt: time.Now(),
+	}
+	if _, err := st.UpsertRelease(context.Background(), &release); err != nil {
+		t.Fatalf("UpsertRelease: %v", err)
+	}
+	return release
+}
+
+func TestResolveDownloadLinkShapes(t *testing.T) {
+	magnet := "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Show"
+	cases := []struct {
+		name       string
+		status     int
+		location   string
+		body       string
+		fixture    string
+		wantKind   error
+		wantMagnet string
+	}{
+		{"redirect magnet", http.StatusFound, magnet, "", "", nil, magnet},
+		{"body magnet", http.StatusOK, "", "", "body_magnet.txt", nil, magnet},
+		{"torrent file", http.StatusOK, "", "", "valid.torrent", nil, ""},
+		{"html login", http.StatusOK, "", "", "login.html", ErrLogin, ""},
+		{"html challenge", http.StatusOK, "", "", "challenge.html", ErrBlocked, ""},
+		{"404 no magnet", http.StatusNotFound, "", "", "no_magnet.txt", ErrTemporary, ""},
+		{"502 login", http.StatusBadGateway, "", "", "login_502.txt", ErrTemporary, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tc.location != "" {
+					w.Header().Set("Location", tc.location)
+					w.WriteHeader(tc.status)
+					return
+				}
+				body := []byte(tc.body)
+				if tc.fixture != "" {
+					body, _ = os.ReadFile(filepath.Join("testdata", tc.fixture))
+				}
+				w.WriteHeader(tc.status)
+				_, _ = w.Write(body)
+			}))
+			defer server.Close()
+			st := testStore(t)
+			v := testVault(t)
+			manager := testManager(t, st, v)
+			indexerID := seedTorrentTorznab(t, st, v, server.URL)
+			resolver, err := New(Config{Store: st, Vault: v, Manager: manager})
+			if err != nil {
+				t.Fatal(err)
+			}
+			release := insertTorrentRelease(t, st, "tz-"+tc.name, "Torrent Release")
+			ref, err := indexer.SealDownloadRef(v, indexerID, engine.Item{
+				Title: release.Title, GUID: "rel-1", DownloadURL: server.URL + "/download",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := st.RecordReleaseSource(context.Background(), store.ReleaseSource{
+				ReleaseID: release.ID, IndexerID: indexerID, DownloadRef: ref,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			payload, err := resolver.Resolve(context.Background(), release.ID)
+			if tc.wantKind != nil {
+				if !errors.Is(err, tc.wantKind) {
+					t.Fatalf("Resolve error = %v, want %v", err, tc.wantKind)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+			if tc.wantMagnet != "" {
+				if payload.Magnet != tc.wantMagnet {
+					t.Fatalf("magnet = %q", payload.Magnet)
+				}
+				return
+			}
+			wantBody, _ := os.ReadFile(filepath.Join("testdata", "valid.torrent"))
+			if string(payload.Body) != string(wantBody) {
+				t.Fatalf("body = %q", payload.Body)
+			}
+			if !strings.HasSuffix(payload.Filename, ".torrent") {
+				t.Errorf("filename = %q", payload.Filename)
+			}
+		})
+	}
+}
+
+func TestRepeated404QuarantinesSource(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+	st := testStore(t)
+	v := testVault(t)
+	manager := testManager(t, st, v)
+	indexerID := seedTorrentTorznab(t, st, v, server.URL)
+	resolver, _ := New(Config{Store: st, Vault: v, Manager: manager})
+	release := insertTorrentRelease(t, st, "quarantine", "Quarantine Release")
+	ref, _ := indexer.SealDownloadRef(v, indexerID, engine.Item{Title: release.Title, GUID: "rel-1", DownloadURL: server.URL + "/download"})
+	_ = st.RecordReleaseSource(context.Background(), store.ReleaseSource{ReleaseID: release.ID, IndexerID: indexerID, DownloadRef: ref})
+	for i := 0; i < 2; i++ {
+		if _, err := resolver.Resolve(context.Background(), release.ID); err == nil {
+			t.Fatal("404 did not fail")
+		}
+	}
+	sources, _ := st.ReleaseSourcesFor(context.Background(), release.ID)
+	if len(sources) != 1 || sources[0].DownloadFailures != 2 || !sources[0].Quarantined {
+		t.Fatalf("source after repeated 404 = %+v", sources)
+	}
+	if _, err := resolver.Resolve(context.Background(), release.ID); !errors.Is(err, ErrQuarantined) {
+		t.Fatalf("quarantined resolve = %v", err)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -700,5 +701,41 @@ func TestNormalizeInfoHash(t *testing.T) {
 		if got := normalizeInfoHash(input); got != want {
 			t.Errorf("normalizeInfoHash(%q) = %q, want %q", input, got, want)
 		}
+	}
+}
+
+func TestTorznabGrabCarriesSeasonEpisodeAndToken(t *testing.T) {
+	const feed = `<rss version="2.0" xmlns:torznab="http://torznab.com/schemas/2015/feed"><channel><item><title>Show S02E05 1080p</title><guid>grab-1</guid><link>https://tracker.example/details/1</link><enclosure url="https://tracker.example/dl/1.torrent" type="application/x-bittorrent"/></item></channel></rss>`
+	var grabQuery url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("t") == "get" {
+			grabQuery = r.URL.Query()
+			_, _ = io.WriteString(w, "d4:infod4:name4:testee")
+			return
+		}
+		_, _ = io.WriteString(w, feed)
+	}))
+	defer server.Close()
+	connector, err := NewTorznab(TorznabConfig{
+		BaseURL:   server.URL + "/api?k=KEEPME",
+		Transport: newTestTransport(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeTV, Query: "Show", Season: 2, Episode: 5,
+	})
+	if err != nil || len(items) != 1 {
+		t.Fatalf("Search = %d, %v", len(items), err)
+	}
+	if items[0].Attributes["season"] != "2" || items[0].Attributes["episode"] != "5" {
+		t.Fatalf("search attributes = %v", items[0].Attributes)
+	}
+	if _, err := connector.Download(context.Background(), items[0]); err != nil {
+		t.Fatalf("Download: %v", err)
+	}
+	if grabQuery.Get("season") != "2" || grabQuery.Get("ep") != "5" || grabQuery.Get("k") != "KEEPME" {
+		t.Fatalf("grab query = %v", grabQuery)
 	}
 }

@@ -517,7 +517,8 @@ func (s *Store) ReleaseSourcesFor(ctx context.Context, releaseID int64) ([]Relea
 		SELECT rs.indexer_id, i.name, i.priority, i.enabled,
 			COALESCE(st.last_error, ''), COALESCE(st.circuit, 'closed'),
 			rs.seeders, rs.leechers, rs.last_seen_at, rs.download_ref,
-			rs.grab_count, rs.last_grab_at
+			rs.grab_count, rs.last_grab_at, rs.download_failures,
+			rs.quarantined_until, rs.last_download_error
 		FROM release_sources rs
 		JOIN indexers i ON i.id = rs.indexer_id
 		LEFT JOIN indexer_state st ON st.indexer_id = i.id
@@ -530,12 +531,13 @@ func (s *Store) ReleaseSourcesFor(ctx context.Context, releaseID int64) ([]Relea
 	var out []ReleaseSourceInfo
 	for rows.Next() {
 		var item ReleaseSourceInfo
-		var lastSeen, lastGrab int64
+		var lastSeen, lastGrab, quarantinedUntil int64
 		var lastError, circuit string
 		var enabled int
 		if err := rows.Scan(&item.IndexerID, &item.Name, &item.Priority, &enabled,
 			&lastError, &circuit, &item.Seeders, &item.Leechers, &lastSeen,
-			&item.DownloadRef, &item.GrabCount, &lastGrab); err != nil {
+			&item.DownloadRef, &item.GrabCount, &lastGrab, &item.DownloadFailures,
+			&quarantinedUntil, &item.LastDownloadError); err != nil {
 			return nil, fmt.Errorf("scan release source: %w", err)
 		}
 		item.Enabled = enabled != 0
@@ -544,6 +546,8 @@ func (s *Store) ReleaseSourcesFor(ctx context.Context, releaseID int64) ([]Relea
 		item.HasDownloadRef = strings.TrimSpace(item.DownloadRef) != ""
 		item.LastSeenAt = unixTime(lastSeen)
 		item.LastGrabAt = unixTime(lastGrab)
+		item.QuarantinedUntil = unixTime(quarantinedUntil)
+		item.Quarantined = item.QuarantinedUntil.After(time.Now())
 		out = append(out, item)
 	}
 	return out, rows.Err()
@@ -551,18 +555,22 @@ func (s *Store) ReleaseSourcesFor(ctx context.Context, releaseID int64) ([]Relea
 
 // ReleaseSourceInfo is one indexer copy of a merged release.
 type ReleaseSourceInfo struct {
-	IndexerID      int64
-	Name           string
-	Priority       int
-	Enabled        bool
-	Healthy        bool
-	Seeders        int64
-	Leechers       int64
-	LastSeenAt     time.Time
-	DownloadRef    string
-	HasDownloadRef bool
-	GrabCount      int64
-	LastGrabAt     time.Time
+	IndexerID         int64
+	Name              string
+	Priority          int
+	Enabled           bool
+	Healthy           bool
+	Seeders           int64
+	Leechers          int64
+	LastSeenAt        time.Time
+	DownloadRef       string
+	HasDownloadRef    bool
+	GrabCount         int64
+	LastGrabAt        time.Time
+	DownloadFailures  int64
+	QuarantinedUntil  time.Time
+	Quarantined       bool
+	LastDownloadError string
 }
 
 // BetterThan reports whether this copy should be preferred over other. A

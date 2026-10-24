@@ -24,6 +24,7 @@ const (
 	indexarr2Cycle6Version          = 9
 	indexarr2DedupVersion           = 10
 	indexarr2TGxHashlessVersion     = 11
+	indexarr2DownloadStatusVersion  = 12
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

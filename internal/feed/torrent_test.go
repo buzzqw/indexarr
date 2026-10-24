@@ -140,3 +140,16 @@ func TestFetchTorrentMagnetRedirect(t *testing.T) {
 		t.Errorf("magnet = %q", magnetErr.Magnet)
 	}
 }
+
+func TestParseTorrentMetadata(t *testing.T) {
+	meta, err := ParseTorrent(testTorrent())
+	if err != nil {
+		t.Fatalf("ParseTorrent: %v", err)
+	}
+	if meta.Name != "test.iso" || meta.Size != 12345 || meta.InfoHash == "" {
+		t.Fatalf("meta = %+v", meta)
+	}
+	if _, err := ParseTorrent([]byte("<html>login</html>")); err == nil {
+		t.Fatal("HTML accepted as a torrent")
+	}
+}

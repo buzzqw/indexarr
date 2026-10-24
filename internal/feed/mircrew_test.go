@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
@@ -198,3 +199,45 @@ func TestSanitizeXML(t *testing.T) {
 }
 
 // MirCrew coverage lives in mircrew_test.go.
+
+func TestMirCrewIndexerOfflineFeed(t *testing.T) {
+	body, err := os.ReadFile("testdata/mircrew_indexer_feed.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotQuery url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Header().Set("Content-Type", "application/rss+xml")
+		_, _ = w.Write(body)
+	}))
+	defer server.Close()
+
+	client := NewClient(ClientConfig{URL: server.URL + "/api?k=KEEPME", Manager: ManagerTorznab})
+	items, err := client.Fetch(context.Background(), "FBI Most Wanted S01E02", 100)
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items = %d", len(items))
+	}
+	if gotQuery.Get("k") != "KEEPME" {
+		t.Errorf("k token = %q, want KEEPME", gotQuery.Get("k"))
+	}
+	if gotQuery.Get("season") != "1" || gotQuery.Get("ep") != "2" {
+		t.Errorf("season/ep = %q/%q", gotQuery.Get("season"), gotQuery.Get("ep"))
+	}
+	item := items[0]
+	if !item.Published.IsZero() {
+		t.Errorf("missing pubDate became %v, want zero for first-seen handling", item.Published)
+	}
+	if item.Seeders != -1 {
+		t.Errorf("missing seeders = %d, want -1 (unknown)", item.Seeders)
+	}
+	if !strings.Contains(item.Title, "ITA") || !strings.Contains(item.Title, "ENG") {
+		t.Errorf("languages lost from title: %q", item.Title)
+	}
+	if !strings.Contains(item.Magnet, "tr=udp") {
+		t.Errorf("magnet lost its tracker: %q", item.Magnet)
+	}
+}

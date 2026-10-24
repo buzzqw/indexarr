@@ -30,7 +30,7 @@
   </dl>
 </section>
 
-{{if gt (len .Sources) 1}}
+{{if .Sources}}
 <section class="panel">
   <div class="panel-head"><h2>{{T "release.sources" (len .Sources)}}</h2></div>
   <p class="help">{{T "release.sourcesHelp"}}</p>
@@ -51,7 +51,13 @@
           <td>{{.Name}}</td>
           <td>{{numOrDash .Seeders}} / {{numOrDash .Leechers}}</td>
           <td>{{.Priority}}</td>
-          <td>{{if .Healthy}}<span class="chip ok">{{T "release.source.healthy"}}</span>{{else}}<span class="chip warn">{{T "release.source.unhealthy"}}</span>{{end}}</td>
+          <td>
+            {{if .Quarantined}}<span class="chip warn" title="{{.LastDownloadError}}">{{T "release.source.quarantined"}}</span>
+            {{else if .LastDownloadError}}<span class="chip warn" title="{{.LastDownloadError}}">{{T "release.source.downloadError"}}</span>
+            {{else if .Healthy}}<span class="chip ok">{{T "release.source.healthy"}}</span>
+            {{else}}<span class="chip warn">{{T "release.source.unhealthy"}}</span>{{end}}
+            {{if .LastDownloadError}}<div class="muted">{{truncate .LastDownloadError 90}}</div>{{end}}
+          </td>
           <td>{{if .GrabCount}}{{.GrabCount}}{{else}}<span class="muted">—</span>{{end}}</td>
         </tr>
         {{end}}

@@ -1128,6 +1128,8 @@
   "release.source.grabs": "Descargas correctas",
   "release.source.health": "Estado",
   "release.source.healthy": "correcta",
+  "release.source.quarantined": "En cuarentena",
+  "release.source.downloadError": "Error de descarga temporal",
   "release.source.indexer": "Indexador",
   "release.source.priority": "Prioridad",
   "release.source.unhealthy": "problema",

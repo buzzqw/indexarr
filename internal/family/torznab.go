@@ -225,6 +225,19 @@ func (t *Torznab) Search(ctx context.Context, req engine.SearchRequest) ([]engin
 	if err != nil {
 		return nil, fmt.Errorf("torznab: search: %s", redact(err.Error(), t.cfg.APIKey))
 	}
+	if req.Season > 0 || req.Episode > 0 {
+		for i := range items {
+			if items[i].Attributes == nil {
+				items[i].Attributes = make(map[string]string)
+			}
+			if req.Season > 0 {
+				items[i].Attributes["season"] = strconv.Itoa(req.Season)
+			}
+			if req.Episode > 0 {
+				items[i].Attributes["episode"] = strconv.Itoa(req.Episode)
+			}
+		}
+	}
 	return items, nil
 }
 
@@ -266,6 +279,12 @@ func (t *Torznab) Download(ctx context.Context, item engine.Item) (engine.Payloa
 		values := url.Values{}
 		values.Set("t", "get")
 		values.Set("id", id)
+		if season := strings.TrimSpace(item.Attributes["season"]); season != "" {
+			values.Set("season", season)
+		}
+		if episode := strings.TrimSpace(item.Attributes["episode"]); episode != "" {
+			values.Set("ep", episode)
+		}
 		if t.cfg.APIKey != "" {
 			values.Set("apikey", t.cfg.APIKey)
 		}

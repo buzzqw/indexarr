@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -222,4 +223,138 @@ func resolveRedirectMagnet(ctx context.Context, client *http.Client, rawURL stri
 		return location
 	}
 	return ""
+}
+
+// TorrentInfo is the metadata indexarr reads from a .torrent file. Name and
+// Size describe the payload; InfoHash is the SHA-1 of the info dictionary.
+type TorrentInfo struct {
+	InfoHash string
+	Name     string
+	Size     int64
+}
+
+// ParseTorrent validates a .torrent body and returns its infohash, name and
+// total payload size. It accepts multi-file torrents and sums their lengths.
+func ParseTorrent(data []byte) (TorrentInfo, error) {
+	if len(data) < 2 || data[0] != 'd' {
+		return TorrentInfo{}, errors.New("not a bencoded dictionary")
+	}
+	pos := 1
+	infoStart, infoEnd := 0, 0
+	for pos < len(data) && data[pos] != 'e' {
+		key, next, err := parseBencodeString(data, pos)
+		if err != nil {
+			return TorrentInfo{}, err
+		}
+		valueStart := next
+		valueEnd, err := parseBencodeValue(data, valueStart)
+		if err != nil {
+			return TorrentInfo{}, err
+		}
+		if string(key) == "info" {
+			if data[valueStart] != 'd' {
+				return TorrentInfo{}, errors.New("torrent info is not a dictionary")
+			}
+			infoStart, infoEnd = valueStart, valueEnd
+		}
+		pos = valueEnd
+	}
+	if infoStart == 0 || infoEnd <= infoStart {
+		return TorrentInfo{}, errors.New("torrent has no info dictionary")
+	}
+	sum := sha1.Sum(data[infoStart:infoEnd])
+	meta := TorrentInfo{InfoHash: hex.EncodeToString(sum[:])}
+	pos = infoStart + 1
+	for pos < infoEnd && data[pos] != 'e' {
+		key, next, err := parseBencodeString(data, pos)
+		if err != nil {
+			return TorrentInfo{}, err
+		}
+		valueStart := next
+		valueEnd, err := parseBencodeValue(data, valueStart)
+		if err != nil {
+			return TorrentInfo{}, err
+		}
+		switch string(key) {
+		case "name":
+			name, _, nameErr := parseBencodeString(data, valueStart)
+			if nameErr != nil {
+				return TorrentInfo{}, nameErr
+			}
+			meta.Name = strings.TrimSpace(string(name))
+		case "length":
+			size, sizeErr := bencodeInt(data, valueStart)
+			if sizeErr != nil {
+				return TorrentInfo{}, sizeErr
+			}
+			meta.Size = size
+		case "files":
+			size, sizeErr := bencodeFileListSize(data, valueStart)
+			if sizeErr != nil {
+				return TorrentInfo{}, sizeErr
+			}
+			meta.Size = size
+		}
+		pos = valueEnd
+	}
+	return meta, nil
+}
+
+func bencodeInt(data []byte, pos int) (int64, error) {
+	if pos >= len(data) || data[pos] != 'i' {
+		return 0, errors.New("bencode integer expected")
+	}
+	end := pos + 1
+	for end < len(data) && data[end] != 'e' {
+		end++
+	}
+	if end >= len(data) {
+		return 0, errors.New("truncated bencode integer")
+	}
+	value, err := strconv.ParseInt(string(data[pos+1:end]), 10, 64)
+	if err != nil {
+		return 0, errors.New("invalid bencode integer")
+	}
+	return value, nil
+}
+
+func bencodeFileListSize(data []byte, pos int) (int64, error) {
+	if pos >= len(data) || data[pos] != 'l' {
+		return 0, errors.New("torrent files is not a list")
+	}
+	total := int64(0)
+	pos++
+	for pos < len(data) && data[pos] != 'e' {
+		if data[pos] != 'd' {
+			return 0, errors.New("torrent file entry is not a dictionary")
+		}
+		pos++
+		for pos < len(data) && data[pos] != 'e' {
+			key, next, err := parseBencodeString(data, pos)
+			if err != nil {
+				return 0, err
+			}
+			valueStart := next
+			valueEnd, err := parseBencodeValue(data, valueStart)
+			if err != nil {
+				return 0, err
+			}
+			if string(key) == "length" {
+				size, sizeErr := bencodeInt(data, valueStart)
+				if sizeErr != nil {
+					return 0, sizeErr
+				}
+				total += size
+			}
+			pos = valueEnd
+		}
+		if pos >= len(data) {
+			return 0, errors.New("truncated torrent file entry")
+		}
+		pos++
+	}
+	if pos >= len(data) {
+		return 0, errors.New("truncated torrent files list")
+	}
+	return total, nil
 }

@@ -8,12 +8,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+	"net/http"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/buzzqw/indexarr/internal/engine"
+	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/vault"
@@ -29,7 +31,104 @@ var (
 	// ErrUnavailable reports that no stored payload or usable reference
 	// exists. Its text never includes a tracker URL or a secret.
 	ErrUnavailable = errors.New("downloadproxy: download unavailable")
+	ErrLogin       = errors.New("downloadproxy: login required")
+	ErrBlocked     = errors.New("downloadproxy: download blocked")
+	ErrTemporary   = errors.New("downloadproxy: download temporarily unavailable")
+	ErrQuarantined = errors.New("downloadproxy: download quarantined")
 )
+
+// Error is a classified download failure. Its message is safe to show in the
+// release card: it never contains a tracker URL or a credential.
+type Error struct {
+	Kind       error
+	Message    string
+	RetryAfter time.Time
+	status     int
+}
+
+func (e *Error) Error() string {
+	if e == nil {
+		return ""
+	}
+	message := strings.TrimSpace(e.Message)
+	if message == "" {
+		return e.Kind.Error()
+	}
+	return e.Kind.Error() + ": " + message
+}
+
+func (e *Error) Unwrap() error { return e.Kind }
+
+// HTTPStatus maps a classified error to the status the /dl endpoint returns.
+func (e *Error) HTTPStatus() int {
+	if e == nil {
+		return http.StatusBadGateway
+	}
+	if e.status > 0 {
+		return e.status
+	}
+	switch {
+	case errors.Is(e.Kind, ErrLogin):
+		return http.StatusUnauthorized
+	case errors.Is(e.Kind, ErrBlocked):
+		return http.StatusForbidden
+	case errors.Is(e.Kind, ErrQuarantined):
+		return http.StatusServiceUnavailable
+	default:
+		return http.StatusBadGateway
+	}
+}
+
+func classifyDownloadError(err error) *Error {
+	if err == nil {
+		return nil
+	}
+	var classified *Error
+	if errors.As(err, &classified) {
+		return classified
+	}
+	lower := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(lower, "challenge"), strings.Contains(lower, "captcha"),
+		strings.Contains(lower, "cloudflare"), strings.Contains(lower, "blocked"):
+		return &Error{Kind: ErrBlocked, Message: "site blocked the download"}
+	case strings.Contains(lower, "login"), strings.Contains(lower, "unauthorized"),
+		strings.Contains(lower, "forbidden"), strings.Contains(lower, "http 401"),
+		strings.Contains(lower, "http 403"):
+		return &Error{Kind: ErrLogin, Message: "site requires a login"}
+	case strings.Contains(lower, "404"), strings.Contains(lower, "410"),
+		strings.Contains(lower, "not found"), strings.Contains(lower, "no magnet"):
+		return &Error{Kind: ErrTemporary, Message: "no magnet or .torrent available"}
+	default:
+		return &Error{Kind: ErrTemporary, Message: "temporary download error"}
+	}
+}
+
+// ValidateHTMLBody rejects a login/challenge/error page even when it was
+// already stored by an older version.
+func ValidateHTMLBody(body []byte) error {
+	if looksLikeHTML(body) {
+		return htmlError(body)
+	}
+	return nil
+}
+
+func looksLikeHTML(body []byte) bool {
+	trimmed := strings.TrimSpace(strings.ToLower(string(body)))
+	return strings.HasPrefix(trimmed, "<!doctype html") || strings.HasPrefix(trimmed, "<html") ||
+		strings.HasPrefix(trimmed, "<head") || strings.HasPrefix(trimmed, "<body")
+}
+
+func htmlError(body []byte) *Error {
+	lower := strings.ToLower(string(body))
+	switch {
+	case strings.Contains(lower, "login"), strings.Contains(lower, "sign in"),
+		strings.Contains(lower, "password"), strings.Contains(lower, "unauthorized"):
+		return &Error{Kind: ErrLogin, Message: "site returned a login page"}
+	default:
+		return &Error{Kind: ErrBlocked, Message: "site returned an HTML page instead of a torrent"}
+	}
+}
 
 // Config configures a Resolver.
 type Config struct {
@@ -80,6 +179,9 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 	}
 
 	if body, contentType, protocol, payloadErr := r.store.PayloadByReleaseID(ctx, releaseID); payloadErr == nil && len(body) > 0 {
+		if err := ValidateHTMLBody(body); err != nil {
+			return Payload{}, err
+		}
 		return Payload{
 			Body:        body,
 			ContentType: contentType,
@@ -104,7 +206,14 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 		return sources[i].BetterThan(sources[j])
 	})
 	var lastErr error
+	var earliestQuarantine time.Time
 	for _, source := range sources {
+		if source.Quarantined {
+			if earliestQuarantine.IsZero() || source.QuarantinedUntil.Before(earliestQuarantine) {
+				earliestQuarantine = source.QuarantinedUntil
+			}
+			continue
+		}
 		ref := strings.TrimSpace(source.DownloadRef)
 		if ref == "" || r.vault == nil {
 			continue
@@ -122,17 +231,50 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 			if ctx.Err() != nil {
 				return Payload{}, ctx.Err()
 			}
-			lastErr = downloadErr
+			classified := classifyDownloadError(downloadErr)
+			lastErr = classified
+			r.recordSourceFailure(ctx, releaseID, source.IndexerID, classified)
 			continue
 		}
 		if len(fetched.Body) == 0 {
 			if magnet := strings.TrimSpace(fetched.Magnet); magnet != "" {
+				r.clearSourceFailure(ctx, releaseID, source.IndexerID)
 				return Payload{Magnet: magnet}, nil
 			}
 			continue
 		}
 
+		body := fetched.Body
+		trimmedBody := strings.TrimSpace(string(body))
+		if strings.HasPrefix(strings.ToLower(trimmedBody), "magnet:") {
+			r.clearSourceFailure(ctx, releaseID, source.IndexerID)
+			return Payload{Magnet: trimmedBody}, nil
+		}
+		if looksLikeHTML(body) {
+			classified := htmlError(body)
+			lastErr = classified
+			r.recordSourceFailure(ctx, releaseID, source.IndexerID, classified)
+			continue
+		}
+
 		protocol := protocolFor(parsed.Item, fetched.ContentType)
+		if protocol == "torrent" {
+			meta, metaErr := feed.ParseTorrent(body)
+			if metaErr != nil {
+				classified := &Error{Kind: ErrTemporary, Message: "downloaded file is not a torrent"}
+				lastErr = classified
+				r.recordSourceFailure(ctx, releaseID, source.IndexerID, classified)
+				continue
+			}
+			if strings.TrimSpace(meta.InfoHash) != "" && strings.TrimSpace(release.InfoHash) == "" {
+				if keeperID, _, mergeErr := r.store.SetReleaseInfoHash(ctx, releaseID, meta.InfoHash); mergeErr == nil && keeperID > 0 {
+					releaseID = keeperID
+				}
+			}
+			if strings.TrimSpace(fetched.Filename) == "" && strings.TrimSpace(meta.Name) != "" {
+				fetched.Filename = SafeFilename(meta.Name, ".torrent")
+			}
+		}
 		if protocol == "torrent" {
 			if sourceIndexer, indexerErr := r.store.GetIndexer(ctx, indexerID); indexerErr == nil &&
 				strings.EqualFold(strings.TrimSpace(sourceIndexer.Protocol), "usenet") {
@@ -145,22 +287,44 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 		}
 		// Cache the bytes so the next request is local. A cache write failure
 		// must not discard a payload the client can still use.
-		_ = r.store.SavePayload(ctx, releaseID, fetched.Body, contentType, protocol)
+		_ = r.store.SavePayload(ctx, releaseID, body, contentType, protocol)
 		// Record which copy actually worked, so the merged release keeps a
 		// history of successful fallbacks.
 		_ = r.store.RecordSourceGrab(ctx, releaseID, indexerID)
+		r.clearSourceFailure(ctx, releaseID, source.IndexerID)
 
 		filename := strings.TrimSpace(fetched.Filename)
 		if filename == "" {
 			filename = Filename(release.Title, protocol)
 		}
-		return Payload{Body: fetched.Body, ContentType: contentType, Filename: filename}, nil
+		return Payload{Body: body, ContentType: contentType, Filename: filename}, nil
 	}
 
 	if lastErr != nil {
-		return Payload{}, fmt.Errorf("release %d: %w: %v", releaseID, ErrUnavailable, lastErr)
+		if classified, ok := lastErr.(*Error); ok {
+			return Payload{}, classified
+		}
+		return Payload{}, classifyDownloadError(lastErr)
 	}
-	return Payload{}, fmt.Errorf("release %d: %w", releaseID, ErrUnavailable)
+	if !earliestQuarantine.IsZero() {
+		return Payload{}, &Error{Kind: ErrQuarantined, Message: "download link temporarily quarantined", RetryAfter: earliestQuarantine}
+	}
+	return Payload{}, &Error{Kind: ErrTemporary, Message: "download unavailable"}
+}
+
+func (r *Resolver) recordSourceFailure(ctx context.Context, releaseID, indexerID int64, err *Error) {
+	if err == nil {
+		return
+	}
+	if errors.Is(err.Kind, ErrTemporary) && strings.Contains(strings.ToLower(err.Message), "no magnet") {
+		_, _, _ = r.store.RecordSourceDownloadFailure(ctx, releaseID, indexerID, err.Error())
+		return
+	}
+	_ = r.store.RecordSourceDownloadNotice(ctx, releaseID, indexerID, err.Error())
+}
+
+func (r *Resolver) clearSourceFailure(ctx context.Context, releaseID, indexerID int64) {
+	_ = r.store.ClearSourceDownloadFailure(ctx, releaseID, indexerID)
 }
 
 func protocolFor(item engine.Item, contentType string) string {

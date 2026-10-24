@@ -136,3 +136,42 @@ settings:
 		t.Errorf("the add form does not prefill meta.interval: %s", page)
 	}
 }
+
+func TestReleaseDetailShowsDownloadQuarantine(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	if err := env.store.UpsertDefinition(ctx, store.Definition{
+		ID: "quarantine-def", SchemaVersion: 1, Family: "torznab",
+		State: "verificata", Origin: "local", Author: "test",
+		Body: "schema: 1", Hash: "hash",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	indexer, err := env.store.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "quarantine-def", Slug: "quarantine", Name: "Quarantine",
+		Protocol: "torrent", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	release := store.Release{
+		DedupKey: "quarantine-release", Title: "Quarantine Release",
+		SearchTitle: store.NormalizeSearch("Quarantine Release"), Category: "5040",
+		PublishedAt: time.Now(), FirstSeenAt: time.Now(), LastSeenAt: time.Now(),
+	}
+	if _, err := env.store.UpsertRelease(ctx, &release); err != nil {
+		t.Fatal(err)
+	}
+	if err := env.store.RecordReleaseSource(ctx, store.ReleaseSource{
+		ReleaseID: release.ID, IndexerID: indexer,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := env.store.RecordSourceDownloadNotice(ctx, release.ID, indexer, "site requires a login"); err != nil {
+		t.Fatal(err)
+	}
+	body := get(t, env.handler, "/releases/"+strconv.FormatInt(release.ID, 10)).Body.String()
+	if !strings.Contains(body, "site requires a login") {
+		t.Fatalf("release detail does not show the download error")
+	}
+}

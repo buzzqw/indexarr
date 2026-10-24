@@ -1128,6 +1128,8 @@
   "release.source.grabs": "Erfolgreiche Downloads",
   "release.source.health": "Status",
   "release.source.healthy": "gesund",
+  "release.source.quarantined": "Quarantäne",
+  "release.source.downloadError": "Temporärer Downloadfehler",
   "release.source.indexer": "Indexer",
   "release.source.priority": "Priorität",
   "release.source.unhealthy": "Problem",
