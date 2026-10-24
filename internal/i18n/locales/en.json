@@ -581,6 +581,8 @@
   "idx.detail.latestCapability": "Latest list",
   "idx.detail.uploaderOnly": "Uploader list: read every %d minutes and stored; it is not queried in live searches.",
   "idx.detail.uploaderOnlyTip": "This source is a per-uploader or filtered listing. The latest run fills the cache, while live searches use the general site search.",
+  "idx.detail.exttoCategory": "Live search: Movies or TV follows the request; the saved filter applies only to the new-release list.",
+  "idx.detail.exttoCategoryTip": "ExtTo needs a category filter for live queries; indexarr maps movie requests to c=Movies and TV requests to c=TV.",
   "idx.detail.nextConnect": "Next step: your apps don't see this indexer yet.",
   "idx.detail.nextUpdate": "Next update",
   "idx.detail.noFilters": "No filters configured.",

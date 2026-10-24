@@ -11,6 +11,7 @@
     {{range .Problems}}{{template "problem" .}}{{end}}
     {{if .SlowProblem}}{{template "problem" .SlowProblem}}{{end}}
     {{if .UploaderOnly}}<p class="help uploader-note" title="{{T "idx.detail.uploaderOnlyTip"}}">{{T "idx.detail.uploaderOnly" .UploaderMinutes}}</p>{{end}}
+    {{if .CategoryMapped}}<p class="help uploader-note" title="{{T "idx.detail.exttoCategoryTip"}}">{{T "idx.detail.exttoCategory"}}</p>{{end}}
     {{if .Smartfeed}}
     <p class="flash warn" role="status">{{T "idx.smartfeed.expiry"}} <a href="{{.SmartfeedUILink}}" target="_blank" rel="noopener">{{T "idx.smartfeed.openUI"}}</a></p>
     {{if not .HasNative}}<p class="flash warn" role="alert">{{T "idx.smartfeed.needsNative"}} <a href="/indexers/new?definition=mircrew">{{T "idx.smartfeed.addNative"}}</a></p>{{end}}

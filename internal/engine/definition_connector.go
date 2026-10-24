@@ -421,7 +421,8 @@ func (c *DefinitionConnector) buildLatestRequest(ctx context.Context, latest *de
 	}
 	for name, list := range multi {
 		for _, value := range list {
-			if strings.TrimSpace(value) != "" {
+			value = strings.TrimSpace(value)
+			if value != "" && !strings.HasSuffix(value, "=") {
 				query.Add(name, value)
 			}
 		}
@@ -797,7 +798,8 @@ func (c *DefinitionConnector) buildSearchRequest(ctx context.Context, req Search
 	}
 	for name, list := range multi {
 		for _, value := range list {
-			if strings.TrimSpace(value) != "" {
+			value = strings.TrimSpace(value)
+			if value != "" && !strings.HasSuffix(value, "=") {
 				query.Add(name, value)
 			}
 		}

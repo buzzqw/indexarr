@@ -581,6 +581,8 @@
   "idx.detail.latestCapability": "Lista nowości",
   "idx.detail.uploaderOnly": "Lista uploadera: czytana co %d minut i zapisywana; nie jest odpytywana w wyszukiwaniach na żywo.",
   "idx.detail.uploaderOnlyTip": "To źródło to lista uploadera lub lista filtrowana. Cykl nowości zapełnia pamięć podręczną; wyszukiwania na żywo korzystają z ogólnego wyszukiwania serwisu.",
+  "idx.detail.exttoCategory": "Wyszukiwanie na żywo: Movies lub TV zależnie od żądania; zapisany filtr dotyczy tylko listy nowości.",
+  "idx.detail.exttoCategoryTip": "ExtTo wymaga filtra kategorii w wyszukiwaniu na żywo; indexarr mapuje filmy na c=Movies, a seriale na c=TV.",
   "idx.detail.nextConnect": "Następny krok: aplikacje jeszcze nie widzą tego indeksera.",
   "idx.detail.nextUpdate": "Następna aktualizacja",
   "idx.detail.noFilters": "Brak skonfigurowanych filtrów.",

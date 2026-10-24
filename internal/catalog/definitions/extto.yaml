@@ -31,7 +31,7 @@ settings:
   - name: filter
     type: text
     label: "Site filter (category, uploader or language)"
-    help: "First filter value: c=TV, c=Movies, u=EZTV, tg=Italian or q=MIRCrew. Leave empty to send no filter."
+    help: "Filter used by the latest list: c=TV, c=Movies, u=EZTV, tg=Italian or q=MIRCrew. Live searches follow the requested movie/TV category instead."
     default: "c=TV"
     required: true
   - name: filter-extra
@@ -63,8 +63,7 @@ search:
       q: "{{ query.keywords }}"
     params_multi:
       filter:
-        - "{{ settings.filter }}"
-        - "{{ settings.filter-extra }}"
+        - "c={{ categories }}"
   pagination: { type: page, start: 1, max_pages: 10, param: page, stop_when: empty_rows }
   response:
     type: html

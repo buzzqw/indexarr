@@ -2327,6 +2327,7 @@ type indexerDetailView struct {
 	SearchOnly        bool
 	UploaderOnly      bool
 	UploaderMinutes   int
+	CategoryMapped    bool
 	Smartfeed         bool
 	SmartfeedUILink   string
 	HasNative         bool
@@ -2413,6 +2414,8 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		if data.UploaderMinutes < 1 {
 			data.UploaderMinutes = 1
 		}
+	} else if strings.EqualFold(in.DefinitionID, "extto") {
+		data.CategoryMapped = true
 	}
 	if strings.EqualFold(strings.TrimSpace(in.DefinitionID), smartfeed.DefinitionID) ||
 		truthy(config["smartfeed"]) {

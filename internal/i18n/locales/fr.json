@@ -581,6 +581,8 @@
   "idx.detail.latestCapability": "Liste des nouveautés",
   "idx.detail.uploaderOnly": "Liste par uploader : lue toutes les %d minutes et enregistrée ; elle n’est pas interrogée dans les recherches en direct.",
   "idx.detail.uploaderOnlyTip": "Cette source est une liste par uploader ou filtrée. La passe nouveautés remplit le cache ; les recherches en direct utilisent la recherche générale du site.",
+  "idx.detail.exttoCategory": "Recherche en direct : Movies ou TV selon la requête ; le filtre enregistré ne vaut que pour la liste des nouveautés.",
+  "idx.detail.exttoCategoryTip": "ExtTo exige un filtre de catégorie pour les recherches en direct ; indexarr mappe les films sur c=Movies et les séries sur c=TV.",
   "idx.detail.nextConnect": "Prochaine étape : vos apps ne voient pas encore cet indexeur.",
   "idx.detail.nextUpdate": "Prochaine mise à jour",
   "idx.detail.noFilters": "Aucun filtre configuré.",

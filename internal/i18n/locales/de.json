@@ -581,6 +581,8 @@
   "idx.detail.latestCapability": "Neuheiten-Liste",
   "idx.detail.uploaderOnly": "Uploader-Liste: alle %d Minuten gelesen und gespeichert; sie wird nicht in Live-Suchen abgefragt.",
   "idx.detail.uploaderOnlyTip": "Diese Quelle ist eine Uploader- oder gefilterte Liste. Der Neuheiten-Lauf füllt den Cache; Live-Suchen nutzen die allgemeine Suche der Seite.",
+  "idx.detail.exttoCategory": "Live-Suche: Movies oder TV folgt der Anfrage; der gespeicherte Filter gilt nur für die Neuheitenliste.",
+  "idx.detail.exttoCategoryTip": "ExtTo braucht einen Kategoriefilter für Live-Suchen; indexarr ordnet Filme c=Movies und Serien c=TV zu.",
   "idx.detail.nextConnect": "Nächster Schritt: Ihre Apps sehen diesen Indexer noch nicht.",
   "idx.detail.nextUpdate": "Nächste Aktualisierung",
   "idx.detail.noFilters": "Keine Filter konfiguriert.",

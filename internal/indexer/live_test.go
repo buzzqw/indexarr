@@ -460,3 +460,29 @@ func TestLiveExcludedUploaderAndFilteredSources(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanLiveSearchUsesModeCategory(t *testing.T) {
+	caps := engine.Capabilities{Modes: []engine.Mode{engine.ModeSearch}, Params: map[engine.Mode][]string{engine.ModeSearch: {engine.ParamQuery}}}
+	for _, tc := range []struct {
+		mode string
+		want int
+	}{
+		{"movie", 2000},
+		{"tvsearch", 5000},
+	} {
+		plan, ok, reason := planLiveSearch(caps, LiveQuery{Mode: tc.mode, Query: "Title"})
+		if !ok {
+			t.Fatalf("%s: %s", tc.mode, reason)
+		}
+		if len(plan.request.Categories) != 1 || plan.request.Categories[0] != tc.want {
+			t.Errorf("%s categories = %v, want %d", tc.mode, plan.request.Categories, tc.want)
+		}
+	}
+	plan, ok, reason := planLiveSearch(caps, LiveQuery{Mode: "search", Query: "Title"})
+	if !ok {
+		t.Fatal(reason)
+	}
+	if len(plan.request.Categories) != 0 {
+		t.Errorf("generic search categories = %v, want none", plan.request.Categories)
+	}
+}

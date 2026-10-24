@@ -292,7 +292,7 @@ func TestTorrentGalaxyNativeFields(t *testing.T) {
 	}
 }
 
-func TestExtToMultipleFiltersAndLatestStop(t *testing.T) {
+func TestExtToCategoryMappingAndLatestFilters(t *testing.T) {
 	var mu sync.Mutex
 	var filters []string
 	var queries []string
@@ -323,15 +323,18 @@ func TestExtToMultipleFiltersAndLatestStop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch, Query: "Dune"}); err != nil {
-		t.Fatalf("search with two filters: %v", err)
+	// A movie request without an explicit cat still maps to c=Movies.
+	if _, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "Dune", Categories: []int{2000},
+	}); err != nil {
+		t.Fatalf("movie search: %v", err)
 	}
 	mu.Lock()
 	gotFilters := append([]string(nil), filters...)
 	gotQueries := append([]string(nil), queries...)
 	mu.Unlock()
-	if len(gotFilters) < 2 || gotFilters[0] != "c=Movies" || gotFilters[1] != "tg=Italian" {
-		t.Fatalf("filter params = %v, want the two separate values", gotFilters)
+	if len(gotFilters) == 0 || gotFilters[0] != "c=Movies" {
+		t.Fatalf("movie filters = %v, want c=Movies", gotFilters)
 	}
 	if len(gotQueries) == 0 || gotQueries[0] != "Dune" {
 		t.Fatalf("q params = %v, want Dune", gotQueries)
@@ -340,55 +343,52 @@ func TestExtToMultipleFiltersAndLatestStop(t *testing.T) {
 	mu.Lock()
 	filters, queries, pages = nil, nil, 0
 	mu.Unlock()
-	connector, err = engine.NewDefinitionConnector(engine.DefinitionConfig{
-		Indexer:    engine.IndexerRef{Slug: "extto", Name: def.Meta.Name},
-		Definition: def,
-		Settings:   map[string]string{"filter": "c=TV"},
-		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch, Query: "MIRCrew", FirstPageOnly: true}); err != nil {
-		t.Fatalf("fixed query search: %v", err)
+	if _, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "Show", Categories: []int{5000},
+	}); err != nil {
+		t.Fatalf("tv search: %v", err)
 	}
 	mu.Lock()
 	gotFilters = append([]string(nil), filters...)
-	gotQueries = append([]string(nil), queries...)
 	mu.Unlock()
-	for _, filter := range gotFilters {
-		if strings.TrimSpace(filter) == "" {
-			t.Fatal("an empty filter parameter was sent")
-		}
-	}
-	if len(gotFilters) == 0 || gotFilters[0] != "c=TV" || gotQueries[0] != "MIRCrew" {
-		t.Fatalf("fixed query params = filters %v, q %v", gotFilters, gotQueries)
-	}
-	if pages != 1 {
-		t.Fatalf("FirstPageOnly made %d requests, want 1", pages)
+	if len(gotFilters) == 0 || gotFilters[0] != "c=TV" {
+		t.Fatalf("tv filters = %v, want c=TV", gotFilters)
 	}
 
 	mu.Lock()
-	pages = 0
+	filters, queries, pages = nil, nil, 0
 	mu.Unlock()
-	connector, err = engine.NewDefinitionConnector(engine.DefinitionConfig{
-		Indexer:    engine.IndexerRef{Slug: "extto", Name: def.Meta.Name},
-		Definition: def,
-		Settings:   map[string]string{"filter": "c=TV"},
-		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
-	})
-	if err != nil {
-		t.Fatal(err)
+	if _, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "Anything",
+	}); err != nil {
+		t.Fatalf("generic search: %v", err)
 	}
+	mu.Lock()
+	gotFilters = append([]string(nil), filters...)
+	mu.Unlock()
+	if len(gotFilters) != 0 {
+		t.Fatalf("generic search filters = %v, want none", gotFilters)
+	}
+
+	mu.Lock()
+	filters, queries, pages = nil, nil, 0
+	mu.Unlock()
 	if _, err := connector.Latest(context.Background(), engine.LatestRequest{
 		Known: func(engine.Item) bool { return true },
 	}); err != nil {
-		t.Fatalf("latest with known rows: %v", err)
+		t.Fatalf("latest: %v", err)
 	}
 	mu.Lock()
-	defer mu.Unlock()
-	if pages != 2 {
-		t.Fatalf("latest read %d pages with stop_when_known false, want page 1 + empty page 2", pages)
+	gotFilters = append([]string(nil), filters...)
+	mu.Unlock()
+	if len(gotFilters) < 2 || gotFilters[0] != "c=Movies" || gotFilters[1] != "tg=Italian" {
+		t.Fatalf("latest filters = %v, want the configured pair", gotFilters)
+	}
+	mu.Lock()
+	gotPages := pages
+	mu.Unlock()
+	if gotPages != 2 {
+		t.Fatalf("latest read %d pages with stop_when_known false, want page 1 + empty page 2", gotPages)
 	}
 }
 

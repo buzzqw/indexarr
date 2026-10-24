@@ -564,6 +564,17 @@ func planLiveSearch(caps engine.Capabilities, req LiveQuery) (livePlan, bool, st
 		return livePlan{}, false, "unsupported search mode"
 	}
 	query := strings.TrimSpace(req.Query)
+	categories := append([]int(nil), req.Categories...)
+	if len(categories) == 0 {
+		// Arr movie/tv requests may omit cat=. The definition category map
+		// still needs the standard root to choose c=Movies or c=TV.
+		switch mode {
+		case engine.ModeMovie:
+			categories = []int{2000}
+		case engine.ModeTV:
+			categories = []int{5000}
+		}
+	}
 	plan := livePlan{
 		mode: mode,
 		request: engine.SearchRequest{
@@ -575,7 +586,7 @@ func planLiveSearch(caps engine.Capabilities, req LiveQuery) (livePlan, bool, st
 			IMDbID:      strings.TrimSpace(req.IMDbID),
 			TMDbID:      strings.TrimSpace(req.TMDbID),
 			TVDbID:      strings.TrimSpace(req.TVDbID),
-			Categories:  req.Categories,
+			Categories:  categories,
 			Limit:       req.Limit,
 			SkipDetails: true,
 		},
