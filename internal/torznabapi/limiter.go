@@ -14,8 +14,8 @@ type minuteLimiter struct {
 }
 
 type limitWindow struct {
-	minute int64
-	count  int
+	start time.Time
+	count int
 }
 
 func newMinuteLimiter() *minuteLimiter {
@@ -26,12 +26,11 @@ func (l *minuteLimiter) allow(key string, limit int, now time.Time) bool {
 	if limit <= 0 {
 		return true
 	}
-	minute := now.Unix() / 60
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	window := l.windows[key]
-	if window.minute != minute {
-		window = limitWindow{minute: minute}
+	if window.start.IsZero() || now.Sub(window.start) >= time.Minute {
+		window = limitWindow{start: now}
 	}
 	if window.count >= limit {
 		l.windows[key] = window
@@ -41,7 +40,7 @@ func (l *minuteLimiter) allow(key string, limit int, now time.Time) bool {
 	l.windows[key] = window
 	if len(l.windows) > 4096 {
 		for storedKey, stored := range l.windows {
-			if stored.minute < minute-1 {
+			if now.Sub(stored.start) >= time.Minute {
 				delete(l.windows, storedKey)
 			}
 		}
