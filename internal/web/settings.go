@@ -444,7 +444,7 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			renderInvalid(parseErr.Error())
 			return false
 		}
-		if in.TorznabLiveWait, parseErr = s.formInt(r, "torznab_live_wait_seconds", 1, 1, 120); parseErr != nil {
+		if in.TorznabLiveWait, parseErr = s.formInt(r, "torznab_live_wait_seconds", 2, 1, 120); parseErr != nil {
 			renderInvalid(parseErr.Error())
 			return false
 		}

@@ -248,6 +248,9 @@ func main() {
 					return nil, "", "", err
 				}
 				if len(payload.Body) == 0 {
+					if magnet := strings.TrimSpace(payload.Magnet); magnet != "" {
+						return []byte(magnet), "application/x-magnet", "", nil
+					}
 					return nil, "", "", errors.New("payload unavailable")
 				}
 				return payload.Body, payload.ContentType, payload.Filename, nil

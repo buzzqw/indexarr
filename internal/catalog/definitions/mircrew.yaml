@@ -125,7 +125,7 @@ download:
     action:
       get: "{{ thanks }}"
   extract:
-    - magnet: { selector: 'a.magnetBtn[href^="magnet:"]', attr: href }
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
       all: true
 
 health:

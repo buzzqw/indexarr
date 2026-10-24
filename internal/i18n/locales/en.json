@@ -595,6 +595,7 @@
   "idx.filtersLabel": "Indexer filters",
   "idx.searchOnlyNoUpdate": "Search only",
   "idx.searchOnlyHelp": "No periodic update: this site answers queries.",
+  "idx.mircrewThanksNote": "On download, MirCrew thanks the forum post with your account.",
   "idx.statusSearchOnly": "Search only",
   "idx.featuresTitle": "What this site provides",
   "idx.featuresHelp": "These are site characteristics, not failures.",

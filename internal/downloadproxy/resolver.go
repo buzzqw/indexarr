@@ -96,6 +96,7 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 	if err != nil {
 		return Payload{}, ErrUnavailable
 	}
+	var lastErr error
 	for _, source := range sources {
 		ref := strings.TrimSpace(source.DownloadRef)
 		if ref == "" || r.vault == nil {
@@ -114,6 +115,7 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 			if ctx.Err() != nil {
 				return Payload{}, ctx.Err()
 			}
+			lastErr = downloadErr
 			continue
 		}
 		if len(fetched.Body) == 0 {
@@ -145,6 +147,9 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 		return Payload{Body: fetched.Body, ContentType: contentType, Filename: filename}, nil
 	}
 
+	if lastErr != nil {
+		return Payload{}, fmt.Errorf("release %d: %w: %v", releaseID, ErrUnavailable, lastErr)
+	}
 	return Payload{}, fmt.Errorf("release %d: %w", releaseID, ErrUnavailable)
 }
 

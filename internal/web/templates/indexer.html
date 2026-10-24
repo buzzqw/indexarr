@@ -103,6 +103,9 @@
   {{if .SearchOnly}}
   <p class="help">{{T "idx.detail.searchOnly"}}</p>
   {{end}}
+  {{if eq .DefinitionID "mircrew"}}
+  <p class="help">{{T "idx.mircrewThanksNote"}}</p>
+  {{end}}
 
   {{if .Run}}
   <div class="panel-head"><h2>{{T "idx.detail.runSummary"}}</h2></div>

@@ -595,6 +595,7 @@
   "idx.filtersLabel": "Filtry indekserów",
   "idx.searchOnlyNoUpdate": "Tylko wyszukiwanie",
   "idx.searchOnlyHelp": "Bez okresowej aktualizacji: strona odpowiada na zapytania.",
+  "idx.mircrewThanksNote": "Przy pobieraniu MirCrew dziękuje za post na forum z twojego konta.",
   "idx.statusSearchOnly": "Tylko wyszukiwanie",
   "idx.featuresTitle": "Co oferuje ta strona",
   "idx.featuresHelp": "To cechy strony, a nie awarie.",

@@ -332,7 +332,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		}
 		wait := time.Duration(settings.TorznabLiveWait) * time.Second
 		if wait <= 0 {
-			wait = 1 * time.Second
+			wait = 2 * time.Second
 		}
 		if wait > timeout {
 			wait = timeout
@@ -644,6 +644,10 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		usenet = false
 	}
 	body, contentType, filename := s.releasePayload(r.Context(), release, usenet)
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(string(body))), "magnet:") {
+		http.Redirect(w, r, strings.TrimSpace(string(body)), http.StatusFound)
+		return
+	}
 	if len(body) == 0 {
 		if usenet {
 			s.writeError(w, http.StatusNotFound, "no .nzb stored for this release")
@@ -727,7 +731,11 @@ func (s *Server) releasePayload(ctx context.Context, release store.Release, usen
 		return nil, "", ""
 	}
 	body, contentType, filename, err := s.downloadResolver(ctx, release.ID)
-	if err != nil || len(body) == 0 {
+	if err != nil {
+		s.log.Warn("torznab: resolve release payload", "release_id", release.ID, "error", err)
+		return nil, "", ""
+	}
+	if len(body) == 0 {
 		return nil, "", ""
 	}
 	return body, contentType, filename
