@@ -68,16 +68,20 @@ func parseDefinition(t *testing.T, id string) *definition.Definition {
 
 func nativeConnector(t *testing.T, id, baseURL string) *engine.DefinitionConnector {
 	t.Helper()
-	def := parseDefinition(t, id)
+	return nativeConnectorFromDefinition(t, parseDefinition(t, id), baseURL)
+}
+
+func nativeConnectorFromDefinition(t *testing.T, def *definition.Definition, baseURL string) *engine.DefinitionConnector {
+	t.Helper()
 	def.Meta.URLs[0] = baseURL + "/"
 	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
-		Indexer:    engine.IndexerRef{Slug: id, Name: def.Meta.Name},
+		Indexer:    engine.IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
 		Definition: def,
 		Settings:   map[string]string{},
 		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
 	})
 	if err != nil {
-		t.Fatalf("NewDefinitionConnector(%s): %v", id, err)
+		t.Fatalf("NewDefinitionConnector(%s): %v", def.Meta.ID, err)
 	}
 	return connector
 }

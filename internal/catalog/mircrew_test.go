@@ -47,6 +47,9 @@ func TestMirCrewFixtures(t *testing.T) {
 	def.Meta.URLs[0] = server.URL + "/"
 	def.Session = nil // exercised separately by internal/engine
 	def.Auth = nil
+	// The production definition waits 2 s before thanking the topic; the fixture
+	// has no reason to wait, and definition tests must stay under 100 ms.
+	def.Download.Before.Wait = 0
 	def.Search.Request.Params = map[string]string{
 		"keywords": "{{ query.keywords_raw }}",
 		"sf":       "titleonly",

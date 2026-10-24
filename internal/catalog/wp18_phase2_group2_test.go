@@ -91,7 +91,11 @@ func TestACGNXFixture(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	connector := nativeConnector(t, "acgnx", server.URL)
+	def := parseDefinition(t, "acgnx")
+	// ACGNX uses an absolute RSS URL on the live site; point that URL at the
+	// fixture server so the test never leaves the process.
+	def.Search.Request.Get = server.URL + "/rss.xml"
+	connector := nativeConnectorFromDefinition(t, def, server.URL)
 	items, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch, Query: "test"})
 	if err != nil {
 		t.Fatalf("Search: %v", err)

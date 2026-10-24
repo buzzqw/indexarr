@@ -562,3 +562,63 @@ func TestSchedulerSkipsSearchOnlyIndexers(t *testing.T) {
 		t.Fatalf("manual outcome = %+v, want skipped search_only", manual)
 	}
 }
+
+func TestSeederRefreshSkipsLocalOnlyAndLiveExcluded(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	manager := newTestManager(t, st)
+	runner, err := New(Config{Store: st, Manager: manager, Logger: discardLogger(), Interval: time.Hour, Workers: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	putDefinition(t, st, store.Definition{
+		ID: "rss-only", Family: "rss", State: "verificata",
+		Body: "schema: 1\nconnector: rss\nmeta: {id: rss-only, name: RSS only, type: public, protocol: torrent, urls: [\"" + server.URL + "/\"]}\n",
+	})
+	rssID, err := st.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "rss-only", Protocol: "torrent", Slug: "rss-only", Name: "RSS only",
+		Enabled: true, ConfigJSON: `{"url":"` + server.URL + `/rss"}`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	putDefinition(t, st, store.Definition{
+		ID: "torrentgalaxy", Family: "torznab", State: "verificata",
+		Body: "schema: 1\nmeta: {id: torrentgalaxy, name: TGx, type: public, protocol: torrent, urls: [\"" + server.URL + "/\"]}\n",
+	})
+	tgxID, err := st.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "torrentgalaxy", Protocol: "torrent", Slug: "tgx", Name: "TGx",
+		Enabled: true, ConfigJSON: `{"uploader":"x"}`,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, indexerID := range []int64{rssID, tgxID} {
+		rel := store.Release{DedupKey: fmt.Sprintf("skip-%d", i), Title: "Recent Release", SearchTitle: "recent release",
+			Category: "5040", PublishedAt: time.Now(), FirstSeenAt: time.Now(), LastSeenAt: time.Now()}
+		if _, err := st.UpsertRelease(ctx, &rel); err != nil {
+			t.Fatal(err)
+		}
+		if err := st.RecordReleaseSource(ctx, store.ReleaseSource{ReleaseID: rel.ID, IndexerID: indexerID}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runner.refreshSeeders(ctx, 6*time.Hour)
+	if got := requests.Load(); got != 0 {
+		t.Fatalf("feed-only/LiveExcluded indexers were queried %d time(s)", got)
+	}
+	candidates, err := st.SeedersCandidates(ctx, time.Now(), 6*time.Hour, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(candidates) != 0 {
+		t.Fatalf("skipped rows were not marked checked: %+v", candidates)
+	}
+}
