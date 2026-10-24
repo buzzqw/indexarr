@@ -101,8 +101,13 @@ type liveFlight struct {
 }
 
 type liveWorker struct {
-	done   chan struct{}
-	result LiveIndexerResult
+	done      chan struct{}
+	result    LiveIndexerResult
+	abandoned chan struct{}
+	mu        sync.Mutex
+	refs      int
+	running   bool
+	abandon   sync.Once
 }
 
 type liveCacheEntry struct {

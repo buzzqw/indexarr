@@ -380,6 +380,7 @@ func (m *Manager) liveOne(reqCtx, workCtx context.Context, indexer store.Indexer
 
 	key := liveWorkerKey(indexer.ID, plan)
 	worker, leader := m.joinLiveWorker(key)
+	defer m.detachLiveWorker(worker)
 	if !leader {
 		select {
 		case <-worker.done:
@@ -408,11 +409,20 @@ func (m *Manager) liveOne(reqCtx, workCtx context.Context, indexer store.Indexer
 	select {
 	case m.liveSem <- struct{}{}:
 		m.liveWaiters.Add(-1)
+		worker.mu.Lock()
+		worker.running = true
+		worker.mu.Unlock()
 		defer func() { <-m.liveSem }()
 	case <-reqCtx.Done():
 		m.liveWaiters.Add(-1)
 		outcome.TimedOut = true
 		outcome.Err = "live search canceled while waiting for a slot"
+		outcome.Duration = time.Since(started)
+		return finish(outcome)
+	case <-worker.abandoned:
+		m.liveWaiters.Add(-1)
+		outcome.Skipped = true
+		outcome.Err = "no request is waiting for this live worker"
 		outcome.Duration = time.Since(started)
 		return finish(outcome)
 	}
@@ -451,11 +461,26 @@ func (m *Manager) joinLiveWorker(key string) (*liveWorker, bool) {
 	m.liveWorkersMu.Lock()
 	defer m.liveWorkersMu.Unlock()
 	if worker, ok := m.liveWorkers[key]; ok {
+		worker.mu.Lock()
+		worker.refs++
+		worker.mu.Unlock()
 		return worker, false
 	}
-	worker := &liveWorker{done: make(chan struct{})}
+	worker := &liveWorker{done: make(chan struct{}), abandoned: make(chan struct{}), refs: 1}
 	m.liveWorkers[key] = worker
 	return worker, true
+}
+
+func (m *Manager) detachLiveWorker(worker *liveWorker) {
+	worker.mu.Lock()
+	if worker.refs > 0 {
+		worker.refs--
+	}
+	abandon := worker.refs == 0 && !worker.running
+	worker.mu.Unlock()
+	if abandon {
+		worker.abandon.Do(func() { close(worker.abandoned) })
+	}
 }
 
 func (m *Manager) finishLiveWorker(key string, worker *liveWorker, result LiveIndexerResult) {

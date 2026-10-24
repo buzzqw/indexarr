@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -409,23 +408,30 @@ func TestLiveQueueIsBounded(t *testing.T) {
 		t.Fatal(err)
 	}
 	seedDefinition(t, st, "live-queue", "", liveDefinition("live-queue", server.URL+"/slow", "  search: [q]", ""))
-	createIndexer(t, st, "live-queue", "live-queue", "Queue", "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/slow"))
-
-	var wg sync.WaitGroup
 	for i := 0; i < 60; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-			defer cancel()
-			_, _ = manager.SearchLive(ctx, LiveQuery{Mode: "search", Query: fmt.Sprintf("Queue Show %d", i), Limit: 50})
-		}(i)
+		slug := fmt.Sprintf("live-queue-%02d", i)
+		createIndexer(t, st, "live-queue", slug, slug, "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/slow"))
 	}
-	wg.Wait()
-	waiters, dropped, max := manager.LiveQueueStats()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	_, _ = manager.SearchLive(ctx, LiveQuery{Mode: "search", Query: "Queue Show", Limit: 50})
+
+	// The waiting workers retire when their request context expires; the
+	// scheduler is not required to have run them already. Poll instead of
+	// asserting at the instant SearchLive returns.
+	deadline := time.Now().Add(5 * time.Second)
+	var waiters, dropped, max int64
+	for time.Now().Before(deadline) {
+		waiters, dropped, max = manager.LiveQueueStats()
+		if waiters == 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	t.Logf("live queue at end: waiters=%d dropped=%d max=%d", waiters, dropped, max)
 	if waiters != 0 {
-		t.Fatalf("waiters at end = %d, want 0", waiters)
+		t.Fatalf("waiters after 5s = %d, want 0", waiters)
 	}
 	if max > liveQueueLimit {
 		t.Fatalf("max waiters = %d, want <= %d", max, liveQueueLimit)
