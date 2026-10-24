@@ -1600,3 +1600,10 @@ introdurre un framework JS: la UI resta SSR con poco JS progressivo.
 - `docs/NEXT-STEPS.md` (questo file) = lavoro da fare, un WP per volta.
 - Numeri (asserzioni, link, RSS) si scrivono una volta sola, con data e
   comando che li produce.
+
+
+## Stato al 2026-10-24 (2.0.0-rc1)
+
+La tabella WP0–WP14 non è più la pianificazione attiva: il lavoro residuo e lo
+stato reale sono in `/home/andres/comunicazioni25.md` e nella release candidate.
+I WP implementati sono nel changelog; MirCrew live resta bloccato dal CAPTCHA.

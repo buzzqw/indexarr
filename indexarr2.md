@@ -43,7 +43,7 @@ Usenet. Torznab e Newznab possono crescere ma non si rompono mai.
 | Progetto | indexarr è il nuovo progetto; evolve, non si riscrive da zero |
 | Compatibilità \*arr | 100%: tutte le applicazioni che Prowlarr sincronizza |
 | Cardigann | Non usato: tutte le definizioni sono riscritte nel formato nativo |
-| Convertitore Cardigann | Solo strumento CLI di scrittura: produce bozze locali marcate `derived_from: cardigann`, che il catalogo rifiuta. Nessun import Cardigann da UI/API, nessun runtime Cardigann (`docs/NEXT-STEPS.md` WP0) |
+| Convertitore Cardigann | Solo strumento CLI di scrittura: produce bozze locali marcate `derived_from: cardigann`, che il catalogo rifiuta. Nessun import Cardigann da UI/API, nessun runtime Cardigann (`docs/internal/NEXT-STEPS.md` WP0) |
 | Protocolli | Torrent **e Usenet** (Newznab) nella 1.0, come Prowlarr |
 | Distribuzione | Un solo binario Go, SQLite, nessun runtime esterno obbligatorio |
 
@@ -59,7 +59,7 @@ Usenet. Torznab e Newznab possono crescere ma non si rompono mai.
 
 Ogni voce ha un criterio di verifica. La 1.0 esce quando sono tutte verdi.
 La colonna "Stato" è l'unica fonte dello stato di parità: chi chiude un work
-package di `docs/NEXT-STEPS.md` la aggiorna qui.
+package di `docs/internal/NEXT-STEPS.md` la aggiorna qui.
 
 ### 3.1 Distribuzione verso le \*arr
 
@@ -168,7 +168,7 @@ TMDB) è un modulo che registra un middleware: non tocca gli altri stadi.
 
 > **Stato al 23/10/2026:** i contratti esistono in `internal/engine`, ma la
 > pipeline non è ancora invocata a runtime e i moduli non vengono registrati.
-> Il collegamento è il WP4 di `docs/NEXT-STEPS.md`.
+> Il collegamento è il WP4 di `docs/internal/NEXT-STEPS.md`.
 
 ### 5.2 Moduli
 
@@ -575,7 +575,7 @@ tutta verde.
 
 Le funzioni del §4 già presenti (cache, FTS5) restano attive in tutte le
 milestone. Il lavoro dettagliato per arrivare alla 1.0 è diviso in work package
-in [`docs/NEXT-STEPS.md`](docs/NEXT-STEPS.md).
+in [`docs/internal/NEXT-STEPS.md`](docs/internal/NEXT-STEPS.md).
 
 ---
 
@@ -738,7 +738,7 @@ strict) e `./sim/run.sh`.
 
 ### 15.8 Come lavorare (per il prossimo agente)
 
-- Leggi `docs/NEXT-STEPS.md` (decisione del coordinatore, §1–§3) e
+- Leggi `docs/internal/NEXT-STEPS.md` (decisione del coordinatore, §1–§3) e
   `docs/UI-GUIDE.md` prima di toccare la UI.
 - Un work package per volta; aggiorna la riga WP e la checklist §3.
 - Test offline obbligatori: `httptest`, fixture su disco, clock iniettabile.

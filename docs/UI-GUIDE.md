@@ -2,7 +2,7 @@
 
 Data: 23 ottobre 2026 · Base: commit `4e429e5` (WP14 fase 1 fatta)
 Collegati: [NEXT-STEPS WP14](NEXT-STEPS.md#wp14--interfaccia-da-pannello-tecnico-a-prodotto-semplice),
-[manifesto](MANIFESTO.md), [mappa UI](UI-MAP.md).
+[manifesto](MANIFESTO.md), [mappa UI](internal/UI-MAP.md).
 
 Questo documento dice **come deve diventare** l'interfaccia, pagina per pagina,
 e con quali regole. WP14 in NEXT-STEPS resta il work package (perché, fasi,
@@ -569,3 +569,9 @@ Per ogni fase:
 **Non fare:** togliere informazioni diagnostiche (si spostano in
 "Avanzate"), rompere URL esistenti senza redirect, introdurre framework JS o
 build step per il frontend, mostrare segreti per comodità.
+
+## Cambiamenti 2.0.0-rc1
+
+- Badge «sperimentale» su catalogo, elenco e scheda per le fonti non verificate dal vivo.
+- Nota «lista per uploader» e nota ExtTo sulla categoria della ricerca live, in 7 lingue.
+- Contatore delle sorgenti memorizzate e avviso del quarto sito con stime misurate.

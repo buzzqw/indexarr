@@ -267,3 +267,9 @@ I valori con nome che contiene `api_key`, `apikey`, `token`, `password`,
 `passkey`, `secret` o `cookie` vengono cifrati nel vault; gli altri finiscono
 in `config_json`. Le definizioni built-in sono oggi in stato `bozza`: non sono
 state verificate contro un sito live.
+
+## Cambiamenti 2.0.0-rc1
+
+- `total` è il numero di release dopo la fusione ed è stabile su tutte le pagine; ogni pagina è piena tranne l’ultima.
+- Le ricerche live usano worker condivisi e una finestra di 5 s; i risultati tardivi restano nel DB.
+- ExtTo segue la categoria della richiesta (Movies/TV) nelle ricerche dal vivo; le liste uploader non vengono interrogate.

@@ -356,3 +356,25 @@ func TestTransportBlocksPrivateWithoutOptIn(t *testing.T) {
 		t.Fatalf("Do = %v, want ErrBlockedAddress", err)
 	}
 }
+
+func TestTransportUserAgentUsesProductVersion(t *testing.T) {
+	old := productVersion
+	t.Cleanup(func() { productVersion = old })
+	SetProductVersion("2.0.0-rc1")
+	var got string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("User-Agent")
+	}))
+	defer server.Close()
+	transport := newLocalTransport(TransportConfig{})
+	req, err := http.NewRequest(http.MethodGet, server.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := transport.Do(context.Background(), "test", req); err != nil {
+		t.Fatal(err)
+	}
+	if got != "indexarr/2.0.0-rc1" {
+		t.Fatalf("User-Agent = %q", got)
+	}
+}

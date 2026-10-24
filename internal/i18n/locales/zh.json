@@ -434,6 +434,8 @@
   "idx.badgeFeed": "源",
   "idx.badgeJackett": "通过 Jackett",
   "idx.badgeMirror": "非官方镜像",
+  "idx.badgeExperimental": "实验性",
+  "tip.experimental": "尚未进行实时测试；请作为实验使用并报告问题。",
   "idx.badgeNewznab": "Newznab",
   "idx.badgePrivate": "私有",
   "idx.badgeProwlarr": "通过 Prowlarr",

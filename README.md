@@ -293,6 +293,22 @@ Vengono letti titolo, magnet, enclosure `.torrent`, dimensione, categoria numeri
 data ed eventuali attributi `torznab:attr`. Le voci che non contengono né magnet né
 link di download (pagine web, articoli) vengono ignorate.
 
+## Import da gextto
+
+La pagina **Import** legge in sola lettura il database di configurazione di
+gextto (`~/gextto-data/gextto_config.db`) e ricrea le 34 fonti: uploader
+TorrentGalaxy ed ExtTo, le varianti italiane, Knaben e TorrentLeech RSS.
+L'azione è ripetibile e non crea doppioni; la chiave RSS di TorrentLeech viene
+sigillata nel vault. Gli indexer già presenti vengono aggiornati.
+
+## Backup di database e chiave del vault
+
+Il database sta in `data/indexarr.db`; i backup coerenti sono in
+`data/backups/pre-upgrade-*.db`. La chiave del vault non è nel database: va
+conservata separatamente (`INDEXARR_MASTER_KEY`, `vault_key_path` o il file
+utente `~/.config/indexarr/master.key`). Senza quella chiave i segreti salvati
+non si aprono. Dettagli in [docs/VAULT.md](docs/VAULT.md).
+
 ## Collegare Sonarr / Radarr / Lidarr
 
 Nella pagina **Settings** copia l'endpoint completo:
@@ -695,7 +711,7 @@ go tool pprof -top http://127.0.0.1:6060/debug/pprof/heap
 
 Struttura dei pacchetti e scelte di progetto: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Suite di test e smoke test: [docs/QA.md](docs/QA.md).
-Audit operativo del 23/10/2026: [docs/AUDIT-2026-10-23.md](docs/AUDIT-2026-10-23.md).
+Audit operativo del 23/10/2026: [docs/internal/AUDIT-2026-10-23.md](docs/internal/AUDIT-2026-10-23.md).
 Evoluzione indexarr 2: [indexarr2.md](indexarr2.md).
 
 ## indexarr 2 (in sviluppo)
@@ -704,7 +720,7 @@ La prossima generazione dell'indexer (definizioni native, connettori di
 famiglia, vault e catalogo) è in sviluppo nello stesso repository. Il percorso
 legacy resta quello predefinito finché la migrazione non è completa.
 
-- [Piano di implementazione](docs/INDEXARR2-PLAN.md)
+- [Piano di implementazione](docs/internal/INDEXARR2-PLAN.md)
 - [Guida alle definizioni](docs/DEFINITIONS.md) — formato v1, fixture, sicurezza
 - [MirCrew](docs/MIRCREW.md) — ponte Torznab, definizione nativa e sessione FlareSolverr
 - [Architettura indexarr 2](docs/ARCHITECTURE.md#indexarr-2)

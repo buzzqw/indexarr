@@ -92,8 +92,19 @@ type Transport struct {
 	proxyErr error
 }
 
+// productVersion is the user-agent suffix set by the process main at startup.
+// It stays 2.0 in tests and library use, and becomes 2.0.0-rc1 in an rc build.
+var productVersion = "2.0"
+
+// SetProductVersion changes the default user-agent suffix.
+func SetProductVersion(version string) {
+	if strings.TrimSpace(version) != "" {
+		productVersion = strings.TrimSpace(version)
+	}
+}
+
 // NewTransport builds a transport from cfg. Defaults for zero fields are:
-// 45s timeout, User-Agent "indexarr/2.0", 16 MiB body limit, 5 consecutive
+// 45s timeout, User-Agent "indexarr/<productVersion>", 16 MiB body limit, 5 consecutive
 // failures before opening the breaker, 60s cooldown and a burst of 1 when
 // rate limiting is enabled.
 func NewTransport(cfg TransportConfig) *Transport {
@@ -448,7 +459,7 @@ func normalizeTransportConfig(cfg TransportConfig) TransportConfig {
 		cfg.Timeout = defaultTimeout
 	}
 	if cfg.UserAgent == "" {
-		cfg.UserAgent = defaultUserAgent
+		cfg.UserAgent = "indexarr/" + productVersion
 	}
 	if cfg.MaxBodyBytes <= 0 {
 		cfg.MaxBodyBytes = defaultMaxBodyBytes

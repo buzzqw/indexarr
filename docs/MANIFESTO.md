@@ -4,7 +4,7 @@
 
 Data: 23 ottobre 2026
 Documenti collegati: [indexarr 2 — Visione e architettura](../indexarr2.md),
-[Audit](AUDIT-2026-10-23.md)
+[Audit](internal/AUDIT-2026-10-23.md)
 
 ---
 

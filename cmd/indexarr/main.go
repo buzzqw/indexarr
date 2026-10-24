@@ -40,6 +40,21 @@ import (
 // version is set at build time with -ldflags "-X main.version=...".
 var version = "dev"
 
+// maskSecret keeps enough of a key to identify it without publishing it in
+// the journal. Four characters are enough for "which key is this" and useless
+// for authentication.
+func maskSecret(value string) string {
+	if len(value) <= 4 {
+		return "…"
+	}
+	return value[:4] + "…"
+}
+
+func logWebInterfaceReady(logger *slog.Logger, base, key string) {
+	logger.Info("web interface ready",
+		"url", base, "torznab", base+"/api?apikey="+maskSecret(key))
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "vault" {
 		os.Exit(runVaultCommand(os.Args[2:]))
@@ -72,6 +87,7 @@ func main() {
 	levelVar := new(slog.LevelVar)
 	levelVar.Set(parseLevel(cfg.LogLevel))
 	logger := newLogger(levelVar, logBuffer)
+	coreengine.SetProductVersion(version)
 	logger.Info("starting indexarr", "version", version, "database", cfg.DBPath, "listen", cfg.Listen)
 
 	// Resolve the vault before touching the database: a restore staged as
@@ -130,7 +146,7 @@ func main() {
 		fatal(err)
 	}
 	if created {
-		logger.Info("generated a Torznab API key", "apikey", key)
+		logger.Info("generated a Torznab API key", "apikey", maskSecret(key))
 	}
 	if secretVault != nil && restored {
 		opened, verifyErr := verifyRestoredSecrets(startupCtx, st, secretVault)
@@ -331,8 +347,7 @@ func main() {
 	}
 	go func() {
 		base := displayURL(cfg.Listen)
-		logger.Info("web interface ready",
-			"url", base, "torznab", base+"/api?apikey="+key)
+		logWebInterfaceReady(logger, base, key)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("HTTP server stopped", "error", err)
 			stop()

@@ -63,6 +63,7 @@
             {{range .Categories}}<span class="badge soft">{{.}}</span>{{end}}
             {{if .AccessLabel}}<span class="badge soft catalog-access" title="{{T "tip.indexerAccess"}}">{{.AccessLabel}}</span>{{end}}
             {{if .Storable}}<span class="badge soft" title="{{T "tip.storeLatest"}}">{{T "idx.badgeStorable"}}</span>{{end}}
+            {{if .Experimental}}<span class="badge soft" title="{{T "tip.experimental"}}">{{T "idx.badgeExperimental"}}</span>{{end}}
             {{if .Reachable}}<span class="badge soft" title="{{T "tip.indexerState"}}">{{T "idx.catalog.probeReachable"}}</span>{{end}}
           </div>
         </div>

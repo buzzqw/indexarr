@@ -434,6 +434,8 @@
   "idx.badgeFeed": "Kanał",
   "idx.badgeJackett": "Przez Jackett",
   "idx.badgeMirror": "Nieoficjalne lustro",
+  "idx.badgeExperimental": "eksperymentalne",
+  "tip.experimental": "Nieprzetestowane na żywo; używaj jako eksperymentu i zgłaszaj problemy.",
   "idx.badgeNewznab": "Newznab",
   "idx.badgePrivate": "Prywatny",
   "idx.badgeProwlarr": "Przez Prowlarr",

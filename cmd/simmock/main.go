@@ -13,6 +13,13 @@ import (
 	"github.com/buzzqw/indexarr/internal/simmock"
 )
 
+func maskCmdSecret(value string) string {
+	if len(value) <= 4 {
+		return "…"
+	}
+	return value[:4] + "…"
+}
+
 func main() {
 	defaultAddr := strings.TrimSpace(os.Getenv("SIMM_MOCK_ADDR"))
 	if defaultAddr == "" {
@@ -39,7 +46,7 @@ func main() {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	logger.Printf("listening on %s apikey=%s sonarr-key=%s prowlarr-key=%s",
-		*addr, *apiKey, *sonarrKey, *prowlarrKey)
+		*addr, maskCmdSecret(*apiKey), maskCmdSecret(*sonarrKey), maskCmdSecret(*prowlarrKey))
 	if err := httpServer.ListenAndServe(); err != nil {
 		logger.Fatalf("server stopped: %v", err)
 	}

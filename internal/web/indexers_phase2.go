@@ -408,6 +408,9 @@ func (s *Server) problemFor(r *http.Request, in store.Indexer, state store.Index
 
 func (s *Server) indexerBadges(r *http.Request, in store.Indexer, def *definition.Definition) []uiBadge {
 	var out []uiBadge
+	if entry, ok := catalog.Get(in.DefinitionID); ok && !isUsableSiteState(entry.State) {
+		out = append(out, uiBadge{Kind: "experimental", Label: s.translate(r, "idx.badgeExperimental")})
+	}
 	connector := strings.ToLower(strings.TrimSpace(in.DefinitionID))
 	if def != nil {
 		if strings.TrimSpace(def.Connector) != "" {
@@ -545,6 +548,7 @@ type siteChoice struct {
 	Latest        bool
 	LatestList    bool
 	Storable      bool
+	Experimental  bool
 	QuickAdd      bool
 	Configurable  bool
 	Probe         bool
@@ -1211,6 +1215,7 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		Latest:        entry.Latest,
 		LatestList:    entry.LatestList,
 		Storable:      entry.Storable,
+		Experimental:  !isUsableSiteState(entry.State),
 	}
 	if len(entry.Hosts) > 0 {
 		choice.URL = "https://" + entry.Hosts[0] + "/"

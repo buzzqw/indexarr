@@ -8,7 +8,7 @@ una definizione.
 Questo documento descrive il formato `schema: 1` accettato da
 `internal/definition`, il connettore `internal/engine` che lo esegue e il CLI
 `indexarr-def`. Per il contesto e le scelte di prodotto:
-[`indexarr2.md`](../indexarr2.md) §6 e [`INDEXARR2-PLAN.md`](INDEXARR2-PLAN.md).
+[`indexarr2.md`](../indexarr2.md) §6 e [`INDEXARR2-PLAN.md`](internal/INDEXARR2-PLAN.md).
 
 Accanto alle definizioni complete il catalogo ha uno strato di **voci leggere**
 generate dai metadati di Jackett/Prowlarr (nome, URL, tipo, lingua, categorie,
@@ -926,3 +926,10 @@ tests:
 
 Esempi pronti e validati: `examples/definitions/` (`html-forum.yaml`,
 `unit3d.yaml`, `newznab.yaml`).
+
+## Cambiamenti 2.0.0-rc1
+
+- `latest.stop_when_known: false` legge tutte le pagine di una lista economica.
+- `params_multi` invia più valori per lo stesso parametro; i valori vuoti o `nome=` non vengono inviati.
+- `{{ categories }}` permette a una definizione di seguire la categoria standard della richiesta.
+- Le definizioni senza `{{ query.* }}` sono feed-only e non entrano nella ricerca dal vivo.

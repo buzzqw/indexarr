@@ -434,6 +434,8 @@
   "idx.badgeFeed": "Feed",
   "idx.badgeJackett": "Über Jackett",
   "idx.badgeMirror": "Inoffizieller Mirror",
+  "idx.badgeExperimental": "experimentell",
+  "tip.experimental": "Noch nicht live getestet; als Experiment nutzen und Probleme melden.",
   "idx.badgeNewznab": "Newznab",
   "idx.badgePrivate": "Privat",
   "idx.badgeProwlarr": "Über Prowlarr",

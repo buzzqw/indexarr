@@ -243,3 +243,11 @@ quelle con origine `local`; riscrive una voce solo quando cambia l'hash.
 - **Backup e ripristino**: il backup è un file SQLite autonomo; il ripristino non
   apre il file caricato nel processo vivo ma lo applica al riavvio, dopo aver
   conservato il database corrente.
+
+## Cambiamenti 2.0.0-rc1
+
+- La fusione delle release avviene sull’insieme completo prima di `limit`/`offset`; lo snapshot breve mantiene `total` costante tra le pagine.
+- Il fan-out live condivide un worker per `(indexer, query effettiva)`, limita la coda e ritira i worker senza richieste.
+- `LiveExcluded` esclude uploader TGx/ExtTo dal live; le liste continuano ad alimentare la cache.
+- Le sorgenti memorizzate hanno avviso misurato, contatore e retention esplicita.
+- Migrazioni 10 (dedup) e 11 (pulizia TGx hashless).
