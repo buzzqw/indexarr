@@ -382,9 +382,14 @@ func FuseReleases(releases []Release) []Release {
 		return releases
 	}
 	out := make([]Release, 0, len(releases))
+	// Match requires the same normalized title. A title bucket keeps the
+	// pass near-linear on a 20k-release cache instead of comparing every row
+	// with every earlier row; the exact identity rules stay unchanged.
+	buckets := make(map[string][]int, len(releases))
 	for _, rel := range releases {
+		key := dedup.Extract(rel.Title).Normalized
 		matched := -1
-		for i := range out {
+		for _, i := range buckets[key] {
 			if dedup.Match(metaFromRelease(out[i]), metaFromRelease(rel), dedup.Options{}) {
 				matched = i
 				break
@@ -392,6 +397,7 @@ func FuseReleases(releases []Release) []Release {
 		}
 		if matched < 0 {
 			out = append(out, rel)
+			buckets[key] = append(buckets[key], len(out)-1)
 			continue
 		}
 		keeper := &out[matched]
