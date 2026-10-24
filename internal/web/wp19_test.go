@@ -55,8 +55,8 @@ func TestCatalogIndexPageHandlesThousandEntries(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d", recorder.Code)
 	}
-	if elapsed > 50*time.Millisecond {
-		t.Errorf("GET /indexers/new with 1000 entries took %s, want < 50 ms", elapsed)
+	if elapsed > catalogIndexBudget {
+		t.Errorf("GET /indexers/new with 1000 entries took %s, want < %s", elapsed, catalogIndexBudget)
 	}
 	t.Logf("GET /indexers/new with 1000 entries: %s", elapsed)
 	body := recorder.Body.String()
