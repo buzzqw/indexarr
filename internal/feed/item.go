@@ -370,7 +370,7 @@ func IsSensitiveURL(raw string) bool {
 
 func isSensitiveParamName(name string) bool {
 	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "rsskey", "passkey", "apikey", "api_key", "authkey", "key", "token", "secret":
+	case "rsskey", "passkey", "apikey", "api_key", "authkey", "key", "token", "secret", "e":
 		return true
 	}
 	return false

@@ -642,6 +642,7 @@
   "idx.guide.providesFeed": "Nouveautés d'un flux",
   "idx.guide.providesSearchOnly": "Résultats seulement, pas de liste de nouveautés",
   "idx.guide.providesTorrent": "Magnet ou .torrent, seeders, résultats",
+  "idx.guide.providesTorrentLatest": "Magnet ou .torrent, seeders, résultats de recherche et liste des nouveautés (mémorisable)",
   "idx.guide.providesUsenet": "Fichiers NZB, résultats",
   "idx.guide.reasonDraft": "Pas encore testé : bonne alternative si les sites vérifiés ne suffisent pas.",
   "idx.guide.reasonItalian": "Site italien : titres et releases en italien.",

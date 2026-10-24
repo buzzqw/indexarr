@@ -78,8 +78,8 @@ type LiveResult struct {
 // stores what it returns and reports one outcome per indexer. The call returns
 // when every indexer answered or when ctx expires; the remaining indexers are
 // detached and continue in the background.
-func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (LiveResult, error) {
-	var result LiveResult
+func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveResult, err error) {
+	result = LiveResult{}
 	if !liveQueryPresent(req) {
 		return result, nil
 	}
@@ -150,6 +150,19 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (LiveResult, er
 			return cached, nil
 		}
 	}
+
+	// Identical live queries already in flight share one fan-out. This is
+	// especially useful when Sonarr fires the same title from two requests.
+	flight, leader := m.joinLiveFlight(cacheKey)
+	if !leader {
+		select {
+		case <-flight.done:
+			return flight.result, flight.err
+		case <-ctx.Done():
+			return LiveResult{}, ctx.Err()
+		}
+	}
+	defer func() { m.finishLiveFlight(cacheKey, flight, result, err) }()
 
 	results := make(chan LiveIndexerResult, len(targets))
 	var wg sync.WaitGroup
@@ -229,6 +242,26 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (LiveResult, er
 	}
 	m.cacheLive(cacheKey, cacheTTL, result)
 	return result, nil
+}
+
+func (m *Manager) joinLiveFlight(key string) (*liveFlight, bool) {
+	m.liveFlightMu.Lock()
+	defer m.liveFlightMu.Unlock()
+	if flight, ok := m.liveFlights[key]; ok {
+		return flight, false
+	}
+	flight := &liveFlight{done: make(chan struct{})}
+	m.liveFlights[key] = flight
+	return flight, true
+}
+
+func (m *Manager) finishLiveFlight(key string, flight *liveFlight, result LiveResult, err error) {
+	m.liveFlightMu.Lock()
+	flight.result = result
+	flight.err = err
+	close(flight.done)
+	delete(m.liveFlights, key)
+	m.liveFlightMu.Unlock()
 }
 
 // liveCacheKey normalizes the fields that change a fan-out response.

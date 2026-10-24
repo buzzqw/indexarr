@@ -1146,7 +1146,7 @@ func (s *Server) guideProvides(r *http.Request, entry catalog.IndexEntry) string
 	case !entry.Latest:
 		return s.translate(r, "idx.guide.providesSearchOnly")
 	default:
-		return s.translate(r, "idx.guide.providesTorrent")
+		return s.translate(r, "idx.guide.providesTorrentLatest")
 	}
 }
 

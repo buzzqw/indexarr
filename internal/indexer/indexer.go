@@ -77,8 +77,17 @@ type Manager struct {
 	liveCacheMu sync.Mutex
 	liveCache   map[string]liveCacheEntry
 
+	liveFlightMu sync.Mutex
+	liveFlights  map[string]*liveFlight
+
 	// liveSem is the global fan-out limit shared by every Torznab request.
 	liveSem chan struct{}
+}
+
+type liveFlight struct {
+	done   chan struct{}
+	result LiveResult
+	err    error
 }
 
 type liveCacheEntry struct {
@@ -162,6 +171,7 @@ func New(cfg Config) (*Manager, error) {
 		maxTorrents: maxTorrents,
 		cache:       make(map[int64]cachedConnector),
 		liveCache:   make(map[string]liveCacheEntry),
+		liveFlights: make(map[string]*liveFlight),
 		liveSem:     make(chan struct{}, liveGlobalConcurrency),
 	}, nil
 }

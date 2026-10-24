@@ -642,6 +642,7 @@
   "idx.guide.providesFeed": "来自订阅源的新发布",
   "idx.guide.providesSearchOnly": "仅搜索结果，无新发布列表",
   "idx.guide.providesTorrent": "magnet 或 .torrent、做种数、搜索结果",
+  "idx.guide.providesTorrentLatest": "磁力或 .torrent、做种数、搜索结果和最新列表（可保存）",
   "idx.guide.providesUsenet": "NZB 文件、搜索结果",
   "idx.guide.reasonDraft": "尚未测试：已验证站点不够时的好选择。",
   "idx.guide.reasonItalian": "意大利站点：意大利语标题和发布。",

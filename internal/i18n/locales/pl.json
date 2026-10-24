@@ -642,6 +642,7 @@
   "idx.guide.providesFeed": "Nowości z kanału",
   "idx.guide.providesSearchOnly": "Tylko wyniki, bez listy nowości",
   "idx.guide.providesTorrent": "Magnet lub .torrent, seedy, wyniki",
+  "idx.guide.providesTorrentLatest": "Magnet lub .torrent, seedery, wyniki wyszukiwania i lista nowości (do zapisania)",
   "idx.guide.providesUsenet": "Pliki NZB, wyniki",
   "idx.guide.reasonDraft": "Jeszcze nie testowany: dobra alternatywa, gdy sprawdzone witryny nie wystarczą.",
   "idx.guide.reasonItalian": "Włoska witryna: włoskie tytuły i wydania.",
