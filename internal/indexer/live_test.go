@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -339,5 +340,96 @@ func TestLiveFirstPageOnlyDetectsUploaderLists(t *testing.T) {
 		if got := liveFirstPageOnly(config); got != want {
 			t.Errorf("liveFirstPageOnly(%s) = %v, want %v", config, got, want)
 		}
+	}
+}
+
+func TestLiveWorkerIsSharedByDetachedQuery(t *testing.T) {
+	var calls atomic.Int64
+	mux := http.NewServeMux()
+	mux.HandleFunc("/slow/search", func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		time.Sleep(2 * time.Second)
+		_, _ = w.Write([]byte(liveHTML(liveRow("Shared Show S01E01", "/details/1", liveHashSlow))))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	st := newTestStore(t)
+	manager := newTestManager(t, st, newTestVault(t, 3))
+	settings, err := st.LoadSettings(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.TorznabLiveCache = 0
+	if err := st.SaveSettings(context.Background(), settings); err != nil {
+		t.Fatal(err)
+	}
+	seedDefinition(t, st, "live-shared", "", liveDefinition("live-shared", server.URL+"/slow", "  search: [q]", ""))
+	createIndexer(t, st, "live-shared", "live-shared", "Shared", "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/slow"))
+
+	req := LiveQuery{Mode: "search", Query: "Shared Show", Limit: 50}
+	first, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	_, _ = manager.SearchLive(first, req)
+	cancel()
+	second, cancel2 := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	_, _ = manager.SearchLive(second, req)
+	cancel2()
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("live requests = %d, want one shared detached worker", got)
+	}
+
+	deadline := time.Now().Add(4 * time.Second)
+	for time.Now().Before(deadline) {
+		_, total, err := st.SearchReleases(context.Background(), store.Filter{Query: "Shared Show", Limit: 10})
+		if err == nil && total > 0 {
+			return
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	t.Fatal("the detached worker did not store its result")
+}
+
+func TestLiveQueueIsBounded(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/slow/search", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Second)
+		_, _ = w.Write([]byte(liveHTML(liveRow("Queue Show", "/details/1", liveHashSlow))))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	st := newTestStore(t)
+	manager := newTestManager(t, st, newTestVault(t, 3))
+	settings, err := st.LoadSettings(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.TorznabLiveCache = 0
+	if err := st.SaveSettings(context.Background(), settings); err != nil {
+		t.Fatal(err)
+	}
+	seedDefinition(t, st, "live-queue", "", liveDefinition("live-queue", server.URL+"/slow", "  search: [q]", ""))
+	createIndexer(t, st, "live-queue", "live-queue", "Queue", "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/slow"))
+
+	var wg sync.WaitGroup
+	for i := 0; i < 60; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+			_, _ = manager.SearchLive(ctx, LiveQuery{Mode: "search", Query: fmt.Sprintf("Queue Show %d", i), Limit: 50})
+		}(i)
+	}
+	wg.Wait()
+	waiters, dropped, max := manager.LiveQueueStats()
+	if waiters != 0 {
+		t.Fatalf("waiters at end = %d, want 0", waiters)
+	}
+	if max > liveQueueLimit {
+		t.Fatalf("max waiters = %d, want <= %d", max, liveQueueLimit)
+	}
+	if dropped == 0 {
+		t.Fatal("the queue limit never shed a worker")
 	}
 }

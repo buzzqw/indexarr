@@ -30,6 +30,14 @@ const (
 	// request deadline. It keeps working in the background so its result is
 	// already cached on the next request, but it cannot run forever.
 	liveBackgroundTimeout = 3 * time.Minute
+
+	// livePartialTTL is deliberately short: it absorbs immediate repeats but
+	// lets the next request after that read the rows stored by the workers.
+	livePartialTTL = 30 * time.Second
+
+	// liveQueueLimit bounds workers waiting for the global semaphore. A larger
+	// burst is shed instead of growing an unbounded goroutine queue.
+	liveQueueLimit = 32
 )
 
 // LiveQuery is one app-facing Torznab search. It is independent of the store
@@ -171,7 +179,7 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 		wg.Add(1)
 		go func(indexer store.Indexer) {
 			defer wg.Done()
-			outcome := m.liveOne(workCtx, indexer, req, matcher)
+			outcome := m.liveOne(ctx, workCtx, indexer, req, matcher)
 			results <- outcome
 		}(target)
 	}
@@ -184,11 +192,6 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 	for _, target := range targets {
 		pending[target.ID] = target
 	}
-	completed, stored := 0, 0
-	softTimer := time.NewTimer(600 * time.Millisecond)
-	defer softTimer.Stop()
-	softFired := false
-
 	finishPartial := func() LiveResult {
 		// Drain whatever completed in the same instant, then report the rest
 		// as timed out. Workers continue under workCtx and cache their result
@@ -212,9 +215,10 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 				TimedOut:  true,
 			})
 		}
-		// A partial answer is not a cacheable answer: the detached workers are
-		// still storing their rows. Caching the timeout would make the next
-		// request return the same short page after the workers have finished.
+		// A short partial cache absorbs immediate repeats. When it expires the
+		// next request re-reads the DB, where the detached workers have stored
+		// their rows; a long TTL would hide those rows for too long.
+		m.cacheLive(cacheKey, livePartialTTL, result)
 		return result
 	}
 
@@ -224,20 +228,6 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 			delete(pending, outcome.IndexerID)
 			result.Indexers = append(result.Indexers, outcome)
 			result.Stored += outcome.Results
-			completed++
-			stored += outcome.Results
-			if softFired && stored == 0 && completed >= 3 {
-				return finishPartial(), nil
-			}
-		case <-softTimer.C:
-			// Adaptive wait: a query that is finding nothing anywhere can
-			// return as soon as the fast indexers have answered; a query with
-			// results waits for the full configured window so late sites can
-			// contribute.
-			softFired = true
-			if stored == 0 && completed >= 3 {
-				return finishPartial(), nil
-			}
 		case <-ctx.Done():
 			return finishPartial(), nil
 		}
@@ -352,21 +342,17 @@ func (m *Manager) cacheLive(key string, ttl time.Duration, result LiveResult) {
 }
 
 // liveOne runs one indexer. It is deliberately independent of the request
-// context so a late indexer still caches its result after the fan-out returned.
-func (m *Manager) liveOne(ctx context.Context, indexer store.Indexer, req LiveQuery, matcher *store.BlocklistMatcher) LiveIndexerResult {
+// context so a late indexer still stores its result after the fan-out returned.
+// Request context is used only while waiting for a slot or for an identical
+// worker; once the slot is owned the background context keeps the request
+// alive.
+func (m *Manager) liveOne(reqCtx, workCtx context.Context, indexer store.Indexer, req LiveQuery, matcher *store.BlocklistMatcher) LiveIndexerResult {
 	started := time.Now()
 	outcome := LiveIndexerResult{IndexerID: indexer.ID, Name: indexer.Name, Mode: requestedMode(req)}
 
-	select {
-	case m.liveSem <- struct{}{}:
-		defer func() { <-m.liveSem }()
-	case <-ctx.Done():
-		outcome.Err = "live search canceled"
-		outcome.Duration = time.Since(started)
-		return outcome
-	}
-
-	connector, _, err := m.Connector(ctx, indexer.ID)
+	// Build the plan before touching the semaphore. Feed-only sources, mode
+	// fallbacks and unsupported queries must not occupy or wait for a slot.
+	connector, _, err := m.Connector(workCtx, indexer.ID)
 	if err != nil {
 		outcome.Err = m.redact(indexer.ID, errorText(err))
 		outcome.Duration = time.Since(started)
@@ -385,10 +371,6 @@ func (m *Manager) liveOne(ctx context.Context, indexer store.Indexer, req LiveQu
 	if liveFirstPageOnly(indexer.ConfigJSON) {
 		plan.request.FirstPageOnly = true
 	}
-
-	// The transport breaker is the existing per-indexer breaker. When it is
-	// open the indexer is excluded from the fan-out instead of being hit with
-	// a request that is going to fail immediately.
 	if m.breakerOpen(indexer.ID, indexer.Slug) {
 		outcome.Skipped = true
 		outcome.Err = "circuit breaker open"
@@ -396,19 +378,118 @@ func (m *Manager) liveOne(ctx context.Context, indexer store.Indexer, req LiveQu
 		return outcome
 	}
 
-	items, err := m.Search(ctx, indexer.ID, plan.request)
+	key := liveWorkerKey(indexer.ID, plan)
+	worker, leader := m.joinLiveWorker(key)
+	if !leader {
+		select {
+		case <-worker.done:
+			return worker.result
+		case <-reqCtx.Done():
+			outcome.TimedOut = true
+			outcome.Duration = time.Since(started)
+			return outcome
+		}
+	}
+	// From here on every return must publish the result and remove the worker
+	// entry, otherwise a later request would wait forever for a ghost.
+	finish := func(result LiveIndexerResult) LiveIndexerResult {
+		m.finishLiveWorker(key, worker, result)
+		return result
+	}
+
+	if !m.reserveLiveWaiter() {
+		m.liveQueueDrop.Add(1)
+		m.logger.Debug("live search: queue full", "indexer", indexer.Slug)
+		outcome.Skipped = true
+		outcome.Err = "live queue full"
+		outcome.Duration = time.Since(started)
+		return finish(outcome)
+	}
+	select {
+	case m.liveSem <- struct{}{}:
+		m.liveWaiters.Add(-1)
+		defer func() { <-m.liveSem }()
+	case <-reqCtx.Done():
+		m.liveWaiters.Add(-1)
+		outcome.TimedOut = true
+		outcome.Err = "live search canceled while waiting for a slot"
+		outcome.Duration = time.Since(started)
+		return finish(outcome)
+	}
+
+	items, err := m.Search(workCtx, indexer.ID, plan.request)
 	if err != nil {
 		outcome.Err = m.redact(indexer.ID, errorText(err))
 		outcome.Duration = time.Since(started)
-		return outcome
+		return finish(outcome)
 	}
-	count, err := m.storeLiveItems(ctx, indexer, items, matcher)
+	count, err := m.storeLiveItems(workCtx, indexer, items, matcher)
 	if err != nil {
 		outcome.Err = m.redact(indexer.ID, errorText(err))
 	}
 	outcome.Results = count
 	outcome.Duration = time.Since(started)
-	return outcome
+	return finish(outcome)
+}
+
+func (m *Manager) reserveLiveWaiter() bool {
+	waiters := m.liveWaiters.Add(1)
+	if waiters > liveQueueLimit {
+		m.liveWaiters.Add(-1)
+		return false
+	}
+	for {
+		max := m.liveWaitersMax.Load()
+		if waiters <= max || m.liveWaitersMax.CompareAndSwap(max, waiters) {
+			break
+		}
+	}
+	return true
+}
+
+func (m *Manager) joinLiveWorker(key string) (*liveWorker, bool) {
+	m.liveWorkersMu.Lock()
+	defer m.liveWorkersMu.Unlock()
+	if worker, ok := m.liveWorkers[key]; ok {
+		return worker, false
+	}
+	worker := &liveWorker{done: make(chan struct{})}
+	m.liveWorkers[key] = worker
+	return worker, true
+}
+
+func (m *Manager) finishLiveWorker(key string, worker *liveWorker, result LiveIndexerResult) {
+	m.liveWorkersMu.Lock()
+	worker.result = result
+	close(worker.done)
+	delete(m.liveWorkers, key)
+	m.liveWorkersMu.Unlock()
+}
+
+// liveWorkerKey identifies one indexer and one effective query. Plan fallbacks
+// are included, so two app spellings that produce the same request share one
+// worker.
+func liveWorkerKey(indexerID int64, plan livePlan) string {
+	ids := append([]int(nil), plan.request.Categories...)
+	sort.Ints(ids)
+	return strings.Join([]string{
+		strconv.FormatInt(indexerID, 10),
+		string(plan.mode),
+		textutil.NormalizeTitle(plan.request.Query),
+		strconv.Itoa(plan.request.Season),
+		strconv.Itoa(plan.request.Episode),
+		strconv.Itoa(plan.request.Year),
+		strings.ToLower(strings.TrimSpace(plan.request.IMDbID)),
+		strings.ToLower(strings.TrimSpace(plan.request.TMDbID)),
+		strings.ToLower(strings.TrimSpace(plan.request.TVDbID)),
+		fmt.Sprint(ids),
+		strconv.Itoa(plan.request.Limit),
+	}, "|")
+}
+
+// LiveQueueStats exposes the bounded waiter queue for tests and diagnostics.
+func (m *Manager) LiveQueueStats() (waiters, dropped, max int64) {
+	return m.liveWaiters.Load(), m.liveQueueDrop.Load(), m.liveWaitersMax.Load()
 }
 
 type livePlan struct {

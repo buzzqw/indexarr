@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/definition"
@@ -82,12 +83,26 @@ type Manager struct {
 
 	// liveSem is the global fan-out limit shared by every Torznab request.
 	liveSem chan struct{}
+
+	// liveWorkers deduplicates in-flight (indexer, effective query) workers.
+	// A detached worker remains here until it finishes, so later requests join
+	// it instead of starting a second one.
+	liveWorkersMu  sync.Mutex
+	liveWorkers    map[string]*liveWorker
+	liveWaiters    atomic.Int64
+	liveWaitersMax atomic.Int64
+	liveQueueDrop  atomic.Int64
 }
 
 type liveFlight struct {
 	done   chan struct{}
 	result LiveResult
 	err    error
+}
+
+type liveWorker struct {
+	done   chan struct{}
+	result LiveIndexerResult
 }
 
 type liveCacheEntry struct {
@@ -172,6 +187,7 @@ func New(cfg Config) (*Manager, error) {
 		cache:       make(map[int64]cachedConnector),
 		liveCache:   make(map[string]liveCacheEntry),
 		liveFlights: make(map[string]*liveFlight),
+		liveWorkers: make(map[string]*liveWorker),
 		liveSem:     make(chan struct{}, liveGlobalConcurrency),
 	}, nil
 }
