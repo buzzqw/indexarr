@@ -74,12 +74,19 @@ func (s *Store) StoredStats(ctx context.Context, now time.Time) (StoredStats, er
 	}
 	placeholders, args := idPlaceholders(ids)
 	row := s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*), COALESCE(SUM(size), 0) FROM releases r
+		SELECT COUNT(*) FROM releases r
 		WHERE EXISTS (
 			SELECT 1 FROM release_sources rs
 			WHERE rs.release_id = r.id AND rs.indexer_id IN (`+placeholders+`))`, args...)
-	if err := row.Scan(&out.Releases, &out.Bytes); err != nil {
+	if err := row.Scan(&out.Releases); err != nil {
 		return out, err
+	}
+	// The counter reports database space, not the payload size of the
+	// torrents: indexarr keeps metadata. The stored share is the measured
+	// database size apportioned by the number of stored releases.
+	var total int64
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM releases`).Scan(&total); err == nil && total > 0 {
+		out.Bytes = out.DBSize * out.Releases / total
 	}
 	row = s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM releases r
