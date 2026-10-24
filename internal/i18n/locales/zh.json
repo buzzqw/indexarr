@@ -579,6 +579,8 @@
   "idx.detail.latencyP95": "p95",
   "idx.detail.latest": "最新发布",
   "idx.detail.latestCapability": "最新列表",
+  "idx.detail.uploaderOnly": "上传者列表：每 %d 分钟读取并保存；不会在实时搜索中查询。",
+  "idx.detail.uploaderOnlyTip": "此来源是上传者或筛选列表。最新列表运行会填充缓存；实时搜索使用站点通用搜索。",
   "idx.detail.nextConnect": "下一步：你的应用还看不到此索引器。",
   "idx.detail.nextUpdate": "下次更新",
   "idx.detail.noFilters": "未配置筛选。",

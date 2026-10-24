@@ -440,3 +440,23 @@ func TestLiveQueueIsBounded(t *testing.T) {
 		t.Fatal("the queue limit never shed a worker")
 	}
 }
+
+func TestLiveExcludedUploaderAndFilteredSources(t *testing.T) {
+	cases := []struct {
+		name string
+		in   store.Indexer
+		want bool
+	}{
+		{"TGx uploader", store.Indexer{DefinitionID: "torrentgalaxy", ConfigJSON: `{"uploader":"MIRCrewRS"}`}, true},
+		{"ExtTo uploader", store.Indexer{DefinitionID: "extto", ConfigJSON: `{"filter":"u=EZTV"}`}, true},
+		{"ExtTo tag", store.Indexer{DefinitionID: "extto", ConfigJSON: `{"filter":"c=Books","filter-extra":"tg=Italian"}`}, true},
+		{"ExtTo fixed query", store.Indexer{DefinitionID: "extto", ConfigJSON: `{"filter":"c=TV","query":"MIRCrew"}`}, true},
+		{"ExtTo general", store.Indexer{DefinitionID: "extto", ConfigJSON: `{"filter":"c=TV"}`}, false},
+		{"normal definition", store.Indexer{DefinitionID: "1337x", ConfigJSON: `{}`}, false},
+	}
+	for _, tc := range cases {
+		if got := LiveExcluded(tc.in); got != tc.want {
+			t.Errorf("%s: LiveExcluded = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

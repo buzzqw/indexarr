@@ -2325,6 +2325,8 @@ type indexerDetailView struct {
 	Health            health.Assessment
 	Latest            bool
 	SearchOnly        bool
+	UploaderOnly      bool
+	UploaderMinutes   int
 	Smartfeed         bool
 	SmartfeedUILink   string
 	HasNative         bool
@@ -2396,6 +2398,22 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	}
 	data.SearchOnly = !data.Latest
 	config := publicConfigMap(in.ConfigJSON)
+	if indexer.LiveExcluded(in) {
+		data.UploaderOnly = true
+		interval := time.Hour
+		if settings, ok := settingsFromContext(r.Context()); ok {
+			interval = settings.DefaultInterval()
+		} else if settings, loadErr := s.store.LoadSettings(r.Context()); loadErr == nil {
+			interval = settings.DefaultInterval()
+		}
+		if in.IntervalSeconds > 0 {
+			interval = time.Duration(in.IntervalSeconds) * time.Second
+		}
+		data.UploaderMinutes = int(interval.Minutes())
+		if data.UploaderMinutes < 1 {
+			data.UploaderMinutes = 1
+		}
+	}
 	if strings.EqualFold(strings.TrimSpace(in.DefinitionID), smartfeed.DefinitionID) ||
 		truthy(config["smartfeed"]) {
 		data.Smartfeed = true

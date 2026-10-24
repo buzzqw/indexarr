@@ -579,6 +579,8 @@
   "idx.detail.latencyP95": "p95",
   "idx.detail.latest": "Ultime release",
   "idx.detail.latestCapability": "Elenco novità",
+  "idx.detail.uploaderOnly": "Lista per uploader: letta ogni %d minuti e salvata; non interrogata nelle ricerche dal vivo.",
+  "idx.detail.uploaderOnlyTip": "Questa fonte è una lista per uploader o filtrata. Il giro novità riempie la cache, mentre le ricerche dal vivo usano la ricerca generale del sito.",
   "idx.detail.nextConnect": "Prossimo passo: le tue app non vedono ancora questo indexer.",
   "idx.detail.nextUpdate": "Prossimo aggiornamento",
   "idx.detail.noFilters": "Nessun filtro configurato.",

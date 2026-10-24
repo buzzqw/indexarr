@@ -534,3 +534,14 @@ func TestCatalogVerifiedDefinitionsExist(t *testing.T) {
 		}
 	}
 }
+
+func TestTGxCapabilitiesAreLocalOnly(t *testing.T) {
+	tgx := nativeConnector(t, "torrentgalaxy", "http://127.0.0.1:1")
+	if !tgx.Capabilities().LocalOnly {
+		t.Error("TorrentGalaxy uploader capabilities are not LocalOnly")
+	}
+	extto := nativeConnector(t, "extto", "http://127.0.0.1:1")
+	if extto.Capabilities().LocalOnly {
+		t.Error("ExtTo is a query search and must not be LocalOnly")
+	}
+}

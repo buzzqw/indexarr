@@ -164,6 +164,7 @@ func (c *DefinitionConnector) Capabilities() Capabilities {
 		Modes:      append([]Mode(nil), c.caps.Modes...),
 		Params:     make(map[Mode][]string, len(c.caps.Params)),
 		Categories: append([]int(nil), c.caps.Categories...),
+		LocalOnly:  c.caps.LocalOnly,
 	}
 	for mode, params := range c.caps.Params {
 		out.Params[mode] = append([]string(nil), params...)
