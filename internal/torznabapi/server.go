@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,6 +28,22 @@ import (
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
+)
+
+const (
+	// maxRSSWindow bounds the rows read before an RSS page is fused. The
+	// archive can grow without limit; a request for 100 rows must not read it
+	// all. Pages deeper than this fall back to an empty window rather than
+	// allocating the whole cache.
+	maxRSSWindow = 5000
+	// maxFuseRows bounds a query search as a last line of defence. Real
+	// searches are small; this only stops a pathological query from
+	// materialising the archive.
+	maxFuseRows = 20000
+	// Snapshot bounds are deliberately small: a snapshot only has to serve
+	// the pages of one Arr RSS cycle. The byte budget is the real limit.
+	maxSnapshotEntries = 64
+	maxSnapshotBytes   = 32 << 20
 )
 
 // Server implements the Torznab endpoint and the .torrent download route.
@@ -396,11 +413,43 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		// every query; its new rows join the next snapshot after the TTL.
 		key := snapshotKey(mode, filter)
 		if snapshot, ok := s.cachedSnapshot(key); ok {
+			if snapshot.TotalOnly {
+				page, pageTotal, duplicates, err := s.rssWindowPage(ctx, filter, snapshot.Total, snapshot.Duplicates)
+				if err != nil {
+					s.log.Error("torznab: rss window", "component", "indexarr", "subsystem", "torznab", "error", err)
+					return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
+				}
+				out.Releases = page
+				out.Total = pageTotal
+				out.DuplicatesMerged = duplicates
+				out.Provenance = s.pageProvenance(ctx, page)
+				out.Body = s.searchXML(base, settings, apiKey, page, pageTotal, filter.Offset, out.Provenance)
+				return out
+			}
 			out.Releases = snapshotPage(snapshot.Releases, filter.Offset, filter.Limit)
 			out.Total = snapshot.Total
 			out.DuplicatesMerged = snapshot.Duplicates
 			out.Provenance = s.pageProvenance(ctx, out.Releases)
 			out.Body = s.searchXML(base, settings, apiKey, out.Releases, out.Total, filter.Offset, out.Provenance)
+			return out
+		}
+		// RSS requests have no query: fusing the whole archive here is what
+		// made memory grow with the cache. Read and fuse only the window that
+		// can fill this page, then snapshot the total (not the rows).
+		if !liveQueryEligible(mode, filter) {
+			page, pageTotal, duplicates, err := s.rssWindowPage(ctx, filter, 0, 0)
+			if err != nil {
+				s.log.Error("torznab: rss window", "component", "indexarr", "subsystem", "torznab", "error", err)
+				return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
+			}
+			if !livePartial {
+				s.storeSnapshot(key, nil, pageTotal, duplicates, true)
+			}
+			out.Releases = page
+			out.Total = pageTotal
+			out.DuplicatesMerged = duplicates
+			out.Provenance = s.pageProvenance(ctx, page)
+			out.Body = s.searchXML(base, settings, apiKey, page, pageTotal, filter.Offset, out.Provenance)
 			return out
 		}
 		fused, fusedTotal, rawTotal, err := s.searchAllFused(ctx, filter)
@@ -413,7 +462,10 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			out.DuplicatesMerged = 0
 		}
 		if !livePartial {
-			s.storeSnapshot(snapshotKey(mode, filter), fused, fusedTotal, out.DuplicatesMerged)
+			s.storeSnapshot(key, fused, fusedTotal, out.DuplicatesMerged, false)
+		}
+		if rawTotal > 5000 {
+			debug.FreeOSMemory()
 		}
 		releases = snapshotPage(fused, filter.Offset, filter.Limit)
 		total = fusedTotal
@@ -432,23 +484,97 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 // exactly limit rows and total is the fused count.
 func (s *Server) searchAllFused(ctx context.Context, filter store.Filter) ([]store.Release, int64, int64, error) {
 	const pageSize = 500
-	all := make([]store.Release, 0, filter.Limit)
+	capHint := filter.Limit
+	if capHint < 0 {
+		capHint = 0
+	}
+	all := make([]store.Release, 0, minInt(capHint, maxFuseRows))
 	page := filter
-	page.Limit = pageSize
 	page.Offset = 0
-	for {
+	for len(all) < maxFuseRows {
+		want := minInt(pageSize, maxFuseRows-len(all))
+		page.Limit = want
 		releases, _, err := s.store.SearchReleases(ctx, page)
 		if err != nil {
 			return nil, 0, 0, err
 		}
 		all = append(all, releases...)
-		if len(releases) < pageSize {
+		if len(releases) < want {
 			break
 		}
 		page.Offset += len(releases)
 	}
 	fused := store.FuseReleases(all)
 	return fused, int64(len(fused)), int64(len(all)), nil
+}
+
+// rssWindowPage reads only the prefix needed to fill offset+limit after
+// fusion. A first request passes knownTotal=0; later pages pass the total from
+// the snapshot so it stays stable even if new rows arrive.
+func (s *Server) rssWindowPage(ctx context.Context, filter store.Filter, knownTotal, knownDuplicates int64) ([]store.Release, int64, int64, error) {
+	offset := filter.Offset
+	if offset < 0 {
+		offset = 0
+	}
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = defaultLimit
+	}
+	need := offset + limit
+	window := need * 3
+	if window < 500 {
+		window = 500
+	}
+	if window > maxRSSWindow {
+		window = maxRSSWindow
+	}
+	for {
+		raw, rawTotal, err := s.readWindow(ctx, filter, window)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		fused := store.FuseReleases(raw)
+		total, duplicates := knownTotal, knownDuplicates
+		if total == 0 && knownTotal == 0 {
+			duplicates = int64(len(raw) - len(fused))
+			total = rawTotal - duplicates
+			if total < 0 {
+				total = 0
+			}
+		}
+		if len(fused) >= need || window >= int(rawTotal) || window >= maxRSSWindow {
+			return snapshotPage(fused, offset, limit), total, duplicates, nil
+		}
+		window *= 2
+		if window > maxRSSWindow {
+			window = maxRSSWindow
+		}
+	}
+}
+
+func (s *Server) readWindow(ctx context.Context, filter store.Filter, window int) ([]store.Release, int64, error) {
+	page := filter
+	page.Offset = 0
+	all := make([]store.Release, 0, window)
+	var total int64
+	for len(all) < window {
+		want := window - len(all)
+		if want > 500 {
+			want = 500
+		}
+		page.Limit = want
+		releases, pageTotal, err := s.store.SearchReleases(ctx, page)
+		if err != nil {
+			return nil, 0, err
+		}
+		total = pageTotal
+		all = append(all, releases...)
+		if len(releases) < want || int64(len(all)) >= total {
+			break
+		}
+		page.Offset += len(releases)
+	}
+	return all, total, nil
 }
 
 // snapshotKey identifies a fused result set independently of limit/offset.
@@ -487,6 +613,9 @@ type searchSnapshot struct {
 	Releases   []store.Release
 	Total      int64
 	Duplicates int64
+	TotalOnly  bool
+	bytes      int64
+	lastUsed   time.Time
 	expires    time.Time
 }
 
@@ -497,30 +626,78 @@ func (s *Server) cachedSnapshot(key string) (searchSnapshot, bool) {
 	if !ok {
 		return searchSnapshot{}, false
 	}
-	if time.Now().After(snapshot.expires) {
+	now := time.Now()
+	if now.After(snapshot.expires) {
 		delete(s.snapshots, key)
 		return searchSnapshot{}, false
 	}
+	snapshot.lastUsed = now
+	s.snapshots[key] = snapshot
 	return snapshot, true
 }
 
-func (s *Server) storeSnapshot(key string, releases []store.Release, total, duplicates int64) {
+func (s *Server) storeSnapshot(key string, releases []store.Release, total, duplicates int64, totalOnly bool) {
+	weight := snapshotWeight(releases)
+	if totalOnly {
+		releases = nil
+		weight = 128
+	}
+	if weight > maxSnapshotBytes {
+		// A single result set larger than the whole budget is not worth
+		// pinning; the request still has its page and total.
+		return
+	}
 	s.snapshotMu.Lock()
 	defer s.snapshotMu.Unlock()
-	// Bound memory: expired entries are cheap to drop, and a burst of unique
-	// queries must not pin thousands of full result sets.
-	if len(s.snapshots) >= 128 {
-		now := time.Now()
-		for k, snapshot := range s.snapshots {
-			if now.After(snapshot.expires) {
-				delete(s.snapshots, k)
-			}
-		}
-		if len(s.snapshots) >= 128 {
-			s.snapshots = make(map[string]searchSnapshot)
+	now := time.Now()
+	for k, snapshot := range s.snapshots {
+		if now.After(snapshot.expires) {
+			delete(s.snapshots, k)
 		}
 	}
-	s.snapshots[key] = searchSnapshot{Releases: releases, Total: total, Duplicates: duplicates, expires: time.Now().Add(2 * time.Minute)}
+	delete(s.snapshots, key)
+	for len(s.snapshots) >= maxSnapshotEntries || s.snapshotBytesLocked()+weight > maxSnapshotBytes {
+		oldestKey := ""
+		var oldest time.Time
+		for k, snapshot := range s.snapshots {
+			if oldestKey == "" || snapshot.lastUsed.Before(oldest) {
+				oldestKey, oldest = k, snapshot.lastUsed
+			}
+		}
+		if oldestKey == "" {
+			break
+		}
+		delete(s.snapshots, oldestKey)
+	}
+	s.snapshots[key] = searchSnapshot{
+		Releases: releases, Total: total, Duplicates: duplicates, TotalOnly: totalOnly,
+		bytes: weight, lastUsed: now, expires: now.Add(2 * time.Minute),
+	}
+}
+
+func (s *Server) snapshotBytesLocked() int64 {
+	var total int64
+	for _, snapshot := range s.snapshots {
+		total += snapshot.bytes
+	}
+	return total
+}
+
+func snapshotWeight(releases []store.Release) int64 {
+	const base = 192
+	total := int64(base)
+	for _, release := range releases {
+		total += int64(len(release.Title) + len(release.SearchTitle) + len(release.GUID) +
+			len(release.Magnet) + len(release.Torrent) + len(release.Payload))
+	}
+	return total
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // liveQueryEligible decides whether a Torznab function is a real search or an

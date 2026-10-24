@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -661,5 +662,86 @@ func TestIndexersFunctionIsJackettCompatible(t *testing.T) {
 	}
 	if strings.Contains(body, "secret") {
 		t.Fatalf("indexer list leaked the API key")
+	}
+}
+
+func seedManyReleases(t *testing.T, st *store.Store, count int) {
+	t.Helper()
+	tx, err := st.DB().Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	for i := 0; i < count; i++ {
+		title := fmt.Sprintf("Archive Show %06d S01E01 1080p", i)
+		hash := fmt.Sprintf("%040x", i+1)
+		magnet := "magnet:?xt=urn:btih:" + hash
+		if _, err := tx.Exec(`
+			INSERT INTO releases(dedup_key, infohash, title, search_title, size, category,
+				published_at, magnet, first_seen_at, last_seen_at)
+			VALUES(?, ?, ?, ?, ?, '5040', ?, ?, ?, ?)`,
+			"many-"+itoa(int64(i)), hash, title, store.NormalizeSearch(title), 1_500_000_000,
+			now.Add(-time.Duration(i)*time.Minute).Unix(), magnet,
+			now.Unix(), now.Unix()); err != nil {
+			_ = tx.Rollback()
+			t.Fatalf("insert %d: %v", i, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestRSSWindowDoesNotFuseArchive is the regression for the 20k-release
+// archive: a no-query RSS page must read a bounded prefix, not all rows.
+func TestRSSWindowDoesNotFuseArchive(t *testing.T) {
+	api, st := newAPI(t)
+	seedManyReleases(t, st, 20000)
+	runtime.GC()
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	rec := do(t, api, "/api?t=tvsearch&apikey=secret&cat=5000&limit=100")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	runtime.ReadMemStats(&after)
+	allocated := after.TotalAlloc - before.TotalAlloc
+	t.Logf("RSS first page allocated %.2f MiB on a 20k-release archive", float64(allocated)/(1<<20))
+	// The race detector inflates allocation counts; the normal run is ~2 MiB.
+	if allocated > 64<<20 {
+		t.Fatalf("RSS window allocated %d bytes, want <= 64 MiB even under race", allocated)
+	}
+	body := rec.Body.String()
+	if got := strings.Count(body, "<item>"); got != 100 {
+		t.Fatalf("first RSS page items = %d, want 100", got)
+	}
+	if !strings.Contains(body, `total="20000"`) {
+		t.Fatalf("first RSS page total missing 20000")
+	}
+	page2 := do(t, api, "/api?t=tvsearch&apikey=secret&cat=5000&limit=100&offset=100")
+	if got := strings.Count(page2.Body.String(), "<item>"); got != 100 {
+		t.Fatalf("second RSS page items = %d, want 100", got)
+	}
+	if !strings.Contains(page2.Body.String(), `total="20000"`) {
+		t.Fatalf("second RSS page total changed")
+	}
+}
+
+func TestRSSWindowFusesDuplicatesAndKeepsTotal(t *testing.T) {
+	api, st := newAPI(t)
+	want := seedDuplicateHeavyCache(t, st)
+	first := do(t, api, "/api?t=search&apikey=secret&limit=100")
+	if got := strings.Count(first.Body.String(), "<item>"); got != 100 {
+		t.Fatalf("first RSS page items = %d, want 100", got)
+	}
+	if !strings.Contains(first.Body.String(), `total="`+itoa(int64(want))+`"`) {
+		t.Fatalf("first RSS total = %s, want %d", first.Body.String(), want)
+	}
+	second := do(t, api, "/api?t=search&apikey=secret&limit=100&offset=100")
+	if got := strings.Count(second.Body.String(), "<item>"); got != 80 {
+		t.Fatalf("second RSS page items = %d, want 80", got)
+	}
+	if !strings.Contains(second.Body.String(), `total="`+itoa(int64(want))+`"`) {
+		t.Fatalf("second RSS total changed")
 	}
 }

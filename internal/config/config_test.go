@@ -12,7 +12,7 @@ func TestLoadCreatesDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.Listen != ":8484" || cfg.LogLevel != "info" {
+	if cfg.Listen != ":8484" || cfg.LogLevel != "info" || cfg.MemoryLimitMB != 96 {
 		t.Errorf("cfg = %#v", cfg)
 	}
 	wantDB := filepath.Join(filepath.Dir(path), "indexarr.db")
@@ -42,6 +42,9 @@ func TestLoadCustom(t *testing.T) {
 	}
 	if cfg.VaultKeyPath != filepath.Join(dir, "secrets/master.key") {
 		t.Errorf("vault key path = %q", cfg.VaultKeyPath)
+	}
+	if cfg.MemoryLimitMB != 96 {
+		t.Errorf("memory limit = %d, want default 96", cfg.MemoryLimitMB)
 	}
 }
 
