@@ -542,6 +542,8 @@ type siteChoice struct {
 	Italian       bool
 	Usage         int
 	Latest        bool
+	LatestList    bool
+	Storable      bool
 	QuickAdd      bool
 	Configurable  bool
 	Probe         bool
@@ -1143,10 +1145,16 @@ func (s *Server) guideProvides(r *http.Request, entry catalog.IndexEntry) string
 		return s.translate(r, "idx.guide.providesFeed")
 	case strings.EqualFold(entry.Protocol, "usenet"):
 		return s.translate(r, "idx.guide.providesUsenet")
-	case !entry.Latest:
-		return s.translate(r, "idx.guide.providesSearchOnly")
+	case entry.Storable:
+		// The definition declares a real latest page and no feed of its own:
+		// the card says both that the list exists and that it can be stored.
+		return s.translate(r, "idx.guide.providesStorable")
+	case entry.LatestList:
+		return s.translate(r, "idx.guide.providesLatestList")
+	case entry.Scheduled:
+		return s.translate(r, "idx.guide.providesUpdates")
 	default:
-		return s.translate(r, "idx.guide.providesTorrentLatest")
+		return s.translate(r, "idx.guide.providesSearchOnly")
 	}
 }
 
@@ -1179,6 +1187,8 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		Italian:       entry.Italian || strings.HasPrefix(strings.ToLower(entry.Language), "it"),
 		Usage:         entry.Usage,
 		Latest:        entry.Latest,
+		LatestList:    entry.LatestList,
+		Storable:      entry.Storable,
 	}
 	if len(entry.Hosts) > 0 {
 		choice.URL = "https://" + entry.Hosts[0] + "/"
@@ -2100,6 +2110,12 @@ func (s *Server) indexerUnifiedCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderIndexerFormProblems(w, r, defID, nil, nil, []string{err.Error()})
 		return
 	}
+	if parsed.HasLatestList() && !parsed.Meta.HasLatest() {
+		if needed, _, _, warnErr := s.storeWarningNeeded(r.Context(), in, 0); warnErr == nil && needed {
+			s.showStoreWarning(w, r, defID, 0, in)
+			return
+		}
+	}
 	created, err := s.svc.Create(r.Context(), in)
 	if err != nil {
 		s.renderIndexerFormProblems(w, r, defID, nil, &in, []string{s.indexerFriendlyError(r, err)})
@@ -2207,6 +2223,12 @@ func (s *Server) indexerUnifiedUpdate(w http.ResponseWriter, r *http.Request) {
 	if err := s.ensureStoredDefinition(r, defID); err != nil {
 		s.renderCompactFormProblems(w, r, defID, &current, &in, []string{err.Error()})
 		return
+	}
+	if parsed.HasLatestList() && !parsed.Meta.HasLatest() {
+		if needed, _, _, warnErr := s.storeWarningNeeded(r.Context(), in, id); warnErr == nil && needed {
+			s.showStoreWarning(w, r, defID, id, in)
+			return
+		}
 	}
 	if _, err := s.svc.Update(r.Context(), id, in); err != nil {
 		s.renderCompactFormProblems(w, r, defID, &current, &in, []string{s.indexerFriendlyError(r, err)})

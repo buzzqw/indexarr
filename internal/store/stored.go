@@ -105,6 +105,18 @@ func idPlaceholders(ids []int64) (string, []any) {
 	return strings.Join(placeholders, ","), args
 }
 
+// AverageReleaseBytes is the mean size of the releases that declare one. The
+// fourth-source warning uses it when a site's latest list omits sizes.
+func (s *Store) AverageReleaseBytes(ctx context.Context) int64 {
+	var average float64
+	_ = s.db.QueryRowContext(ctx,
+		`SELECT COALESCE(AVG(size), 0) FROM releases WHERE size > 0`).Scan(&average)
+	if average < 0 {
+		return 0
+	}
+	return int64(average)
+}
+
 // FindStoredDuplicate applies the cautious §1g rule to a stored source: the
 // normalized title must be identical, the size within the rounding tolerance,
 // the protocol equal and the dates compatible. A candidate with a different

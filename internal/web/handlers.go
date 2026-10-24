@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -15,6 +16,7 @@ type dashboardPage struct {
 	base
 	Status       HomeStatus
 	Activity     store.HomeActivity
+	Stored       store.StoredStats
 	NextStep     *homeNextStep
 	Clients      []store.DownloadClient
 	SuggestedURL string
@@ -54,10 +56,16 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
+	stored, err := s.store.StoredStats(ctx, time.Now())
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
 	s.render(w, r, "dashboard", dashboardPage{
 		base:         s.newBaseT(r, "dashboard.title", "dashboard"),
 		Status:       status,
 		Activity:     activity,
+		Stored:       stored,
 		NextStep:     s.nextStep(ctx, status, settings, len(clients)),
 		Clients:      clients,
 		SuggestedURL: suggestedPublicURL(r),

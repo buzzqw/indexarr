@@ -64,9 +64,10 @@ type settingsPage struct {
 	BackupKeep          int
 	Indexers            []store.Indexer
 	// Advanced
-	Definitions []store.Definition
-	CatalogRows []definitionRow
-	LocalRows   []definitionRow
+	Definitions   []store.Definition
+	CatalogRows   []definitionRow
+	LocalRows     []definitionRow
+	StoredSources int
 }
 
 var settingsSections = []settingsSection{
@@ -155,6 +156,7 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 	if section == "advanced" {
 		data.Definitions, _ = s.store.ListDefinitions(ctx)
 		data.CatalogRows, data.LocalRows = s.definitionRows(ctx, nil)
+		data.StoredSources, _ = s.store.StoredSourceCount(ctx)
 	}
 	return data
 }
@@ -445,6 +447,14 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			return false
 		}
 		if in.TorznabLiveWait, parseErr = s.formInt(r, "torznab_live_wait_seconds", 5, 1, 120); parseErr != nil {
+			renderInvalid(parseErr.Error())
+			return false
+		}
+		if in.StoredSourceLimit, parseErr = s.formInt(r, "stored_source_limit", current.StoredSourceLimit, 0, 20); parseErr != nil {
+			renderInvalid(parseErr.Error())
+			return false
+		}
+		if in.StoredRetentionDays, parseErr = s.formInt(r, "stored_retention_days", current.StoredRetentionDays, 0, 3650); parseErr != nil {
 			renderInvalid(parseErr.Error())
 			return false
 		}

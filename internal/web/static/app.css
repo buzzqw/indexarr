@@ -1670,6 +1670,8 @@ pre.yaml {
 .home-numbers div { padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2); }
 .home-numbers dt { color: var(--muted); font-size: 0.8rem; }
 .home-numbers dd { margin: 0.15rem 0 0; font-size: 1.45rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stored-counter { margin: 0; padding: 0.35rem 1.15rem 1rem; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.stored-counter strong { color: var(--text); }
 .next-step-panel { padding-bottom: 1rem; }
 .next-step-panel p { margin: 0 0 0.9rem; }
 .next-step-panel .btn { margin-inline: 1.1rem; }

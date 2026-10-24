@@ -1,0 +1,46 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{T "storeWarning.title"}}</h1>
+    <p class="muted">{{T "storeWarning.subtitle" .Name .StoredCount .Limit}}</p>
+  </div>
+  <a class="btn" href="{{.BackURL}}">{{T "common.cancel"}}</a>
+</section>
+
+<section class="panel store-warning">
+  {{if .ProbeError}}
+  <p class="flash warn" role="alert">{{T "storeWarning.probeError" .ProbeError}}</p>
+  <p class="muted">{{T "storeWarning.probeErrorNote"}}</p>
+  {{else}}
+  <dl class="home-numbers store-warning-numbers">
+    <div>
+      <dt title="{{T "tip.storeLatest"}}">{{T "storeWarning.releasesPerDay"}}</dt>
+      <dd>{{.PerDay}}</dd>
+    </div>
+    <div>
+      <dt title="{{T "tip.storeLatest"}}">{{T "storeWarning.mbPerMonth"}}</dt>
+      <dd>{{megabytes .MonthBytes}}</dd>
+    </div>
+    <div>
+      <dt>{{T "storeWarning.dbSize"}}</dt>
+      <dd>{{megabytes .DBSize}}</dd>
+    </div>
+  </dl>
+  <p class="help">{{T "storeWarning.window" .Items}}{{if .WindowLabel}} · {{.WindowLabel}}{{end}}</p>
+  {{end}}
+  <p class="help">{{T "storeWarning.note"}}</p>
+
+  <div class="actions form-actions">
+    <form method="post" action="{{.CancelURL}}">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="token" value="{{.Token}}">
+      <button class="btn" type="submit">{{T "storeWarning.cancel"}}</button>
+    </form>
+    <form method="post" action="{{.ConfirmURL}}">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="token" value="{{.Token}}">
+      <button class="btn primary" type="submit">{{T "storeWarning.confirm"}}</button>
+    </form>
+  </div>
+</section>
+{{end}}

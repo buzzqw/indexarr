@@ -62,6 +62,7 @@
             {{if .LanguageBadge}}<span class="badge soft" title="{{.Language}}">{{.LanguageBadge}}</span>{{end}}
             {{range .Categories}}<span class="badge soft">{{.}}</span>{{end}}
             {{if .AccessLabel}}<span class="badge soft catalog-access" title="{{T "tip.indexerAccess"}}">{{.AccessLabel}}</span>{{end}}
+            {{if .Storable}}<span class="badge soft" title="{{T "tip.storeLatest"}}">{{T "idx.badgeStorable"}}</span>{{end}}
             {{if .Reachable}}<span class="badge soft" title="{{T "tip.indexerState"}}">{{T "idx.catalog.probeReachable"}}</span>{{end}}
           </div>
         </div>
@@ -146,6 +147,7 @@
           {{if .LanguageBadge}}<span class="badge soft" title="{{.Language}}">{{.LanguageBadge}}</span>{{end}}
           {{range .Categories}}<span class="badge soft">{{.}}</span>{{end}}
           {{if .AccessLabel}}<span class="badge soft catalog-access">{{.AccessLabel}}</span>{{end}}
+          {{if .Storable}}<span class="badge soft" title="{{T "tip.storeLatest"}}">{{T "idx.badgeStorable"}}</span>{{end}}
           <span class="state state-{{.State}}">{{.StateLabel}}</span>
           {{if .Reachable}}<span class="badge soft">{{T "idx.catalog.probeReachable"}}</span>{{end}}
         </div>

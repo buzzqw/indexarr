@@ -512,6 +512,21 @@
       </div>
     </div>
 
+    <div class="panel-head"><h2>{{T "home.storedTitle"}}</h2></div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="stored_source_limit">{{T "settings.storedLimit"}}</label>
+        <input id="stored_source_limit" name="stored_source_limit" type="number" min="0" max="20" required value="{{.Settings.StoredSourceLimit}}">
+        <p class="help">{{T "settings.storedLimitHelp" .StoredSources}}</p>
+      </div>
+      <div class="field">
+        <label for="stored_retention_days">{{T "settings.storedRetention"}}</label>
+        <input id="stored_retention_days" name="stored_retention_days" type="number" min="0" max="3650" required value="{{.Settings.StoredRetentionDays}}">
+        <p class="help">{{T "settings.storedRetentionHelp"}}</p>
+      </div>
+    </div>
+    <p class="help">{{T "settings.storedLimitNote"}}</p>
+
     <div class="panel-head"><h2>{{T "settings.torznabRatio"}}</h2></div>
     <div class="form-grid">
       <div class="field">

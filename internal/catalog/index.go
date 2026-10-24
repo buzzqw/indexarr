@@ -73,6 +73,17 @@ type IndexEntry struct {
 	// Latest is true when the definition publishes a list of new releases.
 	// The guided add flow uses it to say what the site gives.
 	Latest bool `json:"latest"`
+	// LatestList is true when the definition declares the page used to read
+	// new releases for a search-only site (definition.Latest). It is the
+	// metadata behind "new-release list: yes", not a fixed text.
+	LatestList bool `json:"latest_list,omitempty"`
+	// Storable is true when the site has a real latest list and does not
+	// already publish its own feed. Such a search-only site can be memorised.
+	Storable bool `json:"storable,omitempty"`
+	// Scheduled is true when the definition already publishes periodic new
+	// releases (meta.latest absent or true). It is the metadata behind the
+	// "new releases" fact for a site that needs no memorise switch.
+	Scheduled bool `json:"scheduled,omitempty"`
 }
 
 // Index returns the embedded catalog index. The slice is a copy: callers may
@@ -139,6 +150,9 @@ func BuildIndex(entries []Entry) []IndexEntry {
 			Source:      "native",
 			Proposable:  entry.State != "degradata",
 			Latest:      def.HasLatestList(),
+			LatestList:  def.HasLatestList(),
+			Storable:    def.HasLatestList() && !def.Meta.HasLatest(),
+			Scheduled:   def.Meta.HasLatest(),
 		}
 		out = append(out, item)
 	}

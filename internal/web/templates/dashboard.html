@@ -88,6 +88,9 @@
       <div><dt>{{T "home.hours.searches"}}</dt><dd>{{.Activity.AppSearches}}</dd></div>
       <div><dt>{{T "home.hours.grabs"}}</dt><dd>{{.Activity.Grabs}}</dd></div>
     </dl>
+    {{if .Stored.Sources}}
+    <p class="stored-counter" title="{{T "home.storedHelp"}}">{{T "home.storedSummary" .Stored.Releases (megabytes .Stored.Bytes) .Stored.PerDay}}</p>
+    {{end}}
   </section>
   {{if .NextStep}}
   <section class="panel next-step-panel">
