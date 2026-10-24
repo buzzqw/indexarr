@@ -35,6 +35,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		query = queryFromConfig(config)
 	}
 	var payloadBytes int64
+	var downloadProblem error
 	var capture *runCapture
 	defer func() {
 		if err == nil && capture != nil {
@@ -255,6 +256,9 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 	}
 
+	if downloadProblem != nil {
+		return stats, downloadProblem
+	}
 	return stats, nil
 }
 

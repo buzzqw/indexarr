@@ -165,8 +165,6 @@ func (s *Server) nextStep(ctx context.Context, status HomeStatus, settings store
 	switch {
 	case status.ActiveIndexers == 0:
 		return &homeNextStep{Key: "home.next.indexer", ActionKey: "home.action.addIndexer", ActionURL: "/indexers/new"}
-	case strings.TrimSpace(settings.PublicURL) == "":
-		return &homeNextStep{Key: "home.next.address", ActionKey: "home.action.useAddress", ActionURL: "#connect"}
 	case status.Apps == 0:
 		return &homeNextStep{Key: "home.next.app", ActionKey: "home.action.connectApp", ActionURL: "/applications/new"}
 	case clients == 0 && settings.DownloadClient == "none":

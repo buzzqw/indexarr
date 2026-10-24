@@ -77,8 +77,8 @@ func TestHomeNextStepIsSingleAndOrdered(t *testing.T) {
 	status := HomeStatus{Level: "ok", ActiveIndexers: 2, Apps: 1}
 
 	step := env.server.nextStep(ctx, status, settings, 1)
-	if step == nil || step.Key != "home.next.address" {
-		t.Fatalf("first step = %#v, want public address", step)
+	if step == nil || step.Key != "home.next.backup" {
+		t.Fatalf("first step = %#v, want backup (the connect card already proposes the address)", step)
 	}
 
 	settings.PublicURL = "http://192.168.1.50:8484"

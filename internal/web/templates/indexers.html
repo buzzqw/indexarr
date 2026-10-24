@@ -55,7 +55,7 @@
         {{if .Problem}}{{template "problem" .Problem}}{{end}}
         {{if .Channels}}<details class="channel-menu"><summary>{{T "idx.channelCount" (len .Channels)}}</summary><ul>{{range .Channels}}<li><a href="/indexers/{{.ID}}">{{.Name}} · {{if eq .Label "latest"}}{{T "idx.channelLatest"}}{{else if eq .Label "search"}}{{T "idx.channelSearch"}}{{else}}{{.Label}}{{end}}</a></li>{{end}}</ul></details>{{end}}
       </div>
-      <div class="indexer-updated">{{if .SearchOnly}}{{T "idx.searchOnlyNoUpdate"}}{{else if .LastUpdate}}{{ago .LastUpdate}}{{else}}{{T "idx.neverUpdated"}}{{end}}</div>
+      <div class="indexer-updated">{{if .SearchOnly}}<span title="{{T "idx.searchOnlyHelp"}}">{{T "idx.searchOnlyNoUpdate"}}</span>{{else if .LastUpdate}}{{ago .LastUpdate}}{{else}}{{T "idx.neverUpdated"}}{{end}}</div>
       <details class="row-menu">
         <summary aria-label="{{T "idx.menu" .Indexer.Name}}">⋯</summary>
         <div class="row-menu-list">

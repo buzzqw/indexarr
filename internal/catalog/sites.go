@@ -200,15 +200,21 @@ func siteIndexEntry(site Site) IndexEntry {
 		Protocol:    "torrent",
 		Categories:  categories,
 		Required:    required,
-		State:       site.State,
-		Hosts:       hosts,
-		URL:         site.URL,
-		Family:      site.Family,
-		Italian:     site.Italian,
-		Usage:       site.Usage,
-		Source:      site.Source,
-		Evidence:    site.Evidence,
-		Proposable:  site.State != SiteStateDead,
+		State: func() string {
+			if site.State == SiteStateDead {
+				return SiteStateDead
+			}
+			return SiteStateTry
+		}(),
+		Reachable:  site.State == SiteStateVerified,
+		Hosts:      hosts,
+		URL:        site.URL,
+		Family:     site.Family,
+		Italian:    site.Italian,
+		Usage:      site.Usage,
+		Source:     site.Source,
+		Evidence:   site.Evidence,
+		Proposable: site.State != SiteStateDead,
 	}
 }
 

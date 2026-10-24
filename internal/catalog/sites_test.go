@@ -297,3 +297,25 @@ sites:
 		t.Fatal("accepted an unknown field")
 	}
 }
+
+func TestLightweightReachabilityIsNotVerification(t *testing.T) {
+	entries, err := Builtins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sites, err := Sites()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range BuildFullIndex(entries, sites) {
+		if entry.Source == "" || entry.Source == "native" {
+			continue
+		}
+		if entry.State == "verificata" {
+			t.Errorf("%s: HTTP reachability was promoted to verified", entry.ID)
+		}
+		if entry.Reachable && entry.State == "verificata" {
+			t.Errorf("%s: contradictory reachable/verified state", entry.ID)
+		}
+	}
+}

@@ -64,6 +64,9 @@ type IndexEntry struct {
 	Source string `json:"source,omitempty"`
 	// Evidence is the short live-test result for a lightweight entry.
 	Evidence string `json:"evidence,omitempty"`
+	// Reachable means a lightweight row answered an HTTP probe. It is not a
+	// live search proof and must never paint the row green.
+	Reachable bool `json:"reachable,omitempty"`
 	// Proposable is false for dead rows, so a client can hide them without
 	// memorising the state vocabulary.
 	Proposable bool `json:"proposable"`

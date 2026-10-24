@@ -542,6 +542,8 @@ type siteChoice struct {
 	Usage         int
 	QuickAdd      bool
 	Configurable  bool
+	Probe         bool
+	Reachable     bool
 	OptionalID    string
 	Added         bool
 	AddedID       int64
@@ -890,6 +892,11 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 			if leftUsage != rightUsage {
 				return leftUsage > rightUsage
 			}
+			leftLang := strings.HasPrefix(strings.ToLower(filtered[i].Language), strings.ToLower(string(requestLanguage(r))))
+			rightLang := strings.HasPrefix(strings.ToLower(filtered[j].Language), strings.ToLower(string(requestLanguage(r))))
+			if leftLang != rightLang {
+				return leftLang
+			}
 		}
 		left, right := strings.ToLower(filtered[i].Name), strings.ToLower(filtered[j].Name)
 		if left == right {
@@ -959,6 +966,8 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		AccessLabel:   s.catalogAccessLabel(r, entry.Required),
 		QuickAdd:      catalogQuickAdd(entry),
 		Configurable:  entry.Source == "" || entry.Source == "native" || entry.Family != "",
+		Probe:         entry.Source != "" && entry.Source != "native",
+		Reachable:     entry.Reachable,
 		Italian:       entry.Italian || strings.HasPrefix(strings.ToLower(entry.Language), "it"),
 		Usage:         entry.Usage,
 	}
@@ -1015,10 +1024,10 @@ func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry
 		group := siteFilterGroup{Label: s.translate(r, "idx.catalog.language")}
 		names := map[string]int{}
 		for _, language := range languages {
-			names[catalogLanguageName(language)]++
+			names[catalogLanguageName(language, string(requestLanguage(r)))]++
 		}
 		for _, language := range languages {
-			label := catalogLanguageName(language)
+			label := catalogLanguageName(language, string(requestLanguage(r)))
 			if names[label] > 1 {
 				label += " (" + catalogLanguageBadge(language) + ")"
 			}
@@ -1123,7 +1132,40 @@ func catalogLanguageBadge(raw string) string {
 	return strings.ToUpper(raw)
 }
 
-func catalogLanguageName(raw string) string {
+var catalogLanguageNames = map[string]map[string]string{
+	"bg": {"it": "Bulgaro", "en": "Bulgarian"},
+	"cs": {"it": "Ceco", "en": "Czech"},
+	"de": {"it": "Tedesco", "en": "German"},
+	"en": {"it": "Inglese", "en": "English"},
+	"es": {"it": "Spagnolo", "en": "Spanish"},
+	"fr": {"it": "Francese", "en": "French"},
+	"hu": {"it": "Ungherese", "en": "Hungarian"},
+	"is": {"it": "Islandese", "en": "Icelandic"},
+	"it": {"it": "Italiano", "en": "Italian"},
+	"ko": {"it": "Coreano", "en": "Korean"},
+	"pl": {"it": "Polacco", "en": "Polish"},
+	"pt": {"it": "Portoghese", "en": "Portuguese"},
+	"ru": {"it": "Russo", "en": "Russian"},
+	"uk": {"it": "Ucraino", "en": "Ukrainian"},
+	"vi": {"it": "Vietnamita", "en": "Vietnamese"},
+	"zh": {"it": "Cinese", "en": "Chinese"},
+}
+
+func catalogLanguageName(raw, uiLanguage string) string {
+	key := strings.ToLower(strings.TrimSpace(raw))
+	if index := strings.IndexAny(key, "-_"); index > 0 {
+		key = key[:index]
+	}
+	if names := catalogLanguageNames[key]; names != nil {
+		lang := strings.ToLower(strings.TrimSpace(uiLanguage))
+		if index := strings.IndexAny(lang, "-_"); index > 0 {
+			lang = lang[:index]
+		}
+		if name := names[lang]; name != "" {
+			return name
+		}
+		return names["en"]
+	}
 	if lang, ok := i18n.Lookup(raw); ok {
 		return lang.Name()
 	}
@@ -1189,6 +1231,9 @@ func parseCatalogQuery(r *http.Request) catalogQuery {
 		State:    catalogFilterValue(values.Get("state"), "state"),
 		Sort:     catalogFilterValue(values.Get("sort"), "sort"),
 		Page:     intParam(values.Get("page"), 1),
+	}
+	if out.Sort == "" {
+		out.Sort = "used"
 	}
 	return out
 }

@@ -598,6 +598,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /indexers/run-all", s.indexersRunAll)
 	ui.HandleFunc("POST /indexers/bulk", s.indexersBulk)
 	ui.HandleFunc("POST /indexers/catalog/add", s.indexerCatalogAdd)
+	ui.HandleFunc("POST /indexers/catalog/probe", s.indexerCatalogProbe)
 	ui.HandleFunc("GET /indexers/export", s.indexersExport)
 	ui.HandleFunc("POST /indexers/import", s.indexersImport)
 	ui.HandleFunc("GET /indexers/discover", s.indexersDiscover)

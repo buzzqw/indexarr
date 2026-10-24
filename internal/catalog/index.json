@@ -419,13 +419,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "16mag.net"
     ],
     "url": "https://16mag.net/",
     "source": "jackett",
     "evidence": "GET https://16mag.net/ -\u003e HTTP 200, 2445 bytes, title \"ØMagnet - Torrent Sharing Made Easy\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -474,13 +475,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "edoqsc3t.529075.xyz"
     ],
     "url": "https://edoqsc3t.529075.xyz/",
     "source": "jackett",
     "evidence": "GET https://edoqsc3t.529075.xyz/ -\u003e HTTP 200, 106881 bytes, title \"52BT - Discover and share resources faster\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -496,13 +498,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "acg.rip"
     ],
     "url": "https://acg.rip/",
     "source": "jackett",
     "evidence": "GET https://acg.rip/ -\u003e HTTP 200, 26813 bytes, title \"ACG.RIP\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -521,13 +524,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "anibt.net"
     ],
     "url": "https://anibt.net/",
     "source": "jackett",
     "evidence": "GET https://anibt.net/ -\u003e HTTP 200, 262144 bytes, title \"AniBT · 动画字幕组与新番分享平台\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -547,13 +551,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "tr.anidub.com"
     ],
     "url": "https://tr.anidub.com/",
     "source": "jackett",
     "evidence": "GET https://tr.anidub.com/ -\u003e HTTP 200, 137143 bytes, title \"AniDUB Tracker Скачать аниме бесплатно на торрент трекер Анидаб\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -570,13 +575,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "aniliberty.top"
     ],
     "url": "https://aniliberty.top/",
     "source": "jackett",
     "evidence": "GET https://aniliberty.top/ -\u003e HTTP 200, 231806 bytes, title \"AniLiberty — так звучит аниме!\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -596,13 +602,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "anibelka.com"
     ],
     "url": "https://anibelka.com/",
     "source": "jackett",
     "evidence": "GET https://anibelka.com/ -\u003e HTTP 200, 140033 bytes, title \"Аниме от Белки. Главная\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -621,13 +628,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "animelayer.ru"
     ],
     "url": "https://animelayer.ru/",
     "source": "jackett",
     "evidence": "GET https://animelayer.ru/ -\u003e HTTP 200, 71342 bytes, title \"Animelayer - популярный аниме трекер\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -644,13 +652,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "animetosho.net"
     ],
     "url": "https://animetosho.net/",
     "source": "jackett",
     "evidence": "GET https://animetosho.net/ -\u003e HTTP 200, 213113 bytes, title \"Anime Tosho\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -728,13 +737,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "best-torrents.com"
     ],
     "url": "https://best-torrents.com/",
     "source": "jackett",
     "evidence": "GET https://best-torrents.com/ -\u003e HTTP 200, 55373 bytes, title \"Best-Torrents.com - NAJLEPSZA BAZA TORRENTOW\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -756,13 +766,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "bigfangroup.org"
     ],
     "url": "https://bigfangroup.org/",
     "source": "jackett",
     "evidence": "GET https://bigfangroup.org/ -\u003e HTTP 200, 24390 bytes, title \"\\xc3\\xeb\\xe0\\xe2\\xed\\xe0\\xff BigFANGroup.org - \\xf1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc \\xe1\\xe5\\xe7 \\xf0\\xe5\\xe3\\xe8\\xf1\\xf2\\xf0\\xe0\\xf6\\xe8\\xe8\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -778,13 +789,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "blueroms.ws"
     ],
     "url": "https://www.blueroms.ws/",
     "source": "jackett",
     "evidence": "GET https://www.blueroms.ws/ -\u003e HTTP 200, 21157 bytes, title \"BlueRoms: Download Game ROMs and ISOs\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -800,13 +812,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "booktracker.org"
     ],
     "url": "https://booktracker.org/",
     "source": "jackett",
     "evidence": "GET https://booktracker.org/ -\u003e HTTP 200, 262144 bytes, title \"Книжный трекер\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -822,13 +835,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "ssl.bootytape.com"
     ],
     "url": "https://ssl.bootytape.com/",
     "source": "jackett",
     "evidence": "GET https://ssl.bootytape.com/ -\u003e HTTP 200, 17340 bytes, title \"Free Porn Sex Torrents Black Homemade Amateur - BootyTapeBTapes\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -915,13 +929,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "byrutgame.org"
     ],
     "url": "https://byrutgame.org/",
     "source": "jackett",
     "evidence": "GET https://byrutgame.org/ -\u003e HTTP 200, 262144 bytes, title \"Скачать игры на ПК \u0026#91;последние версии 2026\u0026#93; через торрент бесплатно\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -965,13 +980,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "catorrent.net"
     ],
     "url": "https://catorrent.net/",
     "source": "jackett",
     "evidence": "GET https://catorrent.net/ -\u003e HTTP 200, 43363 bytes, title \"Скачать игры через торрент бесплатно - Крупная база игр от Catorrent.net\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1017,13 +1033,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "comicat.org"
     ],
     "url": "https://www.comicat.org/",
     "source": "jackett",
     "evidence": "GET https://www.comicat.org/public/html/start/ -\u003e HTTP 200, 1132 bytes, title \"(no title)\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1040,13 +1057,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "crackingpatching.com"
     ],
     "url": "https://crackingpatching.com/",
     "source": "jackett",
     "evidence": "GET https://crackingpatching.com/ -\u003e HTTP 200, 82558 bytes, title \"CrackingPatching - Believe us we can do it!\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1059,13 +1077,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "damag.net"
     ],
     "url": "https://damag.net/",
     "source": "jackett",
     "evidence": "GET https://damag.net/ -\u003e HTTP 200, 8994 bytes, title \"Da MagNet: Home\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1116,13 +1135,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "devil-torrents.pl"
     ],
     "url": "https://devil-torrents.pl/",
     "source": "jackett",
     "evidence": "GET https://devil-torrents.pl/ -\u003e HTTP 200, 209367 bytes, title \"Torrenty - darmowe torrenty , nowe torrenty\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1168,13 +1188,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "divxtotal.foo"
     ],
     "url": "https://divxtotal.foo/",
     "source": "jackett",
     "evidence": "GET https://divxtotal.foo/ -\u003e HTTP 200, 91387 bytes, title \"DivxTotaL - Descargar Torrent Peliculas Series Programas gratis\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1196,13 +1217,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "share.dmhy.org"
     ],
     "url": "https://share.dmhy.org/",
     "source": "jackett",
     "evidence": "GET https://share.dmhy.org/ -\u003e HTTP 200, 262144 bytes, title \"首頁 - 動漫花園資源網 - 動漫愛好者的自由交流平台\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1219,13 +1241,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "dontorrent.channel"
     ],
     "url": "https://dontorrent.channel/",
     "source": "jackett",
     "evidence": "GET https://dontorrent.channel/ -\u003e HTTP 200, 38172 bytes, title \"Descargar Películas y Series Torrent Gratis en Español - DonTorrent\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1269,13 +1292,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "dreamingtree.org"
     ],
     "url": "https://dreamingtree.org/",
     "source": "jackett",
     "evidence": "GET https://dreamingtree.org/ -\u003e HTTP 200, 1795 bytes, title \"dreamingtree\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1317,13 +1341,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "ebb.la"
     ],
     "url": "https://ebb.la/",
     "source": "jackett",
     "evidence": "GET https://ebb.la/ -\u003e HTTP 200, 48142 bytes, title \"Ebook Online Download, Free Book Torrent on EBook Bay (EBB)\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1340,13 +1365,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "e-hentai.org"
     ],
     "url": "https://e-hentai.org/",
     "source": "jackett",
     "evidence": "GET https://e-hentai.org/ -\u003e HTTP 200, 62366 bytes, title \"E-Hentai Galleries - The Free Hentai Doujinshi, Manga and Image Gallery System\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1369,13 +1395,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "electro-torrent.pl"
     ],
     "url": "https://electro-torrent.pl/",
     "source": "jackett",
     "evidence": "GET https://electro-torrent.pl/ -\u003e HTTP 200, 262144 bytes, title \"Electro-Torrent.pl\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1391,13 +1418,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "epublibre.org"
     ],
     "url": "https://www.epublibre.org/",
     "source": "jackett",
     "evidence": "GET https://www.epublibre.org/ -\u003e HTTP 200, 76339 bytes, title \"epublibre - inicio\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1414,13 +1442,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "erai-raws.info"
     ],
     "url": "https://www.erai-raws.info/",
     "source": "jackett",
     "evidence": "GET https://www.erai-raws.info/ -\u003e HTTP 200, 172237 bytes, title \"Erai-raws\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1443,13 +1472,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "ex-torrenty.org"
     ],
     "url": "https://ex-torrenty.org/",
     "source": "jackett",
     "evidence": "GET https://ex-torrenty.org/ -\u003e HTTP 200, 29965 bytes, title \"Ex-torrenty.org - NAJLEPSZA BAZA TORRENTOW\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1530,7 +1560,7 @@
       "password",
       "username"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "tracker.fenyarnyek.com"
     ],
@@ -1538,6 +1568,7 @@
     "family": "xbtit",
     "source": "jackett",
     "evidence": "GET http://tracker.fenyarnyek.com/ -\u003e HTTP 200, 7529 bytes, title \"Fenyarnyek-Tracker .::. Index\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1601,13 +1632,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "freejavtorrent.com"
     ],
     "url": "https://www.freejavtorrent.com/",
     "source": "jackett",
     "evidence": "GET https://www.freejavtorrent.com/ -\u003e HTTP 200, 56958 bytes, title \"Free JAV Torrent | Best Free Japanese HD Porn Movies Download\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1658,13 +1690,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "gay-torrents.net"
     ],
     "url": "https://www.gay-torrents.net/",
     "source": "jackett",
     "evidence": "GET https://www.gay-torrents.net/ -\u003e HTTP 200, 4507 bytes, title \"Gay Torrents Live Free - Your Free Gay Torrent Site ;) -\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1852,13 +1885,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "trackerpmr.com"
     ],
     "url": "https://www.trackerpmr.com/",
     "source": "jackett",
     "evidence": "GET https://www.trackerpmr.com/ -\u003e HTTP 200, 32707 bytes, title \"Главная\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -1932,13 +1966,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "hdrtorrents.net"
     ],
     "url": "https://hdrtorrents.net/",
     "source": "jackett",
     "evidence": "GET https://hdrtorrents.net/ -\u003e HTTP 200, 66753 bytes, title \"HDR Torrents - Filmes e Séries Torrent em Alta Definição 2026\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2294,13 +2329,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "kinorun.top"
     ],
     "url": "http://kinorun.top/",
     "source": "jackett",
     "evidence": "GET http://kinorun.top/ -\u003e HTTP 200, 14390 bytes, title \"\\xdd\\xea\\xf1\\xea\\xeb\\xfe\\xe7\\xe8\\xe2\\xed\\xee\\xe5 \\xef\\xee\\xf0\\xed\\xee \\xf1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc, \\xef\\xee\\xf0\\xed\\xee\\xe2\\xe8\\xe4\\xe5\\xee KINORUN \\xed\\xe0 \\xca\\xe8\\xed\\xee\\xf0\\xf3\\xed.\\xee\\xed\\xeb\\xe0\\xe9\\xed\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2322,13 +2358,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "kinozal.me"
     ],
     "url": "https://kinozal.me/",
     "source": "jackett",
     "evidence": "GET https://kinozal.me/ -\u003e HTTP 200, 34553 bytes, title \"\\xd2\\xee\\xf0\\xf0\\xe5\\xed\\xf2 \\xf2\\xf0\\xe5\\xea\\xe5\\xf0 \\xca\\xe8\\xed\\xee\\xe7\\xe0\\xeb.\\xcc\\xc5\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2344,13 +2381,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "lostfilm.tv"
     ],
     "url": "https://www.lostfilm.tv/",
     "source": "jackett",
     "evidence": "GET https://www.lostfilm.tv/ -\u003e HTTP 200, 70848 bytes, title \"LostFilm.TV. Лучшие сериалы. Официальный сайт Лостфильм - уникальный ресурс о зарубежных сер\\xd0\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2367,13 +2405,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "torrentmac.net"
     ],
     "url": "https://www.torrentmac.net/",
     "source": "jackett",
     "evidence": "GET https://www.torrentmac.net/ -\u003e HTTP 200, 119679 bytes, title \"Mac Torrents | Torrent Download Apple, Mac OSX Apps \u0026amp; Games Download\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2413,13 +2452,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "magnetdownload.com"
     ],
     "url": "https://www.magnetdownload.com/",
     "source": "jackett",
     "evidence": "GET https://www.magnetdownload.com/ -\u003e HTTP 200, 8230 bytes, title \"MagnetDownload.COM - A Torrent \u0026 Magnet Links Search Engine based on DHT\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2496,13 +2536,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "mazepa.to"
     ],
     "url": "https://mazepa.to/",
     "source": "jackett",
     "evidence": "GET https://mazepa.to/ -\u003e HTTP 200, 86233 bytes, title \"Головна - Мазепа Торент - Українське озвучення\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2524,13 +2565,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "megapeer.vip"
     ],
     "url": "https://megapeer.vip/",
     "source": "jackett",
     "evidence": "GET https://megapeer.vip/ -\u003e HTTP 200, 83404 bytes, title \"\\xce\\xf2\\xea\\xf0\\xfb\\xf2\\xfb\\xe9 \\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2-\\xf2\\xf0\\xe5\\xea\\xe5\\xf0 :: MegaPeer.vip\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2570,13 +2612,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "en.metal-tracker.com"
     ],
     "url": "https://en.metal-tracker.com/",
     "source": "jackett",
     "evidence": "GET https://en.metal-tracker.com/ -\u003e HTTP 200, 58011 bytes, title \"Metal Download, Rock, Heavy music for free! | Metal Torrent Tracker\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2595,13 +2638,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "miobt.com"
     ],
     "url": "https://miobt.com/",
     "source": "jackett",
     "evidence": "GET https://miobt.com/public/html/start/ -\u003e HTTP 200, 1132 bytes, title \"(no title)\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2617,13 +2661,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "mixtapetorrent.com"
     ],
     "url": "http://www.mixtapetorrent.com/",
     "source": "jackett",
     "evidence": "GET http://www.mixtapetorrent.com/ -\u003e HTTP 200, 48634 bytes, title \"MixtapeTorrent.com | The Latest Mixtape Downloads, Mixtape News, \u0026 Independent Music Promotion\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2680,13 +2725,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "myporn.club"
     ],
     "url": "https://myporn.club/",
     "source": "jackett",
     "evidence": "GET https://myporn.club/ -\u003e HTTP 200, 136781 bytes, title \"My Porn Club - Free Sharing Site\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2704,13 +2750,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "nekobt.to"
     ],
     "url": "https://nekobt.to/",
     "source": "jackett",
     "evidence": "GET https://nekobt.to/ -\u003e HTTP 200, 262144 bytes, title \"Home - nekoBT\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2803,13 +2850,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "nipponsei.minglong.org"
     ],
     "url": "https://nipponsei.minglong.org/",
     "source": "jackett",
     "evidence": "GET https://nipponsei.minglong.org/ -\u003e HTTP 200, 16165 bytes, title \"Nipponsei - Music Fresh From Japan\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2829,13 +2877,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "nnmclub.to"
     ],
     "url": "https://nnmclub.to/",
     "source": "jackett",
     "evidence": "GET https://nnmclub.to/ -\u003e HTTP 200, 148414 bytes, title \"\\xd2\\xee\\xf0\\xf0\\xe5\\xed\\xf2-\\xf2\\xf0\\xe5\\xea\\xe5\\xf0 :: NNM-Club\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2882,13 +2931,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "onejav.com"
     ],
     "url": "https://onejav.com/",
     "source": "jackett",
     "evidence": "GET https://onejav.com/ -\u003e HTTP 200, 82848 bytes, title \"OneJAV.com - Free JAV Torrents\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2928,13 +2978,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "opensharing.org"
     ],
     "url": "https://opensharing.org/",
     "source": "jackett",
     "evidence": "GET https://opensharing.org/ -\u003e HTTP 200, 55748 bytes, title \"\u0026bull; Портал\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -2980,13 +3031,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "pandacd.io"
     ],
     "url": "https://pandacd.io/",
     "source": "jackett",
     "evidence": "GET https://pandacd.io/ -\u003e HTTP 200, 193658 bytes, title \"PandaCD\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3003,13 +3055,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "pc-torrents.games"
     ],
     "url": "https://pc-torrents.games/",
     "source": "jackett",
     "evidence": "GET https://pc-torrents.games/ -\u003e HTTP 200, 24928 bytes, title \"\\xd1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc \\xe8\\xe3\\xf0\\xfb \\xf7\\xe5\\xf0\\xe5\\xe7 \\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3026,13 +3079,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "plugintorrent.com"
     ],
     "url": "https://plugintorrent.com/",
     "source": "jackett",
     "evidence": "GET https://plugintorrent.com/ -\u003e HTTP 200, 237450 bytes, title \"Plugintorrent.com - Free Torrent source for VST Plugin, Audio Sample, Library, Preset, DAW, and Audio Software since 2015\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3092,13 +3146,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "pornrips.to"
     ],
     "url": "https://pornrips.to/",
     "source": "jackett",
     "evidence": "GET https://pornrips.to/ -\u003e HTTP 200, 160836 bytes, title \"PornRips.To \u0026#8211; Home of PRT 1080p \u0026amp; 720p HEVC x265 Porn XXX Releases\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3114,13 +3169,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "pornxlab.com"
     ],
     "url": "https://www.pornxlab.com/",
     "source": "jackett",
     "evidence": "GET https://www.pornxlab.com/ -\u003e HTTP 200, 55797 bytes, title \"PornXLab - Free Porn Studio Movie Torrents\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3165,13 +3221,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "proporno.org"
     ],
     "url": "https://proporno.org/",
     "source": "jackett",
     "evidence": "GET https://proporno.org/ -\u003e HTTP 200, 69180 bytes, title \"скачать порно торренты на proporno\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3406,13 +3463,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "rgfootball.net"
     ],
     "url": "https://rgfootball.net/",
     "source": "jackett",
     "evidence": "GET https://rgfootball.net/ -\u003e HTTP 200, 262144 bytes, title \"Спортивный торрент-трекер RGFootball.net. Футбол Онлайн\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3428,13 +3486,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "rintor.org"
     ],
     "url": "https://rintor.org/",
     "source": "jackett",
     "evidence": "GET https://rintor.org/ -\u003e HTTP 200, 113996 bytes, title \"RinTor.Org - Порно торрент трекер Скачать бесплатно порнофильмы русское порно\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3450,13 +3509,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "rintor.net"
     ],
     "url": "https://www.rintor.net/",
     "source": "jackett",
     "evidence": "GET https://www.rintor.net/ -\u003e HTTP 200, 96786 bytes, title \"RinTor.NeT - Открытый порно торрент трекер без регистрации | Скачать порно\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3478,13 +3538,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "riperam.org"
     ],
     "url": "https://riperam.org/",
     "source": "jackett",
     "evidence": "GET https://riperam.org/ -\u003e HTTP 200, 210146 bytes, title \"Riper.AM - Торрент трекер.Скачать торрент.Смотреть онлайн. Фильмы, сериалы, музыка, игры , со\\xd1\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3500,13 +3561,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "r4.rudub.world"
     ],
     "url": "https://r4.rudub.world/",
     "source": "jackett",
     "evidence": "GET https://r4.rudub.world/ -\u003e HTTP 200, 41738 bytes, title \"\\xd1\\xec\\xee\\xf2\\xf0\\xe5\\xf2\\xfc \\xf1\\xe5\\xf0\\xe8\\xe0\\xeb\\xfb \\xee\\xed\\xeb\\xe0\\xe9\\xed \\xe1\\xe5\\xf1\\xef\\xeb\\xe0\\xf2\\xed\\xee, \\xed\\xee\\xe2\\xe8\\xed\\xea\\xe8 \\xf1\\xe5\\xf0\\xe8\\xe0\\xeb\\xee\\xe2 2026, \\xef\\xe5\\xf0\\xe5\\xe2\\xee\\xe4 \\xe8 \\xee\\xe7\\xe2\\xf3\\xf7\\xe8\\xe2\\xe0\\xed\\xe8\\xe5 RuDub \\xed\\xe0 RuDub.TV\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3551,13 +3613,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "rutor.info"
     ],
     "url": "https://rutor.info/",
     "source": "jackett",
     "evidence": "GET https://rutor.info/ -\u003e HTTP 200, 179582 bytes, title \"rutor.info :: Свободный торрент трекер\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3579,13 +3642,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "rutracker.org"
     ],
     "url": "https://rutracker.org/",
     "source": "jackett",
     "evidence": "GET https://rutracker.org/forum/index.php -\u003e HTTP 200, 96767 bytes, title \"RuTracker.org\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3608,13 +3672,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "rutracker.ru"
     ],
     "url": "http://rutracker.ru/",
     "source": "jackett",
     "evidence": "GET http://rutracker.ru/ -\u003e HTTP 200, 218447 bytes, title \"Home :: RuTracker.RU - Свободный торрент трекер\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3630,13 +3695,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "use.selezen.club"
     ],
     "url": "https://use.selezen.club/",
     "source": "jackett",
     "evidence": "GET https://use.selezen.club/ -\u003e HTTP 200, 12560 bytes, title \"Поиск фильмов - online.selezen.net\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3679,13 +3745,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "sexy-pics.us"
     ],
     "url": "https://www.sexy-pics.us/",
     "source": "jackett",
     "evidence": "GET https://www.sexy-pics.us/ -\u003e HTTP 200, 41800 bytes, title \"Download XXX (385,750 Torrent Files) Page 1 - Sexy-Pics\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3731,13 +3798,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "skidrowrepack.com"
     ],
     "url": "https://skidrowrepack.com/",
     "source": "jackett",
     "evidence": "GET https://skidrowrepack.com/ -\u003e HTTP 200, 41147 bytes, title \"Games torrent free download - SkidrowRepack.com\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3759,13 +3827,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "sktorrent.eu"
     ],
     "url": "https://sktorrent.eu/",
     "source": "jackett",
     "evidence": "GET https://sktorrent.eu/torrent/torrents_v2.php?active=0 -\u003e HTTP 200, 50014 bytes, title \"Sk-CzTorrent | stiahni si HD Filmy online - Torrents\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3787,13 +3856,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "sktorrent.org"
     ],
     "url": "https://sktorrent.org/",
     "source": "jackett",
     "evidence": "GET https://sktorrent.org/ -\u003e HTTP 200, 11916 bytes, title \"Sktorrent - Torrent Search Engine\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3809,13 +3879,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "sosulki.bosk.cc"
     ],
     "url": "https://sosulki.bosk.cc/",
     "source": "jackett",
     "evidence": "GET https://sosulki.bosk.cc/ -\u003e HTTP 200, 68468 bytes, title \"Порно торрент трекер XXX sosulki.bosk.cc\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3884,13 +3955,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "sukebei.nyaa.si"
     ],
     "url": "https://sukebei.nyaa.si/",
     "source": "jackett",
     "evidence": "GET https://sukebei.nyaa.si/ -\u003e HTTP 200, 147640 bytes, title \"Browse :: Sukebei\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -3935,13 +4007,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "therarbg.to"
     ],
     "url": "https://therarbg.to/",
     "source": "jackett",
     "evidence": "GET https://therarbg.to/ -\u003e HTTP 200, 183345 bytes, title \"Download Latest Top Torrents in Multiple Categories The RarBg\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4022,13 +4095,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "toloka.to"
     ],
     "url": "https://toloka.to/",
     "source": "jackett",
     "evidence": "GET https://toloka.to/ -\u003e HTTP 200, 23292 bytes, title \"Гуртом — торрент-толока\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4044,13 +4118,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "torrent-pirat.com"
     ],
     "url": "http://www.torrent-pirat.com/",
     "source": "jackett",
     "evidence": "GET http://www.torrent-pirat.com/ -\u003e HTTP 200, 55001 bytes, title \"\u0026bull; Портал\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4063,13 +4138,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "torrent.by"
     ],
     "url": "https://torrent.by/",
     "source": "jackett",
     "evidence": "GET https://torrent.by/ -\u003e HTTP 200, 262144 bytes, title \"Торрент трекер - torrent.by\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4148,13 +4224,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "torrentdownload.info"
     ],
     "url": "https://www.torrentdownload.info/",
     "source": "jackett",
     "evidence": "GET https://www.torrentdownload.info/ -\u003e HTTP 200, 40781 bytes, title \"TorrentDownload - Free Torrents Download\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4167,13 +4244,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "torrentkitty.cam"
     ],
     "url": "https://www.torrentkitty.cam/",
     "source": "jackett",
     "evidence": "GET https://www.torrentkitty.cam/ -\u003e HTTP 200, 28977 bytes, title \"Torrent Kitty - Free Torrent To Magnet Link Conversion Service\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4214,13 +4292,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "torrentproject.cc"
     ],
     "url": "https://torrentproject.cc/",
     "source": "jackett",
     "evidence": "GET https://torrentproject.cc/ -\u003e HTTP 200, 11284 bytes, title \"TorrentProject - Torrent Search Engine\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4240,13 +4319,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "torrentsome269.com"
     ],
     "url": "https://torrentsome269.com/",
     "source": "jackett",
     "evidence": "GET https://torrentsome269.com/ -\u003e HTTP 200, 109090 bytes, title \"토렌트썸-TORRENTSOME\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4268,13 +4348,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "torrenttip249.top"
     ],
     "url": "https://torrenttip249.top/",
     "source": "jackett",
     "evidence": "GET https://torrenttip249.top/ -\u003e HTTP 200, 109720 bytes, title \"Home - 토렌트팁::torrenttip\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4409,13 +4490,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "traht.org"
     ],
     "url": "https://traht.org/",
     "source": "jackett",
     "evidence": "GET https://traht.org/ -\u003e HTTP 200, 34053 bytes, title \"\\xc3\\xeb\\xe0\\xe2\\xed\\xe0\\xff | TrahT.org - \\xd2\\xee\\xf0\\xf0\\xe5\\xed\\xf2 \\xf2\\xf0\\xe5\\xea\\xe5\\xf0 \\xe4\\xeb\\xff \\xe2\\xe7\\xf0\\xee\\xf1\\xeb\\xfb\\xf5!\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4431,13 +4513,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "tribalmixes.com"
     ],
     "url": "https://www.tribalmixes.com/",
     "source": "jackett",
     "evidence": "GET https://www.tribalmixes.com/ -\u003e HTTP 200, 34490 bytes, title \"DJ Mixes, Livesets, Club Mixes, Track-Lists | TribalMixes\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4484,13 +4567,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "u3c3.com"
     ],
     "url": "https://u3c3.com/",
     "source": "jackett",
     "evidence": "GET https://u3c3.com/ -\u003e HTTP 200, 153394 bytes, title \"U3C3\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4512,13 +4596,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "uindex.org"
     ],
     "url": "https://uindex.org/",
     "source": "jackett",
     "evidence": "GET https://uindex.org/ -\u003e HTTP 200, 186605 bytes, title \"UIndex – The Index of Everything You Need!\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4538,13 +4623,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "torrent.unionfansub.com"
     ],
     "url": "https://torrent.unionfansub.com/",
     "source": "jackett",
     "evidence": "GET https://torrent.unionfansub.com/ -\u003e HTTP 200, 2550 bytes, title \"Torrent ‹ Unión Fansub\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4565,13 +4651,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "tracker.uniotaku.com"
     ],
     "url": "https://tracker.uniotaku.com/",
     "source": "jackett",
     "evidence": "GET https://tracker.uniotaku.com/ -\u003e HTTP 200, 6047 bytes, title \"UniOtaku - União dos Otakus\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4593,13 +4680,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "uztracker.me"
     ],
     "url": "https://uztracker.me/",
     "source": "jackett",
     "evidence": "GET https://uztracker.me/ -\u003e HTTP 200, 210563 bytes, title \"Главная :: UzTracker.me Трекер для всех\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4616,13 +4704,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "vsthouse.ru"
     ],
     "url": "https://vsthouse.ru/",
     "source": "jackett",
     "evidence": "GET https://vsthouse.ru/ -\u003e HTTP 200, 158116 bytes, title \"VSTi инструменты, VST плагины, программы - Все для создания музыки\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4639,13 +4728,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "vstorrent.org"
     ],
     "url": "https://vstorrent.org/",
     "source": "jackett",
     "evidence": "GET https://vstorrent.org/ -\u003e HTTP 200, 246080 bytes, title \"VSTorrent - Torrent Resource For Your Creativity\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4662,13 +4752,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "vsttorrentz.net"
     ],
     "url": "https://vsttorrentz.net/",
     "source": "jackett",
     "evidence": "GET https://vsttorrentz.net/ -\u003e HTTP 200, 121137 bytes, title \"VST Torrent | Download Free Latest VST Plugins\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4721,13 +4812,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "ww2-darkfox.officiel.cc"
     ],
     "url": "https://ww2-darkfox.officiel.cc/",
     "source": "jackett",
     "evidence": "GET https://ww2-darkfox.officiel.cc/ -\u003e HTTP 200, 262144 bytes, title \"(no title)\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4767,13 +4859,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "xxxclub.to"
     ],
     "url": "https://xxxclub.to/",
     "source": "jackett",
     "evidence": "GET https://xxxclub.to/ -\u003e HTTP 200, 35263 bytes, title \"XXXClub : Adult , Porn , XXX , Videos , Download , Torrents\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4789,13 +4882,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "xxxtor.com"
     ],
     "url": "https://xxxtor.com/",
     "source": "jackett",
     "evidence": "GET https://xxxtor.com/ -\u003e HTTP 200, 93183 bytes, title \"XXXTor.Com - Порно Бесплатно и Без Регистрации!\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {
@@ -4818,13 +4912,14 @@
     "required": [
       "url"
     ],
-    "state": "verificata",
+    "state": "da-provvi",
     "hosts": [
       "zamunda.life"
     ],
     "url": "https://zamunda.life/",
     "source": "jackett",
     "evidence": "GET https://zamunda.life/ -\u003e HTTP 200, 6382 bytes, title \"Zamunda.LIFE - Търсачка за магнитни линкове от Zamunda, ArenaBG и Zelka\", checked 2026-10-23",
+    "reachable": true,
     "proposable": true
   },
   {

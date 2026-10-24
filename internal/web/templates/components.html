@@ -66,11 +66,13 @@
           {{range .Categories}}<span class="badge soft">{{.}}</span>{{end}}
           {{if .AccessLabel}}<span class="badge soft catalog-access">{{.AccessLabel}}</span>{{end}}
           <span class="state state-{{.State}}">{{.StateLabel}}</span>
+          {{if .Reachable}}<span class="badge soft">{{T "idx.catalog.probeReachable"}}</span>{{end}}
         </div>
       </div>
       <div class="catalog-actions">
         {{if .Added}}<a class="btn small" href="/indexers/{{.AddedID}}">{{T "idx.catalog.alreadyAdded"}}</a>
         {{else if .QuickAdd}}<form method="post" action="/indexers/catalog/add"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small primary" type="submit">{{T "idx.catalog.add"}}</button></form>
+        {{else if .Probe}}<form method="post" action="/indexers/catalog/probe"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small primary" type="submit">{{T "idx.catalog.probe"}}</button></form>
         {{else if .Configurable}}<a class="btn small" href="/indexers/new?definition={{.ID}}">{{T "idx.catalog.configure"}}</a>
         {{else}}<span class="chip">{{T "idx.catalog.familyMissing"}}</span>{{end}}
       </div>

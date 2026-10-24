@@ -22,6 +22,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/buzzqw/indexarr/internal/categories"
+	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
@@ -167,6 +168,10 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 	}
 	apiKey, ok := s.authorize(w, r, settings)
 	if !ok {
+		return
+	}
+	if function == "indexers" {
+		s.writeIndexersAnswer(w, r, query, settings)
 		return
 	}
 	if function == "get" {
@@ -356,20 +361,6 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 				s.log.Error("torznab: search after live", "component", "indexarr", "subsystem", "torznab", "error", err)
 				return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 			}
-		}
-	}
-	// Sonarr processes every release before showing the manual search. For an
-	// episode query a huge season-wide list costs more than it helps: one page
-	// is enough for the *arr decision, and the client cannot ask for page 2.
-	if mode == "tvsearch" && filter.Season > 0 && filter.Episode > 0 {
-		if filter.Offset >= 70 {
-			releases = nil
-			total = 70
-		} else if len(releases) > 70 {
-			releases = releases[:70]
-		}
-		if total > 70 {
-			total = 70
 		}
 	}
 	// Provenance is fetched once for the whole page: writeItem never queries
@@ -1391,4 +1382,90 @@ func headerFilename(name string) string {
 		return "release"
 	}
 	return name
+}
+
+// writeIndexersAnswer implements the Jackett-compatible t=indexers list used by
+// gextto to build one lane per site. The XML intentionally contains only
+// public settings: no API key and no secret.
+func (s *Server) writeIndexersAnswer(w http.ResponseWriter, r *http.Request, query url.Values, settings store.Settings) {
+	configuredOnly := strings.EqualFold(strings.TrimSpace(query.Get("configured")), "true")
+	indexers, err := s.store.ListIndexers(r.Context())
+	if err != nil {
+		writeTorznabError(w, http.StatusInternalServerError, torznabInternalError, "internal error")
+		return
+	}
+	capsByID := map[int64]engine.Capabilities{}
+	if s.indexerCaps != nil {
+		if caps, err := s.indexerCaps(r.Context(), nil); err == nil {
+			capsByID = caps
+		}
+	}
+	base := strings.TrimSuffix(s.baseURL(r, settings), "/")
+	var b bytes.Buffer
+	b.WriteString(xml.Header)
+	b.WriteString("<indexers>")
+	for _, indexer := range indexers {
+		if configuredOnly && !indexer.Enabled {
+			continue
+		}
+		parsed, _ := s.definitionForIndexer(r.Context(), indexer)
+		name := indexer.Name
+		description, language, kind := "", "", "private"
+		if parsed != nil {
+			name = parsed.Meta.Name
+			description = parsed.Meta.Description
+			language = parsed.Meta.Language
+			kind = parsed.Meta.Type
+		}
+		b.WriteString(`<indexer id="`)
+		writeEsc(&b, indexer.Slug)
+		b.WriteString(`" configured="`)
+		if indexer.Enabled {
+			b.WriteString("true")
+		} else {
+			b.WriteString("false")
+		}
+		b.WriteString(`">`)
+		b.WriteString("<title>")
+		writeEsc(&b, name)
+		b.WriteString("</title><description>")
+		writeEsc(&b, description)
+		b.WriteString("</description><link>")
+		writeEsc(&b, base+"/api/v2.0/indexers/"+url.PathEscape(indexer.Slug)+"/results/torznab/api")
+		b.WriteString("</link><language>")
+		writeEsc(&b, language)
+		b.WriteString("</language><type>")
+		writeEsc(&b, kind)
+		b.WriteString("</type>")
+		caps, ok := capsByID[indexer.ID]
+		if !ok {
+			caps = legacyCapabilities()
+		}
+		writeIndexerCaps(&b, caps)
+		b.WriteString("</indexer>")
+	}
+	b.WriteString("</indexers>")
+	s.writeXML(w, b.Bytes())
+}
+
+func (s *Server) definitionForIndexer(ctx context.Context, indexer store.Indexer) (*definition.Definition, error) {
+	def, err := s.store.GetDefinition(ctx, indexer.DefinitionID)
+	if err != nil {
+		return nil, err
+	}
+	return definition.Parse([]byte(def.Body))
+}
+
+func writeIndexerCaps(b *bytes.Buffer, caps engine.Capabilities) {
+	b.WriteString("<caps><searching>")
+	for _, definition := range capsModes {
+		if !caps.Supports(definition.mode) {
+			b.WriteString(`<` + definition.tag + ` available="no"/>`)
+			continue
+		}
+		b.WriteString(`<` + definition.tag + ` available="yes" supportedParams="`)
+		writeEsc(b, strings.Join(caps.Params[definition.mode], ","))
+		b.WriteString(`"/>`)
+	}
+	b.WriteString("</searching></caps>")
 }

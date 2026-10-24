@@ -446,3 +446,34 @@ func TestSanitizedParamsRemovesCredentials(t *testing.T) {
 		t.Fatalf("credentials leaked into params: %q", got)
 	}
 }
+
+func TestIndexersFunctionIsJackettCompatible(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	if err := st.UpsertDefinition(ctx, store.Definition{
+		ID: "fake-indexers", SchemaVersion: 1, Family: "html", State: "verificata",
+		Origin: "local", Author: "test", Body: "schema: 1", Hash: "hash",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "fake-indexers", Slug: "tracker", Name: "Tracker",
+		Enabled: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	body := do(t, api, "/api?t=indexers&configured=true&apikey=secret").Body.String()
+	for _, want := range []string{
+		`<indexer id="tracker" configured="true">`,
+		`<title>Tracker</title>`,
+		`/api/v2.0/indexers/tracker/results/torznab/api`,
+		`<caps><searching>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("t=indexers missing %q\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "secret") {
+		t.Fatalf("indexer list leaked the API key")
+	}
+}
