@@ -694,6 +694,8 @@
   "idx.problem.forbidden": "The site refuses requests.",
   "idx.problem.forbiddenAction": "Open settings",
   "idx.problem.generic": "The last update failed.",
+  "idx.problem.sessionEndpoint": "FlareSolverr is required: set it on this indexer or in Settings → Network.",
+  "idx.problem.sessionEndpointAction": "Open network settings",
   "idx.problem.genericAction": "View details",
   "idx.problem.rate": "The site is limiting requests.",
   "idx.problem.rateAction": "Reduce the frequency",

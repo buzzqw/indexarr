@@ -694,6 +694,8 @@
   "idx.problem.forbidden": "站点拒绝请求。",
   "idx.problem.forbiddenAction": "打开设置",
   "idx.problem.generic": "上次更新失败。",
+  "idx.problem.sessionEndpoint": "需要 FlareSolverr：请在此索引器或“设置 → 网络”中配置。",
+  "idx.problem.sessionEndpointAction": "打开网络设置",
   "idx.problem.genericAction": "查看详情",
   "idx.problem.rate": "站点正在限制请求。",
   "idx.problem.rateAction": "降低频率",

@@ -694,6 +694,8 @@
   "idx.problem.forbidden": "Il sito rifiuta le richieste.",
   "idx.problem.forbiddenAction": "Apri le impostazioni",
   "idx.problem.generic": "L'ultimo aggiornamento non è riuscito.",
+  "idx.problem.sessionEndpoint": "Serve FlareSolverr: impostalo su questo indexer o in Impostazioni → Rete.",
+  "idx.problem.sessionEndpointAction": "Apri le impostazioni di rete",
   "idx.problem.genericAction": "Vedi i dettagli",
   "idx.problem.rate": "Il sito limita le richieste.",
   "idx.problem.rateAction": "Riduci la frequenza",

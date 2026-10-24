@@ -203,6 +203,12 @@ func (s *Server) problemForMessage(r *http.Request, in store.Indexer, message st
 			ActionLabel: s.translate(r, "idx.problem.authAction"),
 			ActionURL:   detail + "/edit",
 		}
+	case strings.Contains(raw, "session endpoint") || strings.Contains(raw, "flaresolverr"):
+		return uiProblem{
+			Text:        s.translate(r, "idx.problem.sessionEndpoint"),
+			ActionLabel: s.translate(r, "idx.problem.sessionEndpointAction"),
+			ActionURL:   "/settings?section=network",
+		}
 	case strings.Contains(raw, "timeout") || strings.Contains(raw, "deadline") ||
 		strings.Contains(raw, "no such host") || strings.Contains(raw, "connection refused") ||
 		strings.Contains(raw, "unreachable") || strings.Contains(raw, "dial"):

@@ -694,6 +694,8 @@
   "idx.problem.forbidden": "Die Site lehnt Anfragen ab.",
   "idx.problem.forbiddenAction": "Einstellungen öffnen",
   "idx.problem.generic": "Die letzte Aktualisierung ist fehlgeschlagen.",
+  "idx.problem.sessionEndpoint": "FlareSolverr ist erforderlich: hier oder unter Einstellungen → Netzwerk setzen.",
+  "idx.problem.sessionEndpointAction": "Netzwerkeinstellungen öffnen",
   "idx.problem.genericAction": "Details ansehen",
   "idx.problem.rate": "Die Site begrenzt Anfragen.",
   "idx.problem.rateAction": "Häufigkeit reduzieren",

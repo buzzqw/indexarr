@@ -694,6 +694,8 @@
   "idx.problem.forbidden": "Witryna odrzuca żądania.",
   "idx.problem.forbiddenAction": "Otwórz ustawienia",
   "idx.problem.generic": "Ostatnia aktualizacja nie powiodła się.",
+  "idx.problem.sessionEndpoint": "Wymagany FlareSolverr: ustaw go tutaj lub w Ustawienia → Sieć.",
+  "idx.problem.sessionEndpointAction": "Otwórz ustawienia sieci",
   "idx.problem.genericAction": "Zobacz szczegóły",
   "idx.problem.rate": "Witryna ogranicza żądania.",
   "idx.problem.rateAction": "Zmniejsz częstotliwość",
