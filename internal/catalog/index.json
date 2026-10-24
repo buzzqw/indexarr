@@ -5354,6 +5354,30 @@
     "latest": false
   },
   {
+    "id": "mircrew-smartfeed",
+    "name": "MirCrew (Smartfeed)",
+    "description": "MirCrew personal Smartfeed; pending topics, grabbed through the native MirCrew indexer.",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "mircrew-releases.org"
+    ],
+    "url": "https://mircrew-releases.org/",
+    "italian": true,
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "newznab-generic",
     "name": "Newznab (generic)",
     "description": "Generic Newznab indexer; the family connector reads URL and API key.",

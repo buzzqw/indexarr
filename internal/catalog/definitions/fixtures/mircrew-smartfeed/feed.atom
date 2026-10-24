@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sanitized MirCrew Smartfeed Atom fixture. All ids, tokens and usernames
+     are synthetic. -->
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>MirCrew :: Smartfeed</title>
+  <id>urn:mircrew:smartfeed:synthetic</id>
+  <updated>2026-10-23T18:40:00Z</updated>
+  <link rel="self" type="application/atom+xml" href="https://mircrew-releases.org/smartfeed/feed?u=1&amp;e=SYNTHETICTOKEN0000000000000000000000&amp;f=51&amp;f=52&amp;t=2&amp;d=3&amp;x=200"/>
+  <entry>
+    <title type="html">&lt;![CDATA[Serie TV in corso :: VisionQuest - Stagione 1 (2026) 1080p :: Risposta di synthetic-user]]&gt;</title>
+    <id>urn:mircrew:topic:227001</id>
+    <link rel="alternate" type="text/html" href="https://mircrew-releases.org/viewtopic.php?f=51&amp;t=227001&amp;p=888001#p888001"/>
+    <updated>2026-10-23T18:40:00Z</updated>
+    <category term="Serie TV in corso"/>
+  </entry>
+  <entry>
+    <title type="html"><![CDATA[Film :: Dune - Parte due (2024) 2160p :: Autore synthetic-user]]></title>
+    <id>urn:mircrew:topic:230123</id>
+    <link rel="alternate" type="text/html" href="https://mircrew-releases.org/viewtopic.php?f=26&amp;t=230123"/>
+    <updated>2026-10-22T07:30:00Z</updated>
+    <category term="Film"/>
+  </entry>
+  <entry>
+    <title type="html"><![CDATA[Stagioni complete :: Scrubs (2026) - Stagione 1 :: Risposta di another-user]]></title>
+    <id>urn:mircrew:topic:231777</id>
+    <link rel="alternate" type="text/html" href="https://mircrew-releases.org/viewtopic.php?f=52&amp;t=231777"/>
+    <updated>2026-10-21T12:00:00Z</updated>
+    <category term="Stagioni complete"/>
+  </entry>
+</feed>

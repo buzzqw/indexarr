@@ -107,12 +107,11 @@ var pageNames = []string{
 	"run", "rules", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
 	"applications", "application_form", "import", "activity", "setup",
-	"download_client_form", "site_preview", "store_warning",
+	"download_client_form", "site_preview", "smartfeed_form",
 }
 
 var templateFuncMap = template.FuncMap{
 	"bytes":      humanBytes,
-	"megabytes":  humanMegabytes,
 	"date":       humanDate,
 	"dateOnly":   humanDateOnly,
 	"ago":        humanAgo,
@@ -463,8 +462,11 @@ type Server struct {
 	// importPlans holds short-lived previews between /import and /import/apply.
 	// Secrets stay in this process memory and never reach the HTML.
 	importPlans *importPlanStore
+	// smartfeedPlans holds a pasted Smartfeed URL between recognition and the
+	// confirmation form. The personal token never travels through the HTML.
+	smartfeedPlans *smartfeedPlanStore
 	// pendingStores holds the form values of a fourth stored source while the
-	// user reads the measured warning. Secrets never reach the HTML.
+	// user reads the measured warning.
 	pendingStores *pendingStoreSet
 	// catalogIndex supplies the site catalog. It is catalog.Index in
 	// production; tests replace it with a synthetic index to prove that the
@@ -498,26 +500,27 @@ func New(cfg Config) *Server {
 		cfg.VaultKey.Kind = "config"
 	}
 	srv := &Server{
-		store:         cfg.Store,
-		log:           logger,
-		version:       cfg.Version,
-		started:       cfg.Started,
-		torznab:       torznabapi.New(cfg.Store, logger, cfg.Version),
-		static:        http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
-		logs:          logs,
-		level:         level,
-		restart:       cfg.Restart,
-		admin:         cfg.Admin,
-		native:        cfg.Native,
-		sched:         cfg.Scheduler,
-		svc:           cfg.Indexers,
-		vault:         cfg.Vault,
-		vaultKey:      cfg.VaultKey,
-		sync:          cfg.Sync,
-		polite:        cfg.Politeness,
-		importPlans:   newImportPlanStore(),
-		pendingStores: newPendingStoreSet(),
-		catalogIndex:  catalog.Index,
+		store:          cfg.Store,
+		log:            logger,
+		version:        cfg.Version,
+		started:        cfg.Started,
+		torznab:        torznabapi.New(cfg.Store, logger, cfg.Version),
+		static:         http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
+		logs:           logs,
+		level:          level,
+		restart:        cfg.Restart,
+		admin:          cfg.Admin,
+		native:         cfg.Native,
+		sched:          cfg.Scheduler,
+		svc:            cfg.Indexers,
+		vault:          cfg.Vault,
+		vaultKey:       cfg.VaultKey,
+		sync:           cfg.Sync,
+		polite:         cfg.Politeness,
+		importPlans:    newImportPlanStore(),
+		smartfeedPlans: newSmartfeedPlanStore(),
+		pendingStores:  newPendingStoreSet(),
+		catalogIndex:   catalog.Index,
 	}
 	if cfg.Native != nil {
 		srv.torznab.SetLiveSearch(cfg.Native.SearchLive)
@@ -617,12 +620,12 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /indexers/catalog/try", s.indexerCatalogTry)
 	ui.HandleFunc("POST /indexers/catalog/preview/add", s.indexerCatalogPreviewAdd)
 	ui.HandleFunc("POST /indexers/catalog/preview/cancel", s.indexerCatalogPreviewCancel)
-	ui.HandleFunc("POST /indexers/store/confirm", s.indexerStoreConfirm)
-	ui.HandleFunc("POST /indexers/store/cancel", s.indexerStoreCancel)
 	ui.HandleFunc("GET /indexers/export", s.indexersExport)
 	ui.HandleFunc("POST /indexers/import", s.indexersImport)
 	ui.HandleFunc("GET /indexers/discover", s.indexersDiscover)
 	ui.HandleFunc("POST /indexers/quick", s.indexerQuickAdd)
+	ui.HandleFunc("GET /indexers/smartfeed", s.smartfeedFormPage)
+	ui.HandleFunc("POST /indexers/smartfeed", s.smartfeedFormAdd)
 	ui.HandleFunc("GET /indexers/{id}", s.indexerUnifiedDetail)
 	ui.HandleFunc("GET /indexers/{id}/edit", s.indexerUnifiedEdit)
 	ui.HandleFunc("POST /indexers/{id}", s.indexerUnifiedUpdate)
@@ -1032,15 +1035,6 @@ func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	fmt.Fprintf(w, `{"status":"ok","version":%q,"uptime_seconds":%d,"releases":%d,"indexers":%d,"db_bytes":%d}`,
 		s.version, int64(time.Since(s.started).Seconds()), stats.Releases, stats.Indexers, stats.DBBytes)
-}
-
-// humanMegabytes formats a byte count in decimal MB, the unit used by the
-// stored-source counter and warning ("N release, X MB, +Y al giorno").
-func humanMegabytes(value int64) string {
-	if value <= 0 {
-		return "0.0 MB"
-	}
-	return fmt.Sprintf("%.1f MB", float64(value)/1_000_000)
 }
 
 func humanBytes(value int64) string {

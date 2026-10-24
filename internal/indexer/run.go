@@ -13,6 +13,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/feed"
+	"github.com/buzzqw/indexarr/internal/smartfeed"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/textutil"
 )
@@ -65,6 +66,13 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	})
 	runRules := newRunFilter(config, time.Now())
 	storedSource := settingBool(settingString(config["store_latest"]))
+	// A MirCrew Smartfeed channel lists pending topics. The feed itself never
+	// opens or thanks a topic: the paired native indexer is used only when a
+	// client later asks for the download.
+	smartfeedSource := strings.EqualFold(strings.TrimSpace(indexer.DefinitionID), smartfeed.DefinitionID) ||
+		settingBool(settingString(config["smartfeed"]))
+	var nativePair store.Indexer
+	var hasNativePair, pairLoaded bool
 
 	categories := categoriesFromValue(config["categories"])
 	// A memorised search-only site follows the categories the linked apps
@@ -134,6 +142,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			magnet = feed.MagnetFromHash(hash, item.Title)
 		}
 		item.Magnet = magnet
+		pending := smartfeedSource && strings.EqualFold(strings.TrimSpace(item.Attributes[smartfeed.AttributePending]), "true")
 
 		if key := itemIdentity(item); key != "" {
 			if _, duplicate := seen[key]; duplicate {
@@ -202,7 +211,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			}
 		}
 
-		if magnet == "" && len(torrent) == 0 {
+		if magnet == "" && len(torrent) == 0 && !pending {
 			stats.discardNoLink()
 			continue
 		}
@@ -211,6 +220,25 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		if dedupKey == "" {
 			stats.discardOther()
 			continue
+		}
+
+		// The pending topic points at the native MirCrew indexer, not at the
+		// RSS channel: opening the topic and thanking it belong to the grab.
+		// Nothing is downloaded or opened here, so a poll can never thank.
+		downloadRef := ""
+		if pending {
+			if !pairLoaded {
+				nativePair, hasNativePair = m.smartfeedNativePair(ctx, indexer, config)
+				pairLoaded = true
+			}
+			if hasNativePair && m.vault != nil {
+				if ref, refErr := SealDownloadRef(m.vault, nativePair.ID, item); refErr == nil {
+					downloadRef = ref
+				} else {
+					m.logger.Warn("indexer: seal Smartfeed topic reference",
+						"indexer", indexer.Slug, "error", refErr)
+				}
+			}
 		}
 
 		now := time.Now()
@@ -271,7 +299,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			LastSeenAt:  release.LastSeenAt,
 			Seeders:     item.Seeders,
 			Leechers:    item.Leechers,
-			DownloadRef: "",
+			DownloadRef: downloadRef,
 		}); provenanceErr != nil {
 			m.logger.Warn("indexer: record release source",
 				"indexer", indexer.Slug,
@@ -453,6 +481,42 @@ func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item
 		stats.Items = append(stats.Items, item)
 	}
 	return nil
+}
+
+// smartfeedNativePair finds the MirCrew search indexer that belongs to the
+// same site. It runs once per poll and only when a pending topic needs a
+// sealed grab reference, so a missing native indexer never blocks the feed.
+func (m *Manager) smartfeedNativePair(ctx context.Context, source store.Indexer, sourceConfig map[string]any) (store.Indexer, bool) {
+	indexers, err := m.store.ListIndexers(ctx)
+	if err != nil {
+		return store.Indexer{}, false
+	}
+	site := strings.TrimSpace(settingString(sourceConfig["site"]))
+	if site == "" {
+		site = smartfeed.Site
+	}
+	var fallback store.Indexer
+	fallbacks := 0
+	for _, candidate := range indexers {
+		if !strings.EqualFold(strings.TrimSpace(candidate.DefinitionID), smartfeed.NativeDefinitionID) {
+			continue
+		}
+		config, configErr := decodeConfig(candidate.ConfigJSON)
+		if configErr != nil {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(settingString(config["site"])), site) {
+			return candidate, true
+		}
+		fallback = candidate
+		fallbacks++
+	}
+	// A native indexer created before channels existed has no site key. If it
+	// is the only MirCrew indexer, pairing it is unambiguous.
+	if fallbacks == 1 {
+		return fallback, true
+	}
+	return store.Indexer{}, false
 }
 
 func usenetIdentity(item engine.Item) string {

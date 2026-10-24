@@ -232,3 +232,33 @@ Con il ponte:
 La prova non deve generare ringraziamenti: usare un topic già indicizzato
 (come `Reacher - Stagione 3`, topic 165159) oppure fermarsi prima del grab.
 Qualsiasi prova che apra un topic non ancora ringraziato va contata.
+
+---
+
+## 4. Smartfeed (canale novità, offline)
+
+Lo Smartfeed personale è il canale **latest** di MirCrew, accanto all'indexer
+nativo di ricerca. Si aggiunge incollando in «Aggiungi sorgente» l'URL che si
+copia da `/smartfeed/ui`: indexarr lo riconosce, propone `t=2` se l'URL ha
+`t=1` (conservando `f`, `d`, `x` e gli altri parametri) e mostra l'URL
+ripulito, mai il token.
+
+- L'URL contiene `u` ed `e`: `IsSensitiveURL` lo riconosce e lo fa sigillare nel
+  vault. Non compare nei log, nell'export né nella scheda dell'indexer.
+- Se esiste già un indexer MirCrew nativo, il canale latest viene abbinato a
+  quello. Altrimenti si può creare insieme al canale, inserendo utente e
+  password: le credenziali servono **solo** alla ricerca e al grab.
+- Ogni voce del feed diventa un **topic in attesa**: titolo pulito
+  (`Forum :: titolo :: Risposta di utente`, CDATA e HTML), forum, data e link
+  al topic. Nessun magnet e nessun ringraziamento durante il polling.
+- Al grab il riferimento sigillato apre il topic con il `download.before`
+  dell'indexer nativo. Il polling non chiama mai quella strada.
+- **Token scaduto.** Il token cambia a ogni apertura di `/smartfeed/ui`.
+  indexarr non tenta di rigenerarlo senza una prova live: mostra il messaggio
+  «Smartfeed expired: paste a new URL from …/smartfeed/ui» e la scheda del
+  canale ha sempre il collegamento alla pagina. Incollare di nuovo l'URL
+  sostituisce quello del canale esistente.
+- Fixture RSS e Atom sanitizzate in
+  `internal/catalog/definitions/fixtures/mircrew-smartfeed/`.
+- Stato: **bozza**. Nessun login, nessun ringraziamento e nessuna prova live in
+  questo ciclo; la verifica resta rinviata allo sblocco CAPTCHA.

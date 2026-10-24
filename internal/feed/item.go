@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/buzzqw/indexarr/internal/smartfeed"
 )
 
 // Item is one normalised search result, whatever the source protocol was.
@@ -357,6 +359,12 @@ func IsSensitiveURL(raw string) bool {
 	if parsed.User != nil {
 		return true
 	}
+	// A MirCrew Smartfeed carries the forum user in `u` and the personal token
+	// in `e`. `e` is too short and common to redact for every URL, so the
+	// Smartfeed shape decides it.
+	if smartfeed.IsSmartfeedURL(raw) {
+		return true
+	}
 	for name := range parsed.Query() {
 		if isSensitiveParamName(name) {
 			return true
@@ -388,8 +396,9 @@ func RedactURLForDisplay(raw string) string {
 	parsed.Fragment = ""
 	if parsed.RawQuery != "" {
 		query := parsed.Query()
+		smartfeedURL := smartfeed.IsSmartfeedURL(raw)
 		for name := range query {
-			if isSensitiveParamName(name) {
+			if isSensitiveParamName(name) || (smartfeedURL && (name == "u" || name == "e")) {
 				query.Set(name, "***")
 			}
 		}

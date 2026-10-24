@@ -1,0 +1,58 @@
+# BOZZA (draft). MirCrew personal Smartfeed (phpBB RSS/Atom).
+#
+# This is the "latest" channel of MirCrew, not a search indexer. The user
+# pastes the personal URL shown on /smartfeed/ui; it carries the forum user
+# (`u`) and a token (`e`) that changes every time that page is opened, so the
+# URL is stored in the vault.
+#
+# The feed is fetched directly: it is not behind Cloudflare and needs no login.
+# A poll only records pending topics (title, forum, date and topic link) and
+# never opens or thanks a topic. When a client asks for the download, the
+# sealed reference points at the paired native `mircrew` indexer, which opens
+# the topic and uses its download.before only then.
+#
+# Fixtures were sanitized: user ids, tokens, usernames and topic ids are
+# synthetic and no real Smartfeed token is present.
+schema: 1
+connector: rss
+
+meta:
+  id: mircrew-smartfeed
+  name: MirCrew (Smartfeed)
+  language: it-IT
+  type: private
+  protocol: torrent
+  author: indexarr
+  description: MirCrew personal Smartfeed; pending topics, grabbed through the native MirCrew indexer.
+  urls:
+    - https://mircrew-releases.org/
+  updated: "2026-10-24"
+  latest: true
+
+settings:
+  - name: url
+    type: text
+    label: "Smartfeed URL"
+    help: "The personal URL from https://mircrew-releases.org/smartfeed/ui. It contains a token and is stored in the vault."
+    required: true
+
+categories:
+  - { site: "51", standard: 5040, desc: "Serie TV in corso" }
+  - { site: "52", standard: 5040, desc: "Serie TV complete" }
+  - { site: "26", standard: 2040, desc: "Film" }
+  - { site: "28", standard: 8000, desc: "Indice" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: ""
+  min_rows: 1
+
+tests:
+  - name: smartfeed-rss
+    fixture: fixtures/mircrew-smartfeed/feed.rss
+    expect: { min_rows: 2, required: [title, details] }
+  - name: smartfeed-atom
+    fixture: fixtures/mircrew-smartfeed/feed.atom
+    expect: { min_rows: 2, required: [title, details] }

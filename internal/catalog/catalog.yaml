@@ -146,6 +146,13 @@ definitions:
     author: indexarr
     italian: true
 
+  - id: mircrew-smartfeed
+    file: definitions/mircrew-smartfeed.yaml
+    state: bozza
+    author: indexarr
+    italian: true
+    note: "MirCrew latest channel; the personal Smartfeed URL is pasted from /smartfeed/ui."
+
   - id: 1337x
     file: definitions/1337x.yaml
     state: verificata

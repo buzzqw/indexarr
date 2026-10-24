@@ -10,6 +10,10 @@
     </div>
     {{range .Problems}}{{template "problem" .}}{{end}}
     {{if .SlowProblem}}{{template "problem" .SlowProblem}}{{end}}
+    {{if .Smartfeed}}
+    <p class="flash warn" role="status">{{T "idx.smartfeed.expiry"}} <a href="{{.SmartfeedUILink}}" target="_blank" rel="noopener">{{T "idx.smartfeed.openUI"}}</a></p>
+    {{if not .HasNative}}<p class="flash warn" role="alert">{{T "idx.smartfeed.needsNative"}} <a href="/indexers/new?definition=mircrew">{{T "idx.smartfeed.addNative"}}</a></p>{{end}}
+    {{end}}
   </div>
   <div class="actions">
     <form method="post" action="/indexers/{{.Indexer.ID}}/test">

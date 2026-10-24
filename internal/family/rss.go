@@ -2,6 +2,7 @@ package family
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/feed"
+	"github.com/buzzqw/indexarr/internal/smartfeed"
 )
 
 const (
@@ -38,6 +40,10 @@ type RSSConfig struct {
 	Transport       *engine.Transport
 	UserAgent       string
 	Categories      []int
+	// Smartfeed switches the parser to the MirCrew phpBB Smartfeed: decorated
+	// titles are cleaned and every entry becomes a pending topic with no
+	// magnet. The poll only reads the feed; it never opens or thanks a topic.
+	Smartfeed bool
 }
 
 // RSS is the native connector for releases published through an RSS 2.0 or
@@ -164,6 +170,9 @@ func (r *RSS) Search(ctx context.Context, req engine.SearchRequest) ([]engine.It
 // already carries one, follows a .torrent URL through the shared transport, and
 // surfaces a redirect to a magnet instead of following it.
 func (r *RSS) Download(ctx context.Context, item engine.Item) (engine.Payload, error) {
+	if r.cfg.Smartfeed {
+		return engine.Payload{}, smartfeed.PendingGrabError()
+	}
 	if magnet := firstNonEmpty(item.Magnet, item.Attributes["magneturl"], item.Attributes["magnet"]); magnet != "" {
 		return engine.Payload{Magnet: magnet}, nil
 	}
@@ -225,9 +234,9 @@ func (r *RSS) Test(ctx context.Context) (engine.TestResult, error) {
 		if body == nil {
 			return fmt.Errorf("feed was not fetched")
 		}
-		_, err := feed.ParseRSS(body)
+		_, err := r.parse(body)
 		if err != nil {
-			return r.redactError("parse feed", err)
+			return r.feedError(err)
 		}
 		return nil
 	})
@@ -236,9 +245,9 @@ func (r *RSS) Test(ctx context.Context) (engine.TestResult, error) {
 		if body == nil {
 			return fmt.Errorf("feed was not fetched")
 		}
-		raw, err := feed.ParseRSS(body)
+		raw, err := r.parse(body)
 		if err != nil {
-			return r.redactError("parse feed", err)
+			return r.feedError(err)
 		}
 		items := r.mapItems(raw)
 		if len(items) < rssHealthMinRows {
@@ -275,11 +284,14 @@ func (r *RSS) feed(ctx context.Context) ([]engine.Item, error) {
 		return nil, err
 	}
 	if resp.Status < 200 || resp.Status >= 300 {
+		if r.cfg.Smartfeed && (resp.Status == http.StatusUnauthorized || resp.Status == http.StatusForbidden) {
+			return nil, smartfeed.ExpiredError(r.cfg.URL)
+		}
 		return nil, fmt.Errorf("rss: feed request failed with HTTP status %d", resp.Status)
 	}
-	raw, err := feed.ParseRSS(resp.Body)
+	raw, err := r.parse(resp.Body)
 	if err != nil {
-		return nil, r.redactError("rss: parse feed", err)
+		return nil, r.feedError(err)
 	}
 	items := r.mapItems(raw)
 
@@ -288,6 +300,27 @@ func (r *RSS) feed(ctx context.Context) ([]engine.Item, error) {
 	r.cachedAt = r.now()
 	r.mu.Unlock()
 	return items, nil
+}
+
+// parse applies the Smartfeed repair and then the shared RSS/Atom parser.
+func (r *RSS) parse(body []byte) ([]feed.Item, error) {
+	if r.cfg.Smartfeed {
+		body = smartfeed.NormalizeDocument(body)
+	}
+	return feed.ParseRSS(body)
+}
+
+// feedError keeps the token out of the message. A login page or an
+// authentication status from a Smartfeed means the personal URL has expired;
+// the user has to copy a fresh one from the Smartfeed page.
+func (r *RSS) feedError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if r.cfg.Smartfeed && errors.Is(err, feed.ErrHTMLPage) {
+		return smartfeed.ExpiredError(r.cfg.URL)
+	}
+	return r.redactError("rss: parse feed", err)
 }
 
 func (r *RSS) request(ctx context.Context) (*engine.Response, error) {
@@ -317,6 +350,9 @@ func (r *RSS) mapItems(raw []feed.Item) []engine.Item {
 }
 
 func (r *RSS) mapItem(raw feed.Item) (engine.Item, bool) {
+	if r.cfg.Smartfeed {
+		return r.mapSmartfeedItem(raw)
+	}
 	title := strings.TrimSpace(raw.Title)
 	if title == "" {
 		return engine.Item{}, false
@@ -379,6 +415,46 @@ func (r *RSS) mapItem(raw feed.Item) (engine.Item, bool) {
 		item.GUID = firstNonEmpty(downloadURL, details, title)
 	}
 	return item, true
+}
+
+// mapSmartfeedItem turns one Smartfeed entry into a pending topic. It never
+// invents a magnet: the topic is opened by the paired MirCrew indexer only
+// when a client asks for the download. The GUID is deliberately empty so the
+// canonical topic URL is the identity and repeated replies collapse on it.
+func (r *RSS) mapSmartfeedItem(raw feed.Item) (engine.Item, bool) {
+	title := smartfeed.CleanTitle(raw.Title)
+	topic := smartfeed.TopicURL(raw.Link)
+	if topic == "" {
+		topic = smartfeed.TopicURL(raw.TorrentURL)
+	}
+	if title == "" || topic == "" {
+		return engine.Item{}, false
+	}
+	forum := smartfeed.ForumID(topic)
+	attributes := map[string]string{
+		smartfeed.AttributePending: "true",
+	}
+	if forum > 0 {
+		attributes[smartfeed.AttributeForum] = strconv.Itoa(forum)
+	}
+	if raw.Category != "" {
+		attributes["category"] = raw.Category
+	}
+	if raw.GUID != "" {
+		attributes["guid"] = raw.GUID
+	}
+	return engine.Item{
+		Protocol:   engine.ProtocolTorrent,
+		Title:      title,
+		DetailsURL: topic,
+		// MirCrew does not publish seeders. Unknown (-1) is not zero: zero
+		// would make the apps treat a pending topic as a dead torrent.
+		Seeders:    -1,
+		Leechers:   -1,
+		Categories: []int{smartfeed.CategoryForForum(forum)},
+		Published:  smartfeed.Published(raw.Published, r.now()),
+		Attributes: attributes,
+	}, true
 }
 
 // filter keeps items whose title contains every keyword of both the request and

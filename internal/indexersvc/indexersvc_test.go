@@ -387,8 +387,9 @@ func TestCreatePrefillsSuggestedInterval(t *testing.T) {
 
 func TestSensitiveURLIsStoredInTheVault(t *testing.T) {
 	for name, raw := range map[string]string{
-		"path":  "https://rss.example/SYNTHETICRSSKEY/feed.xml",
-		"query": "https://rss.example/feed.xml?passkey=SYNTHETICPASSKEY",
+		"path":      "https://rss.example/SYNTHETICRSSKEY/feed.xml",
+		"query":     "https://rss.example/feed.xml?passkey=SYNTHETICPASSKEY",
+		"smartfeed": "https://mircrew-releases.org/smartfeed/feed?u=1&e=SYNTHETICSMARTFEEDTOKEN&f=51&t=2",
 	} {
 		t.Run(name, func(t *testing.T) {
 			svc, st, v, _ := newService(t)
@@ -417,6 +418,16 @@ func TestSensitiveURLIsStoredInTheVault(t *testing.T) {
 				t.Fatalf("stored URL = %q, want the original", plain)
 			}
 		})
+	}
+}
+
+func TestSmartfeedURLSettingNameIsSealed(t *testing.T) {
+	raw := "https://mircrew-releases.org/smartfeed/feed?u=1&e=SYNTHETICSMARTFEEDTOKEN&f=51&t=2"
+	if !IsSecretSetting("smartfeed_url", raw) {
+		t.Fatal("a smartfeed_url setting was not recognised as a secret")
+	}
+	if IsSecretSetting("smartfeed_url", "https://mircrew-releases.org/smartfeed/ui") {
+		t.Error("the public Smartfeed page was marked secret")
 	}
 }
 

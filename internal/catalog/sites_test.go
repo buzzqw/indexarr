@@ -187,8 +187,8 @@ func TestIndexExposesItalianAndUsageMetadata(t *testing.T) {
 			withURL++
 		}
 	}
-	if italian != 11 {
-		t.Errorf("Italian rows = %d, want 11", italian)
+	if italian != 12 {
+		t.Errorf("Italian rows = %d, want 12", italian)
 	}
 	if withURL == 0 {
 		t.Error("the index has no site URLs")

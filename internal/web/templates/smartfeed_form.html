@@ -1,0 +1,60 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <p class="crumb"><a href="/indexers/new">← {{T "idx.addTitle"}}</a></p>
+    <h1>{{T "idx.smartfeed.title"}}</h1>
+    <p class="muted">{{T "idx.smartfeed.subtitle"}}</p>
+  </div>
+</section>
+
+{{if .Problems}}
+<section class="panel">
+  <div class="panel-head"><h2>{{T "indexerForm.problems"}}</h2></div>
+  <ul class="problems">{{range .Problems}}<li>{{.}}</li>{{end}}</ul>
+</section>
+{{end}}
+
+{{if .Error}}<p class="flash warn" role="alert">{{.Error}}</p>{{end}}
+
+<section class="panel">
+  <p>{{T "idx.smartfeed.detected"}} <code>{{.DisplayURL}}</code></p>
+  {{if .ExistingLatest}}<p class="flash warn" role="status">{{T "idx.smartfeed.existingLatest"}}</p>{{end}}
+  {{if .NativeExists}}<p class="flash ok" role="status">{{T "idx.smartfeed.nativeExists" .NativeName}}</p>{{else}}<p class="help">{{T "idx.smartfeed.credentialsHelp"}}</p>{{end}}
+</section>
+
+<form class="panel form compact-form" method="post" action="/indexers/smartfeed">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <input type="hidden" name="plan" value="{{.Plan}}">
+  {{if .SuggestsT2}}
+  <p class="flash warn" role="alert">{{T "idx.smartfeed.t1"}}</p>
+  <div class="field checkbox">
+    <input id="use_t2" name="use_t2" type="checkbox"{{if .UseT2}} checked{{end}}>
+    <label for="use_t2">{{T "idx.smartfeed.useT2"}}</label>
+  </div>
+  {{end}}
+
+  {{if not .NativeExists}}
+  <div class="form-grid">
+    <div class="field">
+      <label for="username">{{T "idx.smartfeed.username"}}</label>
+      <input id="username" name="username" type="text" value="{{.Username}}" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="password">{{T "idx.smartfeed.password"}}</label>
+      <input id="password" name="password" type="password" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label for="flaresolverr">{{T "idx.smartfeed.flaresolverr"}}</label>
+      <input id="flaresolverr" name="flaresolverr" type="text" inputmode="url" value="{{.FlareSolverr}}" placeholder="http://127.0.0.1:8191">
+    </div>
+  </div>
+  {{end}}
+
+  <div class="actions">
+    <button class="btn primary" type="submit" name="mode" value="latest">{{if .ExistingLatest}}{{T "idx.smartfeed.update"}}{{else}}{{T "idx.smartfeed.add"}}{{end}}</button>
+    {{if and (not .NativeExists) (not .ExistingLatest)}}
+    <button class="btn" type="submit" name="mode" value="both">{{T "idx.smartfeed.addBoth"}}</button>
+    {{end}}
+  </div>
+</form>
+{{end}}

@@ -18,6 +18,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
+	"github.com/buzzqw/indexarr/internal/smartfeed"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -723,6 +724,10 @@ func (s *Server) indexerUnifiedNew(w http.ResponseWriter, r *http.Request) {
 	rawURL := strings.TrimSpace(r.URL.Query().Get("url"))
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
+	if defID == "" && query != "" && smartfeed.IsSmartfeedURL(query) {
+		s.smartfeedRecognized(w, r, query)
+		return
+	}
 	if defID == "" && query != "" {
 		if target, ok := s.resolveSiteAddress(query); ok {
 			location := "/indexers/new?definition=" + url.QueryEscape(target.DefinitionID)
@@ -735,6 +740,14 @@ func (s *Server) indexerUnifiedNew(w http.ResponseWriter, r *http.Request) {
 	}
 	if defID == "" {
 		s.renderSiteChooser(w, r, query, "")
+		return
+	}
+	if defID == smartfeed.DefinitionID {
+		if rawURL == "" {
+			redirect(w, r, "/indexers/new", "", s.translate(r, "idx.smartfeed.pasteURL"))
+			return
+		}
+		s.smartfeedRecognized(w, r, rawURL)
 		return
 	}
 	if defID == "rss" {
@@ -779,6 +792,11 @@ func (s *Server) resolveSiteAddress(raw string) (resolvedAddress, bool) {
 		} else {
 			return resolvedAddress{}, false
 		}
+	}
+	// A personal phpBB Smartfeed is not a generic RSS feed: it belongs to
+	// MirCrew and becomes its latest channel, never a search indexer.
+	if smartfeed.IsSmartfeedURL(raw) {
+		return resolvedAddress{DefinitionID: smartfeed.DefinitionID, URL: raw}, true
 	}
 	host := normalizeSiteHost(parsed.Hostname())
 	if index, err := s.siteCatalog(); err == nil {
@@ -891,7 +909,7 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	var sites []catalog.IndexEntry
 	var types []catalog.IndexEntry
 	for _, entry := range index {
-		if entry.ID == "example-html" || entry.State == "morta" || entry.ID == "corsaro-account" {
+		if entry.ID == "example-html" || entry.State == "morta" || entry.ID == "corsaro-account" || entry.ID == smartfeed.DefinitionID {
 			continue
 		}
 		if isGenericDefinition(entry.ID) {
@@ -2303,6 +2321,10 @@ type indexerDetailView struct {
 	Health            health.Assessment
 	Latest            bool
 	SearchOnly        bool
+	Smartfeed         bool
+	SmartfeedUILink   string
+	HasNative         bool
+	NativeSearchURL   string
 	LatencyP50        string
 	LatencyP95        string
 	HostRequests      []hostRequestView
@@ -2369,7 +2391,14 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		data.Latest = def.Meta.HasLatest()
 	}
 	data.SearchOnly = !data.Latest
-	if selected := splitCategoryList(publicConfigMap(in.ConfigJSON)["categories"]); len(selected) > 0 {
+	config := publicConfigMap(in.ConfigJSON)
+	if strings.EqualFold(strings.TrimSpace(in.DefinitionID), smartfeed.DefinitionID) ||
+		truthy(config["smartfeed"]) {
+		data.Smartfeed = true
+		data.SmartfeedUILink = "https://" + smartfeed.Site + "/smartfeed/ui"
+		data.HasNative, data.NativeSearchURL = s.smartfeedNativeChannel(r.Context(), config["site"])
+	}
+	if selected := splitCategoryList(config["categories"]); len(selected) > 0 {
 		labels := make([]string, 0, len(selected))
 		for _, raw := range selected {
 			id, err := strconv.Atoi(raw)

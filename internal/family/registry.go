@@ -23,7 +23,7 @@ const (
 // understood by all factories are base_url (or url), categories, user_agent
 // and allow_private. Gazelle additionally reads api_key (or apikey); NexusPHP
 // reads username, password and passkey. RSS reads url (or base_url),
-// default_category and query.
+// default_category, query and the smartfeed flag set by the MirCrew add flow.
 func Register(r *engine.Registry) error {
 	if r == nil {
 		return fmt.Errorf("family: nil registry")
@@ -69,6 +69,7 @@ func rssFactory(cfg engine.Config) (engine.Connector, error) {
 		Transport:       transportFromSettings(cfg.Transport, settings),
 		UserAgent:       firstNonEmpty(settings["user_agent"], settings["user-agent"]),
 		Categories:      categories,
+		Smartfeed:       boolSetting(settings["smartfeed"]),
 	})
 }
 
