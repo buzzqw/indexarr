@@ -34,6 +34,13 @@ func (c *DefinitionConnector) downloadWithBefore(ctx context.Context, item Item)
 	}
 
 	season, episode := c.requestedSeasonEpisode(item)
+	// A grab can arrive from a stored release long after the last search, or
+	// from a fresh process: the browser session then exists but is not logged
+	// in. Without this call the "details" page is the login form, which has no
+	// thank link, and the before action fails with an empty URL.
+	if err := c.ensureLogin(ctx); err != nil {
+		return Payload{}, true, err
+	}
 	first, err := c.fetchDetailsPage(ctx, target)
 	if err != nil {
 		return Payload{}, true, err
@@ -46,13 +53,32 @@ func (c *DefinitionConnector) downloadWithBefore(ctx context.Context, item Item)
 		return c.payloadFromCandidates(ctx, item, candidates, season, episode)
 	}
 
-	values := c.downloadTemplateValues(item)
-	for name, extractor := range before.Extract {
-		value, extractErr := extractAuthValue(first.Body, extractor)
-		if extractErr != nil {
-			return Payload{}, true, fmt.Errorf("download: before extract %q: %v", name, extractErr)
+	values, err := c.beforeValues(first, before, item)
+	if err != nil {
+		return Payload{}, true, err
+	}
+	// The session may have expired between the login check and this request,
+	// or the forum may have invalidated it. An empty extracted value is the
+	// signal: log in again once and retry the topic before giving up.
+	if c.needsLogin() && hasEmptyValue(before.Extract, values) {
+		if err := c.forceReLogin(ctx); err != nil {
+			return Payload{}, true, err
 		}
-		values.extracted[name] = value
+		first, err = c.fetchDetailsPage(ctx, target)
+		if err != nil {
+			return Payload{}, true, err
+		}
+		candidates, err = c.extractDownloadCandidates(first)
+		if err != nil {
+			return Payload{}, true, err
+		}
+		if len(candidates) > 0 {
+			return c.payloadFromCandidates(ctx, item, candidates, season, episode)
+		}
+		values, err = c.beforeValues(first, before, item)
+		if err != nil {
+			return Payload{}, true, err
+		}
 	}
 
 	if err := c.runBeforeAction(ctx, before, values); err != nil {
@@ -80,6 +106,31 @@ func (c *DefinitionConnector) downloadWithBefore(ctx context.Context, item Item)
 		return Payload{}, true, errors.New("download: before action did not reveal a magnet")
 	}
 	return c.payloadFromCandidates(ctx, item, candidates, season, episode)
+}
+
+func (c *DefinitionConnector) beforeValues(response *Response, before *definition.DownloadBefore, item Item) (*templateValues, error) {
+	values := c.downloadTemplateValues(item)
+	for name, extractor := range before.Extract {
+		value, err := extractAuthValue(response.Body, extractor)
+		if err != nil {
+			return nil, fmt.Errorf("download: before extract %q: %v", name, err)
+		}
+		values.extracted[name] = value
+	}
+	return values, nil
+}
+
+// hasEmptyValue reports whether one of the named extractions came back empty.
+// A before action that needs a token or a thank link cannot run without it, so
+// the caller treats that as a possible expired login rather than as an empty
+// template result.
+func hasEmptyValue(extract map[string]definition.Extractor, values *templateValues) bool {
+	for name := range extract {
+		if values == nil || strings.TrimSpace(values.extracted[name]) == "" {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *DefinitionConnector) runBeforeAction(ctx context.Context, before *definition.DownloadBefore, values *templateValues) error {

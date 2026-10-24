@@ -165,6 +165,22 @@ FlareSolverr finto.
 
 ### Stato e limiti
 
+- **Causa dell'errore `download: before action rendered an empty URL` (2026-10-24).**
+  Riprodotto dal vivo con una sessione FlareSolverr valida ma login fallito: il
+  grab partiva senza `ensureLogin`, quindi la pagina del topic era il form di
+  login, senza link «Grazie», e l'estrazione restava vuota. La ricerca faceva il
+  login, il grab no: dopo un riavvio o con login scaduto ogni grab da release
+  salvata falliva così. Corretto in `internal/engine/definition_before.go`: il
+  download effettua il login, e se un valore di `before.extract` è vuoto rifà il
+  login una volta e rilegge il topic prima di arrendersi. Regressione coperta da
+  `TestDownloadBeforeLogsInWithoutSearch` (grab senza ricerca precedente).
+  I selettori sono stati confrontati con `mircrew-indexer` su pagine reali:
+  link «Grazie» = `a[href*="thanks="]` (per-post, `lnk_thanks_post...`), magnet =
+  `a[href^="magnet:"]` con `magnetBtn`, titolo/forum/data come nella fixture.
+  Catture reali (prima/dopo il «grazie») in `/tmp/opencode/mircrew-capture/`,
+  fuori dal repository e mai committate perché contengono utenti reali; topic
+  ringraziati nella prova: 226759 (Silo S03, nuovo) e 226850 (Silo S03, già
+  ringraziato, riusato).
 - **Stato: bozza.** La definizione è validata e coperta da test offline; la
   prova live ha coperto login, ricerca e download in sola lettura, ma non il
   ringraziamento, quindi non viene ancora promossa a «verificata».
