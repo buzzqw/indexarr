@@ -399,6 +399,12 @@ func TestResolveDownloadLinkShapes(t *testing.T) {
 			if !strings.HasSuffix(payload.Filename, ".torrent") {
 				t.Errorf("filename = %q", payload.Filename)
 			}
+			if tc.fixture == "valid.torrent" {
+				stored, getErr := st.GetRelease(context.Background(), release.ID)
+				if getErr != nil || stored.InfoHash == "" {
+					t.Errorf("torrent infohash was not recorded: %v", getErr)
+				}
+			}
 		})
 	}
 }
