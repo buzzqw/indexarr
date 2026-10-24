@@ -108,35 +108,44 @@ func (s *Server) indexerCatalogTry(w http.ResponseWriter, r *http.Request) {
 			data.Releases = append(data.Releases, release)
 		}
 	}
+	// The preview must not leave an indexer row behind: run with a temporary
+	// disabled row, delete it, and create the real row only on Add.
+	_ = s.svc.Delete(r.Context(), preview.ID)
+	data.IndexerID = 0
 	s.render(w, r, "site_preview", data, http.StatusOK)
 }
 
-// indexerCatalogPreviewAdd keeps the preview indexer and enables it.
+// indexerCatalogPreviewAdd creates the real indexer only after the preview.
 func (s *Server) indexerCatalogPreviewAdd(w http.ResponseWriter, r *http.Request) {
 	if s.svc == nil {
 		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.serviceUnavailable"))
 		return
 	}
-	id, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("id")), 10, 64)
-	if err != nil || id <= 0 {
+	entryID := strings.TrimSpace(r.FormValue("definition_id"))
+	entry, ok := s.catalogEntry(entryID)
+	if !ok || !catalogQuickAdd(entry) {
 		redirect(w, r, "/indexers/new", "", s.translate(r, "indexer.error.invalidID"))
 		return
 	}
-	current, err := s.store.GetIndexer(r.Context(), id)
-	if err != nil {
-		redirect(w, r, "/indexers/new", "", s.indexerErrorMessage(r, err))
+	if err := s.ensureStoredDefinition(r, entry.ID); err != nil {
+		redirect(w, r, "/indexers/new", "", err.Error())
 		return
 	}
-	// The preview name is an internal label: drop the suffix on the real add.
-	name := strings.TrimSuffix(current.Name, " (preview)")
 	enabled := true
-	if _, err := s.svc.Update(r.Context(), id, indexersvc.Input{
-		Name: name, Enabled: &enabled, Tags: withoutTag(current.Tags, previewTag),
-	}); err != nil {
+	priority := 25
+	created, err := s.svc.Create(r.Context(), indexersvc.Input{
+		DefinitionID: entry.ID,
+		Name:         entry.Name,
+		Slug:         entry.ID,
+		Protocol:     entry.Protocol,
+		Priority:     &priority,
+		Enabled:      &enabled,
+	})
+	if err != nil {
 		redirect(w, r, "/indexers/new", "", s.indexerFriendlyError(r, err))
 		return
 	}
-	redirect(w, r, "/indexers/"+strconv.FormatInt(id, 10), s.translate(r, "idx.guide.addedNext", name), "")
+	redirect(w, r, "/indexers/"+strconv.FormatInt(created.ID, 10), s.translate(r, "idx.guide.addedNext", entry.Name), "")
 }
 
 // indexerCatalogPreviewCancel deletes the temporary disabled indexer.

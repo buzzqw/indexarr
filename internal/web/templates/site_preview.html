@@ -45,14 +45,10 @@
   {{end}}
 
   <div class="actions form-actions preview-actions">
-    <form method="post" action="/indexers/catalog/preview/cancel">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="id" value="{{.IndexerID}}">
-      <button class="btn" type="submit" title="{{T "tip.addAdd"}}">{{T "idx.guide.previewCancel"}}</button>
-    </form>
+    <a class="btn" href="/indexers/new" title="{{T "tip.addAdd"}}">{{T "idx.guide.previewCancel"}}</a>
     <form method="post" action="/indexers/catalog/preview/add">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="id" value="{{.IndexerID}}">
+      <input type="hidden" name="definition_id" value="{{.EntryID}}">
       <button class="btn primary" type="submit" title="{{T "tip.addAdd"}}">{{T "idx.guide.previewAdd"}}</button>
     </form>
   </div>

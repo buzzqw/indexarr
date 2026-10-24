@@ -138,7 +138,7 @@ func BuildIndex(entries []Entry) []IndexEntry {
 			Usage:       entry.Usage,
 			Source:      "native",
 			Proposable:  entry.State != "degradata",
-			Latest:      def.Meta.HasLatest(),
+			Latest:      def.HasLatestList(),
 		}
 		out = append(out, item)
 	}

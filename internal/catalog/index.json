@@ -25,7 +25,7 @@
     "usage": 1,
     "source": "native",
     "proposable": true,
-    "latest": false
+    "latest": true
   },
   {
     "id": "academictorrents",
@@ -44,7 +44,7 @@
     "url": "https://academictorrents.com/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "acgnx",
@@ -68,7 +68,7 @@
     "url": "https://share.acgnx.se/rss.xml",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "animetosho",
@@ -87,7 +87,7 @@
     "url": "https://animetosho.org/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "anirena",
@@ -109,7 +109,7 @@
     "url": "https://www.anirena.com/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "audiobookbay",
@@ -234,7 +234,7 @@
     "italian": true,
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "corsaro-account",
@@ -257,7 +257,7 @@
     "url": "https://ilcorsaroblu.org/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "example-html",
@@ -281,7 +281,7 @@
     "url": "https://tracker.example.invalid/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "extto",
@@ -312,7 +312,7 @@
     "italian": true,
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "eztv",
@@ -335,7 +335,7 @@
     "url": "https://eztvx.to/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "fosstorrents",
@@ -379,7 +379,7 @@
     "family": "gazelle",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "ildragonegro",
@@ -423,7 +423,7 @@
     "url": "https://archive.org/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "jk-0magnet",
@@ -5196,7 +5196,7 @@
     "usage": 1,
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "knaben-search",
@@ -5220,7 +5220,7 @@
     "url": "https://knaben.org/",
     "source": "native",
     "proposable": true,
-    "latest": false
+    "latest": true
   },
   {
     "id": "librivox",
@@ -5239,7 +5239,7 @@
     "url": "https://librivox.org/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "limetorrents",
@@ -5267,7 +5267,7 @@
     "usage": 1,
     "source": "native",
     "proposable": true,
-    "latest": false
+    "latest": true
   },
   {
     "id": "linuxtracker",
@@ -5287,7 +5287,7 @@
     "url": "https://linuxtracker.org/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "mikan",
@@ -5357,7 +5357,7 @@
     "url": "https://newznab.example.invalid/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "nexusphp-generic",
@@ -5385,7 +5385,7 @@
     "family": "nexusphp",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "nyaa",
@@ -5409,7 +5409,7 @@
     "url": "https://nyaa.si/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "shanaproject",
@@ -5451,7 +5451,7 @@
     "usage": 1,
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "solidtorrents",
@@ -5499,7 +5499,7 @@
     "url": "https://subsplease.org/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "thepiratebay",
@@ -5526,7 +5526,7 @@
     "usage": 1,
     "source": "native",
     "proposable": true,
-    "latest": false
+    "latest": true
   },
   {
     "id": "tokyotosho",
@@ -5548,7 +5548,7 @@
     "url": "https://www.tokyotosho.info/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "torlock",
@@ -5578,7 +5578,7 @@
     "family": "torznab",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "torrent9",
@@ -5659,7 +5659,7 @@
     "family": "torznab",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "torrentgalaxy",
@@ -5686,7 +5686,7 @@
     "url": "https://torrentgalaxy.one/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "torrentgalaxyclone",
@@ -5714,7 +5714,7 @@
     "usage": 1,
     "source": "native",
     "proposable": true,
-    "latest": false
+    "latest": true
   },
   {
     "id": "torrentleech",
@@ -5771,7 +5771,7 @@
     "usage": 1,
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "torrentscsv",
@@ -5815,7 +5815,7 @@
     "family": "torrenttrader",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "torznab-generic",
@@ -5842,7 +5842,7 @@
     "family": "torznab",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "unit3d-generic",
@@ -5869,7 +5869,7 @@
     "family": "unit3d",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "xbtit-generic",
@@ -5897,7 +5897,7 @@
     "family": "xbtit",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   },
   {
     "id": "yts",
@@ -5920,6 +5920,6 @@
     "url": "https://yts.gg/",
     "source": "native",
     "proposable": true,
-    "latest": true
+    "latest": false
   }
 ]
