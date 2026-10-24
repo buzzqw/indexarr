@@ -279,7 +279,7 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 		if err != nil {
 			return nil, err
 		}
-		response, err := c.do(ctx, request)
+		response, err := c.doFeed(ctx, request)
 		if err != nil {
 			return nil, err
 		}
@@ -293,7 +293,7 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 			if err != nil {
 				return nil, err
 			}
-			response, err = c.do(ctx, request)
+			response, err = c.doFeed(ctx, request)
 			if err != nil {
 				return nil, err
 			}
@@ -990,10 +990,27 @@ func (c *DefinitionConnector) newRequest(ctx context.Context, method string, tar
 }
 
 func (c *DefinitionConnector) do(ctx context.Context, request *http.Request) (*Response, error) {
+	return c.doWithFallback(ctx, request, false)
+}
+
+// doFeed uses the feed-friendly transport path (IPv4 fallback on timeout) for
+// latest-list requests. Live searches keep the plain path so a slow host
+// cannot consume the whole fan-out budget.
+func (c *DefinitionConnector) doFeed(ctx context.Context, request *http.Request) (*Response, error) {
+	return c.doWithFallback(ctx, request, true)
+}
+
+func (c *DefinitionConnector) doWithFallback(ctx context.Context, request *http.Request, feed bool) (*Response, error) {
 	if c.flare != nil {
 		return c.doSession(ctx, request)
 	}
-	response, err := c.transport.Do(ctx, c.breakerKey(), request)
+	var response *Response
+	var err error
+	if feed {
+		response, err = c.transport.DoFeed(ctx, c.breakerKey(), request)
+	} else {
+		response, err = c.transport.Do(ctx, c.breakerKey(), request)
+	}
 	if err != nil {
 		return nil, c.requestError(err)
 	}

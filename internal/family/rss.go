@@ -339,7 +339,7 @@ func (r *RSS) request(ctx context.Context) (*engine.Response, error) {
 	var lastResp *engine.Response
 	var lastErr error
 	for attempt := 1; attempt <= 3; attempt++ {
-		resp, err := r.cfg.Transport.Do(ctx, r.breaker, req)
+		resp, err := r.cfg.Transport.DoFeed(ctx, r.breaker, req)
 		if err == nil && resp != nil && resp.Status < 500 && resp.Status != http.StatusTooManyRequests {
 			return resp, nil
 		}

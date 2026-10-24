@@ -223,7 +223,20 @@ func (t *Transport) Do(ctx context.Context, breakerKey string, req *http.Request
 	if req == nil {
 		return nil, errors.New("engine: nil request")
 	}
-	return t.do(ctx, breakerKey, req, t.cfg.MaxBodyBytes, false)
+	return t.do(ctx, breakerKey, req, t.cfg.MaxBodyBytes, false, false)
+}
+
+// DoFeed is Do with an IPv4 fallback for feed requests. The fallback is kept
+// out of live searches: retrying a slow host there would spend the fan-out
+// budget and look like a rate-limit problem to the source.
+func (t *Transport) DoFeed(ctx context.Context, breakerKey string, req *http.Request) (*Response, error) {
+	if t == nil {
+		return nil, errors.New("engine: nil transport")
+	}
+	if req == nil {
+		return nil, errors.New("engine: nil request")
+	}
+	return t.do(ctx, breakerKey, req, t.cfg.MaxBodyBytes, false, true)
 }
 
 // Download fetches rawURL as a GET with an optional size limit (0 means the
@@ -249,7 +262,7 @@ func (t *Transport) Download(ctx context.Context, breakerKey, rawURL string, max
 	if err != nil {
 		return nil, fmt.Errorf("engine: build download request: %w", err)
 	}
-	return t.do(ctx, breakerKey, req, maxBytes, true)
+	return t.do(ctx, breakerKey, req, maxBytes, true, false)
 }
 
 // BreakerState reports the circuit breaker state for an indexer key. Unknown
@@ -261,7 +274,7 @@ func (t *Transport) BreakerState(key string) BreakerState {
 	return t.breaker.State(key)
 }
 
-func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request, maxBody int64, statusAsResponse bool) (*Response, error) {
+func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request, maxBody int64, statusAsResponse, ipv4Fallback bool) (*Response, error) {
 	if ctx == nil {
 		return nil, errors.New("engine: nil context")
 	}
@@ -301,7 +314,7 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 	}
 
 	response, err := t.client.Do(outgoing)
-	if err != nil && ctx.Err() == nil && t.client4 != nil && isTimeoutError(err) {
+	if err != nil && ipv4Fallback && ctx.Err() == nil && t.client4 != nil && isTimeoutError(err) {
 		// An IPv6 route that connects but never answers looks like a timeout.
 		// Retry the same request once with an IPv4-only dialer.
 		if retry, retryErr := t.client4.Do(outgoing.Clone(ctx)); retryErr == nil {
