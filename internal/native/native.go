@@ -683,32 +683,52 @@ func (r *Runner) maybeBackup(ctx context.Context) {
 func (r *Runner) refreshSeeders(ctx context.Context, ttl time.Duration) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
-	stale, err := r.store.StaleProvenance(ctx, time.Now().Add(-ttl), 50)
+	candidates, err := r.store.SeedersCandidates(ctx, time.Now(), ttl, 50)
 	if err != nil {
-		r.logger.Warn("seeders refresh: list stale provenance", "error", err)
+		r.logger.Warn("seeders refresh: list candidates", "error", err)
 		return
 	}
 	updated := 0
-	for _, row := range stale {
+	for _, row := range candidates {
 		if ctx.Err() != nil {
 			break
+		}
+		indexerRow, getErr := r.store.GetIndexer(ctx, row.IndexerID)
+		if getErr != nil {
+			continue
+		}
+		if indexer.LiveExcluded(indexerRow) {
+			_ = r.store.MarkSeedersChecked(ctx, row.ReleaseID, row.IndexerID, time.Now())
+			continue
+		}
+		connector, _, connErr := r.manager.Connector(ctx, row.IndexerID)
+		if connErr != nil {
+			_ = r.store.MarkSeedersChecked(ctx, row.ReleaseID, row.IndexerID, time.Now())
+			continue
+		}
+		if connector.Capabilities().LocalOnly {
+			_ = r.store.MarkSeedersChecked(ctx, row.ReleaseID, row.IndexerID, time.Now())
+			continue
 		}
 		items, searchErr := r.manager.Search(ctx, row.IndexerID, engine.SearchRequest{
 			Mode: engine.ModeSearch, Query: row.Title, Limit: 20,
 		})
 		if searchErr != nil {
+			_ = r.store.MarkSeedersChecked(ctx, row.ReleaseID, row.IndexerID, time.Now())
 			continue
 		}
+		checked := time.Now()
 		for _, item := range items {
 			if store.NormalizeSearch(item.Title) != store.NormalizeSearch(row.Title) {
 				continue
 			}
 			if err := r.store.UpdateSourceSwarm(ctx, row.ReleaseID, row.IndexerID,
-				item.Seeders, item.Leechers, time.Now()); err == nil {
+				item.Seeders, item.Leechers, checked); err == nil {
 				updated++
 			}
 			break
 		}
+		_ = r.store.MarkSeedersChecked(ctx, row.ReleaseID, row.IndexerID, checked)
 	}
 	if updated > 0 {
 		r.logger.Info("seeders refresh", "updated", updated, "ttl", ttl.String())

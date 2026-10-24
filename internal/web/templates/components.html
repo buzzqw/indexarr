@@ -22,6 +22,24 @@
   </div>
   {{if .Message}}<p class="flash warn" role="alert">{{.Message}}</p>{{end}}
 
+  <div class="generic-sources" role="list">
+    <a class="generic-source" role="listitem" href="{{.FeedURL}}">
+      <strong>{{T "idx.generic.feed"}}</strong>
+      <span>{{T "idx.generic.feedHelp"}}</span>
+      <code>{{T "idx.generic.feedExample"}}</code>
+    </a>
+    <a class="generic-source" role="listitem" href="{{.TorznabURL}}">
+      <strong>{{T "idx.generic.torznab"}}</strong>
+      <span>{{T "idx.generic.torznabHelp"}}</span>
+      <code>{{T "idx.generic.torznabExample"}}</code>
+    </a>
+    <a class="generic-source" role="listitem" href="{{.NewznabURL}}">
+      <strong>{{T "idx.generic.newznab"}}</strong>
+      <span>{{T "idx.generic.newznabHelp"}}</span>
+      <code>{{T "idx.generic.newznabExample"}}</code>
+    </a>
+  </div>
+
   {{if .Guide}}
   <div class="site-guide">
     <h2 class="guide-title-heading">{{T "idx.guide.title"}}</h2>

@@ -43,13 +43,3 @@ func (s *Store) Growth(ctx context.Context, now time.Time) (DatabaseGrowth, erro
 	}
 	return out, nil
 }
-
-// UpdateSourceSwarm refreshes one source's swarm counters and marks the
-// provenance row as freshly observed.
-func (s *Store) UpdateSourceSwarm(ctx context.Context, releaseID, indexerID, seeders, leechers int64, seen time.Time) error {
-	_, err := s.db.ExecContext(ctx,
-		`UPDATE release_sources SET seeders = ?, leechers = ?, last_seen_at = ?
-		 WHERE release_id = ? AND indexer_id = ?`,
-		seeders, leechers, seen.Unix(), releaseID, indexerID)
-	return err
-}

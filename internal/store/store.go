@@ -362,6 +362,16 @@ func (s *Store) migrate() error {
 	// Migration 12 records download-attempt health per source. A repeated
 	// 404 quarantines that source with a growing backoff; any success clears
 	// it. Login/challenge errors are informational and do not kill the link.
+	if err := s.applyMigration(context.Background(), indexarr2SeedersCheckedVersion,
+		"seeders refresh timestamp", func(tx *sql.Tx) error {
+			_, err := tx.Exec(`ALTER TABLE release_sources ADD COLUMN seeders_checked_at INTEGER NOT NULL DEFAULT 0`)
+			return err
+		}); err != nil {
+		return err
+	}
+	// Migration 12 records download-attempt health per source. A repeated
+	// 404 quarantines that source with a growing backoff; any success clears
+	// it. Login/challenge errors are informational and do not kill the link.
 	if err := s.applyMigration(context.Background(), indexarr2DownloadStatusVersion,
 		"download status and quarantine", func(tx *sql.Tx) error {
 			for _, statement := range []string{
