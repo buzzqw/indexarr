@@ -66,20 +66,21 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 
 type releasesPage struct {
 	base
-	Releases      []store.Release
-	Indexers      []store.Indexer
-	Pager         pager
-	Query         string
-	Indexer       int64
-	Category      string
-	Sort          string
-	Regex         bool
-	InvalidRegex  string
-	FavoritesOnly bool
-	ShowHidden    bool
-	MinSeeders    int64
-	MinSizeMB     int
-	MaxSizeMB     int
+	Releases       []store.Release
+	Indexers       []store.Indexer
+	Pager          pager
+	Query          string
+	Indexer        int64
+	Category       string
+	Sort           string
+	Regex          bool
+	InvalidRegex   string
+	FavoritesOnly  bool
+	ShowHidden     bool
+	ShowDuplicates bool
+	MinSeeders     int64
+	MinSizeMB      int
+	MaxSizeMB      int
 	// MinSeedersText, MinSizeText and MaxSizeText are the raw query values. An
 	// unset numeric filter is rendered as an empty field, never as 0.
 	MinSeedersText      string
@@ -131,6 +132,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	sortMode := query.Get("sort")
 	favoritesOnly := query.Get("favorites") == "1"
 	showHidden := query.Get("hidden") == "1"
+	showDuplicates := query.Get("duplicates") == "1"
 	minSeedersRaw := strings.TrimSpace(query.Get("min_seeders"))
 	minSizeRaw := strings.TrimSpace(query.Get("min_size_mb"))
 	maxSizeRaw := strings.TrimSpace(query.Get("max_size_mb"))
@@ -185,6 +187,9 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	if showHidden {
 		advancedFilterCount++
 	}
+	if showDuplicates {
+		advancedFilterCount++
+	}
 
 	indexers, _ := s.store.ListIndexers(r.Context())
 	saved, _ := s.store.ListSavedSearches(r.Context())
@@ -200,6 +205,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		Regex:               regexMode,
 		FavoritesOnly:       favoritesOnly,
 		ShowHidden:          showHidden,
+		ShowDuplicates:      showDuplicates,
 		MinSeeders:          minSeeders,
 		MinSizeMB:           minSizeMB,
 		MaxSizeMB:           maxSizeMB,
@@ -243,6 +249,13 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	if err != nil {
 		return data, err
 	}
+	if !showDuplicates {
+		before := len(releases)
+		releases = store.FuseReleases(releases)
+		if merged := int64(before - len(releases)); merged > 0 && total > merged {
+			total -= merged
+		}
+	}
 	data.Releases = releases
 	data.Pager = newPager(r, "/releases", total, releasesPerPage, filter.Offset)
 	return data, nil
@@ -251,6 +264,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 type releasePage struct {
 	base
 	Release        store.Release
+	Sources        []store.ReleaseSourceInfo
 	TorrentURL     string
 	DownloadClient string
 }
@@ -271,9 +285,11 @@ func (s *Server) releasePage(w http.ResponseWriter, r *http.Request) {
 		_ = cfg
 		clientName = name
 	}
+	sources, _ := s.store.ReleaseSourcesFor(r.Context(), release.ID)
 	s.render(w, r, "release", releasePage{
 		base:           s.newBaseT(r, "releases.title", "releases"),
 		Release:        release,
+		Sources:        sources,
 		TorrentURL:     fmt.Sprintf("/releases/%d/torrent", release.ID),
 		DownloadClient: clientName,
 	}, http.StatusOK)

@@ -123,6 +123,18 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 		return false, err
 	}
 	rel.Protocol = protocol
+	// A row without an infohash is matched conservatively against the rows
+	// already in the cache (same normalized title, rounding-compatible size,
+	// every identifying feature equal). Reusing the keeper's key turns the
+	// insert into an update and records the new indexer in release_sources,
+	// so a live search cannot grow a second copy between cleanup passes.
+	if strings.TrimSpace(rel.InfoHash) == "" {
+		if keeper, found, sameErr := s.FindSameRelease(ctx, rel); sameErr != nil {
+			return false, sameErr
+		} else if found {
+			rel.DedupKey = keeper.DedupKey
+		}
+	}
 	// A torrent fetched after the first sighting gives the release its real
 	// identity: reuse the key already stored for that infohash instead of
 	// creating a second row.

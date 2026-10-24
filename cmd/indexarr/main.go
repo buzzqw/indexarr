@@ -290,6 +290,14 @@ func main() {
 		}
 	}
 
+	// Intelligent deduplication runs as an idempotent background job. The
+	// first pass starts shortly after boot (so a fresh upgrade cleans the
+	// existing rows) and repeats every six hours; the enrichment step then
+	// recovers the missing infohashes within a per-site budget.
+	if st != nil {
+		go dedupeLoop(ctx, st, indexerManager, logger)
+	}
+
 	var adminHandler http.Handler
 	adminServer, err := adminapi.New(adminapi.Config{
 		Store: st, Vault: secretVault, Manager: indexerManager, Sync: syncService,
@@ -506,6 +514,38 @@ func displayURL(addr string) string {
 		host = "localhost"
 	}
 	return "http://" + net.JoinHostPort(host, port)
+}
+
+// dedupeLoop keeps the cache compact without blocking a request. Both steps
+// are idempotent: a second pass on a clean cache removes zero rows and the
+// enrichment job skips rows that already received a hash.
+func dedupeLoop(ctx context.Context, st *store.Store, manager *indexer.Manager, logger *slog.Logger) {
+	timer := time.NewTimer(30 * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			runCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
+			stats, err := st.MergeDuplicates(runCtx)
+			if err != nil {
+				logger.Warn("dedupe: cleanup failed", "error", err)
+			} else if stats.Removed > 0 {
+				logger.Info("dedupe: duplicates merged",
+					"before", stats.Before, "after", stats.After,
+					"removed", stats.Removed,
+					"by_hash", stats.HashMerged, "by_title_size", stats.TitleMerged)
+			}
+			if manager != nil {
+				if _, err := manager.EnrichMissingInfohashes(runCtx, indexer.EnrichTargets()); err != nil {
+					logger.Warn("dedupe: infohash enrichment failed", "error", err)
+				}
+			}
+			cancel()
+			timer.Reset(6 * time.Hour)
+		}
+	}
 }
 
 func fatal(err error) {

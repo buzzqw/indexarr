@@ -22,6 +22,16 @@ type ReleaseProvenance struct {
 	// even when no magnet or .torrent is cached: the resolver fetches the
 	// payload at grab time.
 	HasDownloadRef bool
+	// Sources lists every indexer copy of the merged release. The aggregated
+	// endpoint picks BestIndexerID; the per-site endpoints still return only
+	// their own. Detail pages show the whole list.
+	Sources []ReleaseSourceInfo
+	// BestSeeders and BestLeechers are the counters of the chosen copy, not a
+	// sum across copies. BestIndexerID and BestIndexerName identify it.
+	BestIndexerID   int64
+	BestIndexerName string
+	BestSeeders     int64
+	BestLeechers    int64
 }
 
 // StaleRelease is one provenance row whose swarm counters are older than the
@@ -75,10 +85,13 @@ func (s *Store) loadProvenanceChunk(ctx context.Context, ids []int64, out map[in
 		args[i] = id
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT rs.release_id, i.name, rs.seeders, rs.leechers, rs.last_seen_at,
-			rs.download_ref
+		SELECT rs.release_id, rs.indexer_id, i.name, i.priority, i.enabled,
+			COALESCE(st.last_error, ''), COALESCE(st.circuit, 'closed'),
+			rs.seeders, rs.leechers, rs.last_seen_at, rs.download_ref,
+			rs.grab_count, rs.last_grab_at
 		FROM release_sources rs
 		JOIN indexers i ON i.id = rs.indexer_id
+		LEFT JOIN indexer_state st ON st.indexer_id = i.id
 		WHERE rs.release_id IN (`+strings.Join(placeholders, ", ")+`)
 		ORDER BY rs.release_id, i.name COLLATE NOCASE, i.id`, args...)
 	if err != nil {
@@ -86,19 +99,44 @@ func (s *Store) loadProvenanceChunk(ctx context.Context, ids []int64, out map[in
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var releaseID int64
-		var name string
-		var seeders, leechers, lastSeen int64
-		var downloadRef string
-		if err := rows.Scan(&releaseID, &name, &seeders, &leechers, &lastSeen,
-			&downloadRef); err != nil {
+		var releaseID, indexerID, seeders, leechers, lastSeen, lastGrab, grabCount int64
+		var priority int
+		var enabled int
+		var name, lastError, circuit, downloadRef string
+		if err := rows.Scan(&releaseID, &indexerID, &name, &priority, &enabled,
+			&lastError, &circuit, &seeders, &leechers, &lastSeen, &downloadRef,
+			&grabCount, &lastGrab); err != nil {
 			return fmt.Errorf("scan release provenance: %w", err)
+		}
+		// A provenance row is a real observation: -1 means the site did not
+		// publish the counter, which the Torznab writer renders as 0. Clamp
+		// here so the chosen copy never hides the other sources.
+		if seeders < 0 {
+			seeders = 0
+		}
+		if leechers < 0 {
+			leechers = 0
+		}
+		source := ReleaseSourceInfo{
+			IndexerID:      indexerID,
+			Name:           name,
+			Priority:       priority,
+			Enabled:        enabled != 0,
+			Healthy:        enabled != 0 && strings.TrimSpace(lastError) == "" && !strings.EqualFold(strings.TrimSpace(circuit), "open"),
+			Seeders:        seeders,
+			Leechers:       leechers,
+			LastSeenAt:     unixTime(lastSeen),
+			DownloadRef:    downloadRef,
+			HasDownloadRef: strings.TrimSpace(downloadRef) != "",
+			GrabCount:      grabCount,
+			LastGrabAt:     unixTime(lastGrab),
 		}
 		prov := out[releaseID]
 		prov.ReleaseID = releaseID
 		prov.Indexers++
 		prov.Names = append(prov.Names, name)
-		if strings.TrimSpace(downloadRef) != "" {
+		prov.Sources = append(prov.Sources, source)
+		if source.HasDownloadRef {
 			prov.HasDownloadRef = true
 		}
 		if seeders > prov.Seeders {
@@ -110,12 +148,29 @@ func (s *Store) loadProvenanceChunk(ctx context.Context, ids []int64, out map[in
 		if seen := unixTime(lastSeen); seen.After(prov.LastSeenAt) {
 			prov.LastSeenAt = seen
 		}
+		if prov.BestIndexerID == 0 || source.BetterThan(bestSourceOf(prov)) {
+			prov.BestIndexerID = source.IndexerID
+			prov.BestIndexerName = source.Name
+			prov.BestSeeders = source.Seeders
+			prov.BestLeechers = source.Leechers
+		}
 		out[releaseID] = prov
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("iterate release provenance: %w", err)
 	}
 	return nil
+}
+
+// bestSourceOf reconstructs the chosen copy from the accumulated list. The
+// list is ordered by seeders, so the caller only needs it for the comparison.
+func bestSourceOf(prov ReleaseProvenance) ReleaseSourceInfo {
+	for _, source := range prov.Sources {
+		if source.IndexerID == prov.BestIndexerID {
+			return source
+		}
+	}
+	return ReleaseSourceInfo{}
 }
 
 // uniquePositiveIDs drops duplicates and non-positive ids while keeping the

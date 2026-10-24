@@ -230,18 +230,19 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 // Keeping the XML and the rows together lets "Try as Sonarr" show the result
 // table and the real client document without running the search twice.
 type searchOutcome struct {
-	Status       int
-	Body         []byte
-	Releases     []store.Release
-	Total        int64
-	Provenance   map[int64]store.ReleaseProvenance
-	Mode         string
-	Query        string
-	IndexerIDs   []int64
-	IndexerNames []string
-	Live         []indexer.LiveIndexerResult
-	Err          string
-	Duration     time.Duration
+	Status           int
+	Body             []byte
+	Releases         []store.Release
+	Total            int64
+	Provenance       map[int64]store.ReleaseProvenance
+	Mode             string
+	Query            string
+	IndexerIDs       []int64
+	IndexerNames     []string
+	Live             []indexer.LiveIndexerResult
+	DuplicatesMerged int64
+	Err              string
+	Duration         time.Duration
 }
 
 // runSearch implements every search function of /api, /torznab/api and
@@ -365,6 +366,17 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 				s.log.Error("torznab: search after live", "component", "indexarr", "subsystem", "torznab", "error", err)
 				return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 			}
+		}
+	}
+	// The aggregated endpoint emits one row per release. Per-site endpoints
+	// keep their own rows untouched: each lane is the view of one site.
+	if aggregate && query.Get("duplicates") != "1" {
+		before := len(releases)
+		releases = store.FuseReleases(releases)
+		merged := int64(before - len(releases))
+		out.DuplicatesMerged = merged
+		if merged > 0 && total > merged {
+			total -= merged
 		}
 	}
 	// Provenance is fetched once for the whole page: writeItem never queries
@@ -1102,14 +1114,18 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 	b.WriteString(`"/>`)
 	writeAttr(b, "category", category)
 	writeAttrInt(b, "size", size)
-	// The release row is the fallback; provenance can be fresher because a
-	// single indexer may have reported a bigger swarm.
+	// The aggregated row shows the swarm of the chosen copy, not the sum of
+	// every source. Provenance is fresher than the cached release row.
 	seeders, leechers := release.Seeders, release.Leechers
-	if provenance.Seeders > seeders {
-		seeders = provenance.Seeders
-	}
-	if provenance.Leechers > leechers {
-		leechers = provenance.Leechers
+	if provenance.BestIndexerID != 0 {
+		seeders, leechers = provenance.BestSeeders, provenance.BestLeechers
+	} else {
+		if provenance.Seeders > seeders {
+			seeders = provenance.Seeders
+		}
+		if provenance.Leechers > leechers {
+			leechers = provenance.Leechers
+		}
 	}
 	if seeders >= 0 {
 		writeAttrInt(b, "seeders", seeders)

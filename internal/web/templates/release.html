@@ -30,6 +30,37 @@
   </dl>
 </section>
 
+{{if gt (len .Sources) 1}}
+<section class="panel">
+  <div class="panel-head"><h2>{{T "release.sources" (len .Sources)}}</h2></div>
+  <p class="help">{{T "release.sourcesHelp"}}</p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "release.source.indexer"}}</th>
+          <th scope="col">{{T "release.seedersLeechers"}}</th>
+          <th scope="col">{{T "release.source.priority"}}</th>
+          <th scope="col">{{T "release.source.health"}}</th>
+          <th scope="col">{{T "release.source.grabs"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Sources}}
+        <tr>
+          <td>{{.Name}}</td>
+          <td>{{numOrDash .Seeders}} / {{numOrDash .Leechers}}</td>
+          <td>{{.Priority}}</td>
+          <td>{{if .Healthy}}<span class="chip ok">{{T "release.source.healthy"}}</span>{{else}}<span class="chip warn">{{T "release.source.unhealthy"}}</span>{{end}}</td>
+          <td>{{if .GrabCount}}{{.GrabCount}}{{else}}<span class="muted">—</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}
+
 <section class="panel">
   <div class="panel-head"><h2>{{T "release.magnetTitle"}}</h2></div>
   {{if .Release.Magnet}}

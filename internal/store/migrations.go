@@ -22,6 +22,7 @@ const (
 	indexarr2DownloadClientsVersion = 7
 	indexarr2PairChannelsVersion    = 8
 	indexarr2Cycle6Version          = 9
+	indexarr2DedupVersion           = 10
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

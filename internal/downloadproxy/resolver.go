@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -92,10 +93,16 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 		return Payload{Magnet: release.Magnet}, nil
 	}
 
-	sources, err := r.store.ListReleaseSources(ctx, releaseID)
+	sources, err := r.store.ReleaseSourcesFor(ctx, releaseID)
 	if err != nil {
 		return Payload{}, ErrUnavailable
 	}
+	// Try the healthiest copy first. When the chosen copy fails (404, HTML,
+	// login) the loop falls through to the next source of the same merged
+	// release, in the same grab.
+	sort.SliceStable(sources, func(i, j int) bool {
+		return sources[i].BetterThan(sources[j])
+	})
 	var lastErr error
 	for _, source := range sources {
 		ref := strings.TrimSpace(source.DownloadRef)
@@ -139,6 +146,9 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 		// Cache the bytes so the next request is local. A cache write failure
 		// must not discard a payload the client can still use.
 		_ = r.store.SavePayload(ctx, releaseID, fetched.Body, contentType, protocol)
+		// Record which copy actually worked, so the merged release keeps a
+		// history of successful fallbacks.
+		_ = r.store.RecordSourceGrab(ctx, releaseID, indexerID)
 
 		filename := strings.TrimSpace(fetched.Filename)
 		if filename == "" {

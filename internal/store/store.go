@@ -330,6 +330,25 @@ func (s *Store) migrate() error {
 	if err := s.migrateLiveWaitDefault(context.Background()); err != nil {
 		return err
 	}
+	// Migration 10 supports intelligent deduplication: it records how many
+	// duplicates an app search collapsed, which source delivered a grab, and
+	// adds the exact-title index the conservative matcher uses.
+	if err := s.applyMigration(context.Background(), indexarr2DedupVersion,
+		"intelligent deduplication", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`ALTER TABLE app_searches ADD COLUMN duplicates_merged INTEGER NOT NULL DEFAULT 0`,
+				`ALTER TABLE release_sources ADD COLUMN grab_count INTEGER NOT NULL DEFAULT 0`,
+				`ALTER TABLE release_sources ADD COLUMN last_grab_at INTEGER NOT NULL DEFAULT 0`,
+				`CREATE INDEX IF NOT EXISTS releases_search_title ON releases(search_title)`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

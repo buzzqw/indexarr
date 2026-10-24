@@ -848,12 +848,14 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 		}
 		redirect(w, r, "/settings?section=maintenance", fmt.Sprintf("%d stored .torrent file(s) removed; magnets were kept", removed), "")
 	case "dedupe":
-		removed, err := s.store.DedupeByInfoHash(ctx)
+		stats, err := s.store.MergeDuplicates(ctx)
 		if err != nil {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", fmt.Sprintf("%d duplicate release(s) merged", removed), "")
+		redirect(w, r, "/settings?section=maintenance", fmt.Sprintf(
+			"%d duplicate release(s) merged (%d by hash, %d by title and size); %d rows remain",
+			stats.Removed, stats.HashMerged, stats.TitleMerged, stats.After), "")
 	case "clear_runs":
 		removed, err := s.store.ClearRunHistory(ctx, time.Now().AddDate(0, 0, -30))
 		if err != nil {

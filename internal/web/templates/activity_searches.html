@@ -42,7 +42,7 @@
           <td class="app-results">
             {{range .ResultRows}}<span class="chip">{{.Name}} · {{.Count}}</span>{{else}}<span class="muted">—</span>{{end}}
           </td>
-          <td>{{.Total}}</td>
+          <td>{{.Total}}{{if .Duplicates}}<div class="sub">{{T "activity.searches.duplicates" .Duplicates}}</div>{{end}}</td>
           <td class="nowrap">{{if .HasDuration}}{{.Duration}}{{else}}<span class="muted">—</span>{{end}}</td>
           <td class="error-cell">{{if .Error}}<span title="{{.Error}}">{{truncate .Error 90}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
           <td class="nowrap">{{ago .CreatedAt}}</td>

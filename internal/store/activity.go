@@ -106,9 +106,12 @@ type AppSearch struct {
 	IndexerNames []string
 	Results      map[string]int64
 	TotalResults int64
-	DurationMS   int64
-	Error        string
-	CreatedAt    time.Time
+	// DuplicatesMerged is how many duplicate rows this request collapsed in
+	// the aggregated response.
+	DuplicatesMerged int64
+	DurationMS       int64
+	Error            string
+	CreatedAt        time.Time
 	// Live records the live fan-out of this request: one row per indexer with
 	// the effective mode (including the fallback), how many results it stored,
 	// how long it took and whether it missed the request deadline.
@@ -507,12 +510,13 @@ func (s *Store) RecordAppSearch(ctx context.Context, in AppSearch) (int64, error
 	var id int64
 	err = s.db.QueryRowContext(ctx, `
 		INSERT INTO app_searches(app, mode, query, params, indexer_ids, indexer_names,
-			results_json, total_results, duration_ms, error, live_json, created_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			results_json, total_results, duplicates_merged, duration_ms, error,
+			live_json, created_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
 		strings.TrimSpace(in.App), in.Mode, in.Query, in.Params, string(ids),
-		string(names), string(encodedResults), in.TotalResults, in.DurationMS,
-		in.Error, string(encodedLive), in.CreatedAt.Unix()).Scan(&id)
+		string(names), string(encodedResults), in.TotalResults, in.DuplicatesMerged,
+		in.DurationMS, in.Error, string(encodedLive), in.CreatedAt.Unix()).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("record app search: %w", err)
 	}
@@ -532,7 +536,7 @@ func (s *Store) ListAppSearches(ctx context.Context, limit, offset int) ([]AppSe
 	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, app, mode, query, params, indexer_ids, indexer_names, results_json,
-			total_results, duration_ms, error, live_json, created_at
+			total_results, duplicates_merged, duration_ms, error, live_json, created_at
 		FROM app_searches ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,
 		limit, offset)
 	if err != nil {
@@ -545,8 +549,8 @@ func (s *Store) ListAppSearches(ctx context.Context, limit, offset int) ([]AppSe
 		var ids, names, results, live string
 		var created int64
 		if err := rows.Scan(&item.ID, &item.App, &item.Mode, &item.Query, &item.Params,
-			&ids, &names, &results, &item.TotalResults, &item.DurationMS,
-			&item.Error, &live, &created); err != nil {
+			&ids, &names, &results, &item.TotalResults, &item.DuplicatesMerged,
+			&item.DurationMS, &item.Error, &live, &created); err != nil {
 			return nil, fmt.Errorf("scan app search: %w", err)
 		}
 		_ = json.Unmarshal([]byte(ids), &item.IndexerIDs)

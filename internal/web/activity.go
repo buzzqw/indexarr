@@ -48,6 +48,7 @@ type appSearchView struct {
 	ResultRows  []appSearchResult
 	Live        []appSearchLiveView
 	Total       int64
+	Duplicates  int64
 	Duration    string
 	Error       string
 	CreatedAt   time.Time
@@ -187,14 +188,15 @@ func (s *Server) activitySearches(r *http.Request) (*activitySearchesView, error
 	}
 	for _, search := range searches {
 		row := appSearchView{
-			App:       search.App,
-			Mode:      search.Mode,
-			Query:     search.Query,
-			Params:    search.Params,
-			Indexers:  strings.Join(search.IndexerNames, ", "),
-			Total:     search.TotalResults,
-			Error:     search.Error,
-			CreatedAt: search.CreatedAt,
+			App:        search.App,
+			Mode:       search.Mode,
+			Query:      search.Query,
+			Params:     search.Params,
+			Indexers:   strings.Join(search.IndexerNames, ", "),
+			Total:      search.TotalResults,
+			Duplicates: search.DuplicatesMerged,
+			Error:      search.Error,
+			CreatedAt:  search.CreatedAt,
 		}
 		for _, entry := range search.Live {
 			view := appSearchLiveView{

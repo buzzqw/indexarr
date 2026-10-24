@@ -201,7 +201,7 @@ func TestActivityMigrationFromPreviousSchema(t *testing.T) {
 	}
 	defer migrated.Close()
 	version, err := migrated.schemaVersion(ctx)
-	if err != nil || version != indexarr2Cycle6Version {
+	if err != nil || version != indexarr2DedupVersion {
 		t.Fatalf("schema version = %d, %v", version, err)
 	}
 	for _, table := range []string{"indexer_history_metrics", "indexer_samples", "app_searches"} {

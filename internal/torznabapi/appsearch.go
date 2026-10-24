@@ -133,18 +133,19 @@ func (s *Server) recordAppSearch(ctx context.Context, r *http.Request, mode stri
 		indexerIDs = ids
 	}
 	in := store.AppSearch{
-		App:          appFromRequest(r),
-		Mode:         mode,
-		Query:        query,
-		Params:       params,
-		IndexerIDs:   indexerIDs,
-		IndexerNames: indexerNames,
-		Results:      results,
-		TotalResults: out.Total,
-		DurationMS:   time.Since(started).Milliseconds(),
-		Error:        errorText,
-		Live:         live,
-		CreatedAt:    time.Now(),
+		App:              appFromRequest(r),
+		Mode:             mode,
+		Query:            query,
+		Params:           params,
+		IndexerIDs:       indexerIDs,
+		IndexerNames:     indexerNames,
+		Results:          results,
+		TotalResults:     out.Total,
+		DuplicatesMerged: out.DuplicatesMerged,
+		DurationMS:       time.Since(started).Milliseconds(),
+		Error:            errorText,
+		Live:             live,
+		CreatedAt:        time.Now(),
 	}
 	if _, err := s.store.RecordAppSearch(context.WithoutCancel(ctx), in); err != nil {
 		s.log.Warn("torznab: record app search", "component", "indexarr",
