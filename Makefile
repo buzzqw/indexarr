@@ -2,7 +2,7 @@ BINARY  := bin/indexarr
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build test vet fmt run clean qa def-validate
+.PHONY: build test vet fmt run clean qa def-validate e2e
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/indexarr
@@ -21,6 +21,12 @@ qa:
 .PHONY: ui-smoke
 ui-smoke:
 	./scripts/ui-smoke.sh
+
+# Field-by-field browser test: temporary database, temporary port and local
+# fixtures for FlareSolverr, qBittorrent and Sonarr. Skips cleanly when no
+# Chrome/Chromium is installed; UI_E2E_REQUIRE_CHROME=1 makes that a failure.
+e2e:
+	./scripts/ui-e2e.py
 
 fmt:
 	gofmt -w .

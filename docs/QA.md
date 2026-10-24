@@ -11,6 +11,7 @@ Sonarr/Radarr e dal browser.
 make test   # go test ./...
 make vet    # go vet ./...
 make qa     # vet + test + build + smoke test HTTP su un'istanza temporanea
+make e2e    # browser headless, campo per campo, su DB e porta temporanei
 ```
 
 `make qa` esegue `scripts/qa.sh`: compila il binario, lo avvia su
@@ -24,6 +25,18 @@ Per usare una porta fissa:
 ```bash
 INDEXARR_QA_PORT=18080 make qa
 ```
+
+`make e2e` esegue `scripts/ui-e2e.py`: compila il binario, apre un database
+temporaneo su una porta casuale, avvia Chrome headless con il Chrome DevTools
+Protocol e un piccolo servizio locale che imita FlareSolverr, qBittorrent e
+Sonarr. Cambia ogni campo dei moduli (Impostazioni, modifica indexer, catalogo,
+App, client di download, definizioni, API key, primo avvio), salva, ricarica e
+rilegge il valore sia dalla pagina sia dal database temporaneo. Copre anche
+`<details>` chiusi, checkbox «rimuovi valore», campi segreti lasciati vuoti,
+tendine di categoria/URL, `data-confirm`, doppio clic e conferma vicino al
+bottone. Senza Chrome stampa `SKIP` ed esce 0; con
+`UI_E2E_REQUIRE_CHROME=1` l'assenza del browser è un errore. `make qa` lo
+esegue quando trova Chrome.
 
 ## Livelli di verifica
 
@@ -66,7 +79,8 @@ I test non usano la rete e non toccano il database di produzione:
 - ogni test apre un database in `t.TempDir()`;
 - le sorgenti remote sono simulate con `httptest.Server` o fixture;
 - lo smoke test usa una directory `mktemp` e termina il processo nel `trap`;
-- nessun test richiede servizi esterni, Docker o un browser.
+- nessun test richiede servizi esterni o Docker; il solo `make e2e` usa un
+  browser headless, e salta se non è installato.
 
 ## CI
 

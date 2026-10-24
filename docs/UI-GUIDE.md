@@ -537,6 +537,15 @@ Per ogni fase:
 
 - `scripts/ui-smoke.sh` e `UI_SMOKE_STRICT=1` verdi, aggiornati alla nuova
   mappa.
+- `make e2e` verde: browser headless, campo per campo, su database e porta
+  temporanei. Il test cambia ogni campo, salva, ricarica e rilegge il valore;
+  copre `<details>` chiusi, checkbox «rimuovi valore», segreti lasciati vuoti,
+  tendine, `data-confirm`, doppio clic e conferma vicino al bottone. Senza
+  Chrome il comando stampa `SKIP`; `UI_E2E_REQUIRE_CHROME=1` lo rende
+  obbligatorio.
+- Per i moduli con un bottone interno «Prova»/«Test», il primo submit deve
+  essere il Salvataggio: Invio salva, non prova. Il test omonimo in
+  `internal/web/block_e_test.go` lo impedisce di regredire.
 - Test sui modelli (Go, non sul DOM): `HomeStatus` coerente con il badge
   della sidebar; form di aggiunta per una definizione senza campi
   obbligatori = solo Nome e Categorie; nessuna API key nell'HTML iniziale di

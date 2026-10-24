@@ -213,4 +213,17 @@ if ! grep -q '"indexers"' <<<"$EXPORT"; then
 fi
 echo "ok   /indexers/export"
 
+# Optional browser layer: it uses its own temporary instance and local
+# fixtures, so it is independent of $BASE above. Without a browser it prints
+# a SKIP line instead of failing.
+if command -v google-chrome >/dev/null 2>&1 \
+  || command -v google-chrome-stable >/dev/null 2>&1 \
+  || command -v chromium >/dev/null 2>&1 \
+  || command -v chromium-browser >/dev/null 2>&1; then
+  echo "==> browser end-to-end (ui-e2e)"
+  "$ROOT/scripts/ui-e2e.py" --binary "$TMP/indexarr"
+else
+  echo "==> browser end-to-end skipped: no Chrome/Chromium"
+fi
+
 echo "QA passed"
