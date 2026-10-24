@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -247,19 +249,16 @@ func TestRunCanceledRecordsCanceled(t *testing.T) {
 func TestRunKeepsItemWithoutDate(t *testing.T) {
 	st := newTestStore(t)
 	v := newTestVault(t, 1)
-	html := `<html><body><table class="results"><tbody><tr>
-<td class="name"><a href="/details/1">Undated Release</a></td>
-<td><a class="download" href="/download/1.torrent">DL</a></td>
-<td><a class="cat" href="/browse?cat=5">TV</a></td>
-<td class="size">1.5 GB</td><td class="seeders">10</td><td class="leechers">1</td>
-<td class="hash">` + hashA + `</td>
-</tr></tbody></table></body></html>`
+	html, err := os.ReadFile(filepath.Join("testdata", "undated_search.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/":
 			_, _ = w.Write([]byte("<html><body>ok</body></html>"))
 		case r.URL.Path == "/search":
-			_, _ = w.Write([]byte(html))
+			_, _ = w.Write(html)
 		case strings.HasPrefix(r.URL.Path, "/download/"):
 			w.Header().Set("Content-Type", "application/x-bittorrent")
 			_, _ = w.Write(torrentBody)

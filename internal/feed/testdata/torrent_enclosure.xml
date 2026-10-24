@@ -1,0 +1,5 @@
+<rss version="2.0"><channel><item>
+<title>Private.Release.1080p</title>
+<infohash>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</infohash>
+<enclosure url="https://private.example/download/1.torrent" length="1500000000" type="application/x-bittorrent"/>
+</item></channel></rss>

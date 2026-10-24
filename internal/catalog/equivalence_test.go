@@ -593,19 +593,13 @@ func TestKnabenTruncatedFeed(t *testing.T) {
 
 func TestCorsaroUserStopsPaginationAtMaxAge(t *testing.T) {
 	var requests atomic.Int64
-	oldRow := `<table class="lista"><tr>
-<td class="lista"><a href="index.php?page=torrents&amp;category=13">Movies</a></td>
-<td class="lista" style="padding-left:10px;overflow:auto;"><a href="old.html">Old.Release.1080p</a></td>
-<td class="lista">---</td>
-<td class="lista"><a href="magnet:?xt=urn:btih:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">magnet</a></td>
-<td class="lista">01/01/2020</td>
-<td class="lista">10</td><td class="lista">1</td><td class="lista">---</td>
-<td class="lista"><a href="uploader.html">MIRCrew</a></td>
-<td class="lista">1.0 GB</td><td class="lista">N/D</td>
-</tr></table>`
+	oldRow, err := os.ReadFile(filepath.Join("definitions", "fixtures", "corsaro", "old-page.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
-		_, _ = w.Write([]byte(oldRow))
+		_, _ = w.Write(oldRow)
 	}))
 	t.Cleanup(server.Close)
 	def := parseDefinition(t, "corsaro-user")

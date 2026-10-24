@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -155,12 +156,11 @@ func TestParseTruncatedRSSKeepsCompleteItems(t *testing.T) {
 }
 
 func TestParseTorrentEnclosureDoesNotInventMagnet(t *testing.T) {
-	feed := `<rss version="2.0"><channel><item>
-<title>Private.Release.1080p</title>
-<infohash>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</infohash>
-<enclosure url="https://private.example/download/1.torrent" length="1500000000" type="application/x-bittorrent"/>
-</item></channel></rss>`
-	items, err := ParseRSS([]byte(feed))
+	body, err := os.ReadFile("testdata/torrent_enclosure.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := ParseRSS(body)
 	if err != nil {
 		t.Fatal(err)
 	}
