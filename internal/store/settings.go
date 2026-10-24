@@ -135,7 +135,7 @@ func DefaultSettings() Settings {
 		TorznabLiveSearch:          true,
 		TorznabLiveTimeout:         20,
 		TorznabLiveCache:           300,
-		TorznabLiveWait:            2,
+		TorznabLiveWait:            5,
 		DownloadClient:             "none",
 		HostRate:                   1,
 		HostBurst:                  4,
@@ -230,7 +230,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.TorznabLiveSearch = boolValue(values, KeyTorznabLive, true)
 	out.TorznabLiveTimeout = intValue(values, KeyTorznabLiveTimeout, 20, 5, 120)
 	out.TorznabLiveCache = intValue(values, KeyTorznabLiveCache, 300, 0, 3600)
-	out.TorznabLiveWait = intValue(values, KeyTorznabLiveWait, 2, 1, 120)
+	out.TorznabLiveWait = intValue(values, KeyTorznabLiveWait, 5, 1, 120)
 	out.DownloadClient = strings.ToLower(strings.TrimSpace(values[KeyDownloadClient]))
 	switch out.DownloadClient {
 	case "qbittorrent", "transmission":

@@ -1295,7 +1295,7 @@
   "settings.liveSearchCache": "Live-Suche-Cache (Sekunden)",
   "settings.liveSearchCacheHelp": "Wie lange ein Live-Suchergebnis im Cache bleibt. 0 deaktiviert den Cache.",
   "settings.liveSearchWait": "Wartezeit Live-Suche (Sekunden)",
-  "settings.liveSearchWaitHelp": "Wie lange die aggregierte Anfrage wartet. Langsame Indexer laufen im Hintergrund weiter und erscheinen bei der nächsten Anfrage.",
+  "settings.liveSearchWaitHelp": "Die aggregierte Antwort wartet höchstens 5 Sekunden, kehrt aber zurück, sobald alle Indexer fertig sind. Langsame Indexer erscheinen in Aktivität und bleiben für die nächste Anfrage im Cache.",
   "settings.logLevel": "Laufzeitstufe",
   "settings.logLevelSave": "Stufe speichern",
   "settings.logLevelTitle": "Protokollstufe",

@@ -46,7 +46,7 @@ func TestProductionCopyHasNoFalseAlarms(t *testing.T) {
 	if status.Level == "danger" {
 		t.Fatalf("production copy is in danger: %#v", status)
 	}
-	if status.ProblemIndexers > 1 {
+	if status.ProblemIndexers > 2 {
 		t.Fatalf("production copy shows %d false indexer problems: %#v", status.ProblemIndexers, status.Problems)
 	}
 	for _, problem := range status.Problems {

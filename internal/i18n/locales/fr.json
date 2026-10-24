@@ -1295,7 +1295,7 @@
   "settings.liveSearchCache": "Cache des recherches live (secondes)",
   "settings.liveSearchCacheHelp": "Durée de conservation du résultat d'une recherche live. 0 désactive le cache.",
   "settings.liveSearchWait": "Attente de réponse recherche live (secondes)",
-  "settings.liveSearchWaitHelp": "Durée d’attente de la requête agrégée. Les indexeurs lents continuent en arrière-plan et apparaissent à la requête suivante.",
+  "settings.liveSearchWaitHelp": "La réponse agrégée attend jusqu’à 5 secondes, mais revient dès que tous les indexeurs ont fini. Ceux qui courent encore après le plafond apparaissent dans Activité et restent en cache.",
   "settings.logLevel": "Niveau d'exécution",
   "settings.logLevelSave": "Enregistrer le niveau",
   "settings.logLevelTitle": "Niveau des journaux",

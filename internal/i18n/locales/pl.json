@@ -1295,7 +1295,7 @@
   "settings.liveSearchCache": "Pamięć podręczna wyszukiwania live (sekundy)",
   "settings.liveSearchCacheHelp": "Jak długo wynik wyszukiwania live pozostaje w pamięci podręcznej. 0 wyłącza pamięć.",
   "settings.liveSearchWait": "Czas oczekiwania wyszukiwania live (sekundy)",
-  "settings.liveSearchWaitHelp": "Jak długo czeka zapytanie zbiorcze. Wolne indeksery działają w tle i pojawią się przy następnym zapytaniu.",
+  "settings.liveSearchWaitHelp": "Odpowiedź zbiorcza czeka maksymalnie 5 sekund, ale wraca, gdy wszystkie indeksery skończą. Wolne indeksery pojawiają się w Aktywności i pozostają w pamięci podręcznej.",
   "settings.logLevel": "Poziom działania",
   "settings.logLevelSave": "Zapisz poziom",
   "settings.logLevelTitle": "Poziom logów",

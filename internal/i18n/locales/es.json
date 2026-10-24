@@ -1295,7 +1295,7 @@
   "settings.liveSearchCache": "Caché de búsquedas en vivo (segundos)",
   "settings.liveSearchCacheHelp": "Cuánto tiempo se guarda el resultado de una búsqueda en vivo. 0 desactiva la caché.",
   "settings.liveSearchWait": "Espera de búsqueda en vivo (segundos)",
-  "settings.liveSearchWaitHelp": "Cuánto espera la petición agregada. Los indexadores lentos siguen en segundo plano y aparecen en la siguiente petición.",
+  "settings.liveSearchWaitHelp": "La respuesta agregada espera como máximo 5 segundos, pero vuelve en cuanto todos los indexadores terminan. Los que siguen corriendo aparecen en Actividad y quedan en caché.",
   "settings.logLevel": "Nivel en ejecución",
   "settings.logLevelSave": "Guardar nivel",
   "settings.logLevelTitle": "Nivel de registro",

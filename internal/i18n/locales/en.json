@@ -1295,7 +1295,7 @@
   "settings.liveSearchCache": "Live search cache (seconds)",
   "settings.liveSearchCacheHelp": "How long a live fan-out result stays cached. 0 disables the cache.",
   "settings.liveSearchWait": "Live search response wait (seconds)",
-  "settings.liveSearchWaitHelp": "How long the aggregate request waits before returning. Slow indexers keep running in background and appear on the next request.",
+  "settings.liveSearchWaitHelp": "The aggregate waits up to 5 seconds, but returns as soon as every indexer has finished. Indexers still running after the cap appear in Activity and are cached for the next request.",
   "settings.logLevel": "Runtime level",
   "settings.logLevelSave": "Save level",
   "settings.logLevelTitle": "Log level",

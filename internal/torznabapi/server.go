@@ -332,7 +332,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		}
 		wait := time.Duration(settings.TorznabLiveWait) * time.Second
 		if wait <= 0 {
-			wait = 2 * time.Second
+			wait = 5 * time.Second
 		}
 		if wait > timeout {
 			wait = timeout
@@ -1444,6 +1444,17 @@ func (s *Server) writeIndexersAnswer(w http.ResponseWriter, r *http.Request, que
 	for _, indexer := range indexers {
 		if configuredOnly && !indexer.Enabled {
 			continue
+		}
+		if configuredOnly {
+			state, stateErr := s.store.GetIndexerState(r.Context(), indexer.ID)
+			if stateErr == nil && (strings.TrimSpace(state.LastError) != "" || strings.EqualFold(strings.TrimSpace(state.Circuit), "open")) {
+				continue
+			}
+			if s.indexerCaps != nil && len(capsByID) > 0 {
+				if _, ok := capsByID[indexer.ID]; !ok {
+					continue
+				}
+			}
 		}
 		parsed, _ := s.definitionForIndexer(r.Context(), indexer)
 		name := indexer.Name

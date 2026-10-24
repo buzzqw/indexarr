@@ -1295,7 +1295,7 @@
   "settings.liveSearchCache": "实时搜索缓存（秒）",
   "settings.liveSearchCacheHelp": "实时搜索结果保留在缓存中的时间。0 表示禁用缓存。",
   "settings.liveSearchWait": "实时搜索响应等待（秒）",
-  "settings.liveSearchWaitHelp": "聚合请求等待的时间。较慢的索引器会在后台继续运行，并在下一次请求中出现。",
+  "settings.liveSearchWaitHelp": "聚合响应最多等待 5 秒，但所有索引器完成后立即返回。超过上限仍在运行的索引器会显示在活动中，并缓存供下次请求使用。",
   "settings.logLevel": "运行时级别",
   "settings.logLevelSave": "保存级别",
   "settings.logLevelTitle": "日志级别",

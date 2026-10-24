@@ -327,6 +327,9 @@ func (s *Store) migrate() error {
 		"app search params and standard categories", cycle6Migration); err != nil {
 		return err
 	}
+	if err := s.migrateLiveWaitDefault(context.Background()); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.
@@ -676,4 +679,29 @@ func (s *Store) BackupTo(ctx context.Context, target string) error {
 		return fmt.Errorf("backup: %w", err)
 	}
 	return nil
+}
+
+// migrateLiveWaitDefault raises the old implicit 1/2 second live-search wait to
+// the new 5 second default once. A later explicit user choice is left alone.
+func (s *Store) migrateLiveWaitDefault(ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var marker string
+	err = tx.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = 'torznab_live_wait_default_v5'`).Scan(&marker)
+	if err == nil {
+		return nil
+	}
+	if err != sql.ErrNoRows {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE settings SET value = '5' WHERE key = 'torznab_live_wait_seconds' AND value IN ('1','2')`); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO settings(key, value) VALUES('torznab_live_wait_default_v5','1')`); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
