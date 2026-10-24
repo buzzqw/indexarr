@@ -59,6 +59,7 @@ const (
 	KeyBreakerThreshold     = "breaker_threshold"
 	KeyBreakerCooldown      = "breaker_cooldown"
 	KeySetupDismissed       = "setup_dismissed"
+	KeySeedersTTLHours      = "seeders_ttl_hours"
 )
 
 // Settings are the runtime options edited from the web interface.
@@ -116,7 +117,8 @@ type Settings struct {
 	BreakerCooldownSeconds int
 	// SetupDismissed remembers that the operator skipped the first-run
 	// wizard. It is reopened from Settings → General.
-	SetupDismissed bool
+	SetupDismissed  bool
+	SeedersTTLHours int
 }
 
 // DefaultSettings returns the options used before the first save.
@@ -151,10 +153,21 @@ func DefaultSettings() Settings {
 		HostBurst:                  4,
 		BreakerThreshold:           5,
 		BreakerCooldownSeconds:     600,
+		SeedersTTLHours:            6,
 	}
 }
 
 // DefaultInterval is the scheduler interval when a source does not override it.
+// SeedersTTL is how old a provenance row must be before the refresh job
+// queries the source again.
+func (s Settings) SeedersTTL() time.Duration {
+	hours := s.SeedersTTLHours
+	if hours < 1 {
+		hours = 6
+	}
+	return time.Duration(hours) * time.Hour
+}
+
 func (s Settings) DefaultInterval() time.Duration {
 	seconds := s.DefaultIntervalSeconds
 	if seconds < 60 {
@@ -262,6 +275,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.BreakerThreshold = intValue(values, KeyBreakerThreshold, 5, 1, 100)
 	out.BreakerCooldownSeconds = intValue(values, KeyBreakerCooldown, 600, 1, 3600)
 	out.SetupDismissed = boolValue(values, KeySetupDismissed, false)
+	out.SeedersTTLHours = intValue(values, KeySeedersTTLHours, 6, 1, 168)
 	if raw, ok := values[KeyFetchTorrents]; ok {
 		out.FetchTorrents = raw == "1" || strings.EqualFold(raw, "true")
 	}
@@ -316,6 +330,7 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyBreakerThreshold:     strconv.Itoa(in.BreakerThreshold),
 		KeyBreakerCooldown:      strconv.Itoa(in.BreakerCooldownSeconds),
 		KeySetupDismissed:       boolString(in.SetupDismissed),
+		KeySeedersTTLHours:      strconv.Itoa(in.SeedersTTLHours),
 	}
 	if in.FetchTorrents {
 		pairs[KeyFetchTorrents] = "1"

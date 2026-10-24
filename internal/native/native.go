@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/backup"
+	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
@@ -91,6 +92,7 @@ type Runner struct {
 	backupRunning atomic.Bool
 	backupRetry   atomic.Int64
 	testingAll    atomic.Bool
+	lastSeeders   time.Time
 }
 
 // New builds a Runner.
@@ -179,6 +181,11 @@ func (r *Runner) loop(ctx context.Context) {
 		case <-ticker.C:
 			r.runDuePass(ctx)
 			r.maybeBackup(ctx)
+			if settings, err := r.store.LoadSettings(ctx); err == nil &&
+				time.Since(r.lastSeeders) >= settings.SeedersTTL() {
+				r.lastSeeders = time.Now()
+				r.refreshSeeders(ctx, settings.SeedersTTL())
+			}
 			if time.Since(lastMaintenance) >= 6*time.Hour {
 				lastMaintenance = time.Now()
 				r.maintenance(ctx)
@@ -667,6 +674,45 @@ func (r *Runner) maybeBackup(ctx context.Context) {
 			r.logger.Info("old backups removed", "count", removed)
 		}
 	}()
+}
+
+// refreshSeeders walks the oldest provenance rows and asks the source that
+// supplied each release for fresh swarm counters. Manager.Search applies the
+// per-indexer daily query limit and the shared host rate limiter; a failure or
+// a quota response only leaves that row unchanged.
+func (r *Runner) refreshSeeders(ctx context.Context, ttl time.Duration) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	stale, err := r.store.StaleProvenance(ctx, time.Now().Add(-ttl), 50)
+	if err != nil {
+		r.logger.Warn("seeders refresh: list stale provenance", "error", err)
+		return
+	}
+	updated := 0
+	for _, row := range stale {
+		if ctx.Err() != nil {
+			break
+		}
+		items, searchErr := r.manager.Search(ctx, row.IndexerID, engine.SearchRequest{
+			Mode: engine.ModeSearch, Query: row.Title, Limit: 20,
+		})
+		if searchErr != nil {
+			continue
+		}
+		for _, item := range items {
+			if store.NormalizeSearch(item.Title) != store.NormalizeSearch(row.Title) {
+				continue
+			}
+			if err := r.store.UpdateSourceSwarm(ctx, row.ReleaseID, row.IndexerID,
+				item.Seeders, item.Leechers, time.Now()); err == nil {
+				updated++
+			}
+			break
+		}
+	}
+	if updated > 0 {
+		r.logger.Info("seeders refresh", "updated", updated, "ttl", ttl.String())
+	}
 }
 
 // maintenance prunes old releases and run history, then refreshes SQLite.

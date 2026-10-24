@@ -23,3 +23,6 @@ sim/real/.data/
 # Binari di test e helper locali
 *.test
 /indexarr-import
+
+# Local CI logs
+/ci-logs/

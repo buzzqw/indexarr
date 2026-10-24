@@ -2,7 +2,7 @@ BINARY  := bin/indexarr
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build test vet fmt run clean qa def-validate e2e
+.PHONY: build test vet fmt run clean qa def-validate e2e ci
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/indexarr
@@ -16,6 +16,11 @@ vet:
 # QA: static checks, unit/integration tests and a real-binary HTTP smoke test.
 qa:
 	./scripts/qa.sh
+
+# Local CI: the same jobs as .github/workflows/qa.yml plus Windows/macOS
+# test compilation. Writes ci-logs/<commit>.log.
+ci:
+	./scripts/ci-local.sh
 
 # UI route/link smoke test against a running instance (read-only, GET only).
 .PHONY: ui-smoke

@@ -53,6 +53,7 @@ type settingsPage struct {
 	Rules []store.BlocklistRule
 	// Maintenance and backups
 	Stats               store.Stats
+	Growth              store.DatabaseGrowth
 	Report              store.DBReport
 	DBPath              string
 	SQLiteVersion       string
@@ -139,6 +140,7 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 	}
 	if section == "backup" || section == "maintenance" {
 		data.Stats, _ = s.store.LoadStats(ctx)
+		data.Growth, _ = s.store.Growth(ctx, time.Now())
 		data.Report, _ = s.store.LoadDBReport(ctx)
 		data.DBPath = s.store.Path()
 		_ = s.store.DB().QueryRowContext(ctx, "SELECT sqlite_version()").Scan(&data.SQLiteVersion)
@@ -370,6 +372,10 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			return false
 		}
 		if in.HistoryRetentionDays, parseErr = s.formInt(r, "history_retention_days", current.HistoryRetentionDays, 0, 3650); parseErr != nil {
+			renderInvalid(parseErr.Error())
+			return false
+		}
+		if in.SeedersTTLHours, parseErr = s.formInt(r, "seeders_ttl_hours", current.SeedersTTLHours, 1, 168); parseErr != nil {
 			renderInvalid(parseErr.Error())
 			return false
 		}
@@ -710,6 +716,7 @@ func (s *Server) runsClear(w http.ResponseWriter, r *http.Request) {
 type maintenancePage struct {
 	base
 	Stats               store.Stats
+	Growth              store.DatabaseGrowth
 	Report              store.DBReport
 	DBPath              string
 	SQLiteVersion       string

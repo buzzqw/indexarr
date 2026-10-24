@@ -235,6 +235,11 @@
         <p class="help">{{T "settings.retentionHelp"}}</p>
       </div>
       <div class="field">
+        <label for="seeders_ttl_hours">{{T "settings.seedersTTL"}}</label>
+        <input id="seeders_ttl_hours" name="seeders_ttl_hours" type="number" min="1" max="168" required value="{{.Settings.SeedersTTLHours}}">
+        <p class="help">{{T "settings.seedersTTLHelp"}}</p>
+      </div>
+      <div class="field">
         <label for="history_retention_days">{{T "settings.historyRetentionDays"}}</label>
         <input id="history_retention_days" name="history_retention_days" type="number" min="0" max="3650" required value="{{.Settings.HistoryRetentionDays}}">
         <p class="help">{{T "settings.historyRetentionHelp"}}</p>
@@ -391,6 +396,8 @@
     <article class="card"><span class="label">{{T "settings.dbReleases"}}</span><strong>{{.Stats.Releases}}</strong><span class="hint">{{T "settings.dbTorrents" .Stats.Torrents}}</span></article>
     <article class="card"><span class="label">{{T "settings.dbTorrentData"}}</span><strong>{{bytes .Stats.TorrentBytes}}</strong></article>
     <article class="card"><span class="label">{{T "settings.dbSQLite"}}</span><strong>{{.SQLiteVersion}}</strong><span class="hint">{{if .RetentionDays}}{{T "settings.dbRetention" .RetentionDays}}{{else}}{{T "settings.dbRetentionNone"}}{{end}}</span></article>
+    <article class="card"><span class="label">{{T "settings.dbGrowthDay"}}</span><strong>+{{.Growth.LastDay}}</strong><span class="hint">{{T "settings.dbGrowthWeek"}} +{{.Growth.LastWeek}}</span></article>
+    <article class="card"><span class="label">{{T "settings.dbFTS"}}</span><strong>{{bytes .Growth.FTSBytes}}</strong><span class="hint">{{T "settings.dbGrowthTotal" .Growth.Releases}}</span></article>
   </section>
 
   <section class="panel">

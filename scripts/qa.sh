@@ -21,7 +21,12 @@ echo "==> go vet"
 go vet ./...
 
 echo "==> go test"
-go test ./...
+TEST_FLAGS=()
+if [[ "${CI_SKIP_PRODUCTION_COPY:-0}" == "1" ]]; then
+  TEST_FLAGS=(-skip TestProductionCopyHasNoFalseAlarms)
+  echo "NOTE: TestProductionCopyHasNoFalseAlarms skipped (CI_SKIP_PRODUCTION_COPY=1)"
+fi
+go test "${TEST_FLAGS[@]}" ./...
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/indexarr-qa.XXXXXX")"
 # Keep the vault key out of the developer's real user config: WP1 resolves
