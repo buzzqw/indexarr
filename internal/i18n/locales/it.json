@@ -910,6 +910,8 @@
   "indexerForm.derivedWarning": "Bozza derivata: riscrivila osservando le pagine prima di usarla.",
   "indexerForm.edit": "Modifica %s",
   "indexerForm.enabled": "Abilitato",
+  "indexerForm.storeLatest": "Memorizza le novità di questo sito",
+  "indexerForm.storeLatestHelp": "Legge periodicamente la lista novità e la salva nel database. Usa richieste e spazio su disco; le ricerche trovano anche ciò che è stato pubblicato prima.",
   "indexerForm.enabledHelp": "Un indexer disattivato non viene eseguito dallo scheduler.",
   "indexerForm.error.challenge": "La gestione Cloudflare deve essere globale, nessuna o FlareSolverr",
   "indexerForm.error.flareSolverrTimeout": "Il timeout di FlareSolverr deve essere tra 5 e 300 secondi",

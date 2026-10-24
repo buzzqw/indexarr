@@ -910,6 +910,8 @@
   "indexerForm.derivedWarning": "Brouillon dérivé : réécrivez-le à partir des pages observées avant de l'utiliser.",
   "indexerForm.edit": "Modifier %s",
   "indexerForm.enabled": "Activé",
+  "indexerForm.storeLatest": "Mémoriser les nouveautés de ce site",
+  "indexerForm.storeLatestHelp": "Lit périodiquement la liste des nouveautés et la garde en base. Utilise des requêtes et de l’espace disque.",
   "indexerForm.enabledHelp": "Un indexeur désactivé n'est pas exécuté par l'ordonnanceur.",
   "indexerForm.error.challenge": "La gestion de Cloudflare doit être globale, aucune ou FlareSolverr",
   "indexerForm.error.flareSolverrTimeout": "Le délai FlareSolverr doit être compris entre 5 et 300 secondes",

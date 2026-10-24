@@ -910,6 +910,8 @@
   "indexerForm.derivedWarning": "Derived draft: rewrite it from observed pages before using it.",
   "indexerForm.edit": "Edit %s",
   "indexerForm.enabled": "Enabled",
+  "indexerForm.storeLatest": "Store this site's new releases",
+  "indexerForm.storeLatestHelp": "Reads the latest list periodically and keeps it in the database. It uses requests and disk space; searches find releases published before anyone searched.",
   "indexerForm.enabledHelp": "A disabled indexer is not run by the scheduler.",
   "indexerForm.error.challenge": "Cloudflare handling must be global, none or FlareSolverr",
   "indexerForm.error.flareSolverrTimeout": "The FlareSolverr timeout must be between 5 and 300 seconds",

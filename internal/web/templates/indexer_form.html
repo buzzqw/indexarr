@@ -184,6 +184,11 @@
         <input id="enabled" name="enabled" type="checkbox"{{if .Enabled}} checked{{end}}>
         <label for="enabled">{{T "indexerForm.enabled"}}</label>
       </div>
+      <div class="field checkbox">
+        <input id="store_latest" name="store_latest" type="checkbox"{{if .StoreLatest}} checked{{end}}>
+        <label for="store_latest">{{T "indexerForm.storeLatest"}}</label>
+        <p class="help">{{T "indexerForm.storeLatestHelp"}}</p>
+      </div>
     </div>
 
     <div class="field">

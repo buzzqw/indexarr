@@ -910,6 +910,8 @@
   "indexerForm.derivedWarning": "Abgeleiteter Entwurf: vor der Nutzung anhand beobachteter Seiten neu schreiben.",
   "indexerForm.edit": "%s bearbeiten",
   "indexerForm.enabled": "Aktiviert",
+  "indexerForm.storeLatest": "Neuheiten dieser Seite speichern",
+  "indexerForm.storeLatestHelp": "Liest regelmäßig die Neuheitenliste und speichert sie in der Datenbank. Verbraucht Anfragen und Speicherplatz.",
   "indexerForm.enabledHelp": "Ein deaktivierter Indexer wird nicht vom Scheduler ausgeführt.",
   "indexerForm.error.challenge": "Cloudflare muss global, keine oder FlareSolverr sein",
   "indexerForm.error.flareSolverrTimeout": "Das FlareSolverr-Timeout muss zwischen 5 und 300 Sekunden liegen",

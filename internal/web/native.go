@@ -635,6 +635,7 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 	}
 	settings := map[string]string{
 		"categories":           categories,
+		"store_latest":         strconv.FormatBool(r.FormValue("store_latest") != ""),
 		"query":                strings.TrimSpace(r.FormValue("query")),
 		"user_agent":           strings.TrimSpace(r.FormValue("user_agent")),
 		"default_category":     strings.TrimSpace(r.FormValue("default_category")),

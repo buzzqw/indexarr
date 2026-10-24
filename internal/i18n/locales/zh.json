@@ -910,6 +910,8 @@
   "indexerForm.derivedWarning": "派生草稿：请根据实际观察的页面重写后再使用。",
   "indexerForm.edit": "编辑 %s",
   "indexerForm.enabled": "已启用",
+  "indexerForm.storeLatest": "保存此站点的新发布",
+  "indexerForm.storeLatestHelp": "定期读取最新列表并存入数据库。会消耗请求和磁盘空间。",
   "indexerForm.enabledHelp": "已禁用的索引器不会由调度器运行。",
   "indexerForm.error.challenge": "Cloudflare 处理必须是全局、无或 FlareSolverr",
   "indexerForm.error.flareSolverrTimeout": "FlareSolverr 超时必须介于 5 到 300 秒之间",

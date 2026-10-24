@@ -910,6 +910,8 @@
   "indexerForm.derivedWarning": "Szkic pochodny: przepisz go na podstawie obserwowanych stron przed użyciem.",
   "indexerForm.edit": "Edytuj %s",
   "indexerForm.enabled": "Włączony",
+  "indexerForm.storeLatest": "Zapisuj nowości tej strony",
+  "indexerForm.storeLatestHelp": "Okresowo czyta listę nowości i zapisuje ją w bazie. Zużywa zapytania i miejsce.",
   "indexerForm.enabledHelp": "Wyłączony indekser nie jest uruchamiany przez harmonogram.",
   "indexerForm.error.challenge": "Obsługa Cloudflare musi być globalna, żadna lub FlareSolverr",
   "indexerForm.error.flareSolverrTimeout": "Limit czasu FlareSolverr musi wynosić od 5 do 300 sekund",

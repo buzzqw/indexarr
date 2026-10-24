@@ -1718,6 +1718,7 @@ type compactFormView struct {
 	CategoryGroups      []categoryOptionGroup
 	UserAgent           string
 	AllowPrivate        bool
+	StoreLatest         bool
 	Challenge           string
 	ChallengeOptions    []indexerSettingOption
 	FlareSolverrURL     string
@@ -1854,6 +1855,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	data.CategoryGroups = s.defaultCategoryGroups(r, data.DefaultCategory)
 	data.UserAgent = value("user_agent")
 	data.AllowPrivate = truthy(value("allow_private"))
+	data.StoreLatest = truthy(value("store_latest"))
 	data.Challenge = strings.ToLower(strings.TrimSpace(value("challenge")))
 	switch data.Challenge {
 	case "none", "flaresolverr":

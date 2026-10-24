@@ -910,6 +910,8 @@
   "indexerForm.derivedWarning": "Borrador derivado: reescríbelo a partir de las páginas observadas antes de usarlo.",
   "indexerForm.edit": "Editar %s",
   "indexerForm.enabled": "Habilitado",
+  "indexerForm.storeLatest": "Guardar las novedades de este sitio",
+  "indexerForm.storeLatestHelp": "Lee periódicamente la lista de novedades y la guarda en la base de datos. Usa peticiones y espacio.",
   "indexerForm.enabledHelp": "El planificador no ejecuta un indexador deshabilitado.",
   "indexerForm.error.challenge": "La gestión de Cloudflare debe ser global, ninguna o FlareSolverr",
   "indexerForm.error.flareSolverrTimeout": "El tiempo de espera de FlareSolverr debe estar entre 5 y 300 segundos",
