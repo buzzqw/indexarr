@@ -41,6 +41,7 @@ type settingsPage struct {
 	Section        string
 	Sections       []settingsSection
 	Settings       store.Settings
+	FieldErrors    map[string]string
 	MaxTorrentMB   int64
 	TorznabBase    string
 	TorznabMasked  string
@@ -122,6 +123,7 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 		Section:        section,
 		Sections:       sections,
 		Settings:       public,
+		FieldErrors:    map[string]string{},
 		MaxTorrentMB:   settings.MaxTorrentBytes / (1 << 20),
 		TorznabBase:    baseURL,
 		TorznabMasked:  baseURL + "?apikey=••••••",
@@ -222,6 +224,38 @@ func (s *Server) maintenanceRedirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/settings?section=maintenance", http.StatusFound)
 }
 
+// normalizeHTTPURL accepts a full http(s) URL or a bare host:port, which is
+// what people type for a LAN service such as FlareSolverr. It returns the
+// cleaned value and false when the input is not a usable absolute URL.
+func normalizeHTTPURL(raw string) (string, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", true
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "http://" + raw
+	}
+	if strings.ContainsAny(raw, " \t\r\n") {
+		return "", false
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return "", false
+	}
+	return strings.TrimRight(raw, "/"), true
+}
+
+// renderSettingsInvalid re-renders the section that failed, keeping the values
+// the operator typed. A field key puts the same message next to the input.
+func (s *Server) renderSettingsInvalid(w http.ResponseWriter, r *http.Request, settings store.Settings, section, field, message string) {
+	page := s.settingsData(r, settings, section)
+	page.Error = message
+	if field != "" {
+		page.FieldErrors[field] = message
+	}
+	s.render(w, r, "settings", page, http.StatusBadRequest)
+}
+
 func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	current, err := s.store.LoadSettings(r.Context())
 	if err != nil {
@@ -233,26 +267,25 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 	all := rawSection == ""
 	section := settingsSectionID(rawSection)
 	renderInvalid := func(message string) {
-		page := s.settingsData(r, in, section)
-		page.Error = message
-		s.render(w, r, "settings", page, http.StatusBadRequest)
+		s.renderSettingsInvalid(w, r, in, section, "", message)
+	}
+	renderInvalidField := func(field, message string) {
+		s.renderSettingsInvalid(w, r, in, section, field, message)
 	}
 	applyGeneral := func() bool {
-		in.PublicURL = strings.TrimRight(strings.TrimSpace(r.FormValue("public_url")), "/")
-		if in.PublicURL != "" {
-			parsed, err := url.Parse(in.PublicURL)
-			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-				renderInvalid(s.translate(r, "settings.error.publicURL"))
-				return false
-			}
+		rawPublic := strings.TrimSpace(r.FormValue("public_url"))
+		in.PublicURL, _ = normalizeHTTPURL(rawPublic)
+		if rawPublic != "" && in.PublicURL == "" {
+			in.PublicURL = rawPublic
+			renderInvalidField("public_url", s.translate(r, "settings.error.publicURL"))
+			return false
 		}
-		in.NotifyWebhookURL = strings.TrimRight(strings.TrimSpace(r.FormValue("notify_webhook_url")), "/")
-		if in.NotifyWebhookURL != "" {
-			parsed, err := url.Parse(in.NotifyWebhookURL)
-			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-				renderInvalid(s.translate(r, "settings.error.webhookURL"))
-				return false
-			}
+		rawWebhook := strings.TrimSpace(r.FormValue("notify_webhook_url"))
+		in.NotifyWebhookURL, _ = normalizeHTTPURL(rawWebhook)
+		if rawWebhook != "" && in.NotifyWebhookURL == "" {
+			in.NotifyWebhookURL = rawWebhook
+			renderInvalidField("notify_webhook_url", s.translate(r, "settings.error.webhookURL"))
+			return false
 		}
 		if r.FormValue("notify_telegram_token_remove") != "" {
 			in.NotifyTelegramToken = ""
@@ -301,13 +334,12 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		return true
 	}
 	applyNetwork := func() bool {
-		in.FlareSolverrURL = strings.TrimRight(strings.TrimSpace(r.FormValue("flaresolverr_url")), "/")
-		if in.FlareSolverrURL != "" {
-			parsed, err := url.Parse(in.FlareSolverrURL)
-			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-				renderInvalid(s.translate(r, "settings.error.flaresolverrURL"))
-				return false
-			}
+		rawFlare := strings.TrimSpace(r.FormValue("flaresolverr_url"))
+		in.FlareSolverrURL, _ = normalizeHTTPURL(rawFlare)
+		if rawFlare != "" && in.FlareSolverrURL == "" {
+			in.FlareSolverrURL = rawFlare
+			renderInvalidField("flaresolverr_url", s.translate(r, "settings.error.flaresolverrURL"))
+			return false
 		}
 		var parseErr error
 		if in.FlareSolverrTimeoutSeconds, parseErr = s.formInt(r, "flaresolverr_timeout_seconds",
@@ -533,19 +565,37 @@ func (s *Server) settingsAPIKeyDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) settingsTestFlareSolverr(w http.ResponseWriter, r *http.Request) {
-	endpoint := strings.TrimRight(strings.TrimSpace(r.FormValue("flaresolverr_url")), "/")
-	if endpoint == "" {
-		redirect(w, r, "/settings", "", s.translate(r, "settings.error.flaresolverrEmpty"))
+	current, err := s.store.LoadSettings(r.Context())
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	parsed, err := url.Parse(endpoint)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		redirect(w, r, "/settings", "", s.translate(r, "settings.error.flaresolverrInvalid"))
+	in := current
+	raw := strings.TrimSpace(r.FormValue("flaresolverr_url"))
+	if raw == "" {
+		in.FlareSolverrURL = ""
+		s.renderSettingsInvalid(w, r, in, "network", "flaresolverr_url", s.translate(r, "settings.error.flaresolverrEmpty"))
 		return
 	}
+	endpoint, ok := normalizeHTTPURL(raw)
+	if !ok {
+		in.FlareSolverrURL = raw
+		s.renderSettingsInvalid(w, r, in, "network", "flaresolverr_url", s.translate(r, "settings.error.flaresolverrInvalid"))
+		return
+	}
+	in.FlareSolverrURL = endpoint
 	timeout := flaresolverr.DefaultTimeout
 	if value, parseErr := strconv.Atoi(strings.TrimSpace(r.FormValue("flaresolverr_timeout_seconds"))); parseErr == nil && value >= 5 && value <= 300 {
 		timeout = time.Duration(value) * time.Second
+		in.FlareSolverrTimeoutSeconds = value
+	}
+	// The test shares the network form: keep the other fields the operator
+	// typed instead of silently restoring the stored values after the redirect.
+	if value, parseErr := s.formFloat(r, "host_rate", current.HostRate, 0, 100); parseErr == nil {
+		in.HostRate = value
+	}
+	if value, parseErr := s.formInt(r, "host_burst", current.HostBurst, 1, 100); parseErr == nil {
+		in.HostBurst = value
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), timeout+40*time.Second)
 	defer cancel()
@@ -553,16 +603,26 @@ func (s *Server) settingsTestFlareSolverr(w http.ResponseWriter, r *http.Request
 	body, status, err := flaresolverr.Get(ctx, client, endpoint, "https://example.com/", timeout)
 	if err != nil {
 		s.log.Warn("FlareSolverr test failed", "component", "indexarr", "subsystem", "flaresolverr", "endpoint", endpoint, "error", err)
-		redirect(w, r, "/settings", "", s.translate(r, "settings.flaresolverrTestFailed", err.Error()))
+		s.renderSettingsInvalid(w, r, in, "network", "flaresolverr_url", s.translate(r, "settings.flaresolverrTestFailed", err.Error()))
 		return
 	}
 	if status != http.StatusOK {
 		s.log.Warn("FlareSolverr test returned an HTTP error", "component", "indexarr", "subsystem", "flaresolverr", "endpoint", endpoint, "status", status)
-		redirect(w, r, "/settings", "", s.translate(r, "settings.flaresolverrHTTP", status))
+		s.renderSettingsInvalid(w, r, in, "network", "flaresolverr_url", s.translate(r, "settings.flaresolverrHTTP", status))
 		return
 	}
+	// A successful test saves the address it just verified. The operator never
+	// has to remember a second Save after an explicit Test click, and pressing
+	// Enter in the field follows the normal Save path instead.
+	if err := s.store.SaveSettings(r.Context(), in); err != nil {
+		s.renderSettingsInvalid(w, r, in, "network", "flaresolverr_url", err.Error())
+		return
+	}
+	if s.native != nil {
+		s.native.InvalidateAll()
+	}
 	s.log.Info("FlareSolverr test ok", "endpoint", endpoint, "bytes", len(body))
-	redirect(w, r, "/settings", s.translate(r, "settings.flaresolverrOK", len(body)), "")
+	redirect(w, r, "/settings?section=network", s.translate(r, "settings.flaresolverrOK", len(body)), "")
 }
 
 func (s *Server) formInt(r *http.Request, key string, fallback, min, max int) (int, error) {

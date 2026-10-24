@@ -673,6 +673,17 @@ input[readonly] { background: var(--surface-2); }
 
 .help { margin: 0; color: var(--muted); font-size: 0.78rem; }
 
+.field-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* A copy of the page flash next to the buttons that produced it. The original
+   stays at the top for screen readers and non-JS browsers. */
+.form-flash-inline { order: -1; flex-basis: 100%; margin: 0 0 0.6rem; }
+
 .inline-check {
   display: inline-flex;
   align-items: center;

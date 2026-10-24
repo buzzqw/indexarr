@@ -131,6 +131,7 @@ func (s *Server) downloadClientInput(r *http.Request, current store.DownloadClie
 	}
 	if r.FormValue("password_remove") != "" {
 		in.PasswordEnc = ""
+		in.ClearPassword = true
 	}
 	if apiKey := strings.TrimSpace(r.FormValue("api_key")); apiKey != "" {
 		sealed, err := s.sealSecret(apiKey)
@@ -142,6 +143,7 @@ func (s *Server) downloadClientInput(r *http.Request, current store.DownloadClie
 	}
 	if r.FormValue("api_key_remove") != "" {
 		in.APIKeyEnc = ""
+		in.ClearAPIKey = true
 	}
 	return in, problems
 }

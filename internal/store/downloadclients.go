@@ -19,13 +19,18 @@ type DownloadClient struct {
 	Username    string
 	PasswordEnc string
 	APIKeyEnc   string
-	Category    string
-	SavePath    string
-	Paused      bool
-	Enabled     bool
-	IsDefault   bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	// ClearPassword and ClearAPIKey are request-only flags: an update with an
+	// empty secret means "keep the stored value" unless the operator ticked the
+	// remove checkbox.
+	ClearPassword bool
+	ClearAPIKey   bool
+	Category      string
+	SavePath      string
+	Paused        bool
+	Enabled       bool
+	IsDefault     bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // Download clients share the protocol vocabulary of indexers.
@@ -178,12 +183,14 @@ func (s *Store) UpdateDownloadClient(ctx context.Context, in DownloadClient) err
 	}
 	res, err := tx.ExecContext(ctx, `UPDATE download_clients SET
 		name = ?, kind = ?, protocol = ?, url = ?, username = ?,
-		password_enc = COALESCE(?, password_enc),
-		apikey_enc = COALESCE(?, apikey_enc),
+		password_enc = CASE WHEN ? = 1 THEN NULL ELSE COALESCE(?, password_enc) END,
+		apikey_enc = CASE WHEN ? = 1 THEN NULL ELSE COALESCE(?, apikey_enc) END,
 		category = ?, save_path = ?, paused = ?, enabled = ?,
 		is_default = ?, updated_at = ?
 		WHERE id = ?`,
-		in.Name, in.Kind, in.Protocol, in.URL, in.Username, password, apiKey,
+		in.Name, in.Kind, in.Protocol, in.URL, in.Username,
+		boolInt(in.ClearPassword), password,
+		boolInt(in.ClearAPIKey), apiKey,
 		in.Category, in.SavePath, boolInt(in.Paused), boolInt(in.Enabled),
 		boolInt(in.IsDefault), time.Now().Unix(), in.ID)
 	if err != nil {

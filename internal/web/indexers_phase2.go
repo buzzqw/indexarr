@@ -1694,7 +1694,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 				// outside the mirrors selector in Advanced.
 				for _, raw := range parsed.Meta.URLs {
 					data.URLChoices = append(data.URLChoices, indexerSettingOption{
-						Value: raw, Label: raw, Selected: raw == urlValue,
+						Value: raw, Label: raw, Selected: strings.TrimRight(raw, "/") == strings.TrimRight(urlValue, "/"),
 					})
 				}
 				continue
@@ -1732,7 +1732,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 			}
 			for _, raw := range parsed.Meta.URLs {
 				data.URLChoices = append(data.URLChoices, indexerSettingOption{
-					Value: raw, Label: raw, Selected: raw == data.URLValue,
+					Value: raw, Label: raw, Selected: strings.TrimRight(raw, "/") == strings.TrimRight(data.URLValue, "/"),
 				})
 			}
 		}
@@ -1880,7 +1880,7 @@ func (s *Server) indexerUnifiedCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderIndexerFormProblems(w, r, defID, nil, nil, []string{s.translate(r, "indexerForm.invalidDefinition", err.Error())})
 		return
 	}
-	in, err := indexerInputFromForm(r, parsed)
+	in, err := s.indexerInputFromForm(r, parsed)
 	if err != nil {
 		s.renderIndexerFormProblems(w, r, defID, nil, nil, []string{err.Error()})
 		return
@@ -1928,6 +1928,9 @@ func (s *Server) renderIndexerFormProblems(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		s.renderError(w, r, http.StatusBadRequest, err.Error())
 		return
+	}
+	if current != nil {
+		data.Title = s.translate(r, "indexerForm.edit", current.Name)
 	}
 	data.Error = s.translate(r, "indexerForm.checkFields")
 	s.render(w, r, "indexer_form", data, http.StatusBadRequest)
@@ -1981,7 +1984,7 @@ func (s *Server) indexerUnifiedUpdate(w http.ResponseWriter, r *http.Request) {
 		s.renderCompactFormProblems(w, r, defID, &current, nil, []string{s.translate(r, "indexerForm.definitionInvalid", err.Error())})
 		return
 	}
-	in, err := indexerInputFromForm(r, parsed)
+	in, err := s.indexerInputFromForm(r, parsed)
 	if err != nil {
 		s.renderCompactFormProblems(w, r, defID, &current, nil, []string{err.Error()})
 		return
@@ -2006,6 +2009,9 @@ func (s *Server) renderCompactFormProblems(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		s.renderError(w, r, http.StatusBadRequest, err.Error())
 		return
+	}
+	if current != nil {
+		data.Title = s.translate(r, "indexerForm.edit", current.Name)
 	}
 	data.Error = s.translate(r, "indexerForm.checkFields")
 	s.render(w, r, "indexer_form", data, http.StatusBadRequest)

@@ -4,6 +4,43 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
+// Keep the confirmation next to the buttons that produced it, not only at the
+// top of the page. The original flash stays in place for screen readers and
+// for browsers without JavaScript; the copy is purely visual.
+(() => {
+  const placeFlashNearForm = () => {
+    const targets = [];
+    document.querySelectorAll("main.content form.panel.form").forEach((form) => {
+      const actions = form.querySelector(".form-actions, .actions");
+      if (actions) {
+        targets.push(actions);
+      }
+    });
+    if (!targets.length) {
+      document.querySelectorAll("main.content .page-head .actions").forEach((actions) => {
+        targets.push(actions);
+      });
+    }
+    document.querySelectorAll("main.content > .flash").forEach((flash) => {
+      targets.forEach((actions) => {
+        if (actions.parentNode.querySelector("[data-form-flash]")) {
+          return;
+        }
+        const copy = flash.cloneNode(true);
+        copy.classList.add("form-flash-inline");
+        copy.setAttribute("data-form-flash", "");
+        copy.setAttribute("aria-hidden", "true");
+        actions.parentNode.insertBefore(copy, actions);
+      });
+    });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", placeFlashNearForm, { once: true });
+  } else {
+    placeFlashNearForm();
+  }
+})();
+
 // Reload pages such as Activity → New releases only while the tab is visible.
 // Hiding the tab clears the timer, so a background tab never polls indexarr.
 (() => {

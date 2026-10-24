@@ -19,14 +19,16 @@
     <div class="panel-head"><h2>{{T "settings.section.general"}}</h2></div>
     <div class="field grow">
       <label for="public_url">{{T "settings.publicURL"}}</label>
-      <input id="public_url" name="public_url" type="url" value="{{.Settings.PublicURL}}" placeholder="{{T "settings.publicURLPlaceholder"}}">
+      <input id="public_url" name="public_url" type="text" inputmode="url" autocomplete="off" spellcheck="false" value="{{.Settings.PublicURL}}" placeholder="{{T "settings.publicURLPlaceholder"}}">
+      {{with index .FieldErrors "public_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
       <p class="help">{{T "settings.publicURLHelp"}}</p>
     </div>
     <div class="panel-head"><h2>{{T "settings.notificationsTitle"}}</h2></div>
     <div class="form-grid">
       <div class="field grow">
         <label for="notify_webhook_url">{{T "settings.webhookURL"}}</label>
-        <input id="notify_webhook_url" name="notify_webhook_url" type="url" value="{{.Settings.NotifyWebhookURL}}" placeholder="{{T "settings.webhookPlaceholder"}}">
+        <input id="notify_webhook_url" name="notify_webhook_url" type="text" inputmode="url" autocomplete="off" spellcheck="false" value="{{.Settings.NotifyWebhookURL}}" placeholder="{{T "settings.webhookPlaceholder"}}">
+        {{with index .FieldErrors "notify_webhook_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
         <p class="help">{{T "settings.webhookHelp"}}</p>
       </div>
       <div class="field">
@@ -189,11 +191,9 @@
     <div class="form-grid">
       <div class="field grow">
         <label for="flaresolverr_url">{{T "settings.flaresolverrURL"}}</label>
-        <input id="flaresolverr_url" name="flaresolverr_url" type="url" value="{{.Settings.FlareSolverrURL}}" placeholder="{{T "settings.flaresolverrURLPlaceholder"}}">
+        <input id="flaresolverr_url" name="flaresolverr_url" type="text" inputmode="url" autocomplete="off" spellcheck="false" value="{{.Settings.FlareSolverrURL}}" placeholder="{{T "settings.flaresolverrURLPlaceholder"}}">
+        {{with index .FieldErrors "flaresolverr_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
         <p class="help">{{T "settings.flaresolverrHelp"}}</p>
-        <div class="actions">
-          <button class="btn" type="submit" formaction="/settings/flaresolverr/test" formmethod="post">{{T "settings.testFlareSolverr"}}</button>
-        </div>
       </div>
       <div class="field">
         <label for="flaresolverr_timeout_seconds">{{T "settings.flaresolverrTimeout"}}</label>
@@ -213,6 +213,7 @@
     </div>
     <div class="actions">
       <button class="btn primary" type="submit">{{T "settings.save"}}</button>
+      <button class="btn" type="submit" formaction="/settings/flaresolverr/test" formmethod="post">{{T "settings.testFlareSolverr"}}</button>
     </div>
   </form>
   {{end}}

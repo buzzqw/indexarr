@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -593,12 +592,12 @@ func (s *Server) ensureStoredDefinition(r *http.Request, id string) error {
 // indexerInputFromForm parses the generated fields. Empty password fields are
 // omitted (keep the stored secret); the clear checkbox sends an empty value,
 // which the service interprets as a deletion.
-func indexerInputFromForm(r *http.Request, parsed *definition.Definition) (indexersvc.Input, error) {
+func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Definition) (indexersvc.Input, error) {
 	priority := 25
 	if raw := strings.TrimSpace(r.FormValue("priority")); raw != "" {
 		value, err := strconv.Atoi(raw)
 		if err != nil {
-			return indexersvc.Input{}, errors.New("La priorità deve essere un numero")
+			return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.priorityNumber"))
 		}
 		priority = value
 	}
@@ -617,20 +616,21 @@ func indexerInputFromForm(r *http.Request, parsed *definition.Definition) (index
 	switch challenge {
 	case "", "none", "flaresolverr":
 	default:
-		return indexersvc.Input{}, errors.New("La gestione Cloudflare deve essere globale, nessuna o FlareSolverr")
+		return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.challenge"))
 	}
 	flareURL := strings.TrimSpace(r.FormValue("flaresolverr_url"))
 	if flareURL != "" {
-		parsed, err := url.Parse(flareURL)
-		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-			return indexersvc.Input{}, errors.New("L'URL di FlareSolverr deve essere un indirizzo http:// o https:// assoluto")
+		normalized, ok := normalizeHTTPURL(flareURL)
+		if !ok {
+			return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.flareSolverrURL"))
 		}
+		flareURL = normalized
 	}
 	flareTimeout := strings.TrimSpace(r.FormValue("flaresolverr_timeout"))
 	if flareTimeout != "" {
 		value, err := strconv.Atoi(flareTimeout)
 		if err != nil || value < 5 || value > 300 {
-			return indexersvc.Input{}, errors.New("Il timeout di FlareSolverr deve essere tra 5 e 300 secondi")
+			return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.flareSolverrTimeout"))
 		}
 	}
 	settings := map[string]string{
@@ -647,7 +647,11 @@ func indexerInputFromForm(r *http.Request, parsed *definition.Definition) (index
 	// secret; a new value replaces it. On create the field is required, so an
 	// empty value is still rejected by the service.
 	if rawURL := strings.TrimSpace(r.FormValue("url")); rawURL != "" {
-		settings["url"] = rawURL
+		normalized, ok := normalizeHTTPURL(rawURL)
+		if !ok {
+			return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.url"))
+		}
+		settings["url"] = normalized
 	}
 	if r.FormValue("allow_private") != "" {
 		settings["allow_private"] = "true"
@@ -683,10 +687,10 @@ func indexerInputFromForm(r *http.Request, parsed *definition.Definition) (index
 		if raw := strings.TrimSpace(firstValue(values)); raw != "" {
 			value, err := strconv.Atoi(raw)
 			if err != nil {
-				return indexersvc.Input{}, errors.New("L'intervallo deve essere un numero di secondi")
+				return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.intervalNumber"))
 			}
 			if value < 0 || (value > 0 && value < 60) {
-				return indexersvc.Input{}, errors.New("L'intervallo deve essere 0 o almeno 60 secondi")
+				return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.intervalMin"))
 			}
 			seconds = value
 		}
