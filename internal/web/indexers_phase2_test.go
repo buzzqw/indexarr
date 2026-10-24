@@ -153,7 +153,7 @@ func TestPasteExtToURLOpensExtTo(t *testing.T) {
 
 func TestSiteChooserListsStatesAndLocalizedCategories(t *testing.T) {
 	env := newNativeEnv(t)
-	body := get(t, env.handler, "/indexers/new").Body.String()
+	body := get(t, env.handler, "/indexers/new?all=1").Body.String()
 	for _, want := range []string{"Supported sites", "Verified", "Testing", "Torznab (generic)"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("site chooser missing %q", want)

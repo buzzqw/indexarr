@@ -166,7 +166,7 @@ func TestApplicationValidation(t *testing.T) {
 		t.Fatalf("status = %d, want 400: %s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"The name is required.", "http:// or https://", "The API key is required."} {
+	for _, want := range []string{"http:// or https://", "The API key is required."} {
 		if !strings.Contains(body, want) {
 			t.Errorf("validation page missing %q", want)
 		}

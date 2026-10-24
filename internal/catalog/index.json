@@ -24,7 +24,8 @@
     "url": "https://1337x.tube/",
     "usage": 1,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "academictorrents",
@@ -42,7 +43,8 @@
     ],
     "url": "https://academictorrents.com/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "acgnx",
@@ -65,7 +67,8 @@
     ],
     "url": "https://share.acgnx.se/rss.xml",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "animetosho",
@@ -83,7 +86,8 @@
     ],
     "url": "https://animetosho.org/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "anirena",
@@ -104,7 +108,8 @@
     ],
     "url": "https://www.anirena.com/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "audiobookbay",
@@ -122,7 +127,8 @@
     ],
     "url": "https://audiobookbay.lu/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "bangumimoe",
@@ -140,7 +146,8 @@
     ],
     "url": "https://bangumi.moe/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "bitsearch",
@@ -165,7 +172,8 @@
     ],
     "url": "https://bitsearch.eu/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "bt4g",
@@ -187,7 +195,8 @@
     ],
     "url": "https://bt4gprx.com/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "btdig",
@@ -202,7 +211,8 @@
     ],
     "url": "https://btdig.com/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "corsaro",
@@ -223,7 +233,8 @@
     "family": "xbtit",
     "italian": true,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "corsaro-account",
@@ -245,7 +256,8 @@
     ],
     "url": "https://ilcorsaroblu.org/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "example-html",
@@ -268,7 +280,8 @@
     ],
     "url": "https://tracker.example.invalid/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "extto",
@@ -298,7 +311,8 @@
     "family": "custom",
     "italian": true,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "eztv",
@@ -320,7 +334,8 @@
     ],
     "url": "https://eztvx.to/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "fosstorrents",
@@ -339,7 +354,8 @@
     ],
     "url": "https://fosstorrents.com/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "gazelle-generic",
@@ -362,7 +378,8 @@
     "url": "https://gazelle.example.invalid/",
     "family": "gazelle",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "ildragonegro",
@@ -382,7 +399,8 @@
     "family": "custom",
     "italian": true,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "internetarchive",
@@ -404,7 +422,8 @@
     ],
     "url": "https://archive.org/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "jk-0magnet",
@@ -427,7 +446,8 @@
     "source": "jackett",
     "evidence": "GET https://16mag.net/ -\u003e HTTP 200, 2445 bytes, title \"ØMagnet - Torrent Sharing Made Easy\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-13city",
@@ -455,7 +475,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://13city.org/login.php -\u003e HTTP 200, 26277 bytes, title \"13City :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-52bt",
@@ -483,7 +504,8 @@
     "source": "jackett",
     "evidence": "GET https://edoqsc3t.529075.xyz/ -\u003e HTTP 200, 106881 bytes, title \"52BT - Discover and share resources faster\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-acgrip",
@@ -506,7 +528,8 @@
     "source": "jackett",
     "evidence": "GET https://acg.rip/ -\u003e HTTP 200, 26813 bytes, title \"ACG.RIP\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-anibt",
@@ -532,7 +555,8 @@
     "source": "jackett",
     "evidence": "GET https://anibt.net/ -\u003e HTTP 200, 262144 bytes, title \"AniBT · 动画字幕组与新番分享平台\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-anidub",
@@ -559,7 +583,8 @@
     "source": "jackett",
     "evidence": "GET https://tr.anidub.com/ -\u003e HTTP 200, 137143 bytes, title \"AniDUB Tracker Скачать аниме бесплатно на торрент трекер Анидаб\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-anilibria",
@@ -583,7 +608,8 @@
     "source": "jackett",
     "evidence": "GET https://aniliberty.top/ -\u003e HTTP 200, 231806 bytes, title \"AniLiberty — так звучит аниме!\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-animebybelka",
@@ -610,7 +636,8 @@
     "source": "jackett",
     "evidence": "GET https://anibelka.com/ -\u003e HTTP 200, 140033 bytes, title \"Аниме от Белки. Главная\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-animelayer",
@@ -636,7 +663,8 @@
     "source": "jackett",
     "evidence": "GET https://animelayer.ru/ -\u003e HTTP 200, 71342 bytes, title \"Animelayer - популярный аниме трекер\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-animetosho-xyz",
@@ -660,7 +688,8 @@
     "source": "jackett",
     "evidence": "GET https://animetosho.net/ -\u003e HTTP 200, 213113 bytes, title \"Anime Tosho\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-anisource",
@@ -683,7 +712,8 @@
     "url": "https://asnet.pw/",
     "source": "jackett",
     "evidence": "GET https://asnet.pw/ -\u003e dial tcp [2001:470:1f1d:2e7::ffff]:443: connect: network is unreachable, checked 2026-10-23",
-    "proposable": false
+    "proposable": false,
+    "latest": false
   },
   {
     "id": "jk-arabafenice",
@@ -715,7 +745,8 @@
     "italian": true,
     "source": "jackett",
     "evidence": "GET https://www.arabafenice.me/sbg_login_classic.php -\u003e HTTP 200, 12354 bytes, title \"ArabaFenice\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-best-torrents",
@@ -745,7 +776,8 @@
     "source": "jackett",
     "evidence": "GET https://best-torrents.com/ -\u003e HTTP 200, 55373 bytes, title \"Best-Torrents.com - NAJLEPSZA BAZA TORRENTOW\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-bigfangroup",
@@ -774,7 +806,8 @@
     "source": "jackett",
     "evidence": "GET https://bigfangroup.org/ -\u003e HTTP 200, 24390 bytes, title \"\\xc3\\xeb\\xe0\\xe2\\xed\\xe0\\xff BigFANGroup.org - \\xf1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc \\xe1\\xe5\\xe7 \\xf0\\xe5\\xe3\\xe8\\xf1\\xf2\\xf0\\xe0\\xf6\\xe8\\xe8\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-blueroms",
@@ -797,7 +830,8 @@
     "source": "jackett",
     "evidence": "GET https://www.blueroms.ws/ -\u003e HTTP 200, 21157 bytes, title \"BlueRoms: Download Game ROMs and ISOs\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-booktracker",
@@ -820,7 +854,8 @@
     "source": "jackett",
     "evidence": "GET https://booktracker.org/ -\u003e HTTP 200, 262144 bytes, title \"Книжный трекер\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-bootytape",
@@ -843,7 +878,8 @@
     "source": "jackett",
     "evidence": "GET https://ssl.bootytape.com/ -\u003e HTTP 200, 17340 bytes, title \"Free Porn Sex Torrents Black Homemade Amateur - BootyTapeBTapes\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-btdirectory",
@@ -862,7 +898,8 @@
     "url": "https://btmulu.live/",
     "source": "jackett",
     "evidence": "GET https://btmulu.live/ -\u003e HTTP 403, 5569 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-btetree",
@@ -884,7 +921,8 @@
     "url": "https://bt.etree.org/",
     "source": "jackett",
     "evidence": "GET https://bt.etree.org/ -\u003e HTTP 403, 5605 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-btschool",
@@ -913,7 +951,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://pt.btschool.club/login.php -\u003e HTTP 200, 5766 bytes, title \"BTSCHOOL :: 登录 比特校园PT小乐园 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-byrutor",
@@ -937,7 +976,8 @@
     "source": "jackett",
     "evidence": "GET https://byrutgame.org/ -\u003e HTTP 200, 262144 bytes, title \"Скачать игры на ПК \u0026#91;последние версии 2026\u0026#93; через торрент бесплатно\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-carpt",
@@ -964,7 +1004,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://carpt.net/login.php -\u003e HTTP 200, 10122 bytes, title \"CarPT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-catorrent",
@@ -988,7 +1029,8 @@
     "source": "jackett",
     "evidence": "GET https://catorrent.net/ -\u003e HTTP 200, 43363 bytes, title \"Скачать игры через торрент бесплатно - Крупная база игр от Catorrent.net\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-chdbits",
@@ -1015,7 +1057,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://ptchdbits.co/login.php -\u003e HTTP 200, 6234 bytes, title \"CHDBits :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-comicat",
@@ -1041,7 +1084,8 @@
     "source": "jackett",
     "evidence": "GET https://www.comicat.org/public/html/start/ -\u003e HTTP 200, 1132 bytes, title \"(no title)\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-crackingpatching",
@@ -1065,7 +1109,8 @@
     "source": "jackett",
     "evidence": "GET https://crackingpatching.com/ -\u003e HTTP 200, 82558 bytes, title \"CrackingPatching - Believe us we can do it!\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-damagnet",
@@ -1085,7 +1130,8 @@
     "source": "jackett",
     "evidence": "GET https://damag.net/ -\u003e HTTP 200, 8994 bytes, title \"Da MagNet: Home\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-deildu",
@@ -1113,7 +1159,8 @@
     "url": "https://deildu.net/",
     "source": "jackett",
     "evidence": "GET https://deildu.net/login.php?returnto=%2F -\u003e HTTP 200, 2565 bytes, title \"Deildu.net \u0026rsaquo; Innskr\\xe1ning\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-devil-torrents",
@@ -1143,7 +1190,8 @@
     "source": "jackett",
     "evidence": "GET https://devil-torrents.pl/ -\u003e HTTP 200, 209367 bytes, title \"Torrenty - darmowe torrenty , nowe torrenty\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-discfan",
@@ -1170,7 +1218,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://discfan.net/login.php -\u003e HTTP 200, 13379 bytes, title \"DiscFan :: 登錄 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-divxtotal",
@@ -1196,7 +1245,8 @@
     "source": "jackett",
     "evidence": "GET https://divxtotal.foo/ -\u003e HTTP 200, 91387 bytes, title \"DivxTotaL - Descargar Torrent Peliculas Series Programas gratis\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-dmhy",
@@ -1225,7 +1275,8 @@
     "source": "jackett",
     "evidence": "GET https://share.dmhy.org/ -\u003e HTTP 200, 262144 bytes, title \"首頁 - 動漫花園資源網 - 動漫愛好者的自由交流平台\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-dontorrent",
@@ -1249,7 +1300,8 @@
     "source": "jackett",
     "evidence": "GET https://dontorrent.channel/ -\u003e HTTP 200, 38172 bytes, title \"Descargar Películas y Series Torrent Gratis en Español - DonTorrent\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-draupnirr",
@@ -1277,7 +1329,8 @@
     "url": "https://draupnirr.xyz/",
     "source": "jackett",
     "evidence": "GET https://draupnirr.xyz/login -\u003e HTTP 200, 9907 bytes, title \"Connexion — Draupnirr\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-dreamingtree",
@@ -1300,7 +1353,8 @@
     "source": "jackett",
     "evidence": "GET https://dreamingtree.org/ -\u003e HTTP 200, 1795 bytes, title \"dreamingtree\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-dxp",
@@ -1325,7 +1379,8 @@
     "url": "https://dxp.ru/",
     "source": "jackett",
     "evidence": "GET https://dxp.ru/login.php -\u003e HTTP 200, 8752 bytes, title \"Галактика ДХП\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-ebookbay",
@@ -1349,7 +1404,8 @@
     "source": "jackett",
     "evidence": "GET https://ebb.la/ -\u003e HTTP 200, 48142 bytes, title \"Ebook Online Download, Free Book Torrent on EBook Bay (EBB)\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-ehentai",
@@ -1373,7 +1429,8 @@
     "source": "jackett",
     "evidence": "GET https://e-hentai.org/ -\u003e HTTP 200, 62366 bytes, title \"E-Hentai Galleries - The Free Hentai Doujinshi, Manga and Image Gallery System\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-electro-torrent",
@@ -1403,7 +1460,8 @@
     "source": "jackett",
     "evidence": "GET https://electro-torrent.pl/ -\u003e HTTP 200, 262144 bytes, title \"Electro-Torrent.pl\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-epublibre",
@@ -1426,7 +1484,8 @@
     "source": "jackett",
     "evidence": "GET https://www.epublibre.org/ -\u003e HTTP 200, 76339 bytes, title \"epublibre - inicio\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-erai-raws",
@@ -1450,7 +1509,8 @@
     "source": "jackett",
     "evidence": "GET https://www.erai-raws.info/ -\u003e HTTP 200, 172237 bytes, title \"Erai-raws\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-ex-torrenty",
@@ -1480,7 +1540,8 @@
     "source": "jackett",
     "evidence": "GET https://ex-torrenty.org/ -\u003e HTTP 200, 29965 bytes, title \"Ex-torrenty.org - NAJLEPSZA BAZA TORRENTOW\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-exkinoray",
@@ -1508,7 +1569,8 @@
     "url": "https://exkinoray.ru/",
     "source": "jackett",
     "evidence": "GET https://exkinoray.ru/login.php?returnto= -\u003e HTTP 200, 14296 bytes, title \"ExKinoRay.ru :: Вход\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-extratorrent-st",
@@ -1537,7 +1599,8 @@
     "url": "https://extratorrent.st/",
     "source": "jackett",
     "evidence": "GET https://extratorrent.st/ -\u003e HTTP 403, 5480 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-fenyarnyek-tracker",
@@ -1569,7 +1632,8 @@
     "source": "jackett",
     "evidence": "GET http://tracker.fenyarnyek.com/ -\u003e HTTP 200, 7529 bytes, title \"Fenyarnyek-Tracker .::. Index\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-file-tracker",
@@ -1598,7 +1662,8 @@
     "url": "https://file-tracker.net/",
     "source": "jackett",
     "evidence": "GET https://file-tracker.net/ -\u003e HTTP 522, 7247 bytes, title \"file-tracker.net | 522: Connection timed out\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-filemood",
@@ -1617,7 +1682,8 @@
     "url": "https://filemood.com/",
     "source": "jackett",
     "evidence": "GET https://filemood.com/ -\u003e HTTP 429, 3288 bytes, title \"One moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-freejavtorrent",
@@ -1640,7 +1706,8 @@
     "source": "jackett",
     "evidence": "GET https://www.freejavtorrent.com/ -\u003e HTTP 200, 56958 bytes, title \"Free JAV Torrent | Best Free Japanese HD Porn Movies Download\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-futuretorrent",
@@ -1669,7 +1736,8 @@
     "italian": true,
     "source": "jackett",
     "evidence": "no live probe",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-gay-torrents",
@@ -1698,7 +1766,8 @@
     "source": "jackett",
     "evidence": "GET https://www.gay-torrents.net/ -\u003e HTTP 200, 4507 bytes, title \"Gay Torrents Live Free - Your Free Gay Torrent Site ;) -\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-gazellegamesapi",
@@ -1724,7 +1793,8 @@
     "family": "gazelle",
     "source": "jackett",
     "evidence": "GET https://gazellegames.net/login.php -\u003e HTTP 200, 7698 bytes, title \"Login :: GazelleGames.net\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-ggpt",
@@ -1751,7 +1821,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://www.gamegamept.com/login.php -\u003e HTTP 200, 16319 bytes, title \"GGPT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-girotorrent",
@@ -1782,7 +1853,8 @@
     "italian": true,
     "source": "jackett",
     "evidence": "GET https://girotorrent.org/ -\u003e HTTP 200, 15533 bytes, title \"Girotorrent.org .::. Index\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-haidan",
@@ -1809,7 +1881,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://www.haidan.cc/login.php -\u003e HTTP 200, 6489 bytes, title \"HAIDAN :: 登录 海胆之家 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hd-unit3d-api",
@@ -1834,7 +1907,8 @@
     "family": "unit3d",
     "source": "jackett",
     "evidence": "GET https://hd-united.vn/login -\u003e HTTP 200, 5581 bytes, title \"Login - HD-UNiT3D\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hdfans",
@@ -1864,7 +1938,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://hdfans.org/login.php -\u003e HTTP 200, 13592 bytes, title \"HDFans :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hdgalaktik",
@@ -1893,7 +1968,8 @@
     "source": "jackett",
     "evidence": "GET https://www.trackerpmr.com/ -\u003e HTTP 200, 32707 bytes, title \"Главная\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hdhome",
@@ -1920,7 +1996,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET http://hdhome.org/login.php -\u003e HTTP 200, 7048 bytes, title \"HDHome :: 登录 高清家园 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hdkylin",
@@ -1950,7 +2027,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://na.hdkylin.com/login.php -\u003e HTTP 200, 6104 bytes, title \"HDKylin - 麒麟 :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hdrtorrent",
@@ -1974,7 +2052,8 @@
     "source": "jackett",
     "evidence": "GET https://hdrtorrents.net/ -\u003e HTTP 200, 66753 bytes, title \"HDR Torrents - Filmes e Séries Torrent em Alta Definição 2026\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hdsky",
@@ -2001,7 +2080,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://hdsky.me/login.php -\u003e HTTP 200, 7889 bytes, title \"HDSky :: 登录 高清视界|高清天空|高清发烧友的后花园 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hdtime",
@@ -2031,7 +2111,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://hdtime.org/login.php -\u003e HTTP 200, 9853 bytes, title \"HDTIME :: 登录 高清时间 | pt｜下载｜10bit |HDTimePT - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hdtorrentsit",
@@ -2059,7 +2140,8 @@
     "italian": true,
     "source": "jackett",
     "evidence": "GET https://hdtorrents.eu/login -\u003e HTTP 200, 5432 bytes, title \"Login - HD Torrents\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hdu",
@@ -2088,7 +2170,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET http://pt.upxin.net/login.php -\u003e HTTP 200, 18873 bytes, title \"HDU :: 登录(Z For A)-High Definition In Upxin|Privte Torrents\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-helltorrents",
@@ -2117,7 +2200,8 @@
     "url": "https://helltorrents.com/",
     "source": "jackett",
     "evidence": "GET https://helltorrents.com/ -\u003e HTTP 403, 5481 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-hhanclub",
@@ -2144,7 +2228,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://hhanclub.net/login.php -\u003e HTTP 200, 14130 bytes, title \"HHCLUB :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-huntorrent",
@@ -2172,7 +2257,8 @@
     "url": "https://huntorrent.org/",
     "source": "jackett",
     "evidence": "GET https://huntorrent.org/ -\u003e HTTP 200, 68880 bytes, title \"HunTorrent | Bejelentkezés\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-itatorrents",
@@ -2201,7 +2287,8 @@
     "italian": true,
     "source": "jackett",
     "evidence": "GET https://itatorrents.xyz/login -\u003e HTTP 200, 6237 bytes, title \"Login - ItaTorrents\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-jme-reunit3d-api",
@@ -2230,7 +2317,8 @@
     "family": "unit3d",
     "source": "jackett",
     "evidence": "GET https://jme-reunit3d.de/ -\u003e HTTP 503, 1139 bytes, title \"JME Maintenance Page\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-keepfriends",
@@ -2257,7 +2345,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://pt.keepfrds.com/login.php -\u003e HTTP 200, 5925 bytes, title \"Starship\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-kickasstorrents-to",
@@ -2286,7 +2375,8 @@
     "url": "https://kickass.torrentbay.st/",
     "source": "jackett",
     "evidence": "GET https://kickass.torrentbay.st/ -\u003e HTTP 403, 5636 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-kickasstorrents-ws",
@@ -2314,7 +2404,8 @@
     "url": "https://kickass.ws/",
     "source": "jackett",
     "evidence": "GET https://kickass.ws/ -\u003e HTTP 403, 5475 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-kinorun",
@@ -2337,7 +2428,8 @@
     "source": "jackett",
     "evidence": "GET http://kinorun.top/ -\u003e HTTP 200, 14390 bytes, title \"\\xdd\\xea\\xf1\\xea\\xeb\\xfe\\xe7\\xe8\\xe2\\xed\\xee\\xe5 \\xef\\xee\\xf0\\xed\\xee \\xf1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc, \\xef\\xee\\xf0\\xed\\xee\\xe2\\xe8\\xe4\\xe5\\xee KINORUN \\xed\\xe0 \\xca\\xe8\\xed\\xee\\xf0\\xf3\\xed.\\xee\\xed\\xeb\\xe0\\xe9\\xed\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-kinozal",
@@ -2366,7 +2458,8 @@
     "source": "jackett",
     "evidence": "GET https://kinozal.me/ -\u003e HTTP 200, 34553 bytes, title \"\\xd2\\xee\\xf0\\xf0\\xe5\\xed\\xf2 \\xf2\\xf0\\xe5\\xea\\xe5\\xf0 \\xca\\xe8\\xed\\xee\\xe7\\xe0\\xeb.\\xcc\\xc5\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-lostfilm",
@@ -2389,7 +2482,8 @@
     "source": "jackett",
     "evidence": "GET https://www.lostfilm.tv/ -\u003e HTTP 200, 70848 bytes, title \"LostFilm.TV. Лучшие сериалы. Официальный сайт Лостфильм - уникальный ресурс о зарубежных сер\\xd0\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-mactorrentsdownload",
@@ -2413,7 +2507,8 @@
     "source": "jackett",
     "evidence": "GET https://www.torrentmac.net/ -\u003e HTTP 200, 119679 bytes, title \"Mac Torrents | Torrent Download Apple, Mac OSX Apps \u0026amp; Games Download\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-magnetcat",
@@ -2440,7 +2535,8 @@
     "url": "https://magnetcatcat.com/",
     "source": "jackett",
     "evidence": "GET https://magnetcatcat.com/ -\u003e HTTP 403, 5574 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-magnetdownload",
@@ -2460,7 +2556,8 @@
     "source": "jackett",
     "evidence": "GET https://www.magnetdownload.com/ -\u003e HTTP 200, 8230 bytes, title \"MagnetDownload.COM - A Torrent \u0026 Magnet Links Search Engine based on DHT\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-magnetz",
@@ -2489,7 +2586,8 @@
     "url": "https://magnetz.eu/",
     "source": "jackett",
     "evidence": "GET https://magnetz.eu/login -\u003e HTTP 200, 5270 bytes, title \"Magnetz\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-marinetracker",
@@ -2515,7 +2613,8 @@
     "url": "https://seatracker.org/",
     "source": "jackett",
     "evidence": "GET https://seatracker.org/ -\u003e HTTP 403, 5479 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-mazepa",
@@ -2544,7 +2643,8 @@
     "source": "jackett",
     "evidence": "GET https://mazepa.to/ -\u003e HTTP 200, 86233 bytes, title \"Головна - Мазепа Торент - Українське озвучення\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-megapeer",
@@ -2573,7 +2673,8 @@
     "source": "jackett",
     "evidence": "GET https://megapeer.vip/ -\u003e HTTP 200, 83404 bytes, title \"\\xce\\xf2\\xea\\xf0\\xfb\\xf2\\xfb\\xe9 \\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2-\\xf2\\xf0\\xe5\\xea\\xe5\\xf0 :: MegaPeer.vip\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-mejortorrent",
@@ -2597,7 +2698,8 @@
     "url": "https://www47.mejortorrent.eu/",
     "source": "jackett",
     "evidence": "GET https://www47.mejortorrent.eu/ -\u003e HTTP 403, 5614 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-metaltracker",
@@ -2620,7 +2722,8 @@
     "source": "jackett",
     "evidence": "GET https://en.metal-tracker.com/ -\u003e HTTP 200, 58011 bytes, title \"Metal Download, Rock, Heavy music for free! | Metal Torrent Tracker\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-miobt",
@@ -2646,7 +2749,8 @@
     "source": "jackett",
     "evidence": "GET https://miobt.com/public/html/start/ -\u003e HTTP 200, 1132 bytes, title \"(no title)\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-mixtapetorrent",
@@ -2669,7 +2773,8 @@
     "source": "jackett",
     "evidence": "GET http://www.mixtapetorrent.com/ -\u003e HTTP 200, 48634 bytes, title \"MixtapeTorrent.com | The Latest Mixtape Downloads, Mixtape News, \u0026 Independent Music Promotion\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-musebootlegs",
@@ -2691,7 +2796,8 @@
     "url": "https://musebootlegs.com/",
     "source": "jackett",
     "evidence": "GET https://musebootlegs.com/ -\u003e HTTP 403, 5481 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-mvgroupforum",
@@ -2710,7 +2816,8 @@
     "url": "https://forums.mvgroup.org/",
     "source": "jackett",
     "evidence": "GET https://forums.mvgroup.org/ -\u003e HTTP 403, 5505 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-mypornclub",
@@ -2733,7 +2840,8 @@
     "source": "jackett",
     "evidence": "GET https://myporn.club/ -\u003e HTTP 200, 136781 bytes, title \"My Porn Club - Free Sharing Site\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-nekobt",
@@ -2758,7 +2866,8 @@
     "source": "jackett",
     "evidence": "GET https://nekobt.to/ -\u003e HTTP 200, 262144 bytes, title \"Home - nekoBT\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-nethd",
@@ -2785,7 +2894,8 @@
     "url": "https://nethd.org/",
     "source": "jackett",
     "evidence": "GET https://nethd.org/login.php?returnto= -\u003e HTTP 200, 6005 bytes, title \"Đăng nhập\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-new-team",
@@ -2813,7 +2923,8 @@
     "url": "https://new-team.org/",
     "source": "jackett",
     "evidence": "GET https://new-team.org:443/login.php -\u003e HTTP 200, 12389 bytes, title \"Вход • new-team.org\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-newstudiol",
@@ -2835,7 +2946,8 @@
     "url": "https://newstudio.tv/",
     "source": "jackett",
     "evidence": "GET https://newstudio.tv/ -\u003e context deadline exceeded (Client.Timeout exceeded while awaiting headers), checked 2026-10-23",
-    "proposable": false
+    "proposable": false,
+    "latest": false
   },
   {
     "id": "jk-nipponsei",
@@ -2858,7 +2970,8 @@
     "source": "jackett",
     "evidence": "GET https://nipponsei.minglong.org/ -\u003e HTTP 200, 16165 bytes, title \"Nipponsei - Music Fresh From Japan\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-noname-clubl",
@@ -2885,7 +2998,8 @@
     "source": "jackett",
     "evidence": "GET https://nnmclub.to/ -\u003e HTTP 200, 148414 bytes, title \"\\xd2\\xee\\xf0\\xf0\\xe5\\xed\\xf2-\\xf2\\xf0\\xe5\\xea\\xe5\\xf0 :: NNM-Club\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-okpt",
@@ -2916,7 +3030,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://www.okpt.net/login.php -\u003e HTTP 200, 14506 bytes, title \"OKPT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-onejav",
@@ -2939,7 +3054,8 @@
     "source": "jackett",
     "evidence": "GET https://onejav.com/ -\u003e HTTP 200, 82848 bytes, title \"OneJAV.com - Free JAV Torrents\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-opencd",
@@ -2963,7 +3079,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://open.cd/login.php -\u003e HTTP 200, 7026 bytes, title \"OpenCD :: 登錄\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-opensharing",
@@ -2986,7 +3103,8 @@
     "source": "jackett",
     "evidence": "GET https://opensharing.org/ -\u003e HTTP 200, 55748 bytes, title \"\u0026bull; Портал\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-panda",
@@ -3016,7 +3134,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://pandapt.net/login.php -\u003e HTTP 200, 8175 bytes, title \"PANDA :: 登录 熊猫高清\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pandacd",
@@ -3039,7 +3158,8 @@
     "source": "jackett",
     "evidence": "GET https://pandacd.io/ -\u003e HTTP 200, 193658 bytes, title \"PandaCD\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pctorrent",
@@ -3063,7 +3183,8 @@
     "source": "jackett",
     "evidence": "GET https://pc-torrents.games/ -\u003e HTTP 200, 24928 bytes, title \"\\xd1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc \\xe8\\xe3\\xf0\\xfb \\xf7\\xe5\\xf0\\xe5\\xe7 \\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-plugintorrent",
@@ -3087,7 +3208,8 @@
     "source": "jackett",
     "evidence": "GET https://plugintorrent.com/ -\u003e HTTP 200, 237450 bytes, title \"Plugintorrent.com - Free Torrent source for VST Plugin, Audio Sample, Library, Preset, DAW, and Audio Software since 2015\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pornolab",
@@ -3109,7 +3231,8 @@
     "url": "https://pornolab.net/",
     "source": "jackett",
     "evidence": "GET https://pornolab.net/ -\u003e HTTP 200, 516 bytes, title \"\\xc1\\xe8\\xf2\\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2 \\xf2\\xf0\\xe5\\xea\\xe5\\xf0 PornoLab.Net. \\xc4\\xe5\\xeb\\xe8\\xf2\\xe5\\xf1\\xfc \\xf3\\xe4\\xee\\xe2\\xee\\xeb\\xfc\\xf1\\xf2\\xe2\\xe8\\xff\\xec\\xe8!\", checked 2026-10-23; page too small to trust",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pornotorrent",
@@ -3131,7 +3254,8 @@
     "url": "https://pornotorrent.com.br/",
     "source": "jackett",
     "evidence": "GET https://pornotorrent.com.br/ -\u003e HTTP 502, 6432 bytes, title \"pornotorrent.com.br | 502: Bad gateway\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pornrips",
@@ -3154,7 +3278,8 @@
     "source": "jackett",
     "evidence": "GET https://pornrips.to/ -\u003e HTTP 200, 160836 bytes, title \"PornRips.To \u0026#8211; Home of PRT 1080p \u0026amp; 720p HEVC x265 Porn XXX Releases\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pornxlab",
@@ -3177,7 +3302,8 @@
     "source": "jackett",
     "evidence": "GET https://www.pornxlab.com/ -\u003e HTTP 200, 55797 bytes, title \"PornXLab - Free Porn Studio Movie Torrents\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-postman-api",
@@ -3206,7 +3332,8 @@
     "url": "http://tracker2.postman.i2p/",
     "source": "jackett",
     "evidence": "GET http://tracker2.postman.i2p/ -\u003e dial tcp: lookup tracker2.postman.i2p on 9.9.9.9:53: no such host, checked 2026-10-23",
-    "proposable": false
+    "proposable": false,
+    "latest": false
   },
   {
     "id": "jk-proporno",
@@ -3229,7 +3356,8 @@
     "source": "jackett",
     "evidence": "GET https://proporno.org/ -\u003e HTTP 200, 69180 bytes, title \"скачать порно торренты на proporno\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pterclub",
@@ -3259,7 +3387,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://pterclub.net/login.php -\u003e HTTP 200, 31527 bytes, title \"ＰＴ之友俱乐部 :: 登录 PTerClub\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-ptlgs",
@@ -3286,7 +3415,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://ptlgs.org/login.php -\u003e HTTP 200, 11598 bytes, title \"PTLGS :: 登录\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pttey",
@@ -3313,7 +3443,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://pt.tey.cc/login.php -\u003e HTTP 200, 13257 bytes, title \"Tey :: 登录 太乙|Tey - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pttime",
@@ -3343,7 +3474,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://www.pttime.org/login.php?returnto= -\u003e HTTP 200, 21443 bytes, title \"PTT :: 登录 - 分享你所爱，他所求，得我所愿！\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-ptzone",
@@ -3372,7 +3504,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://ptzone.xyz/login.php -\u003e HTTP 200, 12950 bytes, title \"PTzone :: 登錄 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-pussytorrents",
@@ -3394,7 +3527,8 @@
     "url": "https://pussytorrents.org/",
     "source": "jackett",
     "evidence": "GET https://pussytorrents.org/ -\u003e HTTP 200, 16556 bytes, title \"Login :: Pussytorrents.org\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-putao",
@@ -3423,7 +3557,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://pt.sjtu.edu.cn/login.php -\u003e HTTP 200, 8885 bytes, title \"葡萄 :: 登录\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-rainbowtracker",
@@ -3448,7 +3583,8 @@
     "url": "https://gaytracker.ru/",
     "source": "jackett",
     "evidence": "GET https://gaytracker.ru/forum/login.php -\u003e HTTP 200, 9027 bytes, title \"Вход :: Радужный трекер\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-rgfootball",
@@ -3471,7 +3607,8 @@
     "source": "jackett",
     "evidence": "GET https://rgfootball.net/ -\u003e HTTP 200, 262144 bytes, title \"Спортивный торрент-трекер RGFootball.net. Футбол Онлайн\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-rintor",
@@ -3494,7 +3631,8 @@
     "source": "jackett",
     "evidence": "GET https://rintor.org/ -\u003e HTTP 200, 113996 bytes, title \"RinTor.Org - Порно торрент трекер Скачать бесплатно порнофильмы русское порно\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-rintornet",
@@ -3517,7 +3655,8 @@
     "source": "jackett",
     "evidence": "GET https://www.rintor.net/ -\u003e HTTP 200, 96786 bytes, title \"RinTor.NeT - Открытый порно торрент трекер без регистрации | Скачать порно\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-riperam",
@@ -3546,7 +3685,8 @@
     "source": "jackett",
     "evidence": "GET https://riperam.org/ -\u003e HTTP 200, 210146 bytes, title \"Riper.AM - Торрент трекер.Скачать торрент.Смотреть онлайн. Фильмы, сериалы, музыка, игры , со\\xd1\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-rudub",
@@ -3569,7 +3709,8 @@
     "source": "jackett",
     "evidence": "GET https://r4.rudub.world/ -\u003e HTTP 200, 41738 bytes, title \"\\xd1\\xec\\xee\\xf2\\xf0\\xe5\\xf2\\xfc \\xf1\\xe5\\xf0\\xe8\\xe0\\xeb\\xfb \\xee\\xed\\xeb\\xe0\\xe9\\xed \\xe1\\xe5\\xf1\\xef\\xeb\\xe0\\xf2\\xed\\xee, \\xed\\xee\\xe2\\xe8\\xed\\xea\\xe8 \\xf1\\xe5\\xf0\\xe8\\xe0\\xeb\\xee\\xe2 2026, \\xef\\xe5\\xf0\\xe5\\xe2\\xee\\xe4 \\xe8 \\xee\\xe7\\xe2\\xf3\\xf7\\xe8\\xe2\\xe0\\xed\\xe8\\xe5 RuDub \\xed\\xe0 RuDub.TV\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-rustorka",
@@ -3597,7 +3738,8 @@
     "url": "https://rustorka.com/",
     "source": "jackett",
     "evidence": "GET https://rustorka.com/forum/index.php -\u003e HTTP 403, 5567 bytes, title \"Каптча\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-rutor",
@@ -3621,7 +3763,8 @@
     "source": "jackett",
     "evidence": "GET https://rutor.info/ -\u003e HTTP 200, 179582 bytes, title \"rutor.info :: Свободный торрент трекер\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-rutracker",
@@ -3650,7 +3793,8 @@
     "source": "jackett",
     "evidence": "GET https://rutracker.org/forum/index.php -\u003e HTTP 200, 96767 bytes, title \"RuTracker.org\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-rutracker-ru",
@@ -3680,7 +3824,8 @@
     "source": "jackett",
     "evidence": "GET http://rutracker.ru/ -\u003e HTTP 200, 218447 bytes, title \"Home :: RuTracker.RU - Свободный торрент трекер\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-selezen",
@@ -3703,7 +3848,8 @@
     "source": "jackett",
     "evidence": "GET https://use.selezen.club/ -\u003e HTTP 200, 12560 bytes, title \"Поиск фильмов - online.selezen.net\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-sewerpt",
@@ -3730,7 +3876,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://sewerpt.com/login.php -\u003e HTTP 200, 13665 bytes, title \"下水道PT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-sexypics",
@@ -3753,7 +3900,8 @@
     "source": "jackett",
     "evidence": "GET https://www.sexy-pics.us/ -\u003e HTTP 200, 41800 bytes, title \"Download XXX (385,750 Torrent Files) Page 1 - Sexy-Pics\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-shareisland-api",
@@ -3782,7 +3930,8 @@
     "italian": true,
     "source": "jackett",
     "evidence": "GET https://shareisland.org/login -\u003e HTTP 200, 5404 bytes, title \"Login - ShareIsland\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-skidrowrepack",
@@ -3806,7 +3955,8 @@
     "source": "jackett",
     "evidence": "GET https://skidrowrepack.com/ -\u003e HTTP 200, 41147 bytes, title \"Games torrent free download - SkidrowRepack.com\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-sktorrent",
@@ -3835,7 +3985,8 @@
     "source": "jackett",
     "evidence": "GET https://sktorrent.eu/torrent/torrents_v2.php?active=0 -\u003e HTTP 200, 50014 bytes, title \"Sk-CzTorrent | stiahni si HD Filmy online - Torrents\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-sktorrent-org",
@@ -3864,7 +4015,8 @@
     "source": "jackett",
     "evidence": "GET https://sktorrent.org/ -\u003e HTTP 200, 11916 bytes, title \"Sktorrent - Torrent Search Engine\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-sosulki",
@@ -3887,7 +4039,8 @@
     "source": "jackett",
     "evidence": "GET https://sosulki.bosk.cc/ -\u003e HTTP 200, 68468 bytes, title \"Порно торрент трекер XXX sosulki.bosk.cc\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-soulvoice",
@@ -3914,7 +4067,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://pt.soulvoice.club/login.php -\u003e HTTP 200, 12082 bytes, title \"聆音Club :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-springsunday",
@@ -3940,7 +4094,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://springsunday.net/login.php -\u003e HTTP 200, 4743 bytes, title \"SSD :: 登录\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-sukebeinyaasi",
@@ -3963,7 +4118,8 @@
     "source": "jackett",
     "evidence": "GET https://sukebei.nyaa.si/ -\u003e HTTP 200, 147640 bytes, title \"Browse :: Sukebei\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-themixingbowl",
@@ -3985,7 +4141,8 @@
     "url": "https://tmb.dj/",
     "source": "jackett",
     "evidence": "GET https://tmb.dj/ -\u003e HTTP 503, 1932 bytes, title \"themixingbowl.org :: Site Maintenance\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-therarbg",
@@ -4015,7 +4172,8 @@
     "source": "jackett",
     "evidence": "GET https://therarbg.to/ -\u003e HTTP 200, 183345 bytes, title \"Download Latest Top Torrents in Multiple Categories The RarBg\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-tjupt",
@@ -4045,7 +4203,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://tjupt.org/login.php -\u003e HTTP 200, 6956 bytes, title \"北洋园PT :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-tlfbits",
@@ -4074,7 +4233,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://pt.eastgame.org/login.php -\u003e HTTP 200, 6311 bytes, title \"TLFBits :: 登录 简单的分享，简单的快乐 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-toloka",
@@ -4103,7 +4263,8 @@
     "source": "jackett",
     "evidence": "GET https://toloka.to/ -\u003e HTTP 200, 23292 bytes, title \"Гуртом — торрент-толока\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrent-pirat",
@@ -4126,7 +4287,8 @@
     "source": "jackett",
     "evidence": "GET http://www.torrent-pirat.com/ -\u003e HTTP 200, 55001 bytes, title \"\u0026bull; Портал\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrentby",
@@ -4146,7 +4308,8 @@
     "source": "jackett",
     "evidence": "GET https://torrent.by/ -\u003e HTTP 200, 262144 bytes, title \"Торрент трекер - torrent.by\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrentbyte",
@@ -4174,7 +4337,8 @@
     "url": "https://torrentbyte.cc/",
     "source": "jackett",
     "evidence": "GET https://torrentbyte.cc/ -\u003e HTTP 403, 5479 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrentcore",
@@ -4202,7 +4366,8 @@
     "url": "https://torrentcore.xyz/",
     "source": "jackett",
     "evidence": "GET https://torrentcore.xyz/ -\u003e HTTP 403, 5480 bytes, title \"Just a moment...\", checked 2026-10-23",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrentdownload",
@@ -4232,7 +4397,8 @@
     "source": "jackett",
     "evidence": "GET https://www.torrentdownload.info/ -\u003e HTTP 200, 40781 bytes, title \"TorrentDownload - Free Torrents Download\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrentkitty",
@@ -4252,7 +4418,8 @@
     "source": "jackett",
     "evidence": "GET https://www.torrentkitty.cam/ -\u003e HTTP 200, 28977 bytes, title \"Torrent Kitty - Free Torrent To Magnet Link Conversion Service\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrentmasters",
@@ -4280,7 +4447,8 @@
     "url": "https://torrentmasters.org/",
     "source": "jackett",
     "evidence": "GET https://torrentmasters.org/login/index/?url=%2F -\u003e HTTP 200, 8105 bytes, title \"TorrentMasters | Bejelentkezés\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrentproject2",
@@ -4300,7 +4468,8 @@
     "source": "jackett",
     "evidence": "GET https://torrentproject.cc/ -\u003e HTTP 200, 11284 bytes, title \"TorrentProject - Torrent Search Engine\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrentsome",
@@ -4327,7 +4496,8 @@
     "source": "jackett",
     "evidence": "GET https://torrentsome269.com/ -\u003e HTTP 200, 109090 bytes, title \"토렌트썸-TORRENTSOME\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrenttip",
@@ -4356,7 +4526,8 @@
     "source": "jackett",
     "evidence": "GET https://torrenttip249.top/ -\u003e HTTP 200, 109720 bytes, title \"Home - 토렌트팁::torrenttip\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-torrenttrader",
@@ -4386,7 +4557,8 @@
     "family": "torrenttrader",
     "source": "jackett",
     "evidence": "GET https://the-torrent-trader.com/login.php?returnto=%2F -\u003e HTTP 200, 5044 bytes, title \"(no title)\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-totheglory",
@@ -4416,7 +4588,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://totheglory.im/login.php -\u003e HTTP 200, 27024 bytes, title \"TTG :: 用户登录\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-tr4ker",
@@ -4445,7 +4618,8 @@
     "url": "https://tr4ker.net/",
     "source": "jackett",
     "evidence": "GET https://tr4ker.net/ -\u003e HTTP 200, 790 bytes, title \"TR4KER\", checked 2026-10-23; page too small to trust",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-trackerzero",
@@ -4475,7 +4649,8 @@
     "italian": true,
     "source": "jackett",
     "evidence": "no live probe",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-traht",
@@ -4498,7 +4673,8 @@
     "source": "jackett",
     "evidence": "GET https://traht.org/ -\u003e HTTP 200, 34053 bytes, title \"\\xc3\\xeb\\xe0\\xe2\\xed\\xe0\\xff | TrahT.org - \\xd2\\xee\\xf0\\xf0\\xe5\\xed\\xf2 \\xf2\\xf0\\xe5\\xea\\xe5\\xf0 \\xe4\\xeb\\xff \\xe2\\xe7\\xf0\\xee\\xf1\\xeb\\xfb\\xf5!\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-tribalmixes",
@@ -4521,7 +4697,8 @@
     "source": "jackett",
     "evidence": "GET https://www.tribalmixes.com/ -\u003e HTTP 200, 34490 bytes, title \"DJ Mixes, Livesets, Club Mixes, Track-Lists | TribalMixes\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-u2",
@@ -4549,7 +4726,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://u2.dmhy.org/portal.php -\u003e HTTP 200, 30055 bytes, title \"Access Point :: U2\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-u3c3",
@@ -4575,7 +4753,8 @@
     "source": "jackett",
     "evidence": "GET https://u3c3.com/ -\u003e HTTP 200, 153394 bytes, title \"U3C3\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-uindex",
@@ -4604,7 +4783,8 @@
     "source": "jackett",
     "evidence": "GET https://uindex.org/ -\u003e HTTP 200, 186605 bytes, title \"UIndex – The Index of Everything You Need!\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-unionfansub",
@@ -4631,7 +4811,8 @@
     "source": "jackett",
     "evidence": "GET https://torrent.unionfansub.com/ -\u003e HTTP 200, 2550 bytes, title \"Torrent ‹ Unión Fansub\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-uniotaku",
@@ -4659,7 +4840,8 @@
     "source": "jackett",
     "evidence": "GET https://tracker.uniotaku.com/ -\u003e HTTP 200, 6047 bytes, title \"UniOtaku - União dos Otakus\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-uztracker",
@@ -4688,7 +4870,8 @@
     "source": "jackett",
     "evidence": "GET https://uztracker.me/ -\u003e HTTP 200, 210563 bytes, title \"Главная :: UzTracker.me Трекер для всех\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-vsthouse",
@@ -4712,7 +4895,8 @@
     "source": "jackett",
     "evidence": "GET https://vsthouse.ru/ -\u003e HTTP 200, 158116 bytes, title \"VSTi инструменты, VST плагины, программы - Все для создания музыки\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-vstorrent",
@@ -4736,7 +4920,8 @@
     "source": "jackett",
     "evidence": "GET https://vstorrent.org/ -\u003e HTTP 200, 246080 bytes, title \"VSTorrent - Torrent Resource For Your Creativity\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-vsttorrents",
@@ -4760,7 +4945,8 @@
     "source": "jackett",
     "evidence": "GET https://vsttorrentz.net/ -\u003e HTTP 200, 121137 bytes, title \"VST Torrent | Download Free Latest VST Plugins\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-wintersakura",
@@ -4790,7 +4976,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://wintersakura.net/login.php -\u003e HTTP 200, 12118 bytes, title \"WinterSakura :: 登录 A little Private Sharing Website. - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-world-torrent",
@@ -4820,7 +5007,8 @@
     "source": "jackett",
     "evidence": "GET https://ww2-darkfox.officiel.cc/ -\u003e HTTP 200, 262144 bytes, title \"(no title)\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-xingtan",
@@ -4844,7 +5032,8 @@
     "family": "nexusphp",
     "source": "jackett",
     "evidence": "GET https://xingtan.one/login.php -\u003e HTTP 200, 8942 bytes, title \"杏坛 :: 登录 - Powered by NexusPHP\", checked 2026-10-23; private, no account used",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-xxxclub",
@@ -4867,7 +5056,8 @@
     "source": "jackett",
     "evidence": "GET https://xxxclub.to/ -\u003e HTTP 200, 35263 bytes, title \"XXXClub : Adult , Porn , XXX , Videos , Download , Torrents\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-xxxtor",
@@ -4890,7 +5080,8 @@
     "source": "jackett",
     "evidence": "GET https://xxxtor.com/ -\u003e HTTP 200, 93183 bytes, title \"XXXTor.Com - Порно Бесплатно и Без Регистрации!\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-zamundalife",
@@ -4920,7 +5111,8 @@
     "source": "jackett",
     "evidence": "GET https://zamunda.life/ -\u003e HTTP 200, 6382 bytes, title \"Zamunda.LIFE - Търсачка за магнитни линкове от Zamunda, ArenaBG и Zelka\", checked 2026-10-23",
     "reachable": true,
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "jk-ztracker",
@@ -4948,7 +5140,8 @@
     "url": "https://ztracker.cc/",
     "source": "jackett",
     "evidence": "GET https://ztracker.cc/login.php -\u003e HTTP 200, 23023 bytes, title \"Ztracker.cc :: Bejelentkez\\xe9s\", checked 2026-10-23; login or anti-bot page",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "kickasstorrents",
@@ -4974,7 +5167,8 @@
     ],
     "url": "https://thekat.info/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "knaben",
@@ -5001,7 +5195,8 @@
     "url": "https://rss.knaben.org/ita",
     "usage": 1,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "knaben-search",
@@ -5024,7 +5219,8 @@
     ],
     "url": "https://knaben.org/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "librivox",
@@ -5042,7 +5238,8 @@
     ],
     "url": "https://librivox.org/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "limetorrents",
@@ -5069,7 +5266,8 @@
     "url": "https://www.limetorrents.fun/",
     "usage": 1,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "linuxtracker",
@@ -5088,7 +5286,8 @@
     ],
     "url": "https://linuxtracker.org/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "mikan",
@@ -5106,7 +5305,8 @@
     ],
     "url": "https://mikanani.me/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "mircrew",
@@ -5130,7 +5330,8 @@
     "url": "https://mircrew-releases.org/",
     "italian": true,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "newznab-generic",
@@ -5155,7 +5356,8 @@
     ],
     "url": "https://newznab.example.invalid/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "nexusphp-generic",
@@ -5182,7 +5384,8 @@
     "url": "https://nexusphp.example.invalid/",
     "family": "nexusphp",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "nyaa",
@@ -5205,7 +5408,8 @@
     ],
     "url": "https://nyaa.si/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "shanaproject",
@@ -5223,7 +5427,8 @@
     ],
     "url": "https://www.shanaproject.com/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "showrss",
@@ -5245,7 +5450,8 @@
     "url": "https://showrss.info/",
     "usage": 1,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "solidtorrents",
@@ -5270,7 +5476,8 @@
     ],
     "url": "https://solidtorrents.eu/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "subsplease",
@@ -5291,7 +5498,8 @@
     ],
     "url": "https://subsplease.org/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "thepiratebay",
@@ -5317,7 +5525,8 @@
     "url": "https://apibay.org/",
     "usage": 1,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "tokyotosho",
@@ -5338,7 +5547,8 @@
     ],
     "url": "https://www.tokyotosho.info/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "torlock",
@@ -5367,7 +5577,8 @@
     "url": "https://www.torlock.com/",
     "family": "torznab",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "torrent9",
@@ -5391,7 +5602,8 @@
     ],
     "url": "https://www7.torrent9.to/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "torrentdownloads",
@@ -5416,7 +5628,8 @@
     ],
     "url": "https://www.torrentdownloads.pro/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "torrentfunk",
@@ -5445,7 +5658,8 @@
     "url": "https://www.torrentfunk.com/",
     "family": "torznab",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "torrentgalaxy",
@@ -5471,7 +5685,8 @@
     ],
     "url": "https://torrentgalaxy.one/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "torrentgalaxyclone",
@@ -5498,7 +5713,8 @@
     "url": "https://torrentgalaxy.one/",
     "usage": 1,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "torrentleech",
@@ -5526,7 +5742,8 @@
     "url": "https://www.torrentleech.org/",
     "usage": 1,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "torrentleech-rss",
@@ -5553,7 +5770,8 @@
     "url": "https://rss.torrentleech.org/",
     "usage": 1,
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "torrentscsv",
@@ -5568,7 +5786,8 @@
     ],
     "url": "https://torrents-csv.com/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "torrenttrader-generic",
@@ -5595,7 +5814,8 @@
     "url": "https://torrenttrader.example.invalid/",
     "family": "torrenttrader",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "torznab-generic",
@@ -5621,7 +5841,8 @@
     "url": "https://torznab.example.invalid/",
     "family": "torznab",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "unit3d-generic",
@@ -5647,7 +5868,8 @@
     "url": "https://unit3d.example.invalid/",
     "family": "unit3d",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "xbtit-generic",
@@ -5674,7 +5896,8 @@
     "url": "https://xbtit.example.invalid/",
     "family": "xbtit",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   },
   {
     "id": "yts",
@@ -5696,6 +5919,7 @@
     ],
     "url": "https://yts.gg/",
     "source": "native",
-    "proposable": true
+    "proposable": true,
+    "latest": true
   }
 ]

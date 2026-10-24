@@ -541,6 +541,7 @@ type siteChoice struct {
 	Mirrors       []string
 	Italian       bool
 	Usage         int
+	Latest        bool
 	QuickAdd      bool
 	Configurable  bool
 	Probe         bool
@@ -548,6 +549,37 @@ type siteChoice struct {
 	OptionalID    string
 	Added         bool
 	AddedID       int64
+}
+
+// needChoice is one card of the guided add flow ("Series", "Films", ...).
+type needChoice struct {
+	Key    string
+	Label  string
+	Tip    string
+	URL    string
+	Active bool
+}
+
+// guideSite is a recommendation: the ordinary site choice plus the three
+// plain-language facts §2 requires (what it needs, what it gives, reliability).
+type guideSite struct {
+	siteChoice
+	Reason           string
+	NeedsLabel       string
+	ProvidesLabel    string
+	ReliabilityLabel string
+}
+
+// guideView backs the first screen of "Add source": needs, recommendations
+// and the way to the full catalogue. The full list is never removed.
+type guideView struct {
+	Needs        []needChoice
+	ActiveNeed   string
+	ActiveLabel  string
+	Recommended  []guideSite
+	ShowAllURL   string
+	BackURL      string
+	SearchAllURL string
 }
 
 type sitePickerView struct {
@@ -573,6 +605,8 @@ type sitePickerView struct {
 	BrowseLabel string
 	NotFound    bool
 	Message     string
+	Guide       *guideView
+	ShowAll     bool
 }
 
 // catalogCategoryOrder is the order the filters and row badges use. It is the
@@ -907,6 +941,10 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	})
 	view.Filtered = s.translate(r, "idx.catalog.filtered", len(filtered), len(sites))
 	view.HasFilters = query != "" || q.Type != "" || q.Language != "" || q.Category != "" || q.Protocol != "" || q.State != ""
+	view.ShowAll = view.HasFilters || r.URL.Query().Get("all") == "1"
+	if !view.ShowAll {
+		view.Guide = s.buildAddGuide(r, index, added, strings.TrimSpace(r.URL.Query().Get("need")))
+	}
 
 	limit := 50
 	total := len(filtered)
@@ -951,6 +989,175 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	return view, nil
 }
 
+// addNeeds is the fixed list of user needs in the order §2 lists them. The
+// italian need is independent of the site language: it uses the catalogue's
+// Italian priority list.
+var addNeeds = []struct {
+	Key   string
+	Label string
+}{
+	{"tv", "idx.guide.need.tv"},
+	{"movies", "idx.guide.need.movies"},
+	{"anime", "idx.guide.need.anime"},
+	{"music", "idx.guide.need.music"},
+	{"books", "idx.guide.need.books"},
+	{"italian", "idx.guide.need.italian"},
+	{"other", "idx.guide.need.other"},
+}
+
+func (s *Server) buildAddGuide(r *http.Request, index []catalog.IndexEntry, added map[string]store.Indexer, active string) *guideView {
+	guide := &guideView{
+		ActiveNeed:   active,
+		ShowAllURL:   "/indexers/new?all=1",
+		BackURL:      "/indexers/new",
+		SearchAllURL: "/indexers/new?all=1",
+	}
+	validNeed := false
+	for _, need := range addNeeds {
+		choice := needChoice{
+			Key:    need.Key,
+			Label:  s.translate(r, need.Label),
+			Tip:    s.translate(r, "tip.addNeed"),
+			URL:    "/indexers/new?need=" + need.Key,
+			Active: need.Key == active,
+		}
+		if choice.Active {
+			validNeed = true
+			guide.ActiveLabel = choice.Label
+		}
+		guide.Needs = append(guide.Needs, choice)
+	}
+	if !validNeed {
+		guide.ActiveNeed = ""
+		guide.ActiveLabel = s.translate(r, "idx.guide.all")
+	}
+
+	lang := strings.ToLower(string(requestLanguage(r)))
+	candidates := make([]catalog.IndexEntry, 0, len(index))
+	for _, entry := range index {
+		if entry.ID == "example-html" || entry.ID == "corsaro-account" || entry.State == "morta" || isGenericDefinition(entry.ID) {
+			continue
+		}
+		if !addNeedMatches(entry, guide.ActiveNeed) {
+			continue
+		}
+		candidates = append(candidates, entry)
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		left, right := addNeedScore(candidates[i], lang, guide.ActiveNeed), addNeedScore(candidates[j], lang, guide.ActiveNeed)
+		if left != right {
+			return left > right
+		}
+		return strings.ToLower(candidates[i].Name) < strings.ToLower(candidates[j].Name)
+	})
+	if len(candidates) > 6 {
+		candidates = candidates[:6]
+	}
+	for _, entry := range candidates {
+		site := s.siteChoice(r, entry, added[entry.ID])
+		guide.Recommended = append(guide.Recommended, guideSite{
+			siteChoice:       site,
+			Reason:           s.guideReason(r, entry, lang),
+			NeedsLabel:       s.guideNeeds(r, entry),
+			ProvidesLabel:    s.guideProvides(r, entry),
+			ReliabilityLabel: s.guideReliability(r, entry),
+		})
+	}
+	return guide
+}
+
+func addNeedMatches(entry catalog.IndexEntry, need string) bool {
+	switch need {
+	case "tv", "movies", "anime", "music", "books":
+		return containsFold(entry.Categories, need)
+	case "italian":
+		return entry.Italian || strings.HasPrefix(strings.ToLower(entry.Language), "it")
+	case "other":
+		return !entry.Italian && !strings.HasPrefix(strings.ToLower(entry.Language), "it")
+	default:
+		return true
+	}
+}
+
+// addNeedScore puts verified sites first, then the user's language, then the
+// catalogue usage count. An unofficial mirror loses a few points because the
+// official address is the better first choice.
+func addNeedScore(entry catalog.IndexEntry, lang, need string) int {
+	score := entry.Usage * 2
+	if isUsableSiteState(entry.State) {
+		score += 100
+	}
+	if entry.Italian || (lang != "" && strings.HasPrefix(strings.ToLower(entry.Language), lang)) {
+		score += 20
+	}
+	if need == "italian" && entry.Italian {
+		score += 20
+	}
+	if strings.EqualFold(entry.Mirror, "unofficial") {
+		score -= 5
+	}
+	return score
+}
+
+func (s *Server) guideReason(r *http.Request, entry catalog.IndexEntry, lang string) string {
+	verified := isUsableSiteState(entry.State)
+	italian := entry.Italian || strings.HasPrefix(strings.ToLower(entry.Language), "it")
+	langMatch := lang != "" && strings.HasPrefix(strings.ToLower(entry.Language), lang)
+	switch {
+	case verified && (italian || langMatch):
+		return s.translate(r, "idx.guide.reasonVerifiedLang")
+	case italian:
+		return s.translate(r, "idx.guide.reasonItalian")
+	case verified:
+		return s.translate(r, "idx.guide.reasonVerified")
+	case entry.Usage > 0:
+		return s.translate(r, "idx.guide.reasonUsed")
+	default:
+		return s.translate(r, "idx.guide.reasonDraft")
+	}
+}
+
+func (s *Server) guideNeeds(r *http.Request, entry catalog.IndexEntry) string {
+	required := make([]string, 0, len(entry.Required))
+	for _, name := range entry.Required {
+		required = append(required, strings.ToLower(strings.TrimSpace(name)))
+	}
+	switch {
+	case len(required) == 0:
+		return s.translate(r, "idx.guide.needNone")
+	case containsFold(required, "cookie"):
+		return s.translate(r, "idx.guide.needCookie")
+	case containsFold(required, "apikey") || containsFold(required, "api_key") || containsFold(required, "passkey"):
+		return s.translate(r, "idx.guide.needAPIKey")
+	case containsFold(required, "username") || containsFold(required, "password"):
+		return s.translate(r, "idx.guide.needAccount")
+	default:
+		return s.translate(r, "idx.guide.needURL")
+	}
+}
+
+func (s *Server) guideProvides(r *http.Request, entry catalog.IndexEntry) string {
+	lower := strings.ToLower(entry.ID + " " + entry.Family + " " + entry.Type)
+	switch {
+	case strings.Contains(lower, "rss"):
+		return s.translate(r, "idx.guide.providesFeed")
+	case strings.EqualFold(entry.Protocol, "usenet"):
+		return s.translate(r, "idx.guide.providesUsenet")
+	case !entry.Latest:
+		return s.translate(r, "idx.guide.providesSearchOnly")
+	default:
+		return s.translate(r, "idx.guide.providesTorrent")
+	}
+}
+
+func (s *Server) guideReliability(r *http.Request, entry catalog.IndexEntry) string {
+	label := s.siteStateLabel(r, entry.State)
+	if strings.EqualFold(entry.Mirror, "unofficial") {
+		label += " · " + s.translate(r, "idx.badgeMirror")
+	}
+	return label
+}
+
 func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added store.Indexer) siteChoice {
 	choice := siteChoice{
 		ID:            entry.ID,
@@ -971,6 +1178,7 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		Reachable:     entry.Reachable,
 		Italian:       entry.Italian || strings.HasPrefix(strings.ToLower(entry.Language), "it"),
 		Usage:         entry.Usage,
+		Latest:        entry.Latest,
 	}
 	if len(entry.Hosts) > 0 {
 		choice.URL = "https://" + entry.Hosts[0] + "/"

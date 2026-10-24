@@ -171,6 +171,30 @@ if ("serviceWorker" in navigator) {
     change.hidden = true;
   });
 
+  // Remember whether the explanatory paragraph at the bottom of a page was
+  // open, per browser, as described in UI-GUIDE §2. The paragraph is always
+  // present for screen readers; only the open state is a convenience.
+  document.querySelectorAll("[data-page-help]").forEach((help) => {
+    const storageKey = help.dataset.pageHelpStorage;
+    if (!storageKey) {
+      return;
+    }
+    try {
+      if (window.localStorage.getItem(storageKey) === "1") {
+        help.open = true;
+      }
+    } catch {
+      // Private modes can deny storage: the closed default wins.
+    }
+    help.addEventListener("toggle", () => {
+      try {
+        window.localStorage.setItem(storageKey, help.open ? "1" : "0");
+      } catch {
+        // Ignore: remembering the state is not required for the page to work.
+      }
+    });
+  });
+
   // Remember whether the secondary release filters were open, as described in
   // UI-GUIDE §4.5. The panel still works without this enhancement.
   const advancedFilters = document.getElementById("release-advanced-filters");

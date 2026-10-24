@@ -70,6 +70,9 @@ type IndexEntry struct {
 	// Proposable is false for dead rows, so a client can hide them without
 	// memorising the state vocabulary.
 	Proposable bool `json:"proposable"`
+	// Latest is true when the definition publishes a list of new releases.
+	// The guided add flow uses it to say what the site gives.
+	Latest bool `json:"latest"`
 }
 
 // Index returns the embedded catalog index. The slice is a copy: callers may
@@ -135,6 +138,7 @@ func BuildIndex(entries []Entry) []IndexEntry {
 			Usage:       entry.Usage,
 			Source:      "native",
 			Proposable:  entry.State != "degradata",
+			Latest:      def.Meta.HasLatest(),
 		}
 		out = append(out, item)
 	}

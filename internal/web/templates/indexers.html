@@ -6,7 +6,7 @@
   </div>
   <div class="actions">
     <a class="btn" href="/import">{{T "idx.import"}}</a>
-    <a class="btn primary" href="/indexers/new">{{T "idx.add"}}</a>
+    <a class="btn primary" href="/indexers/new" title="{{T "tip.addGuided"}}">{{T "idx.add"}}</a>
   </div>
 </section>
 
@@ -16,7 +16,7 @@
   <div class="indexer-toolbar">
     <form class="indexer-search" method="get" action="/indexers" role="search">
       <label class="sr-only" for="indexer-search">{{T "idx.searchPlaceholder"}}</label>
-      <input id="indexer-search" name="q" type="search" value="{{.Query}}" placeholder="{{T "idx.searchPlaceholder"}}" autocomplete="off">
+      <input id="indexer-search" name="q" type="search" value="{{.Query}}" placeholder="{{T "idx.searchPlaceholder"}}" title="{{T "tip.addShowAll"}}" autocomplete="off">
       {{if .State}}<input type="hidden" name="state" value="{{.State}}">{{end}}
       <button class="btn" type="submit">{{T "idx.searchAction"}}</button>
     </form>
@@ -49,8 +49,8 @@
       <div class="indexer-main">
         <a class="indexer-name" href="/indexers/{{.Indexer.ID}}">{{.Indexer.Name}}</a>
         <div class="badges">
-          {{range .Badges}}<span class="badge badge-{{.Kind}}">{{.Label}}</span>{{end}}
-          {{if .FiltersLabel}}<span class="badge soft">{{.FiltersLabel}}</span>{{end}}
+          {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "mirror"}}{{T "tip.addReliability"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
+          {{if .FiltersLabel}}<span class="badge soft" title="{{T "tip.indexerTags"}}">{{.FiltersLabel}}</span>{{end}}
         </div>
         {{if .Problem}}{{template "problem" .Problem}}{{end}}
         {{if .Channels}}<details class="channel-menu"><summary>{{T "idx.channelCount" (len .Channels)}}</summary><ul>{{range .Channels}}<li><a href="/indexers/{{.ID}}">{{.Name}} · {{if eq .Label "latest"}}{{T "idx.channelLatest"}}{{else if eq .Label "search"}}{{T "idx.channelSearch"}}{{else}}{{.Label}}{{end}}</a></li>{{end}}</ul></details>{{end}}
@@ -59,11 +59,11 @@
       <details class="row-menu">
         <summary aria-label="{{T "idx.menu" .Indexer.Name}}">⋯</summary>
         <div class="row-menu-list">
-          <form method="post" action="/indexers/{{.Indexer.ID}}/test"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit">{{T "idx.test"}}</button></form>
-          <form method="post" action="/indexers/{{.Indexer.ID}}/run"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit">{{T "idx.updateNow"}}</button></form>
-          <form method="post" action="/indexers/{{.Indexer.ID}}/toggle"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit">{{if .Indexer.Enabled}}{{T "idx.disable"}}{{else}}{{T "idx.enable"}}{{end}}</button></form>
-          <form method="post" action="/indexers/{{.Indexer.ID}}/duplicate"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit">{{T "idx.duplicate"}}</button></form>
-          <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="{{T "idx.deleteConfirm" .Indexer.Name}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item danger" type="submit">{{T "idx.delete"}}</button></form>
+          <form method="post" action="/indexers/{{.Indexer.ID}}/test"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit" title="{{T "tip.indexerTest"}}">{{T "idx.test"}}</button></form>
+          <form method="post" action="/indexers/{{.Indexer.ID}}/run"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit" title="{{T "tip.indexerRun"}}">{{T "idx.updateNow"}}</button></form>
+          <form method="post" action="/indexers/{{.Indexer.ID}}/toggle"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit" title="{{T "tip.indexerEnabled"}}">{{if .Indexer.Enabled}}{{T "idx.disable"}}{{else}}{{T "idx.enable"}}{{end}}</button></form>
+          <form method="post" action="/indexers/{{.Indexer.ID}}/duplicate"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item" type="submit" title="{{T "tip.indexerSync"}}">{{T "idx.duplicate"}}</button></form>
+          <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="{{T "idx.deleteConfirm" .Indexer.Name}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="menu-item danger" type="submit" title="{{T "tip.indexerDelete"}}">{{T "idx.delete"}}</button></form>
         </div>
       </details>
     </li>

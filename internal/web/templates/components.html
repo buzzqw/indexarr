@@ -1,4 +1,4 @@
-{{define "status-dot"}}<span class="status-dot status-{{.State}}" role="img" aria-label="{{.Label}}"><span class="dot" aria-hidden="true"></span><span class="sr-only">{{.Label}}</span></span>{{end}}
+{{define "status-dot"}}<span class="status-dot status-{{.State}}" role="img" aria-label="{{.Label}}" title="{{T "tip.statusDot"}}"><span class="dot" aria-hidden="true"></span><span class="sr-only">{{.Label}}</span></span>{{end}}
 
 {{define "problem"}}<p class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span>{{.Text}}</span>{{if .ActionLabel}} <a class="problem-action" href="{{.ActionURL}}">{{.ActionLabel}}</a>{{end}}</p>{{end}}
 
@@ -21,6 +21,87 @@
     <span class="muted catalog-counter">{{.Counter}}</span>
   </div>
   {{if .Message}}<p class="flash warn" role="alert">{{.Message}}</p>{{end}}
+
+  {{if .Guide}}
+  <div class="site-guide">
+    <h2 class="guide-title-heading">{{T "idx.guide.title"}}</h2>
+    <p class="guide-lead">{{T "idx.guide.subtitle"}}</p>
+    <div class="need-grid" role="list">
+      {{range .Guide.Needs}}
+      <a class="need-card{{if .Active}} active{{end}}" href="{{.URL}}" title="{{.Tip}}" role="listitem">
+        <span class="need-label">{{.Label}}</span>
+      </a>
+      {{end}}
+    </div>
+
+    <div class="guide-head">
+      <h3>{{T "idx.guide.recommended" .Guide.ActiveLabel}}</h3>
+      <a class="btn small" href="{{.Guide.ShowAllURL}}" title="{{T "tip.addShowAll"}}">{{T "idx.guide.showAll"}}</a>
+    </div>
+
+    {{if .Guide.Recommended}}
+    <ul class="site-list guide-list">
+      {{range .Guide.Recommended}}
+      <li class="site-row guide-card">
+        <div class="guide-main">
+          <div class="guide-title">
+            {{if .Added}}<a class="site-name" href="/indexers/{{.AddedID}}">{{.Name}}</a>{{else}}<a class="site-name" href="/indexers/new?definition={{.ID}}">{{.Name}}</a>{{end}}
+            <span class="state state-{{.State}}" title="{{T "tip.indexerState"}}">{{.StateLabel}}</span>
+          </div>
+          <p class="guide-reason">{{.Reason}}</p>
+          <dl class="guide-facts">
+            <dt title="{{T "tip.addNeedsInfo"}}">{{T "idx.guide.needs"}}</dt>
+            <dd>{{.NeedsLabel}}</dd>
+            <dt title="{{T "tip.addProvidesInfo"}}">{{T "idx.guide.provides"}}</dt>
+            <dd>{{.ProvidesLabel}}</dd>
+            <dt title="{{T "tip.addReliability"}}">{{T "idx.guide.reliability"}}</dt>
+            <dd>{{.ReliabilityLabel}}</dd>
+          </dl>
+          <div class="site-meta">
+            <span class="badge badge-type-{{.Type}}" title="{{T "tip.indexerAccess"}}">{{.TypeLabel}}</span>
+            {{if .LanguageBadge}}<span class="badge soft" title="{{.Language}}">{{.LanguageBadge}}</span>{{end}}
+            {{range .Categories}}<span class="badge soft">{{.}}</span>{{end}}
+            {{if .AccessLabel}}<span class="badge soft catalog-access" title="{{T "tip.indexerAccess"}}">{{.AccessLabel}}</span>{{end}}
+            {{if .Reachable}}<span class="badge soft" title="{{T "tip.indexerState"}}">{{T "idx.catalog.probeReachable"}}</span>{{end}}
+          </div>
+        </div>
+        <div class="guide-actions">
+          {{if .Added}}
+          <a class="btn small" href="/indexers/{{.AddedID}}">{{T "idx.catalog.alreadyAdded"}}</a>
+          {{else if .QuickAdd}}
+          <form class="guide-try" method="post" action="/indexers/catalog/try">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="definition_id" value="{{.ID}}">
+            <label class="sr-only" for="try-{{.ID}}">{{T "idx.guide.tryPlaceholder"}}</label>
+            <input id="try-{{.ID}}" name="q" type="text" maxlength="120" placeholder="{{T "idx.guide.tryPlaceholder"}}" title="{{T "idx.guide.tryHelp"}}" autocomplete="off">
+            <button class="btn small primary" type="submit" title="{{T "tip.addTry"}}">{{T "idx.guide.try"}}</button>
+          </form>
+          <form method="post" action="/indexers/catalog/add">
+            <input type="hidden" name="csrf" value="{{$.CSRF}}">
+            <input type="hidden" name="definition_id" value="{{.ID}}">
+            <button class="btn small" type="submit" title="{{T "tip.addAdd"}}">{{T "idx.catalog.add"}}</button>
+          </form>
+          {{else if .Configurable}}
+          <a class="btn small" href="/indexers/new?definition={{.ID}}" title="{{T "tip.addConfigure"}}">{{T "idx.catalog.configure"}}</a>
+          {{else}}
+          <span class="chip">{{T "idx.catalog.familyMissing"}}</span>
+          {{end}}
+        </div>
+      </li>
+      {{end}}
+    </ul>
+    {{else}}
+    {{template "empty" .Empty}}
+    {{end}}
+
+    <form class="site-search guide-search" method="get" action="{{.Action}}" role="search">
+      <label class="sr-only" for="site-search">{{T "idx.searchSite"}}</label>
+      <input id="site-search" name="q" type="text" value="{{.Query}}" placeholder="{{T "idx.searchSite"}}" autocomplete="off">
+      <button class="btn" type="submit" title="{{T "tip.addShowAll"}}">{{T "idx.guide.searchAll"}}</button>
+    </form>
+  </div>
+  {{else}}
+  <p class="catalog-back"><a class="link" href="{{.ClearURL}}">← {{T "idx.guide.backToGuide"}}</a></p>
   <form class="site-search" method="get" action="{{.Action}}" role="search">
     {{range .Hidden}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
     <label class="sr-only" for="site-search">{{T "idx.searchSite"}}</label>
@@ -100,6 +181,7 @@
       <a class="btn" href="{{.TorznabURL}}">{{T "idx.catalog.torznab"}}</a>
     </div>
   </div>
+  {{end}}
 </section>{{end}}
 
 {{define "pager"}}{{if gt .Pages 1}}<div class="pager">

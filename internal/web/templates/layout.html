@@ -67,6 +67,12 @@
         {{if .Message}}<p class="flash ok" role="status">{{.Message}}</p>{{end}}
         {{if .Error}}<p class="flash err" role="alert">{{.Error}}</p>{{end}}
         {{template "content" .}}
+        {{if .PageHelp.Key}}
+        <details class="page-help" data-page-help="{{.PageHelp.Key}}" data-page-help-storage="indexarr.help.{{.PageHelp.Key}}">
+          <summary title="{{.PageHelp.Title}}">{{.PageHelp.Title}}</summary>
+          <p class="prose">{{.PageHelp.Text}}</p>
+        </details>
+        {{end}}
       </main>
     </div>
   </div>

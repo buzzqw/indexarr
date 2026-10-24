@@ -107,7 +107,7 @@ var pageNames = []string{
 	"run", "rules", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
 	"applications", "application_form", "import", "activity", "setup",
-	"download_client_form",
+	"download_client_form", "site_preview",
 }
 
 var templateFuncMap = template.FuncMap{
@@ -286,6 +286,15 @@ type languageOption struct {
 	Active bool
 }
 
+// pageHelp is the collapsible paragraph at the bottom of every page. It says
+// what the page is for, how to use it and why, in the interface language. The
+// block is remembered per browser by app.js using Key.
+type pageHelp struct {
+	Key   string
+	Title string
+	Text  string
+}
+
 // base is the data every page shares with the layout.
 type base struct {
 	Title        string
@@ -303,6 +312,7 @@ type base struct {
 	PublicURLSet bool
 	Uptime       string
 	AutoRefresh  int
+	PageHelp     pageHelp
 	// LiveRefresh is the polling interval for pages that must reload only
 	// while the browser tab is visible. app.js checks document.visibilityState.
 	LiveRefresh int
@@ -599,6 +609,9 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /indexers/bulk", s.indexersBulk)
 	ui.HandleFunc("POST /indexers/catalog/add", s.indexerCatalogAdd)
 	ui.HandleFunc("POST /indexers/catalog/probe", s.indexerCatalogProbe)
+	ui.HandleFunc("POST /indexers/catalog/try", s.indexerCatalogTry)
+	ui.HandleFunc("POST /indexers/catalog/preview/add", s.indexerCatalogPreviewAdd)
+	ui.HandleFunc("POST /indexers/catalog/preview/cancel", s.indexerCatalogPreviewCancel)
 	ui.HandleFunc("GET /indexers/export", s.indexersExport)
 	ui.HandleFunc("POST /indexers/import", s.indexersImport)
 	ui.HandleFunc("GET /indexers/discover", s.indexersDiscover)
@@ -838,6 +851,7 @@ func (s *Server) newBase(r *http.Request, title, section string) base {
 	out.PublicURL = settings.PublicURL
 	out.PublicURLSet = strings.TrimSpace(settings.PublicURL) != ""
 	out.TorznabURL = torznabapi.BaseURL(r, settings) + "/api"
+	out.PageHelp = pageHelpFor(lang, pageHelpKey(r))
 	// One status source for the page and the sidebar badge.
 	status := s.HomeStatus(r.Context())
 	if status.Level != "danger" {
@@ -851,6 +865,68 @@ func (s *Server) newBase(r *http.Request, title, section string) base {
 // the interface language instead of hardcoding an English label in a handler.
 func (s *Server) newBaseT(r *http.Request, key, section string, args ...any) base {
 	return s.newBase(r, i18n.T(requestLanguage(r), key, args...), section)
+}
+
+// pageHelpKey maps the request path to the page paragraph shown at the bottom
+// of the layout. Keeping the map here means every handler gets the paragraph
+// without repeating the key and a new route cannot silently ship without one.
+func pageHelpKey(r *http.Request) string {
+	path := strings.TrimSuffix(r.URL.Path, "/")
+	switch {
+	case path == "" || path == "/":
+		return "home"
+	case path == "/releases":
+		return "search"
+	case strings.HasPrefix(path, "/releases/"):
+		return "release"
+	case path == "/indexers":
+		return "indexers"
+	case path == "/indexers/new" || path == "/indexers/discover" || strings.HasPrefix(path, "/indexers/catalog/"):
+		return "indexer_add"
+	case strings.HasSuffix(path, "/edit"):
+		return "indexer_form"
+	case strings.HasPrefix(path, "/indexers/"):
+		return "indexer_detail"
+	case path == "/applications":
+		return "app"
+	case path == "/applications/new" || strings.HasPrefix(path, "/applications/"):
+		return "app_form"
+	case strings.HasPrefix(path, "/download-clients/"):
+		return "client_form"
+	case path == "/activity" || strings.HasPrefix(path, "/runs"):
+		return "activity"
+	case path == "/settings":
+		return "settings"
+	case path == "/import":
+		return "import"
+	case path == "/setup":
+		return "setup"
+	case path == "/definitions" || path == "/settings/definitions":
+		return "definitions"
+	case path == "/definitions/new":
+		return "definition_form"
+	case strings.HasPrefix(path, "/definitions/"):
+		return "definition"
+	case path == "/maintenance":
+		return "maintenance"
+	case path == "/rules":
+		return "rules"
+	default:
+		return ""
+	}
+}
+
+// pageHelpFor resolves the paragraph in the request language. An empty key
+// (error pages, fragments) yields an empty struct and the layout omits it.
+func pageHelpFor(lang i18n.Language, key string) pageHelp {
+	if key == "" {
+		return pageHelp{}
+	}
+	text := i18n.T(lang, "pageHelp."+key)
+	if text == "pageHelp."+key {
+		return pageHelp{}
+	}
+	return pageHelp{Key: key, Title: i18n.T(lang, "pageHelp.title"), Text: text}
 }
 
 // translate exposes the request catalog to handlers for flash messages and

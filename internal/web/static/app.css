@@ -1218,6 +1218,27 @@ pre.yaml {
 .advanced[open] > summary { color: var(--text); background: var(--surface-2); }
 .advanced-body { margin-top: 0.75rem; }
 
+/* Explanatory paragraph at the bottom of every page (UI-GUIDE §2). */
+.page-help {
+  margin: 2rem 0 0.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+  color: var(--muted);
+}
+.page-help > summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+.page-help > summary::-webkit-details-marker { display: none; }
+.page-help > summary::before { content: "▸"; }
+.page-help[open] > summary::before { content: "▾"; }
+.page-help .prose { margin: 0.65rem 0 0; max-width: 75ch; line-height: 1.55; }
+
 .empty-state {
   padding: 2.2rem 1rem;
   text-align: center;
@@ -1287,6 +1308,45 @@ pre.yaml {
 .site-description { margin: 0.15rem 0 0; font-size: 0.82rem; }
 .catalog-row .site-meta { justify-content: flex-start; margin-top: 0.25rem; }
 .catalog-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 0.4rem; }
+
+/* Guided "Add source" first screen (UI-GUIDE §2 §4.3). The full catalogue
+   stays one click away and is never removed. */
+.site-guide { padding: 0.3rem 1.1rem 1.1rem; }
+.guide-lead { margin: 0 0 0.8rem; max-width: 75ch; color: var(--muted); }
+.need-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; }
+.need-card {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 2.9rem; padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--surface-2); color: var(--text);
+  font-weight: 700; text-align: center; text-decoration: none;
+}
+.need-card:hover { border-color: var(--accent); color: var(--accent); }
+.need-card.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
+.guide-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin: 1.1rem 0 0.3rem; }
+.guide-head h3 { margin: 0; }
+.guide-list { padding: 0; }
+.guide-card { display: flex; align-items: flex-start; gap: 1rem; padding: 0.85rem 0; }
+.guide-main { flex: 1 1 auto; min-width: 0; }
+.guide-title { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.guide-reason { margin: 0.2rem 0 0.4rem; }
+.guide-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.15rem 0.65rem; margin: 0.25rem 0 0.45rem; font-size: 0.84rem; }
+.guide-facts dt { color: var(--muted); font-weight: 700; }
+.guide-facts dd { margin: 0; }
+.guide-actions { flex: 0 0 235px; display: flex; flex-direction: column; gap: 0.4rem; }
+.guide-try { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.guide-try input { flex: 1 1 100px; min-width: 0; }
+.guide-search { padding: 0.9rem 0 0; }
+.catalog-back { margin: 0.7rem 1.1rem 0; }
+.preview-actions { padding: 1rem 0 0; }
+
+@media (max-width: 700px) {
+  .guide-card { flex-direction: column; gap: 0.5rem; }
+  .guide-actions { flex: 1 1 auto; width: 100%; }
+  .guide-actions form, .guide-actions .btn { width: 100%; }
+  .guide-facts { grid-template-columns: 1fr; gap: 0.1rem; }
+  .guide-facts dd { margin-bottom: 0.35rem; }
+}
 .catalog-actions form { margin: 0; }
 .catalog-bulk-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.7rem; padding: 0.75rem 1.1rem; border-top: 1px solid var(--border); }
 .catalog-generic { margin: 0.6rem 0; }

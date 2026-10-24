@@ -1,0 +1,60 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{T "idx.guide.previewTitle" .EntryName}}</h1>
+    <p class="muted">{{T "idx.guide.previewSubtitle"}}</p>
+  </div>
+  <a class="btn" href="/indexers/new">{{T "idx.guide.backToGuide"}}</a>
+</section>
+
+{{if .Err}}<p class="flash warn" role="alert">{{T "idx.guide.previewError" .Err}}</p>{{end}}
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>{{T "idx.guide.previewResults" .Total .Query}}</h2>
+    <span class="chip" title="{{T "tip.indexerState"}}">{{T "idx.siteState.draft"}}</span>
+  </div>
+  {{if .Releases}}
+  <div class="table-scroll">
+    <table class="preview-table">
+      <thead>
+        <tr>
+          <th scope="col">{{T "indexer.titleColumn"}}</th>
+          <th scope="col" title="{{T "tip.releaseSize"}}">{{T "indexer.size"}}</th>
+          <th scope="col" title="{{T "tip.releaseSeeders"}}">{{T "indexer.seeders"}}</th>
+          <th scope="col" title="{{T "tip.releaseAge"}}">{{T "activity.feed.firstSeen"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Releases}}
+        <tr>
+          <td><a href="/releases/{{.ID}}" title="{{.Title}}">{{truncate .Title 90}}</a></td>
+          <td title="{{T "tip.releaseSize"}}">{{sizeOrDash .Size}}</td>
+          <td title="{{T "tip.releaseSeeders"}}">{{numOrDash .Seeders}}</td>
+          <td class="nowrap" title="{{T "tip.releaseAge"}}">{{if .PublishedAt.IsZero}}—{{else}}<span title="{{date .PublishedAt}}">{{ago .PublishedAt}}</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div class="empty-state">
+    <p class="empty-title">{{T "idx.try.empty"}}</p>
+    <p class="muted">{{T "idx.guide.previewEmpty"}}</p>
+  </div>
+  {{end}}
+
+  <div class="actions form-actions preview-actions">
+    <form method="post" action="/indexers/catalog/preview/cancel">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="id" value="{{.IndexerID}}">
+      <button class="btn" type="submit" title="{{T "tip.addAdd"}}">{{T "idx.guide.previewCancel"}}</button>
+    </form>
+    <form method="post" action="/indexers/catalog/preview/add">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <input type="hidden" name="id" value="{{.IndexerID}}">
+      <button class="btn primary" type="submit" title="{{T "tip.addAdd"}}">{{T "idx.guide.previewAdd"}}</button>
+    </form>
+  </div>
+</section>
+{{end}}

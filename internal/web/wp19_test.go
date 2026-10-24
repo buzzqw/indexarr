@@ -45,12 +45,12 @@ func TestCatalogIndexPageHandlesThousandEntries(t *testing.T) {
 
 	// Warm the template cache so the measurement covers the handler, the
 	// index lookup, the filters and the render, not one-off compilation.
-	if recorder := get(t, env.handler, "/indexers/new"); recorder.Code != http.StatusOK {
+	if recorder := get(t, env.handler, "/indexers/new?all=1"); recorder.Code != http.StatusOK {
 		t.Fatalf("warm-up = %d: %s", recorder.Code, recorder.Body.String())
 	}
 
 	start := time.Now()
-	recorder := get(t, env.handler, "/indexers/new")
+	recorder := get(t, env.handler, "/indexers/new?all=1")
 	elapsed := time.Since(start)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d", recorder.Code)
@@ -130,7 +130,7 @@ func TestCatalogPagination(t *testing.T) {
 	entries := syntheticCatalog(1000)
 	env.server.catalogIndex = func() ([]catalog.IndexEntry, error) { return entries, nil }
 
-	body := get(t, env.handler, "/indexers/new?page=2").Body.String()
+	body := get(t, env.handler, "/indexers/new?all=1&page=2").Body.String()
 	if strings.Contains(body, "Site 0001") {
 		t.Error("page 2 still shows the first-row site")
 	}
@@ -140,7 +140,7 @@ func TestCatalogPagination(t *testing.T) {
 	if !strings.Contains(body, "Page 2 of 20") {
 		t.Error("the pager does not report page 2 of 20")
 	}
-	if !strings.Contains(body, `href="/indexers/new?page=3"`) {
+	if !strings.Contains(body, `page=3`) {
 		t.Error("the next-page link is missing")
 	}
 }

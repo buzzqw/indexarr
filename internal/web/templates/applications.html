@@ -16,6 +16,32 @@
 
 {{if .Unavailable}}<p class="flash warn" role="status">{{T "applications.unavailable"}}</p>{{end}}
 
+<section class="panel app-what">
+  <div class="panel-head"><h2>{{T "applications.whatTitle"}}</h2></div>
+  <p class="help">{{T "applications.whatText"}}</p>
+</section>
+
+<section class="panel app-ways">
+  <div class="panel-head"><h2>{{T "applications.threeWays"}}</h2></div>
+  <div class="way-grid">
+    <article class="way-card">
+      <h3>{{T "applications.wayAppTitle"}}</h3>
+      <p>{{T "applications.wayAppText"}}</p>
+      <a class="btn small primary" href="/applications/new" title="{{T "tip.appType"}}">{{T "applications.new"}}</a>
+    </article>
+    <article class="way-card">
+      <h3>{{T "applications.wayManualTitle"}}</h3>
+      <p>{{T "applications.wayManualText"}}</p>
+      <a class="btn small" href="#manual" title="{{T "tip.appManual"}}">{{T "applications.manualTitle"}}</a>
+    </article>
+    <article class="way-card">
+      <h3>{{T "applications.wayClientTitle"}}</h3>
+      <p>{{T "applications.wayClientText"}}</p>
+      <a class="btn small" href="/download-clients/new" title="{{T "tip.appClient"}}">{{T "client.add"}}</a>
+    </article>
+  </div>
+</section>
+
 <section class="panel">
   <div class="panel-head"><h2>{{T "applications.appsTitle"}}</h2></div>
   {{if .Rows}}
@@ -26,8 +52,8 @@
           <th scope="col">{{T "applications.type"}}</th>
           <th scope="col">{{T "common.name"}}</th>
           <th scope="col">{{T "common.url"}}</th>
-          <th scope="col">{{T "applications.level"}}</th>
-          <th scope="col">{{T "applications.lastSync"}}</th>
+          <th scope="col" title="{{T "tip.appSyncLevel"}}">{{T "applications.level"}}</th>
+          <th scope="col" title="{{T "tip.appLastSync"}}">{{T "applications.lastSync"}}</th>
           <th scope="col">{{T "common.lastError"}}</th>
           <th scope="col" class="right">{{T "common.actions"}}</th>
         </tr>
@@ -44,12 +70,12 @@
           <td class="right nowrap">
             <form method="post" action="/applications/{{.Application.ID}}/sync">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small" type="submit">{{T "common.sync"}}</button>
+              <button class="btn small" type="submit" title="{{T "tip.appSyncNow"}}">{{T "common.sync"}}</button>
             </form>
             <a class="btn small" href="/applications/{{.Application.ID}}/edit">{{T "common.edit"}}</a>
             <form method="post" action="/applications/{{.Application.ID}}/delete" data-confirm="{{T "applications.deleteConfirm"}}">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small danger" type="submit">{{T "common.delete"}}</button>
+              <button class="btn small danger" type="submit" title="{{T "tip.appDelete"}}">{{T "common.delete"}}</button>
             </form>
           </td>
         </tr>

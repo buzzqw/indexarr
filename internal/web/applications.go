@@ -184,7 +184,12 @@ func (s *Server) applicationInputFromForm(r *http.Request, create bool) (store.A
 
 	app.Name = strings.TrimSpace(r.FormValue("name"))
 	if app.Name == "" {
-		problems = append(problems, s.translate(r, "application.error.nameRequired"))
+		// Name is an indexarr label, not something the user must know. The
+		// app type is the sensible default; the advanced block can override it.
+		app.Name = applicationKindLabel(app.Kind)
+		if strings.TrimSpace(app.Name) == "" {
+			problems = append(problems, s.translate(r, "application.error.nameRequired"))
+		}
 	}
 
 	rawURL := strings.TrimSpace(r.FormValue("url"))

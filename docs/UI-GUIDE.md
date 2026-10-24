@@ -75,6 +75,15 @@ da solo V3, V5 e metà di V2: per questo le fasi 2–3 vengono dopo WP16.
     sotto 600 px vanno in colonna a tutta larghezza. Nelle tabelle le azioni
     hanno una colonna allineata. Bottoni, link-bottone e select usano un solo
     token di altezza.
+14. **Un paragrafo esplicativo in fondo a ogni pagina.** Ogni pagina con una
+    funzione ha, sotto il contenuto, lo stesso componente `page-help`:
+    tradotto in tutte e 7 le lingue, comprimibile (`<details>`), aperto di
+    default solo la prima volta, e ricordato per utente/browser
+    (`localStorage`, chiave `indexarr.help.<pagina>`). Dice in parole semplici
+    **a cosa serve** la pagina, **come si usa** e **perché** si usa. Le chiavi
+    sono `pageHelp.<pagina>`; un test fallisce se una pagina o una lingua non
+    le ha. Ogni campo, badge, stato e bottone non ovvio ha un `title` preso
+    dal catalogo (`tip.*`), non testo letterale.
 
 Regole di testo:
 

@@ -5,7 +5,7 @@
   <form class="try-form" method="get" action="/indexers/{{.Indexer.ID}}">
     <input type="hidden" name="try" value="1">
     <div class="field">
-      <label for="try-mode">{{T "idx.try.mode"}}</label>
+      <label for="try-mode" title="{{T "tip.activityTabs"}}">{{T "idx.try.mode"}}</label>
       <select id="try-mode" name="mode">
         <option value="search"{{if eq .Try.Mode "search"}} selected{{end}}>{{T "idx.try.modeSearch"}}</option>
         <option value="tvsearch"{{if eq .Try.Mode "tvsearch"}} selected{{end}}>{{T "idx.try.modeSeries"}}</option>
