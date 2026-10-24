@@ -1163,6 +1163,10 @@ func (s *Server) guideProvides(r *http.Request, entry catalog.IndexEntry) string
 		return s.translate(r, "idx.guide.providesFeed")
 	case strings.EqualFold(entry.Protocol, "usenet"):
 		return s.translate(r, "idx.guide.providesUsenet")
+	case entry.FeedOnly && entry.LatestList:
+		return s.translate(r, "idx.guide.providesFeedOnly")
+	case entry.FeedOnly:
+		return s.translate(r, "idx.guide.providesFeedOnlyNoList")
 	case entry.Storable:
 		// The definition declares a real latest page and no feed of its own:
 		// the card says both that the list exists and that it can be stored.

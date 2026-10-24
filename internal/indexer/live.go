@@ -244,6 +244,20 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 	return result, nil
 }
 
+// liveFirstPageOnly reports an uploader list. Those pages do not depend on
+// the query: opening three pages only multiplies the wait without changing
+// the answer. A normal search keeps its definition pagination.
+func liveFirstPageOnly(configJSON string) bool {
+	config, err := decodeConfig(configJSON)
+	if err != nil {
+		return false
+	}
+	if settingString(config["uploader"]) != "" {
+		return true
+	}
+	return strings.Contains(settingString(config["filter"]), "u=")
+}
+
 func (m *Manager) joinLiveFlight(key string) (*liveFlight, bool) {
 	m.liveFlightMu.Lock()
 	defer m.liveFlightMu.Unlock()
@@ -366,6 +380,9 @@ func (m *Manager) liveOne(ctx context.Context, indexer store.Indexer, req LiveQu
 	outcome.Mode = string(plan.mode)
 	outcome.Fallback = plan.fallback
 	outcome.Query = plan.request.Query
+	if liveFirstPageOnly(indexer.ConfigJSON) {
+		plan.request.FirstPageOnly = true
+	}
 
 	// The transport breaker is the existing per-indexer breaker. When it is
 	// open the indexer is excluded from the fan-out instead of being hit with

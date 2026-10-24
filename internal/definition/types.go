@@ -77,6 +77,42 @@ func (d *Definition) HasLatestList() bool {
 	return d != nil && d.Latest != nil
 }
 
+// SearchUsesQuery reports whether the search request template reads a
+// {{ query.* }} variable. A definition that never does is a latest-list-only
+// source: a live search would return the same unfiltered page, so indexarr
+// must answer it from the cache and never fan it out.
+func (d *Definition) SearchUsesQuery() bool {
+	if d == nil {
+		return false
+	}
+	// Family connectors (rss, torznab, gazelle, ...) build their request in
+	// Go and declare no template here; they are not list-only definitions.
+	if strings.TrimSpace(d.Connector) != "" {
+		return true
+	}
+	r := d.Search.Request
+	values := []string{r.Get, r.Post}
+	values = append(values, mapValues(r.Params)...)
+	for _, list := range r.ParamsMulti {
+		values = append(values, list...)
+	}
+	values = append(values, mapValues(r.Form)...)
+	for _, value := range values {
+		if strings.Contains(value, "{{") && strings.Contains(value, "query.") {
+			return true
+		}
+	}
+	return false
+}
+
+func mapValues(in map[string]string) []string {
+	out := make([]string, 0, len(in))
+	for _, value := range in {
+		out = append(out, value)
+	}
+	return out
+}
+
 // Latest describes the list of new releases of a search-only site. A
 // definition without a latest section keeps the historical behaviour: its
 // "latest" run is a search with empty keywords.
@@ -222,11 +258,14 @@ type Search struct {
 
 // Request is the HTTP request template for a search.
 type Request struct {
-	Get     string            `yaml:"get,omitempty" json:"get,omitempty"`
-	Post    string            `yaml:"post,omitempty" json:"post,omitempty"`
-	Params  map[string]string `yaml:"params,omitempty" json:"params,omitempty"`
-	Form    map[string]string `yaml:"form,omitempty" json:"form,omitempty"`
-	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+	Get    string            `yaml:"get,omitempty" json:"get,omitempty"`
+	Post   string            `yaml:"post,omitempty" json:"post,omitempty"`
+	Params map[string]string `yaml:"params,omitempty" json:"params,omitempty"`
+	// ParamsMulti emits the same query parameter once per non-empty value.
+	// It is for sites such as ExtTo that require filter=A&filter=B.
+	ParamsMulti map[string][]string `yaml:"params_multi,omitempty" json:"params_multi,omitempty"`
+	Form        map[string]string   `yaml:"form,omitempty" json:"form,omitempty"`
+	Headers     map[string]string   `yaml:"headers,omitempty" json:"headers,omitempty"`
 }
 
 // Pagination controls how additional result pages are requested.

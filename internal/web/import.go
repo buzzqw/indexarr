@@ -160,6 +160,7 @@ type importPage struct {
 	base
 	ProwlarrURL      string
 	JackettPath      string
+	GexttoPath       string
 	PublicURL        string
 	PublicURLDefault bool
 	Plan             *importPlanView
@@ -170,6 +171,10 @@ func (s *Server) importPage(w http.ResponseWriter, r *http.Request) {
 	data := s.newImportPage(r)
 	data.ProwlarrURL = strings.TrimSpace(r.URL.Query().Get("base_url"))
 	data.JackettPath = strings.TrimSpace(r.URL.Query().Get("path"))
+	data.GexttoPath = strings.TrimSpace(r.URL.Query().Get("gextto_path"))
+	if data.GexttoPath == "" {
+		data.GexttoPath = "~/gextto-data/gextto_config.db"
+	}
 	s.render(w, r, "import", data, http.StatusOK)
 }
 
@@ -230,6 +235,39 @@ func (s *Server) importJackett(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.renderImportPlan(w, r, data, plan)
+}
+
+// importGextto performs the repeatable, read-only import of gextto's source
+// list. There is no preview token: the targets are idempotent and ApplyTargets
+// updates an existing row in place, so a second click cannot duplicate a site.
+func (s *Server) importGextto(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimSpace(r.FormValue("path"))
+	if path == "" {
+		path = "~/gextto-data/gextto_config.db"
+	}
+	data := s.newImportPage(r)
+	data.GexttoPath = path
+	targets, warnings, err := importers.FromGextto(r.Context(), path)
+	if err != nil {
+		s.log.Warn("gextto import failed", "component", "indexarr", "subsystem", "web", "error", err)
+		data.Error = s.translate(r, "import.error.gexttoFailed", redactImportText(err.Error()))
+		s.render(w, r, "import", data, http.StatusBadRequest)
+		return
+	}
+	if len(targets) == 0 {
+		data.Error = s.translate(r, "import.error.gexttoEmpty")
+		s.render(w, r, "import", data, http.StatusBadRequest)
+		return
+	}
+	result, applyErr := importers.ApplyTargets(r.Context(), s.store, s.vault, targets)
+	data.Summary = importSummaryFrom(result)
+	if applyErr != nil {
+		s.log.Warn("apply gextto import failed", "component", "indexarr", "subsystem", "web", "error", applyErr)
+		data.Summary.Error = s.translate(r, "import.error.applyFailed", redactImportText(applyErr.Error()))
+	} else if len(warnings) > 0 {
+		data.Summary.Error = s.translate(r, "import.gexttoWarnings", len(warnings))
+	}
+	s.render(w, r, "import", data, http.StatusOK)
 }
 
 // renderImportPlan maps the plan to native targets, keeps them server-side and

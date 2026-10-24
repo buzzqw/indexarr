@@ -84,6 +84,9 @@ type IndexEntry struct {
 	// releases (meta.latest absent or true). It is the metadata behind the
 	// "new releases" fact for a site that needs no memorise switch.
 	Scheduled bool `json:"scheduled,omitempty"`
+	// FeedOnly is true when the search request never reads a query variable.
+	// Such a source is a list to cache, never a remote search endpoint.
+	FeedOnly bool `json:"feed_only,omitempty"`
 }
 
 // Index returns the embedded catalog index. The slice is a copy: callers may
@@ -153,6 +156,7 @@ func BuildIndex(entries []Entry) []IndexEntry {
 			LatestList:  def.HasLatestList(),
 			Storable:    def.HasLatestList() && !def.Meta.HasLatest(),
 			Scheduled:   def.Meta.HasLatest(),
+			FeedOnly:    !def.SearchUsesQuery(),
 		}
 		out = append(out, item)
 	}

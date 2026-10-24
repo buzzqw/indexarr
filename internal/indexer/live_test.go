@@ -326,3 +326,18 @@ func TestSearchLiveResponseCache(t *testing.T) {
 		t.Fatalf("HTTP hits with cache disabled = %d, want 2", hits.Load())
 	}
 }
+
+func TestLiveFirstPageOnlyDetectsUploaderLists(t *testing.T) {
+	cases := map[string]bool{
+		`{"uploader":"MIRCrewRS"}`:                          true,
+		`{"filter":"u=EZTV"}`:                               true,
+		`{"filter":"c=Movies","filter-extra":"tg=Italian"}`: false,
+		`{"query":"MIRCrew","filter":"c=TV"}`:               false,
+		``:                                                  false,
+	}
+	for config, want := range cases {
+		if got := liveFirstPageOnly(config); got != want {
+			t.Errorf("liveFirstPageOnly(%s) = %v, want %v", config, got, want)
+		}
+	}
+}

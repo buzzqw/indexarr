@@ -96,12 +96,18 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			Mode:       engine.ModeSearch,
 			Query:      query,
 			Categories: categories,
-			Limit:      100,
 		})
 	} else {
 		items, err = connector.Latest(ctx, engine.LatestRequest{
 			Categories: categories,
-			Limit:      100,
+			Known: func(item engine.Item) bool {
+				_, found, lookupErr := m.store.FindSameRelease(ctx, &store.Release{
+					Title:    item.Title,
+					Size:     item.Size,
+					InfoHash: itemHash(item),
+				})
+				return lookupErr == nil && found
+			},
 		})
 	}
 	if err != nil {

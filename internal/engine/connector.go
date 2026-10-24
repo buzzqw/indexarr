@@ -166,6 +166,9 @@ type SearchRequest struct {
 	// the definition declares resolve_on: search. The download reference is
 	// resolved by the grab path instead.
 	SkipDetails bool
+	// FirstPageOnly stops after the first result page. The live fan-out uses
+	// it for uploader lists, which are not query-relevant and must be cheap.
+	FirstPageOnly bool
 }
 
 // LatestRequest asks for recent releases, optionally in specific categories.
@@ -176,6 +179,9 @@ type LatestRequest struct {
 	// latest list reader; other connectors may ignore them.
 	Offset      int
 	SkipDetails bool
+	// Known reports whether an item is already in the cache. A latest reader
+	// stops after the first page where every row is known.
+	Known func(Item) bool
 }
 
 // Payload is the bytes a download produces: a .torrent or .nzb, or a magnet

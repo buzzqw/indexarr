@@ -2,6 +2,8 @@ package web
 
 import (
 	"html"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -88,6 +90,30 @@ func TestTemplateCacheCompilesLanguagesConcurrently(t *testing.T) {
 	for _, lang := range langs {
 		if expected[lang] != cache.get(lang) {
 			t.Errorf("%s was not cached", lang)
+		}
+	}
+}
+
+func TestEveryContentTemplateIsRegisteredAsAPage(t *testing.T) {
+	registered := make(map[string]bool, len(pageNames))
+	for _, name := range pageNames {
+		registered[name] = true
+	}
+	files, err := filepath.Glob("templates/*.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		body, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), `{{define "content"}}`) {
+			continue
+		}
+		name := strings.TrimSuffix(filepath.Base(file), ".html")
+		if !registered[name] {
+			t.Errorf("template %s has a content block but is missing from pageNames", file)
 		}
 	}
 }

@@ -107,7 +107,7 @@ var pageNames = []string{
 	"run", "rules", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
 	"applications", "application_form", "import", "activity", "setup",
-	"download_client_form", "site_preview", "smartfeed_form",
+	"download_client_form", "site_preview", "smartfeed_form", "store_warning",
 }
 
 var templateFuncMap = template.FuncMap{
@@ -646,6 +646,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /import", s.importPage)
 	ui.HandleFunc("POST /import/prowlarr", s.importProwlarr)
 	ui.HandleFunc("POST /import/jackett", s.importJackett)
+	ui.HandleFunc("POST /import/gextto", s.importGextto)
 	ui.HandleFunc("POST /import/apply", s.importApply)
 	ui.HandleFunc("GET /activity", s.activityPage)
 	ui.HandleFunc("GET /runs", s.runsRedirect)

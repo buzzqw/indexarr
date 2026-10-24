@@ -241,7 +241,8 @@
     "source": "native",
     "proposable": true,
     "latest": false,
-    "scheduled": true
+    "scheduled": true,
+    "feed_only": true
   },
   {
     "id": "corsaro-account",
@@ -321,7 +322,8 @@
     "italian": true,
     "source": "native",
     "proposable": true,
-    "latest": false,
+    "latest": true,
+    "latest_list": true,
     "scheduled": true
   },
   {
@@ -5726,10 +5728,12 @@
     "categories": [
       "movies",
       "tv",
+      "anime",
       "music",
       "books",
       "games",
-      "software"
+      "software",
+      "xxx"
     ],
     "required": [
       "uploader"
@@ -5741,8 +5745,10 @@
     "url": "https://torrentgalaxy.one/",
     "source": "native",
     "proposable": true,
-    "latest": false,
-    "scheduled": true
+    "latest": true,
+    "latest_list": true,
+    "scheduled": true,
+    "feed_only": true
   },
   {
     "id": "torrentgalaxyclone",

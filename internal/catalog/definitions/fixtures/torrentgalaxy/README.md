@@ -1,25 +1,29 @@
 # TorrentGalaxy fixtures
 
-Captured on 2026-10-23 from public pages:
+Captured from public pages on 2026-10-24:
 
-- `listing.html` — https://torrentgalaxy.one/get-posts/user:anonymous/
-- `details-95ac45.html` — .../post-detail/95ac45/echo-world-the-arks-ascension-2026-1080p-web-dl-h264-playfuldarkness/
-- `details-95b0a7.html` — .../post-detail/95b0a7/by-any-means-2026-1080p-web-dl-hevc-x265-5-1-bone/
-- `details-957fe9.html` — .../post-detail/957fe9/dracula-eternal-2026-1080p-web-dl-h264-playfuldarkness/
+- `listing-user.html` — the 50 newest rows of
+  https://torrentgalaxy.one/get-posts/user:anonymous/
+- `details-uploader.html` — one post-detail page, reduced to its public magnet
+  and torrent links.
+
+- `listing.html`, `details-95ac45.html`, `details-95b0a7.html` and
+  `details-957fe9.html` are the 2026-10-23 captures kept for the keyword
+  fixture; they are not the current uploader layout.
 
 Cleaning applied before saving:
 
-- kept the three newest rows and the magnet cell of their detail pages;
-- scripts, styles, forms, comments, tracking attributes and the hover-cover
+- scripts, styles, forms, comments, tracking attributes and hover-cover
   markup were removed;
+- event handlers and inline styles were removed;
 - the `anonymous` uploader identity and links were replaced with
   `synthetic-uploader`;
 - magnet links and tracker announce URLs are public data and were kept; no
   cookie, session, passkey or account data was present.
 
-The row markup, selectors and magnet URIs are unmodified.
-
-The listing (and the three detail pages) has no category column or category
-label: the native definition therefore extracts size and seeders/leechers but
-leaves categories empty. `TestTorrentGalaxyNativeFields` records that absence
-instead of inventing a category from the title.
+The current uploader listing has no magnet and no `small.added-date`. It has a
+category link (`/get-posts/category:<name>:time:10D`), the title, the
+post-detail link, size and seeders/leechers. The native definition reads the
+category from the link and resolves the magnet from the detail page while the
+latest list is read. `TestTorrentGalaxyNativeFields` checks the 50 rows and
+`TestTorrentGalaxyUploaderResolvesMagnet` checks the resolved magnets.

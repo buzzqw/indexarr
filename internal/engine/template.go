@@ -74,6 +74,25 @@ func (v *templateValues) render(src string) (string, error) {
 }
 
 // renderMap renders every value of a template map, preserving keys.
+func (v *templateValues) renderMapList(in map[string][]string) (map[string][]string, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+	out := make(map[string][]string, len(in))
+	for key, values := range in {
+		rendered := make([]string, 0, len(values))
+		for _, value := range values {
+			text, err := v.render(value)
+			if err != nil {
+				return nil, fmt.Errorf("template %q: %w", key, err)
+			}
+			rendered = append(rendered, text)
+		}
+		out[key] = rendered
+	}
+	return out, nil
+}
+
 func (v *templateValues) renderMap(in map[string]string) (map[string]string, error) {
 	if len(in) == 0 {
 		return nil, nil

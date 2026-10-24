@@ -179,7 +179,7 @@ func (c *DefinitionConnector) Search(ctx context.Context, req SearchRequest) ([]
 	if !c.caps.Supports(req.Mode) {
 		return nil, fmt.Errorf("definition %q: search mode %q is not declared", c.def.Meta.ID, req.Mode)
 	}
-	return c.search(ctx, req, false)
+	return c.search(ctx, req, req.FirstPageOnly)
 }
 
 // Latest implements Connector. A definition with a latest section reads its
@@ -304,6 +304,7 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 			break
 		}
 		added := 0
+		newRows := 0
 		for _, raw := range rows {
 			item, ok, err := c.normalizeRowWith(raw, response.URL, spec)
 			if err != nil {
@@ -318,6 +319,9 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 				continue
 			}
 			seen[key] = struct{}{}
+			if req.Known == nil || !req.Known(item) {
+				newRows++
+			}
 			items = append(items, item)
 			added++
 			if req.Limit > 0 && len(items) >= req.Limit {
@@ -325,6 +329,12 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 			}
 		}
 		if added == 0 {
+			break
+		}
+		// A page made entirely of releases already in the cache marks the end
+		// of the new part of the list. The run stops there instead of walking
+		// every configured page on every cycle.
+		if req.Known != nil && newRows == 0 {
 			break
 		}
 		if req.Limit > 0 && len(items) >= req.Limit {
@@ -399,6 +409,17 @@ func (c *DefinitionConnector) buildLatestRequest(ctx context.Context, latest *de
 	}
 	for name, value := range params {
 		query.Set(name, value)
+	}
+	multi, err := values.renderMapList(latest.Request.ParamsMulti)
+	if err != nil {
+		return nil, fmt.Errorf("definition %q: search params: %w", c.def.Meta.ID, err)
+	}
+	for name, list := range multi {
+		for _, value := range list {
+			if strings.TrimSpace(value) != "" {
+				query.Add(name, value)
+			}
+		}
 	}
 	if c.appendKey {
 		query.Set("apikey", c.settings["api_key"])
@@ -764,6 +785,17 @@ func (c *DefinitionConnector) buildSearchRequest(ctx context.Context, req Search
 	}
 	for name, value := range params {
 		query.Set(name, value)
+	}
+	multi, err := values.renderMapList(c.def.Search.Request.ParamsMulti)
+	if err != nil {
+		return nil, fmt.Errorf("definition %q: search params: %w", c.def.Meta.ID, err)
+	}
+	for name, list := range multi {
+		for _, value := range list {
+			if strings.TrimSpace(value) != "" {
+				query.Add(name, value)
+			}
+		}
 	}
 	if c.appendKey {
 		query.Set("apikey", c.settings["api_key"])
@@ -1311,8 +1343,9 @@ func joinURLPath(basePath, relative string) string {
 
 func (c *DefinitionConnector) buildCapabilities() Capabilities {
 	capabilities := Capabilities{
-		Protocol: c.protocol,
-		Params:   make(map[Mode][]string),
+		Protocol:  c.protocol,
+		Params:    make(map[Mode][]string),
+		LocalOnly: !c.def.SearchUsesQuery(),
 	}
 	add := func(mode Mode, params []string) {
 		if len(params) == 0 {

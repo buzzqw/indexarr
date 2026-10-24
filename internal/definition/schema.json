@@ -592,6 +592,9 @@
         "params": {
           "$ref": "#/$defs/stringMap"
         },
+        "params_multi": {
+          "$ref": "#/$defs/stringListMap"
+        },
         "form": {
           "$ref": "#/$defs/stringMap"
         },
@@ -840,6 +843,15 @@
       "type": "object",
       "additionalProperties": {
         "type": "string"
+      }
+    },
+    "stringListMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       }
     }
   }

@@ -5,12 +5,14 @@
 # carries the magnet link in the same row, so the download section is a
 # fallback for layouts that only expose a detail page (resolve_on: grab).
 #
-# The legacy sources differ only by the `filter` query parameter: `c=TV` or
-# `c=Movies` selects a category, `u=<uploader>` selects an uploader and
-# `tg=<tag>` selects a language/quality tag. v1 has no conditional query
-# parameters, so one setting carries the whole expression; the default keeps
-# the previous TV source working. Examples:
-#   c=TV, c=Movies, c=Music, u=EZTV, tg=English
+# The legacy sources differ by one or more `filter` query parameters:
+# `c=TV` or `c=Movies` selects a category, `u=<uploader>` selects an uploader
+# and `tg=<tag>` selects a language/quality tag. ExtTo needs the parameter
+# repeated when two filters apply (filter=c=Movies&filter=tg=Italian); the
+# `filter` and `filter-extra` settings are emitted as two filter values and an
+# empty one is omitted. A fixed query such as q=MIRCrew therefore sends no
+# empty filter at all. Examples:
+#   filter=c=Movies, filter-extra=tg=Italian, filter=u=EZTV
 schema: 1
 
 meta:
@@ -29,9 +31,15 @@ settings:
   - name: filter
     type: text
     label: "Site filter (category, uploader or language)"
-    help: "One site filter expression: c=TV, c=Movies, u=EZTV or tg=English. Required because an empty filter returns no rows."
+    help: "First filter value: c=TV, c=Movies, u=EZTV, tg=Italian or q=MIRCrew. Leave empty to send no filter."
     default: "c=TV"
     required: true
+  - name: filter-extra
+    type: text
+    label: "Additional site filter"
+    help: "Optional second filter value, for example tg=Italian. It is sent as a second filter parameter."
+    default: ""
+    required: false
 
 categories:
   - { site: "TV", standard: 5000, desc: "TV" }
@@ -53,8 +61,11 @@ search:
     get: /browse/
     params:
       q: "{{ query.keywords }}"
-      filter: "{{ settings.filter }}"
-  pagination: { type: page, start: 1, max_pages: 3, param: page, stop_when: empty_rows }
+    params_multi:
+      filter:
+        - "{{ settings.filter }}"
+        - "{{ settings.filter-extra }}"
+  pagination: { type: page, start: 1, max_pages: 10, param: page, stop_when: empty_rows }
   response:
     type: html
     rows: { selector: "table.search-table > tbody > tr" }
@@ -76,6 +87,15 @@ download:
   extract:
     - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
     - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
+
+latest:
+  request:
+    get: /browse/
+    params_multi:
+      filter:
+        - "{{ settings.filter }}"
+        - "{{ settings.filter-extra }}"
+  pagination: { type: page, start: 1, max_pages: 10, param: page, stop_when: empty_rows }
 
 health:
   query: test

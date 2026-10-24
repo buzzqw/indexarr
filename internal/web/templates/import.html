@@ -102,6 +102,19 @@
       <button class="btn primary" type="submit">{{T "import.generateJackett"}}</button>
     </div>
   </form>
+
+  <form class="panel form" method="post" action="/import/gextto">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="panel-head"><h2>{{T "import.gextto"}}</h2></div>
+    <div class="field grow">
+      <label for="gextto_path">{{T "import.gexttoPath"}}</label>
+      <input id="gextto_path" name="path" type="text" required value="{{.GexttoPath}}" placeholder="~/gextto-data/gextto_config.db">
+      <p class="help">{{T "import.gexttoPathHelp"}}</p>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "import.importGextto"}}</button>
+    </div>
+  </form>
 </div>
 
 {{with .Plan}}

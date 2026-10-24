@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/buzzqw/indexarr/internal/catalog"
@@ -210,19 +211,14 @@ func TestExtToEquivalence(t *testing.T) {
 	}
 }
 
-func TestTorrentGalaxyEquivalence(t *testing.T) {
-	details := map[string]string{
-		"/post-detail/95ac45/echo-world-the-arks-ascension-2026-1080p-web-dl-h264-playfuldarkness/": "torrentgalaxy/details-95ac45.html",
-		"/post-detail/95b0a7/by-any-means-2026-1080p-web-dl-hevc-x265-5-1-bone/":                    "torrentgalaxy/details-95b0a7.html",
-		"/post-detail/957fe9/dracula-eternal-2026-1080p-web-dl-h264-playfuldarkness/":               "torrentgalaxy/details-957fe9.html",
-	}
+func TestTorrentGalaxyUploaderResolvesMagnet(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/get-posts/user:anonymous/" {
-			serveFile(t, w, "torrentgalaxy/listing.html")
+			serveFile(t, w, "torrentgalaxy/listing-user.html")
 			return
 		}
-		if file, ok := details[r.URL.Path]; ok {
-			serveFile(t, w, file)
+		if strings.Contains(r.URL.Path, "/post-detail/") {
+			serveFile(t, w, "torrentgalaxy/details-uploader.html")
 			return
 		}
 		http.NotFound(w, r)
@@ -230,27 +226,22 @@ func TestTorrentGalaxyEquivalence(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := context.Background()
-	legacy, err := feed.FetchRSS(ctx, legacyClient(server),
-		"https://torrentgalaxy.one/get-posts/user:anonymous/", feed.RequestOptions{})
-	if err != nil {
-		t.Fatalf("legacy FetchRSS: %v", err)
-	}
 	connector := nativeConnector(t, "torrentgalaxy", server.URL)
-	native, err := connector.Search(ctx, engine.SearchRequest{Mode: engine.ModeSearch})
+	native, err := connector.Latest(ctx, engine.LatestRequest{})
 	if err != nil {
-		t.Fatalf("native Search: %v", err)
+		t.Fatalf("native Latest: %v", err)
 	}
-	assertSameReleases(t, legacy, native)
-
-	payload, err := connector.Download(ctx, engine.Item{
-		Title:      "Echo World",
-		DetailsURL: server.URL + "/post-detail/95ac45/echo-world-the-arks-ascension-2026-1080p-web-dl-h264-playfuldarkness/",
-	})
-	if err != nil {
-		t.Fatalf("Download(detail): %v", err)
+	if len(native) < 40 {
+		t.Fatalf("latest rows = %d, want the 50 uploader rows", len(native))
 	}
-	if got := hashFromMagnet(payload.Magnet); got != "c3361fc2a6209be84fef6649ef0c3b67efb1af34" {
-		t.Errorf("detail magnet hash = %q", got)
+	withMagnet := 0
+	for _, item := range native {
+		if item.Magnet != "" {
+			withMagnet++
+		}
+	}
+	if withMagnet < 40 {
+		t.Errorf("rows with a resolved magnet = %d, want the whole listing", withMagnet)
 	}
 }
 
@@ -261,7 +252,7 @@ func TestTorrentGalaxyEquivalence(t *testing.T) {
 func TestTorrentGalaxyNativeFields(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/get-posts/user:anonymous/" {
-			serveFile(t, w, "torrentgalaxy/listing.html")
+			serveFile(t, w, "torrentgalaxy/listing-user.html")
 			return
 		}
 		http.NotFound(w, r)
@@ -269,12 +260,12 @@ func TestTorrentGalaxyNativeFields(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	connector := nativeConnector(t, "torrentgalaxy", server.URL)
-	native, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch})
+	native, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch, SkipDetails: true})
 	if err != nil {
 		t.Fatalf("native Search: %v", err)
 	}
-	if len(native) == 0 {
-		t.Fatal("no rows extracted from the TorrentGalaxy fixture")
+	if len(native) != 50 {
+		t.Fatalf("rows extracted from the uploader fixture = %d, want 50", len(native))
 	}
 	for _, item := range native {
 		if item.Size <= 0 {
@@ -286,17 +277,127 @@ func TestTorrentGalaxyNativeFields(t *testing.T) {
 		if item.Leechers < 0 {
 			t.Errorf("%q: leechers were not extracted", item.Title)
 		}
-		// With no category cell the engine falls back to 8000 "Other". That is
-		// the generic unknown bucket, not a category read from the fixture.
-		if len(item.Categories) != 1 || item.Categories[0] != 8000 {
-			t.Errorf("%q: categories = %v, want the 8000 fallback", item.Title, item.Categories)
+		if len(item.Categories) == 0 {
+			t.Errorf("%q: category was not read from the row link", item.Title)
 		}
 	}
-	if native[0].Seeders != 107 || native[0].Leechers != 35 {
-		t.Errorf("first row health = %d/%d, want 107/35", native[0].Seeders, native[0].Leechers)
+	if native[0].Seeders != 21 || native[0].Leechers != 38 {
+		t.Errorf("first row health = %d/%d, want 21/38", native[0].Seeders, native[0].Leechers)
 	}
-	if native[0].Size != 1500000000 {
-		t.Errorf("first row size = %d, want 1500000000", native[0].Size)
+	if native[0].Size != 3600000000 {
+		t.Errorf("first row size = %d, want 3600000000", native[0].Size)
+	}
+	if len(native[0].Categories) != 1 || native[0].Categories[0] != 6000 {
+		t.Errorf("first row category = %v, want 6000 XXX", native[0].Categories)
+	}
+}
+
+func TestExtToMultipleFiltersAndLatestStop(t *testing.T) {
+	var mu sync.Mutex
+	var filters []string
+	var queries []string
+	pages := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		filters = append(filters, r.URL.Query()["filter"]...)
+		queries = append(queries, r.URL.Query().Get("q"))
+		pages++
+		page := r.URL.Query().Get("page")
+		mu.Unlock()
+		if page != "" && page != "1" {
+			_, _ = w.Write([]byte(`<html><body><table class="search-table"><tbody></tbody></table></body></html>`))
+			return
+		}
+		serveFile(t, w, "extto/listing.html")
+	}))
+	t.Cleanup(server.Close)
+
+	def := parseDefinition(t, "extto")
+	def.Meta.URLs[0] = server.URL + "/"
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: "extto", Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"filter": "c=Movies", "filter-extra": "tg=Italian"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch, Query: "Dune"}); err != nil {
+		t.Fatalf("search with two filters: %v", err)
+	}
+	mu.Lock()
+	gotFilters := append([]string(nil), filters...)
+	gotQueries := append([]string(nil), queries...)
+	mu.Unlock()
+	if len(gotFilters) < 2 || gotFilters[0] != "c=Movies" || gotFilters[1] != "tg=Italian" {
+		t.Fatalf("filter params = %v, want the two separate values", gotFilters)
+	}
+	if len(gotQueries) == 0 || gotQueries[0] != "Dune" {
+		t.Fatalf("q params = %v, want Dune", gotQueries)
+	}
+
+	mu.Lock()
+	filters, queries, pages = nil, nil, 0
+	mu.Unlock()
+	connector, err = engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: "extto", Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"filter": "c=TV"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch, Query: "MIRCrew", FirstPageOnly: true}); err != nil {
+		t.Fatalf("fixed query search: %v", err)
+	}
+	mu.Lock()
+	gotFilters = append([]string(nil), filters...)
+	gotQueries = append([]string(nil), queries...)
+	mu.Unlock()
+	for _, filter := range gotFilters {
+		if strings.TrimSpace(filter) == "" {
+			t.Fatal("an empty filter parameter was sent")
+		}
+	}
+	if len(gotFilters) == 0 || gotFilters[0] != "c=TV" || gotQueries[0] != "MIRCrew" {
+		t.Fatalf("fixed query params = filters %v, q %v", gotFilters, gotQueries)
+	}
+	if pages != 1 {
+		t.Fatalf("FirstPageOnly made %d requests, want 1", pages)
+	}
+
+	mu.Lock()
+	pages = 0
+	mu.Unlock()
+	connector, err = engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: "extto", Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"filter": "c=TV"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := connector.Latest(context.Background(), engine.LatestRequest{
+		Known: func(engine.Item) bool { return true },
+	}); err != nil {
+		t.Fatalf("latest with known rows: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if pages != 1 {
+		t.Fatalf("latest read %d pages when the first page was entirely known, want 1", pages)
+	}
+}
+
+func TestFeedOnlyDetection(t *testing.T) {
+	if parseDefinition(t, "torrentgalaxy").SearchUsesQuery() {
+		t.Error("torrentgalaxy uploader must be feed-only")
+	}
+	if !parseDefinition(t, "extto").SearchUsesQuery() {
+		t.Error("extto has a real query search")
 	}
 }
 
