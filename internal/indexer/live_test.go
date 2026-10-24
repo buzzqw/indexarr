@@ -408,12 +408,12 @@ func TestLiveQueueIsBounded(t *testing.T) {
 		t.Fatal(err)
 	}
 	seedDefinition(t, st, "live-queue", "", liveDefinition("live-queue", server.URL+"/slow", "  search: [q]", ""))
-	for i := 0; i < 60; i++ {
-		slug := fmt.Sprintf("live-queue-%02d", i)
+	for i := 0; i < 100; i++ {
+		slug := fmt.Sprintf("live-queue-%03d", i)
 		createIndexer(t, st, "live-queue", slug, slug, "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/slow"))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	_, _ = manager.SearchLive(ctx, LiveQuery{Mode: "search", Query: "Queue Show", Limit: 50})
 
