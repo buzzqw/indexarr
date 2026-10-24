@@ -423,6 +423,7 @@ func TestLiveQueueIsBounded(t *testing.T) {
 	}
 	wg.Wait()
 	waiters, dropped, max := manager.LiveQueueStats()
+	t.Logf("live queue at end: waiters=%d dropped=%d max=%d", waiters, dropped, max)
 	if waiters != 0 {
 		t.Fatalf("waiters at end = %d, want 0", waiters)
 	}
