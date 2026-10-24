@@ -5375,7 +5375,8 @@
     "italian": true,
     "source": "native",
     "proposable": true,
-    "latest": false
+    "latest": false,
+    "scheduled": true
   },
   {
     "id": "newznab-generic",

@@ -112,6 +112,7 @@ var pageNames = []string{
 
 var templateFuncMap = template.FuncMap{
 	"bytes":      humanBytes,
+	"megabytes":  func(value int64) string { return fmt.Sprintf("%.1f MB", float64(value)/(1024*1024)) },
 	"date":       humanDate,
 	"dateOnly":   humanDateOnly,
 	"ago":        humanAgo,
