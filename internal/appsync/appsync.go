@@ -134,6 +134,44 @@ type Client interface {
 	DeleteIndexer(ctx context.Context, remoteID int) error
 }
 
+// TagResolver is an optional capability of applications that store indexer
+// tags as first-class objects (the Servarr family). ResolveTags returns one
+// application tag ID per label, creating the missing tags. A client without
+// tag support simply omits the method, and indexarr then sends no tags.
+type TagResolver interface {
+	ResolveTags(ctx context.Context, labels []string) ([]int, error)
+}
+
+// CategoriesForKind keeps only the standard Torznab categories that an
+// application consumes: Sonarr searches TV, Radarr movies, Lidarr audio,
+// Readarr books and Whisparr adult content. Sending the full category list of
+// a site to every app (as the first implementation did) makes an *arr query
+// categories it can never use. Unknown kinds keep the list unchanged.
+func CategoriesForKind(kind Kind, in []int) []int {
+	low, high := 0, 0
+	switch kind {
+	case KindSonarr:
+		low, high = 5000, 5999
+	case KindRadarr:
+		low, high = 2000, 2999
+	case KindLidarr:
+		low, high = 3000, 3999
+	case KindWhisparr:
+		low, high = 6000, 6999
+	case KindReadarr:
+		low, high = 7000, 7999
+	default:
+		return sortedInts(in)
+	}
+	out := make([]int, 0, len(in))
+	for _, category := range sortedInts(in) {
+		if category >= low && category <= high {
+			out = append(out, category)
+		}
+	}
+	return out
+}
+
 // ErrUnsupported is returned by adapters that cannot manage indexers yet.
 // Callers should use errors.Is.
 var ErrUnsupported = errors.New("appsync: operation unsupported")

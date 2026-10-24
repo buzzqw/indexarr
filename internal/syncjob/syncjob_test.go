@@ -152,6 +152,8 @@ type fakeServarr struct {
 	mu        sync.Mutex
 	nextID    int
 	items     map[int]map[string]any
+	tags      map[string]int
+	nextTag   int
 	listCalls int
 	fail      bool
 	failBody  string
@@ -160,10 +162,12 @@ type fakeServarr struct {
 func newFakeServarr(t *testing.T, apiKey string) *fakeServarr {
 	t.Helper()
 	f := &fakeServarr{
-		t:      t,
-		apiKey: apiKey,
-		nextID: 1,
-		items:  map[int]map[string]any{},
+		t:       t,
+		apiKey:  apiKey,
+		nextID:  1,
+		items:   map[int]map[string]any{},
+		tags:    map[string]int{"tv": 1},
+		nextTag: 2,
 	}
 	f.server = httptest.NewServer(http.HandlerFunc(f.handle))
 	t.Cleanup(f.server.Close)
@@ -179,6 +183,8 @@ func (f *fakeServarr) handle(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/api/v3/system/status":
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"appName":"Sonarr","version":"4.0.1"}`))
+	case r.URL.Path == "/api/v3/tag":
+		f.handleTags(w, r)
 	case r.URL.Path == "/api/v3/indexer/schema":
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[
@@ -194,6 +200,41 @@ func (f *fakeServarr) handle(w http.ResponseWriter, r *http.Request) {
 		f.handleItem(w, r)
 	default:
 		http.NotFound(w, r)
+	}
+}
+
+func (f *fakeServarr) handleTags(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		f.mu.Lock()
+		out := make([]map[string]any, 0, len(f.tags))
+		for label, id := range f.tags {
+			out = append(out, map[string]any{"id": id, "label": label})
+		}
+		f.mu.Unlock()
+		sort.Slice(out, func(i, j int) bool { return out[i]["id"].(int) < out[j]["id"].(int) })
+		writeFakeJSON(w, out)
+	case http.MethodPost:
+		var payload struct {
+			Label string `json:"label"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "bad payload", http.StatusBadRequest)
+			return
+		}
+		label := strings.ToLower(strings.TrimSpace(payload.Label))
+		f.mu.Lock()
+		id, ok := f.tags[label]
+		if !ok {
+			id = f.nextTag
+			f.nextTag++
+			f.tags[label] = id
+		}
+		f.mu.Unlock()
+		w.WriteHeader(http.StatusCreated)
+		writeFakeJSON(w, map[string]any{"id": id, "label": payload.Label})
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -405,6 +446,23 @@ func fakeCategories(t *testing.T, item map[string]any) []int {
 	return out
 }
 
+func fakeTags(t *testing.T, item map[string]any) []int {
+	t.Helper()
+	raw, ok := item["tags"].([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]int, 0, len(raw))
+	for _, value := range raw {
+		number, ok := value.(float64)
+		if !ok {
+			t.Fatalf("tag %v is not a number", value)
+		}
+		out = append(out, int(number))
+	}
+	return out
+}
+
 func fakeRemoteID(t *testing.T, item map[string]any) int {
 	t.Helper()
 	number, ok := item["id"].(float64)
@@ -462,7 +520,7 @@ func TestSyncLifecycle(t *testing.T) {
 	if got := fakeField(alphaItem, "apiKey"); got != testIndexarrKey {
 		t.Errorf("alpha apiKey = %v, want the indexarr primary key", got)
 	}
-	if got := fakeCategories(t, alphaItem); fmt.Sprint(got) != fmt.Sprint([]int{1000, 2000, 5000}) {
+	if got := fakeCategories(t, alphaItem); fmt.Sprint(got) != fmt.Sprint([]int{5000}) {
 		t.Errorf("alpha categories = %v", got)
 	}
 	for _, flag := range []string{"enableRss", "enableAutomaticSearch", "enableInteractiveSearch"} {
@@ -502,7 +560,7 @@ func TestSyncLifecycle(t *testing.T) {
 		Name: appsync.ManagedPrefix + "Alpha Tracker", Implementation: "Torznab",
 		ConfigContract: "TorznabSettings",
 		BaseURL:        "https://indexarr.example/torznab/alpha", APIKey: testIndexarrKey,
-		Categories: []int{1000, 2000, 5000}, Priority: 25,
+		Categories: []int{5000}, Priority: 25,
 		EnableRSS: true, EnableAutomaticSearch: true, EnableInteractiveSearch: true,
 		Protocol: "torrent",
 	})
@@ -591,7 +649,7 @@ func TestSyncLifecycle(t *testing.T) {
 			Name: appsync.ManagedPrefix + "Alpha Tracker", Implementation: "Torznab",
 			ConfigContract: "TorznabSettings",
 			BaseURL:        "https://indexarr.example/torznab/alpha", APIKey: testIndexarrKey,
-			Categories: []int{1000, 2000, 5000}, Priority: 40,
+			Categories: []int{5000}, Priority: 40,
 			EnableRSS: true, EnableAutomaticSearch: true, EnableInteractiveSearch: true,
 			Protocol: "torrent",
 		})
@@ -624,6 +682,59 @@ func TestSyncLifecycle(t *testing.T) {
 	}
 	if len(links) != 1 || links[0].IndexerID != beta.ID {
 		t.Fatalf("app_indexers after disable = %+v", links)
+	}
+}
+
+// TestSyncCarriesTags maps indexarr indexer labels to the application's tag
+// IDs, creates the missing ones once and follows later label changes.
+func TestSyncCarriesTags(t *testing.T) {
+	ctx := context.Background()
+	st := newSyncStore(t, true)
+	v := newSyncVault(t)
+	fake := newFakeServarr(t, testAppKey)
+
+	createTestDefinition(t, st, "tv-def", "torrent", 5000, 2000)
+	alpha := createTestIndexer(t, st, "tv-def", "torrent", "alpha", "Alpha Tracker", true, 25)
+	alpha.Tags = "TV, Anime"
+	if err := st.UpdateIndexer(ctx, alpha); err != nil {
+		t.Fatalf("UpdateIndexer tags: %v", err)
+	}
+	appID := createTestApplication(t, st, v, "sonarr", "Sonarr", fake.server.URL, testAppKey, "full")
+	svc := newSyncService(t, st, v, testBaseURL)
+
+	if result, err := svc.SyncApp(ctx, appID); err != nil || result.Added != 1 {
+		t.Fatalf("first sync = %+v, %v", result, err)
+	}
+	item := fake.find(appsync.ManagedPrefix + "Alpha Tracker")
+	if item == nil {
+		t.Fatal("alpha was not added")
+	}
+	if got := fakeTags(t, item); fmt.Sprint(got) != "[1 2]" {
+		t.Errorf("tags = %v, want [1 2] (tv existing, anime created)", got)
+	}
+	if got := fakeCategories(t, item); fmt.Sprint(got) != "[5000]" {
+		t.Errorf("Sonarr categories = %v, want only TV", got)
+	}
+
+	// Two consecutive syncs must not duplicate indexers or tags.
+	if result, err := svc.SyncApp(ctx, appID); err != nil || result.Added != 0 || result.Updated != 0 {
+		t.Fatalf("second sync = %+v, %v", result, err)
+	}
+	if fake.count() != 1 {
+		t.Errorf("indexers after two syncs = %d, want 1", fake.count())
+	}
+
+	// Dropping a label updates the indexer's tag list.
+	alpha.Tags = "TV"
+	if err := st.UpdateIndexer(ctx, alpha); err != nil {
+		t.Fatalf("UpdateIndexer tags removal: %v", err)
+	}
+	if result, err := svc.SyncApp(ctx, appID); err != nil || result.Updated != 1 {
+		t.Fatalf("tag update = %+v, %v", result, err)
+	}
+	item = fake.find(appsync.ManagedPrefix + "Alpha Tracker")
+	if got := fakeTags(t, item); fmt.Sprint(got) != "[1]" {
+		t.Errorf("tags after removal = %v, want [1]", got)
 	}
 }
 
@@ -895,6 +1006,21 @@ func TestStartWaitCancellation(t *testing.T) {
 	case <-done:
 	case <-time.After(2 * time.Second):
 		t.Fatal("Wait did not return after cancellation")
+	}
+}
+
+// TestScrubErrorRedactsPartialCredentialQuery: an application may echo only a
+// prefix of the indexerr key, so exact-secret replacement is not sufficient.
+func TestScrubErrorRedactsPartialCredentialQuery(t *testing.T) {
+	t.Parallel()
+
+	err := fmt.Errorf("appsync: add: HTTP 400: GET http://host/torznab/x/api?t=caps&apikey=e81ef323bc5770")
+	scrubbed := scrubError(err, "a-completely-different-key")
+	if strings.Contains(scrubbed.Error(), "e81ef323bc5770") {
+		t.Fatalf("partial key leaked: %s", scrubbed.Error())
+	}
+	if !strings.Contains(scrubbed.Error(), "apikey=[REDACTED]") {
+		t.Fatalf("credential query not redacted: %s", scrubbed.Error())
 	}
 }
 

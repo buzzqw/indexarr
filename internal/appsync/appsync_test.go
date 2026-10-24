@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -36,6 +37,37 @@ func TestKindValidAndUsesServarrAPI(t *testing.T) {
 		if got := test.kind.UsesServarrAPI(); got != test.servarr {
 			t.Errorf("%q.UsesServarrAPI() = %v, want %v", test.kind, got, test.servarr)
 		}
+	}
+}
+
+// TestCategoriesForKind is the Blocco C acceptance rule: Sonarr only gets TV
+// categories and Radarr only movie categories, whatever the site declares.
+func TestCategoriesForKind(t *testing.T) {
+	t.Parallel()
+
+	all := []int{8000, 5000, 5070, 2000, 2040, 3000, 7000, 6000}
+	cases := []struct {
+		kind Kind
+		want []int
+	}{
+		{KindSonarr, []int{5000, 5070}},
+		{KindRadarr, []int{2000, 2040}},
+		{KindLidarr, []int{3000}},
+		{KindReadarr, []int{7000}},
+		{KindWhisparr, []int{6000}},
+		{Kind("other"), []int{2000, 2040, 3000, 5000, 5070, 6000, 7000, 8000}},
+	}
+	for _, test := range cases {
+		if got := CategoriesForKind(test.kind, all); !slices.Equal(got, test.want) {
+			t.Errorf("CategoriesForKind(%s) = %v, want %v", test.kind, got, test.want)
+		}
+	}
+	if got := CategoriesForKind(KindSonarr, []int{2000, 3000}); len(got) != 0 {
+		t.Errorf("CategoriesForKind(Sonarr, movie+audio) = %v, want empty", got)
+	}
+	// The input is not mutated.
+	if all[0] != 8000 || len(all) != 8 {
+		t.Errorf("input slice was mutated: %v", all)
 	}
 }
 
@@ -248,6 +280,20 @@ func TestSimpleClientCrossHostRedirectStripsQueryKey(t *testing.T) {
 	defer mu.Unlock()
 	if gotKey != "" {
 		t.Fatalf("cross-host redirect leaked apikey %q", gotKey)
+	}
+}
+
+// TestRedactCredentialQuery covers Radarr echoing a truncated key inside a
+// URL: matching the full secret is not enough, the query value itself must go.
+func TestRedactCredentialQuery(t *testing.T) {
+	t.Parallel()
+
+	text := redact(`GET http://host:18541/torznab/x/api?t=caps&apikey=e81ef323bc5770 failed`, "unrelated")
+	if strings.Contains(text, "e81ef323bc5770") {
+		t.Errorf("partial key survived: %s", text)
+	}
+	if !strings.Contains(text, "apikey=[REDACTED]") {
+		t.Errorf("credential query was not redacted: %s", text)
 	}
 }
 

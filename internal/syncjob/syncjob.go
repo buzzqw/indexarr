@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -282,7 +283,8 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 	if err != nil {
 		return fmt.Errorf("syncjob: %s: list indexers: %w", app.Name, err)
 	}
-	desired, indexerIDs, err := s.desiredIndexers(ctx, indexarrKey)
+	desired, indexerIDs, err := s.desiredIndexers(ctx, indexarrKey,
+		appsync.Kind(strings.ToLower(strings.TrimSpace(app.Kind))), client)
 	if err != nil {
 		return err
 	}
@@ -316,17 +318,30 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 	}
 
 	// Apply in a deterministic order: additions, then updates, then removals.
+	// A failure on one site must not abort the remaining sites: Prowlarr keeps
+	// syncing the rest and reports the failed indexer on the next run.
+	var actionErr error
+	remember := func(err error) {
+		if actionErr == nil {
+			actionErr = err
+		}
+	}
+	failedDeletes := make(map[string]bool)
+
 	for _, action := range actions {
 		if action.Kind != appsync.ActionAdd {
 			continue
 		}
 		created, err := client.AddIndexer(ctx, action.Spec)
 		if err != nil {
-			return fmt.Errorf("syncjob: %s: add %q: %w", app.Name, action.Spec.Name, err)
+			remember(fmt.Errorf("syncjob: %s: add %q: %w", app.Name, action.Spec.Name, err))
+			result.Skipped++
+			continue
 		}
 		indexerID, ok := indexerByBaseURL[action.Spec.BaseURL]
 		if !ok {
-			return fmt.Errorf("syncjob: internal: no local indexer for %q", action.Spec.Name)
+			remember(fmt.Errorf("syncjob: internal: no local indexer for %q", action.Spec.Name))
+			continue
 		}
 		if err := s.store.UpsertAppIndexer(ctx, store.AppIndexer{
 			ApplicationID: app.ID,
@@ -334,7 +349,8 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 			RemoteID:      strconv.Itoa(created.ID),
 			SyncedHash:    appsync.SpecHash(action.Spec),
 		}); err != nil {
-			return fmt.Errorf("syncjob: %s: record added indexer: %w", app.Name, err)
+			remember(fmt.Errorf("syncjob: %s: record added indexer: %w", app.Name, err))
+			continue
 		}
 		result.Added++
 	}
@@ -345,11 +361,14 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 		}
 		updated, err := client.UpdateIndexer(ctx, action.RemoteID, action.Spec)
 		if err != nil {
-			return fmt.Errorf("syncjob: %s: update %q: %w", app.Name, action.Spec.Name, err)
+			remember(fmt.Errorf("syncjob: %s: update %q: %w", app.Name, action.Spec.Name, err))
+			result.Skipped++
+			continue
 		}
 		indexerID, ok := indexerByBaseURL[action.Spec.BaseURL]
 		if !ok {
-			return fmt.Errorf("syncjob: internal: no local indexer for %q", action.Spec.Name)
+			remember(fmt.Errorf("syncjob: internal: no local indexer for %q", action.Spec.Name))
+			continue
 		}
 		remoteID := action.RemoteID
 		if updated.ID > 0 {
@@ -361,7 +380,8 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 			RemoteID:      strconv.Itoa(remoteID),
 			SyncedHash:    appsync.SpecHash(action.Spec),
 		}); err != nil {
-			return fmt.Errorf("syncjob: %s: record updated indexer: %w", app.Name, err)
+			remember(fmt.Errorf("syncjob: %s: record updated indexer: %w", app.Name, err))
+			continue
 		}
 		result.Updated++
 	}
@@ -371,11 +391,15 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 			continue
 		}
 		if err := client.DeleteIndexer(ctx, action.RemoteID); err != nil {
-			return fmt.Errorf("syncjob: %s: delete indexer %d: %w", app.Name, action.RemoteID, err)
+			remember(fmt.Errorf("syncjob: %s: delete indexer %d: %w", app.Name, action.RemoteID, err))
+			failedDeletes[strconv.Itoa(action.RemoteID)] = true
+			result.Skipped++
+			continue
 		}
 		if indexerID, ok := byRemote[strconv.Itoa(action.RemoteID)]; ok {
 			if err := s.store.DeleteAppIndexer(ctx, app.ID, indexerID); err != nil {
-				return fmt.Errorf("syncjob: %s: forget deleted indexer: %w", app.Name, err)
+				remember(fmt.Errorf("syncjob: %s: forget deleted indexer: %w", app.Name, err))
+				continue
 			}
 		}
 		result.Deleted++
@@ -383,24 +407,42 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 
 	// Forget links to indexers that are no longer desired (disabled, deleted
 	// or removed from the app's managed set). This also cleans rows left by an
-	// earlier interrupted sync.
+	// earlier interrupted sync, but never drops a link whose remote deletion
+	// just failed: the next sync will retry it.
 	for _, link := range links {
-		if desiredIDs[link.IndexerID] {
+		if desiredIDs[link.IndexerID] || failedDeletes[link.RemoteID] {
 			continue
 		}
 		if err := s.store.DeleteAppIndexer(ctx, app.ID, link.IndexerID); err != nil {
-			return fmt.Errorf("syncjob: %s: forget stale indexer: %w", app.Name, err)
+			remember(fmt.Errorf("syncjob: %s: forget stale indexer: %w", app.Name, err))
 		}
 	}
-	return nil
+	return actionErr
 }
 
 // desiredIndexers builds the desired specs from every enabled indexer. The
-// returned IDs are parallel to the specs.
-func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string) ([]appsync.IndexerSpec, []int64, error) {
+// returned IDs are parallel to the specs. Categories are narrowed to what the
+// target application consumes and tags are translated to the application's
+// tag IDs, so one per-site indexer carries the same priority and labels as the
+// indexer in indexarr.
+func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind appsync.Kind, client appsync.Client) ([]appsync.IndexerSpec, []int64, error) {
 	indexers, err := s.store.ListIndexers(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("syncjob: list indexers: %w", err)
+	}
+
+	labels := make([]string, 0)
+	for _, indexer := range indexers {
+		if !indexer.Enabled {
+			continue
+		}
+		for _, label := range splitTags(indexer.Tags) {
+			labels = append(labels, label)
+		}
+	}
+	tagIDs, err := resolveTagIDs(ctx, client, labels)
+	if err != nil {
+		return nil, nil, fmt.Errorf("syncjob: resolve tags: %w", err)
 	}
 
 	categories := make(map[string][]int)
@@ -432,13 +474,16 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string) ([]ap
 		}
 
 		specs = append(specs, appsync.IndexerSpec{
-			Name:                    appsync.ManagedPrefix + indexer.Name,
-			Implementation:          implementation,
-			ConfigContract:          contract,
+			Name:           appsync.ManagedPrefix + indexer.Name,
+			Implementation: implementation,
+			ConfigContract: contract,
+			// Servarr appends its own apiPath (/api) to this base URL, so the
+			// value is the per-site Torznab root, exactly like Prowlarr.
 			BaseURL:                 s.baseURL + "/torznab/" + slug,
 			APIKey:                  indexarrKey,
-			Categories:              cats,
+			Categories:              appsync.CategoriesForKind(kind, cats),
 			Priority:                clampPriority(indexer.Priority),
+			Tags:                    tagsForLabels(indexer.Tags, tagIDs),
 			EnableRSS:               true,
 			EnableAutomaticSearch:   true,
 			EnableInteractiveSearch: true,
@@ -529,11 +574,17 @@ func scrubError(err error, secrets ...string) error {
 			}
 		}
 	}
+	// Sonarr redacts the key itself, but Radarr can echo only a prefix of it
+	// inside the indexer URL. Treat any credential query value as secret so a
+	// partial key never reaches last_error, a log line or the redirect.
+	scrubbed = credentialQuery.ReplaceAllString(scrubbed, "$1=[REDACTED]")
 	if scrubbed == text {
 		return err
 	}
 	return &scrubbedError{message: scrubbed, err: err}
 }
+
+var credentialQuery = regexp.MustCompile(`(?i)\b(api_?key|apikey|key|token|password|pass)=([^\s&"'<>\\]+)`)
 
 // syncLevel maps a store level to the levels appsync understands. "add" and
 // "add-remove" both mean add/remove only.
@@ -548,6 +599,81 @@ func syncLevel(level string) string {
 	default:
 		return "disabled"
 	}
+}
+
+// splitTags turns the comma-separated label list stored with an indexer into
+// trimmed, unique labels.
+func splitTags(raw string) []string {
+	var out []string
+	seen := make(map[string]bool)
+	for _, part := range strings.Split(raw, ",") {
+		label := strings.TrimSpace(part)
+		if label == "" {
+			continue
+		}
+		key := strings.ToLower(label)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, label)
+	}
+	return out
+}
+
+// resolveTagIDs maps indexer tag labels to the application's tag IDs. Clients
+// without tag support (Mylar3, LazyLibrarian, tests) return no mapping and the
+// tags are simply omitted from the indexer payload.
+func resolveTagIDs(ctx context.Context, client appsync.Client, labels []string) (map[string]int, error) {
+	out := make(map[string]int)
+	resolver, ok := client.(appsync.TagResolver)
+	if !ok {
+		return out, nil
+	}
+	unique := make([]string, 0, len(labels))
+	seen := make(map[string]bool, len(labels))
+	for _, label := range labels {
+		key := strings.ToLower(strings.TrimSpace(label))
+		if key == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		unique = append(unique, strings.TrimSpace(label))
+	}
+	if len(unique) == 0 {
+		return out, nil
+	}
+	sort.Strings(unique)
+	ids, err := resolver.ResolveTags(ctx, unique)
+	if err != nil {
+		return nil, err
+	}
+	for i, label := range unique {
+		if i >= len(ids) || ids[i] <= 0 {
+			continue
+		}
+		out[strings.ToLower(label)] = ids[i]
+	}
+	return out, nil
+}
+
+// tagsForLabels returns the application tag IDs for an indexer's labels, in
+// the order the labels were written.
+func tagsForLabels(raw string, byLabel map[string]int) []int {
+	if len(byLabel) == 0 {
+		return nil
+	}
+	seen := make(map[int]bool)
+	var out []int
+	for _, label := range splitTags(raw) {
+		id, ok := byLabel[strings.ToLower(label)]
+		if !ok || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
 }
 
 // clampPriority keeps the value in Servarr's 1..50 range; zero defaults to 25.

@@ -171,7 +171,12 @@ func (c *servarrClient) AddIndexer(ctx context.Context, spec IndexerSpec) (Remot
 		return RemoteIndexer{}, fmt.Errorf("%s: encode payload: %w", op, err)
 	}
 
-	status, body, err := c.do(ctx, http.MethodPost, "/indexer", encoded)
+	// forceSave skips Servarr's blocking indexer test. indexarr already tests
+	// the indexer from its own UI, and a live test can legitimately return no
+	// results at the moment of the sync (rate limit, empty query, offline
+	// site). Without forceSave one such site aborts the whole reconciliation,
+	// exactly what Prowlarr avoids by adding first and reporting health after.
+	status, body, err := c.do(ctx, http.MethodPost, "/indexer?forceSave=true", encoded)
 	if err != nil {
 		return RemoteIndexer{}, err
 	}
@@ -221,7 +226,9 @@ func (c *servarrClient) UpdateIndexer(ctx context.Context, remoteID int, spec In
 		return RemoteIndexer{}, fmt.Errorf("%s: encode payload: %w", op, err)
 	}
 
-	status, body, err = c.do(ctx, http.MethodPut, fmt.Sprintf("/indexer/%d", remoteID), encoded)
+	// forceSave bypasses the blocking test for the same reason as AddIndexer.
+	status, body, err = c.do(ctx, http.MethodPut,
+		fmt.Sprintf("/indexer/%d?forceSave=true", remoteID), encoded)
 	if err != nil {
 		return RemoteIndexer{}, err
 	}
@@ -260,6 +267,120 @@ func (c *servarrClient) DeleteIndexer(ctx context.Context, remoteID int) error {
 		return apiError(op, status, body, c.apiKey)
 	}
 	return nil
+}
+
+// ResolveTags returns one Servarr tag ID per label, creating the missing tags.
+// Sonarr/Radarr/Lidarr/Readarr/Whisparr store indexer tags as objects behind
+// /api/v3/tag, unlike indexarr where a tag is a free-form label. Applications
+// that do not expose /tag (404) leave labels unresolved, so tags are simply
+// not sent rather than failing the whole sync.
+func (c *servarrClient) ResolveTags(ctx context.Context, labels []string) ([]int, error) {
+	op := fmt.Sprintf("appsync: %s resolve tags", c.kind)
+	wanted := make([]string, 0, len(labels))
+	seen := make(map[string]bool, len(labels))
+	for _, label := range labels {
+		label = strings.TrimSpace(label)
+		if label == "" {
+			continue
+		}
+		key := strings.ToLower(label)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		wanted = append(wanted, label)
+	}
+	if len(wanted) == 0 {
+		return []int{}, nil
+	}
+
+	status, body, err := c.do(ctx, http.MethodGet, "/tag", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status == http.StatusNotFound {
+		return nil, nil
+	}
+	if !isSuccess(status) {
+		return nil, apiError(op, status, body, c.apiKey)
+	}
+	byLabel := decodeTagLabels(body)
+
+	out := make([]int, len(labels))
+	for i, label := range labels {
+		label = strings.TrimSpace(label)
+		if label == "" {
+			continue
+		}
+		key := strings.ToLower(label)
+		if id, ok := byLabel[key]; ok {
+			out[i] = id
+			continue
+		}
+		encoded, err := json.Marshal(map[string]any{"label": label})
+		if err != nil {
+			return nil, fmt.Errorf("%s: encode tag: %w", op, err)
+		}
+		createStatus, createBody, err := c.do(ctx, http.MethodPost, "/tag", encoded)
+		if err != nil {
+			return nil, err
+		}
+		if !isSuccess(createStatus) {
+			// A concurrent sync may have created the same label between the
+			// list and the create: re-read instead of failing.
+			if refreshed, refreshErr := c.tagLabels(ctx); refreshErr == nil {
+				if id, ok := refreshed[key]; ok {
+					out[i] = id
+					byLabel[key] = id
+					continue
+				}
+			}
+			return nil, apiError(op, createStatus, createBody, c.apiKey)
+		}
+		var created struct {
+			ID int `json:"id"`
+		}
+		if err := json.Unmarshal(createBody, &created); err != nil || created.ID <= 0 {
+			return nil, fmt.Errorf("%s: decode created tag", op)
+		}
+		byLabel[key] = created.ID
+		out[i] = created.ID
+	}
+	return out, nil
+}
+
+// tagLabels returns the application's tags keyed by lower-case label. A 404
+// yields an empty map: tag support is optional.
+func (c *servarrClient) tagLabels(ctx context.Context) (map[string]int, error) {
+	status, body, err := c.do(ctx, http.MethodGet, "/tag", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status == http.StatusNotFound {
+		return map[string]int{}, nil
+	}
+	if !isSuccess(status) {
+		return nil, apiError("appsync: list tags", status, body, c.apiKey)
+	}
+	return decodeTagLabels(body), nil
+}
+
+func decodeTagLabels(body []byte) map[string]int {
+	out := make(map[string]int)
+	var tags []struct {
+		ID    int    `json:"id"`
+		Label string `json:"label"`
+	}
+	if err := json.Unmarshal(body, &tags); err != nil {
+		return out
+	}
+	for _, tag := range tags {
+		label := strings.ToLower(strings.TrimSpace(tag.Label))
+		if label != "" && tag.ID > 0 {
+			out[label] = tag.ID
+		}
+	}
+	return out
 }
 
 // schemaFor looks up the schema template for spec's implementation. It returns

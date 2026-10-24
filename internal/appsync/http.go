@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -100,23 +101,28 @@ func apiError(op string, status int, body []byte, secret string) error {
 	return fmt.Errorf("%s: HTTP %d: %s", op, status, detail)
 }
 
+// credentialQuery catches a key echoed inside a URL even when the app trimmed
+// it to a prefix: matching the whole secret would miss that form. Generic
+// names are used because the echoed key may belong to indexarr, not to the
+// application whose API returned the error.
+var credentialQuery = regexp.MustCompile(`(?i)\b(api_?key|apikey|key|token|password|pass)=([^\s&"'<>\\]+)`)
+
 func redact(text, secret string) string {
 	secret = strings.TrimSpace(secret)
-	if secret == "" {
-		return text
-	}
-	replacements := []string{
-		secret,
-		url.QueryEscape(secret),
-		url.PathEscape(secret),
-		url.QueryEscape(url.QueryEscape(secret)),
-	}
-	for _, replacement := range replacements {
-		if replacement != "" {
-			text = strings.ReplaceAll(text, replacement, "[REDACTED]")
+	if secret != "" {
+		replacements := []string{
+			secret,
+			url.QueryEscape(secret),
+			url.PathEscape(secret),
+			url.QueryEscape(url.QueryEscape(secret)),
+		}
+		for _, replacement := range replacements {
+			if replacement != "" {
+				text = strings.ReplaceAll(text, replacement, "[REDACTED]")
+			}
 		}
 	}
-	return text
+	return credentialQuery.ReplaceAllString(text, "$1=[REDACTED]")
 }
 
 func truncateRunes(text string, limit int) string {

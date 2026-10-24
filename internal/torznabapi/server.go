@@ -299,8 +299,12 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	}
 	// An *arr RSS request (t=search or t=tvsearch without q) reads only the
 	// cache of the sites that publish a latest list. Search-only sites do not
-	// participate and no synthetic query is generated for them.
-	if !liveQueryEligible(mode, filter) && (mode == "search" || mode == "tvsearch") && s.latestIndexers != nil {
+	// participate and no synthetic query is generated for them. The rule is
+	// for the aggregate feed: a per-site endpoint is already scoped to one
+	// indexer, and Servarr validates a new per-site indexer with an empty
+	// tvsearch/movie request. Filtering that request by "latest" made every
+	// search-only site fail the add with "no results" (Blocco C).
+	if aggregate && !liveQueryEligible(mode, filter) && (mode == "search" || mode == "tvsearch") && s.latestIndexers != nil {
 		latest, latestErr := s.latestIndexers(ctx)
 		if latestErr != nil {
 			s.log.Warn("torznab: load latest indexers", "component", "indexarr",
@@ -821,6 +825,34 @@ func intersectParams(left, right []string) []string {
 // advertise for every TV-capable connector. IDs remain untouched: they are
 // advertised only when the underlying definitions really support them.
 func torznabCapabilities(caps engine.Capabilities) engine.Capabilities {
+	if caps.Params == nil {
+		caps.Params = make(map[engine.Mode][]string)
+	}
+	// A definition that only declares a plain keyword search can still answer
+	// TV and movie queries: indexarr maps them to the same q parameter (the TV
+	// fan-out additionally turns season/ep into the SxxEyy keyword). Without
+	// this, Sonarr/Radarr decide "No RSS feed query available" for every
+	// search-only site and refuse to add its per-site indexer (Blocco C).
+	searchQuery := caps.Supports(engine.ModeSearch)
+	if searchQuery {
+		hasQuery := false
+		for _, param := range caps.Params[engine.ModeSearch] {
+			if param == engine.ParamQuery {
+				hasQuery = true
+				break
+			}
+		}
+		searchQuery = hasQuery
+	}
+	if searchQuery {
+		for _, mode := range []engine.Mode{engine.ModeTV, engine.ModeMovie} {
+			if caps.Supports(mode) {
+				continue
+			}
+			caps.Modes = append(caps.Modes, mode)
+			caps.Params[mode] = []string{engine.ParamQuery}
+		}
+	}
 	if !caps.Supports(engine.ModeTV) {
 		return caps
 	}
@@ -842,9 +874,6 @@ func torznabCapabilities(caps engine.Capabilities) engine.Capabilities {
 		default:
 			params = append(params, param)
 		}
-	}
-	if caps.Params == nil {
-		caps.Params = make(map[engine.Mode][]string)
 	}
 	caps.Params[engine.ModeTV] = params
 	return caps

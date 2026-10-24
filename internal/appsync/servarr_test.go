@@ -394,6 +394,108 @@ func TestServarrCrossHostRedirectStripsKey(t *testing.T) {
 	}
 }
 
+// TestServarrResolveTags covers the label -> tag ID mapping that makes the
+// indexer tags survive the sync into Sonarr/Radarr.
+func TestServarrResolveTags(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	created := make([]string, 0)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v3/system/status", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"appName":"Sonarr","version":"4.0.1"}`))
+	})
+	mux.HandleFunc("/api/v3/tag", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			_, _ = w.Write([]byte(`[{"id":4,"label":"TV"},{"id":7,"label":"anime"}]`))
+		case http.MethodPost:
+			var payload struct {
+				Label string `json:"label"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&payload)
+			mu.Lock()
+			created = append(created, payload.Label)
+			mu.Unlock()
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": 9, "label": payload.Label})
+		}
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := New(Config{Kind: KindSonarr, URL: server.URL, APIKey: "key"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ids, err := client.(TagResolver).ResolveTags(context.Background(),
+		[]string{"tv", "anime", "TV", "new-label"})
+	if err != nil {
+		t.Fatalf("ResolveTags: %v", err)
+	}
+	if len(ids) != 4 || ids[0] != 4 || ids[1] != 7 || ids[2] != 4 || ids[3] != 9 {
+		t.Errorf("tag ids = %v, want [4 7 4 9]", ids)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(created) != 1 || created[0] != "new-label" {
+		t.Errorf("created tags = %v, want only new-label", created)
+	}
+}
+
+// TestServarrForceSave proves that add and update skip the blocking indexer
+// test: a site with no current results must not abort the whole sync.
+func TestServarrForceSave(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	var addForce, putForce bool
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v3/system/status", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"appName":"Radarr","version":"5.0.1"}`))
+	})
+	mux.HandleFunc("/api/v3/indexer/schema", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[{"implementation":"Torznab","configContract":"TorznabSettings","fields":[]}]`))
+	})
+	mux.HandleFunc("/api/v3/indexer", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		addForce = r.URL.Query().Get("forceSave") == "true"
+		mu.Unlock()
+		_, _ = w.Write([]byte(`{"id":5,"name":"added"}`))
+	})
+	mux.HandleFunc("/api/v3/indexer/5", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"id":5,"name":"added","fields":[]}`))
+			return
+		}
+		mu.Lock()
+		putForce = r.URL.Query().Get("forceSave") == "true"
+		mu.Unlock()
+		_, _ = w.Write([]byte(`{"id":5,"name":"updated","fields":[]}`))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := New(Config{Kind: KindRadarr, URL: server.URL, APIKey: "key"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	spec := IndexerSpec{Name: "indexarr · Test", Implementation: "Torznab",
+		ConfigContract: "TorznabSettings", BaseURL: "https://indexarr.example/torznab/test/api",
+		Categories: []int{2000}, Protocol: "torrent"}
+	if _, err := client.AddIndexer(context.Background(), spec); err != nil {
+		t.Fatalf("AddIndexer: %v", err)
+	}
+	if _, err := client.UpdateIndexer(context.Background(), 5, spec); err != nil {
+		t.Fatalf("UpdateIndexer: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !addForce || !putForce {
+		t.Errorf("forceSave add=%v update=%v, want both true", addForce, putForce)
+	}
+}
+
 func TestServarrAddNewznab(t *testing.T) {
 	t.Parallel()
 

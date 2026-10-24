@@ -387,6 +387,57 @@ func TestRSSRequestsNeverSynthesizeAQuery(t *testing.T) {
 	}
 }
 
+func TestTorznabCapabilitiesAdvertiseTVAndMovieForPlainSearch(t *testing.T) {
+	caps := torznabCapabilities(engine.Capabilities{
+		Modes:  []engine.Mode{engine.ModeSearch},
+		Params: map[engine.Mode][]string{engine.ModeSearch: {engine.ParamQuery}},
+	})
+	for _, mode := range []engine.Mode{engine.ModeTV, engine.ModeMovie} {
+		if !caps.Supports(mode) {
+			t.Errorf("%s not advertised", mode)
+		}
+	}
+	if got := caps.Params[engine.ModeTV]; len(got) != 3 {
+		t.Errorf("tv params = %v, want q,season,ep", got)
+	}
+	if got := caps.Params[engine.ModeMovie]; len(got) != 1 || got[0] != engine.ParamQuery {
+		t.Errorf("movie params = %v, want [q]", got)
+	}
+	// A site with no plain search must not gain TV/movie modes.
+	caps = torznabCapabilities(engine.Capabilities{Modes: []engine.Mode{engine.ModeTV},
+		Params: map[engine.Mode][]string{engine.ModeTV: {engine.ParamSeason}}})
+	if caps.Supports(engine.ModeMovie) {
+		t.Error("movie mode invented for a site without a plain search")
+	}
+}
+
+// TestPerSiteRSSIgnoresLatestFilter: Servarr validates a per-site indexer with
+// an empty tvsearch/movie request. Search-only sites have no latest feed but do
+// have cached releases, and must still answer that per-site request (Blocco C).
+func TestPerSiteRSSIgnoresLatestFilter(t *testing.T) {
+	api, st := newAPI(t)
+	hash := "7777777777777777777777777777777777777777"
+	releaseID := insertRelease(t, st, "Per Site Show S01E01 1080p", "5040", hash,
+		"magnet:?xt=urn:btih:"+hash, nil)
+	indexerID := provenanceIndexer(t, st, "perse", "Per Site")
+	if err := st.RecordReleaseSource(context.Background(), store.ReleaseSource{
+		ReleaseID: releaseID, IndexerID: indexerID,
+		FirstSeenAt: time.Now(), LastSeenAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("RecordReleaseSource: %v", err)
+	}
+	api.SetLatestIndexers(func(context.Context) ([]int64, error) { return nil, nil })
+
+	aggregate := do(t, api, "/api?t=tvsearch&apikey=secret&cat=5000").Body.String()
+	if strings.Contains(aggregate, "Per Site Show") {
+		t.Errorf("aggregate RSS returned a search-only site:\n%s", aggregate)
+	}
+	perSite := do(t, api, "/torznab/prov-indexer-perse/api?t=tvsearch&apikey=secret&cat=5000").Body.String()
+	if !strings.Contains(perSite, "Per Site Show") {
+		t.Errorf("per-site RSS returned no cached releases:\n%s", perSite)
+	}
+}
+
 func TestCapsUseRealIndexerCapabilities(t *testing.T) {
 	api, st := newAPI(t)
 	ctx := context.Background()
@@ -420,7 +471,9 @@ func TestCapsUseRealIndexerCapabilities(t *testing.T) {
 		for _, want := range []string{
 			`<search available="yes" supportedParams="q"/>`,
 			`<tv-search available="yes" supportedParams="q,season,ep"/>`,
-			`<movie-search available="no"/>`,
+			// A plain keyword search also answers movie queries, so Servarr
+			// can build its RSS request for search-only sites.
+			`<movie-search available="yes" supportedParams="q"/>`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("%s missing %q\n%s", path, want, body)
