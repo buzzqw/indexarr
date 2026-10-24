@@ -114,12 +114,18 @@ func ValidateHTMLBody(body []byte) error {
 }
 
 func looksLikeHTML(body []byte) bool {
+	if len(body) > 512 {
+		body = body[:512]
+	}
 	trimmed := strings.TrimSpace(strings.ToLower(string(body)))
 	return strings.HasPrefix(trimmed, "<!doctype html") || strings.HasPrefix(trimmed, "<html") ||
 		strings.HasPrefix(trimmed, "<head") || strings.HasPrefix(trimmed, "<body")
 }
 
 func htmlError(body []byte) *Error {
+	if len(body) > 4096 {
+		body = body[:4096]
+	}
 	lower := strings.ToLower(string(body))
 	switch {
 	case strings.Contains(lower, "login"), strings.Contains(lower, "sign in"),
