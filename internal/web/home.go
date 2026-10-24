@@ -116,7 +116,11 @@ func homeProblemCode(view indexerHealthView) (string, int) {
 			return explainIndexerError(view.State.LastError, view.State.Circuit), 0
 		case health.ReasonErrors:
 			if raw := strings.TrimSpace(view.Assessment.LastError); raw != "" {
-				return explainIndexerError(raw, view.State.Circuit), reason.Count
+				code := explainIndexerError(raw, view.State.Circuit)
+				if code == "home.problem.unknown" {
+					return code, 0
+				}
+				return code, reason.Count
 			}
 			return "home.problem.errors", reason.Count
 		case health.ReasonZeroResults:

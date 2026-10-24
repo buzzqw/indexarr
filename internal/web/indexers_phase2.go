@@ -495,7 +495,8 @@ func indexerFilterValues(in store.Indexer) map[string]string {
 	for key, value := range config {
 		switch key {
 		case "url", "categories", "query", "user_agent", "allow_private", "default_category", "default-category",
-			"challenge", "flaresolverr_url", "flaresolverr_timeout", "site", "channel", "latest":
+			"challenge", "flaresolverr_url", "flaresolverr_timeout", "site", "channel", "latest",
+			"username", "password", "apikey", "api_key", "passkey", "cookie":
 			continue
 		}
 		if strings.TrimSpace(value) != "" {
