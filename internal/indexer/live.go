@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"sort"
@@ -132,6 +133,24 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 	if len(targets) == 0 {
 		return result, nil
 	}
+	// A site that already answered this exact title with zero results and no
+	// timeout is unlikely to change within a few hours. Remembering that in
+	// the search history keeps the cold path short across restarts without
+	// dropping titles: any positive answer cancels the skip.
+	if zeros := m.zeroIndexers(ctx, req); len(zeros) > 0 {
+		kept := targets[:0]
+		for _, target := range targets {
+			if zeros[target.ID] {
+				m.logger.Debug("live search: skip known-zero indexer", "indexer", target.Slug)
+				continue
+			}
+			kept = append(kept, target)
+		}
+		targets = kept
+		if len(targets) == 0 {
+			return result, nil
+		}
+	}
 
 	// A short-lived response cache absorbs Sonarr/Radarr repetitions and the
 	// offset pages that follow the first one. It is keyed by the effective
@@ -242,6 +261,64 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 	}
 	m.cacheLive(cacheKey, cacheTTL, result)
 	return result, nil
+}
+
+// zeroIndexers returns the indexers that recently answered the same query
+// with zero stored results. Timeouts, skips and errors are neutral. The
+// lookback is short enough that newly published releases are seen again.
+func (m *Manager) zeroIndexers(ctx context.Context, req LiveQuery) map[int64]bool {
+	query := textutil.NormalizeTitle(strings.TrimSpace(req.Query))
+	if query == "" {
+		return nil
+	}
+	rows, err := m.store.ListAppSearches(ctx, 300, 0)
+	if err != nil {
+		return nil
+	}
+	mode := strings.ToLower(strings.TrimSpace(req.Mode))
+	cutoff := time.Now().Add(-6 * time.Hour)
+	zero := make(map[int64]bool)
+	positive := make(map[int64]bool)
+	for _, row := range rows {
+		if row.CreatedAt.Before(cutoff) {
+			continue
+		}
+		if mode != "" && !strings.EqualFold(row.Mode, mode) {
+			continue
+		}
+		if textutil.NormalizeTitle(strings.TrimSpace(row.Query)) != query {
+			continue
+		}
+		// A completed search with no result at all is the strongest zero
+		// signal, even when every slow indexer timed out. Without this, the
+		// alternate titles Sonarr tries would each pay a fresh five-second
+		// window for the same empty answer.
+		if row.TotalResults == 0 && row.Error == "" {
+			for _, entry := range row.Live {
+				if entry.IndexerID > 0 {
+					zero[entry.IndexerID] = true
+				}
+			}
+			continue
+		}
+		for _, entry := range row.Live {
+			if entry.IndexerID <= 0 {
+				continue
+			}
+			switch {
+			case entry.Results > 0:
+				positive[entry.IndexerID] = true
+			case entry.TimedOut || entry.Skipped || entry.Error != "":
+				// neutral
+			default:
+				zero[entry.IndexerID] = true
+			}
+		}
+	}
+	for id := range positive {
+		delete(zero, id)
+	}
+	return zero
 }
 
 // liveFirstPageOnly reports an uploader list. Those pages do not depend on
@@ -648,6 +725,11 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			Leechers:    item.Leechers,
 			DownloadRef: downloadRef,
 		}); err != nil {
+			if errors.Is(err, store.ErrIndexerGone) {
+				m.logger.Debug("live search: indexer deleted during search; provenance discarded",
+					"indexer", indexer.Slug)
+				break
+			}
 			m.logger.Warn("live search: provenance", "indexer", indexer.Slug, "error", err)
 		}
 		stored++

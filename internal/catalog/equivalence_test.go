@@ -387,8 +387,8 @@ func TestExtToMultipleFiltersAndLatestStop(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if pages != 1 {
-		t.Fatalf("latest read %d pages when the first page was entirely known, want 1", pages)
+	if pages != 2 {
+		t.Fatalf("latest read %d pages with stop_when_known false, want page 1 + empty page 2", pages)
 	}
 }
 

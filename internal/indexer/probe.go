@@ -23,6 +23,9 @@ type LatestProbe struct {
 	// PerDay is the measured release rate. It is a lower bound when the page
 	// filled up in less than a day: the page cannot show more than it holds.
 	PerDay int64
+	// LowerBound is true when the sample filled the requested limit. The UI
+	// must show "at least" because the real rate can be higher.
+	LowerBound bool
 	// AvgBytes is the measured database space per release (rows, sources and
 	// FTS), not the payload size of the torrent: a stored release keeps
 	// metadata, not its content.
@@ -72,7 +75,9 @@ func (m *Manager) ProbeLatest(ctx context.Context, indexerID int64, limit int) (
 			avg = 1000
 		}
 	}
-	return EstimateLatest(items, avg, dbSize), nil
+	probe := EstimateLatest(items, avg, dbSize)
+	probe.LowerBound = len(items) >= limit
+	return probe, nil
 }
 
 // EstimateLatest turns one latest-list page into the estimate used by the

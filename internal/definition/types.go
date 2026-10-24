@@ -130,6 +130,15 @@ type Latest struct {
 	// Response overrides search.response when the latest page has a different
 	// layout. Nil means the search response applies unchanged.
 	Response *Response `yaml:"response,omitempty" json:"response,omitempty"`
+	// StopWhenKnown ends a latest walk after a page made entirely of cached
+	// rows. It defaults to true. Cheap listing sources set it to false so a
+	// first/backfill run still reads every configured page.
+	StopWhenKnown *bool `yaml:"stop_when_known,omitempty" json:"stop_when_known,omitempty"`
+}
+
+// StopsWhenKnown reports the early-stop policy for a latest list.
+func (l *Latest) StopsWhenKnown() bool {
+	return l == nil || l.StopWhenKnown == nil || *l.StopWhenKnown
 }
 
 // LatestCategory is one standard-to-site category mapping of a latest list.

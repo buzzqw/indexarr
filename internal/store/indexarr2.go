@@ -375,6 +375,10 @@ func (s *Store) UpdateIndexer(ctx context.Context, in Indexer) error {
 	return nil
 }
 
+// ErrIndexerGone means provenance arrived after its indexer was deleted. The
+// live worker treats it as a normal end, not as a database failure.
+var ErrIndexerGone = errors.New("indexer no longer exists")
+
 // DeleteIndexer removes an indexer. Secrets, state and provenance rows
 // cascade; history keeps its rows with a NULL indexer_id.
 func (s *Store) DeleteIndexer(ctx context.Context, id int64) error {
@@ -535,6 +539,13 @@ func (s *Store) RecordReleaseSource(ctx context.Context, in ReleaseSource) error
 		in.ReleaseID, in.IndexerID, first.Unix(), last.Unix(), in.Seeders,
 		in.Leechers, in.DownloadRef)
 	if err != nil {
+		if strings.Contains(err.Error(), "FOREIGN KEY constraint failed") {
+			var exists int
+			lookupErr := s.db.QueryRowContext(ctx, `SELECT 1 FROM indexers WHERE id = ?`, in.IndexerID).Scan(&exists)
+			if lookupErr == sql.ErrNoRows {
+				return ErrIndexerGone
+			}
+		}
 		return fmt.Errorf("record release source: %w", err)
 	}
 	// Keep the cached release row in sync with the healthiest source. The

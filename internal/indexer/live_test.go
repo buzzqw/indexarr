@@ -341,3 +341,37 @@ func TestLiveFirstPageOnlyDetectsUploaderLists(t *testing.T) {
 		}
 	}
 }
+
+func TestZeroIndexersUsesRecentSearchHistory(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	manager := newTestManager(t, st, newTestVault(t, 3))
+	now := time.Now()
+	for _, row := range []store.AppSearch{
+		{
+			App: "sonarr", Mode: "search", Query: "Severance", TotalResults: 4, CreatedAt: now.Add(-time.Hour),
+			Live: []store.AppSearchLive{
+				{IndexerID: 1, Results: 0},
+				{IndexerID: 2, Results: 3},
+				{IndexerID: 3, Results: 0, TimedOut: true},
+				{IndexerID: 4, Results: 0, Skipped: true},
+			},
+		},
+		{
+			App: "sonarr", Mode: "search", Query: "Severance", CreatedAt: now.Add(-7 * time.Hour),
+			Live: []store.AppSearchLive{{IndexerID: 5, Results: 0}},
+		},
+		{
+			App: "sonarr", Mode: "search", Query: "Severance", TotalResults: 0, CreatedAt: now.Add(-time.Hour),
+			Live: []store.AppSearchLive{{IndexerID: 6, TimedOut: true}},
+		},
+	} {
+		if _, err := st.RecordAppSearch(ctx, row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := manager.zeroIndexers(ctx, LiveQuery{Mode: "search", Query: "Severance"})
+	if !got[1] || got[2] || got[3] || got[4] || got[5] || !got[6] {
+		t.Fatalf("zero indexers = %v, want 1 and 6", got)
+	}
+}

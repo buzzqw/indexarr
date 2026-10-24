@@ -89,6 +89,7 @@ download:
     - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
 
 latest:
+  stop_when_known: false
   request:
     get: /browse/
     params_multi:

@@ -15,7 +15,7 @@
   <dl class="home-numbers store-warning-numbers">
     <div>
       <dt title="{{T "tip.storeLatest"}}">{{T "storeWarning.releasesPerDay"}}</dt>
-      <dd>{{.PerDay}}</dd>
+      <dd>{{if .LowerBound}}≥ {{end}}{{.PerDay}}</dd>
     </div>
     <div>
       <dt title="{{T "tip.storeLatest"}}">{{T "storeWarning.mbPerMonth"}}</dt>

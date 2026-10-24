@@ -343,6 +343,12 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		if wait <= 0 {
 			wait = 5 * time.Second
 		}
+		// Cached releases already answer this request. Let the live fan-out
+		// continue in the background and return the cache immediately; the
+		// next request sees whatever the workers stored.
+		if total > 0 {
+			wait = 0
+		}
 		if wait > timeout {
 			wait = timeout
 		}

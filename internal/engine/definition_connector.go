@@ -250,6 +250,10 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 	if latest.Response != nil {
 		spec = *latest.Response
 	}
+	known := req.Known
+	if !latest.StopsWhenKnown() {
+		known = nil
+	}
 	var items []Item
 	relogged := false
 	for pageIndex := 0; pageIndex < plan.maxPages; pageIndex++ {
@@ -319,7 +323,7 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 				continue
 			}
 			seen[key] = struct{}{}
-			if req.Known == nil || !req.Known(item) {
+			if known == nil || !known(item) {
 				newRows++
 			}
 			items = append(items, item)
@@ -334,7 +338,7 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 		// A page made entirely of releases already in the cache marks the end
 		// of the new part of the list. The run stops there instead of walking
 		// every configured page on every cycle.
-		if req.Known != nil && newRows == 0 {
+		if known != nil && newRows == 0 {
 			break
 		}
 		if req.Limit > 0 && len(items) >= req.Limit {

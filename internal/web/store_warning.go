@@ -99,6 +99,7 @@ type storeWarningView struct {
 	DBSize      int64
 	Items       int
 	Dated       int
+	LowerBound  bool
 	WindowLabel string
 	StoredCount int
 	Limit       int
@@ -183,11 +184,12 @@ func (s *Server) showStoreWarning(w http.ResponseWriter, r *http.Request, defID 
 		view.ProbeError = probeErr.Error()
 	} else {
 		view.PerDay = probe.PerDay
+		view.LowerBound = probe.LowerBound
 		view.MonthBytes = probe.BytesPerMonth
 		view.DBSize = probe.DBSize
 		view.Items = probe.Items
 		view.Dated = probe.Dated
-		view.WindowLabel = storeProbeWindow(probe.Window)
+		view.WindowLabel = s.storeProbeWindow(r, probe.Window)
 	}
 	s.render(w, r, "store_warning", view, http.StatusOK)
 }
@@ -281,20 +283,20 @@ func cloneIndexerInput(in indexersvc.Input) indexersvc.Input {
 	return out
 }
 
-func storeProbeWindow(window time.Duration) string {
+func (s *Server) storeProbeWindow(r *http.Request, window time.Duration) string {
 	if window <= 0 {
-		return "1 day"
+		return s.translate(r, "storeWarning.windowDay")
 	}
 	hours := int(window.Hours() + 0.5)
 	if hours < 24 {
 		if hours < 1 {
 			hours = 1
 		}
-		return fmt.Sprintf("%d h", hours)
+		return s.translate(r, "storeWarning.windowHours", hours)
 	}
 	days := int(window.Hours()/24 + 0.5)
 	if days < 1 {
 		days = 1
 	}
-	return fmt.Sprintf("%d days", days)
+	return s.translate(r, "storeWarning.windowDays", days)
 }

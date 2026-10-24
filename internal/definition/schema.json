@@ -463,6 +463,11 @@
         },
         "response": {
           "$ref": "#/$defs/response"
+        },
+        "stop_when_known": {
+          "type": "boolean",
+          "default": true,
+          "description": "Stop after a page made entirely of cached rows; set false for cheap lists that need a full backfill."
         }
       }
     },

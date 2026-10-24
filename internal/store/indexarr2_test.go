@@ -299,6 +299,25 @@ func TestDefinitionAndIndexerCRUD(t *testing.T) {
 	}
 }
 
+func TestRecordReleaseSourceAfterIndexerDelete(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	mustCreateDefinition(t, st, "gone-def")
+	indexerID := mustCreateIndexer(t, st, "gone-def", "gone-site", "Gone Site")
+	now := time.Now()
+	release := Release{DedupKey: "gone-release", Title: "Gone Release", SearchTitle: "gone release", FirstSeenAt: now, LastSeenAt: now}
+	if _, err := st.UpsertRelease(ctx, &release); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteIndexer(ctx, indexerID); err != nil {
+		t.Fatal(err)
+	}
+	err := st.RecordReleaseSource(ctx, ReleaseSource{ReleaseID: release.ID, IndexerID: indexerID})
+	if !errors.Is(err, ErrIndexerGone) {
+		t.Fatalf("RecordReleaseSource after delete = %v, want ErrIndexerGone", err)
+	}
+}
+
 func TestSecretsRoundTripAndCascade(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
