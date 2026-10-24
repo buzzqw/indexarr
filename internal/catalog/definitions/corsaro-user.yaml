@@ -1,6 +1,7 @@
 # BOZZA (experimental). Corsaro per-uploader listing.
-# The fixture is verified; the live /user/<name>/ page has not been read yet,
-# so the catalog marks the definition experimental.
+# The public filtered page is /index.php?page=torrents&uploader=<id>. The
+# fixture is verified; the definition stays experimental until a live health
+# run confirms the selectors on the real page.
 #
 # Corsaro exposes one page per uploader at /user/<name>/. The page uses the
 # same table.lista markup as the general listing, with magnets in the rows. It
@@ -23,8 +24,8 @@ meta:
 settings:
   - name: uploader
     type: text
-    label: "Uploader"
-    help: "Corsaro username from /user/<name>/."
+    label: "Uploader id"
+    help: "Numeric Corsaro uploader id, for example 82400 from 82400_sargio00.html."
     required: true
 
 categories:
@@ -38,7 +39,7 @@ capabilities:
 
 search:
   request:
-    get: "/user/{{ settings.uploader }}/"
+    get: "/index.php?page=torrents&uploader={{ settings.uploader }}"
   pagination: { type: page, start: 1, max_pages: 3, param: pages, stop_when: empty_rows }
   response:
     type: html
@@ -56,7 +57,7 @@ search:
 
 latest:
   request:
-    get: "/user/{{ settings.uploader }}/"
+    get: "/index.php?page=torrents&uploader={{ settings.uploader }}"
   pagination: { type: page, start: 1, max_pages: 3, param: pages, stop_when: empty_rows }
 
 download:

@@ -550,7 +550,7 @@ func TestTGxCapabilitiesAreLocalOnly(t *testing.T) {
 
 func TestCorsaroUserLatestList(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/user/MIRCrew/" {
+		if r.URL.Path == "/index.php" && r.URL.Query().Get("uploader") == "82400" {
 			serveFile(t, w, "corsaro/user-listing.html")
 			return
 		}
@@ -562,7 +562,7 @@ func TestCorsaroUserLatestList(t *testing.T) {
 	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
 		Indexer:    engine.IndexerRef{Slug: "corsaro-user", Name: "Corsaro user"},
 		Definition: def,
-		Settings:   map[string]string{"uploader": "MIRCrew"},
+		Settings:   map[string]string{"uploader": "82400"},
 		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
 	})
 	if err != nil {
@@ -607,7 +607,7 @@ func TestCorsaroUserStopsPaginationAtMaxAge(t *testing.T) {
 	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
 		Indexer:    engine.IndexerRef{Slug: "corsaro-user", Name: "Corsaro user"},
 		Definition: def,
-		Settings:   map[string]string{"uploader": "MIRCrew"},
+		Settings:   map[string]string{"uploader": "82400"},
 		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
 	})
 	if err != nil {
