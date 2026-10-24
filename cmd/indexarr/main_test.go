@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
@@ -39,5 +40,14 @@ func TestOperationalLogsDoNotLeakSecrets(t *testing.T) {
 	logger.Warn("indexer test failed", "error", "login rejected: password="+secret)
 	if strings.Contains(buf.String(), secret) {
 		t.Fatalf("operational log leaked the secret:\n%s", buf.String())
+	}
+}
+
+func TestIsLockedError(t *testing.T) {
+	if !isLockedError(errors.New("database is locked (517)")) {
+		t.Fatal("locked error not recognized")
+	}
+	if isLockedError(errors.New("no such table")) {
+		t.Fatal("unrelated error treated as a lock")
 	}
 }

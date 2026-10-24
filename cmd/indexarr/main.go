@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"time"
@@ -88,6 +89,10 @@ func main() {
 	levelVar := new(slog.LevelVar)
 	levelVar.Set(parseLevel(cfg.LogLevel))
 	logger := newLogger(levelVar, logBuffer)
+	if cfg.MemoryLimitMB > 0 {
+		debug.SetMemoryLimit(int64(cfg.MemoryLimitMB) << 20)
+		logger.Info("memory limit", "mb", cfg.MemoryLimitMB)
+	}
 	coreengine.SetProductVersion(version)
 	logger.Info("starting indexarr", "version", version, "database", cfg.DBPath, "listen", cfg.Listen)
 
@@ -532,6 +537,35 @@ func displayURL(addr string) string {
 	return "http://" + net.JoinHostPort(host, port)
 }
 
+// mergeDuplicatesWithRetry absorbs the short SQLite lock that a live write
+// can hold while the periodic cleanup starts. A single lock is expected and
+// must not produce a warning.
+func mergeDuplicatesWithRetry(ctx context.Context, st *store.Store) (store.DedupeStats, error) {
+	var stats store.DedupeStats
+	var err error
+	for attempt := 0; attempt < 4; attempt++ {
+		stats, err = st.MergeDuplicates(ctx)
+		if err == nil || !isLockedError(err) {
+			return stats, err
+		}
+		wait := time.Duration(1<<attempt) * 250 * time.Millisecond
+		select {
+		case <-ctx.Done():
+			return stats, ctx.Err()
+		case <-time.After(wait):
+		}
+	}
+	return stats, err
+}
+
+func isLockedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "database is locked") || strings.Contains(message, "sqlite_busy")
+}
+
 // dedupeLoop keeps the cache compact without blocking a request. Both steps
 // are idempotent: a second pass on a clean cache removes zero rows and the
 // enrichment job skips rows that already received a hash.
@@ -544,7 +578,7 @@ func dedupeLoop(ctx context.Context, st *store.Store, manager *indexer.Manager, 
 			return
 		case <-timer.C:
 			runCtx, cancel := context.WithTimeout(ctx, 15*time.Minute)
-			stats, err := st.MergeDuplicates(runCtx)
+			stats, err := mergeDuplicatesWithRetry(runCtx, st)
 			if err != nil {
 				logger.Warn("dedupe: cleanup failed", "error", err)
 			} else if stats.Removed > 0 {

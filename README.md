@@ -112,7 +112,8 @@ Flag disponibili:
   "listen": ":8484",
   "db_path": "indexarr.db",
   "log_level": "info",
-  "vault_key_path": ""
+  "vault_key_path": "",
+  "memory_limit_mb": 96
 }
 ```
 
@@ -153,6 +154,7 @@ modifica dalla pagina **Settings**, senza riavviare.
 | `backup_interval_hours` | 24 | Intervallo dei backup automatici (6–168) |
 | `backup_keep` | 7 | Numero di backup automatici conservati (1–60) |
 | `log_level` | config | Livello di log runtime (`debug`, `info`, `warn`, `error`) |
+| `memory_limit_mb` | config | Limite morbido di memoria Go in MiB (default 96; 0 lo disattiva) |
 
 ## Sorgenti
 

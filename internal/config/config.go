@@ -16,18 +16,20 @@ import (
 
 // Config is the content of indexarr.json.
 type Config struct {
-	Listen       string `json:"listen"`
-	DBPath       string `json:"db_path"`
-	LogLevel     string `json:"log_level"`
-	VaultKeyPath string `json:"vault_key_path"`
+	Listen        string `json:"listen"`
+	DBPath        string `json:"db_path"`
+	LogLevel      string `json:"log_level"`
+	VaultKeyPath  string `json:"vault_key_path"`
+	MemoryLimitMB int    `json:"memory_limit_mb"`
 }
 
 // Default returns the configuration used on a first start.
 func Default() Config {
 	return Config{
-		Listen:   ":8484",
-		DBPath:   "indexarr.db",
-		LogLevel: "info",
+		Listen:        ":8484",
+		DBPath:        "indexarr.db",
+		LogLevel:      "info",
+		MemoryLimitMB: 96,
 	}
 }
 
@@ -66,6 +68,9 @@ func Load(path string) (Config, error) {
 	}
 	if !filepath.IsAbs(cfg.DBPath) {
 		cfg.DBPath = filepath.Join(filepath.Dir(abs), cfg.DBPath)
+	}
+	if cfg.MemoryLimitMB < 0 {
+		cfg.MemoryLimitMB = Default().MemoryLimitMB
 	}
 	cfg.VaultKeyPath = strings.TrimSpace(cfg.VaultKeyPath)
 	if cfg.VaultKeyPath != "" && !filepath.IsAbs(cfg.VaultKeyPath) {
