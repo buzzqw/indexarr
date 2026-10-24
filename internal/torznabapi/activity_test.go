@@ -66,7 +66,10 @@ func TestTryProducesTheSameXMLAsAPI(t *testing.T) {
 	if len(result.Releases) != 1 || result.Releases[0].ID != releaseID {
 		t.Fatalf("Try releases = %+v", result.Releases)
 	}
-	if result.Duration <= 0 {
+	// Windows' monotonic clock can report a zero duration for a very fast
+	// in-memory request; the field is still populated, so only a negative
+	// value is a bug.
+	if result.Duration < 0 {
 		t.Errorf("Try duration = %s", result.Duration)
 	}
 
