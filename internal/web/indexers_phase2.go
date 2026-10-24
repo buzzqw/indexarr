@@ -1756,6 +1756,7 @@ type compactFormView struct {
 	UserAgent           string
 	AllowPrivate        bool
 	StoreLatest         bool
+	MinSize             string
 	Challenge           string
 	ChallengeOptions    []indexerSettingOption
 	FlareSolverrURL     string
@@ -1893,6 +1894,10 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	data.UserAgent = value("user_agent")
 	data.AllowPrivate = truthy(value("allow_private"))
 	data.StoreLatest = truthy(value("store_latest"))
+	data.MinSize = value("min_size_mb")
+	if data.MinSize == "" && strings.EqualFold(defID, "corsaro-user") {
+		data.MinSize = "50"
+	}
 	data.Challenge = strings.ToLower(strings.TrimSpace(value("challenge")))
 	switch data.Challenge {
 	case "none", "flaresolverr":

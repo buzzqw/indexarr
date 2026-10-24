@@ -3,6 +3,9 @@ package indexer
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -238,5 +241,50 @@ func TestRunCanceledRecordsCanceled(t *testing.T) {
 	}
 	if state.Circuit != "closed" {
 		t.Errorf("circuit = %q, want closed", state.Circuit)
+	}
+}
+
+func TestRunKeepsItemWithoutDate(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	html := `<html><body><table class="results"><tbody><tr>
+<td class="name"><a href="/details/1">Undated Release</a></td>
+<td><a class="download" href="/download/1.torrent">DL</a></td>
+<td><a class="cat" href="/browse?cat=5">TV</a></td>
+<td class="size">1.5 GB</td><td class="seeders">10</td><td class="leechers">1</td>
+<td class="hash">` + hashA + `</td>
+</tr></tbody></table></body></html>`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/":
+			_, _ = w.Write([]byte("<html><body>ok</body></html>"))
+		case r.URL.Path == "/search":
+			_, _ = w.Write([]byte(html))
+		case strings.HasPrefix(r.URL.Path, "/download/"):
+			w.Header().Set("Content-Type", "application/x-bittorrent")
+			_, _ = w.Write(torrentBody)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+	manager := newTestManager(t, st, v)
+	indexerID := seedNative(t, st, v, server.URL, true)
+	stats, err := manager.Run(context.Background(), indexerID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if stats.New != 1 {
+		t.Fatalf("New = %d, want the undated item kept", stats.New)
+	}
+	releases, total, err := st.SearchReleases(context.Background(), store.Filter{Limit: 10})
+	if err != nil {
+		t.Fatalf("SearchReleases: %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("releases = %d, want 1", total)
+	}
+	if releases[0].PublishedAt.IsZero() || releases[0].FirstSeenAt.IsZero() {
+		t.Fatalf("undated release dates = published %v first_seen %v", releases[0].PublishedAt, releases[0].FirstSeenAt)
 	}
 }

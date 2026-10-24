@@ -86,6 +86,7 @@ type Transport struct {
 	cfg      TransportConfig
 	clock    Clock
 	client   *http.Client
+	client4  *http.Client
 	guard    *Guard
 	breaker  *circuitBreaker
 	polite   *Politeness
@@ -153,6 +154,24 @@ func NewTransport(cfg TransportConfig) *Transport {
 		Timeout:       cfg.Timeout,
 		CheckRedirect: transport.checkRedirect,
 	}
+	dialer4 := &net.Dialer{Timeout: cfg.Timeout, KeepAlive: 30 * time.Second}
+	guardDial4 := guard.DialContext(dialer4)
+	httpTransport4 := &http.Transport{
+		Proxy: proxyFunc,
+		DialContext: func(ctx context.Context, _, address string) (net.Conn, error) {
+			return guardDial4(ctx, "tcp4", address)
+		},
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: time.Second,
+	}
+	transport.client4 = &http.Client{
+		Transport:     httpTransport4,
+		Timeout:       cfg.Timeout,
+		CheckRedirect: transport.checkRedirect,
+	}
 	return transport
 }
 
@@ -164,6 +183,14 @@ func (t *Transport) Config() TransportConfig {
 		return TransportConfig{}
 	}
 	return t.cfg
+}
+
+func isTimeoutError(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
 // parseProxyURL validates a proxy configuration. The returned error never
@@ -274,6 +301,13 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 	}
 
 	response, err := t.client.Do(outgoing)
+	if err != nil && ctx.Err() == nil && t.client4 != nil && isTimeoutError(err) {
+		// An IPv6 route that connects but never answers looks like a timeout.
+		// Retry the same request once with an IPv4-only dialer.
+		if retry, retryErr := t.client4.Do(outgoing.Clone(ctx)); retryErr == nil {
+			response, err = retry, nil
+		}
+	}
 	if err != nil {
 		if response != nil && response.Body != nil {
 			_ = response.Body.Close()

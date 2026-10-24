@@ -32,8 +32,8 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 51 {
-		t.Fatalf("len(Builtins()) = %d, want 51", len(entries))
+	if len(entries) != 52 {
+		t.Fatalf("len(Builtins()) = %d, want 52", len(entries))
 	}
 
 	verified := map[string]bool{
@@ -244,6 +244,7 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 		"extto",
 		"torrentgalaxy",
 		"corsaro",
+		"corsaro-user",
 		"knaben",
 		"knaben-search",
 		"torrentleech",
@@ -304,8 +305,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 51 {
-		t.Fatalf("manifest has %d definitions, want 51", len(items))
+	if len(items) != 52 {
+		t.Fatalf("manifest has %d definitions, want 52", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")

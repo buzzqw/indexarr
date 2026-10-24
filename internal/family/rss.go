@@ -173,19 +173,23 @@ func (r *RSS) Download(ctx context.Context, item engine.Item) (engine.Payload, e
 	if r.cfg.Smartfeed {
 		return engine.Payload{}, smartfeed.PendingGrabError()
 	}
-	if magnet := firstNonEmpty(item.Magnet, item.Attributes["magneturl"], item.Attributes["magnet"]); magnet != "" {
-		return engine.Payload{Magnet: magnet}, nil
-	}
-	if target := strings.TrimSpace(item.DownloadURL); strings.HasPrefix(strings.ToLower(target), "magnet:") {
-		return engine.Payload{Magnet: target}, nil
-	}
-	if magnet := feed.MagnetFromHash(item.InfoHash, item.Title); magnet != "" {
-		return engine.Payload{Magnet: magnet}, nil
+	// A .torrent enclosure wins over a reconstructed magnet: a private
+	// tracker's torrent carries the passkey and must be served as the file.
+	target := firstNonEmpty(item.DownloadURL, item.Attributes["enclosure"])
+	hasTorrent := feed.LooksLikeTorrentURL(target, item.Attributes["enclosure_type"])
+	if !hasTorrent {
+		if magnet := firstNonEmpty(item.Magnet, item.Attributes["magneturl"], item.Attributes["magnet"]); magnet != "" {
+			return engine.Payload{Magnet: magnet}, nil
+		}
+		if strings.HasPrefix(strings.ToLower(target), "magnet:") {
+			return engine.Payload{Magnet: target}, nil
+		}
+		if magnet := feed.MagnetFromHash(item.InfoHash, item.Title); magnet != "" {
+			return engine.Payload{Magnet: magnet}, nil
+		}
 	}
 
-	// DownloadURL is the .torrent enclosure resolved from the feed. A details
-	// link is not a payload; it must not be fetched here.
-	target := firstNonEmpty(item.DownloadURL, item.Attributes["enclosure"])
+	// A details link is not a payload; it must not be fetched here.
 	if !strings.HasPrefix(strings.ToLower(target), "http") {
 		return engine.Payload{}, fmt.Errorf("rss: release download URL is missing")
 	}
@@ -332,11 +336,29 @@ func (r *RSS) request(ctx context.Context) (*engine.Response, error) {
 	if r.cfg.UserAgent != "" {
 		req.Header.Set("User-Agent", r.cfg.UserAgent)
 	}
-	resp, err := r.cfg.Transport.Do(ctx, r.breaker, req)
-	if err != nil {
-		return nil, r.redactError("rss: fetch feed", err)
+	var lastResp *engine.Response
+	var lastErr error
+	for attempt := 1; attempt <= 3; attempt++ {
+		resp, err := r.cfg.Transport.Do(ctx, r.breaker, req)
+		if err == nil && resp != nil && resp.Status < 500 && resp.Status != http.StatusTooManyRequests {
+			return resp, nil
+		}
+		lastResp, lastErr = resp, err
+		if attempt == 3 {
+			break
+		}
+		wait := time.Duration(attempt) * 500 * time.Millisecond
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(wait):
+		}
+		req = req.Clone(ctx)
 	}
-	return resp, nil
+	if lastErr != nil {
+		return nil, r.redactError("rss: fetch feed", lastErr)
+	}
+	return lastResp, nil
 }
 
 func (r *RSS) mapItems(raw []feed.Item) []engine.Item {

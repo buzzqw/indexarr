@@ -151,6 +151,7 @@ type runFilter struct {
 	allowed  []int
 	excluded []int
 	maxAge   time.Duration
+	minSize  int64
 	now      time.Time
 }
 
@@ -163,14 +164,20 @@ func newRunFilter(config map[string]any, now time.Time) runFilter {
 	if days := intFromConfig(config["max_age_days"]); days > 0 {
 		filter.maxAge = time.Duration(days) * 24 * time.Hour
 	}
+	if mb := intFromConfig(config["min_size_mb"]); mb > 0 {
+		filter.minSize = int64(mb) << 20
+	}
 	return filter
 }
 
 // reject reports why item is not kept, or "" when it passes. "too old" wins
 // over "category", so a run reports the more specific reason first.
-func (f runFilter) reject(item engine.Item) (tooOld, category bool) {
+func (f runFilter) reject(item engine.Item) (tooOld, category, tooSmall bool) {
 	if f.maxAge > 0 && !item.Published.IsZero() && item.Published.Before(f.now.Add(-f.maxAge)) {
 		tooOld = true
+	}
+	if f.minSize > 0 && item.Size > 0 && item.Size < f.minSize {
+		tooSmall = true
 	}
 	category = false
 	itemCategory := firstCategory(item.Categories)
@@ -182,7 +189,7 @@ func (f runFilter) reject(item engine.Item) (tooOld, category bool) {
 			category = true
 		}
 	}
-	return tooOld, category
+	return tooOld, category, tooSmall
 }
 
 func firstCategory(categories []int) int {

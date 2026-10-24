@@ -309,8 +309,8 @@ func TestRSSFailedFetchIsNotCached(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("items = %d", len(items))
 	}
-	if got := requests.Load(); got != 2 {
-		t.Fatalf("requests = %d, want 2", got)
+	if got := requests.Load(); got != 4 {
+		t.Fatalf("requests = %d, want 4 (three attempts then success)", got)
 	}
 }
 
@@ -364,6 +364,21 @@ func TestRSSDownload(t *testing.T) {
 	}
 	if !strings.HasSuffix(got.Filename, ".torrent") {
 		t.Errorf("filename = %q", got.Filename)
+	}
+
+	// A .torrent enclosure wins over a magnet reconstructed from the hash:
+	// private trackers carry the passkey in the file.
+	got, err = connector.Download(ctx, engine.Item{
+		Title:       "Private",
+		DownloadURL: server.URL + "/download/2.torrent",
+		InfoHash:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Magnet:      magnet,
+	})
+	if err != nil {
+		t.Fatalf("Download(private torrent): %v", err)
+	}
+	if string(got.Body) != string(payload) {
+		t.Errorf("private torrent returned magnet/body = %q", got.Body)
 	}
 
 	got, err = connector.Download(ctx, engine.Item{
@@ -532,5 +547,25 @@ func TestRSSFactory(t *testing.T) {
 		Settings: map[string]string{"default_category": "5000"},
 	}); err == nil {
 		t.Fatal("factory accepted a missing URL")
+	}
+}
+
+func TestRSSFeedRetriesThreeTimes(t *testing.T) {
+	var requests atomic.Int64
+	body := readRSSFixture(t, "rss_feed.xml")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if requests.Add(1) < 3 {
+			http.Error(w, "temporary", http.StatusBadGateway)
+			return
+		}
+		_, _ = w.Write(body)
+	}))
+	t.Cleanup(server.Close)
+	connector := newTestRSS(t, server, "/rss")
+	if _, err := connector.Search(context.Background(), engine.SearchRequest{Query: "ubuntu"}); err != nil {
+		t.Fatalf("Search with two transient errors: %v", err)
+	}
+	if got := requests.Load(); got != 3 {
+		t.Fatalf("requests = %d, want 3", got)
 	}
 }

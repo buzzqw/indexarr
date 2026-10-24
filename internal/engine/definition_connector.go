@@ -310,6 +310,8 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 		}
 		added := 0
 		newRows := 0
+		datedRows := 0
+		oldRows := 0
 		for _, raw := range rows {
 			item, ok, err := c.normalizeRowWith(raw, response.URL, spec)
 			if err != nil {
@@ -327,6 +329,12 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 			if known == nil || !known(item) {
 				newRows++
 			}
+			if !item.Published.IsZero() {
+				datedRows++
+				if req.MaxAge > 0 && item.Published.Before(time.Now().Add(-req.MaxAge)) {
+					oldRows++
+				}
+			}
 			items = append(items, item)
 			added++
 			if req.Limit > 0 && len(items) >= req.Limit {
@@ -340,6 +348,9 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 		// of the new part of the list. The run stops there instead of walking
 		// every configured page on every cycle.
 		if known != nil && newRows == 0 {
+			break
+		}
+		if req.MaxAge > 0 && datedRows > 0 && oldRows == datedRows {
 			break
 		}
 		if req.Limit > 0 && len(items) >= req.Limit {

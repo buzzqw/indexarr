@@ -244,7 +244,7 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 // the fan-out leaves the sixteen global slots for real search endpoints.
 func LiveExcluded(indexer store.Indexer) bool {
 	switch strings.ToLower(strings.TrimSpace(indexer.DefinitionID)) {
-	case "torrentgalaxy":
+	case "torrentgalaxy", "corsaro-user":
 		return true
 	case "extto":
 		config, err := decodeConfig(indexer.ConfigJSON)
@@ -264,6 +264,16 @@ func LiveExcluded(indexer store.Indexer) bool {
 // liveFirstPageOnly reports an uploader list. Those pages do not depend on
 // the query: opening three pages only multiplies the wait without changing
 // the answer. A normal search keeps its definition pagination.
+func isUploaderList(indexer store.Indexer, config map[string]any) bool {
+	if settingString(config["uploader"]) != "" {
+		return true
+	}
+	if strings.Contains(settingString(config["filter"]), "u=") {
+		return true
+	}
+	return strings.EqualFold(strings.TrimSpace(indexer.DefinitionID), "corsaro-user")
+}
+
 func liveFirstPageOnly(configJSON string) bool {
 	config, err := decodeConfig(configJSON)
 	if err != nil {
@@ -740,7 +750,7 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 		}
 
 		downloadRef := ""
-		if magnet == "" && hash == "" {
+		if magnet == "" && (hash == "" || feed.LooksLikeTorrentURL(item.DownloadURL, item.Attributes["enclosure_type"])) {
 			if m.vault == nil {
 				continue
 			}

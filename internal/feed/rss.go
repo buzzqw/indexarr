@@ -103,7 +103,50 @@ func ParseRSS(data []byte) ([]Item, error) {
 	if atomErr := xml.Unmarshal(data, &atom); atomErr == nil {
 		return itemsFromAtom(atom), nil
 	}
+	if items, ok := parseTruncatedRSS(data); ok {
+		return items, nil
+	}
 	return nil, fmt.Errorf("parse feed: %w", rssErr)
+}
+
+// parseTruncatedRSS keeps the complete <item> elements of a feed whose closing
+// tags were cut off. Knaben streams such documents. The caller gets at most 50
+// items and never more than the first 512 KiB of a malformed body.
+func parseTruncatedRSS(data []byte) ([]Item, bool) {
+	const maxBytes = 512 * 1024
+	const maxItems = 50
+	if len(data) > maxBytes {
+		data = data[:maxBytes]
+	}
+	var blocks [][]byte
+	rest := data
+	for len(blocks) < maxItems {
+		start := bytes.Index(rest, []byte("<item"))
+		if start < 0 {
+			break
+		}
+		end := bytes.Index(rest[start:], []byte("</item>"))
+		if end < 0 {
+			break
+		}
+		end += start + len("</item>")
+		blocks = append(blocks, rest[start:end])
+		rest = rest[end:]
+	}
+	if len(blocks) == 0 {
+		return nil, false
+	}
+	wrapped := make([]byte, 0, len(data))
+	wrapped = append(wrapped, []byte("<rss><channel>")...)
+	for _, block := range blocks {
+		wrapped = append(wrapped, block...)
+	}
+	wrapped = append(wrapped, []byte("</channel></rss>")...)
+	var doc rssDocument
+	if err := xml.Unmarshal(wrapped, &doc); err != nil {
+		return nil, false
+	}
+	return itemsFromRSS(doc), true
 }
 
 func itemsFromRSS(doc rssDocument) []Item {
@@ -153,15 +196,15 @@ func convertRSSItem(raw rssItem) (Item, bool) {
 	if hash == "" {
 		hash = MagnetHash(magnet)
 	}
-	if magnet == "" && hash != "" {
-		magnet = MagnetFromHash(hash, title)
-	}
 
 	torrentURL := ""
 	if LooksLikeTorrentURL(raw.Enclosure.URL, raw.Enclosure.Type) {
 		torrentURL = strings.TrimSpace(raw.Enclosure.URL)
 	} else if LooksLikeTorrentURL(raw.Link, "") {
 		torrentURL = strings.TrimSpace(raw.Link)
+	}
+	if magnet == "" && hash != "" && torrentURL == "" {
+		magnet = MagnetFromHash(hash, title)
 	}
 
 	return Item{
@@ -204,14 +247,14 @@ func itemsFromAtom(doc atomDocument) []Item {
 		}
 		magnet := firstNonEmpty(magnetValue(alternate), magnetValue(enclosureURL))
 		hash := MagnetHash(magnet)
-		if magnet == "" && hash != "" {
-			magnet = MagnetFromHash(hash, title)
-		}
 		torrentURL := ""
 		if LooksLikeTorrentURL(enclosureURL, enclosureType) {
 			torrentURL = enclosureURL
 		} else if LooksLikeTorrentURL(alternate, "") {
 			torrentURL = alternate
+		}
+		if magnet == "" && hash != "" && torrentURL == "" {
+			magnet = MagnetFromHash(hash, title)
 		}
 		var categories []string
 		for _, category := range entry.Category {

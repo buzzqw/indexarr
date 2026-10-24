@@ -136,3 +136,41 @@ func TestParseEmptyFeed(t *testing.T) {
 		t.Fatal("expected an error for an empty feed")
 	}
 }
+
+func TestParseTruncatedRSSKeepsCompleteItems(t *testing.T) {
+	body := `<rss version="2.0"><channel><title>Knaben</title>
+<item><title>First.Release.1080p</title><link>magnet:?xt=urn:btih:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</link></item>
+<item><title>Second.Release.1080p</title><link>magnet:?xt=urn:btih:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb</link></item>
+<item><title>Cut`
+	items, err := ParseRSS([]byte(body))
+	if err != nil {
+		t.Fatalf("ParseRSS truncated: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("items = %d, want the two complete items", len(items))
+	}
+	if items[0].Title != "First.Release.1080p" {
+		t.Fatalf("first title = %q", items[0].Title)
+	}
+}
+
+func TestParseTorrentEnclosureDoesNotInventMagnet(t *testing.T) {
+	feed := `<rss version="2.0"><channel><item>
+<title>Private.Release.1080p</title>
+<infohash>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</infohash>
+<enclosure url="https://private.example/download/1.torrent" length="1500000000" type="application/x-bittorrent"/>
+</item></channel></rss>`
+	items, err := ParseRSS([]byte(feed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items = %d", len(items))
+	}
+	if items[0].Magnet != "" {
+		t.Fatalf("magnet was reconstructed despite a .torrent: %q", items[0].Magnet)
+	}
+	if items[0].TorrentURL == "" {
+		t.Fatal("torrent URL was lost")
+	}
+}

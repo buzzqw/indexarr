@@ -1,0 +1,77 @@
+# BOZZA (experimental). Corsaro per-uploader listing.
+# The fixture is verified; the live /user/<name>/ page has not been read yet,
+# so the catalog marks the definition experimental.
+#
+# Corsaro exposes one page per uploader at /user/<name>/. The page uses the
+# same table.lista markup as the general listing, with magnets in the rows. It
+# is a latest-list source only: the page is read by the scheduler and never
+# queried in live searches.
+schema: 1
+
+meta:
+  id: corsaro-user
+  name: Corsaro (uploader)
+  language: it-IT
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Corsaro listing for one uploader, updated periodically.
+  urls:
+    - https://ilcorsaroblu.org/
+  updated: "2026-10-24"
+
+settings:
+  - name: uploader
+    type: text
+    label: "Uploader"
+    help: "Corsaro username from /user/<name>/."
+    required: true
+
+categories:
+  - { site: "2", standard: 3000, desc: "Audio / Music" }
+  - { site: "13", standard: 2040, desc: "Movies 1080p" }
+  - { site: "14", standard: 2040, desc: "Movies 720p" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: "/user/{{ settings.uploader }}/"
+  pagination: { type: page, start: 1, max_pages: 3, param: pages, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.lista tr" }
+    fields:
+      title:    { selector: 'td[style*="padding-left:10px"] a', filters: [trim] }
+      details:  { selector: 'td[style*="padding-left:10px"] a', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      category: { selector: 'a[href*="category="]', attr: href, filters: [{ query_param: category }], type: category }
+      size:     { selector: "td.lista:nth-last-of-type(2)", type: size }
+      seeders:  { selector: "td.lista:nth-of-type(6)", type: int }
+      leechers: { selector: "td.lista:nth-of-type(7)", type: int }
+      date:     { selector: "td.lista:nth-of-type(5)", type: date, layouts: ["02/01/2006"] }
+    required: [title, magnet]
+
+latest:
+  request:
+    get: "/user/{{ settings.uploader }}/"
+  pagination: { type: page, start: 1, max_pages: 3, param: pages, stop_when: empty_rows }
+
+download:
+  resolve_on: grab
+  from: details
+  max_concurrent: 2
+  extract:
+    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
+    - torrent: { selector: 'a[href*="download.php"]', attr: href, type: url }
+
+health:
+  query: ""
+  min_rows: 1
+
+tests:
+  - name: uploader listing
+    fixture: fixtures/corsaro/user-listing.html
+    expect: { min_rows: 3, required: [title, magnet] }

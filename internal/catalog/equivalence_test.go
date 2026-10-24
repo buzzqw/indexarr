@@ -19,7 +19,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/catalog"
 	"github.com/buzzqw/indexarr/internal/definition"
@@ -543,5 +545,91 @@ func TestTGxCapabilitiesAreLocalOnly(t *testing.T) {
 	extto := nativeConnector(t, "extto", "http://127.0.0.1:1")
 	if extto.Capabilities().LocalOnly {
 		t.Error("ExtTo is a query search and must not be LocalOnly")
+	}
+}
+
+func TestCorsaroUserLatestList(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/user/MIRCrew/" {
+			serveFile(t, w, "corsaro/user-listing.html")
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(server.Close)
+	def := parseDefinition(t, "corsaro-user")
+	def.Meta.URLs[0] = server.URL + "/"
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: "corsaro-user", Name: "Corsaro user"},
+		Definition: def,
+		Settings:   map[string]string{"uploader": "MIRCrew"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := connector.Latest(context.Background(), engine.LatestRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) < 3 {
+		t.Fatalf("Corsaro user items = %d, want at least 3", len(items))
+	}
+}
+
+func TestKnabenTruncatedFeed(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("definitions", "fixtures", "knaben", "truncated.xml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := feed.ParseRSS(body)
+	if err != nil {
+		t.Fatalf("Knaben truncated feed: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("Knaben truncated items = %d, want 2", len(items))
+	}
+}
+
+func TestCorsaroUserStopsPaginationAtMaxAge(t *testing.T) {
+	var requests atomic.Int64
+	oldRow := `<table class="lista"><tr>
+<td class="lista"><a href="index.php?page=torrents&amp;category=13">Movies</a></td>
+<td class="lista" style="padding-left:10px;overflow:auto;"><a href="old.html">Old.Release.1080p</a></td>
+<td class="lista">---</td>
+<td class="lista"><a href="magnet:?xt=urn:btih:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">magnet</a></td>
+<td class="lista">01/01/2020</td>
+<td class="lista">10</td><td class="lista">1</td><td class="lista">---</td>
+<td class="lista"><a href="uploader.html">MIRCrew</a></td>
+<td class="lista">1.0 GB</td><td class="lista">N/D</td>
+</tr></table>`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		_, _ = w.Write([]byte(oldRow))
+	}))
+	t.Cleanup(server.Close)
+	def := parseDefinition(t, "corsaro-user")
+	def.Meta.URLs[0] = server.URL + "/"
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: "corsaro-user", Name: "Corsaro user"},
+		Definition: def,
+		Settings:   map[string]string{"uploader": "MIRCrew"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := connector.Latest(context.Background(), engine.LatestRequest{
+		MaxAge:      24 * time.Hour,
+		SkipDetails: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items = %d, want 1", len(items))
+	}
+	if got := requests.Load(); got != 1 {
+		t.Fatalf("requests = %d, want 1: old page did not stop the walk", got)
 	}
 }

@@ -179,6 +179,9 @@ type LatestRequest struct {
 	// latest list reader; other connectors may ignore them.
 	Offset      int
 	SkipDetails bool
+	// MaxAge stops a latest walk when every dated row on a page is older
+	// than this age. It is set from the indexer max_age_days setting.
+	MaxAge time.Duration
 	// Known reports whether an item is already in the cache. A latest reader
 	// stops after the first page where every row is known.
 	Known func(Item) bool

@@ -378,3 +378,10 @@ func TestTransportUserAgentUsesProductVersion(t *testing.T) {
 		t.Fatalf("User-Agent = %q", got)
 	}
 }
+
+func TestTransportHasIPv4Fallback(t *testing.T) {
+	tr := NewTransport(TransportConfig{})
+	if tr.client4 == nil {
+		t.Fatal("transport has no IPv4 fallback client")
+	}
+}

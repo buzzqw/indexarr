@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
@@ -185,7 +186,7 @@ func TestCheckerTransitionsTheDefinitionAndKeepsIt(t *testing.T) {
 	}
 	manager, err := indexer.New(indexer.Config{
 		Store:     st,
-		Transport: engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+		Transport: engine.NewTransport(engine.TransportConfig{AllowPrivate: true, Cooldown: 10 * time.Millisecond}),
 	})
 	if err != nil {
 		t.Fatalf("indexer.New: %v", err)

@@ -65,6 +65,11 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 	})
 	runRules := newRunFilter(config, time.Now())
+	if _, explicit := config["min_size_mb"]; !explicit && isUploaderList(indexer, config) {
+		// Uploader lists are the one place where a 50 MB floor is on by
+		// default: samples, NFOs and artwork are noise there.
+		runRules.minSize = 50 << 20
+	}
 	storedSource := settingBool(settingString(config["store_latest"]))
 	// A MirCrew Smartfeed channel lists pending topics. The feed itself never
 	// opens or thanks a topic: the paired native indexer is used only when a
@@ -100,6 +105,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	} else {
 		items, err = connector.Latest(ctx, engine.LatestRequest{
 			Categories: categories,
+			MaxAge:     time.Duration(intFromConfig(config["max_age_days"])) * 24 * time.Hour,
 			Known: func(item engine.Item) bool {
 				_, found, lookupErr := m.store.FindSameRelease(ctx, &store.Release{
 					Title:    item.Title,
@@ -132,6 +138,11 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 
 		item := raw
+		if item.Published.IsZero() {
+			// A feed item without a date is not discarded: its first sighting
+			// is the publication date indexarr can defend.
+			item.Published = time.Now()
+		}
 		stats.observeItem(item, capture.secrets)
 		if usenet {
 			if err := m.runUsenetItem(ctx, indexer, item, stats, seen, matcher, runRules, &payloadBytes); err != nil {
@@ -158,10 +169,13 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			seen[key] = struct{}{}
 		}
 
-		if tooOld, excluded := runRules.reject(item); tooOld || excluded {
-			if tooOld {
+		if tooOld, excluded, tooSmall := runRules.reject(item); tooOld || excluded || tooSmall {
+			switch {
+			case tooOld:
 				stats.discardTooOld()
-			} else {
+			case tooSmall:
+				stats.discardOther()
+			default:
 				stats.discardCategory()
 			}
 			continue
@@ -174,7 +188,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 
 		var torrent []byte
-		if hash == "" && magnet == "" && strings.TrimSpace(item.DownloadURL) != "" &&
+		if magnet == "" && strings.TrimSpace(item.DownloadURL) != "" &&
 			stats.Torrents < m.maxTorrents {
 			payload, downloadErr := connector.Download(ctx, item)
 			if downloadErr != nil {
@@ -344,10 +358,13 @@ func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item
 		seen[key] = struct{}{}
 	}
 
-	if tooOld, excluded := rules.reject(item); tooOld || excluded {
-		if tooOld {
+	if tooOld, excluded, tooSmall := rules.reject(item); tooOld || excluded || tooSmall {
+		switch {
+		case tooOld:
 			stats.discardTooOld()
-		} else {
+		case tooSmall:
+			stats.discardOther()
+		default:
 			stats.discardCategory()
 		}
 		return nil

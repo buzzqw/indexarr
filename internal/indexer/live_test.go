@@ -448,6 +448,7 @@ func TestLiveExcludedUploaderAndFilteredSources(t *testing.T) {
 		want bool
 	}{
 		{"TGx uploader", store.Indexer{DefinitionID: "torrentgalaxy", ConfigJSON: `{"uploader":"MIRCrewRS"}`}, true},
+		{"Corsaro user list", store.Indexer{DefinitionID: "corsaro-user", ConfigJSON: `{"uploader":"MIRCrew"}`}, true},
 		{"ExtTo uploader", store.Indexer{DefinitionID: "extto", ConfigJSON: `{"filter":"u=EZTV"}`}, true},
 		{"ExtTo tag", store.Indexer{DefinitionID: "extto", ConfigJSON: `{"filter":"c=Books","filter-extra":"tg=Italian"}`}, true},
 		{"ExtTo fixed query", store.Indexer{DefinitionID: "extto", ConfigJSON: `{"filter":"c=TV","query":"MIRCrew"}`}, true},

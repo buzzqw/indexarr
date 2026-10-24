@@ -269,6 +269,34 @@
     "scheduled": true
   },
   {
+    "id": "corsaro-user",
+    "name": "Corsaro (uploader)",
+    "description": "Corsaro listing for one uploader, updated periodically.",
+    "language": "it-IT",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "music"
+    ],
+    "required": [
+      "uploader"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "ilcorsaroblu.org"
+    ],
+    "url": "https://ilcorsaroblu.org/",
+    "family": "xbtit",
+    "italian": true,
+    "source": "native",
+    "proposable": true,
+    "latest": true,
+    "latest_list": true,
+    "scheduled": true,
+    "feed_only": true
+  },
+  {
     "id": "example-html",
     "name": "Example HTML Tracker",
     "description": "Fictional HTML tracker used to exercise the v1 native format.",

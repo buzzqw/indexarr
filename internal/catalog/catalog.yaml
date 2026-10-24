@@ -68,6 +68,14 @@ definitions:
     italian: true
     note: "Italian priority; XBTIT family confirmed from /jscript/xbtit.js; guest listing verified."
 
+  - id: corsaro-user
+    file: definitions/corsaro-user.yaml
+    state: bozza
+    author: indexarr
+    family: xbtit
+    italian: true
+    note: "Uploader listing; fixture verified, live /user/<name>/ page not yet verified."
+
   - id: knaben
     file: definitions/knaben.yaml
     state: verificata

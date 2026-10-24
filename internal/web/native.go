@@ -626,6 +626,13 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 		}
 		flareURL = normalized
 	}
+	minSize := strings.TrimSpace(r.FormValue("min_size_mb"))
+	if minSize != "" {
+		value, err := strconv.Atoi(minSize)
+		if err != nil || value < 0 || value > 1024*1024 {
+			return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.minSize"))
+		}
+	}
 	flareTimeout := strings.TrimSpace(r.FormValue("flaresolverr_timeout"))
 	if flareTimeout != "" {
 		value, err := strconv.Atoi(flareTimeout)
@@ -639,6 +646,7 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 		"query":                strings.TrimSpace(r.FormValue("query")),
 		"user_agent":           strings.TrimSpace(r.FormValue("user_agent")),
 		"default_category":     strings.TrimSpace(r.FormValue("default_category")),
+		"min_size_mb":          minSize,
 		"allow_private":        "false",
 		"challenge":            challenge,
 		"flaresolverr_url":     flareURL,
@@ -647,6 +655,9 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 	// An empty URL means "keep the stored value" when the URL is a vault
 	// secret; a new value replaces it. On create the field is required, so an
 	// empty value is still rejected by the service.
+	if settings["min_size_mb"] == "" {
+		delete(settings, "min_size_mb")
+	}
 	if rawURL := strings.TrimSpace(r.FormValue("url")); rawURL != "" {
 		normalized, ok := normalizeHTTPURL(rawURL)
 		if !ok {

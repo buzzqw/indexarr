@@ -189,6 +189,11 @@
         <label for="store_latest">{{T "indexerForm.storeLatest"}}</label>
         <p class="help">{{T "indexerForm.storeLatestHelp"}}</p>
       </div>
+      <div class="field">
+        <label for="min_size_mb">{{T "indexerForm.minSize"}}</label>
+        <input id="min_size_mb" name="min_size_mb" type="number" min="0" max="1048576" step="1" value="{{.MinSize}}" placeholder="0">
+        <p class="help">{{T "indexerForm.minSizeHelp"}}</p>
+      </div>
     </div>
 
     <div class="field">
