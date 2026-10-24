@@ -349,6 +349,16 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 11 removes the hashless TorrentGalaxy rows left by the old
+	// grab-only definition when the same title already has a hashed row from
+	// the same TGx source. It is idempotent and runs once per database.
+	if err := s.applyMigration(context.Background(), indexarr2TGxHashlessVersion,
+		"remove orphan TGx hashless rows", func(tx *sql.Tx) error {
+			_, err := cleanupTorrentGalaxyHashlessTx(context.Background(), tx)
+			return err
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

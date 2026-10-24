@@ -334,6 +334,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	// The live fan-out runs on every request that carries a query. The cache
 	// is not replaced: what came back in time is stored, then the same cache
 	// query runs again and provenance deduplicates the union.
+	livePartial := false
 	if filter.Offset == 0 && settings.TorznabLiveSearch && s.liveSearch != nil && liveQueryEligible(mode, filter) {
 		timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
 		if timeout <= 0 {
@@ -342,12 +343,6 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		wait := time.Duration(settings.TorznabLiveWait) * time.Second
 		if wait <= 0 {
 			wait = 5 * time.Second
-		}
-		// Cached releases already answer this request. Let the live fan-out
-		// continue in the background and return the cache immediately; the
-		// next request sees whatever the workers stored.
-		if total > 0 {
-			wait = 0
 		}
 		if wait > timeout {
 			wait = timeout
@@ -368,6 +363,12 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		})
 		cancel()
 		out.Live = liveResult.Indexers
+		for _, result := range liveResult.Indexers {
+			if result.TimedOut || result.Err != "" {
+				livePartial = true
+				break
+			}
+		}
 		if liveErr != nil {
 			// The manager redacts connector errors; the app search row keeps a
 			// stable message so a URL or key can never reach it.
@@ -411,7 +412,9 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		if out.DuplicatesMerged < 0 {
 			out.DuplicatesMerged = 0
 		}
-		s.storeSnapshot(snapshotKey(mode, filter), fused, fusedTotal, out.DuplicatesMerged)
+		if !livePartial {
+			s.storeSnapshot(snapshotKey(mode, filter), fused, fusedTotal, out.DuplicatesMerged)
+		}
 		releases = snapshotPage(fused, filter.Offset, filter.Limit)
 		total = fusedTotal
 	}

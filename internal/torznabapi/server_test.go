@@ -309,6 +309,41 @@ func TestAdditionalAPIKeyAndRateLimit(t *testing.T) {
 	}
 }
 
+func TestLiveResultsJoinTheCachedPage(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	settings, err := st.LoadSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.TorznabLiveSearch = true
+	settings.TorznabLiveWait = 5
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	insertRelease(t, st, "Cached Show S01E01 1080p", "5040", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "", nil)
+	api.SetLiveSearch(func(ctx context.Context, _ indexer.LiveQuery) (indexer.LiveResult, error) {
+		for i := 0; i < 50; i++ {
+			title := fmt.Sprintf("Live Show S01E%02d 1080p", i+1)
+			hash := fmt.Sprintf("%040x", 1000+i)
+			insertRelease(t, st, title, "5040", hash, "", nil)
+		}
+		return indexer.LiveResult{Stored: 50}, nil
+	})
+
+	recorder := do(t, api, "/api?t=search&apikey=secret&q=Show&limit=100")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, `total="51"`) {
+		t.Fatalf("total does not include the live results:\n%s", body)
+	}
+	if got := strings.Count(body, "<item>"); got != 51 {
+		t.Fatalf("items = %d, want the cached row plus 50 live rows", got)
+	}
+}
+
 func TestLiveSearchRunsOnEveryQuery(t *testing.T) {
 	api, st := newAPI(t)
 	ctx := context.Background()
