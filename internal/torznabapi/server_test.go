@@ -2,10 +2,12 @@ package torznabapi
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -70,6 +72,102 @@ func do(t *testing.T, server *Server, target string) *httptest.ResponseRecorder 
 	recorder := httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	return recorder
+}
+
+// insertRawRelease writes one row without the conservative UpsertRelease
+// matching, so a test can build the duplicate-heavy cache the pagination bug
+// needs. Real indexers create these rows between cleanup passes.
+func insertRawRelease(t *testing.T, st *store.Store, key, title string, size int64, hash string, published time.Time) {
+	t.Helper()
+	now := time.Now().Unix()
+	magnet := ""
+	if hash != "" {
+		magnet = "magnet:?xt=urn:btih:" + hash
+	}
+	if _, err := st.DB().ExecContext(context.Background(), `
+		INSERT INTO releases(dedup_key, infohash, title, search_title, size, category,
+			published_at, magnet, first_seen_at, last_seen_at)
+		VALUES(?, ?, ?, ?, ?, '5040', ?, ?, ?, ?)`,
+		key, hash, title, store.NormalizeSearch(title), size, published.Unix(), magnet, now, now); err != nil {
+		t.Fatalf("insert raw release: %v", err)
+	}
+}
+
+// seedDuplicateHeavyCache makes 180 distinct releases and 40 hashless copies
+// of the oldest 40. The copies are the newest rows, so the first raw page is
+// 40 duplicates plus 60 distinct releases; a page-first fusion returns only
+// 60 rows and Servarr stops there.
+func seedDuplicateHeavyCache(t *testing.T, st *store.Store) int {
+	t.Helper()
+	now := time.Now()
+	const distinct = 180
+	for i := 0; i < distinct; i++ {
+		title := "Show S01E" + itoa(int64(i+1)) + " 1080p WEB-DL x264-GRP"
+		hash := fmt.Sprintf("%040x", i+1)
+		insertRawRelease(t, st, "raw-"+itoa(int64(i)), title, 1_500_000_000,
+			hash, now.Add(-time.Duration(100+i)*time.Minute))
+	}
+	for i := 0; i < 40; i++ {
+		title := "Show S01E" + itoa(int64(i+1)) + " 1080p WEB-DL x264-GRP"
+		insertRawRelease(t, st, "dup-"+itoa(int64(i)), title, 1_500_000_000,
+			"", now.Add(-time.Duration(i)*time.Minute))
+	}
+	return distinct
+}
+
+func TestFusionRunsBeforePagination(t *testing.T) {
+	api, st := newAPI(t)
+	want := seedDuplicateHeavyCache(t, st)
+	rec := do(t, api, "/api?t=search&apikey=secret&q=Show&limit=100")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if got := strings.Count(body, "<item>"); got != 100 {
+		t.Errorf("first page items = %d, want a full page of 100\n%s", got, body)
+	}
+	if wantTotal := `<newznab:response offset="0" total="` + itoa(int64(want)) + `"/>`; !strings.Contains(body, wantTotal) {
+		t.Errorf("missing fused total %s\n%s", wantTotal, body)
+	}
+}
+
+func TestServarrPaginationReceivesEveryFusedRelease(t *testing.T) {
+	api, st := newAPI(t)
+	want := seedDuplicateHeavyCache(t, st)
+	itemTitle := regexp.MustCompile(`(?s)<item>.*?<title>(.*?)</title>`)
+	seen := make(map[string]bool)
+	total := ""
+	offset := 0
+	for page := 0; page < 10; page++ {
+		rec := do(t, api, "/api?t=search&apikey=secret&q=Show&limit=100&offset="+itoa(int64(offset)))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("page %d status = %d: %s", page, rec.Code, rec.Body.String())
+		}
+		body := rec.Body.String()
+		match := regexp.MustCompile(`<newznab:response offset="\d+" total="(\d+)"/>`).FindStringSubmatch(body)
+		if match == nil {
+			t.Fatalf("page %d has no response header\n%s", page, body)
+		}
+		if total == "" {
+			total = match[1]
+		} else if total != match[1] {
+			t.Fatalf("page %d total = %s, want stable %s", page, match[1], total)
+		}
+		items := itemTitle.FindAllStringSubmatch(body, -1)
+		for _, item := range items {
+			if seen[item[1]] {
+				t.Errorf("duplicate title across pages: %q", item[1])
+			}
+			seen[item[1]] = true
+		}
+		offset += len(items)
+		if len(items) < 100 {
+			break
+		}
+	}
+	if len(seen) != want {
+		t.Errorf("Servarr received %d distinct releases, want %d", len(seen), want)
+	}
 }
 
 func TestCaps(t *testing.T) {

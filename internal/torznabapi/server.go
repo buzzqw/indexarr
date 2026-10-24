@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -42,6 +43,13 @@ type Server struct {
 	// latestIndexers restricts the *arr RSS path to the sites that publish a
 	// latest list. Nil means no restriction (the historical cache response).
 	latestIndexers func(context.Context) ([]int64, error)
+
+	// A fused aggregated search keeps the same snapshot for the pages an
+	// Arr client requests in sequence. Without it, releases stored by the
+	// background live workers between page 0 and page 1 change total and
+	// shift the offsets.
+	snapshotMu sync.Mutex
+	snapshots  map[string]searchSnapshot
 
 	downloadResolver func(context.Context, int64) ([]byte, string, string, error)
 
@@ -91,7 +99,7 @@ func New(st *store.Store, logger *slog.Logger, version string) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Server{store: st, log: logger, version: version, started: time.Now(), limits: newMinuteLimiter()}
+	return &Server{store: st, log: logger, version: version, started: time.Now(), limits: newMinuteLimiter(), snapshots: make(map[string]searchSnapshot)}
 }
 
 const (
@@ -369,15 +377,37 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		}
 	}
 	// The aggregated endpoint emits one row per release. Per-site endpoints
-	// keep their own rows untouched: each lane is the view of one site.
+	// keep their own rows untouched: each lane is the view of one site. The
+	// fusion must run over the whole result set, not over the already sliced
+	// page: a page full of duplicates would otherwise be shorter than limit
+	// and Servarr would stop paginating before the real end.
 	if aggregate && query.Get("duplicates") != "1" {
-		before := len(releases)
-		releases = store.FuseReleases(releases)
-		merged := int64(before - len(releases))
-		out.DuplicatesMerged = merged
-		if merged > 0 && total > merged {
-			total -= merged
+		// A page that follows the first one reuses the snapshot taken for that
+		// query. This keeps total and offsets stable even while late live
+		// results are still being written, and avoids refetching the full set
+		// for every page. The live fan-out still runs above, as it does for
+		// every query; its new rows join the next snapshot after the TTL.
+		key := snapshotKey(mode, filter)
+		if snapshot, ok := s.cachedSnapshot(key); ok {
+			out.Releases = snapshotPage(snapshot.Releases, filter.Offset, filter.Limit)
+			out.Total = snapshot.Total
+			out.DuplicatesMerged = snapshot.Duplicates
+			out.Provenance = s.pageProvenance(ctx, out.Releases)
+			out.Body = s.searchXML(base, settings, apiKey, out.Releases, out.Total, filter.Offset, out.Provenance)
+			return out
 		}
+		fused, fusedTotal, rawTotal, err := s.searchAllFused(ctx, filter)
+		if err != nil {
+			s.log.Error("torznab: fuse all", "component", "indexarr", "subsystem", "torznab", "error", err)
+			return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
+		}
+		out.DuplicatesMerged = rawTotal - fusedTotal
+		if out.DuplicatesMerged < 0 {
+			out.DuplicatesMerged = 0
+		}
+		s.storeSnapshot(snapshotKey(mode, filter), fused, fusedTotal, out.DuplicatesMerged)
+		releases = snapshotPage(fused, filter.Offset, filter.Limit)
+		total = fusedTotal
 	}
 	// Provenance is fetched once for the whole page: writeItem never queries
 	// the store, so a page of N results stays at a constant query count.
@@ -386,6 +416,102 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	out.Total = total
 	out.Body = s.searchXML(base, settings, apiKey, releases, total, filter.Offset, out.Provenance)
 	return out
+}
+
+// searchAllFused reads every release matching the filter and fuses the full
+// set. Pagination is applied afterwards, so every page except the last has
+// exactly limit rows and total is the fused count.
+func (s *Server) searchAllFused(ctx context.Context, filter store.Filter) ([]store.Release, int64, int64, error) {
+	const pageSize = 500
+	all := make([]store.Release, 0, filter.Limit)
+	page := filter
+	page.Limit = pageSize
+	page.Offset = 0
+	for {
+		releases, _, err := s.store.SearchReleases(ctx, page)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		all = append(all, releases...)
+		if len(releases) < pageSize {
+			break
+		}
+		page.Offset += len(releases)
+	}
+	fused := store.FuseReleases(all)
+	return fused, int64(len(fused)), int64(len(all)), nil
+}
+
+// snapshotKey identifies a fused result set independently of limit/offset.
+// The indexer ids are sorted so two clients that select the same sites share
+// the snapshot.
+func snapshotKey(mode string, filter store.Filter) string {
+	ids := append([]int64(nil), filter.IndexerIDs...)
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	cats := append([]string(nil), filter.Categories...)
+	sort.Strings(cats)
+	return strings.Join([]string{
+		mode, filter.Query, strconv.Itoa(filter.Season), strconv.Itoa(filter.Episode),
+		strconv.Itoa(filter.Year), filter.IMDbID, filter.TMDbID, filter.TVDbID,
+		strings.Join(cats, ","), fmt.Sprint(ids),
+	}, "\x00")
+}
+
+func snapshotPage(fused []store.Release, offset, limit int) []store.Release {
+	if offset < 0 {
+		offset = 0
+	}
+	if offset > len(fused) {
+		offset = len(fused)
+	}
+	if limit <= 0 {
+		limit = defaultLimit
+	}
+	end := offset + limit
+	if end > len(fused) {
+		end = len(fused)
+	}
+	return fused[offset:end]
+}
+
+type searchSnapshot struct {
+	Releases   []store.Release
+	Total      int64
+	Duplicates int64
+	expires    time.Time
+}
+
+func (s *Server) cachedSnapshot(key string) (searchSnapshot, bool) {
+	s.snapshotMu.Lock()
+	defer s.snapshotMu.Unlock()
+	snapshot, ok := s.snapshots[key]
+	if !ok {
+		return searchSnapshot{}, false
+	}
+	if time.Now().After(snapshot.expires) {
+		delete(s.snapshots, key)
+		return searchSnapshot{}, false
+	}
+	return snapshot, true
+}
+
+func (s *Server) storeSnapshot(key string, releases []store.Release, total, duplicates int64) {
+	s.snapshotMu.Lock()
+	defer s.snapshotMu.Unlock()
+	// Bound memory: expired entries are cheap to drop, and a burst of unique
+	// queries must not pin thousands of full result sets.
+	if len(s.snapshots) >= 128 {
+		now := time.Now()
+		for k, snapshot := range s.snapshots {
+			if now.After(snapshot.expires) {
+				delete(s.snapshots, k)
+			}
+		}
+		if len(s.snapshots) >= 128 {
+			s.snapshots = make(map[string]searchSnapshot)
+		}
+	}
+	s.snapshots[key] = searchSnapshot{Releases: releases, Total: total, Duplicates: duplicates, expires: time.Now().Add(2 * time.Minute)}
 }
 
 // liveQueryEligible decides whether a Torznab function is a real search or an
