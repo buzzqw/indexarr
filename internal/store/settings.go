@@ -20,6 +20,8 @@ const (
 	KeyDefaultInterval      = "default_interval_seconds"
 	KeyRetentionDays        = "retention_days"
 	KeyHistoryRetentionDays = "history_retention_days"
+	KeyStoredSourceLimit    = "stored_source_limit"
+	KeyStoredRetentionDays  = "stored_retention_days"
 	KeyMaxTorrentBytes      = "max_torrent_bytes"
 	KeyFetchTimeout         = "fetch_timeout_seconds"
 	KeyWorkers              = "workers"
@@ -69,7 +71,13 @@ type Settings struct {
 	RetentionDays              int
 	// HistoryRetentionDays is how long run history, its metrics, app
 	// searches and indexer samples are kept. Zero keeps them forever.
-	HistoryRetentionDays   int
+	HistoryRetentionDays int
+	// StoredSourceLimit is the soft limit of search-only sites whose new
+	// releases are memorised. The fourth source warns; it is not blocked.
+	StoredSourceLimit int
+	// StoredRetentionDays is the retention of releases that came only from a
+	// stored source. Zero keeps them forever; favorites and downloads survive.
+	StoredRetentionDays    int
 	MaxTorrentBytes        int64
 	FetchTimeoutSeconds    int
 	Workers                int
@@ -117,6 +125,8 @@ func DefaultSettings() Settings {
 		DefaultIntervalSeconds:     3600,
 		RetentionDays:              0,
 		HistoryRetentionDays:       30,
+		StoredSourceLimit:          3,
+		StoredRetentionDays:        90,
 		MaxTorrentBytes:            8 << 20,
 		FlareSolverrTimeoutSeconds: 60,
 		FetchTimeoutSeconds:        45,
@@ -204,6 +214,8 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.DefaultIntervalSeconds = intValue(values, KeyDefaultInterval, 3600, 60, 30*24*3600)
 	out.RetentionDays = intValue(values, KeyRetentionDays, 0, 0, 3650)
 	out.HistoryRetentionDays = intValue(values, KeyHistoryRetentionDays, 30, 0, 3650)
+	out.StoredSourceLimit = intValue(values, KeyStoredSourceLimit, 3, 0, 20)
+	out.StoredRetentionDays = intValue(values, KeyStoredRetentionDays, 90, 0, 3650)
 	out.MaxTorrentBytes = int64(intValue(values, KeyMaxTorrentBytes, 8<<20, 64<<10, 64<<20))
 	out.FlareSolverrTimeoutSeconds = intValue(values, KeyFlareSolverrTimeout, 60, 5, 300)
 	out.FetchTimeoutSeconds = intValue(values, KeyFetchTimeout, 45, 5, 300)
@@ -266,6 +278,8 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyDefaultInterval:      strconv.Itoa(in.DefaultIntervalSeconds),
 		KeyRetentionDays:        strconv.Itoa(in.RetentionDays),
 		KeyHistoryRetentionDays: strconv.Itoa(in.HistoryRetentionDays),
+		KeyStoredSourceLimit:    strconv.Itoa(in.StoredSourceLimit),
+		KeyStoredRetentionDays:  strconv.Itoa(in.StoredRetentionDays),
 		KeyMaxTorrentBytes:      strconv.FormatInt(in.MaxTorrentBytes, 10),
 		KeyFetchTimeout:         strconv.Itoa(in.FetchTimeoutSeconds),
 		KeyWorkers:              strconv.Itoa(in.Workers),

@@ -71,6 +71,22 @@ download:
   extract:
     - magnet: { selector: 'a#openPopup[href^="magnet:"]', attr: href }
 
+# Real category pages ordered by upload date. The mirror exposes /cat/<name>/
+# and the query string page counter; the official site uses the same layout but
+# answers Cloudflare from this network. TV and Movies are the only categories
+# the latest reader requests, matching Sonarr and Radarr.
+latest:
+  categories:
+    - { standard: 5000, site: tv }
+    - { standard: 2000, site: movies }
+  request:
+    get: "/cat/{{ category }}/"
+    params:
+      catname: "{{ category }}"
+      orderby: DESC
+      order: date_uploaded
+  pagination: { type: page, start: 1, step: 1, max_pages: 2, param: page }
+
 health:
   query: test
   min_rows: 5

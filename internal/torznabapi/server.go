@@ -702,6 +702,12 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		s.log.Debug("torznab: write payload", "error", err)
 		return
 	}
+	// A served payload is a download: stored-source retention protects it.
+	markCtx := context.WithoutCancel(r.Context())
+	if err := s.store.MarkReleaseDownloaded(markCtx, release.ID); err != nil {
+		s.log.Warn("torznab: mark downloaded", "component", "indexarr",
+			"subsystem", "torznab", "release_id", release.ID, "error", err)
+	}
 	if grabIndexerID > 0 && s.grabRecord != nil {
 		recordCtx := context.WithoutCancel(r.Context())
 		if err := s.grabRecord(recordCtx, grabIndexerID, release.ID, release.Title); err != nil {

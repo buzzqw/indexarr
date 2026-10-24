@@ -112,6 +112,13 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 			return store.Indexer{}, fmt.Errorf("missing required setting: %s", setting.Name)
 		}
 	}
+	stored := truthySetting(settings["store_latest"])
+	if err := validateStoredSwitch(parsed, stored); err != nil {
+		return store.Indexer{}, err
+	}
+	if stored {
+		settings["latest"] = "true"
+	}
 
 	slug := NormalizeSlug(in.Slug)
 	if slug == "" {
@@ -152,6 +159,9 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 	interval, err := resolveInterval(in.IntervalSeconds, parsed.Meta.Interval.Duration())
 	if err != nil {
 		return store.Indexer{}, err
+	}
+	if stored && (in.IntervalSeconds == nil || *in.IntervalSeconds == 0) {
+		interval = storedInterval()
 	}
 
 	id, err := s.store.CreateIndexer(ctx, store.Indexer{
@@ -262,6 +272,21 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 			return store.Indexer{}, err
 		}
 		settings := normalizeSettings(in.Settings)
+		stored := truthySetting(settings["store_latest"])
+		if err := validateStoredSwitch(parsed, stored); err != nil {
+			return store.Indexer{}, err
+		}
+		if !parsed.Meta.HasLatest() {
+			// The switch only governs search-only definitions. A real feed
+			// keeps its historical latest flag.
+			settings["latest"] = boolSetting(stored)
+		}
+		if stored {
+			wasStored := truthySetting(fmt.Sprint(config["store_latest"]))
+			if !wasStored && (in.IntervalSeconds == nil || *in.IntervalSeconds == 0) {
+				current.IntervalSeconds = storedInterval()
+			}
+		}
 
 		if err := validateRequired(parsed, settings, config, existingSecrets); err != nil {
 			return store.Indexer{}, err
@@ -585,6 +610,45 @@ func IsSecretSetting(key, value string) bool {
 // resolveInterval returns the effective per-indexer interval. Nil means "use
 // the definition suggestion when it has one"; an explicit zero means the
 // global default. A positive value below one minute is rejected.
+// truthySetting is the boolean interpretation of a public config value.
+func truthySetting(raw string) bool {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func boolSetting(value bool) string {
+	if value {
+		return "true"
+	}
+	return "false"
+}
+
+// validateStoredSwitch refuses to memorise a site that has no real latest
+// page: the scheduler would otherwise have to invent a query.
+func validateStoredSwitch(parsed *definition.Definition, stored bool) error {
+	if !stored {
+		return nil
+	}
+	if parsed == nil || !parsed.HasLatestList() {
+		return errors.New("this site has no latest list and cannot be memorised")
+	}
+	if parsed.Meta.HasLatest() {
+		return errors.New("this site already publishes a feed: use its normal updates")
+	}
+	return nil
+}
+
+// storedInterval returns a prudent 30-60 minute interval. The small random
+// spread keeps several stored sites from firing at the same minute.
+func storedInterval() int {
+	seconds := int64(30*60) + time.Now().UnixNano()%int64(30*60)
+	return int(seconds)
+}
+
 func resolveInterval(requested *int, suggested time.Duration) (int, error) {
 	if requested == nil {
 		if suggested >= time.Minute {

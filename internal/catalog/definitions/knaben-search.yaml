@@ -49,6 +49,13 @@ search:
       category: { selector: "td:nth-of-type(1) a", type: category }
     required: [title, magnet, size]
 
+# Real browse list sorted by date. /browse/ alone is page one; the explicit
+# /browse/0/N/date form makes pagination unambiguous and needs no query.
+latest:
+  request:
+    get: "/browse/0/{{ page }}/date"
+  pagination: { type: page, start: 1, step: 1, max_pages: 2 }
+
 health:
   query: "Stranger Things"
   min_rows: 5

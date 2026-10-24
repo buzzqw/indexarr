@@ -45,6 +45,9 @@
     "search": {
       "$ref": "#/$defs/search"
     },
+    "latest": {
+      "$ref": "#/$defs/latest"
+    },
     "download": {
       "$ref": "#/$defs/download"
     },
@@ -422,6 +425,44 @@
           ],
           "default": "sxxeyy",
           "description": "How the TV episode marker is appended to query.keywords; separate leaves query.season and query.ep to the template."
+        }
+      }
+    },
+    "latest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "type": "array",
+          "description": "Standard-to-site category mappings used by the request template as {{ category }}. Empty means one global list.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "standard",
+              "site"
+            ],
+            "properties": {
+              "standard": {
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 8999
+              },
+              "site": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "request": {
+          "$ref": "#/$defs/request"
+        },
+        "pagination": {
+          "$ref": "#/$defs/pagination"
+        },
+        "response": {
+          "$ref": "#/$defs/response"
         }
       }
     },

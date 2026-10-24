@@ -182,14 +182,262 @@ func (c *DefinitionConnector) Search(ctx context.Context, req SearchRequest) ([]
 	return c.search(ctx, req, false)
 }
 
-// Latest implements Connector. It is a search with empty keywords over the
-// requested categories.
+// Latest implements Connector. A definition with a latest section reads its
+// real list of new releases, one page per site category; every other
+// definition keeps the historical empty-keyword search.
 func (c *DefinitionConnector) Latest(ctx context.Context, req LatestRequest) ([]Item, error) {
-	return c.search(ctx, SearchRequest{
+	if c.def.Latest == nil {
+		return c.search(ctx, SearchRequest{
+			Mode:        ModeSearch,
+			Categories:  req.Categories,
+			Limit:       req.Limit,
+			Offset:      req.Offset,
+			SkipDetails: req.SkipDetails,
+		}, false)
+	}
+	return c.latestList(ctx, req)
+}
+
+// latestList reads the latest section. Each configured category mapping is one
+// request: this is what lets the run follow the categories the linked apps
+// actually consume (TV for Sonarr, movies for Radarr) instead of every
+// category of the site. A definition without mappings reads one global list.
+func (c *DefinitionConnector) latestList(ctx context.Context, req LatestRequest) ([]Item, error) {
+	if err := c.ensureLogin(ctx); err != nil {
+		return nil, err
+	}
+	latest := c.def.Latest
+	targets := latestCategoryTargets(latest.Categories, req.Categories)
+	if len(targets) == 0 {
+		return nil, nil
+	}
+	var items []Item
+	seen := make(map[string]struct{}, req.Limit)
+	for _, target := range targets {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		categoryItems, err := c.latestCategory(ctx, latest, target, req, seen)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, categoryItems...)
+		if req.Limit > 0 && len(items) >= req.Limit {
+			break
+		}
+	}
+	items = dedupeItems(items)
+	if req.Limit > 0 && len(items) > req.Limit {
+		items = items[:req.Limit]
+	}
+	if !req.SkipDetails {
+		if err := c.resolveSearchDetails(ctx, items); err != nil {
+			return nil, err
+		}
+	}
+	return items, nil
+}
+
+// latestCategory reads the pages of one site category. It stops on an empty
+// page, at the configured max_pages and as soon as the caller's limit is met,
+// so a periodic read costs the fewest possible requests.
+func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *definition.Latest, target string, req LatestRequest, seen map[string]struct{}) ([]Item, error) {
+	plan, err := c.paginationPlanFor(latest.Pagination, SearchRequest{Offset: req.Offset, Limit: req.Limit}, false)
+	if err != nil {
+		return nil, fmt.Errorf("definition %q: latest pagination: %w", c.def.Meta.ID, err)
+	}
+	spec := c.def.Search.Response
+	if latest.Response != nil {
+		spec = *latest.Response
+	}
+	var items []Item
+	relogged := false
+	for pageIndex := 0; pageIndex < plan.maxPages; pageIndex++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		counter := plan.start + pageIndex*plan.step
+		pageValue, offsetValue, paramValue := pageIndex+1, req.Offset, pageIndex+1
+		switch plan.kind {
+		case "page":
+			pageValue, paramValue = counter, counter
+		case "offset":
+			pageValue = pageIndex + 1
+			offsetValue, paramValue = counter, counter
+		default:
+			pageValue, offsetValue, paramValue = 1, req.Offset, 1
+		}
+		build := func() (*http.Request, error) {
+			return c.buildLatestRequest(ctx, latest, target, req, pageValue, offsetValue, paramValue)
+		}
+		request, err := build()
+		if err != nil {
+			return nil, err
+		}
+		response, err := c.do(ctx, request)
+		if err != nil {
+			return nil, err
+		}
+		if (response.Status == http.StatusUnauthorized || response.Status == http.StatusForbidden) &&
+			c.needsLogin() && !relogged {
+			relogged = true
+			if err := c.forceReLogin(ctx); err != nil {
+				return nil, err
+			}
+			request, err = build()
+			if err != nil {
+				return nil, err
+			}
+			response, err = c.do(ctx, request)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if response.Status >= 400 {
+			return nil, fmt.Errorf("definition %q: latest returned HTTP %d", c.def.Meta.ID, response.Status)
+		}
+		rows, err := c.extractRowsWith(response, spec)
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) == 0 {
+			break
+		}
+		added := 0
+		for _, raw := range rows {
+			item, ok, err := c.normalizeRowWith(raw, response.URL, spec)
+			if err != nil {
+				return nil, err
+			}
+			observeNormalize(ctx, NormalizeObservation{OK: ok})
+			if !ok {
+				continue
+			}
+			key := item.InfoHash + "\x00" + item.Title + "\x00" + strconv.FormatInt(item.Size, 10)
+			if _, duplicate := seen[key]; duplicate {
+				continue
+			}
+			seen[key] = struct{}{}
+			items = append(items, item)
+			added++
+			if req.Limit > 0 && len(items) >= req.Limit {
+				break
+			}
+		}
+		if added == 0 {
+			break
+		}
+		if req.Limit > 0 && len(items) >= req.Limit {
+			break
+		}
+	}
+	return items, nil
+}
+
+// latestCategoryTargets intersects the definition's category mappings with the
+// categories requested by the caller. An empty mapping list is one global
+// request; an empty request means every configured mapping.
+func latestCategoryTargets(mappings []definition.LatestCategory, requested []int) []string {
+	if len(mappings) == 0 {
+		return []string{""}
+	}
+	out := make([]string, 0, len(mappings))
+	for _, mapping := range mappings {
+		if len(requested) == 0 || categoryAllows(requested, mapping.Standard) {
+			out = append(out, mapping.Site)
+		}
+	}
+	return out
+}
+
+func categoryAllows(allowed []int, category int) bool {
+	for _, candidate := range allowed {
+		if candidate == category {
+			return true
+		}
+		if candidate > 0 && candidate%1000 == 0 && category/1000 == candidate/1000 {
+			return true
+		}
+	}
+	return false
+}
+
+// buildLatestRequest renders one latest page. It mirrors buildSearchRequest but
+// reads latest.request and exposes {{ category }}.
+func (c *DefinitionConnector) buildLatestRequest(ctx context.Context, latest *definition.Latest, category string, req LatestRequest, pageValue, offsetValue, paramValue int) (*http.Request, error) {
+	values := c.templateValues(SearchRequest{
 		Mode:       ModeSearch,
 		Categories: req.Categories,
 		Limit:      req.Limit,
-	}, false)
+	}, pageValue, offsetValue)
+	if category != "" {
+		values.scalars["category"] = category
+		values.categories = []string{category}
+	}
+
+	pathTemplate := latest.Request.Post
+	method := http.MethodPost
+	if pathTemplate == "" {
+		pathTemplate = latest.Request.Get
+		method = http.MethodGet
+	}
+	if strings.TrimSpace(pathTemplate) == "" {
+		return nil, fmt.Errorf("definition %q: latest.request needs get or post", c.def.Meta.ID)
+	}
+	renderedPath, err := values.render(pathTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("definition %q: latest request: %w", c.def.Meta.ID, err)
+	}
+	target, err := c.buildURL(renderedPath)
+	if err != nil {
+		return nil, err
+	}
+	query := target.Query()
+	params, err := values.renderMap(latest.Request.Params)
+	if err != nil {
+		return nil, fmt.Errorf("definition %q: latest params: %w", c.def.Meta.ID, err)
+	}
+	for name, value := range params {
+		query.Set(name, value)
+	}
+	if c.appendKey {
+		query.Set("apikey", c.settings["api_key"])
+	}
+	if pagination := latest.Pagination; strings.TrimSpace(pagination.Param) != "" {
+		if !query.Has(pagination.Param) {
+			query.Set(pagination.Param, strconv.Itoa(paramValue))
+		}
+	}
+	target.RawQuery = query.Encode()
+
+	var body io.Reader
+	if method == http.MethodPost {
+		form, err := values.renderMap(latest.Request.Form)
+		if err != nil {
+			return nil, fmt.Errorf("definition %q: latest form: %w", c.def.Meta.ID, err)
+		}
+		encoded := url.Values{}
+		for name, value := range form {
+			encoded.Set(name, value)
+		}
+		body = strings.NewReader(encoded.Encode())
+	}
+	request, err := http.NewRequestWithContext(ctx, method, target.String(), body)
+	if err != nil {
+		return nil, fmt.Errorf("definition %q: build latest request", c.def.Meta.ID)
+	}
+	c.applyAuth(request)
+	if method == http.MethodPost && request.Header.Get("Content-Type") == "" {
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	headers, err := values.renderMap(latest.Request.Headers)
+	if err != nil {
+		return nil, fmt.Errorf("definition %q: latest headers: %w", c.def.Meta.ID, err)
+	}
+	for name, value := range headers {
+		request.Header.Set(name, value)
+	}
+	return request, nil
 }
 
 // Download implements Connector. Errors never contain the download URL
@@ -430,7 +678,10 @@ type paginationPlan struct {
 }
 
 func (c *DefinitionConnector) paginationPlan(req SearchRequest, firstPageOnly bool) (paginationPlan, error) {
-	pagination := c.def.Search.Pagination
+	return c.paginationPlanFor(c.def.Search.Pagination, req, firstPageOnly)
+}
+
+func (c *DefinitionConnector) paginationPlanFor(pagination definition.Pagination, req SearchRequest, firstPageOnly bool) (paginationPlan, error) {
 	kind := strings.TrimSpace(pagination.Type)
 	if kind == "" {
 		kind = "none"
@@ -557,17 +808,21 @@ func (c *DefinitionConnector) buildSearchRequest(ctx context.Context, req Search
 }
 
 func (c *DefinitionConnector) extractRows(response *Response) ([]map[string]string, error) {
+	return c.extractRowsWith(response, c.def.Search.Response)
+}
+
+func (c *DefinitionConnector) extractRowsWith(response *Response, spec definition.Response) ([]map[string]string, error) {
 	base := response.URL
 	if base == nil {
 		base = c.baseURL
 	}
-	switch strings.TrimSpace(c.def.Search.Response.Type) {
+	switch strings.TrimSpace(spec.Type) {
 	case "json":
-		return extractJSONRows(response.Body, c.def.Search.Response, base)
+		return extractJSONRows(response.Body, spec, base)
 	case "xml":
-		return extractXMLRows(response.Body, c.def.Search.Response, base)
+		return extractXMLRows(response.Body, spec, base)
 	default:
-		return extractHTMLRows(response.Body, c.def.Search.Response, base)
+		return extractHTMLRows(response.Body, spec, base)
 	}
 }
 

@@ -73,6 +73,16 @@ download:
     - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
     - torrent: { selector: 'a[href*=".torrent"]', attr: href, type: url }
 
+# Real browse pages sorted by date. The page number is part of the path; TV
+# and Movies are the categories the linked apps ask for.
+latest:
+  categories:
+    - { standard: 5000, site: "TV-shows" }
+    - { standard: 2000, site: Movies }
+  request:
+    get: "/browse-torrents/{{ category }}/date/{{ page }}/"
+  pagination: { type: page, start: 1, step: 1, max_pages: 2 }
+
 health:
   query: test
   min_rows: 3

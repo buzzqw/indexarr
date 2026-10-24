@@ -64,8 +64,20 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 	})
 	runRules := newRunFilter(config, time.Now())
+	storedSource := settingBool(settingString(config["store_latest"]))
 
 	categories := categoriesFromValue(config["categories"])
+	// A memorised search-only site follows the categories the linked apps
+	// actually consume. An explicit category choice still narrows the result.
+	if storedSource {
+		if roots, rootsErr := m.store.LinkedAppCategoryRoots(ctx, indexer.ID); rootsErr == nil && len(roots) > 0 {
+			if len(categories) == 0 {
+				categories = roots
+			} else {
+				categories = intersectCategoryRoots(categories, roots)
+			}
+		}
+	}
 	if len(categories) == 0 {
 		categories = connector.Capabilities().Categories
 	}
@@ -224,6 +236,22 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 		if len(torrent) > 0 {
 			release.TorrentFetchedAt = now
+		}
+
+		// Stored sources apply the cautious §1g merge: same normalized title,
+		// size within rounding tolerance and compatible dates become one row
+		// with an extra source, never a second release. The live search keeps
+		// its own path unchanged.
+		if storedSource {
+			if dup, found, dupErr := m.store.FindStoredDuplicate(ctx, *release); dupErr != nil {
+				m.logger.Warn("indexer: find stored duplicate",
+					"indexer", indexer.Slug, "error", m.redact(indexer.ID, dupErr.Error()))
+			} else if found {
+				release.DedupKey = dup.DedupKey
+				if release.InfoHash == "" {
+					release.InfoHash = dup.InfoHash
+				}
+			}
 		}
 
 		isNew, storeErr := m.store.UpsertRelease(ctx, release)
@@ -439,6 +467,25 @@ func usenetIdentity(item engine.Item) string {
 
 // itemHash returns the normalized infohash from the explicit field or from the
 // magnet link.
+// intersectCategoryRoots keeps the configured categories that belong to a
+// root consumed by a linked app. An empty result falls back to the roots, so a
+// misconfigured explicit list cannot silently stop a stored source.
+func intersectCategoryRoots(configured, roots []int) []int {
+	out := make([]int, 0, len(configured))
+	for _, category := range configured {
+		for _, root := range roots {
+			if categoryMatches([]int{root}, category) {
+				out = append(out, category)
+				break
+			}
+		}
+	}
+	if len(out) == 0 {
+		return append([]int(nil), roots...)
+	}
+	return dedupeCategories(out)
+}
+
 func itemHash(item engine.Item) string {
 	if hash := feed.NormalizeInfoHash(item.InfoHash); hash != "" {
 		return hash

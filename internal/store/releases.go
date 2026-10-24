@@ -44,6 +44,9 @@ type Release struct {
 	TimesSeen        int64
 	Favorite         bool
 	Hidden           bool
+	// DownloadedAt is set when a client grabbed this release. A stored-source
+	// retention pass never removes a downloaded release.
+	DownloadedAt time.Time
 }
 
 // Filter selects releases for the web UI and the Torznab endpoint.
@@ -78,7 +81,7 @@ const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, titl
 	search_title, size, seeders, leechers, category, published_at,
 	guid, magnet, torrent, torrent_size, torrent_fetched_at,
 	first_seen_at, last_seen_at, times_seen, favorite, hidden,
-	protocol, payload, payload_type`
+	protocol, payload, payload_type, downloaded_at`
 
 // ErrNoPayload reports that a release has neither a torrent nor a generic
 // payload stored.
@@ -1219,7 +1222,7 @@ func escapeLike(token string) string {
 
 func scanRelease(scanner interface{ Scan(...any) error }) (Release, error) {
 	var out Release
-	var published, torrentFetched, firstSeen, lastSeen int64
+	var published, torrentFetched, firstSeen, lastSeen, downloadedAt int64
 	var torrent, payload []byte
 	var favorite, hidden int
 	dest := []any{&out.ID, &out.DedupKey, &out.InfoHash, &out.IMDbID, &out.TMDbID,
@@ -1227,7 +1230,7 @@ func scanRelease(scanner interface{ Scan(...any) error }) (Release, error) {
 		&out.Leechers, &out.Category, &published,
 		&out.GUID, &out.Magnet, &torrent, &out.TorrentSize, &torrentFetched,
 		&firstSeen, &lastSeen, &out.TimesSeen, &favorite, &hidden,
-		&out.Protocol, &payload, &out.PayloadType}
+		&out.Protocol, &payload, &out.PayloadType, &downloadedAt}
 	if err := scanner.Scan(dest...); err != nil {
 		return Release{}, err
 	}
@@ -1235,6 +1238,7 @@ func scanRelease(scanner interface{ Scan(...any) error }) (Release, error) {
 	out.TorrentFetchedAt = unixTime(torrentFetched)
 	out.FirstSeenAt = unixTime(firstSeen)
 	out.LastSeenAt = unixTime(lastSeen)
+	out.DownloadedAt = unixTime(downloadedAt)
 	out.Torrent = torrent
 	out.Payload = payload
 	if strings.TrimSpace(out.Protocol) == "" {

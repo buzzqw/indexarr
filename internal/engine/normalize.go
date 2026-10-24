@@ -280,9 +280,15 @@ func buildMagnet(infoHash, title string) string {
 // normalizeRow turns one extracted row into an Item. ok is false when a
 // required value is missing or the row has no title and no grab link.
 func (c *DefinitionConnector) normalizeRow(raw map[string]string, responseURL *url.URL) (Item, bool, error) {
-	fields := c.def.Search.Response.Fields
+	return c.normalizeRowWith(raw, responseURL, c.def.Search.Response)
+}
 
-	for _, name := range c.def.Search.Response.Required {
+// normalizeRowWith applies one response description. The latest list may use a
+// different layout from the search without duplicating the normalizer.
+func (c *DefinitionConnector) normalizeRowWith(raw map[string]string, responseURL *url.URL, spec definition.Response) (Item, bool, error) {
+	fields := spec.Fields
+
+	for _, name := range spec.Required {
 		value, exists := raw[name]
 		if !exists || strings.TrimSpace(value) == "" {
 			return Item{}, false, nil

@@ -8,9 +8,11 @@ package native
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -267,12 +269,42 @@ func dueIndexers(indexers []store.Indexer, lastRuns map[int64]time.Time, global 
 				interval = minInterval
 			}
 		}
-		if last, ok := lastRuns[indexerRow.ID]; ok && now.Before(last.Add(interval)) {
+		due := interval
+		if storedSourceConfig(indexerRow.ConfigJSON) {
+			// Stored sources get a small deterministic stagger so several
+			// sites never fire at the same minute; the interval itself is set
+			// to 30-60 minutes when the switch is enabled.
+			due += time.Duration(storedJitter(indexerRow.ID)) * time.Second
+		}
+		if last, ok := lastRuns[indexerRow.ID]; ok && now.Before(last.Add(due)) {
 			continue
 		}
 		out = append(out, indexerRow)
 	}
 	return out
+}
+
+// storedSourceConfig reads the memorise flag from config_json. The native
+// package only needs the boolean; the indexer package owns the full config.
+func storedSourceConfig(raw string) bool {
+	if strings.TrimSpace(raw) == "" {
+		return false
+	}
+	var values map[string]string
+	if err := json.Unmarshal([]byte(raw), &values); err != nil {
+		return false
+	}
+	value := strings.TrimSpace(values["store_latest"])
+	return strings.EqualFold(value, "true") || value == "1"
+}
+
+// storedJitter returns 0..299 seconds, stable per indexer so a restart does not
+// reshuffle the schedule.
+func storedJitter(id int64) int64 {
+	if id <= 0 {
+		return 0
+	}
+	return (id*97 + 13) % 300
 }
 
 func (r *Runner) logSummary(outcomes []RunOutcome) {
@@ -651,6 +683,17 @@ func (r *Runner) maintenance(ctx context.Context) {
 			r.logger.Warn("retention prune failed", "subsystem", "maintenance", "error", err)
 		} else if removed > 0 {
 			r.logger.Info("retention prune", "removed", removed, "days", settings.RetentionDays)
+		}
+	}
+	// Stored sources have their own window. The general retention above is
+	// off by default; memorised new releases must not grow forever, while
+	// favorites and downloads are protected by the store query.
+	if settings.StoredRetentionDays > 0 {
+		before := time.Now().AddDate(0, 0, -settings.StoredRetentionDays)
+		if removed, err := r.store.PruneStoredReleases(ctx, before); err != nil {
+			r.logger.Warn("stored retention prune failed", "subsystem", "maintenance", "error", err)
+		} else if removed > 0 {
+			r.logger.Info("stored retention prune", "removed", removed, "days", settings.StoredRetentionDays)
 		}
 	}
 	historyDays := settings.HistoryRetentionDays

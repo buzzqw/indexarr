@@ -85,6 +85,11 @@ func (m *Manager) LatestSupported(ctx context.Context, indexer store.Indexer) (b
 		return false, fmt.Errorf("indexer %s: parse definition %q: %w",
 			indexer.Slug, def.ID, err)
 	}
+	if stored, ok := indexerConfigBool(indexer.ConfigJSON, "store_latest"); ok && stored {
+		// A memorised site must have a real latest page. A definition without
+		// one cannot be stored: the scheduler never invents a query for it.
+		return parsed.HasLatestList(), nil
+	}
 	if value, ok := indexerConfigBool(indexer.ConfigJSON, "latest"); ok {
 		return value, nil
 	}

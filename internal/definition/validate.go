@@ -208,6 +208,9 @@ func (d *Definition) Validate() error {
 	if d.Connector == "" || searchConfigured {
 		validateSearch(d.Search, add)
 	}
+	if d.Latest != nil {
+		validateLatest(d.Latest, d.Search, add)
+	}
 
 	if d.Download != nil {
 		validateDownload(d.Download, d, add)
@@ -289,11 +292,7 @@ func validateSearch(search Search, add func(string, ...any)) {
 		add("search.request: must have get or post")
 	}
 
-	switch search.Response.Type {
-	case "html", "json", "xml":
-	default:
-		add("search.response.type: must be one of html, json, xml")
-	}
+	validateResponse(search.Response, "search.response", add)
 
 	if search.Pagination.Type != "" && !allowedPaginationTypes[search.Pagination.Type] {
 		add("search.pagination.type: must be one of none, page, offset, cursor")
@@ -304,27 +303,77 @@ func validateSearch(search Search, add func(string, ...any)) {
 	default:
 		add("search.keywords_format: must be one of sxxeyy, 1x05, separate")
 	}
+}
 
-	fieldNames := make([]string, 0, len(search.Response.Fields))
-	for name := range search.Response.Fields {
+// validateResponse checks the row/field description shared by search and the
+// optional latest list.
+func validateResponse(response Response, prefix string, add func(string, ...any)) {
+	switch response.Type {
+	case "html", "json", "xml":
+	default:
+		add("%s.type: must be one of html, json, xml", prefix)
+	}
+
+	fieldNames := make([]string, 0, len(response.Fields))
+	for name := range response.Fields {
 		fieldNames = append(fieldNames, name)
 	}
 	sort.Strings(fieldNames)
 	for _, name := range fieldNames {
-		field := search.Response.Fields[name]
+		field := response.Fields[name]
 		if field.Type != "" && !allowedFieldTypes[field.Type] {
-			add("search.response.fields.%s.type: must be one of text, int, size, date, url, category", name)
+			add("%s.fields.%s.type: must be one of text, int, size, date, url, category", prefix, name)
 		}
 	}
 
-	for i, name := range search.Response.Required {
+	for i, name := range response.Required {
 		if name == "" {
-			add("search.response.required[%d]: field name must not be empty", i)
+			add("%s.required[%d]: field name must not be empty", prefix, i)
 			continue
 		}
-		if _, ok := search.Response.Fields[name]; !ok {
-			add("search.response.required[%d]: field %q is not defined in search.response.fields", i, name)
+		if _, ok := response.Fields[name]; !ok {
+			add("%s.required[%d]: field %q is not defined in %s.fields", prefix, i, name, prefix)
 		}
+	}
+}
+
+// validateLatest checks the optional list of new releases of a search-only
+// site. The request may be empty only when the definition has no search either
+// (a pure connector definition); in practice a latest page always names its URL.
+func validateLatest(latest *Latest, search Search, add func(string, ...any)) {
+	if latest.Request.Get != "" && latest.Request.Post != "" {
+		add("latest.request: get and post are mutually exclusive")
+	} else if latest.Request.Get == "" && latest.Request.Post == "" {
+		add("latest.request: must have get or post")
+	}
+	switch latest.Pagination.Type {
+	case "", "none", "page", "offset":
+	default:
+		add("latest.pagination.type: must be one of none, page, offset")
+	}
+	if stop := strings.TrimSpace(latest.Pagination.StopWhen); stop != "" && stop != "empty_rows" {
+		add("latest.pagination.stop_when: must be empty or empty_rows")
+	}
+	seen := make(map[int]int, len(latest.Categories))
+	for i, category := range latest.Categories {
+		if category.Standard < 1000 || category.Standard > 8999 {
+			add("latest.categories[%d].standard: must be between 1000 and 8999 (got %d)", i, category.Standard)
+		}
+		if first, ok := seen[category.Standard]; ok {
+			add("latest.categories[%d].standard: duplicate of latest.categories[%d] (%d)", i, first, category.Standard)
+		} else {
+			seen[category.Standard] = i
+		}
+		if strings.TrimSpace(category.Site) == "" {
+			add("latest.categories[%d].site: is required", i)
+		}
+	}
+	if latest.Response != nil {
+		validateResponse(*latest.Response, "latest.response", add)
+		return
+	}
+	if len(search.Response.Fields) == 0 {
+		add("latest.response: is required when search.response has no fields")
 	}
 }
 

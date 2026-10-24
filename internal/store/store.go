@@ -467,7 +467,8 @@ func (s *Store) dropLegacySources(tx *sql.Tx) error {
 			hidden             INTEGER NOT NULL DEFAULT 0,
 			protocol           TEXT    NOT NULL DEFAULT 'torrent',
 			payload            BLOB,
-			payload_type       TEXT    NOT NULL DEFAULT ''
+			payload_type       TEXT    NOT NULL DEFAULT '',
+			downloaded_at      INTEGER NOT NULL DEFAULT 0
 		)`); err != nil {
 			return err
 		}
@@ -576,6 +577,7 @@ func (s *Store) ensureReleaseColumns() error {
 	}{
 		{"favorite", "INTEGER NOT NULL DEFAULT 0"},
 		{"hidden", "INTEGER NOT NULL DEFAULT 0"},
+		{"downloaded_at", "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		exists, err := s.columnExists("releases", column.name)
 		if err != nil {

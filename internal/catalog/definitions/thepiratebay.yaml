@@ -104,6 +104,14 @@ search:
       category: { path: category, type: category }
     required: [title, magnet, size]
 
+# Real list of new releases: the public precompiled recent index. It is the
+# same JSON row shape as the search, so no response override is needed. The
+# run filter narrows the rows to the categories the linked apps consume.
+latest:
+  request:
+    get: /precompiled/data_top100_recent.json
+  pagination: { type: none }
+
 health:
   query: test
   min_rows: 5

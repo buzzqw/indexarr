@@ -673,7 +673,7 @@ func prefixedReleaseColumns(alias string) string {
 }
 
 func scanReleaseWithProvenance(rows *sql.Rows, rel *Release, count *int, names *sql.NullString) error {
-	var published, torrentFetched, firstSeen, lastSeen int64
+	var published, torrentFetched, firstSeen, lastSeen, downloadedAt int64
 	var favorite, hidden int
 	var torrent, payload []byte
 	err := rows.Scan(
@@ -682,7 +682,7 @@ func scanReleaseWithProvenance(rows *sql.Rows, rel *Release, count *int, names *
 		&rel.Leechers, &rel.Category, &published, &rel.GUID, &rel.Magnet,
 		&torrent, &rel.TorrentSize, &torrentFetched, &firstSeen,
 		&lastSeen, &rel.TimesSeen, &favorite, &hidden,
-		&rel.Protocol, &payload, &rel.PayloadType, count, names)
+		&rel.Protocol, &payload, &rel.PayloadType, &downloadedAt, count, names)
 	if err != nil {
 		return err
 	}
@@ -690,6 +690,7 @@ func scanReleaseWithProvenance(rows *sql.Rows, rel *Release, count *int, names *
 	rel.TorrentFetchedAt = unixTime(torrentFetched)
 	rel.FirstSeenAt = unixTime(firstSeen)
 	rel.LastSeenAt = unixTime(lastSeen)
+	rel.DownloadedAt = unixTime(downloadedAt)
 	rel.Torrent = torrent
 	rel.Payload = payload
 	if strings.TrimSpace(rel.Protocol) == "" {

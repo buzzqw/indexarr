@@ -172,6 +172,10 @@ type SearchRequest struct {
 type LatestRequest struct {
 	Categories []int
 	Limit      int
+	// Offset and SkipDetails are used by the stored-source probe and by the
+	// latest list reader; other connectors may ignore them.
+	Offset      int
+	SkipDetails bool
 }
 
 // Payload is the bytes a download produces: a .torrent or .nzb, or a magnet

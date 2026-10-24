@@ -70,6 +70,16 @@ download:
     - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
     - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
 
+# Real category pages, last ten days, newest first. The mirror paginates with
+# ?page=N. TV and Movies follow Sonarr and Radarr.
+latest:
+  categories:
+    - { standard: 5000, site: TV }
+    - { standard: 2000, site: Movies }
+  request:
+    get: "/get-posts/category:{{ category }}:time:10D/"
+  pagination: { type: page, start: 1, step: 1, max_pages: 2, param: page }
+
 health:
   query: test
   min_rows: 1

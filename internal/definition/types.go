@@ -28,6 +28,7 @@ type Definition struct {
 	Auth         *Auth        `yaml:"auth,omitempty" json:"auth,omitempty"`
 	Session      *Session     `yaml:"session,omitempty" json:"session,omitempty"`
 	Search       Search       `yaml:"search,omitempty" json:"search,omitempty"`
+	Latest       *Latest      `yaml:"latest,omitempty" json:"latest,omitempty"`
 	Download     *Download    `yaml:"download,omitempty" json:"download,omitempty"`
 	Health       *Health      `yaml:"health,omitempty" json:"health,omitempty"`
 	Tests        []Test       `yaml:"tests,omitempty" json:"tests,omitempty"`
@@ -67,6 +68,38 @@ type Meta struct {
 // field is additive: an absent value keeps the historical behaviour (true).
 func (m Meta) HasLatest() bool {
 	return m.Latest == nil || *m.Latest
+}
+
+// HasLatestList reports whether the definition declares a real page of new
+// releases. It is the condition that makes a search-only site storable: the
+// user can switch on a periodic read of that page without inventing a query.
+func (d *Definition) HasLatestList() bool {
+	return d != nil && d.Latest != nil
+}
+
+// Latest describes the list of new releases of a search-only site. A
+// definition without a latest section keeps the historical behaviour: its
+// "latest" run is a search with empty keywords.
+type Latest struct {
+	// Categories maps a standard Torznab category to the site value used by
+	// the request template as {{ category }}. An empty list means one global
+	// list that the run filter narrows afterwards.
+	Categories []LatestCategory `yaml:"categories,omitempty" json:"categories,omitempty"`
+	// Request is the page template. It reuses the search template variables
+	// and adds {{ category }} (the current site category) and {{ page }}.
+	Request Request `yaml:"request,omitempty" json:"request,omitempty"`
+	// Pagination defaults to none. Page and offset are supported as in a
+	// search; stop_when empty_rows stops a category early.
+	Pagination Pagination `yaml:"pagination,omitempty" json:"pagination,omitempty"`
+	// Response overrides search.response when the latest page has a different
+	// layout. Nil means the search response applies unchanged.
+	Response *Response `yaml:"response,omitempty" json:"response,omitempty"`
+}
+
+// LatestCategory is one standard-to-site category mapping of a latest list.
+type LatestCategory struct {
+	Standard int    `yaml:"standard" json:"standard"`
+	Site     string `yaml:"site" json:"site"`
 }
 
 // cardigannImportAuthor is the default author written by the Cardigann
