@@ -76,6 +76,15 @@ func do(t *testing.T, server *Server, target string) *httptest.ResponseRecorder 
 	return recorder
 }
 
+func doWithAgent(t *testing.T, server *Server, target, agent string) *httptest.ResponseRecorder {
+	t.Helper()
+	request := httptest.NewRequest(http.MethodGet, target, nil)
+	request.Header.Set("User-Agent", agent)
+	recorder := httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	return recorder
+}
+
 // insertRawRelease writes one row without the conservative UpsertRelease
 // matching, so a test can build the duplicate-heavy cache the pagination bug
 // needs. Real indexers create these rows between cleanup passes.
@@ -343,6 +352,52 @@ func TestLiveResultsJoinTheCachedPage(t *testing.T) {
 	}
 	if got := strings.Count(body, "<item>"); got != 51 {
 		t.Fatalf("items = %d, want the cached row plus 50 live rows", got)
+	}
+}
+
+func TestOffsetPageWaitsForTheLiveWorkers(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	settings, _ := st.LoadSettings(ctx)
+	settings.TorznabLiveSearch = true
+	settings.TorznabLiveWait = 5
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	var apps []string
+	api.SetLiveSearch(func(_ context.Context, req indexer.LiveQuery) (indexer.LiveResult, error) {
+		apps = append(apps, req.App)
+		return indexer.LiveResult{}, nil
+	})
+	waits := 0
+	var waited indexer.LiveQuery
+	api.SetLiveWait(func(_ context.Context, req indexer.LiveQuery, budget time.Duration) {
+		waits++
+		waited = req
+		if budget <= 0 {
+			t.Errorf("offset wait budget = %s", budget)
+		}
+	})
+
+	first := doWithAgent(t, api, "/api?t=tvsearch&apikey=secret&q=Show&season=1&ep=2&limit=100&offset=0", "Sonarr/4.0")
+	if first.Code != http.StatusOK {
+		t.Fatalf("first page = %d: %s", first.Code, first.Body.String())
+	}
+	if waits != 0 {
+		t.Fatalf("the first page waited for workers %d times", waits)
+	}
+	second := doWithAgent(t, api, "/api?t=tvsearch&apikey=secret&q=Show&season=1&ep=2&limit=100&offset=100", "Sonarr/4.0")
+	if second.Code != http.StatusOK {
+		t.Fatalf("second page = %d: %s", second.Code, second.Body.String())
+	}
+	if waits != 1 {
+		t.Fatalf("offset wait calls = %d, want 1", waits)
+	}
+	if waited.Season != 1 || waited.Episode != 2 || waited.Query != "Show" || waited.App != "sonarr" {
+		t.Fatalf("waited query = %+v", waited)
+	}
+	if len(apps) == 0 || apps[0] != "sonarr" {
+		t.Fatalf("live query apps = %v, want sonarr", apps)
 	}
 }
 

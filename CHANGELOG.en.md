@@ -22,6 +22,12 @@ First release candidate of indexarr 2.
 - Shared workers per indexer/query, bounded queue, per-search timeout.
 - ExtTo follows the request category: Movies for films, TV for series.
 - Result cache and timeout memory without cutting releases.
+- The title variants Sonarr sends for one episode share a single budget: the
+  first one waits the full window, the following ones answer as soon as the
+  fast sites are done. Slow searches keep running in the background and their
+  rows stay in the cache. Severance goes from ~20 s to ~10 s.
+- Home, `/healthz` and metrics counters are cached for 15 s and invalidated by
+  writes (releases, app searches, indexer state).
 
 ### UI
 - Guided “Add source” flow, uploader and experimental-source cards.
@@ -30,5 +36,6 @@ First release candidate of indexarr 2.
 ### Known limits
 - Native MirCrew and Smartfeed are not verified live (CAPTCHA); they stay
   experimental.
-- Sonarr’s Severance search may take several requests and ~14–20 s.
+- Sonarr’s Severance search stays around the measured 10 s: the variants are
+  four requests and the first one waits the full window.
 - The stored-source duration test must be completed in production.

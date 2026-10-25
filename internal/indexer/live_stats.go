@@ -24,10 +24,15 @@ const (
 	// liveSlackSuccessPct is the percentage of searches that returned at
 	// least one row below which a late site is considered unproductive.
 	liveSlackSuccessPct = 15
-	// liveEarlyGrace is the extra window granted after every productive site
-	// answered, so a late site that was only slightly slow still lands in the
-	// response. It is not the full wait: the point is to skip the long tail.
-	liveEarlyGrace = 1500 * time.Millisecond
+	// liveOverdueMargin is how long past its own p90 a productive site is
+	// allowed to run before it is treated as a timeout for this request. The
+	// work keeps running in the background, so its rows are still stored.
+	liveOverdueMargin = 400 * time.Millisecond
+	// liveEarlyGrace is the extra window granted after every site that is not
+	// known to be late answered, so a late site that was only slightly slow
+	// still lands in the response. It is not the full wait: the point is to
+	// skip the long tail.
+	liveEarlyGrace = 250 * time.Millisecond
 )
 
 // liveStatSeries is a small ring of the newest outcomes of one indexer. The
@@ -89,10 +94,28 @@ func (m *Manager) observeLiveStat(outcome LiveIndexerResult) {
 	series.add(outcome.Duration, int64(outcome.Results))
 }
 
-// liveIndexerIsSlack reports a site that usually answers late and rarely
-// brings a result. With too little evidence it is not slack, so the fan-out
-// keeps waiting.
-func (m *Manager) liveIndexerIsSlack(indexerID int64) bool {
+// liveProfile is the measured picture of one indexer.
+type liveProfile struct {
+	p90        time.Duration
+	successPct int
+	samples    int
+}
+
+// slack reports a site that usually answers late and rarely brings a result.
+func (p liveProfile) slack() bool {
+	return p.samples >= liveStatMinSamples && p.p90 >= liveSlowP90 && p.successPct <= liveSlackSuccessPct
+}
+
+// overdue reports a productive site that has already run past its normal tail.
+// The early finish may stop waiting for it; its worker keeps running.
+func (p liveProfile) overdue(elapsed time.Duration) bool {
+	return p.samples >= liveStatMinSamples && elapsed > p.p90+liveOverdueMargin
+}
+
+// liveIndexerProfile returns the current picture of one indexer. With too
+// little evidence it reports zero samples, which makes the site neither slack
+// nor overdue: the fan-out keeps waiting.
+func (m *Manager) liveIndexerProfile(indexerID int64) liveProfile {
 	m.liveStatsMu.Lock()
 	series := m.liveStats[indexerID]
 	var p90 time.Duration
@@ -101,18 +124,27 @@ func (m *Manager) liveIndexerIsSlack(indexerID int64) bool {
 		p90, success, samples = series.profile()
 	}
 	m.liveStatsMu.Unlock()
-	return samples >= liveStatMinSamples && p90 >= liveSlowP90 && success <= liveSlackSuccessPct
+	return liveProfile{p90: p90, successPct: success, samples: samples}
 }
 
-// allPendingSlack reports whether every indexer still running is a site that
-// usually only produces a timeout. At least one other indexer must already
-// have answered, otherwise there is nothing to finish early.
-func (m *Manager) allPendingSlack(pending map[int64]store.Indexer, answered int) bool {
+// allPendingStoppable reports whether every indexer still running is either a
+// site that usually only produces a timeout, or a productive site that has
+// already exceeded its own p90 for this request. At least one indexer must
+// have answered, otherwise there is nothing to finish early. startAt holds the
+// instant each worker actually took its slot: a site that has not started yet
+// is not overdue.
+func (m *Manager) allPendingStoppable(pending map[int64]store.Indexer, answered int, startAt map[int64]time.Time) bool {
 	if answered == 0 || len(pending) == 0 {
 		return false
 	}
+	now := time.Now()
 	for id := range pending {
-		if !m.liveIndexerIsSlack(id) {
+		profile := m.liveIndexerProfile(id)
+		if profile.slack() {
+			continue
+		}
+		started, ok := startAt[id]
+		if !ok || !profile.overdue(now.Sub(started)) {
 			return false
 		}
 	}

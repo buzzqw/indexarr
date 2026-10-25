@@ -543,6 +543,7 @@ func New(cfg Config) *Server {
 	}
 	if cfg.Native != nil {
 		srv.torznab.SetLiveSearch(cfg.Native.SearchLive)
+		srv.torznab.SetLiveWait(cfg.Native.WaitLive)
 		srv.torznab.SetLatestIndexers(cfg.Native.LatestIndexerIDs)
 		srv.torznab.SetCapabilities(cfg.Native.CapabilitiesFor)
 	}

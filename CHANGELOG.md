@@ -22,6 +22,12 @@ Prima release candidata di indexarr 2.
 - Worker condivisi per indexer/query, coda limitata, timeout per ricerca.
 - ExtTo segue la categoria della richiesta: Movies per i film, TV per le serie.
 - Cache dei risultati e memoria dei timeout senza tagliare release.
+- Le varianti di titolo che Sonarr manda per lo stesso episodio condividono un
+  budget: la prima attende la finestra piena, le successive rispondono appena i
+  siti veloci hanno finito. Le ricerche lente continuano in background e le
+  loro righe restano nella cache. Severance passa da ~20 s a ~10 s.
+- Conteggi di Home, `/healthz` e metriche in cache per 15 s, invalidati dalle
+  scritture (rilasci, ricerca app, stato indexer).
 
 ### Interfaccia
 - Percorso guidato «Aggiungi sorgente», schede per uploader e fonti sperimentali.
@@ -30,5 +36,6 @@ Prima release candidata di indexarr 2.
 ### Limiti noti
 - MirCrew nativo e Smartfeed non sono verificati dal vivo (CAPTCHA); restano
   marcati sperimentali.
-- La ricerca di Severance può richiedere più richieste di Sonarr e ~14–20 s.
+- La ricerca di Severance con Sonarr resta intorno ai 10 s misurati: le
+  varianti sono quattro richieste e la prima attende la finestra piena.
 - La prova di durata delle sorgenti memorizzate va completata in produzione.

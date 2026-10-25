@@ -48,10 +48,15 @@ func TestLiveEarlyFinishSkipsSlackIndexer(t *testing.T) {
 	slowID := createIndexer(t, st, "early-slow", "early-slow", "Slow", "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/slow"))
 	warmLiveStats(manager, fastID, slowID)
 
+	variant := LiveQuery{Mode: "tvsearch", Query: "Show", Season: 1, Episode: 1, Limit: 50, App: "sonarr"}
+	// The first variant of an episode keeps the full window; this call only
+	// registers the group.
+	manager.beginEpisodeVariant(variant)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	started := time.Now()
-	result, err := manager.SearchLive(ctx, LiveQuery{Mode: "search", Query: "Show", Limit: 50})
+	result, err := manager.SearchLive(ctx, variant)
 	elapsed := time.Since(started)
 	if err != nil {
 		t.Fatalf("SearchLive: %v", err)
@@ -101,9 +106,12 @@ func TestLiveEarlyFinishWaitsForProductiveSite(t *testing.T) {
 	warmLiveStats(manager, fastID, lateID)
 	warmProductiveStats(manager, lateID)
 
+	variant := LiveQuery{Mode: "tvsearch", Query: "Show", Season: 1, Episode: 1, Limit: 50, App: "sonarr"}
+	manager.beginEpisodeVariant(variant)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	result, err := manager.SearchLive(ctx, LiveQuery{Mode: "search", Query: "Show", Limit: 50})
+	result, err := manager.SearchLive(ctx, variant)
 	if err != nil {
 		t.Fatalf("SearchLive: %v", err)
 	}
@@ -141,6 +149,172 @@ func TestLiveStatProfile(t *testing.T) {
 	}
 	if _, success, _ := productive.profile(); success != 100 {
 		t.Fatalf("productive success = %d, want 100", success)
+	}
+}
+
+func TestLiveEarlyFinishCutsOverdueProductiveSite(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/fast/search", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(liveHTML(liveRow("Fast Show S01E02", "/details/1", "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"))))
+	})
+	mux.HandleFunc("/hang/search", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(3 * time.Second)
+		_, _ = w.Write([]byte(liveHTML(liveRow("Hang Show S01E02", "/details/2", "ffffffffffffffffffffffffffffffffffffffff"))))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	st := newTestStore(t)
+	manager := newTestManager(t, st, newTestVault(t, 3))
+	seedDefinition(t, st, "hang-fast", "", liveDefinition("hang-fast", server.URL+"/fast", "  search: [q]", ""))
+	seedDefinition(t, st, "hang-site", "", liveDefinition("hang-site", server.URL+"/hang", "  search: [q]", ""))
+	fastID := createIndexer(t, st, "hang-fast", "hang-fast", "Fast", "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/fast"))
+	hangID := createIndexer(t, st, "hang-site", "hang-site", "Hang", "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/hang"))
+	// Productive but normally fast: p90 around one second.
+	for i := 0; i < liveStatMinSamples; i++ {
+		manager.observeLiveStat(LiveIndexerResult{IndexerID: fastID, Duration: 100 * time.Millisecond, Results: 2})
+		manager.observeLiveStat(LiveIndexerResult{IndexerID: hangID, Duration: time.Second, Results: 2})
+	}
+
+	variant := LiveQuery{Mode: "tvsearch", Query: "Show", Season: 1, Episode: 2, Limit: 50, App: "sonarr"}
+	manager.beginEpisodeVariant(variant)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	started := time.Now()
+	result, err := manager.SearchLive(ctx, variant)
+	elapsed := time.Since(started)
+	if err != nil {
+		t.Fatalf("SearchLive: %v", err)
+	}
+	if elapsed >= 2500*time.Millisecond {
+		t.Fatalf("overdue productive site waited %s, want a short grace", elapsed)
+	}
+	for _, entry := range result.Indexers {
+		if entry.IndexerID == hangID && !entry.TimedOut {
+			t.Fatalf("hang outcome = %+v, want TimedOut", entry)
+		}
+	}
+}
+
+func TestWaitLiveWaitsForRunningWorkers(t *testing.T) {
+	manager := &Manager{liveRuns: make(map[string]*liveRun)}
+	req := LiveQuery{Mode: "tvsearch", Query: "Show", Season: 1, Episode: 2, Limit: 100}
+	done := make(chan struct{})
+	manager.registerLiveRun(liveQueryKey(req), done)
+	finished := make(chan struct{})
+	go func() {
+		manager.WaitLive(context.Background(), req, 5*time.Second)
+		close(finished)
+	}()
+	select {
+	case <-finished:
+		t.Fatal("WaitLive returned while the workers were still running")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(done)
+	select {
+	case <-finished:
+	case <-time.After(time.Second):
+		t.Fatal("WaitLive did not return after the workers finished")
+	}
+
+	// With no worker for the query it returns immediately.
+	manager.WaitLive(context.Background(), LiveQuery{Mode: "search", Query: "Other"}, 5*time.Second)
+
+	// A budget already spent by the first page leaves nothing to wait for.
+	manager.registerLiveRun(liveQueryKey(req), make(chan struct{}))
+	started := time.Now()
+	manager.WaitLive(context.Background(), req, time.Millisecond)
+	if time.Since(started) > 500*time.Millisecond {
+		t.Fatal("WaitLive ignored the spent budget")
+	}
+}
+
+func TestLiveNonServarrKeepsFullWindow(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/fast/search", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(liveHTML(liveRow("Fast Other S01E01", "/details/1", "1111111111111111111111111111111111111112"))))
+	})
+	mux.HandleFunc("/slow/search", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Second)
+		_, _ = w.Write([]byte(liveHTML(liveRow("Slow Other S01E01", "/details/2", "1111111111111111111111111111111111111113"))))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	st := newTestStore(t)
+	manager := newTestManager(t, st, newTestVault(t, 3))
+	seedDefinition(t, st, "other-fast", "", liveDefinition("other-fast", server.URL+"/fast", "  search: [q]", ""))
+	seedDefinition(t, st, "other-slow", "", liveDefinition("other-slow", server.URL+"/slow", "  search: [q]", ""))
+	fastID := createIndexer(t, st, "other-fast", "other-fast", "Fast", "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/fast"))
+	slowID := createIndexer(t, st, "other-slow", "other-slow", "Slow", "torrent", fmt.Sprintf(`{"url":%q}`, server.URL+"/slow"))
+	warmLiveStats(manager, fastID, slowID)
+
+	// A client that is not a Servarr sends one query, so it must keep the
+	// full window even when the same episode is requested again.
+	req := LiveQuery{Mode: "tvsearch", Query: "Show", Season: 1, Episode: 1, Limit: 50, App: "python-urllib"}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	result, err := manager.SearchLive(ctx, req)
+	if err != nil {
+		t.Fatalf("SearchLive: %v", err)
+	}
+	found := false
+	for _, entry := range result.Indexers {
+		if entry.IndexerID == slowID {
+			found = true
+			if entry.TimedOut || entry.Results == 0 {
+				t.Fatalf("non-Servarr slow site = %+v, want its rows", entry)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("the slow site is missing from the outcome")
+	}
+}
+
+func TestEpisodeVariantBudget(t *testing.T) {
+	manager := &Manager{liveEpisodes: make(map[string]time.Time)}
+	req := LiveQuery{Mode: "tvsearch", Query: "Severance", Season: 2, Episode: 3,
+		Categories: []int{5000, 2000}, App: "sonarr"}
+	if reused, _ := manager.beginEpisodeVariant(req); reused {
+		t.Fatal("the first variant must keep the full window")
+	}
+	second := req
+	second.Query = "Scissione"
+	reused, remaining := manager.beginEpisodeVariant(second)
+	if !reused {
+		t.Fatal("the second variant must share the episode budget")
+	}
+	if remaining <= 0 || remaining > liveEpisodeBudget {
+		t.Fatalf("remaining budget = %s", remaining)
+	}
+	if reused, _ := manager.beginEpisodeVariant(LiveQuery{Mode: "tvsearch", Query: "Show", Season: 1, Episode: 1, App: "python-urllib"}); reused {
+		t.Fatal("a non-Servarr client must not share the budget")
+	}
+	if reused, _ := manager.beginEpisodeVariant(LiveQuery{Mode: "search", Query: "Show", Season: 1, App: "sonarr"}); reused {
+		t.Fatal("a plain search must not share the budget")
+	}
+}
+
+func TestEpisodeGroupKey(t *testing.T) {
+	base := LiveQuery{Mode: "tvsearch", Season: 2, Episode: 3, App: "sonarr", Categories: []int{5000, 2000}}
+	other := base
+	other.Query = "Another title"
+	if episodeGroupKey(base) == "" || episodeGroupKey(base) != episodeGroupKey(other) {
+		t.Fatal("the title must not change the episode group")
+	}
+	different := base
+	different.Episode = 4
+	if episodeGroupKey(base) == episodeGroupKey(different) {
+		t.Fatal("a different episode must have a different group")
+	}
+	if episodeGroupKey(LiveQuery{Mode: "search", Season: 1}) != "" {
+		t.Fatal("a plain search must not be grouped")
+	}
+	if episodeGroupKey(LiveQuery{Mode: "tvsearch"}) != "" {
+		t.Fatal("a tvsearch without a season must not be grouped")
 	}
 }
 

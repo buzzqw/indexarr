@@ -56,6 +56,9 @@ type Server struct {
 	started    time.Time
 	limits     *minuteLimiter
 	liveSearch func(context.Context, indexer.LiveQuery) (indexer.LiveResult, error)
+	// liveWait waits for the fan-out started by the first page, so the offset
+	// pages of the same client search include the rows found in the late tail.
+	liveWait func(context.Context, indexer.LiveQuery, time.Duration)
 	// indexerCaps returns the real capabilities of the selected indexers. Nil
 	// falls back to the historical fixed caps document.
 	indexerCaps func(context.Context, []int64) (map[int64]engine.Capabilities, error)
@@ -90,6 +93,12 @@ func (s *Server) SetGrabGuard(check func(context.Context, int64) error, record f
 // every search that carries a query, not only when the cache is empty.
 func (s *Server) SetLiveSearch(fn func(context.Context, indexer.LiveQuery) (indexer.LiveResult, error)) {
 	s.liveSearch = fn
+}
+
+// SetLiveWait installs the callback that waits for the live workers of one
+// query. It is used by the pages that follow the first one.
+func (s *Server) SetLiveWait(fn func(context.Context, indexer.LiveQuery, time.Duration)) {
+	s.liveWait = fn
 }
 
 // SetCapabilities installs the callback that returns the real capabilities of
@@ -247,7 +256,7 @@ func (s *Server) handleAPI(w http.ResponseWriter, r *http.Request, slug string) 
 
 	started := time.Now()
 	outcome := s.runSearch(r.Context(), slug, query, settings, apiKey,
-		s.baseURL(r, settings), function)
+		s.baseURL(r, settings), function, appFromRequest(r))
 	outcome.Duration = time.Since(started)
 	s.recordAppSearch(r.Context(), r, function, outcome, started)
 	s.writeSearchOutcome(w, outcome)
@@ -275,7 +284,7 @@ type searchOutcome struct {
 // runSearch implements every search function of /api, /torznab/api and
 // /newznab/api. The HTTP handler and Try both call it, so the XML shown in the
 // UI is byte-for-byte the document Sonarr receives.
-func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, settings store.Settings, apiKey, base, mode string) searchOutcome {
+func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, settings store.Settings, apiKey, base, mode, app string) searchOutcome {
 	out := searchOutcome{Status: http.StatusOK, Mode: mode,
 		Query: strings.TrimSpace(query.Get("q"))}
 	aggregate := isAggregateSlug(slug)
@@ -345,6 +354,21 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			}
 		}
 	}
+	// A page after the first one reuses the workers started for the first page.
+	// Waiting for them keeps the rows found in the late tail in the same
+	// client search instead of a later one; the first page stays fast.
+	if filter.Offset > 0 && settings.TorznabLiveSearch && s.liveWait != nil && liveQueryEligible(mode, filter) {
+		wait := time.Duration(settings.TorznabLiveWait) * time.Second
+		if wait <= 0 {
+			wait = 5 * time.Second
+		}
+		if timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second; timeout > 0 && wait > timeout {
+			wait = timeout
+		}
+		waitCtx, cancel := context.WithTimeout(ctx, wait)
+		s.liveWait(waitCtx, liveQueryFor(mode, filter, app), wait)
+		cancel()
+	}
 	releases, total, err := s.store.SearchReleases(ctx, filter)
 	if err != nil {
 		s.log.Error("torznab: search", "component", "indexarr", "subsystem", "torznab", "error", err)
@@ -367,19 +391,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			wait = timeout
 		}
 		liveCtx, cancel := context.WithTimeout(ctx, wait)
-		liveResult, liveErr := s.liveSearch(liveCtx, indexer.LiveQuery{
-			Mode:       mode,
-			Query:      filter.Query,
-			Season:     filter.Season,
-			Episode:    filter.Episode,
-			Year:       filter.Year,
-			IMDbID:     filter.IMDbID,
-			TMDbID:     filter.TMDbID,
-			TVDbID:     filter.TVDbID,
-			Categories: standardCategoryIDs(filter.Categories),
-			Limit:      filter.Limit,
-			IndexerIDs: filter.IndexerIDs,
-		})
+		liveResult, liveErr := s.liveSearch(liveCtx, liveQueryFor(mode, filter, app))
 		cancel()
 		out.Live = liveResult.Indexers
 		for _, result := range liveResult.Indexers {
@@ -721,6 +733,26 @@ func liveQueryEligible(mode string, filter store.Filter) bool {
 	}
 }
 
+// liveQueryFor builds the manager query from the app-facing filter. The first
+// page and the offset pages must use exactly the same fields so the second
+// page finds the workers of the first.
+func liveQueryFor(mode string, filter store.Filter, app string) indexer.LiveQuery {
+	return indexer.LiveQuery{
+		Mode:       mode,
+		Query:      filter.Query,
+		Season:     filter.Season,
+		Episode:    filter.Episode,
+		Year:       filter.Year,
+		IMDbID:     filter.IMDbID,
+		TMDbID:     filter.TMDbID,
+		TVDbID:     filter.TVDbID,
+		Categories: standardCategoryIDs(filter.Categories),
+		Limit:      filter.Limit,
+		IndexerIDs: filter.IndexerIDs,
+		App:        app,
+	}
+}
+
 // intersectIndexerIDs keeps the request selection when present, otherwise the
 // full allowed set. An empty selection means "all indexers" in the store, so
 // the caller must check the length before querying.
@@ -864,7 +896,7 @@ func (s *Server) Try(ctx context.Context, base string, req TryRequest) (TryResul
 		apiKey = settings.APIKey
 	}
 	started := time.Now()
-	out := s.runSearch(ctx, req.IndexerSlug, query, settings, apiKey, base, mode)
+	out := s.runSearch(ctx, req.IndexerSlug, query, settings, apiKey, base, mode, "sonarr")
 	return TryResult{
 		Status:     out.Status,
 		XML:        out.Body,

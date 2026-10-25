@@ -59,6 +59,11 @@ type LiveQuery struct {
 	// request (an aggregate filter or the single-indexer endpoint). Empty
 	// means every enabled indexer.
 	IndexerIDs []int64
+	// App names the downstream application (sonarr, radarr, ...). Servarr
+	// sends several title variants for the same episode; the manager uses
+	// this to share one wait budget between them. Other clients send one
+	// query and keep the full window.
+	App string
 }
 
 // LiveIndexerResult is what one indexer did during a live search. Mode is the
@@ -174,14 +179,35 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 	}
 	defer func() { m.finishLiveFlight(cacheKey, flight, result, err) }()
 
+	// Sonarr sends several title variants for one episode. The first one pays
+	// the full window and stores the late rows; the following ones share one
+	// budget for the whole episode and answer as soon as the fast sites are
+	// done. Their own slow searches keep running for the next request.
+	earlyAllowed := false
+	if reused, remaining := m.beginEpisodeVariant(req); reused {
+		earlyAllowed = true
+		var cancelBudget context.CancelFunc
+		ctx, cancelBudget = withEpisodeBudget(ctx, remaining)
+		defer cancelBudget()
+	}
+
 	results := make(chan LiveIndexerResult, len(targets))
 	var wg sync.WaitGroup
 	done = make(chan struct{})
+	runKey := liveQueryKey(req)
+	run := m.registerLiveRun(runKey, done)
+	var startMu sync.Mutex
+	startAt := make(map[int64]time.Time, len(targets))
 	for _, target := range targets {
 		wg.Add(1)
 		go func(indexer store.Indexer) {
 			defer wg.Done()
-			outcome := m.liveOne(ctx, workCtx, indexer, req, matcher)
+			onStart := func() {
+				startMu.Lock()
+				startAt[indexer.ID] = time.Now()
+				startMu.Unlock()
+			}
+			outcome := m.liveOne(ctx, workCtx, indexer, req, matcher, onStart)
 			m.observeLiveStat(outcome)
 			// The response cache is updated as detached workers finish, so a
 			// repeated request within the partial TTL sees the late rows
@@ -192,6 +218,7 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 	}
 	go func() {
 		wg.Wait()
+		m.unregisterLiveRun(runKey, run)
 		close(done)
 	}()
 
@@ -232,14 +259,24 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 	var earlyTimer *time.Timer
 	var early <-chan time.Time
 	answeredLive := 0
+	// A slow site has no reason to send an outcome before its timeout, so the
+	// overdue check needs a heartbeat of its own.
+	check := time.NewTicker(100 * time.Millisecond)
+	defer check.Stop()
 	for len(pending) > 0 {
-		// Once every productive site has answered and only the sites that
-		// usually end in a timeout are still running, grant a short grace
-		// instead of the full wait. Their workers keep running and store what
-		// they find for the next variant or request.
-		if early == nil && answeredLive > 0 && m.allPendingSlack(pending, answeredLive) {
-			earlyTimer = time.NewTimer(liveEarlyGrace)
-			early = earlyTimer.C
+		// Once every site that is not known to be late has answered, and the
+		// remaining ones have either a history of timeouts or have already
+		// passed their own p90, grant a short grace instead of the full wait.
+		// Their workers keep running and store what they find for the next
+		// variant or request.
+		if earlyAllowed && early == nil && answeredLive > 0 {
+			startMu.Lock()
+			stoppable := m.allPendingStoppable(pending, answeredLive, startAt)
+			startMu.Unlock()
+			if stoppable {
+				earlyTimer = time.NewTimer(liveEarlyGrace)
+				early = earlyTimer.C
+			}
 		}
 		select {
 		case outcome := <-results:
@@ -249,6 +286,8 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 			if !outcome.Skipped {
 				answeredLive++
 			}
+		case <-check.C:
+			// Re-evaluate the early-finish condition.
 		case <-early:
 			if earlyTimer != nil {
 				earlyTimer.Stop()
@@ -326,6 +365,52 @@ func (m *Manager) joinLiveFlight(key string) (*liveFlight, bool) {
 	return flight, true
 }
 
+// registerLiveRun keeps the workers of a query reachable after the first page
+// was answered. The offset pages of the same client search wait for them.
+func (m *Manager) registerLiveRun(key string, done chan struct{}) *liveRun {
+	run := &liveRun{done: done, started: time.Now()}
+	m.liveRunsMu.Lock()
+	m.liveRuns[key] = run
+	m.liveRunsMu.Unlock()
+	return run
+}
+
+func (m *Manager) unregisterLiveRun(key string, run *liveRun) {
+	m.liveRunsMu.Lock()
+	if m.liveRuns[key] == run {
+		delete(m.liveRuns, key)
+	}
+	m.liveRunsMu.Unlock()
+}
+
+// WaitLive blocks until the live workers of the same query finish, or the
+// overall budget of that client search expires. It returns immediately when no
+// worker is running. The budget is measured from the first page, so a long
+// tail cannot add a new wait to every offset page.
+func (m *Manager) WaitLive(ctx context.Context, req LiveQuery, budget time.Duration) {
+	key := liveQueryKey(req)
+	m.liveRunsMu.Lock()
+	run := m.liveRuns[key]
+	m.liveRunsMu.Unlock()
+	if run == nil {
+		return
+	}
+	if budget <= 0 {
+		budget = 5 * time.Second
+	}
+	remaining := budget - time.Since(run.started)
+	if remaining <= 0 {
+		return
+	}
+	timer := time.NewTimer(remaining)
+	defer timer.Stop()
+	select {
+	case <-run.done:
+	case <-timer.C:
+	case <-ctx.Done():
+	}
+}
+
 func (m *Manager) finishLiveFlight(key string, flight *liveFlight, result LiveResult, err error) {
 	m.liveFlightMu.Lock()
 	flight.result = result
@@ -342,6 +427,18 @@ func liveCacheKey(req LiveQuery, targets []store.Indexer) string {
 		ids = append(ids, target.ID)
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	return liveKeyFields(req, ids)
+}
+
+// liveQueryKey identifies a fan-out by the query alone. Offset pages of the
+// same client search use it to find the workers started by the first page.
+func liveQueryKey(req LiveQuery) string {
+	ids := append([]int64(nil), req.IndexerIDs...)
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	return liveKeyFields(req, ids)
+}
+
+func liveKeyFields(req LiveQuery, ids []int64) string {
 	categories := append([]int(nil), req.Categories...)
 	sort.Ints(categories)
 	return strings.Join([]string{
@@ -446,7 +543,7 @@ func (m *Manager) refreshLiveCache(key string, outcome LiveIndexerResult) {
 // Request context is used only while waiting for a slot or for an identical
 // worker; once the slot is owned the background context keeps the request
 // alive.
-func (m *Manager) liveOne(reqCtx, workCtx context.Context, indexer store.Indexer, req LiveQuery, matcher *store.BlocklistMatcher) LiveIndexerResult {
+func (m *Manager) liveOne(reqCtx, workCtx context.Context, indexer store.Indexer, req LiveQuery, matcher *store.BlocklistMatcher, onStart func()) LiveIndexerResult {
 	started := time.Now()
 	outcome := LiveIndexerResult{IndexerID: indexer.ID, Name: indexer.Name, Mode: requestedMode(req)}
 
@@ -512,6 +609,9 @@ func (m *Manager) liveOne(reqCtx, workCtx context.Context, indexer store.Indexer
 		worker.mu.Lock()
 		worker.running = true
 		worker.mu.Unlock()
+		if onStart != nil {
+			onStart()
+		}
 		defer func() { <-m.liveSem }()
 	case <-reqCtx.Done():
 		m.liveWaiters.Add(-1)

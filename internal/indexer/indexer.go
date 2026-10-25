@@ -98,6 +98,23 @@ type Manager struct {
 	// answer late without bringing a result.
 	liveStatsMu sync.Mutex
 	liveStats   map[int64]*liveStatSeries
+
+	// liveRuns keeps the fan-out of each query alive after the first page
+	// returned. The next page waits for it, so the rows found by the late
+	// workers are part of the same client search instead of the next one.
+	liveRunsMu sync.Mutex
+	liveRuns   map[string]*liveRun
+
+	// liveEpisodes remembers when one Sonarr/Radarr search for an episode
+	// started. The title variants of the same episode share one wait budget,
+	// so four requests cannot cost four full windows.
+	liveEpisodesMu sync.Mutex
+	liveEpisodes   map[string]time.Time
+}
+
+type liveRun struct {
+	done    chan struct{}
+	started time.Time
 }
 
 type liveFlight struct {
@@ -189,18 +206,20 @@ func New(cfg Config) (*Manager, error) {
 		maxTorrents = DefaultMaxTorrentsPerRun
 	}
 	m := &Manager{
-		store:       cfg.Store,
-		vault:       cfg.Vault,
-		registry:    registry,
-		transport:   transport,
-		logger:      logger,
-		maxTorrents: maxTorrents,
-		cache:       make(map[int64]cachedConnector),
-		liveCache:   make(map[string]liveCacheEntry),
-		liveFlights: make(map[string]*liveFlight),
-		liveWorkers: make(map[string]*liveWorker),
-		liveStats:   make(map[int64]*liveStatSeries),
-		liveSem:     make(chan struct{}, liveGlobalConcurrency),
+		store:        cfg.Store,
+		vault:        cfg.Vault,
+		registry:     registry,
+		transport:    transport,
+		logger:       logger,
+		maxTorrents:  maxTorrents,
+		cache:        make(map[int64]cachedConnector),
+		liveCache:    make(map[string]liveCacheEntry),
+		liveFlights:  make(map[string]*liveFlight),
+		liveWorkers:  make(map[string]*liveWorker),
+		liveStats:    make(map[int64]*liveStatSeries),
+		liveRuns:     make(map[string]*liveRun),
+		liveEpisodes: make(map[string]time.Time),
+		liveSem:      make(chan struct{}, liveGlobalConcurrency),
 	}
 	// Best effort: a fresh database simply starts with an empty picture and
 	// the fan-out waits normally until it has measured the sites.
