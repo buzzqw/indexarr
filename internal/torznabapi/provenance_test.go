@@ -167,3 +167,46 @@ func TestItemWithoutMagnetLinksToDownloadRef(t *testing.T) {
 		t.Errorf("download reference is not exposed through /dl:\n%s", body)
 	}
 }
+
+func TestPageProvenanceCacheServesWithinTTL(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	hash := "7777777777777777777777777777777777777777"
+	id := insertRelease(t, st, "Cached Provenance Show 1080p", "5040", hash,
+		"magnet:?xt=urn:btih:"+hash, []byte("d4:infod4:name4:testee"))
+	indexer := provenanceIndexer(t, st, "cache", "Cached Indexer")
+	if err := st.RecordReleaseSource(ctx, store.ReleaseSource{
+		ReleaseID: id, IndexerID: indexer, Seeders: 11, Leechers: 3,
+	}); err != nil {
+		t.Fatalf("RecordReleaseSource: %v", err)
+	}
+	releases, _, err := st.SearchReleases(ctx, store.Filter{Limit: 1})
+	if err != nil {
+		t.Fatalf("SearchReleases: %v", err)
+	}
+	first := api.pageProvenance(ctx, releases)
+	if first[id].Indexers != 1 {
+		t.Fatalf("first provenance = %+v", first[id])
+	}
+
+	// The second call must use the cache even after the source disappeared.
+	if _, err := st.DB().ExecContext(ctx, `DELETE FROM release_sources`); err != nil {
+		t.Fatalf("delete provenance: %v", err)
+	}
+	second := api.pageProvenance(ctx, releases)
+	if second[id].Indexers != 1 {
+		t.Fatalf("cached provenance = %+v, want the first value", second[id])
+	}
+
+	// Expire the entry: the next call goes back to the store and sees no row.
+	api.provenanceMu.Lock()
+	for key, entry := range api.provenance {
+		entry.expires = time.Now().Add(-time.Second)
+		api.provenance[key] = entry
+	}
+	api.provenanceMu.Unlock()
+	third := api.pageProvenance(ctx, releases)
+	if third[id].Indexers != 0 {
+		t.Fatalf("expired provenance = %+v, want empty", third[id])
+	}
+}

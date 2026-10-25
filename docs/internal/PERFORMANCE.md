@@ -547,3 +547,75 @@ carico il nuovo processo resta comunque molto sotto il baseline
 - I test esistenti su fusione e paginazione (`TestFusionRunsBeforePagination`,
   `TestServarrPaginationReceivesEveryFusedRelease`) restano verdi.
 - `TestEscapeLike` copre i metacaratteri `%`, `_` e la barra rovesciata.
+
+---
+
+## 11. Cache della provenienza (25 ottobre 2026)
+
+La pagina Torznab carica la provenienza di ogni release con
+`ReleaseProvenance`. Il profilo del giro precedente mostrava ancora
+`loadProvenanceChunk` come prima voce CPU (65%) e 41% delle allocazioni,
+perché ogni poll Arr ripeteva la stessa query sulla pagina già in cache.
+
+### 11.1 Modifica
+
+`internal/torznabapi` mantiene una cache per `release_id`:
+
+- TTL **2 minuti**, lo stesso orizzonte dello snapshot delle release;
+- massimo **1.024 voci**, con rimozione delle scadute e poi della voce usata
+  meno di recente;
+- la cache conserva il valore completo di `ReleaseProvenance`; il writer lo
+  legge soltanto, non lo modifica;
+- su una pagina mista si interrogano solo gli id mancanti e si uniscono i
+  risultati alle voci già presenti;
+- un errore dello store lascia la pagina funzionante con le sole voci in
+  cache, senza inventare provenienza.
+
+La cache accetta di mostrare seeders/leechers vecchi al massimo di due minuti,
+esattamente come lo snapshot delle release. Non è una cache delle release:
+titoli, totali e pagine restano quelli dello snapshot.
+
+### 11.2 Benchmark in-process
+
+Stessi seed e macchina; 300 iterazioni, valori medi.
+
+| Benchmark | Prima | Dopo | Δ tempo | Δ allocato |
+|---|---:|---:|---:|---:|
+| `TorznabSearch/items_10` | 0,95 ms · 127 KB · 1.723 alloc | **0,51 ms · 83 KB · 843 alloc** | **−46%** | **−35%** |
+| `TorznabSearch/items_100` | 4,48 ms · 1,03 MB · 12.268 alloc | **1,70 ms · 614 KB · 3.827 alloc** | **−62%** | **−40%** |
+| `TorznabSearch/items_100_text` | 4,88 ms · 456 KB · 5.716 alloc | **3,41 ms · 276 KB · 2.098 alloc** | **−30%** | **−39%** |
+
+### 11.3 Harness end-to-end
+
+Confronto con il giro precedente, stesso harness e stessa macchina.
+
+| Dataset | Scenario | Prima | Dopo |
+|---|---|---|---:|
+| 50k | title p95 | 41,7 ms | **39,7 ms** |
+| 50k | title+cat p95 | 35,1 ms | **33,2 ms** |
+| 50k | stress `1080p` p95 | 61,4 ms | **60,3 ms** |
+| 50k | 20× stress p95 | 370,7 ms | **350,0 ms** |
+| 50k | RSS dopo il carico | 65,7 MiB | **59,9 MiB** |
+| 10k | 20× stress p95 | 217,7 ms | **188,2 ms** |
+| 10k | RSS dopo il carico | 67,7 MiB | **65,0 MiB** |
+
+RSS a riposo: 46,2 MiB a 10k e 47,0 MiB a 50k; FD stabili a 14–16.
+
+### 11.4 A/B
+
+`tools/firstpage_ab3.py` contro `d7837d9`, due giri a porte scambiate, copie
+fresche del DB, ricerca live disattivata:
+
+- 12 query con risultati: **248/248 titoli distinti, 100%** in entrambi i
+  giri; nessuna sotto l’85%;
+- 4 query senza risultati: 0 su entrambi;
+- `total` e pagine invariati;
+- RSS dopo i due giri: 52,6 MiB baseline, **51,9 MiB** nuovo (la cache non
+  aumenta il footprint in questo scenario).
+
+### 11.5 Test
+
+`TestPageProvenanceCacheServesWithinTTL` verifica che la seconda chiamata usi
+la cache anche dopo la cancellazione della riga, e che alla scadenza torni a
+leggere lo store. I test di provenienza e di paginazione esistenti restano
+verdi.

@@ -41,6 +41,12 @@ const (
 	// the pages of one Arr RSS cycle. The byte budget is the real limit.
 	maxSnapshotEntries = 64
 	maxSnapshotBytes   = 32 << 20
+	// Provenance is cached per release id. The TTL matches the snapshot
+	// window; seeders and last_seen are allowed to be a couple of minutes
+	// old, while a page of 100 rows no longer repeats the same join query on
+	// every Arr poll.
+	provenanceCacheTTL   = 2 * time.Minute
+	maxProvenanceEntries = 1024
 )
 
 // Server implements the Torznab endpoint and the .torrent download route.
@@ -67,6 +73,9 @@ type Server struct {
 	// shift the offsets.
 	snapshotMu sync.Mutex
 	snapshots  map[string]searchSnapshot
+
+	provenanceMu sync.Mutex
+	provenance   map[int64]provenanceCacheEntry
 
 	downloadResolver func(context.Context, int64) ([]byte, string, string, error)
 
@@ -122,7 +131,11 @@ func New(st *store.Store, logger *slog.Logger, version string) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Server{store: st, log: logger, version: version, started: time.Now(), limits: newMinuteLimiter(), snapshots: make(map[string]searchSnapshot)}
+	return &Server{
+		store: st, log: logger, version: version, started: time.Now(),
+		limits: newMinuteLimiter(), snapshots: make(map[string]searchSnapshot),
+		provenance: make(map[int64]provenanceCacheEntry),
+	}
 }
 
 const (
@@ -1361,26 +1374,98 @@ func writeCapsCategories(b *bytes.Buffer, only []int) {
 	}
 }
 
-// pageProvenance loads the aggregated provenance of one result page with a
-// single store call. A failure degrades gracefully to the release row counters:
-// the search response is still served.
+// pageProvenance loads the aggregated provenance of one result page. Cache
+// hits avoid the release_sources join; misses are fetched together. A failure
+// degrades gracefully to the release row counters and any cached entries.
+type provenanceCacheEntry struct {
+	value    store.ReleaseProvenance
+	expires  time.Time
+	lastUsed time.Time
+}
+
 func (s *Server) pageProvenance(ctx context.Context, releases []store.Release) map[int64]store.ReleaseProvenance {
 	if len(releases) == 0 {
 		return nil
 	}
-	ids := make([]int64, 0, len(releases))
-	for _, release := range releases {
-		if release.ID > 0 {
-			ids = append(ids, release.ID)
-		}
+	now := time.Now()
+	missing := make([]int64, 0, len(releases))
+	seen := make(map[int64]struct{}, len(releases))
+	cached := make(map[int64]store.ReleaseProvenance, len(releases))
+
+	s.provenanceMu.Lock()
+	if s.provenance == nil {
+		s.provenance = make(map[int64]provenanceCacheEntry)
 	}
-	provenance, err := s.store.ReleaseProvenance(ctx, ids)
+	for _, release := range releases {
+		id := release.ID
+		if id <= 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		entry, ok := s.provenance[id]
+		if ok && now.Before(entry.expires) {
+			entry.lastUsed = now
+			s.provenance[id] = entry
+			cached[id] = entry.value
+			continue
+		}
+		if ok {
+			delete(s.provenance, id)
+		}
+		missing = append(missing, id)
+	}
+	s.provenanceMu.Unlock()
+
+	if len(missing) == 0 {
+		return cached
+	}
+	provenance, err := s.store.ReleaseProvenance(ctx, missing)
 	if err != nil {
 		s.log.Warn("torznab: load provenance", "component", "indexarr",
 			"subsystem", "torznab", "error", err)
-		return nil
+		return cached
 	}
-	return provenance
+	s.provenanceMu.Lock()
+	for id, value := range provenance {
+		s.provenance[id] = provenanceCacheEntry{
+			value: value, expires: now.Add(provenanceCacheTTL), lastUsed: now,
+		}
+	}
+	s.evictProvenanceLocked(now)
+	s.provenanceMu.Unlock()
+	for id, value := range provenance {
+		cached[id] = value
+	}
+	return cached
+}
+
+// evictProvenanceLocked removes expired entries first, then the least recently
+// used ones. The map is small enough that a linear scan on overflow is cheap.
+func (s *Server) evictProvenanceLocked(now time.Time) {
+	if len(s.provenance) <= maxProvenanceEntries {
+		return
+	}
+	for id, entry := range s.provenance {
+		if !now.Before(entry.expires) {
+			delete(s.provenance, id)
+		}
+	}
+	for len(s.provenance) > maxProvenanceEntries {
+		var oldestID int64
+		var oldest time.Time
+		for id, entry := range s.provenance {
+			if oldestID == 0 || entry.lastUsed.Before(oldest) {
+				oldestID, oldest = id, entry.lastUsed
+			}
+		}
+		if oldestID == 0 {
+			break
+		}
+		delete(s.provenance, oldestID)
+	}
 }
 
 func (s *Server) searchXML(base string, settings store.Settings, apiKey string, releases []store.Release, total int64, offset int, provenance map[int64]store.ReleaseProvenance) []byte {

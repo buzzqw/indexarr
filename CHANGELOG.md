@@ -20,6 +20,8 @@
   materializza più l'archivio.
 - Latenza p95 della query stress a 50.000 release: da ~1.981 ms a ~61 ms;
   RSS dopo il carico: da ~112 MiB a ~66 MiB.
+- Cache della provenienza per release (TTL 2 minuti, 1.024 voci): una pagina
+  Torznab ripetuta non riesegue il join su `release_sources`.
 
 ### Ricerca
 - Ricerca nei nomi dei file dei torrent salvati, con FTS5 trigram.
