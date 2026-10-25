@@ -68,15 +68,14 @@ esterni obbligatori: l'unica dipendenza è il driver SQLite puro Go
 | `internal/indexersvc` | Servizio delle pagine indexer: validazione, creazione/aggiornamento/cancellazione, separazione tra config pubblica e segreti nel vault |
 | `internal/native` | Scheduler periodico, run/test di tutti gli indexer, backup automatici, retention, notifiche e auto-disable |
 | `internal/catalog` | Catalogo incorporato (`catalog.yaml` + `definitions/*.yaml`): manifest validato, definizioni parsate, sincronizzazione verso lo store |
+| `internal/catalog/managerdata` | Istantanea storica dei metadati pubblici usata solo dai generatori del catalogo; nessun collegamento a runtime |
 | `internal/torznabapi` | Server Torznab, API key multiple, rate limit, ricerca live e download `.torrent` |
-| `internal/adminapi` | API JSON `/api/v2` autenticata con API key: definizioni, catalogo, indexer, applicazioni, import, test/search/run |
+| `internal/adminapi` | API JSON `/api/v2` autenticata con API key: definizioni, catalogo, indexer, applicazioni, test/search/run |
 | `internal/web` | UI SSR, autenticazione, CSRF, form, PWA, manutenzione e ripristino |
 | `internal/syncjob` | Riconciliazione periodica delle applicazioni \*arr con `appsync`, persistenza di `app_indexers` e gestione dei livelli di sync |
 | `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.torrent`/`.nzb` non ancora in cache |
-| `internal/importers` | Piano e apply di import da Prowlarr e Jackett (indexer, applicazioni, proxy, categorie) |
 | `internal/vault` | AES-256-GCM; chiave da `INDEXARR_MASTER_KEY`, `INDEXARR_MASTER_KEY_FILE`, `vault_key_path`, file `<db>.key` o directory utente, mai nel database (vedi [VAULT.md](VAULT.md)) |
 | `internal/cardigann` | Convertitore locale Cardigann → nativo v1, con family detection e warning; non è un runtime |
-| `cmd/indexarr-import` | Import di Jackett/Prowlarr in un DB indexarr usa-e-getta, senza modificare le istanze |
 | `internal/feed` | Parser RSS/Atom/Torznab e utility di normalizzazione; i parser HTML storici restano solo come oracolo dei test di equivalenza |
 | `internal/flaresolverr` | Client minimo per risolvere le challenge Cloudflare |
 | `internal/logbuffer` | Ring buffer in memoria e handler slog con redazione dei segreti |

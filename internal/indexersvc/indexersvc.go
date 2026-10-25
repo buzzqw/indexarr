@@ -107,6 +107,9 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 	}
 
 	settings := normalizeSettings(in.Settings)
+	if err := rejectManagerEndpoints(settings); err != nil {
+		return store.Indexer{}, err
+	}
 	for _, setting := range parsed.Settings {
 		if setting.Required && settings[setting.Name] == "" {
 			return store.Indexer{}, fmt.Errorf("missing required setting: %s", setting.Name)
@@ -272,6 +275,9 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 			return store.Indexer{}, err
 		}
 		settings := normalizeSettings(in.Settings)
+		if err := rejectManagerEndpoints(settings); err != nil {
+			return store.Indexer{}, err
+		}
 		stored := truthySetting(settings["store_latest"])
 		if err := validateStoredSwitch(parsed, stored); err != nil {
 			return store.Indexer{}, err

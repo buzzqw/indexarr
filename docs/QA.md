@@ -51,7 +51,7 @@ esegue quando trova Chrome.
 
 ## Cosa è coperto
 
-- **Feed e sorgenti**: parsing RSS/Atom, Torznab, Jackett, Prowlarr, MirCrew,
+- **Feed e sorgenti**: parsing RSS/Atom, Torznab, MirCrew,
   listing HTML (ExtTo, TorrentGalaxy, Corsaro), scoperta feed, sanitizzazione,
   redazione dei segreti nei log e mapping categorie.
 - **Ingestion**: deduplica, aggiornamento delle release, backoff, auto-disable,
@@ -62,7 +62,7 @@ esegue quando trova Chrome.
   integrità, deduplica, azioni di manutenzione e report del database.
 - **Torznab**: `caps`, `search`, `tvsearch`, `movie`, `get`, paginazione,
   filtri, autenticazione e rate limit.
-- **Web UI**: dashboard, release, dettaglio, sorgenti, quick add, import/export,
+- **Web UI**: dashboard, release, dettaglio, sorgenti, quick add, export/import JSON degli indexer,
   impostazioni, log, manutenzione, CSRF, autenticazione Basic opzionale,
   PWA e asset statici.
 - **Log**: filtro per livello e per origine (`indexarr`, indexer, RSS,
@@ -115,7 +115,7 @@ nell'handler web che ne verifichi redirect ed effetto sul database.
 ## Simulazione end-to-end
 
 Oltre ai test di package, `sim/` contiene una simulazione deterministica con
-servizi finti (Torznab/Newznab, Prowlarr, Sonarr, SABnzbd, NZBGet, Deluge,
+servizi finti (Torznab/Newznab, Sonarr, SABnzbd, NZBGet, Deluge,
 rTorrent e un tracker HTML) e asserzioni con exit code non zero. Si esegue in
 locale con `./sim/run.sh` oppure in Docker con `./sim/run-docker.sh`, sulle
 porte isolate 18484 e 19080. Dettagli, asserzioni e reset in

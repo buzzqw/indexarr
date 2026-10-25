@@ -107,7 +107,7 @@ var pageNames = []string{
 	"dashboard", "releases", "release",
 	"run", "rules", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
-	"applications", "application_form", "import", "activity", "setup",
+	"applications", "application_form", "activity", "setup",
 	"download_client_form", "site_preview", "smartfeed_form", "store_warning",
 }
 
@@ -464,9 +464,6 @@ type Server struct {
 	// notifier applies the notification switches, the anti-spam window and
 	// the test button. It shares the store with the rest of the server.
 	notifier *notify.Dispatcher
-	// importPlans holds short-lived previews between /import and /import/apply.
-	// Secrets stay in this process memory and never reach the HTML.
-	importPlans *importPlanStore
 	// smartfeedPlans holds a pasted Smartfeed URL between recognition and the
 	// confirmation form. The personal token never travels through the HTML.
 	smartfeedPlans *smartfeedPlanStore
@@ -536,7 +533,6 @@ func New(cfg Config) *Server {
 		sync:           cfg.Sync,
 		polite:         cfg.Politeness,
 		notifier:       notify.NewDispatcher(cfg.Store, logger),
-		importPlans:    newImportPlanStore(),
 		smartfeedPlans: newSmartfeedPlanStore(),
 		pendingStores:  newPendingStoreSet(),
 		catalogIndex:   catalog.Index,
@@ -664,11 +660,6 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /applications/{id}/sync", s.applicationSync)
 	ui.HandleFunc("POST /applications/{id}/snapshot", s.applicationSnapshot)
 	ui.HandleFunc("POST /applications/{id}/restore/{snapshot}", s.applicationRestore)
-	ui.HandleFunc("GET /import", s.importPage)
-	ui.HandleFunc("POST /import/prowlarr", s.importProwlarr)
-	ui.HandleFunc("POST /import/jackett", s.importJackett)
-	ui.HandleFunc("POST /import/gextto", s.importGextto)
-	ui.HandleFunc("POST /import/apply", s.importApply)
 	ui.HandleFunc("GET /activity", s.activityPage)
 	ui.HandleFunc("GET /runs", s.runsRedirect)
 	ui.HandleFunc("GET /runs/{id}", s.runPage)
@@ -935,8 +926,6 @@ func pageHelpKey(r *http.Request) string {
 		return "activity"
 	case path == "/settings":
 		return "settings"
-	case path == "/import":
-		return "import"
 	case path == "/setup":
 		return "setup"
 	case path == "/definitions" || path == "/settings/definitions":

@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.0 (in corso)
+
+### Sostituzione di Jackett e Prowlarr
+- Rimossi l'import da Jackett/Prowlarr, la pagina `/import`, le API
+  `/api/v2/import/*` e il comando `indexarr-import`.
+- Rimosso `fresh-start.sh` (era costruito sull'import dei manager).
+- Il catalogo nativo è l'unico percorso per aggiungere fonti.
+- Gli URL di Jackett/Prowlarr vengono rifiutati alla creazione e alla modifica
+  di un indexer.
+- Istantanea storica dei metadati mantenuta solo per generare il catalogo;
+  nessun collegamento a runtime.
+
+### Catalogo
+- Rilevazione del software dal vivo con marcatori forti; 155 fonti con
+  software noto.
+- Coda «da scrivere» visibile con filtro e contatore di copertura.
+- Le fonti con software noto sono sorgenti periodiche native.
+
 ## 2.0.0-rc1
 
 Prima release candidata di indexarr 2.

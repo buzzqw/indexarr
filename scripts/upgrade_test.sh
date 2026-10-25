@@ -8,7 +8,7 @@
 #
 # Cases:
 #   1. a successful upgrade, then the explicit --rollback;
-#   2. a broken importer build: the upgrade must fail before stopping anything;
+#   2. a broken indexarr build: the upgrade must fail before stopping anything;
 #   3. a wrong /healthz version: the upgrade must roll back automatically.
 set -euo pipefail
 
@@ -85,7 +85,7 @@ if ! port_free; then
 	fail "port $PORT is already in use; stop it or set INDEXARR_UPGRADE_TEST_PORT"
 fi
 
-# --- fake indexarr and importer ------------------------------------------
+# --- fake indexarr --------------------------------------------------------
 
 cat >"$TMP/fake-indexarr-source" <<'FAKE'
 #!/usr/bin/env bash
@@ -174,12 +174,6 @@ PY
 FAKE
 chmod +x "$TMP/fake-indexarr-source"
 
-cat >"$TMP/fake-import-source" <<'FAKE'
-#!/usr/bin/env bash
-printf 'fake importer %s\n' "$*"
-FAKE
-chmod +x "$TMP/fake-import-source"
-
 mkdir -p "$TMP/fake-go-bin" "$TMP/old-bin"
 cat >"$TMP/fake-go-bin/go" <<'FAKE'
 #!/usr/bin/env bash
@@ -201,27 +195,13 @@ if [[ "${FAKE_GO_FAIL:-0}" == "1" ]]; then
 	echo "fake go: forced failure" >&2
 	exit 1
 fi
-if [[ "${FAKE_GO_FAIL_IMPORT:-0}" == "1" && "$last" == *indexarr-import* ]]; then
-	echo "fake go: forced importer failure" >&2
-	exit 1
-fi
 [[ -n "$out" ]] || { echo "fake go: missing -o" >&2; exit 2; }
 version="$(printf '%s' "$ldflags" | sed -n 's/.*main\.version=\([^ ]*\).*/\1/p')"
-case "$last" in
-*indexarr-import*)
-	cat >"$out" <<EOF
-#!/usr/bin/env bash
-printf 'fake importer %s\\n' "\$*"
-EOF
-	;;
-*)
-	cat >"$out" <<EOF
+cat >"$out" <<EOF
 #!/usr/bin/env bash
 export FAKE_EMBEDDED_VERSION='${version:-dev}'
 exec '${FAKE_INDEXARR_SOURCE:?}' "\$@"
 EOF
-	;;
-esac
 chmod +x "$out"
 FAKE
 chmod +x "$TMP/fake-go-bin/go"
@@ -235,15 +215,6 @@ make_old_binary() {
 #!/usr/bin/env bash
 export FAKE_EMBEDDED_VERSION='$version'
 exec '$TMP/fake-indexarr-source' "\$@"
-EOF
-	chmod +x "$path"
-}
-
-make_old_importer() {
-	local path="$1"
-	cat >"$path" <<'EOF'
-#!/usr/bin/env bash
-printf 'old importer %s\n' "$*"
 EOF
 	chmod +x "$path"
 }
@@ -296,22 +267,20 @@ mkdir -p "$SUCCESS/bin"
 make_data "$SUCCESS/data"
 OLD_KEY_LEN="$(sqlite3 -readonly "$SUCCESS/data/indexarr.db" "SELECT length(value) FROM settings WHERE key='api_key';")"
 make_old_binary "$SUCCESS/bin/indexarr" "old-version"
-make_old_importer "$SUCCESS/bin/indexarr-import"
 OLD_SHA="$(sha256sum "$SUCCESS/bin/indexarr" | cut -d' ' -f1)"
-OLD_IMPORTER_SHA="$(sha256sum "$SUCCESS/bin/indexarr-import" | cut -d' ' -f1)"
 : >"$FAKE_GO_MARKER"
 OUT="$TMP/success.out"
 run_upgrade FAKE_HEALTH_MODE=ok "$SCRIPT" --apply --yes --no-systemd \
 	--data-dir "$SUCCESS/data" --binary "$SUCCESS/bin/indexarr" \
-	--importer "$SUCCESS/bin/indexarr-import" --port "$PORT" >"$OUT" 2>&1 ||
+	--port "$PORT" >"$OUT" 2>&1 ||
 	{ cat "$OUT" >&2; fail "successful upgrade exited nonzero"; }
 grep -q 'upgrade complete' "$OUT" || { cat "$OUT" >&2; fail "upgrade did not complete"; }
 grep -q 'healthz ok' "$OUT" || { cat "$OUT" >&2; fail "healthz was not checked"; }
 grep -q 't=caps ok' "$OUT" || { cat "$OUT" >&2; fail "t=caps was not checked"; }
 grep -q 'Torznab search ok' "$OUT" || { cat "$OUT" >&2; fail "the Torznab search was not checked"; }
-[[ "$(grep -c -- '-o ' "$FAKE_GO_MARKER" || true)" == "2" ]] ||
-	fail "expected two builds (indexarr and importer)"
-grep -q 'cmd/indexarr-import' "$FAKE_GO_MARKER" || fail "the importer was not built"
+[[ "$(grep -c -- '-o ' "$FAKE_GO_MARKER" || true)" == "1" ]] ||
+	fail "expected exactly one build (indexarr)"
+grep -q 'cmd/indexarr' "$FAKE_GO_MARKER" || fail "the indexarr binary was not built"
 BACKUP="$(compgen -G "$SUCCESS/data/backups/pre-upgrade-*.db" | head -n 1)"
 [[ -n "$BACKUP" && -s "$BACKUP" ]] || fail "no pre-upgrade DB backup"
 [[ "$(sqlite3 -readonly "$BACKUP" 'PRAGMA integrity_check;')" == "ok" ]] ||
@@ -322,14 +291,10 @@ BACKUP="$(compgen -G "$SUCCESS/data/backups/pre-upgrade-*.db" | head -n 1)"
 	fail "the Torznab API key was not preserved"
 [[ "$(sha256sum "$SUCCESS/bin/indexarr" | cut -d' ' -f1)" != "$OLD_SHA" ]] ||
 	fail "the new binary was not installed"
-[[ "$(sha256sum "$SUCCESS/bin/indexarr-import" | cut -d' ' -f1)" != "$OLD_IMPORTER_SHA" ]] ||
-	fail "the new importer was not installed"
 OLD_BIN="$(compgen -G "$SUCCESS/bin/indexarr.old-*" | head -n 1)"
 [[ -n "$OLD_BIN" && -f "$OLD_BIN" ]] || fail "the old binary was not saved"
 [[ "$(sha256sum "$OLD_BIN" | cut -d' ' -f1)" == "$OLD_SHA" ]] ||
 	fail "the saved binary is not the old one"
-compgen -G "$SUCCESS/bin/indexarr-import.old-*" >/dev/null ||
-	fail "the old importer was not saved"
 STAMP="${BACKUP##*/pre-upgrade-}"
 STAMP="${STAMP%.db}"
 [[ "$(basename "$OLD_BIN")" == "indexarr.old-$STAMP" ]] ||
@@ -339,45 +304,41 @@ KEY_VALUE="$(db_value "$SUCCESS/data/indexarr.db" api_key)"
 if grep -qF -f <(printf '%s\n' "$KEY_VALUE") "$OUT"; then
 	fail "the output printed the Torznab API key"
 fi
-ok "successful upgrade builds both binaries, backs up DB and binary, verifies healthz/caps/search"
+ok "successful upgrade builds the binary, backs up DB and binary, verifies healthz/caps/search"
 
 OUT="$TMP/rollback.out"
 "$SCRIPT" --rollback --yes --no-systemd --data-dir "$SUCCESS/data" \
-	--binary "$SUCCESS/bin/indexarr" --importer "$SUCCESS/bin/indexarr-import" \
-	--port "$PORT" >"$OUT" 2>&1 ||
+	--binary "$SUCCESS/bin/indexarr" --port "$PORT" >"$OUT" 2>&1 ||
 	{ cat "$OUT" >&2; fail "explicit rollback exited nonzero"; }
 grep -q 'rollback complete' "$OUT" || { cat "$OUT" >&2; fail "rollback did not complete"; }
 [[ "$(sha256sum "$SUCCESS/bin/indexarr" | cut -d' ' -f1)" == "$OLD_SHA" ]] ||
 	fail "rollback did not restore the old binary"
-[[ "$(sha256sum "$SUCCESS/bin/indexarr-import" | cut -d' ' -f1)" == "$OLD_IMPORTER_SHA" ]] ||
-	fail "rollback did not restore the old importer"
 [[ "$(db_value "$SUCCESS/data/indexarr.db" test_marker)" == "original-marker" ]] ||
 	fail "rollback did not restore the old database"
 [[ -f "$BACKUP" ]] || fail "rollback deleted the pre-upgrade backup"
 wait_for_health || fail "the rolled-back service is not healthy"
 kill_from_pidfile "$SUCCESS/data/indexarr.pid"
-ok "explicit --rollback restores the matching DB and binaries"
+ok "explicit --rollback restores the matching DB and binary"
 
-# --- 2. broken importer build fails before stopping ---------------------
+# --- 2. broken indexarr build fails before stopping ---------------------
 
 BROKEN="$TMP/broken"
 mkdir -p "$BROKEN/bin"
 make_data "$BROKEN/data"
 make_old_binary "$BROKEN/bin/indexarr" "old-version"
-make_old_importer "$BROKEN/bin/indexarr-import"
 OLD_SHA="$(sha256sum "$BROKEN/bin/indexarr" | cut -d' ' -f1)"
 start_service "$BROKEN/bin/indexarr" "$BROKEN/data"
 OLD_PID="$(cat "$BROKEN/data/indexarr.pid")"
 OUT="$TMP/broken.out"
 set +e
-run_upgrade FAKE_HEALTH_MODE=ok FAKE_GO_FAIL_IMPORT=1 "$SCRIPT" --apply --yes \
+run_upgrade FAKE_HEALTH_MODE=ok FAKE_GO_FAIL=1 "$SCRIPT" --apply --yes \
 	--no-systemd --data-dir "$BROKEN/data" --binary "$BROKEN/bin/indexarr" \
-	--importer "$BROKEN/bin/indexarr-import" --port "$PORT" >"$OUT" 2>&1
+	--port "$PORT" >"$OUT" 2>&1
 STATUS=$?
 set -e
 [[ "$STATUS" != "0" ]] || { cat "$OUT" >&2; fail "the broken build was accepted"; }
-grep -q 'build of cmd/indexarr-import failed' "$OUT" ||
-	{ cat "$OUT" >&2; fail "the importer build error is missing"; }
+grep -q 'build of cmd/indexarr failed' "$OUT" ||
+	{ cat "$OUT" >&2; fail "the indexarr build error is missing"; }
 grep -q 'nothing was stopped' "$OUT" ||
 	{ cat "$OUT" >&2; fail "the output does not say that nothing was stopped"; }
 kill -0 "$OLD_PID" 2>/dev/null || fail "the running service was stopped by the failed build"
@@ -392,7 +353,7 @@ if compgen -G "$BROKEN/bin/indexarr.old-*" >/dev/null; then
 	fail "the broken build saved a binary backup"
 fi
 kill_from_pidfile "$BROKEN/data/indexarr.pid"
-ok "a broken importer build fails before stopping or backing up anything"
+ok "a broken indexarr build fails before stopping or backing up anything"
 
 # --- 3. wrong healthz version triggers an automatic rollback ------------
 
@@ -400,26 +361,22 @@ FAILHEALTH="$TMP/failhealth"
 mkdir -p "$FAILHEALTH/bin"
 make_data "$FAILHEALTH/data"
 make_old_binary "$FAILHEALTH/bin/indexarr" "old-version"
-make_old_importer "$FAILHEALTH/bin/indexarr-import"
 OLD_SHA="$(sha256sum "$FAILHEALTH/bin/indexarr" | cut -d' ' -f1)"
-OLD_IMPORTER_SHA="$(sha256sum "$FAILHEALTH/bin/indexarr-import" | cut -d' ' -f1)"
 OUT="$TMP/failhealth.out"
 set +e
 run_upgrade FAKE_HEALTH_MODE=badversion "$SCRIPT" --apply --yes --no-systemd \
 	--data-dir "$FAILHEALTH/data" --binary "$FAILHEALTH/bin/indexarr" \
-	--importer "$FAILHEALTH/bin/indexarr-import" --port "$PORT" >"$OUT" 2>&1
+	--port "$PORT" >"$OUT" 2>&1
 STATUS=$?
 set -e
 [[ "$STATUS" != "0" ]] || { cat "$OUT" >&2; fail "the wrong healthz version was accepted"; }
 grep -q 'rolling back' "$OUT" || { cat "$OUT" >&2; fail "no automatic rollback"; }
 grep -q 'db restored from' "$OUT" || { cat "$OUT" >&2; fail "the DB was not restored"; }
-grep -q 'old binaries restored' "$OUT" || { cat "$OUT" >&2; fail "the binaries were not restored"; }
+grep -q 'old binary restored' "$OUT" || { cat "$OUT" >&2; fail "the binary was not restored"; }
 grep -q 'old service is healthy again' "$OUT" ||
 	{ cat "$OUT" >&2; fail "the old service was not restarted"; }
 [[ "$(sha256sum "$FAILHEALTH/bin/indexarr" | cut -d' ' -f1)" == "$OLD_SHA" ]] ||
 	fail "the new binary was left in place after the failed health check"
-[[ "$(sha256sum "$FAILHEALTH/bin/indexarr-import" | cut -d' ' -f1)" == "$OLD_IMPORTER_SHA" ]] ||
-	fail "the new importer was left in place after the failed health check"
 [[ "$(db_value "$FAILHEALTH/data/indexarr.db" test_marker)" == "original-marker" ]] ||
 	fail "the old database was not restored"
 compgen -G "$FAILHEALTH/data/backups/pre-upgrade-*.db" >/dev/null ||
@@ -430,6 +387,6 @@ if grep -qF -f <(printf '%s\n' "$KEY_VALUE") "$OUT"; then
 	fail "the rollback output printed the Torznab API key"
 fi
 kill_from_pidfile "$FAILHEALTH/data/indexarr.pid"
-ok "a wrong healthz version rolls the DB and binaries back automatically"
+ok "a wrong healthz version rolls the DB and binary back automatically"
 
 echo "upgrade test passed"

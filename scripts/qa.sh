@@ -110,7 +110,6 @@ check /definitions/new "New definition"
 check /indexers "Indexers"
 check /indexers/new "Add indexer"
 check /applications "Download clients"
-check /import "Import"
 
 # The startup log masks the key, so read it from the isolated QA database.
 KEY="$(python3 - "$TMP/qa.db" <<'PYKEY'

@@ -1,5 +1,8 @@
 # indexarr 2 — piano di implementazione
 
+> **Documento storico.** La pagina `/import` e l'import da Jackett/Prowlarr sono stati rimossi il 25/10/2026: le voci che li citano descrivono la revisione precedente, non il prodotto attuale.
+
+
 Documento operativo collegato a [`indexarr2.md`](../indexarr2.md). Traduce la
 visione in package, contratti Go e ordine di lavoro. Le decisioni qui fissate
 sono vincolanti per il codice della milestone M0/M1: se una scelta va cambiata,

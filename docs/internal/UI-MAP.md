@@ -1,5 +1,8 @@
 # Mappa UI di indexarr 2
 
+> **Documento storico.** La pagina `/import` e l'import da Jackett/Prowlarr sono stati rimossi il 25/10/2026: le voci che li citano descrivono la revisione precedente, non il prodotto attuale.
+
+
 Inventario delle route web e della navigazione dell'area Indexer unificata.
 Serve a tenere allineati template, redirect e test: `scripts/ui-smoke.sh`
 verifica questa mappa su un'istanza già in esecuzione, senza modificare nulla.

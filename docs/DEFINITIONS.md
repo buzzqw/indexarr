@@ -11,8 +11,9 @@ Questo documento descrive il formato `schema: 1` accettato da
 [`indexarr2.md`](../indexarr2.md) §6 e [`INDEXARR2-PLAN.md`](internal/INDEXARR2-PLAN.md).
 
 Accanto alle definizioni complete il catalogo ha uno strato di **voci leggere**
-generate dai metadati di Jackett/Prowlarr (nome, URL, tipo, lingua, categorie,
-famiglia). Non sono definizioni e non importano Cardigann: vedi
+generate da un'istantanea storica dei metadati pubblici (nome, URL, tipo,
+lingua, categorie, famiglia). Non sono definizioni, non importano Cardigann e
+non contattano Jackett o Prowlarr: vedi
 [`CATALOG.md`](CATALOG.md) per stati, famiglie, lista italiana e comandi di
 rigenerazione.
 

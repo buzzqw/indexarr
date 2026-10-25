@@ -32,16 +32,16 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/buzzqw/indexarr/internal/catalog"
-	"github.com/buzzqw/indexarr/internal/importers"
+	"github.com/buzzqw/indexarr/internal/catalog/managerdata"
 )
 
 const userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36"
 
 type snapshot struct {
-	Schema  int                        `json:"schema"`
-	Source  string                     `json:"source"`
-	Fetched string                     `json:"fetched"`
-	Sites   []importers.CatalogIndexer `json:"sites"`
+	Schema  int                          `json:"schema"`
+	Source  string                       `json:"source"`
+	Fetched string                       `json:"fetched"`
+	Sites   []managerdata.CatalogIndexer `json:"sites"`
 }
 
 type familyManifest struct {

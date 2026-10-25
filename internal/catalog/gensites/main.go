@@ -4,7 +4,8 @@
 // It is run by "go generate ./internal/catalog" and never touches the network.
 // The inputs are:
 //
-//   - metadata/jackett.json and metadata/prowlarr.json, refreshed by genmeta;
+//   - metadata/jackett.json and metadata/prowlarr.json, committed snapshots
+//     that are no longer refreshed from a live manager;
 //   - metadata/families.yaml, curated software-family evidence;
 //   - metadata/verification.yaml, live GET evidence refreshed by genverify;
 //   - metadata/manual.yaml, the few priority rows that no manager knows;
@@ -30,14 +31,14 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/buzzqw/indexarr/internal/catalog"
-	"github.com/buzzqw/indexarr/internal/importers"
+	"github.com/buzzqw/indexarr/internal/catalog/managerdata"
 )
 
 type snapshot struct {
-	Schema  int                        `json:"schema"`
-	Source  string                     `json:"source"`
-	Fetched string                     `json:"fetched"`
-	Sites   []importers.CatalogIndexer `json:"sites"`
+	Schema  int                          `json:"schema"`
+	Source  string                       `json:"source"`
+	Fetched string                       `json:"fetched"`
+	Sites   []managerdata.CatalogIndexer `json:"sites"`
 }
 
 type familyEntry struct {

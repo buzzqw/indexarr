@@ -15,7 +15,7 @@ func TestEveryPageHelpKeyExistsInEveryLanguage(t *testing.T) {
 	keys := []string{
 		"home", "search", "release", "indexers", "indexer_add", "indexer_detail",
 		"indexer_form", "app", "app_form", "client_form", "activity", "settings",
-		"import", "setup", "definitions", "definition", "definition_form",
+		"setup", "definitions", "definition", "definition_form",
 		"maintenance", "rules", "run", "discover",
 	}
 	for _, lang := range i18n.Supported() {
@@ -138,7 +138,7 @@ func TestAppPageExplainsTheThreeThings(t *testing.T) {
 func TestPagesRenderTheHelpParagraph(t *testing.T) {
 	env := newTestEnv(t)
 	for _, lang := range []string{"en", "it"} {
-		for _, path := range []string{"/", "/releases", "/indexers", "/indexers/new", "/applications", "/applications/new", "/activity", "/settings", "/import"} {
+		for _, path := range []string{"/", "/releases", "/indexers", "/indexers/new", "/applications", "/applications/new", "/activity", "/settings"} {
 			body := get(t, env.handler, path+"?lang="+lang).Body.String()
 			if !strings.Contains(body, `class="page-help"`) {
 				t.Errorf("%s?lang=%s has no explanatory paragraph", path, lang)

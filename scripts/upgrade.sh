@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
 # upgrade.sh — update a live indexarr without losing its data.
 #
-# The default is a dry run: it validates every prerequisite, builds both
-# bin/indexarr and bin/indexarr-import from this checkout into a temporary
-# directory and prints the plan. Nothing is stopped or installed.
+# The default is a dry run: it validates every prerequisite, builds
+# bin/indexarr from this checkout into a temporary directory and prints the
+# plan. Nothing is stopped or installed.
 #
 #   ./scripts/upgrade.sh                       # dry run (builds, changes nothing)
 #   ./scripts/upgrade.sh --apply --yes         # the production upgrade
 #   ./scripts/upgrade.sh --rollback --yes      # restore the latest pre-upgrade backup
 #
 # What --apply does, in this order:
-#   1. builds cmd/indexarr and cmd/indexarr-import before touching anything;
+#   1. builds cmd/indexarr before touching anything;
 #   2. writes a coherent copy of the DB with VACUUM INTO to
-#      <data>/backups/pre-upgrade-<ts>.db and saves the old binaries as
-#      <binary>.old-<ts> and <importer>.old-<ts>;
-#   3. stops the service, installs the new binaries and starts it again;
+#      <data>/backups/pre-upgrade-<ts>.db and saves the old binary as
+#      <binary>.old-<ts>;
+#   3. stops the service, installs the new binary and starts it again;
 #   4. checks /healthz (the version must be the one just built), t=caps and one
 #      Torznab search authenticated with the API key read from the DB (the key
 #      is never printed);
 #   5. on any failure after the service stop it restores both the DB and the
-#      binaries, then starts the old service again.
+#      binary, then starts the old service again.
 #
 # The upgrade never moves or rewrites the data directory: the live database
 # stays in place and the new binary applies only forward, non-destructive
 # migrations. --rollback copies the newest pre-upgrade DB back after stopping
 # the service, removes stale -wal/-shm files, restores the matching old
-# binaries and starts the service.
+# binary and starts the service.
 #
 # Options:
 #   --apply                 execute (default: dry run)
@@ -33,7 +33,6 @@
 #   --yes                   never prompt (for Claude Code and automation)
 #   --data-dir DIR          data directory (default: <repo>/data)
 #   --binary FILE           binary to install (default: <repo>/bin/indexarr)
-#   --importer FILE         importer to install (default: next to the binary)
 #   --port PORT             listen on 127.0.0.1:PORT for a copy test
 #   --listen ADDR           listen address (default: from indexarr.json, else :8484)
 #   --no-systemd            manage a local process with <data>/indexarr.pid
@@ -50,7 +49,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DATA_DIR="$ROOT/data"
 UNIT="indexarr"
 BINARY="$ROOT/bin/indexarr"
-IMPORTER=""
 LISTEN=""
 PORT=""
 NO_SYSTEMD=0
@@ -62,7 +60,6 @@ EXPECTED_VERSION=""
 KEY=""
 BACKUP=""
 BINARY_OLD=""
-IMPORTER_OLD=""
 ROLLBACK_ARMED=0
 ROLLING_BACK=0
 
@@ -76,11 +73,10 @@ upgrade.sh — update a live indexarr without losing its data.
 
 Options:
   --apply              execute (default: dry run)
-  --rollback           restore backups/pre-upgrade-<ts>.db + the matching binaries
+  --rollback           restore backups/pre-upgrade-<ts>.db + the matching binary
   --yes                never prompt
   --data-dir DIR       data directory (default: <repo>/data)
   --binary FILE        binary to install (default: <repo>/bin/indexarr)
-  --importer FILE      importer to install (default: next to the binary)
   --port PORT          listen on 127.0.0.1:PORT (copy test)
   --listen ADDR        listen address (default: indexarr.json, else :8484)
   --no-systemd         manage a local process with <data>/indexarr.pid
@@ -144,11 +140,6 @@ while (($#)); do
 		BINARY="$2"
 		shift 2
 		;;
-	--importer)
-		need_value "$1" "${2:-}"
-		IMPORTER="$2"
-		shift 2
-		;;
 	--port)
 		need_value "$1" "${2:-}"
 		PORT="$2"
@@ -181,16 +172,12 @@ done
 [[ -n "$DATA_DIR" ]] || die "--data-dir cannot be empty"
 DATA_DIR="${DATA_DIR%/}"
 [[ -n "$BINARY" ]] || die "--binary cannot be empty"
-if [[ -z "$IMPORTER" ]]; then
-	IMPORTER="$(dirname "$BINARY")/indexarr-import"
-fi
 DB="$DATA_DIR/indexarr.db"
 CONFIG="$DATA_DIR/indexarr.json"
 PIDFILE="$DATA_DIR/indexarr.pid"
 LOG="$DATA_DIR/indexarr.log"
 BACKUP_DIR="$DATA_DIR/backups"
 BIN_DIR="$(dirname "$BINARY")"
-IMPORTER_DIR="$(dirname "$IMPORTER")"
 
 if [[ -n "$PORT" && -n "$LISTEN" ]]; then
 	die "--port and --listen are mutually exclusive"
@@ -355,8 +342,6 @@ check_paths() {
 	[[ ! -L "$DATA_DIR" ]] || die "refusing a symlinked data directory: $DATA_DIR"
 	[[ -d "$BIN_DIR" ]] || die "binary directory not found: $BIN_DIR"
 	[[ -w "$BIN_DIR" ]] || die "binary directory is not writable: $BIN_DIR"
-	[[ -d "$IMPORTER_DIR" ]] || die "importer directory not found: $IMPORTER_DIR"
-	[[ -w "$IMPORTER_DIR" ]] || die "importer directory is not writable: $IMPORTER_DIR"
 	if [[ -e "$BACKUP_DIR" ]]; then
 		[[ -d "$BACKUP_DIR" && ! -L "$BACKUP_DIR" ]] ||
 			die "backup path is not a plain directory: $BACKUP_DIR"
@@ -384,7 +369,6 @@ compute_version() {
 
 build_all() {
 	[[ -d "$ROOT/cmd/indexarr" ]] || die "source tree not found: $ROOT/cmd/indexarr"
-	[[ -d "$ROOT/cmd/indexarr-import" ]] || die "source tree not found: $ROOT/cmd/indexarr-import"
 	BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/indexarr-upgrade.XXXXXX")"
 	EXPECTED_VERSION="$(compute_version)"
 	[[ -n "$EXPECTED_VERSION" ]] || EXPECTED_VERSION="dev"
@@ -397,13 +381,7 @@ build_all() {
 	fi
 	[[ -x "$BUILD_DIR/indexarr" ]] || die "the built indexarr is not executable"
 
-	step "building indexarr-import"
-	if ! (cd "$ROOT" && CGO_ENABLED=0 go build -trimpath \
-		-o "$BUILD_DIR/indexarr-import" ./cmd/indexarr-import); then
-		die "build of cmd/indexarr-import failed; nothing was stopped"
-	fi
-	[[ -x "$BUILD_DIR/indexarr-import" ]] || die "the built indexarr-import is not executable"
-	note "both builds ready (temporary; not installed)"
+	note "build ready (temporary; not installed)"
 }
 
 # --- plan and preflight ---------------------------------------------------
@@ -412,10 +390,8 @@ plan_stamp() {
 	STAMP="$(date +%Y%m%d-%H%M%S)"
 	BACKUP="$BACKUP_DIR/pre-upgrade-$STAMP.db"
 	BINARY_OLD="$BINARY.old-$STAMP"
-	IMPORTER_OLD="$IMPORTER.old-$STAMP"
 	[[ ! -e "$BACKUP" ]] || die "backup already exists: $BACKUP (retry in a second)"
 	[[ ! -e "$BINARY_OLD" ]] || die "binary backup already exists: $BINARY_OLD (retry in a second)"
-	[[ ! -e "$IMPORTER_OLD" ]] || die "importer backup already exists: $IMPORTER_OLD (retry in a second)"
 }
 
 show_plan() {
@@ -428,7 +404,6 @@ show_plan() {
 	printf '  db:       %s\n' "$DB"
 	printf '  backup:   %s/backups/pre-upgrade-<timestamp>.db\n' "$DATA_DIR"
 	printf '  binary:   %s (old kept as %s.old-<timestamp>)\n' "$BINARY" "$BINARY"
-	printf '  importer: %s (built too)\n' "$IMPORTER"
 	if [[ "$NO_SYSTEMD" == "1" ]]; then
 		printf '  service:  local process, PID file %s\n' "$PIDFILE"
 	else
@@ -438,11 +413,11 @@ show_plan() {
 	printf '  checks:   healthz %s, t=caps, one Torznab search\n' "$HEALTH_URL"
 	printf '\n'
 	printf 'steps:\n'
-	printf '  1. build cmd/indexarr and cmd/indexarr-import (already done above)\n'
-	printf '  2. VACUUM INTO the DB backup and copy the old binaries\n'
+	printf '  1. build cmd/indexarr (already done above)\n'
+	printf '  2. VACUUM INTO the DB backup and copy the old binary\n'
 	printf '  3. stop, install, start\n'
 	printf '  4. verify healthz version, t=caps and a Torznab search\n'
-	printf '  5. on failure restore the backup and the old binaries automatically\n'
+	printf '  5. on failure restore the backup and the old binary automatically\n'
 	printf '\n'
 	if [[ "$MODE" == "apply" ]]; then
 		printf 'Nothing has been stopped or installed yet.\n'
@@ -483,26 +458,19 @@ create_db_backup() {
 }
 
 save_old_binaries() {
-	step "saving the old binaries"
+	step "saving the old binary"
 	if [[ -e "$BINARY" ]]; then
 		cp -p "$BINARY" "$BINARY_OLD" || die "cannot save the old binary as $BINARY_OLD"
 		note "old binary: $BINARY_OLD"
 	else
 		note "no old binary at $BINARY (nothing to save)"
 	fi
-	if [[ -e "$IMPORTER" ]]; then
-		cp -p "$IMPORTER" "$IMPORTER_OLD" || die "cannot save the old importer as $IMPORTER_OLD"
-		note "old importer: $IMPORTER_OLD"
-	else
-		note "no old importer at $IMPORTER (nothing to save)"
-	fi
 }
 
 install_binaries() {
-	step "installing the new binaries"
+	step "installing the new binary"
 	install -m 0755 "$BUILD_DIR/indexarr" "$BINARY" || die "cannot install $BINARY"
-	install -m 0755 "$BUILD_DIR/indexarr-import" "$IMPORTER" || die "cannot install $IMPORTER"
-	note "installed $BINARY and $IMPORTER"
+	note "installed $BINARY"
 }
 
 restore_database() {
@@ -520,11 +488,6 @@ restore_binaries() {
 		install -m 0755 "$BINARY_OLD" "$BINARY" || rc=1
 	else
 		warn "no matching old binary at '$BINARY_OLD'; the current binary is left in place"
-	fi
-	if [[ -n "$IMPORTER_OLD" && -f "$IMPORTER_OLD" ]]; then
-		install -m 0755 "$IMPORTER_OLD" "$IMPORTER" || rc=1
-	elif [[ -n "$IMPORTER_OLD" ]]; then
-		warn "no matching old importer at '$IMPORTER_OLD'; the current importer is left in place"
 	fi
 	return "$rc"
 }
@@ -546,9 +509,9 @@ rollback_after_failure() {
 		printf 'rollback: could not restore the db from %s\n' "$BACKUP" >&2
 	fi
 	if restore_binaries; then
-		printf 'rollback: old binaries restored\n' >&2
+		printf 'rollback: old binary restored\n' >&2
 	else
-		printf 'rollback: binaries incomplete; check %s\n' "$BIN_DIR" >&2
+		printf 'rollback: binary restore incomplete; check %s\n' "$BIN_DIR" >&2
 	fi
 	if service_start; then
 		if wait_health; then
@@ -708,7 +671,6 @@ do_rollback() {
 	STAMP="${BACKUP##*/pre-upgrade-}"
 	STAMP="${STAMP%.db}"
 	BINARY_OLD="$BINARY.old-$STAMP"
-	IMPORTER_OLD="$IMPORTER.old-$STAMP"
 	[[ -f "$BINARY_OLD" ]] || die "the matching old binary is missing: $BINARY_OLD"
 
 	if [[ "$ASSUME_YES" != "1" ]]; then
@@ -728,8 +690,8 @@ do_rollback() {
 	restore_database "$BACKUP" || die "cannot restore the database from $BACKUP"
 	note "db restored from $BACKUP"
 
-	step "restoring the old binaries"
-	restore_binaries || die "cannot restore the old binaries"
+	step "restoring the old binary"
+	restore_binaries || die "cannot restore the old binary"
 
 	step "starting the restored service"
 	if ! service_start; then

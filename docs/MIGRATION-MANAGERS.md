@@ -1,109 +1,90 @@
-# Migrazione da Jackett/Prowlarr a indexarr
+# Sostituzione di Jackett e Prowlarr
 
-Data: 2026-10-25. Scopo: sostituire i due manager con le sorgenti native
-indexarr. indexarr **non crea più proxy Torznab verso Jackett o Prowlarr**:
-ogni fonte o è sua, oppure resta in coda e non viene creata.
+Data: 2026-10-25. indexarr **sostituisce** i due manager: non li affianca e non
+si collega a loro, né in ingresso né in uscita. Non esiste un import da
+Jackett/Prowlarr: le fonti si aggiungono dal catalogo nativo.
 
-## Tre vie, nessun ponte
+## Cosa significa
 
-La pagina `/import` legge la configurazione dei manager in sola lettura e
-classifica ogni fonte:
+| Collegamento | Stato |
+|---|---|
+| indexarr → Jackett/Prowlarr (ricerca, download, proxy) | **assente** |
+| Jackett/Prowlarr → indexarr | **assente** |
+| Import della configurazione dei manager | **rimosso** |
+| Catalogo | nativo, embedded nel binario |
 
-| Via | Quando | Cosa crea indexarr |
-| --- | --- | --- |
-| **Nativa** | esiste una definizione di catalogo con lo stesso id o host | un indexer nativo con quella definizione |
-| **Software noto** | la riga del catalogo ha un connettore di famiglia (NexusPHP, UNIT3D, Gazelle, XBTIT, TorrentTrader) | un indexer nativo con la definizione di famiglia e l'URL del sito |
-| **Da scrivere** | nessuna delle due | **niente**: la fonte resta nel catalogo con il filtro «da scrivere» |
+Le applicazioni \*arr parlano **solo** con indexarr. Jackett e Prowlarr si
+spengono; non restano come fallback.
 
-Il terzo caso non è un errore nascosto: è la coda di lavoro. Non esiste un
-quarto caso con un endpoint Torznab del manager. Un indexer che punta a
-Jackett/Prowlarr resta possibile solo se l'utente lo aggiunge a mano come
-sorgente Torznab, non come risultato dell'import.
+## Come si migra
 
-## Cosa succede alle credenziali
+1. Aprire `/indexers/new` e scegliere le fonti dal catalogo nativo. Le fonti
+   con una definizione o un software noto si configurano lì; le altre restano
+   in coda con «da scrivere».
+2. Inserire le credenziali delle fonti private. Jackett non le esponeva e non
+   c'è un file da copiare: si inseriscono una volta in indexarr.
+3. Collegare Sonarr/Radarr/Lidarr a indexarr (app sync o a mano) e rimuovere i
+   loro indexer puntati a Jackett/Prowlarr.
+4. Fermare e rimuovere Jackett e Prowlarr.
 
-- **Prowlarr**: i campi `username`, `password` e `apiKey` sono letti e
-  sigillati nel vault. Se una definizione nativa li richiede, l'indexer nasce
-  già configurato.
-- **Jackett**: l'API espone solo nome, URL, categorie e tipo; non restituisce
-  le credenziali dei tracker. Una fonte privata senza credenziali viene
-  creata **disattivata**, con il motivo «credenziali da inserire». Non si
-  aggira il problema con un proxy: si aprono le impostazioni dell'indexer in
-  indexarr e si inseriscono una volta.
-- Una fonte con definizione in **bozza** è comunque nativa; la UI la marca
-  «bozza». Non torna più al ponte.
+Nessuno di questi passi legge il database o le API dei manager. Se un URL
+inserito appartiene a un manager (per esempio
+`.../api/v2.0/indexers/.../results/torznab/` o `/<id>/api`), indexarr lo
+rifiuta con un messaggio esplicito.
 
-## Misura reale del catalogo Jackett
+## Copertura nativa (istantanea del 25/10)
 
-Istantanea dei metadati del 23/10, 638 fonti di catalogo (6 configurate):
+Il catalogo contiene 568 righe uniche da una vecchia istantanea dei metadati
+pubblici dei manager; non è una connessione viva. Le definizioni e i connettori
+sono nostri.
 
 | Via | Fonti |
-| --- | ---: |
-| Definizione nativa (id o host) | 19 |
-| Software noto (famiglia rilevata) | 155 |
-| Da scrivere | 464 |
-| **Totale** | **638** |
+|---|---:|
+| Definizione nativa | 45 (37 verificate, 8 in bozza) |
+| Software noto (NexusPHP, UNIT3D, Gazelle, XBTIT, TorrentTrader) | 155 |
+| **Native o software noto** | **200 su 613** |
+| In coda «da scrivere» | 413 |
 
-Le 155 fonti con software noto: NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6,
-TorrentTrader 2. La rilevazione viene da un `GET` della home page con marcatori
-forti; le pagine ambigue restano senza famiglia.
+Sulle 638 voci dell'istantanea Jackett: 19 definizioni native, 155 software
+noto, 174 con via nativa (27,3%); il resto è coda. La differenza con le 413
+righe reali è dovuta ai doppioni di host.
 
-### Il catalogo completo nell'interfaccia
+## Le fonti dell'utente
 
-La pagina `/import` accetta la directory dati di Jackett oppure URL e API key
-dell'istanza in esecuzione. Con **Includi il catalogo completo di Jackett**
-legge `t=indexers&configured=true` e `configured=false`, unisce le due liste e
-mostra tutte le fonti. Ogni riga dichiara la via (nativa, software noto, da
-scrivere) e il motivo. Le fonti senza via nativa non sono selezionabili.
+| Jackett/Prowlarr | Definizione indexarr | Stato |
+|---|---|---|
+| Knaben | `knaben`, `knaben-search` | verificata |
+| LimeTorrents | `limetorrents` | verificata |
+| The Pirate Bay | `thepiratebay` | verificata |
+| TorrentLeech | `torrentleech`, `torrentleech-rss` | bozza / sperimentale |
+| TorrentsCSV | `torrentscsv` | verificata |
+| TorrentGalaxyClone | `torrentgalaxyclone` | verificata |
+| showRSS | `showrss` | verificata |
+| ilDraGoNeRo | `ildragonegro` | bozza / cookie richiesto |
 
-Il catalogo dei siti (`/indexers/new`) contiene ora **tutte** le 568 righe
-uniche, private comprese, con:
+Sei fonti sono verificate e utilizzabili subito; due richiedono una
+configurazione una volta (TorrentLeech: account o rsskey; ilDraGoNeRo:
+account/cookie).
 
-- contatore di copertura in testa: pronte, software noto, da scrivere;
-- filtro **Modo** (pronte / software noto / da scrivere);
-- 155 righe con un software noto, 413 in coda;
-- nessuna riga sbagliata spacciata per «verificata»: le private restano
-  `da-provvi` finché non c'è un account.
+## Perché non c'è più il ponte
 
-## Mappatura verificata delle fonti dell'utente
+Un indexer Torznab che punta al manager non è una fonte propria: lascia intatta
+la dipendenza che indexarr deve togliere. Per questo:
 
-| Jackett | Prowlarr | Definizione indexarr | Stato |
-|---|---|---|---|
-| Knaben | Knaben | `knaben`, `knaben-search` | verificata |
-| LimeTorrents | LimeTorrents | `limetorrents` | verificata |
-| The Pirate Bay | The Pirate Bay | `thepiratebay` | verificata |
-| TorrentLeech | TorrentLeech | `torrentleech`, `torrentleech-rss` | bozza / sperimentale |
-| TorrentsCSV | TorrentsCSV | `torrentscsv` | verificata |
-| TorrentGalaxyClone | — | `torrentgalaxyclone` | verificata |
-| showRSS | — | `showrss` | verificata |
-| ilDraGoNeRo | — | `ildragonegro` | bozza / cookie richiesto |
+- una fonte senza definizione o connettore **non viene creata**;
+- resta nel catalogo con il filtro «da scrivere» e il motivo visibile;
+- quando la definizione è pronta, la fonte si adotta senza toccare le \*arr;
+- nessun URL di Jackett/Prowlarr viene accettato come sorgente.
 
-Le fonti pubbliche dell'utente hanno una definizione nativa. TorrentLeech e
-ilDraGoNeRo restano in prova finché non vengono provati con un account; per
-TorrentLeech esiste anche il feed personale `torrentleech-rss`, che usa la
-rsskey nel vault.
+## Controlli dopo la sostituzione
 
-## Ordine di migrazione
-
-1. Aprire `/import`, leggere Prowlarr e Jackett, generare il piano.
-2. Selezionare le fonti con via **nativa** o **software noto**. Quelle già
-   configurate arrivano attive; le altre arrivano disattivate.
-3. Inserire le credenziali mancanti negli indexer privati e abilitarli.
-4. Passare le \*arr a indexarr; lasciare Jackett/Prowlarr fermi ma presenti.
-5. Lavorare la coda «da scrivere» una famiglia o un sito per volta. Quando una
-   definizione è pronta, la fonte si adotta senza toccare le \*arr.
-
-## Controlli dopo la migrazione
-
-- ogni query Gextto deve restituire almeno le stesse release distinte;
+- ogni query delle \*arr deve restituire almeno le stesse release distinte;
 - controllare `app_searches` per `go-http-client` e gli errori;
 - monitorare coda live, timeout e RAM di indexarr;
 - verificare che Sonarr/Radarr continuino a usare solo `indexarr` su `:8484`;
-- controllare che non esistano indexer con definizione `torznab-generic`
-  diversi da una sorgente Torznab scelta a mano.
+- controllare che non esistano indexer con URL di un manager.
 
 ## Nota
 
-`indexarr` non incorpora Cardigann. Le definizioni Jackett non vanno copiate:
-le sorgenti native si mantengono e si provano singolarmente. La coda «da
-scrivere» è il prezzo onesto di questa regola; il ponte non è più la scorciatoia.
+`indexarr` non incorpora Cardigann. Le definizioni non si copiano: si scrivono
+osservando i siti. La coda «da scrivere» è il prezzo onesto di questa regola.

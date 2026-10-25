@@ -11,10 +11,9 @@ Prowlarr.
 
 | Sorgente | Stato | Note |
 | --- | --- | --- |
-| **Jackett** | come sorgente scelta a mano | Base URL: percorso aggregato aggiunto da solo. URL del singolo indice: usato così com'è. Non è più il ripiego automatico dell'import. |
-| **Prowlarr** | come sorgente scelta a mano | Con una query usa `/api/v1/search` (JSON); senza query elenca gli indici torrent abilitati e interroga il Torznab di ciascuno. Non è più il ripiego automatico dell'import. |
+| **Jackett / Prowlarr** | non supportati | indexarr li sostituisce: gli endpoint dei manager vengono rifiutati. Le fonti si aggiungono dal catalogo nativo. |
 | **MirCrew** (`mircrew-indexer`) | completo | Base o `/api`; magnet in link/enclosure; seeder assenti; `/status` per il login al forum; risposte lente. |
-| **Torznab diretto** | completo (torrent) | Qualunque URL che contiene `/api` o `torznab` è usato così com'è; altrimenti viene aggiunto `/api`. |
+| **Torznab diretto** | completo (torrent) | Qualunque URL di un tracker che contiene `/api` o `torznab` è usato così com'è; altrimenti viene aggiunto `/api`. Gli URL di Jackett/Prowlarr sono esclusi. |
 | **Newznab / usenet** | non supportato | Le voci usenet non hanno un `.torrent` valido e vengono scartate. |
 | **RSS / Atom** | completo | Titolo, magnet, enclosure `.torrent`, dimensione, categoria numerica, data; import massivo e OPML. |
 | **ExtTo** | completo (HTML) | Parser dedicato: titolo e magnet dalla stessa riga; categoria dal filtro `c=`. |
@@ -68,7 +67,7 @@ caps, `/status` con login al forum attivo, ingestione di 100 release dalla lista
 | HTTP 401 | API key o credenziali Basic errate |
 | HTTP 404 sul download | Release salvata solo come magnet: usare il link magnet |
 | HTML al posto di XML | L'indexer ha restituito una pagina di login o un blocco: controllare URL e credenziali |
-| Nessun risultato con query vuota | Jackett/diretto potrebbero non supportare la lista "latest": impostare un termine di ricerca nella sorgente |
+| Nessun risultato con query vuota | Il Torznab diretto potrebbe non supportare la lista "latest": impostare un termine di ricerca nella sorgente |
 
 ## Liste HTML (ExtTo, TorrentGalaxy, Corsaro)
 
@@ -95,7 +94,7 @@ risposta con challenge Cloudflare viene ripetuta tramite il servizio:
 
 - header `cf-mitigated: challenge`, oppure pagina HTML con `Just a moment...`,
   `cf-chl`, `__cf_chl`, `Attention Required`, su 403/503 (e su 200);
-- RSS, Torznab diretto, Prowlarr e test di connessione;
+- RSS, Torznab diretto e test di connessione;
 - nessun retry per gli indirizzi LAN: un 403 locale è un errore di
   autenticazione/rete, non una challenge;
 - un errore XML/JSON dell'indexer non viene trattato come challenge.
@@ -111,7 +110,7 @@ API key compresa, viene inviato al servizio FlareSolverr.
 2. Se richiede **HTTP Basic**, compilare i campi dedicati.
 3. Se parla solo la sua **API proprietaria**, la fonte resta in coda: si scrive
    una definizione nativa osservando il sito. indexarr non crea un proxy verso
-   Jackett/Prowlarr e non implementa protocolli ad-hoc.
+   Jackett/Prowlarr, non li contatta e non implementa protocolli ad-hoc.
 4. Se il servizio espone un **`/status`** accanto a `/api`, il test lo legge
    automaticamente quando il JSON contiene `ok` o `logged_in`.
 

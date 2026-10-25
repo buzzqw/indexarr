@@ -1,6 +1,0 @@
-{
-  "Port": 9117,
-  "LocalBindAddress": "127.0.0.1",
-  "ProxyType": -1,
-  "APIKey": "synthetic-jackett-key"
-}

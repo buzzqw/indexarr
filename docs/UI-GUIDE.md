@@ -1,5 +1,8 @@
 # Guida al redesign dell'interfaccia
 
+> **Aggiornamento 25/10/2026.** La voce **Importa** e l'import da Jackett/Prowlarr sono stati rimossi: il catalogo nativo è l'unico percorso per aggiungere fonti. Le parti di questa guida che citano Import descrivono la fase precedente.
+
+
 Data: 23 ottobre 2026 · Base: commit `4e429e5` (WP14 fase 1 fatta)
 Collegati: [NEXT-STEPS WP14](NEXT-STEPS.md#wp14--interfaccia-da-pannello-tecnico-a-prodotto-semplice),
 [manifesto](MANIFESTO.md), [mappa UI](internal/UI-MAP.md).

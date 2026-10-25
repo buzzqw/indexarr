@@ -473,3 +473,38 @@ func TestPublicURLStaysInConfigAndCanBecomeSecret(t *testing.T) {
 		t.Fatal("stale URL secret survived the transition to a public URL")
 	}
 }
+
+func TestManagerEndpointShape(t *testing.T) {
+	for raw, want := range map[string]bool{
+		"http://jackett:9117/api/v2.0/indexers/all/results/torznab/api":  true,
+		"https://jackett.local/api/v2.0/indexers/alpha/results/torznab/": true,
+		"http://prowlarr:9696/15/api":                                    true,
+		"http://prowlarr:9696/15/api/":                                   true,
+		"http://prowlarr:9696/api/v1/indexer":                            true,
+		"https://tracker.example/api":                                    false,
+		"https://tracker.example/torznab/api":                            false,
+		"https://tracker.example/api/v1/torrents":                        false,
+		"": false,
+	} {
+		if got := managerEndpoint(raw); got != want {
+			t.Errorf("managerEndpoint(%q) = %v, want %v", raw, got, want)
+		}
+	}
+}
+
+func TestCreateRejectsManagerEndpoint(t *testing.T) {
+	svc, st, _, _ := newService(t)
+	storeDefinition(t, st, "test-torznab", testDefinition("test-torznab", true, true))
+
+	_, err := svc.Create(context.Background(), Input{
+		DefinitionID: "test-torznab",
+		Name:         "Jackett bridge",
+		Settings: map[string]string{
+			"url":    "http://127.0.0.1:9117/api/v2.0/indexers/alpha/results/torznab/",
+			"apikey": "manager-key",
+		},
+	})
+	if !errors.Is(err, ErrManagerEndpoint) {
+		t.Fatalf("Create error = %v, want ErrManagerEndpoint", err)
+	}
+}

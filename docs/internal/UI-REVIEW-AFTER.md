@@ -7,6 +7,9 @@
 
 # Revisione UI dopo il redesign
 
+> **Documento storico.** La pagina `/import` e l'import da Jackett/Prowlarr sono stati rimossi il 25/10/2026: le voci che li citano descrivono la revisione precedente, non il prodotto attuale.
+
+
 Data: 2026-10-23 · Ambito: working tree corrente di `/home/andres/indexarr` (nessuna modifica al codice)
 Istanza isolata: `127.0.0.1:18490`, DB temporaneo copiato dal DB live (37 sorgenti legacy, 37 indexer ponte, 7 definizioni built-in). Il servizio live su `:8484` non è stato toccato.
 

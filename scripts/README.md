@@ -3,9 +3,9 @@
 ## Aggiornamento della produzione
 
 Lo script di aggiornamento conserva il database e i dati vivi. Di default è un
-**dry run**: valida i prerequisiti, compila `cmd/indexarr` e
-`cmd/indexarr-import` in una directory temporanea e stampa il piano, senza
-fermare il servizio e senza installare nulla.
+**dry run**: valida i prerequisiti, compila `cmd/indexarr` in una directory
+temporanea e stampa il piano, senza fermare il servizio e senza installare
+nulla.
 
 Comando esatto per il coordinatore, su una sola riga:
 
@@ -21,17 +21,17 @@ Prima si può lanciare il controllo senza modifiche:
 
 Cosa fa `--apply`, nell'ordine:
 
-1. compila entrambi i binari **prima** di toccare il servizio; se un build
-   fallisce non ferma nulla;
+1. compila il binario **prima** di toccare il servizio; se il build fallisce
+   non ferma nulla;
 2. crea un backup coerente del DB con `VACUUM INTO` in
-   `data/backups/pre-upgrade-<timestamp>.db` e salva i binari precedenti come
-   `bin/indexarr.old-<timestamp>` e `bin/indexarr-import.old-<timestamp>`;
-3. ferma il servizio, installa i nuovi binari e lo riavvia;
+   `data/backups/pre-upgrade-<timestamp>.db` e salva il binario precedente
+   come `bin/indexarr.old-<timestamp>`;
+3. ferma il servizio, installa il nuovo binario e lo riavvia;
 4. verifica `/healthz` con la versione appena compilata, `t=caps` e una ricerca
    Torznab autenticata con la API key letta dal DB (la chiave non viene mai
    stampata);
 5. se un controllo dopo l'installazione fallisce, ripristina automaticamente
-   DB e binari e riavvia il servizio precedente.
+   DB e binario e riavvia il servizio precedente.
 
 Rollback all'ultimo backup pre-aggiornamento:
 
@@ -39,8 +39,8 @@ Rollback all'ultimo backup pre-aggiornamento:
 ./scripts/upgrade.sh --rollback --yes
 ```
 
-Opzioni per una prova su una copia: `--data-dir`, `--binary`, `--importer`,
-`--port 18510`, `--no-systemd`, `--unit`. La prova non usa mai `:8484`,
+Opzioni per una prova su una copia: `--data-dir`, `--binary`, `--port 18510`,
+`--no-systemd`, `--unit`. La prova non usa mai `:8484`,
 `data/`, `bin/indexarr` o systemd.
 
 ## Test offline
@@ -51,11 +51,11 @@ Opzioni per una prova su una copia: `--data-dir`, `--binary`, `--importer`,
 
 Esiti delle tre prove:
 
-- **aggiornamento riuscito**: costruisce entrambi i binari, crea il backup
-  `pre-upgrade-*.db` e i binari `*.old-*`, verifica `/healthz` con la versione
+- **aggiornamento riuscito**: costruisce il binario, crea il backup
+  `pre-upgrade-*.db` e `indexarr.old-*`, verifica `/healthz` con la versione
   nuova, `t=caps` e una ricerca Torznab, e conserva la API key;
-- **build rotto**: il fallimento di `cmd/indexarr-import` avviene prima di
-  fermare il servizio, senza backup e senza modificare i binari;
+- **build rotto**: il fallimento di `cmd/indexarr` avviene prima di fermare il
+  servizio, senza backup e senza modificare i binari;
 - **controllo health fallito**: una versione sbagliata in `/healthz` provoca il
   ripristino automatico di DB e binari e il riavvio del servizio precedente; il
   backup resta disponibile.

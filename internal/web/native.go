@@ -452,6 +452,8 @@ func (s *Server) indexerFriendlyError(r *http.Request, err error) string {
 		return s.translate(r, "indexer.error.slugTaken")
 	case errors.Is(err, indexersvc.ErrVaultRequired):
 		return s.translate(r, "indexer.error.vaultRequired")
+	case errors.Is(err, indexersvc.ErrManagerEndpoint):
+		return s.translate(r, "indexer.error.managerEndpoint")
 	case errors.Is(err, indexersvc.ErrDefinitionNotFound):
 		return s.translate(r, "indexer.error.definitionNotFound")
 	case errors.Is(err, indexersvc.ErrIndexerNotFound):

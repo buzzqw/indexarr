@@ -1,12 +1,13 @@
 # indexarr
 
-Indicizzatore torrent self-hosted, compatibile **Torznab**. Interroga periodicamente
-feed RSS, Jackett e Prowlarr, salva release, magnet e file `.torrent` in un database
-SQLite e le espone a Sonarr, Radarr, Lidarr o a qualunque client Torznab. Include
-un'interfaccia web per cercare nel database, gestire le sorgenti e fare manutenzione.
+Indicizzatore torrent self-hosted, compatibile **Torznab**. **Sostituisce Jackett
+e Prowlarr**: gestisce un catalogo nativo di fonti, salva release, magnet e file
+`.torrent` in un database SQLite e le espone a Sonarr, Radarr, Lidarr o a qualunque
+client Torznab. Include un'interfaccia web per cercare nel database, gestire le
+sorgenti e fare manutenzione.
 
 ```
-RSS / Jackett / Prowlarr ──► scheduler ──► normalizzazione ──► SQLite
+Fonti native / RSS ──► scheduler ──► normalizzazione ──► SQLite
                                                                  │
                         Sonarr / Radarr / Lidarr ◄── Torznab ────┘
                                      Browser ◄── UI web SSR ─────┘
@@ -14,9 +15,10 @@ RSS / Jackett / Prowlarr ──► scheduler ──► normalizzazione ──►
 
 ## Cosa fa
 
-- **Sorgenti multiple**: feed RSS/Atom, Jackett, Prowlarr (API JSON e feed Torznab
-  per indice), MirCrew, qualunque endpoint Torznab diretto, elenchi HTML ExtTo,
+- **Sorgenti native**: catalogo di definizioni e connettori di famiglia,
+  feed RSS/Atom, MirCrew, qualunque endpoint Torznab diretto, elenchi HTML ExtTo,
   TorrentGalaxy e Corsaro; importazione massiva di elenchi RSS e OPML.
+  Jackett e Prowlarr **non** sono sorgenti: indexarr li sostituisce.
 - **Quick add e scoperta feed**: incolla un URL e indexarr riconosce Torznab,
   RSS o listing HTML; “Discover feeds” estrae i feed dichiarati da una pagina.
 - **Acquisizione periodica**: ogni sorgente ha il proprio intervallo; al primo
@@ -54,8 +56,6 @@ il quadro reale, non un elenco di intenti:
 
 | Sorgente | Supporto | Come |
 | --- | --- | --- |
-| Jackett | completo | base Jackett (percorso aggregato automatico) o URL del singolo indice |
-| Prowlarr | completo | API JSON per le ricerche; feed Torznab dei singoli indici per le "ultime" |
 | MirCrew (`mircrew-indexer`) | completo | base o `/api`, magnet in `<link>`/`<enclosure>`, seeder assenti, `/status` |
 | Torznab diretto | completo (torrent) | endpoint completo o base: `/api` viene aggiunto se manca |
 | ExtTo (`extto.org`) | completo (listing HTML) | parser dedicato: titolo e magnet dalla stessa riga, nessuna modifica all'URL |
@@ -66,10 +66,10 @@ il quadro reale, non un elenco di intenti:
 | Indexer privati con Basic | completo | campi *HTTP username/password* della sorgente |
 | API key in query, header o URL | completo | `apikey` viene inviata come parametro e come `X-Api-Key` |
 | Cloudflare / challenge | con FlareSolverr | retry automatico per RSS e indexer diretti; gli indirizzi LAN non passano dal solver |
-| API proprietarie non Torznab | non gestite | esporle tramite Jackett/Prowlarr |
+| API proprietarie non Torznab | non gestite in automatico | la fonte resta in coda finché non esiste una definizione nativa |
 
-Per gli indexer che non parlano Torznab la strada è **Jackett o Prowlarr**: una
-volta esposti lì, indexarr li usa come qualunque altro endpoint.
+Jackett e Prowlarr **non sono un ripiego**: indexarr li sostituisce. Una fonte
+senza via nativa resta nel catalogo come «da scrivere» e non viene creata.
 
 Dettagli, casi limite e diagnostica: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
@@ -181,9 +181,8 @@ ne dichiarano una (per esempio una pagina Corsaro o un feed generico).
   diventa un normale indexer della famiglia `rss`.
 - **Discover feeds**: dato l'URL di una pagina, estrae `<link rel="alternate">`
   e i link RSS/Atom e li propone con un pulsante **Add as RSS**.
-- **Jackett/Prowlarr**: un sito senza definizione nativa si importa come indexer
-  Torznab che punta all'endpoint per-indexer del manager. Non serve un percorso
-  separato: l'indexer si comporta come tutti gli altri.
+- **Jackett/Prowlarr**: non si configurano e non si importano. Le fonti si
+  aggiungono dal catalogo nativo; quelle senza via nativa restano in coda.
 - **Test all** e **Run all** provano o aggiornano tutti gli indexer abilitati;
   gli esiti finiscono in **Attività** e nei log.
 - **Export/import JSON** scarica e ricarica la configurazione pubblica degli
@@ -231,8 +230,7 @@ Quando un **feed RSS** o un **indexer diretto** risponde con una challenge
 Cloudflare, indexarr ripete la stessa richiesta tramite FlareSolverr e usa la
 pagina risolta:
 
-- vale per RSS, Torznab diretto, Prowlarr (JSON e feed per indice) e per il
-  pulsante **Test**;
+- vale per RSS, Torznab diretto e per il pulsante **Test**;
 - riconosce l'header `cf-mitigated: challenge` e le pagine HTML con i marcatori
   Cloudflare (`Just a moment...`, `cf-chl`, `Attention Required`), anche su 403,
   503 o 200;
@@ -240,8 +238,6 @@ pagina risolta:
   confuso con una challenge;
 - gli indirizzi LAN (`localhost`, IP privati, `.local`, `.lan`) non passano mai
   dal solver: un 403 locale è un errore reale, non Cloudflare;
-- Jackett e Prowlarr spesso risolvono Cloudflare al loro interno: non serve
-  passarli dal solver.
 
 Accanto al campo c'è **Test FlareSolverr**: risolve `https://example.com/`
 attraverso il servizio e riporta OK o l'errore; non salva l'URL (serve **Save
@@ -251,30 +247,15 @@ tab **Logs**.
 Limiti: FlareSolverr riceve l'URL completo dell'indexer, **API key compresa**, e
 una singola risoluzione può durare fino a ~60 secondi. I download `.torrent` non
 passano dal solver (risposta binaria): se un indexer richiede il Cloudflare
-clearance anche per il file, usare il magnet o Jackett/Prowlarr.
+clearance anche per il file, usare il magnet.
 
-### Jackett
+### Jackett e Prowlarr
 
-- **Type**: Torznab / indexer
-- **URL**: base di Jackett, per esempio `http://192.168.1.10:9117`
-- **Manager**: Jackett (oppure Auto)
-- **API key**: quella mostrata da Jackett
-
-indexarr aggiunge da solo `/api/v2.0/indexers/all/results/torznab/api`.
-Per interrogare un singolo indice Jackett, incolla l'URL Torznab completo di
-quell'indice: qualunque URL che contiene `/api` o `torznab` viene usato così com'è.
-
-### Prowlarr
-
-- **URL**: base di Prowlarr, per esempio `http://192.168.1.10:9696`
-- **Manager**: Prowlarr (oppure Auto, riconosciuto dalla porta 9696)
-- **API key**: quella di Prowlarr
-
-Con un termine di ricerca usa l'API JSON aggregata. **Senza termine** (modalità
-"ultime release") elenca gli indice torrent abilitati e interroga il feed Torznab
-di ciascuno: è l'unico modo per popolare la cache senza una query.
-Per un singolo indice Prowlarr incolla il suo URL Torznab completo
-(`http://prowlarr:9696/<id>/api`).
+indexarr li **sostituisce**: non sono sorgenti e non c'è un import che li legga.
+Le fonti si aggiungono dal catalogo nativo. Un URL che appartiene a un manager
+(per esempio `.../api/v2.0/indexers/.../results/torznab/` o `/<id>/api`) viene
+rifiutato con un messaggio esplicito. Vedi
+[docs/MIGRATION-MANAGERS.md](docs/MIGRATION-MANAGERS.md).
 
 ### Torznab diretto
 
@@ -294,14 +275,6 @@ indexer locale):
 Vengono letti titolo, magnet, enclosure `.torrent`, dimensione, categoria numerica,
 data ed eventuali attributi `torznab:attr`. Le voci che non contengono né magnet né
 link di download (pagine web, articoli) vengono ignorate.
-
-## Import da gextto
-
-La pagina **Import** legge in sola lettura il database di configurazione di
-gextto (`~/gextto-data/gextto_config.db`) e ricrea le 34 fonti: uploader
-TorrentGalaxy ed ExtTo, le varianti italiane, Knaben e TorrentLeech RSS.
-L'azione è ripetibile e non crea doppioni; la chiave RSS di TorrentLeech viene
-sigillata nel vault. Gli indexer già presenti vengono aggiornati.
 
 ## Backup di database e chiave del vault
 
@@ -344,7 +317,7 @@ richiesta. **API requests per key per minute** applica un limite per chiave
 
 Con **Search indexers live on a cache miss** attivo, una ricerca Torznab che non
 trova nulla nella cache interroga al momento le sorgenti Torznab abilitate
-(Jackett, Prowlarr, MirCrew, diretti), salva i risultati e ripete la query. Le
+(MirCrew, diretti), salva i risultati e ripete la query. Le
 sorgenti RSS/HTML sono escluse perché non accettano un termine di ricerca.
 `Live search timeout` limita l'attesa complessiva; le sorgenti lente vengono
 ignorate. È spenta per default perché può aggiungere secondi alla risposta del
@@ -527,7 +500,7 @@ e i token sono oscurati nel buffer mostrato dalla UI.
 ## Sicurezza
 
 - La **API key Torznab** è obbligatoria per ricerca e download. `t=caps` risponde
-  anche senza chiave, come fanno Jackett e Prowlarr. Le chiavi aggiuntive sono
+  anche senza chiave, come altri client Torznab. Le chiavi aggiuntive sono
   revocabili singolarmente e il rate limit è per chiave.
 - La UI accetta HTTP Basic se imposti utente e password in Settings. Senza
   credenziali è aperta a chiunque raggiunga la porta: usala su rete fidata o
@@ -585,44 +558,11 @@ Senza `--linger` il servizio parte con la sessione utente e si ferma al logout;
 `--linger` lo mantiene attivo (su molte distribuzioni richiede autorizzazione una
 volta sola).
 
-### Ripartenza pulita (nuovo database)
-
-`scripts/fresh-start.sh` prepara lo scambio a un database nuovo senza perdere
-la API key Torznab. Di default **non tocca nulla**: stampa i controlli e i passi.
-
-```bash
-./scripts/fresh-start.sh                 # dry-run
-./scripts/fresh-start.sh --apply --yes   # sposta data/ in data.old-<data>/ e riparte
-./scripts/fresh-start.sh --rollback --yes
-```
-
-Con `--apply` ferma il servizio, sposta `data/` in `data.old-<timestamp>/`,
-crea un database nuovo, conserva la stessa API key Torznab e importa gli
-indexer da Jackett/Prowlarr in sola lettura (le chiavi sono lette dal vecchio
-database e passate all'importer tramite l'ambiente). Se qualcosa fallisce
-dopo lo spostamento, ripristina automaticamente `data.old-*`.
-
-Per una prova su una copia usare `--data-dir`, `--port`, `--no-systemd` e un
-binario temporaneo, per esempio:
-
-```bash
-./scripts/fresh-start.sh --apply --yes --no-systemd \
-  --data-dir /tmp/prova/data --binary /tmp/prova/indexarr \
-  --importer /tmp/prova/indexarr-import --port 18510 \
-  --prowlarr http://127.0.0.1:9696 \
-  --jackett http://127.0.0.1:9117 --jackett-copy /copia/Jackett
-```
-
-`--jackett-copy` è una **copia** della directory dati di Jackett, mai quella
-viva; `--jackett` serve solo per la verifica GET. Il test offline dello script
-è `./scripts/fresh-start_test.sh`.
-
 ### Aggiornamento della produzione (dati conservati)
 
 `scripts/upgrade.sh` aggiorna il binario **senza azzerare il database**. Di
-default è un dry run: valida i prerequisiti, compila `cmd/indexarr` e
-`cmd/indexarr-import` in una directory temporanea e stampa il piano, senza
-fermare il servizio.
+default è un dry run: valida i prerequisiti, compila `cmd/indexarr` in una
+directory temporanea e stampa il piano, senza fermare il servizio.
 
 ```bash
 ./scripts/upgrade.sh                       # dry run
@@ -638,12 +578,11 @@ cd /home/andres/indexarr && ./scripts/upgrade.sh --apply --yes
 
 Con `--apply` il build avviene **prima** di fermare il servizio. Poi crea un
 backup coerente con `VACUUM INTO` in `data/backups/pre-upgrade-<timestamp>.db`,
-salva i binari precedenti come `bin/indexarr.old-<timestamp>` e
-`bin/indexarr-import.old-<timestamp>`, ferma il servizio, installa i nuovi
-binari e riparte. Verifica `/healthz` con la versione nuova, `t=caps` e una
-ricerca Torznab con la API key letta dal DB (mai stampata). Se un controllo
-fallisce ripristina automaticamente DB e binari e riavvia la versione
-precedente.
+salva il binario precedente come `bin/indexarr.old-<timestamp>`, ferma il
+servizio, installa il nuovo binario e riparte. Verifica `/healthz` con la
+versione nuova, `t=caps` e una ricerca Torznab con la API key letta dal DB (mai
+stampata). Se un controllo fallisce ripristina automaticamente DB e binario e
+riavvia la versione precedente.
 
 La prova generale su una copia usa `--data-dir`, `--port 18510`, `--no-systemd`
 e binari temporanei; non tocca `:8484`, `data/`, `bin/indexarr` o systemd:
@@ -739,7 +678,7 @@ Il CLI delle definizioni è `indexarr-def`:
 ```bash
 go run ./cmd/indexarr-def validate examples/definitions
 go run ./cmd/indexarr-def check-fixtures examples/definitions/html-forum.yaml
-go run ./cmd/indexarr-def convert-cardigann -o ./native ~/.config/Jackett/Indexers
+go run ./cmd/indexarr-def convert-cardigann -o ./native ./definizioni-da-studiare
 go run ./cmd/indexarr-def fmt -w examples/definitions/html-forum.yaml
 go run ./cmd/indexarr-def fingerprint examples/definitions/html-forum.yaml
 go run ./cmd/indexarr-def schema
@@ -772,5 +711,5 @@ Funzioni ancora aperte, in ordine di valore:
 - I seeder non riportati dall'indexer (per esempio MirCrew) restano sconosciuti:
   l'attributo `seeders` viene omesso nella risposta Torznab invece di valere 0.
 - Cloudflare è gestito con FlareSolverr per RSS e indexer diretti; le API
-  proprietarie restano da esporre tramite Jackett/Prowlarr, e indexarr non
-  include un browser headless.
+  proprietarie restano in coda finché non esiste una definizione nativa, e
+  indexarr non include un browser headless.

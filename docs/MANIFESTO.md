@@ -113,25 +113,22 @@ sistema, log integrati nel sistema, avvio automatico.
 | Proxy | HTTP, SOCKS4/5, per indexer |
 | Osservabilità | Prometheus, health endpoint, log JSON |
 
-### 3.4 Migrazione in un clic
+### 3.4 Sostituzione, non affiancamento
 
-Chi arriva da Jackett o Prowlarr non deve riconfigurare niente:
+indexarr prende il posto di Jackett e Prowlarr:
 
-- **Prowlarr**: indexarr legge la configurazione tramite la sua API (URL + API
-  key) oppure dal database, e importa indexer, credenziali, tag, proxy,
-  applicazioni e impostazioni di sync.
-- **Jackett**: importa gli indexer configurati. L'API di Jackett non espone le
-  password dei tracker: una fonte privata nasce disattivata con il motivo
-  «credenziali da inserire» e si completa una volta in indexarr.
-- Ogni indexer importato viene associato a una definizione nativa di indexarr
-  per quel sito, oppure a un connettore di famiglia. Se non esiste ancora una
-  via nativa, la fonte **resta in coda** nel catalogo e non viene creato un
-  proxy verso Jackett/Prowlarr.
+- **Nessun import**: non legge la loro configurazione, non li interroga e non
+  crea proxy verso i loro endpoint. Le fonti si aggiungono dal catalogo nativo.
+- **Nessun collegamento in ingresso**: Jackett e Prowlarr non sono sorgenti di
+  indexarr e non ricevono nulla da indexarr.
+- **Le fonti senza via nativa** restano nel catalogo con lo stato «da scrivere»;
+  non vengono create e non vengono delegate.
 - **Le \*arr**: l'app sync sostituisce gli indexer puntati a Jackett/Prowlarr
   con quelli di indexarr, mantenendo priorità e impostazioni; prima fa una
   copia e permette il rollback.
-- **Convivenza**: durante la prova Jackett e Prowlarr restano utilizzabili
-  come sorgenti.
+- **Le credenziali private** che Jackett non espone si inseriscono una volta in
+  indexarr. Non c'è un file da copiare.
+- **La fine della sostituzione**: Jackett e Prowlarr si spengono e si rimuovono.
 
 ### 3.5 Lingue e accessibilità
 
@@ -148,8 +145,8 @@ Chi arriva da Jackett o Prowlarr non deve riconfigurare niente:
 
 1. **Installa e apri**: su Windows e macOS il primo avvio apre il browser;
    negli altri casi il terminale stampa l'indirizzo.
-2. **Importa o parti da zero**: se trova Jackett o Prowlarr sulla rete locale
-   o sulla rete Docker, propone la migrazione (§3.4).
+2. **Parti dal catalogo nativo**: scegli le fonti da `/indexers/new`. indexarr
+   non cerca Jackett o Prowlarr sulla rete e non li importa (§3.4).
 3. **Collega le \*arr**: rileva Sonarr, Radarr e le altre sulle porte note,
    chiede solo l'API key e configura il sync.
 4. **Aggiungi indexer**: cerca nel catalogo, inserisci le credenziali; il test
@@ -340,9 +337,9 @@ del progetto.
 | Fan-out live p95, 10 indexer | < 5 s (limitato dal sito più lento, con deadline) | da misurare |
 | Dispositivo minimo | Raspberry Pi Zero 2 W, 512 MiB RAM | da verificare |
 | Prima ricerca dopo l'installazione | < 2 minuti per un utente nuovo | da misurare |
-| Migrazione da Prowlarr | Un'azione, nessuna riconfigurazione delle \*arr | da fare |
+| Sostituzione di Prowlarr | Fonti dal catalogo nativo; le \*arr passano a indexarr | parziale: 200 fonti con via nativa, 413 in coda |
 | Parità | Checklist di indexarr2.md §3 tutta verde | da fare |
-| Siti dell'utente funzionanti al giorno uno | 100% (nativi) oppure in coda visibile, senza proxy | parziale: 155 via software noto, 464 in coda |
+| Siti dell'utente funzionanti al giorno uno | 100% (nativi) oppure in coda visibile, senza proxy | parziale: 155 via software noto, 413 in coda |
 | Inventario prioritario con definizione nativa verificata | 100% alla 1.0 | da fare |
 
 ---
@@ -392,7 +389,7 @@ Cose che oggi nessun indexer fa, o fa bene.
 
 | Orizzonte | Obiettivo |
 |---|---|
-| **Ora → 1.0** | Parità completa (indexarr2.md), piattaforme Tier 1, migrazione da Jackett/Prowlarr, budget di risorse in CI, benchmark pubblico |
+| **Ora → 1.0** | Parità completa (indexarr2.md), piattaforme Tier 1, sostituzione di Jackett/Prowlarr, budget di risorse in CI, benchmark pubblico |
 | **1.x** | Tutti i canali di distribuzione (§3.2), studio delle definizioni, riparazione assistita, Tier 2 completo, traduzioni |
 | **2.x** | Annunci IRC, rete di salute delle definizioni, ricerca che capisce, multi-utente |
 | **Sempre** | Catalogo nativo che cresce, coda «da scrivere» che si svuota, numeri del §8 rispettati |

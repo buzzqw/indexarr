@@ -248,8 +248,6 @@ del server Torznab, senza cookie e senza CSRF.
 | GET/PUT/DELETE | `/api/v2/applications/{id}` | dettaglio / aggiorna / scollega |
 | POST | `/api/v2/applications/{id}/sync` | riconcilia un'applicazione |
 | POST | `/api/v2/applications/sync` | riconcilia tutte |
-| POST | `/api/v2/import/prowlarr` | anteprima import da Prowlarr, senza segreti |
-| POST | `/api/v2/import/jackett` | anteprima import da una cartella Jackett |
 
 Esempio:
 

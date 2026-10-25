@@ -1,5 +1,8 @@
 # Revisione UI indexarr 2 — base indipendente
 
+> **Documento storico.** La pagina `/import` e l'import da Jackett/Prowlarr sono stati rimossi il 25/10/2026: le voci che li citano descrivono la revisione precedente, non il prodotto attuale.
+
+
 Data: 23 ottobre 2026  
 Ambito: interfaccia web di `indexarr` in `/home/andres/indexarr`, istanza viva su `http://127.0.0.1:8484`.  
 Modalità: **sola lettura**. Nessuna modifica a codice, template, CSS, dati o servizio. Solo richieste `GET`.

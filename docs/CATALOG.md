@@ -7,10 +7,11 @@ Il catalogo ha due livelli, con scopi diversi.
 | Definizione nativa | Istruzioni complete di ricerca, categorie, login e download di un sito | `internal/catalog/definitions/*.yaml` | `verificata`, `bozza`, `stabile`, `degradata` |
 | Voce leggera | Nome, URL, tipo, lingua, categorie, famiglia e stato di un sito | `internal/catalog/sites.yaml` | `verificata`, `da-provvi`, `morta` |
 
-Le voci leggere sono generate dai **metadati dei manager** (Jackett e
-Prowlarr): nome, URL, privacy, lingua, categorie e, quando la pagina del sito
-lo dimostra, la famiglia software. Non vengono mai generate da una definizione
-Cardigann e il repository non importa Cardigann.
+Le voci leggere derivano da un'**istantanea storica dei metadati pubblici**
+dei manager: nome, URL, privacy, lingua, categorie e, quando la pagina del sito
+lo dimostra, la famiglia software. Non sono una connessione: indexarr non
+interroga Jackett o Prowlarr a runtime e non ne importa la configurazione.
+Non vengono mai generate da una definizione Cardigann.
 
 ## Numeri al 2026-10-25
 
@@ -30,18 +31,18 @@ leggere pubbliche; i duplicati per host sono stati esclusi. Le voci leggere
 private sono 438 e restano tutte `da-provvi`: senza un account non si può
 verificare la ricerca.
 
-Il catalogo ora contiene **tutte** le fonti dei manager, comprese le private
-senza una famiglia riconosciuta. Una fonte senza via nativa non viene nascosta:
+Il catalogo ora contiene **tutte** le fonti dell'istantanea, comprese le
+private senza una famiglia riconosciuta. Una fonte senza via nativa non viene nascosta:
 resta in coda con il filtro **da scrivere** e non produce alcun proxy.
 
-### Copertura nativa del catalogo Jackett
+### Copertura nativa dell'istantanea Jackett
 
 | Via | Fonti | Note |
 | --- | ---: | --- |
 | Definizione nativa (id o host) | **19** | definizioni verificate o in prova |
 | Software noto (connettore di famiglia) | **155** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
 | Da scrivere | **464** | 329 private, 72 pubbliche, 63 semiprivate |
-| **Totale catalogo Jackett** | **638** | istantanea dei metadati del 23/10 |
+| **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 
 La somma non include le 6 fonti già configurate in Jackett quando coincidono
 con una definizione nativa.
@@ -115,33 +116,31 @@ ItaTorrents. MirCrew non è UNIT3D: è un servizio Torznab locale.
 Tutto è GET, tranne la scrittura dei file generati.
 
 ```sh
-# 1. Metadati dei manager (richiede le chiavi in ~/.config/indexarr-dev/managers.env)
-set -a; . ~/.config/indexarr-dev/managers.env; set +a
-go run ./internal/catalog/genmeta
-
-# 2. Prova live di tutto il catalogo, private comprese. Solo GET sulla home
-#    page, nessun login, nessuna scrittura sui siti (-all).
+# 1. Prova live di tutto il catalogo, private comprese. Solo GET sulla home
+#    page, nessun login, nessuna scrittura sui siti (-all). Non contatta
+#    Jackett o Prowlarr: legge solo i metadati già committati.
 go run ./internal/catalog/genverify -all -workers 16 -timeout 10s
 
-# 3. Rigenera sites.yaml e index.json (non tocca la rete)
+# 2. Rigenera sites.yaml e index.json (non tocca la rete)
 go generate ./internal/catalog
 
-# 4. Controlli
+# 3. Controlli
 make def-validate
 go test ./...
 ```
 
-`genmeta` scrive `internal/catalog/metadata/jackett.json` (638 siti) e
-`prowlarr.json` (5). `genverify` scrive `verification.yaml`; `gensites` legge
-metadati, famiglie, prove e voci manuali e produce `sites.yaml`; `genindex`
-unisce definizioni native e voci leggere in `index.json`.
+`verification.yaml` è scritto da `genverify`; `gensites` legge l'istantanea,
+le famiglie, le prove e le voci manuali e produce `sites.yaml`; `genindex`
+unisce definizioni native e voci leggere in `index.json`. L'istantanea
+`metadata/jackett.json` è congelata: non c'è più un comando che contatta i
+manager.
 
 ### File
 
 | File | Sorgente | Modificabile a mano |
 | --- | --- | --- |
-| `metadata/jackett.json` | `genmeta` (GET) | no |
-| `metadata/prowlarr.json` | `genmeta` (GET) | no |
+| `metadata/jackett.json` | istantanea storica | no |
+| `metadata/prowlarr.json` | istantanea storica | no |
 | `metadata/families.yaml` | curatela con prova GET | sì, aggiungendo la prova |
 | `metadata/verification.yaml` | `genverify` (GET) | no |
 | `metadata/manual.yaml` | lista prioritaria | sì |

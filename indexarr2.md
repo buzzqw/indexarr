@@ -110,7 +110,7 @@ attive; resta in lista finché esistono utenti.
 | Motore: login di ogni tipo (form, CSRF, cookie, token, API key, Basic), flussi a più passi, paginazione, HTML/JSON/XML, categorie, errori del sito, download a più passaggi, mirror | Suite di test del motore con fixture per ogni funzione | fatto (WP5: `download.resolve`) |
 | Connettori di famiglia per i software di tracker più diffusi | Ogni famiglia testata su fixture di almeno due siti | parziale: 8 famiglie (RSS inclusa), verifiche reali su 3 siti |
 | Catalogo nativo che copre l'inventario prioritario (§7.3) | 100% dell'inventario prioritario `verificato` | parziale: 4 verificati (ExtTo, TorrentGalaxy, Corsaro, Knaben), TorrentLeech `bozza` |
-| Siti senza definizione nativa: coda nativa, nessun proxy (§7.4) | Ogni fonte importata è nativa o resta in coda; nessun indexer punta al manager | parziale: 155 fonti via software noto, 464 in coda al 25/10 |
+| Siti senza definizione nativa: coda nativa, nessun proxy (§7.4) | Ogni fonte aggiunta è nativa o resta in coda; nessun indexer punta al manager | parziale: 155 fonti via software noto, 413 in coda al 25/10 |
 | Connettore Newznab generico con preset per gli indexer Usenet noti (come i preset di Prowlarr) | Caps importate dall'indexer; test su fixture Newznab | parziale: generico sì, preset no |
 
 La parità del catalogo si misura così: **100% dei siti dell'utente
@@ -410,23 +410,22 @@ Il catalogo si scrive in ordine di valore, non in ordine alfabetico:
    un solo lavoro.
 3. **Siti più usati**, poi la coda lunga.
 
-### 7.4 Jackett e Prowlarr per i siti senza definizione nativa
+### 7.4 Sostituzione dei manager e coda nativa
 
-**Decisione del coordinatore (25/10):** indexarr non crea più indexer Torznab
-che puntano al manager. Un proxy non è una sorgente propria e lascia intatta
-la dipendenza che la 2.1 deve togliere.
+**Decisione del coordinatore (25/10):** indexarr **sostituisce** Jackett e
+Prowlarr. Non li importa, non li contatta e non crea proxy verso i loro
+endpoint.
 
-- una fonte importata è **nativa** (definizione di catalogo) oppure usa un
+- una fonte aggiunta è **nativa** (definizione di catalogo) oppure usa un
   **connettore di famiglia** con l'URL del sito;
 - se non ha né l'una né l'altra, **non viene creata**: resta nel catalogo con
   il filtro «da scrivere» e con il motivo visibile;
+- un URL di Jackett o Prowlarr viene rifiutato con un messaggio esplicito;
 - la UI mostra per ogni fonte la via e il contatore di copertura;
-- quando esce la definizione nativa, la fonte si adotta senza toccare le
+- quando esce la definizione nativa, la fonte si aggiunge senza toccare le
   applicazioni \*arr.
 
-Jackett e Prowlarr restano leggibili in sola lettura per costruire il piano;
-non sono mai un percorso di ricerca a runtime. indexarr non legge né esegue
-definizioni Cardigann.
+indexarr non legge né esegue definizioni Cardigann.
 
 ### 7.5 Verifica continua
 
@@ -522,8 +521,8 @@ di richiesta dei siti.
 ## 10. Da indexarr a indexarr 2
 
 La transizione è conclusa: indexarr 2 usa un solo modello di indexer. Il
-database precedente è usa e getta; l'import da Jackett/Prowlarr ricrea i siti
-come indexer nativi e non esiste più un secondo scheduler.
+database precedente è usa e getta; non esiste un import da Jackett/Prowlarr:
+le fonti si aggiungono dal catalogo nativo e non esiste un secondo scheduler.
 
 | Pacchetto | Esito |
 |---|---|
@@ -535,13 +534,13 @@ come indexer nativi e non esiste più un secondo scheduler.
 | `internal/flaresolverr` | Diventa un'implementazione di `ChallengeSolver` nel transport (WP11) |
 | `internal/downloadclient` | Resta; copre qBittorrent, Transmission, Deluge, rTorrent, SABnzbd e NZBGet |
 | `internal/backup`, `internal/web` | Restano ed estendono |
-| nuovi | `internal/definition`, `internal/engine`, `internal/family`, `internal/appsync`, `internal/vault`, `internal/importers` |
+| nuovi | `internal/definition`, `internal/engine`, `internal/family`, `internal/appsync`, `internal/vault` |
 
-Jackett e Prowlarr restano utilizzabili in sola lettura per l'adozione: l'import
-crea solo indexer nativi. Una fonte senza definizione o famiglia resta in coda
-e non produce un endpoint Torznab verso il manager. Non c'è migrazione di dati
-dal vecchio database e non c'è rollback del vault: il DB di produzione si
-ricrea.
+Jackett e Prowlarr **non sono collegati**: indexarr li sostituisce. Non c'è
+import della loro configurazione, non c'è un endpoint Torznab verso il manager e
+gli URL dei manager vengono rifiutati. Una fonte senza definizione o famiglia
+resta in coda. Non c'è migrazione di dati dal vecchio database e non c'è
+rollback del vault: il DB di produzione si ricrea.
 
 ---
 
@@ -569,10 +568,10 @@ tutta verde.
 | **M0 — Fondamenta** | Modello dati §8, schema nativo, vault, pipeline a stadi, interfacce `Connector` e `Module` | indexarr funziona sul nuovo modello | Fatto, salvo pipeline/moduli non collegati (WP4) |
 | **M1 — Motore** | Formato v1, motore HTML/JSON/XML, sessioni, login, paginazione, rate limit per host, circuit breaker | I tre parser HTML storici sostituiti da definizioni | Fatto (WP5, WP7) |
 | **M2 — Catalogo** | Inventario dei siti, connettori di famiglia, prime definizioni, studio delle definizioni, CI del catalogo | Siti propri tutti funzionanti | Fatto: 8 famiglie, 36 definizioni verificate, RSS nativa (WP6, WP7, WP18) |
-| **Alpha interna** | Inventario prioritario riscritto e verificato | Uso quotidiano su istanza propria | Fatto: import da Jackett/Prowlarr in indexer nativi (WP8) |
+| **Alpha interna** | Inventario prioritario riscritto e verificato | Uso quotidiano su istanza propria | Fatto: catalogo nativo e adozione delle fonti (WP8) |
 | **M3 — Distribuzione** | Endpoint per indexer e filtrati, alias Jackett, errori Torznab, limiti query/grab, proxy | \*arr collegate senza Jackett/Prowlarr | Fatto |
 | **M4 — App sync** | Tutte le applicazioni del §3.2, livelli di sync, riconciliazione | Prowlarr rimovibile | Quasi fatto: 5 app su 7, rollback mancante (WP13) |
-| **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita; coda «da scrivere» visibile, nessun proxy | In corso: 155 fonti via software noto, 464 in coda al 25/10 |
+| **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita; coda «da scrivere» visibile, nessun proxy | In corso: 155 fonti via software noto, 413 in coda al 25/10 |
 | **M6 — Usenet** | Connettore Newznab e preset, endpoint Newznab, proxy `.nzb`, SABnzbd/NZBGet, sync Newznab verso le \*arr | Indexer Usenet gestiti come in Prowlarr | Fatto lato codice; nessun indexer Usenet reale verificato |
 | **Beta** | Health check opt-in; documentazione per chi scrive definizioni | Checklist §3 quasi completa | — |
 | **1.0** | Checklist §3 verde | Rilascio pubblico | — |
@@ -688,7 +687,6 @@ numerate sono tre:
 | GET/POST | `/api/v2/applications` |
 | GET/PUT/DELETE | `/api/v2/applications/{id}` |
 | POST | `/api/v2/applications/sync`, `/api/v2/applications/{id}/sync` |
-| POST | `/api/v2/import/prowlarr`, `/api/v2/import/jackett` |
 
 Tutte le rotte sono autenticate con la stessa API key del server Torznab
 (`apikey`, `X-Api-Key` o `Authorization: Bearer`). Non esistono più le rotte
@@ -726,7 +724,7 @@ strict) e `./sim/run.sh`.
 | WP5 | fatto | `download.resolve`: magnet/torrent dalla pagina di dettaglio |
 | WP6 | fatto | famiglia RSS/Atom nativa, cache feed, filtro client-side |
 | WP7 | fatto | ExtTo, TorrentGalaxy, Corsaro e Knaben verificate; TorrentLeech in bozza |
-| WP8 | passi 1–4 fatti; script, `--build` e tre prove generali fatte | import in sola lettura da Jackett/Prowlarr in indexer nativi; `fresh-start.sh` provato tre volte su copia con il binario del tip (9 indexer, 0 doppioni, TorrentLeech RSS >0), rollback di dati e binario; checklist pronta; scambio produzione da eseguire |
+| WP8 | superato dalla decisione del 25/10 | nessun import da Jackett/Prowlarr: catalogo nativo, fonti in coda, nessun proxy |
 | WP9 | fatto | health check, stato `degradata`, transizioni del catalogo |
 | WP10 | da fare | refresh periodico dei seeders |
 | WP11 | fatto | FlareSolverr nativo e stato `blocked` |

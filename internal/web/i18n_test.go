@@ -150,7 +150,6 @@ func TestItalianCatalogOnOwnedPages(t *testing.T) {
 		{"/indexers?lang=it", []string{"Indexer", "Aggiungi indexer"}},
 		{"/settings?section=advanced&lang=it", []string{"Definizioni", "Catalogo", "Azione"}},
 		{"/applications?lang=it", []string{"App", "Client di download", "Sincronizza tutte"}},
-		{"/import?lang=it", []string{"Importa", "Anteprima, nessuna modifica", "Genera piano da Prowlarr"}},
 		{"/activity?lang=it", []string{"Attività", "Esecuzioni pianificate", "Log"}},
 	}
 	for _, tc := range cases {

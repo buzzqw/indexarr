@@ -1,10 +1,13 @@
 package web
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/buzzqw/indexarr/internal/catalog"
+	"github.com/buzzqw/indexarr/internal/indexersvc"
 )
 
 func adoptionCatalog() []catalog.IndexEntry {
@@ -62,5 +65,38 @@ func TestCatalogCoverageAndRouteFilter(t *testing.T) {
 	body = get(t, env.handler, "/indexers/new?all=1&route=native").Body.String()
 	if !strings.Contains(body, "AlphaNative") || strings.Contains(body, "BravoFamily") {
 		t.Error("the ready filter is wrong")
+	}
+}
+
+func TestManagerImportPageIsGone(t *testing.T) {
+	env := newTestEnv(t)
+	for _, path := range []string{
+		"/import", "/import/prowlarr", "/import/jackett", "/import/apply", "/import/gextto",
+	} {
+		recorder := get(t, env.handler, path)
+		if recorder.Code != 404 {
+			t.Errorf("GET %s = %d, want 404", path, recorder.Code)
+		}
+	}
+
+	indexers := get(t, env.handler, "/indexers").Body.String()
+	if strings.Contains(indexers, `href="/import"`) {
+		t.Error("the indexers page still links to the removed manager import")
+	}
+	setup := get(t, env.handler, "/setup?step=2").Body.String()
+	if strings.Contains(setup, `href="/import"`) {
+		t.Error("the setup wizard still links to the removed manager import")
+	}
+	if !strings.Contains(setup, "/indexers/new") {
+		t.Error("the setup wizard does not open the native catalog")
+	}
+}
+
+func TestManagerEndpointErrorIsTranslated(t *testing.T) {
+	env := newTestEnv(t)
+	req := httptest.NewRequest(http.MethodGet, "/indexers/new?lang=it", nil)
+	msg := env.server.indexerFriendlyError(req, indexersvc.ErrManagerEndpoint)
+	if !strings.Contains(msg, "sostituisce Jackett e Prowlarr") {
+		t.Fatalf("translated error = %q", msg)
 	}
 }

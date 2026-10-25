@@ -40,7 +40,7 @@ func newPendingStoreSet() *pendingStoreSet {
 }
 
 func (p *pendingStoreSet) put(entry pendingStoreEntry) (string, error) {
-	token, err := newImportToken()
+	token, err := newOpaqueToken()
 	if err != nil {
 		return "", err
 	}

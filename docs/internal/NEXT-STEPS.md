@@ -1,5 +1,8 @@
 # indexarr 2 — Prossimi passi (work package per gli agenti)
 
+> **Documento storico.** L'import da Jackett/Prowlarr e `cmd/indexarr-import` sono stati rimossi il 25/10/2026. I WP che li citano descrivono il piano precedente; il prodotto attuale usa solo il catalogo nativo.
+
+
 Data: 23 ottobre 2026
 Origine: revisione del codice e della documentazione dopo le ondate 1–8
 (commit `f1ef35b`…`384e541`).

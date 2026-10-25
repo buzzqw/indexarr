@@ -204,7 +204,7 @@ func TestOwnedTemplatesUseCatalog(t *testing.T) {
 	files := []string{
 		"layout", "dashboard", "indexers", "indexer", "indexer_form",
 		"definitions", "definition", "definition_form", "applications",
-		"application_form", "import", "activity", "activity_feed",
+		"application_form", "activity", "activity_feed",
 		"activity_searches", "indexer_data", "indexer_try", "runs", "logs",
 		"error", "components", "setup", "settings", "settings_definitions",
 		"download_client_form",

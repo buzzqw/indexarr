@@ -12,10 +12,10 @@
 // "bozza" are drafts and must not be presented as production ready.
 //
 // Beside the definitions, sites.yaml carries lightweight rows generated from
-// manager metadata (Jackett/Prowlarr): name, URL, type, language, categories
-// and, when the site itself proves it, the software family. They are not
-// definitions and are never produced from Cardigann data. See sites.go and
-// docs/CATALOG.md.
+// a committed snapshot of manager metadata: name, URL, type, language,
+// categories and, when the site itself proves it, the software family. They
+// are not definitions, are never produced from Cardigann data and do not
+// connect to Jackett or Prowlarr at runtime. See sites.go and docs/CATALOG.md.
 //
 // Definitions produced by a conversion tool (meta.derived_from, or the
 // Cardigann converter's author) are rejected: derived drafts are local writing
