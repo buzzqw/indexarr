@@ -51,7 +51,11 @@
 - Nuove definizioni native pubbliche **DivxTotal**, **Mac Torrents**,
   **nekoBT**, **TheRARBG**, **AniLiberty**, **0Magnet**, **Torrent Kitty**,
   **TorrentProject2**, **RuTracker.RU**, **AniBT**, **Sukebei**,
-  **PandaCD**, **Torrentsome**, **Torrenttip** e **UIndex**, con fixture reali.
+  **PandaCD**, **Torrentsome**, **Torrenttip**, **UIndex**, **TorrentByte**,
+  **BTdirectory**, **EBookBay**, **Sexy-Pics** e **RinTor.NeT**, con fixture
+  reali. TorrentByte, BTdirectory e Sexy-Pics passano da FlareSolverr;
+  EBookBay usa l'endpoint HTTP perché il certificato HTTPS del dominio non
+  corrisponde; RinTor usa una ricerca POST e risolve il magnet dal dettaglio.
 - `search.preflight` estrae token CSRF dalla pagina e li inietta nella
   ricerca; Torrentsome e Torrenttip lo usano.
 - UIndex è protetto da Cloudflare e passa da FlareSolverr quando configurato.

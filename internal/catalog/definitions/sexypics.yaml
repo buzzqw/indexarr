@@ -1,0 +1,54 @@
+# VERIFICATA (verified). Sexy-Pics public adult search.
+#
+# Written from the public search page captured on 2026-10-25 through the local
+# FlareSolverr (https://www.sexy-pics.us/search/?q=matrix&m=1) in
+# fixtures/sexypics/search.html. The result table carries title, detail,
+# magnet, size and swarm counters.
+schema: 1
+
+meta:
+  id: sexypics
+  name: Sexy-Pics
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public adult torrent index protected by Cloudflare, with magnets and size in the result row.
+  urls:
+    - https://www.sexy-pics.us/
+  updated: "2026-10-25"
+  latest: false
+
+categories:
+  - { site: "Adult", standard: 6000, desc: "Adult" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search/
+    params:
+      q: "{{ query.keywords }}"
+      m: "1"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.download tbody tr" }
+    fields:
+      title:    { selector: "td.n a", attr: title, filters: [trim] }
+      details:  { selector: "td.n a", attr: href, type: url }
+      magnet:   { selector: "td.m a", attr: href }
+      size:     { selector: "td:nth-of-type(6)", type: size }
+      seeders:  { selector: "td.s", type: int }
+      leechers: { selector: "td.l", type: int }
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/sexypics/search.html
+    expect: { min_rows: 2, required: [title, details, magnet, size] }

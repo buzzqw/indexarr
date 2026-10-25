@@ -1,0 +1,63 @@
+# VERIFICATA (verified). RinTor public adult search.
+#
+# Written from the public search and detail pages captured on 2026-10-25 in
+# fixtures/rintor/search.html (POST https://www.rintor.net/ with story=matrix)
+# and fixtures/rintor/detail.html. The search row has title and detail; the
+# detail page carries the magnet and torrent link.
+schema: 1
+
+meta:
+  id: rintor
+  name: RinTor.NeT
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Russian adult tracker with a magnet on the detail page.
+  urls:
+    - https://www.rintor.net/
+  updated: "2026-10-25"
+  latest: false
+
+categories:
+  - { site: "Adult", standard: 6000, desc: "Adult" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    post: /
+    form:
+      do: search
+      subaction: search
+      story: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.post" }
+    fields:
+      title:   { selector: "div.entry__title h3 a", filters: [trim] }
+      details: { selector: "div.entry__title h3 a", attr: href, type: url }
+      date:    { selector: "span.entry__date", type: date, layouts: ["02-01-2006, 15:04"] }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  size: { selector: "div.bord_a1 font", type: size }
+  extract:
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+
+health:
+  query: matrix
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/rintor/search.html
+    expect: { min_rows: 1, required: [title, details] }
+  - name: detail
+    fixture: fixtures/rintor/detail.html
+    expect: { min_rows: 0 }

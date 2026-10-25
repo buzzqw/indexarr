@@ -18,12 +18,12 @@ Non vengono mai generate da una definizione Cardigann.
 | Misura | Valore |
 | --- | ---: |
 | Totale voci nel catalogo (definizioni + voci leggere) | **623** |
-| Definizioni native | 80 (8 aiutanti generici inclusi) |
-| Voci leggere | **543** |
-| Verificate | **121** |
-| Da provare (`da-provvi`) | **498** |
+| Definizioni native | 85 (8 aiutanti generici inclusi) |
+| Voci leggere | **538** |
+| Verificate | **123** |
+| Da provare (`da-provvi`) | **496** |
 | Morte (`morta`) | **4** |
-| Pubbliche verificate (native + leggere, host unici) | **92** |
+| Pubbliche verificate (native + leggere, host unici) | **95** |
 | Voci italiane | **13** |
 
 Le 92 pubbliche verificate sono conteggiate per host unico, quindi una
@@ -39,9 +39,9 @@ resta in coda con il filtro **da scrivere** e non produce alcun proxy.
 
 | Via | Fonti | Note |
 | --- | ---: | --- |
-| Definizione nativa (id o host) | **29** | definizioni verificate o in prova |
+| Definizione nativa (id o host) | **34** | definizioni verificate o in prova |
 | Software noto (connettore di famiglia) | **155** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **454** | 329 private, 62 pubbliche, 63 semiprivate |
+| Da scrivere | **449** | 329 private, 57 pubbliche, 63 semiprivate |
 | **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 
 La somma non include le 6 fonti già configurate in Jackett quando coincidono

@@ -1,0 +1,60 @@
+# VERIFICATA (verified). EBookBay public ebook search.
+#
+# Written from the public search and detail pages captured on 2026-10-25 in
+# fixtures/ebookbay/search.html (http://ebb.la/?s=matrix) and
+# fixtures/ebookbay/detail.html. The search page lists title and detail; the
+# detail page exposes the .torrent download and the combined file size.
+schema: 1
+
+meta:
+  id: ebookbay
+  name: EBookBay
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public ebook tracker with a .torrent link on each detail page.
+  urls:
+    - http://ebb.la/
+  updated: "2026-10-25"
+  latest: false
+
+categories:
+  - { site: "Ebooks", standard: 7000, desc: "Books" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /
+    params:
+      s: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.poststuff" }
+    fields:
+      title:   { selector: "div.postname a", filters: [trim] }
+      details: { selector: "div.postname a", attr: href, type: url }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  size: { selector: "div#content", filters: [{ regex: "Combined File Size:\\s*([0-9.]+\\s*[KMGTP]?B)" }], type: size }
+  extract:
+    - torrent: { selector: 'a[href^="/download.php?f="]', attr: href, type: url }
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/ebookbay/search.html
+    expect: { min_rows: 4, required: [title, details] }
+  - name: detail
+    fixture: fixtures/ebookbay/detail.html
+    expect: { min_rows: 0 }

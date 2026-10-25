@@ -1,0 +1,1091 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <meta name="description" content="Fast and searchable dht bittorrent metadata indexer">
+    <title>🧲 [ TorrentByte ] BitTorrent DHT Metadata Indexer</title>
+    <link rel="stylesheet" href="/torrentbyte.css?v=1.3.3.7">
+    <style>
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f8fafc; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    </style>
+<script src="/cdn-cgi/challenge-platform/scripts/precursor/main.js"></script></head>
+<body class="bg-gradient-to-br from-slate-50 via-white to-indigo-50 text-slate-800 font-sans antialiased min-h-screen selection:bg-indigo-500 selection:text-white">
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-center bg-white/80 backdrop-blur border border-slate-200/80 rounded-3xl p-5 mb-8 gap-4 shadow-sm">
+            <div class="flex items-center space-x-3.5">
+                <div>
+                 <a href="https://torrentbyte.cc/"><pre color="gray" class="font-mono text-[7px] leading-[7px] text-gray-600 font-bold select-none drop-shadow-[0_5px_1px_rgba(0,0,0,0.15)]">    ███      ▄██████▄     ▄████████    ▄████████    ▄████████ ███▄▄▄▄       ███     ▀█████████▄  ▄██   ▄       ███        ▄████████
+▀█████████▄ ███    ███   ███    ███   ███    ███   ███    ███ ███▀▀▀██▄ ▀█████████▄   ███    ███ ███   ██▄ ▀█████████▄   ███    ███
+   ▀███▀▀██ ███    ███   ███    ███   ███    ███   ███    █▀  ███   ███    ▀███▀▀██   ███    ███ ███▄▄▄███    ▀███▀▀██   ███    █▀ 
+    ███   ▀ ███    ███  ▄███▄▄▄▄██▀  ▄███▄▄▄▄██▀  ▄███▄▄▄     ███   ███     ███   ▀  ▄███▄▄▄██▀  ▀▀▀▀▀▀███     ███   ▀  ▄███▄▄▄    
+    ███     ███    ███ ▀▀███▀▀▀▀▀   ▀▀███▀▀▀▀▀   ▀▀███▀▀▀     ███   ███     ███     ▀▀███▀▀▀██▄  ▄██   ███     ███     ▀▀███▀▀▀    
+    ███     ███    ███ ▀███████████ ▀███████████   ███    █▄  ███   ███     ███       ███    ██▄ ███   ███     ███       ███    █▄ 
+    ███     ███    ███   ███    ███   ███    ███   ███    ███ ███   ███     ███       ███    ███ ███   ███     ███       ███    ███
+   ▄████▀    ▀██████▀    ███    ███   ███    ███   ██████████  ▀█   █▀     ▄████▀   ▄█████████▀   ▀█████▀     ▄████▀     ██████████
+                         ███    ███   ███    ███                                                                                   
+</pre></a>
+                    <p class="text-xs text-slate-500 font-mono mt-1">BitTorrent DHT Metadata Indexer</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                    <!-- If NOT Logged In: Show Login / Register -->
+                    <a href="auth?action=login" class="px-3.5 py-2 bg-slate-100 border border-slate-200 text-slate-700 rounded-2xl font-semibold shadow-sm flex items-center gap-1.5">
+                        🔑 Login / Register
+                    </a>
+                
+                <a href="stats" class="px-3.5 py-2 bg-slate-100 border border-slate-200 text-slate-700 rounded-2xl font-semibold shadow-sm flex items-center gap-1.5">
+                     📊 View Stats
+                </a>
+            </div>
+        </header>
+
+            <!-- ================= INDEX VIEW ================= -->
+
+        <!-- Statistics Cards Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-6 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition-shadow">
+              <div class="absolute left-0 top-5 bottom-5 w-1.5 rounded-r-full bg-zinc-400"></div>
+                <div>
+                    <p class="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">🧲 Torrents</p>
+                    <p class="text-3xl font-black text-slate-900 mt-1">7,793,533</p>
+                </div>
+                <span class="text-2xl p-3.5 bg-zinc-200 border border-zinc-400 rounded-2xl shadow-inner">🏴‍☠️</span>
+            </div>
+
+            <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-6 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition-shadow">
+              <div class="absolute left-0 top-5 bottom-5 w-1.5 rounded-r-full bg-emerald-400"></div>
+                <div>
+                    <p class="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">👥 Peers</p>
+                    <p class="text-3xl font-black text-emerald-600 mt-1" title="Cached peer IPs count">413,855,636</p>
+                </div>
+                <span class="text-2xl p-3.5 bg-emerald-50 border border-emerald-100 rounded-2xl shadow-inner">🌍</span>
+            </div>
+
+            <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-6 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition-shadow">
+              <div class="absolute left-0 top-5 bottom-5 w-1.5 rounded-r-full bg-cyan-400"></div>
+                <div>
+                    <p class="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">🗃️ Size</p>
+                    <p class="text-3xl font-black text-slate-900 mt-1">33.57 PB</p>
+                </div>
+                <span class="text-2xl p-3.5 bg-cyan-50 border border-cyan-100 rounded-2xl shadow-inner">💾</span>
+            </div>
+
+            <div class="bg-white/90 backdrop-blur border border-slate-200/80 p-6 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition-shadow">
+              <div class="absolute left-0 top-5 bottom-5 w-1.5 rounded-r-full bg-amber-400"></div>
+                <div>
+                    <p class="text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">📄 Files</p>
+                    <p class="text-3xl font-black text-slate-900 mt-1">406,324,673</p>
+                </div>
+                <span class="text-2xl p-3.5 bg-amber-50 border border-amber-100 rounded-2xl shadow-inner">📑</span>
+            </div>
+        </div>
+
+<section class="
+    mb-6
+    rounded-2xl
+    border border-slate-300
+    bg-white
+    p-4 sm:p-5
+    shadow-sm
+">
+
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+        <div>
+            <div class="inline-flex items-center gap-1.5 rounded-lg
+                        bg-violet-50 border border-violet-200
+                        px-2.5 py-1
+                        text-[8px] font-extrabold uppercase tracking-wider
+                        text-violet-700 font-mono">
+                💜 Support TorrentByte
+            </div>
+
+            <h2 class="mt-2 text-base font-black text-slate-900">
+                Help keep TorrentByte online!
+            </h2>
+
+            <p class="mt-1 max-w-3xl text-[10px] leading-4 text-slate-500 font-mono">
+                TorrentByte runs DHT crawlers, metadata processing and public services around the clock.
+                Donations help cover bandwidth, storage and server costs.
+            </p>
+        </div>
+
+    </div>
+
+    <div class="border-slate-200 pt-3">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                            <div class="
+                    rounded-xl
+                    border border-slate-200
+                    bg-slate-50/60
+                    px-3 py-2.5
+                ">
+                    <div class="flex items-center gap-3">
+
+                        <div class="
+                            w-10 h-10
+                            shrink-0
+                            rounded-xl
+                            bg-indigo-600 text-white                            flex items-center justify-center
+                            text-xl font-black
+                            shadow-sm
+                        ">
+                            ₿                        </div>
+
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-black text-slate-900">
+                                    Bitcoin                                </span>
+
+                                <span class="
+                                    rounded border
+                                    px-1.5 py-0.5
+                                    text-[7px] font-black font-mono
+                                    bg-amber-50 text-amber-700 border-amber-200                                ">
+                                    BTC                                </span>
+                            </div>
+
+                            <div class="
+                                select-all break-all cursor-text
+                                text-[8px] leading-3.5
+                                text-slate-500
+                                font-mono
+                            ">
+                                bc1q967fa0r6z6kdxjyq5agj09p87yaa2tlht44axf                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                            <div class="
+                    rounded-xl
+                    border border-slate-200
+                    bg-slate-50/60
+                    px-3 py-2.5
+                ">
+                    <div class="flex items-center gap-3">
+
+                        <div class="
+                            w-10 h-10
+                            shrink-0
+                            rounded-xl
+                            bg-indigo-600 text-white                            flex items-center justify-center
+                            text-xl font-black
+                            shadow-sm
+                        ">
+                            Ł                        </div>
+
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-black text-slate-900">
+                                    Litecoin                                </span>
+
+                                <span class="
+                                    rounded border
+                                    px-1.5 py-0.5
+                                    text-[7px] font-black font-mono
+                                    bg-slate-100 text-slate-700 border-slate-200                                ">
+                                    LTC                                </span>
+                            </div>
+
+                            <div class="
+                                select-all break-all cursor-text
+                                text-[8px] leading-3.5
+                                text-slate-500
+                                font-mono
+                            ">
+                                ltc1qefj72zheqmhl6tet95gg0qg6xyfjvdak97ky7n                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                            <div class="
+                    rounded-xl
+                    border border-slate-200
+                    bg-slate-50/60
+                    px-3 py-2.5
+                ">
+                    <div class="flex items-center gap-3">
+
+                        <div class="
+                            w-10 h-10
+                            shrink-0
+                            rounded-xl
+                            bg-indigo-600 text-white                            flex items-center justify-center
+                            text-xl font-black
+                            shadow-sm
+                        ">
+                            ◆                        </div>
+
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-black text-slate-900">
+                                    Ethereum                                </span>
+
+                                <span class="
+                                    rounded border
+                                    px-1.5 py-0.5
+                                    text-[7px] font-black font-mono
+                                    bg-indigo-50 text-indigo-700 border-indigo-200                                ">
+                                    ETH                                </span>
+                            </div>
+
+                            <div class="
+                                select-all break-all cursor-text
+                                text-[8px] leading-3.5
+                                text-slate-500
+                                font-mono
+                            ">
+                                0x8BAFe463039Af0a51FCCfe0E8d4b93C60f3fEEe5                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                            <div class="
+                    rounded-xl
+                    border border-slate-200
+                    bg-slate-50/60
+                    px-3 py-2.5
+                ">
+                    <div class="flex items-center gap-3">
+
+                        <div class="
+                            w-10 h-10
+                            shrink-0
+                            rounded-xl
+                            bg-indigo-600 text-white                            flex items-center justify-center
+                            text-xl font-black
+                            shadow-sm
+                        ">
+                            Ð                        </div>
+
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-black text-slate-900">
+                                    Dogecoin                                </span>
+
+                                <span class="
+                                    rounded border
+                                    px-1.5 py-0.5
+                                    text-[7px] font-black font-mono
+                                    bg-yellow-50 text-yellow-700 border-yellow-200                                ">
+                                    DOGE                                </span>
+                            </div>
+
+                            <div class="
+                                select-all break-all cursor-text
+                                text-[8px] leading-3.5
+                                text-slate-500
+                                font-mono
+                            ">
+                                DJq7ayMeyUFTK1x2WWwXRBLzVySfzYLwvd                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            
+        </div>
+</div>
+</section>
+<br>
+            <!-- Search and Category Filter Bar -->
+            <div class="bg-white/90 backdrop-blur border border-slate-200/80 rounded-3xl p-4 shadow-sm mb-6 font-mono">
+                <form method="GET" action="" class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">🔍</span>
+                        <input type="text" name="q" maxlength="160" autocomplete="off" value="matrix" placeholder="Search names, hashes, dates..." class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:border-indigo-500 focus:bg-white transition">
+                    </div>
+                    <input type="hidden" name="cat" value="">
+                    <button type="submit" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-xs tracking-wide transition shadow-sm shadow-indigo-200">Search</button>
+                                            <a href="?" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-xs tracking-wide transition flex items-center justify-center">Reset</a>
+                                    </form>
+
+                <!-- Category Filter Pills -->
+                                <div class="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100 text-xs">
+                    <span class="text-slate-400 font-bold self-center mr-1">Categories:</span>
+                    <a href="?q=matrix" class="px-3.5 py-1.5 rounded-xl font-bold transition border bg-indigo-600 text-white border-indigo-600 shadow-sm">
+                        All
+                    </a>
+                                            <a href="?q=matrix&amp;cat=Movies" class="px-3.5 py-1.5 rounded-xl font-bold transition border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">
+                            🎬 Movies                        </a>
+                                            <a href="?q=matrix&amp;cat=TV" class="px-3.5 py-1.5 rounded-xl font-bold transition border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">
+                            📺 TV                        </a>
+                                            <a href="?q=matrix&amp;cat=Games" class="px-3.5 py-1.5 rounded-xl font-bold transition border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">
+                            🎮 Games                        </a>
+                                            <a href="?q=matrix&amp;cat=Anime" class="px-3.5 py-1.5 rounded-xl font-bold transition border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">
+                            🌸 Anime                        </a>
+                                            <a href="?q=matrix&amp;cat=Music" class="px-3.5 py-1.5 rounded-xl font-bold transition border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">
+                            🎵 Music                        </a>
+                                            <a href="?q=matrix&amp;cat=Software" class="px-3.5 py-1.5 rounded-xl font-bold transition border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">
+                            💻 Software                        </a>
+                                            <a href="?q=matrix&amp;cat=XXX" class="px-3.5 py-1.5 rounded-xl font-bold transition border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">
+                            🔞 XXX                        </a>
+                                            <a href="?q=matrix&amp;cat=Other" class="px-3.5 py-1.5 rounded-xl font-bold transition border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100">
+                            📁 Other                        </a>
+                                    </div>
+            </div>
+
+            <!-- Main Content Table Box -->
+            <div class="bg-white/90 backdrop-blur border border-slate-200/80 rounded-3xl p-6 shadow-sm mb-6">
+                <div class="flex justify-between items-center mb-6 gap-4 font-mono">
+                    <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                        📋 Index Results (Filtered: 2,085)                    </h2>
+                    <span class="text-xs text-slate-400">Page 1 of 84</span>
+                </div>
+
+                <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50/50">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="bg-white text-slate-400 border-b border-slate-200 font-bold">
+                            <tr>
+                                <th class="py-3.5 px-4">📁 Torrent Name / File</th>
+                                <th class="py-3.5 px-4">🏷️ Category</th>
+                                <th class="py-3.5 px-4">📦 Size</th>
+                                <th class="py-3.5 px-4 text-center">📄 Files</th>
+                                <th class="py-3.5 px-4">📅 Date Added</th>
+                                <th class="py-3.5 px-4 text-right">⚙️ Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200/60">
+                                                                                                <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="The.Matrix.1999.4K.HDR.2160p.BDRemux Ita Eng x265-NAHOM">
+                                            📁 The.Matrix.1999.4K.HDR.2160p.BDRemux Ita Eng x265-NAHOM                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Movies                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            48.05 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            3                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-25 19:11:59                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                            <span class="px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-bold text-[9px]">🇮🇹</span>                                             <span class="inline-block"><span class="px-1.5 py-0.5 bg-purple-100 text-purple-700 border border-purple-200 rounded font-bold text-[9px]">4K</span> <span class="px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded font-bold text-[9px]">HDR</span> </span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=9e072514425437f90acfeaf0af74fed40ce6a115" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:9e072514425437f90acfeaf0af74fed40ce6a115" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="[ Torrent911.com ] The.Matrix.Resurrections.2021.FRENCH.WEBRip.XviD-CZ530.avi">
+                                            📁 [ Torrent911.com ] The.Matrix.Resurrections.2021.FRENCH.WEBRip.XviD-CZ530.avi                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Movies                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            1.35 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            1                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-25 13:50:10                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                            <span class="px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-bold text-[9px]">🇫🇷</span>                                             <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=2bfc90dedb959537340169cfe8de62fb04ff506c" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:2bfc90dedb959537340169cfe8de62fb04ff506c" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="skymatrix-airport-esns-skelleftea-v1-0-1.rar">
+                                            📁 skymatrix-airport-esns-skelleftea-v1-0-1.rar                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            570.53 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            1                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-25 12:58:13                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=7d57ad10f0c417d5fa89ba9d7aa9919f112f0849" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:7d57ad10f0c417d5fa89ba9d7aa9919f112f0849" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="Cynical Existence - Erase, Evolve And Rebuild [2013 2CD Limited Edition Alfa Matrix #AM2167DCD]">
+                                            📁 Cynical Existence - Erase, Evolve And Rebuild [2013 2CD Limited Edition Alfa Matrix #AM2167DCD]                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            744.94 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            29                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-25 08:31:25                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=29b5e21e45d7f53e55a2390df9450cf41886167f" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:29b5e21e45d7f53e55a2390df9450cf41886167f" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="VA - Matrix Downloaded 004 (2015)">
+                                            📁 VA - Matrix Downloaded 004 (2015)                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            620.49 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            58                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-25 05:46:39                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=14db3ec2da6913a55a8b8dafde9237e6965c8367" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:14db3ec2da6913a55a8b8dafde9237e6965c8367" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="far2here-led-zeppelin-1975-02-12-four-blocks-in-the-snowbluecongo-matrix">
+                                            📁 far2here-led-zeppelin-1975-02-12-four-blocks-in-the-snowbluecongo-matrix                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            1.34 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            76                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-25 04:44:01                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=b577aa3439a7a65ef2d9497e54590b615ddba1f2" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:b577aa3439a7a65ef2d9497e54590b615ddba1f2" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="Little.People.Big.World.S23E08.Break.in.the.Matrix.720p.HDTV.x264-CRiMSON[eztv.re].mkv">
+                                            📁 Little.People.Big.World.S23E08.Break.in.the.Matrix.720p.HDTV.x264-CRiMSON[eztv.re].mkv                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                TV                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            811.88 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            1                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-25 04:23:53                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"><span class="px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-bold text-[9px]">720p</span> </span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=cd225018cf8bacb1483848ea234537f7cf41d2f7" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:cd225018cf8bacb1483848ea234537f7cf41d2f7" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="VA - Recovery For You - An Alfa Matrix Tribute to Front 242(2CD) (2016)">
+                                            📁 VA - Recovery For You - An Alfa Matrix Tribute to Front 242(2CD) (2016)                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            324.27 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            33                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-25 02:28:07                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=2bc091051e5344d4f82918429b703ea5bfb4b335" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:2bc091051e5344d4f82918429b703ea5bfb4b335" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="VA - 2024 - Sounds From The Matrix 24">
+                                            📁 VA - 2024 - Sounds From The Matrix 24                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            175.31 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            18                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 22:06:02                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=b42991d15fe13ff0c528edb96acdb357737c59ae" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:b42991d15fe13ff0c528edb96acdb357737c59ae" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="The Matrixx - 2013-2015 - 4 сингла">
+                                            📁 The Matrixx - 2013-2015 - 4 сингла                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            43.57 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            10                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 21:27:03                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=e0cd56467d3f78298f9b1c82c9a17f12b9e0fa53" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:e0cd56467d3f78298f9b1c82c9a17f12b9e0fa53" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="The Matrixx - 2015 - Резня в Асбесте">
+                                            📁 The Matrixx - 2015 - Резня в Асбесте                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            172.49 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            25                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 19:32:19                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=c2633f6ef900bd8df49a2380e93a88b4f6d0d58f" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:c2633f6ef900bd8df49a2380e93a88b4f6d0d58f" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="Matrix Resurrections (2021) WEB-DLRip 720p.mkv">
+                                            📁 Matrix Resurrections (2021) WEB-DLRip 720p.mkv                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Movies                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            4.76 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            1                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 18:51:19                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"><span class="px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-bold text-[9px]">720p</span> </span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=c375f3c825c1e88bf4de7e86f7b9a562663f0d38" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:c375f3c825c1e88bf4de7e86f7b9a562663f0d38" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="Pink Floyd 1980 08 09 London-EC 2-source matrix The Final 1980 Wall Show RMCH">
+                                            📁 Pink Floyd 1980 08 09 London-EC 2-source matrix The Final 1980 Wall Show RMCH                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            774.11 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            44                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 17:07:39                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=9136b3c2c2ab7fbf2cc10f8c3bc77c25d264297b" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:9136b3c2c2ab7fbf2cc10f8c3bc77c25d264297b" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="Matrix.Revolutions.2003.BDRip.1080p.AC3.iTA.ENG.Subs.x264-BJL.mkv">
+                                            📁 Matrix.Revolutions.2003.BDRip.1080p.AC3.iTA.ENG.Subs.x264-BJL.mkv                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Movies                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            9.41 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            1                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 17:01:34                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                            <span class="px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-bold text-[9px]">🇮🇹</span>                                             <span class="inline-block"><span class="px-1.5 py-0.5 bg-sky-100 text-sky-700 border border-sky-200 rounded font-bold text-[9px]">1080p</span> </span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=0e901c5d2a5ac71cb13827994c47a5d39415ae38" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:0e901c5d2a5ac71cb13827994c47a5d39415ae38" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="www.UIndex.org    -    The Matrix 1999 1080p 10bit BluRay 6CH x265 HEVC-PSA">
+                                            📁 www.UIndex.org    -    The Matrix 1999 1080p 10bit BluRay 6CH x265 HEVC-PSA                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Movies                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            1.55 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            3                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 16:50:06                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"><span class="px-1.5 py-0.5 bg-sky-100 text-sky-700 border border-sky-200 rounded font-bold text-[9px]">1080p</span> </span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=60e8dd0e36b3e18ad4c05990a520723e15393f13" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:60e8dd0e36b3e18ad4c05990a520723e15393f13" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="Matrix.Reaktywacja.2003.BDRip.720p(48FPS)Leon345">
+                                            📁 Matrix.Reaktywacja.2003.BDRip.720p(48FPS)Leon345                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Movies                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            10.49 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            3                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 10:05:49                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"><span class="px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-bold text-[9px]">720p</span> </span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=f3322db9ebdcdb11a971f68c403d0fad4b3bf426" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:f3322db9ebdcdb11a971f68c403d0fad4b3bf426" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="Return_To_The_Matrix_SHURIK_2003_SATRipAI_1080p.mkv">
+                                            📁 Return_To_The_Matrix_SHURIK_2003_SATRipAI_1080p.mkv                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            1.21 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            1                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 08:19:12                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=c56431755cbde59eb130e1a47162b73f3c6a7695" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:c56431755cbde59eb130e1a47162b73f3c6a7695" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="SexMex.19.09.30.Mariana.Matrix.Swingers.XXX.1080p.MP4-KTR[XvX]">
+                                            📁 SexMex.19.09.30.Mariana.Matrix.Swingers.XXX.1080p.MP4-KTR[XvX]                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-rose-50 text-rose-700 border border-rose-200">
+                                                XXX                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            1.10 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            3                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 06:41:38                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"><span class="px-1.5 py-0.5 bg-sky-100 text-sky-700 border border-sky-200 rounded font-bold text-[9px]">1080p</span> </span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=4e2c2b04009c5ce9e441e05213d2c0476afc62aa" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:4e2c2b04009c5ce9e441e05213d2c0476afc62aa" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="Jeff Tweedy &amp; Friends 2026-06-28 North Adams, MA MATRIX - 24 BIT">
+                                            📁 Jeff Tweedy &amp; Friends 2026-06-28 North Adams, MA MATRIX - 24 BIT                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            1.13 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            43                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 05:15:40                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=f5ccf9a51e9bac1f077a51bf4064265801a8643f" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:f5ccf9a51e9bac1f077a51bf4064265801a8643f" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="Yonder Mountain String Band 2026-09-06 Rhythm &amp; Roots Festival Ninigret Park Chalestown, RI Matrix Master">
+                                            📁 Yonder Mountain String Band 2026-09-06 Rhythm &amp; Roots Festival Ninigret Park Chalestown, RI Matrix Master                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            953.35 MB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            15                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 04:10:21                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=6b22b00b979258ba5c247e282d0b43ece772e434" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:6b22b00b979258ba5c247e282d0b43ece772e434" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="The_Matrix_Revolutions.[nolimits-team].mkv">
+                                            📁 The_Matrix_Revolutions.[nolimits-team].mkv                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            2.49 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            1                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-24 03:17:05                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=226da8dad18e5a36f1b2471b4d1279bf4f61a73c" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:226da8dad18e5a36f1b2471b4d1279bf4f61a73c" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="The.Matrix.1999.UNCUT.UHD.2160p.REMUX.Hybrid.HDR10.DV.P7.DTS-HD.TrueHD.7.1.ATMOS.H265-KC">
+                                            📁 The.Matrix.1999.UNCUT.UHD.2160p.REMUX.Hybrid.HDR10.DV.P7.DTS-HD.TrueHD.7.1.ATMOS.H265-KC                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Movies                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            56.80 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            11                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-23 23:19:53                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"><span class="px-1.5 py-0.5 bg-purple-100 text-purple-700 border border-purple-200 rounded font-bold text-[9px]">4K</span> <span class="px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 rounded font-bold text-[9px]">HDR</span> </span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=52cd1dcd7766956943f0ecbbac84e929034dfb23" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:52cd1dcd7766956943f0ecbbac84e929034dfb23" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="The.Matrix.1999.PL.480p.BRRip.x264.AC3-AiDS">
+                                            📁 The.Matrix.1999.PL.480p.BRRip.x264.AC3-AiDS                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Movies                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            2.05 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            3                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-23 23:17:15                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                            <span class="px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-bold text-[9px]">🇵🇱</span>                                             <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=8352f2c6cde7a1c4659d72b45f257abee1495a8f" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:8352f2c6cde7a1c4659d72b45f257abee1495a8f" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="The Matrix Resurrections [WEB-DL-1080p] (www.kinokopilka.pro)">
+                                            📁 The Matrix Resurrections [WEB-DL-1080p] (www.kinokopilka.pro)                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Movies                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            9.74 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            3                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-23 22:06:31                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"><span class="px-1.5 py-0.5 bg-sky-100 text-sky-700 border border-sky-200 rounded font-bold text-[9px]">1080p</span> </span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=b5ef0c80e31410d82c18b458cbae2f865786d7ab" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:b5ef0c80e31410d82c18b458cbae2f865786d7ab" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                    <tr class="hover:bg-slate-100/60 transition">
+                                        <td class="py-3.5 px-4 text-slate-900 font-bold max-w-sm truncate" title="gd1989-10-23.148155.UltraMatrix.sbd.cm.miller.flac16">
+                                            📁 gd1989-10-23.148155.UltraMatrix.sbd.cm.miller.flac16                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-1 rounded-lg font-semibold text-[10px] bg-slate-100 text-slate-700 border border-slate-200">
+                                                Other                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            1.07 GB                                        </td>
+                                        <td class="py-3.5 px-4 text-center text-slate-600">
+                                            27                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                                            2026-10-23 19:37:46                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
+                                                                                        <span class="inline-block"></span>
+<span class="inline-block">
+                                                                                            </span>
+                                            <a href="?view=bccb1817a03287f3b1f8d07181489f59c726306f" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold border border-slate-200 transition inline-block">
+                                                🔍 Details
+                                            </a>
+                                            <a rel="noreferrer" href="magnet:?xt=urn:btih:bccb1817a03287f3b1f8d07181489f59c726306f" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-semibold border border-indigo-200/60 transition inline-block">
+                                                🧲 Magnet
+                                            </a>
+                                        </td>
+                                    </tr>
+                                                                                    </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Bar -->
+                                    <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-200 text-xs font-mono">
+                        <div>
+                                                            <span class="px-4 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-400 cursor-not-allowed font-bold">← Previous</span>
+                                                    </div>
+                        <div class="text-slate-500 font-bold">
+                            Page <span class="text-indigo-600">1</span> of 84                        </div>
+                        <div>
+                                                            <a href="?q=matrix&amp;cat=&amp;page=2" class="px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 font-bold transition shadow-sm">Next →</a>
+                                                    </div>
+                    </div>
+                            </div>
+            </div>
+
+<!-- ================= DHT DISCLAIMER ================= -->
+<div class="max-w-7xl mx-auto px-4 pb-8">
+    <div class="bg-rose-50/70 border border-rose-200 rounded-3xl p-5 sm:p-6 shadow-sm font-mono">
+
+        <div class="flex items-start gap-3">
+
+            <div class="shrink-0 w-10 h-10 rounded-2xl bg-rose-100 border border-rose-200 flex items-center justify-center text-lg">
+                ⚠️
+            </div>
+
+            <div class="min-w-0">
+
+                <h3 class="text-xs sm:text-sm font-extrabold text-rose-800 uppercase tracking-wide">
+                    DHT Metadata Index Only — No Downloads, No hosting, No Liability
+                </h3>
+
+                <p class="mt-2 text-[11px] sm:text-xs leading-relaxed text-rose-700/90">
+                    <strong>TorrentByte</strong> indexes metadata discovered through the
+                    BitTorrent Distributed Hash Table (DHT), a decentralized peer-to-peer
+                    network mechanism.
+                </p>
+
+                <p class="mt-2 text-[11px] sm:text-xs leading-relaxed text-rose-700/90">
+                    We do <strong>not</strong> host, store, seed, upload, distribute, or
+                    provide torrent files or downloadable content. TorrentByte only indexes
+                    publicly discoverable metadata such as info-hashes, names, sizes,
+                    file counts, categories, and discovery information.
+                </p>
+
+                <p class="mt-2 text-[11px] sm:text-xs leading-relaxed text-rose-700/90">
+                    Content referenced by an info-hash remains distributed independently
+                    between peers through the BitTorrent protocol. TorrentByte does not
+                    participate in the hosting or distribution of that content.
+                </p>
+
+                <div class="mt-4 pt-4 border-t border-rose-200/70">
+
+                    <p class="text-[11px] font-extrabold text-rose-800 uppercase tracking-wide mb-2">
+                        Important Notice
+                    </p>
+
+                    <ul class="space-y-1.5 text-[11px] sm:text-xs text-rose-700/90 list-disc pl-5">
+                        <li>
+                            We make no guarantee regarding the legality, accuracy,
+                            authenticity, availability, or safety of content associated
+                            with indexed info-hashes.
+                        </li>
+
+                        <li>
+                            TorrentByte does not verify or endorse content referenced
+                            by its index.
+                        </li>
+
+                        <li>
+                            Users are responsible for how they use information obtained
+                            through this service and for complying with applicable laws.
+                        </li>
+
+                        <li>
+                            TorrentByte assumes no responsibility for content distributed
+                            by independent third parties.
+                        </li>
+                    </ul>
+
+                </div>
+
+            </div>
+        </div>
+
+
+    </div>
+
+<div class="mt-4 px-4 py-3 bg-white/60 border border-rose-200 rounded-2xl">
+                    <p class="text-[11px] sm:text-xs leading-relaxed text-rose-800">
+                        <strong>🚨 Illegal or harmful material:</strong>
+                        If you encounter CSAM, exploitation material, or other seriously
+                        harmful or unlawful content referenced by our index, please report
+                        it immediately so the relevant metadata can be reviewed and removed
+                        from the index where appropriate.
+                    </p>
+
+                    <p class="mt-2 text-[11px] sm:text-xs text-rose-700 break-all">
+                        <strong>Contact:</strong>
+                        <a href="mailto:0xa64a2c5acedfa655e336e1f6c57b59fc49df0f@proton.me" class="font-bold underline underline-offset-2 hover:text-rose-900">
+                            0xa64a2c5acedfa655e336e1f6c57b59fc49df0f@proton.me
+                        </a>
+                    </p>
+                </div>
+
+
+    <p class="text-center mt-4 text-[10px] text-slate-400 font-mono">TorrentByte</p>
+</div>
+
+<script>window.__CF$cv$params={r:'a5034a45ecf462f0',t:'MTc5Mjk1MzAwMQ==',u:'01a17453a70d7840a5ae836f10d6c4c8',ut:'PDPOkpfXCp0tp83VUq2pwPTjRC0M_9ur7d3j74hQvAw-1792953028-1.2.1.1-lsfnYX11H7M0wMo.dVAs2rxDswzI6zlT6F8YxZCVvKCGqgoNy0YGa_dZ0DILODWW5UaQm0m5WydbjHTXL2epdbNx3ogCAxiU637I7itT8YE',i:60};(function(){if(!document.body)return;var s=document.createElement('script');s.src='/cdn-cgi/challenge-platform/scripts/precursor/main.js';document.head.appendChild(s);})();</script>
+
+</body></html>

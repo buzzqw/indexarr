@@ -306,6 +306,22 @@
     "latest": false
   },
   {
+    "id": "btdirectory",
+    "name": "BTdirectory",
+    "description": "Public Chinese DHT index with a magnet on each detail page.",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "btmulu.live"
+    ],
+    "url": "https://btmulu.live/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "corsaro",
     "name": "Corsaro (ilCorSaRoBlu)",
     "description": "Public Corsaro HTML listing with magnets in the row.",
@@ -448,6 +464,25 @@
     "proposable": true,
     "latest": false,
     "scheduled": true
+  },
+  {
+    "id": "ebookbay",
+    "name": "EBookBay",
+    "description": "Public ebook tracker with a .torrent link on each detail page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "books"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "ebb.la"
+    ],
+    "url": "http://ebb.la/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "example-html",
@@ -2778,26 +2813,6 @@
     "latest": false
   },
   {
-    "id": "jk-btdirectory",
-    "name": "BTdirectory",
-    "description": "BTdirectory (BT目录) is a Public DHT Crawler",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "btmulu.live"
-    ],
-    "url": "https://btmulu.live/",
-    "source": "jackett",
-    "evidence": "GET https://btmulu.live/ -\u003e HTTP 403, 5569 bytes, title \"Just a moment...\", checked 2026-10-25",
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-btetree",
     "name": "BT.etree",
     "description": "BT.etree is a Public Tracker dedicated to Bootleg FLAC MUSIC",
@@ -4393,31 +4408,6 @@
     "url": "https://dxp.ru/",
     "source": "jackett",
     "evidence": "GET https://dxp.ru/login.php -\u003e HTTP 200, 8752 bytes, title \"Галактика ДХП\", checked 2026-10-25; login or anti-bot page",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-ebookbay",
-    "name": "EBookBay",
-    "description": "EBook Bay (EBB) is a Public Torrent Tracker for E-BOOKS",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "music",
-      "books"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "ebb.la"
-    ],
-    "url": "https://ebb.la/",
-    "source": "jackett",
-    "evidence": "GET https://ebb.la/ -\u003e HTTP 200, 48178 bytes, title \"Ebook Online Download, Free Book Torrent on EBook Bay (EBB)\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -11649,30 +11639,6 @@
     "latest": false
   },
   {
-    "id": "jk-rintornet",
-    "name": "RinTor.NeT",
-    "description": "RinTor.NeT is a RUSSIAN Public tracker for 3X",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "rintor.net"
-    ],
-    "url": "https://www.rintor.net/",
-    "source": "jackett",
-    "evidence": "GET https://www.rintor.net/ -\u003e HTTP 200, 102231 bytes, title \"RinTor.NeT - Открытый порно торрент трекер без регистрации | Скачать порно\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-riperam",
     "name": "RiperAM",
     "description": "RiperAM is a RUSSIAN Semi-Private Torrent Tracker for MOVIES / TV",
@@ -12209,30 +12175,6 @@
     "proposable": true,
     "latest": true,
     "scheduled": true
-  },
-  {
-    "id": "jk-sexypics",
-    "name": "Sexy-Pics",
-    "description": "Sexy-Pics is a Public Magnet Links site for 3X MP4",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "sexy-pics.us"
-    ],
-    "url": "https://www.sexy-pics.us/",
-    "source": "jackett",
-    "evidence": "GET https://www.sexy-pics.us/ -\u003e HTTP 200, 43625 bytes, title \"Download XXX (386,105 Torrent Files) Page 1 - Sexy-Pics\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
   },
   {
     "id": "jk-shadowbit",
@@ -13901,35 +13843,6 @@
     "source": "jackett",
     "evidence": "GET https://torrent.by/ -\u003e HTTP 200, 262144 bytes, title \"Торрент трекер - torrent.by\", checked 2026-10-25",
     "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-torrentbyte",
-    "name": "TorrentByte",
-    "description": "TorrentByte is a Public DHT Crawler",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "torrentbyte.cc"
-    ],
-    "url": "https://torrentbyte.cc/",
-    "source": "jackett",
-    "evidence": "GET https://torrentbyte.cc/ -\u003e HTTP 403, 5479 bytes, title \"Just a moment...\", checked 2026-10-25",
     "proposable": true,
     "latest": false
   },
@@ -16405,6 +16318,25 @@
     "scheduled": true
   },
   {
+    "id": "rintor",
+    "name": "RinTor.NeT",
+    "description": "Public Russian adult tracker with a magnet on the detail page.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "rintor.net"
+    ],
+    "url": "https://www.rintor.net/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "rss",
     "name": "RSS / Atom feed",
     "description": "Generic RSS or Atom feed; torrent and NZB protocols are inferred per item.",
@@ -16466,6 +16398,25 @@
       "rutracker.ru"
     ],
     "url": "http://rutracker.ru/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "sexypics",
+    "name": "Sexy-Pics",
+    "description": "Public adult torrent index protected by Cloudflare, with magnets and size in the result row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "sexy-pics.us"
+    ],
+    "url": "https://www.sexy-pics.us/",
     "source": "native",
     "proposable": true,
     "latest": false
@@ -16740,6 +16691,31 @@
       "www7.torrent9.to"
     ],
     "url": "https://www7.torrent9.to/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "torrentbyte",
+    "name": "TorrentByte",
+    "description": "Public DHT index protected by Cloudflare, with magnets and size in the result row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentbyte.cc"
+    ],
+    "url": "https://torrentbyte.cc/",
     "source": "native",
     "proposable": true,
     "latest": false

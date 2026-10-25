@@ -1698,21 +1698,6 @@ sites:
       source_id: btarg
       checked: "2026-10-25"
       evidence: GET https://www.btarg.com.ar/ -> HTTP 200, 3670 bytes, title "BTARG - BitTorrent Argentina", checked 2026-10-25; private, no account used
-    - id: jk-btdirectory
-      name: BTdirectory
-      description: BTdirectory (BT目录) is a Public DHT Crawler
-      url: https://btmulu.live/
-      urls:
-        - https://btmulu.live/
-      type: public
-      language: en-US
-      state: da-provvi
-      required:
-        - url
-      source: jackett
-      source_id: btdirectory
-      checked: "2026-10-25"
-      evidence: GET https://btmulu.live/ -> HTTP 403, 5569 bytes, title "Just a moment...", checked 2026-10-25
     - id: jk-btetree
       name: BT.etree
       description: BT.etree is a Public Tracker dedicated to Bootleg FLAC MUSIC
@@ -2964,24 +2949,6 @@ sites:
       source_id: dxp
       checked: "2026-10-25"
       evidence: GET https://dxp.ru/login.php -> HTTP 200, 8752 bytes, title "Галактика ДХП", checked 2026-10-25; login or anti-bot page
-    - id: jk-ebookbay
-      name: EBookBay
-      description: EBook Bay (EBB) is a Public Torrent Tracker for E-BOOKS
-      url: https://ebb.la/
-      urls:
-        - https://ebb.la/
-      type: public
-      language: en-US
-      categories:
-        - music
-        - books
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: ebookbay
-      checked: "2026-10-25"
-      evidence: GET https://ebb.la/ -> HTTP 200, 48178 bytes, title "Ebook Online Download, Free Book Torrent on EBook Bay (EBB)", checked 2026-10-25
     - id: jk-ehentai
       name: E-Hentai
       description: E-Hentai is a Public site for Hentai doujinshi, manga.
@@ -8650,23 +8617,6 @@ sites:
       source_id: rintor
       checked: "2026-10-25"
       evidence: GET https://rintor.org/ -> HTTP 200, 114277 bytes, title "RinTor.Org - Порно торрент трекер Скачать бесплатно порнофильмы русское порно", checked 2026-10-25
-    - id: jk-rintornet
-      name: RinTor.NeT
-      description: RinTor.NeT is a RUSSIAN Public tracker for 3X
-      url: https://www.rintor.net/
-      urls:
-        - https://www.rintor.net/
-      type: public
-      language: ru-RU
-      categories:
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: rintornet
-      checked: "2026-10-25"
-      evidence: GET https://www.rintor.net/ -> HTTP 200, 102231 bytes, title "RinTor.NeT - Открытый порно торрент трекер без регистрации | Скачать порно", checked 2026-10-25
     - id: jk-riperam
       name: RiperAM
       description: RiperAM is a RUSSIAN Semi-Private Torrent Tracker for MOVIES / TV
@@ -9087,23 +9037,6 @@ sites:
       checked: "2026-10-25"
       evidence: GET https://sextorrent.myds.me/login -> HTTP 200, 5642 bytes, title "Login - SEXTORRENT", checked 2026-10-25; private, no account used
       note: 'family unit3d (possible): live GET markers on https://sextorrent.myds.me/'
-    - id: jk-sexypics
-      name: Sexy-Pics
-      description: Sexy-Pics is a Public Magnet Links site for 3X MP4
-      url: https://www.sexy-pics.us/
-      urls:
-        - https://www.sexy-pics.us/
-      type: public
-      language: en-US
-      categories:
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: sexypics
-      checked: "2026-10-25"
-      evidence: GET https://www.sexy-pics.us/ -> HTTP 200, 43625 bytes, title "Download XXX (386,105 Torrent Files) Page 1 - Sexy-Pics", checked 2026-10-25
     - id: jk-shadowbit
       name: Shadowbit
       description: Shadowbit is a ratioless ROMANIAN Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -10415,29 +10348,6 @@ sites:
       source_id: torrentby
       checked: "2026-10-25"
       evidence: GET https://torrent.by/ -> HTTP 200, 262144 bytes, title "Торрент трекер - torrent.by", checked 2026-10-25
-    - id: jk-torrentbyte
-      name: TorrentByte
-      description: TorrentByte is a Public DHT Crawler
-      url: https://torrentbyte.cc/
-      urls:
-        - https://torrentbyte.cc/
-      type: public
-      language: en-US
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - games
-        - software
-        - xxx
-      state: da-provvi
-      required:
-        - url
-      source: jackett
-      source_id: torrentbyte
-      checked: "2026-10-25"
-      evidence: GET https://torrentbyte.cc/ -> HTTP 403, 5479 bytes, title "Just a moment...", checked 2026-10-25
     - id: jk-torrentbytes
       name: TorrentBytes
       description: TorrentBytes is a Private site. A decade of TorrentBytes

@@ -1,0 +1,62 @@
+# VERIFICATA (verified). BTdirectory public DHT search.
+#
+# Written from the public search page captured on 2026-10-25 through the local
+# FlareSolverr (https://btmulu.live/search.html?name=matrix) in
+# fixtures/btdirectory/search.html, plus one public detail page in
+# fixtures/btdirectory/detail.html. The listing has title, size and date; the
+# magnet is on the detail page.
+schema: 1
+
+meta:
+  id: btdirectory
+  name: BTdirectory
+  language: zh-CN
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Chinese DHT index with a magnet on each detail page.
+  urls:
+    - https://btmulu.live/
+  updated: "2026-10-25"
+  latest: false
+
+categories:
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search.html
+    params:
+      name: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "article.item" }
+    fields:
+      title:   { selector: "h4", filters: [{ regex: "^\\S+\\s+-?\\s*(.+)$" }] }
+      details: { selector: 'a[href^="/hash/"]', attr: href, type: url }
+      size:    { selector: "p", filters: [{ regex: "Size：\\s*([0-9.]+\\s*[KMGTP]?B)" }], type: size }
+      date:    { selector: "p", filters: [{ regex: "Created：\\s*([0-9-]+ [0-9:]+)" }], type: date, layouts: ["2006-01-02 15:04:05"] }
+    required: [title, details, size]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  extract:
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+
+health:
+  query: matrix
+  min_rows: 4
+
+tests:
+  - name: search
+    fixture: fixtures/btdirectory/search.html
+    expect: { min_rows: 10, required: [title, details, size] }
+  - name: detail
+    fixture: fixtures/btdirectory/detail.html
+    expect: { min_rows: 0 }
