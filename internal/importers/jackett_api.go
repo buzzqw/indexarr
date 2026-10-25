@@ -51,6 +51,15 @@ type jackettCategory struct {
 	Children []jackettCategory `xml:"category"`
 }
 
+// JackettOptions controls how much of a live Jackett instance an import reads.
+type JackettOptions struct {
+	// IncludeInactive asks Jackett for the whole definition catalog, not only
+	// the indexers that are already configured. Entries that are not configured
+	// are returned disabled, so they can be added to indexarr now and enabled
+	// after they are configured in Jackett. Jackett itself is never modified.
+	IncludeInactive bool
+}
+
 // FromJackettAPI reads the configured indexers from the live Jackett Torznab
 // endpoint (GET .../api/v2.0/indexers/all/results/torznab/api?t=indexers&configured=true).
 // The copied Jackett data directory stays available as an offline fallback,
@@ -63,6 +72,15 @@ type jackettCategory struct {
 // why, so the coordinator sees it in the import table instead of a bridge
 // that silently breaks later.
 func FromJackettAPI(ctx context.Context, baseURL, apiKey string, client *http.Client) (Plan, error) {
+	return FromJackettAPIWithOptions(ctx, baseURL, apiKey, client, JackettOptions{})
+}
+
+// FromJackettAPIWithOptions is FromJackettAPI with the catalog option. When
+// IncludeInactive is set it reads both configured=true and configured=false;
+// Jackett returns the two sets separately, so the result is their union,
+// configured entries first. Only configured entries are probed; unconfigured
+// catalog entries are returned disabled and are never contacted.
+func FromJackettAPIWithOptions(ctx context.Context, baseURL, apiKey string, client *http.Client, opts JackettOptions) (Plan, error) {
 	const op = "jackett"
 
 	plan := Plan{Source: op}
@@ -88,30 +106,60 @@ func FromJackettAPI(ctx context.Context, baseURL, apiKey string, client *http.Cl
 		return Plan{}, fmt.Errorf("%s: %s", op, redactSecrets(err.Error(), apiKey))
 	}
 
-	records := make([]indexerRecord, 0, len(document.Indexers))
+	items := make([]jackettItemState, 0, len(document.Indexers))
 	for _, item := range document.Indexers {
+		items = append(items, jackettItemState{item: item, configured: true})
+	}
+	if opts.IncludeInactive {
+		inactive, err := fetchJackettIndexers(ctx, httpClient, root, apiKey, "false")
+		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return Plan{}, fmt.Errorf("%s: %w", op, ctxErr)
+			}
+			return Plan{}, fmt.Errorf("%s: %s", op, redactSecrets(err.Error(), apiKey))
+		}
+		for _, item := range inactive.Indexers {
+			items = append(items, jackettItemState{item: item, configured: false})
+		}
+	}
+
+	records := make([]indexerRecord, 0, len(items))
+	seen := make(map[string]bool, len(items))
+	inactiveCount := 0
+	for _, state := range items {
+		item := state.item
 		id := strings.TrimSpace(item.ID)
 		if id == "" || !safeJackettID(id) {
 			addWarning(&plan.Warnings,
 				fmt.Sprintf("jackett: ignored an indexer with an unsafe id %q", id), apiKey)
 			continue
 		}
-		configured := true
+		if seen[id] {
+			continue
+		}
+		configured := state.configured
 		if value, ok := boolValue(strings.TrimSpace(item.Configured)); ok {
 			configured = value
 		}
-		if !configured {
+		if !configured && !opts.IncludeInactive {
 			continue
 		}
+		seen[id] = true
 		name := strings.TrimSpace(item.Title)
 		if name == "" {
 			name = id
 		}
 		siteURL := strings.TrimSpace(item.Link)
 		if siteURL == "" {
-			addWarning(&plan.Warnings,
-				fmt.Sprintf("jackett: indexer %q has no site URL, skipped", name), apiKey)
+			if configured {
+				addWarning(&plan.Warnings,
+					fmt.Sprintf("jackett: indexer %q has no site URL, skipped", name), apiKey)
+			}
 			continue
+		}
+		enabled := configured
+		if !enabled {
+			inactiveCount++
 		}
 		records = append(records, indexerRecord{
 			sourceID: id,
@@ -126,7 +174,9 @@ func FromJackettAPI(ctx context.Context, baseURL, apiKey string, client *http.Cl
 				APIKey:         apiKey,
 				Categories:     jackettCategoryIDs(item.Caps.Categories),
 				Priority:       25,
-				Enabled:        true,
+				Enabled:        enabled,
+				CatalogOnly:    !configured,
+				DisabledReason: catalogDisabledReason(!configured),
 				Fields: map[string]string{
 					"site_link":   siteURL,
 					"site_type":   strings.TrimSpace(item.Type),
@@ -137,10 +187,36 @@ func FromJackettAPI(ctx context.Context, baseURL, apiKey string, client *http.Cl
 		})
 	}
 	plan.Indexers = sortIndexerRecords(records)
+	if opts.IncludeInactive {
+		// Put the working indexers first; the catalog tail stays alphabetic and
+		// is one checkbox away for the coordinator.
+		sort.SliceStable(plan.Indexers, func(i, j int) bool {
+			if plan.Indexers[i].Enabled != plan.Indexers[j].Enabled {
+				return plan.Indexers[i].Enabled
+			}
+			return false
+		})
+	}
+	if inactiveCount > 0 {
+		plan.Warnings = append(plan.Warnings, fmt.Sprintf(
+			"jackett: %d catalog indexers are not configured in Jackett and were added disabled", inactiveCount))
+	}
 
 	probeJackettIndexers(ctx, httpClient, root, apiKey, plan.Indexers, &plan.Warnings)
 	plan.Warnings = sanitizeWarnings(plan.Warnings, apiKey)
 	return plan, nil
+}
+
+type jackettItemState struct {
+	item       jackettIndexerItem
+	configured bool
+}
+
+func catalogDisabledReason(inactive bool) string {
+	if inactive {
+		return "not configured in Jackett"
+	}
+	return ""
 }
 
 // normalizeManagerBase validates a manager base URL and strips credentials,
@@ -235,6 +311,9 @@ func probeJackettIndexers(ctx context.Context, client *http.Client, root, apiKey
 		wg.Add(1)
 		go func(index *Indexer) {
 			defer wg.Done()
+			if !index.Enabled {
+				return
+			}
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 			reason := jackettProbe(ctx, client, root, apiKey, index.RemoteID)

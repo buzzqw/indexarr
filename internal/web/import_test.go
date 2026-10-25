@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -184,6 +185,91 @@ func TestImportJackettRendersPlan(t *testing.T) {
 	}
 	if strings.Contains(body, apiKey) {
 		t.Fatal("the plan leaked the Jackett API key")
+	}
+}
+
+func TestImportJackettFullCatalogShowsInactiveSources(t *testing.T) {
+	env := newTestEnv(t)
+	const apiKey = "jackett-catalog-key-SECRET"
+	var mu sync.Mutex
+	var probes []string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/v2.0/indexers/all/results/torznab/api":
+			if got := r.URL.Query().Get("apikey"); got != apiKey {
+				t.Errorf("apikey = %q", got)
+			}
+			w.Header().Set("Content-Type", "application/xml")
+			if r.URL.Query().Get("configured") == "true" {
+				io.WriteString(w, `<indexers><indexer id="alpha" configured="true"><title>Alpha</title><link>https://alpha.example/</link></indexer></indexers>`)
+				return
+			}
+			io.WriteString(w, `<indexers>
+<indexer id="alpha" configured="true"><title>Alpha</title><link>https://alpha.example/</link></indexer>
+<indexer id="beta" configured="false"><title>Beta</title><link>https://beta.example/</link></indexer>
+</indexers>`)
+		case strings.HasPrefix(r.URL.Path, "/api/v2.0/indexers/alpha/"):
+			mu.Lock()
+			probes = append(probes, "alpha")
+			mu.Unlock()
+			io.WriteString(w, `<caps><server title="Jackett"/></caps>`)
+		case strings.HasPrefix(r.URL.Path, "/api/v2.0/indexers/beta/"):
+			mu.Lock()
+			probes = append(probes, "beta")
+			mu.Unlock()
+			io.WriteString(w, `<caps><server title="Jackett"/></caps>`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer upstream.Close()
+
+	token, cookie := csrfFrom(t, env.handler, "/import")
+	recorder := postForm(t, env.handler, "/import/jackett", url.Values{
+		"csrf":            {token},
+		"jackett_url":     {upstream.URL},
+		"jackett_api_key": {apiKey},
+		"jackett_all":     {"1"},
+	}, cookie)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("import status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	body := recorder.Body.String()
+	for _, want := range []string{
+		"Plan from jackett", "Alpha", "Beta", "catalog",
+		"2 sources: 1 active, 1 inactive",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("plan missing %q", want)
+		}
+	}
+	if !strings.Contains(body, `name="site" value="1" aria-label="Select Beta"`) {
+		t.Errorf("inactive catalog row is selected by default")
+	}
+	if strings.Contains(body, apiKey) {
+		t.Fatal("the full catalog plan leaked the API key")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for _, id := range probes {
+		if id == "beta" {
+			t.Fatal("the inactive catalog indexer was probed")
+		}
+	}
+}
+
+func TestImportJackettLiveCatalogRequiresKey(t *testing.T) {
+	env := newTestEnv(t)
+	token, cookie := csrfFrom(t, env.handler, "/import")
+	recorder := postForm(t, env.handler, "/import/jackett", url.Values{
+		"csrf":        {token},
+		"jackett_url": {"http://jackett.invalid:9117"},
+	}, cookie)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), "Jackett API key") {
+		t.Errorf("missing key error: %s", recorder.Body.String())
 	}
 }
 

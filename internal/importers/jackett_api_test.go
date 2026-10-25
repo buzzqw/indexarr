@@ -116,6 +116,97 @@ func TestFromJackettAPIReadsLiveListAndDisablesFailures(t *testing.T) {
 	}
 }
 
+func TestFromJackettAPIOptionsIncludeInactiveCatalog(t *testing.T) {
+	const key = "jackett-catalog-key-SECRET"
+	var mu sync.Mutex
+	var probes []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %s, want GET", r.Method)
+		}
+		switch {
+		case r.URL.Path == "/api/v2.0/indexers/all/results/torznab/api":
+			if got := r.URL.Query().Get("apikey"); got != key {
+				t.Errorf("apikey = %q", got)
+			}
+			w.Header().Set("Content-Type", "application/xml")
+			if r.URL.Query().Get("configured") == "true" {
+				fmt.Fprint(w, `<indexers>
+  <indexer id="alpha" configured="true">
+    <title>Alpha</title>
+    <link>https://alpha.example/</link>
+    <type>public</type>
+  </indexer>
+</indexers>`)
+				return
+			}
+			fmt.Fprint(w, `<indexers>
+  <indexer id="alpha" configured="true">
+    <title>Alpha</title>
+    <link>https://alpha.example/</link>
+    <type>public</type>
+  </indexer>
+  <indexer id="beta" configured="false">
+    <title>Beta</title>
+    <link>https://beta.example/</link>
+    <type>private</type>
+  </indexer>
+</indexers>`)
+		case strings.HasPrefix(r.URL.Path, "/api/v2.0/indexers/alpha/"):
+			if got := r.URL.Query().Get("t"); got != "caps" {
+				t.Errorf("alpha probe t = %q", got)
+			}
+			mu.Lock()
+			probes = append(probes, "alpha")
+			mu.Unlock()
+			fmt.Fprint(w, `<caps><server title="Jackett"/></caps>`)
+		case strings.HasPrefix(r.URL.Path, "/api/v2.0/indexers/beta/"):
+			mu.Lock()
+			probes = append(probes, "beta")
+			mu.Unlock()
+			fmt.Fprint(w, `<caps><server title="Jackett"/></caps>`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	plan, err := FromJackettAPIWithOptions(context.Background(), server.URL, key, server.Client(),
+		JackettOptions{IncludeInactive: true})
+	if err != nil {
+		t.Fatalf("FromJackettAPIWithOptions: %v", err)
+	}
+	if len(plan.Indexers) != 2 {
+		t.Fatalf("indexers = %d, want 2: %+v", len(plan.Indexers), plan.Indexers)
+	}
+	byID := map[string]Indexer{}
+	for _, indexer := range plan.Indexers {
+		byID[indexer.RemoteID] = indexer
+	}
+	if !byID["alpha"].Enabled || byID["alpha"].CatalogOnly {
+		t.Errorf("alpha = %+v", byID["alpha"])
+	}
+	if byID["beta"].Enabled || !byID["beta"].CatalogOnly {
+		t.Errorf("beta = %+v", byID["beta"])
+	}
+	if byID["beta"].DisabledReason != "not configured in Jackett" {
+		t.Errorf("beta reason = %q", byID["beta"].DisabledReason)
+	}
+	if got := strings.Join(plan.Warnings, "\n"); !strings.Contains(got, "1 catalog indexers") {
+		t.Errorf("warnings = %v", plan.Warnings)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for _, id := range probes {
+		if id == "beta" {
+			t.Fatal("the inactive catalog indexer was probed")
+		}
+	}
+	if len(probes) != 1 {
+		t.Fatalf("probes = %v, want only alpha", probes)
+	}
+}
+
 func TestFromJackettAPIRejectsBadURLWithoutLeakingKey(t *testing.T) {
 	_, err := FromJackettAPI(context.Background(), "file:///tmp/jackett", jackettTestKey, nil)
 	if err == nil {

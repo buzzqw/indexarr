@@ -214,6 +214,56 @@ func TestImportJackett(t *testing.T) {
 	assertImportSecretsAbsent(t, res.body, importJackettKey)
 }
 
+func TestImportJackettLiveCatalogIncludesInactive(t *testing.T) {
+	e := newEnv(t, true, true)
+	const key = "jackett-LIVE-KEY-SECRET"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/v2.0/indexers/alpha/") {
+			io.WriteString(w, `<caps><server title="Jackett"/></caps>`)
+			return
+		}
+		if r.URL.Path != "/api/v2.0/indexers/all/results/torznab/api" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/xml")
+		if r.URL.Query().Get("configured") == "true" {
+			io.WriteString(w, `<indexers><indexer id="alpha" configured="true"><title>Alpha</title><link>https://alpha.example/</link></indexer></indexers>`)
+			return
+		}
+		io.WriteString(w, `<indexers>
+<indexer id="alpha" configured="true"><title>Alpha</title><link>https://alpha.example/</link></indexer>
+<indexer id="beta" configured="false"><title>Beta</title><link>https://beta.example/</link></indexer>
+</indexers>`)
+	}))
+	defer server.Close()
+
+	res := e.do(http.MethodPost, "/api/v2/import/jackett", jsonBody(map[string]any{
+		"url":              server.URL,
+		"api_key":          key,
+		"include_inactive": true,
+	}))
+	requireStatus(t, res, http.StatusOK)
+	body := decodeJSON[importResponse](t, res.body)
+	if len(body.Indexers) != 2 {
+		t.Fatalf("indexers = %d, want 2: %+v", len(body.Indexers), body.Indexers)
+	}
+	byName := map[string]importIndexer{}
+	for _, indexer := range body.Indexers {
+		byName[indexer.Name] = indexer
+	}
+	if !byName["Alpha"].Enabled || byName["Alpha"].CatalogOnly {
+		t.Errorf("Alpha = %+v", byName["Alpha"])
+	}
+	if byName["Beta"].Enabled || !byName["Beta"].CatalogOnly {
+		t.Errorf("Beta = %+v", byName["Beta"])
+	}
+	if byName["Beta"].DisabledReason != "not configured in Jackett" {
+		t.Errorf("Beta reason = %q", byName["Beta"].DisabledReason)
+	}
+	assertImportSecretsAbsent(t, res.body, key)
+}
+
 func TestImportJackettValidation(t *testing.T) {
 	e := newEnv(t, true, true)
 

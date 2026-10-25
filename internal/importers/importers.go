@@ -57,6 +57,9 @@ type Indexer struct {
 	Tags       []string
 	Priority   int
 	Enabled    bool
+	// CatalogOnly marks an indexer that exists in the manager catalog but is
+	// not configured there yet. It is imported disabled and is never probed.
+	CatalogOnly bool
 	// DisabledReason explains why a probe disabled an upstream indexer. It is
 	// non-secret and only reaches the import table and the UI.
 	DisabledReason string

@@ -22,7 +22,10 @@ type prowlarrImportRequest struct {
 }
 
 type jackettImportRequest struct {
-	Path string `json:"path"`
+	Path            string `json:"path"`
+	URL             string `json:"url"`
+	APIKey          string `json:"api_key"`
+	IncludeInactive bool   `json:"include_inactive"`
 }
 
 type importIndexer struct {
@@ -35,6 +38,8 @@ type importIndexer struct {
 	Tags           []string `json:"tags"`
 	Priority       int      `json:"priority"`
 	Enabled        bool     `json:"enabled"`
+	CatalogOnly    bool     `json:"catalog_only"`
+	DisabledReason string   `json:"disabled_reason,omitempty"`
 	HasKey         bool     `json:"has_key"`
 	HasBasicAuth   bool     `json:"has_basic_auth"`
 }
@@ -90,25 +95,49 @@ func (s *Server) handleImportJackett(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rawPath := strings.TrimSpace(req.Path)
-	if rawPath == "" {
-		writeError(w, http.StatusBadRequest, "path is required")
+	baseURL := strings.TrimSpace(req.URL)
+	apiKey := strings.TrimSpace(req.APIKey)
+	if rawPath == "" && baseURL == "" {
+		writeError(w, http.StatusBadRequest, "path or url is required")
 		return
 	}
-	path := filepath.Clean(rawPath)
-	if !filepath.IsAbs(path) {
-		writeError(w, http.StatusBadRequest, "path must be absolute")
+	if baseURL != "" && apiKey == "" {
+		writeError(w, http.StatusBadRequest, "api_key is required with url")
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), importTimeout)
 	defer cancel()
-	plan, err := importers.FromJackettConfig(ctx, path)
+
+	var plan importers.Plan
+	var err error
+	if baseURL != "" {
+		plan, err = importers.FromJackettAPIWithOptions(ctx, baseURL, apiKey,
+			&http.Client{Timeout: importTimeout},
+			importers.JackettOptions{IncludeInactive: req.IncludeInactive})
+	} else {
+		path := filepath.Clean(rawPath)
+		if !filepath.IsAbs(path) {
+			writeError(w, http.StatusBadRequest, "path must be absolute")
+			return
+		}
+		plan, err = importers.FromJackettConfig(ctx, path)
+		if err == nil && req.IncludeInactive {
+			if strings.TrimSpace(plan.ManagerAPIKey) == "" {
+				writeError(w, http.StatusBadRequest, "api_key is required for the full catalog")
+				return
+			}
+			plan, err = importers.FromJackettAPIWithOptions(ctx, plan.ManagerURL,
+				plan.ManagerAPIKey, &http.Client{Timeout: importTimeout},
+				importers.JackettOptions{IncludeInactive: true})
+		}
+	}
 	if err != nil {
 		s.logger.Warn("adminapi: jackett import failed", "error", err)
 		writeError(w, http.StatusBadGateway, "jackett import failed")
 		return
 	}
-	writeJSON(w, http.StatusOK, importPlanResponse(plan))
+	writeJSON(w, http.StatusOK, importPlanResponse(plan, apiKey))
 }
 
 // importPlanResponse converts an importers.Plan into a response that never
@@ -137,6 +166,8 @@ func importPlanResponse(plan importers.Plan, extraSecrets ...string) importRespo
 			Tags:           nonNilStrings(in.Tags),
 			Priority:       in.Priority,
 			Enabled:        in.Enabled,
+			CatalogOnly:    in.CatalogOnly,
+			DisabledReason: in.DisabledReason,
 			HasKey:         strings.TrimSpace(in.APIKey) != "",
 			HasBasicAuth: strings.TrimSpace(in.Username) != "" ||
 				strings.TrimSpace(in.Password) != "",

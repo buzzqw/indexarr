@@ -360,6 +360,23 @@ if ("serviceWorker" in navigator) {
     });
   });
 
+  // Catalog previews can contain hundreds of rows. The filter is a progressive
+  // enhancement: without JavaScript the full table stays visible.
+  document.querySelectorAll("[data-filter-table]").forEach((input) => {
+    const table = document.querySelector(input.getAttribute("data-filter-table"));
+    const body = table && table.tBodies ? table.tBodies[0] : null;
+    if (!body) {
+      return;
+    }
+    const rows = Array.from(body.rows);
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLowerCase();
+      rows.forEach((row) => {
+        row.hidden = query !== "" && !row.textContent.toLowerCase().includes(query);
+      });
+    });
+  });
+
   // Bulk actions appear only after a selection (UI-GUIDE §4.2). The list works
   // without this enhancement: every row still has its own "⋯" menu.
   const syncBulkActions = () => {

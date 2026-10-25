@@ -110,6 +110,8 @@ type importIndexerRow struct {
 	Categories     string
 	Tags           string
 	Enabled        bool
+	CatalogOnly    bool
+	DisabledReason string
 	HasKey         bool
 	HasCredentials bool
 	Target         string
@@ -135,6 +137,8 @@ type importPlanView struct {
 	Source       string
 	Token        string
 	Indexers     []importIndexerRow
+	Active       int
+	Inactive     int
 	Applications []importApplicationRow
 	Proxies      []importProxyRow
 	Warnings     []string
@@ -160,6 +164,8 @@ type importPage struct {
 	base
 	ProwlarrURL      string
 	JackettPath      string
+	JackettURL       string
+	JackettAll       bool
 	GexttoPath       string
 	PublicURL        string
 	PublicURLDefault bool
@@ -171,6 +177,8 @@ func (s *Server) importPage(w http.ResponseWriter, r *http.Request) {
 	data := s.newImportPage(r)
 	data.ProwlarrURL = strings.TrimSpace(r.URL.Query().Get("base_url"))
 	data.JackettPath = strings.TrimSpace(r.URL.Query().Get("path"))
+	data.JackettURL = strings.TrimSpace(r.URL.Query().Get("jackett_url"))
+	data.JackettAll = queryBool(r, "jackett_all")
 	data.GexttoPath = strings.TrimSpace(r.URL.Query().Get("gextto_path"))
 	if data.GexttoPath == "" {
 		data.GexttoPath = "~/gextto-data/gextto_config.db"
@@ -217,20 +225,54 @@ func (s *Server) importProwlarr(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) importJackett(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimSpace(r.FormValue("path"))
+	baseURL := strings.TrimSpace(r.FormValue("jackett_url"))
+	apiKey := strings.TrimSpace(r.FormValue("jackett_api_key"))
+	all := formBool(r, "jackett_all")
+
 	data := s.newImportPage(r)
 	data.JackettPath = path
-	if path == "" {
+	data.JackettURL = baseURL
+	data.JackettAll = all
+	if path == "" && baseURL == "" {
 		data.Error = s.translate(r, "import.error.jackettMissing")
+		s.render(w, r, "import", data, http.StatusBadRequest)
+		return
+	}
+	if baseURL != "" && apiKey == "" {
+		data.Error = s.translate(r, "import.error.jackettKeyMissing")
 		s.render(w, r, "import", data, http.StatusBadRequest)
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), importTimeout)
 	defer cancel()
-	plan, err := importers.FromJackettConfig(ctx, path)
+	var plan importers.Plan
+	var err error
+	switch {
+	case baseURL != "":
+		plan, err = importers.FromJackettAPIWithOptions(ctx, baseURL, apiKey,
+			&http.Client{Timeout: importTimeout}, importers.JackettOptions{IncludeInactive: all})
+	case all:
+		// The data directory still supplies the API key and port. Read it once,
+		// then ask the running instance for its complete catalog.
+		plan, err = importers.FromJackettConfig(ctx, path)
+		if err == nil {
+			if strings.TrimSpace(plan.ManagerAPIKey) == "" {
+				data.Error = s.translate(r, "import.error.jackettKeyMissing")
+				s.render(w, r, "import", data, http.StatusBadRequest)
+				return
+			}
+			plan, err = importers.FromJackettAPIWithOptions(ctx, plan.ManagerURL,
+				plan.ManagerAPIKey, &http.Client{Timeout: importTimeout},
+				importers.JackettOptions{IncludeInactive: true})
+		}
+	default:
+		plan, err = importers.FromJackettConfig(ctx, path)
+	}
 	if err != nil {
 		s.log.Warn("jackett import failed", "component", "indexarr", "subsystem", "web", "error", err)
-		data.Error = s.translate(r, "import.error.jackettFailed", redactImportText(err.Error()))
+		data.Error = s.translate(r, "import.error.jackettFailed",
+			redactImportText(err.Error(), apiKey))
 		s.render(w, r, "import", data, http.StatusBadRequest)
 		return
 	}
@@ -367,8 +409,15 @@ func importPlanFrom(plan importers.Plan, targets []importers.NativeTarget, token
 			Categories:     joinInts(indexer.Categories),
 			Tags:           strings.Join(indexer.Tags, ", "),
 			Enabled:        indexer.Enabled,
+			CatalogOnly:    indexer.CatalogOnly,
+			DisabledReason: indexer.DisabledReason,
 			HasKey:         indexer.APIKey != "",
 			HasCredentials: indexer.Username != "" || indexer.Password != "",
+		}
+		if indexer.Enabled {
+			view.Active++
+		} else {
+			view.Inactive++
 		}
 		if i < len(targets) {
 			row.Target = targets[i].DefinitionID
@@ -416,6 +465,24 @@ func importSummaryFrom(result importers.ApplyResult) *importSummaryView {
 		})
 	}
 	return view
+}
+
+func formBool(r *http.Request, name string) bool {
+	switch strings.ToLower(strings.TrimSpace(r.FormValue(name))) {
+	case "1", "true", "on", "yes":
+		return true
+	default:
+		return false
+	}
+}
+
+func queryBool(r *http.Request, name string) bool {
+	switch strings.ToLower(strings.TrimSpace(r.URL.Query().Get(name))) {
+	case "1", "true", "on", "yes":
+		return true
+	default:
+		return false
+	}
 }
 
 func managerLabel(manager string) string {

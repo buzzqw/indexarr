@@ -19,6 +19,17 @@ Non manca nessuna sorgente pubblica: tutte hanno una definizione nativa in
 `internal/catalog/definitions`. Le uniche non verificabili senza account sono
 TorrentLeech e ilDraGoNeRo.
 
+## Catalogo completo da indexarr
+
+La pagina `/import` accetta la directory dati di Jackett oppure l'URL e l'API
+key dell'istanza in esecuzione. Con **Includi il catalogo completo di Jackett**
+indexarr legge `t=indexers&configured=true` e `configured=false`, unisce le due
+liste e mostra tutte le fonti del catalogo, comprese quelle non configurate.
+Le fonti non attive vengono proposte **disattivate** e non vengono interrogate:
+si configurano in Jackett, poi si abilitano in indexarr. indexarr non scrive
+mai in Jackett. Il campo di filtro nella tabella serve per trovare una fonte
+tra le centinaia del catalogo.
+
 ## Ordine di migrazione
 
 1. In Gextto, lasciare attivo `indexarr` e disattivare `prowlarr`.

@@ -95,9 +95,24 @@
     <div class="panel-head"><h2>{{T "import.jackett"}}</h2></div>
     <div class="field grow">
       <label for="jackett_path">{{T "import.jackettPath"}}</label>
-      <input id="jackett_path" name="path" type="text" required value="{{.JackettPath}}" placeholder="{{T "import.jackettPathPlaceholder"}}">
+      <input id="jackett_path" name="path" type="text" value="{{.JackettPath}}" placeholder="{{T "import.jackettPathPlaceholder"}}">
       <p class="help">{{T "import.jackettPathHelp"}}</p>
     </div>
+    <div class="field grow">
+      <label for="jackett_url">{{T "import.jackettURL"}}</label>
+      <input id="jackett_url" name="jackett_url" type="url" value="{{.JackettURL}}" placeholder="{{T "import.jackettURLPlaceholder"}}">
+      <p class="help">{{T "import.jackettURLHelp"}}</p>
+    </div>
+    <div class="field grow">
+      <label for="jackett_api_key">{{T "import.jackettAPIKey"}}</label>
+      <input id="jackett_api_key" name="jackett_api_key" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{T "import.jackettAPIKeyPlaceholder"}}">
+      <p class="help">{{T "import.jackettAPIKeyHelp"}}</p>
+    </div>
+    <label class="check">
+      <input type="checkbox" name="jackett_all" value="1"{{if .JackettAll}} checked{{end}}>
+      <span>{{T "import.jackettAll"}}</span>
+    </label>
+    <p class="help">{{T "import.jackettAllHelp"}}</p>
     <div class="actions">
       <button class="btn primary" type="submit">{{T "import.generateJackett"}}</button>
     </div>
@@ -123,6 +138,7 @@
   <div class="prose">
     <p>{{T "import.planPreview"}}</p>
     <p>{{T "import.selectHint"}}</p>
+    {{if .Inactive}}<p class="muted">{{T "import.catalogCounts" (len .Indexers) .Active .Inactive}}</p>{{end}}
   </div>
 
   <form method="post" action="/import/apply">
@@ -130,11 +146,16 @@
     <input type="hidden" name="token" value="{{.Token}}">
 
     <h2>{{T "import.indexers" (len .Indexers)}}</h2>
+    <div class="field grow">
+      <label for="import_filter">{{T "import.filter"}}</label>
+      <input id="import_filter" type="search" data-filter-table="#import-plan-table" placeholder="{{T "import.filterPlaceholder"}}" autocomplete="off">
+      <p class="help">{{T "import.filterHelp"}}</p>
+    </div>
     <div class="table-scroll">
-      <table>
+      <table id="import-plan-table">
         <thead>
           <tr>
-            <th scope="col" class="check"><input type="checkbox" data-select-all data-select-target='input[name="site"]' checked aria-label="{{T "import.selectAll"}}"></th>
+            <th scope="col" class="check"><input type="checkbox" data-select-all data-select-target='input[name="site"]' aria-label="{{T "import.selectAll"}}"></th>
             <th scope="col">{{T "common.name"}}</th>
             <th scope="col">{{T "import.implementation"}}</th>
             <th scope="col">{{T "common.protocol"}}</th>
@@ -150,7 +171,7 @@
         <tbody>
           {{range .Indexers}}
           <tr>
-            <td class="check"><input type="checkbox" name="site" value="{{.Index}}" checked aria-label="{{T "import.selectSite" .Name}}"></td>
+            <td class="check"><input type="checkbox" name="site" value="{{.Index}}"{{if .Enabled}} checked{{end}} aria-label="{{T "import.selectSite" .Name}}"></td>
             <td>{{.Name}}</td>
             <td>{{.Implementation}}</td>
             <td>{{.Protocol}}</td>
@@ -162,7 +183,11 @@
             <td><code>{{.BaseURL}}</code></td>
             <td>{{if .Categories}}{{.Categories}}{{else}}<span class="muted">—</span>{{end}}</td>
             <td>{{if .Tags}}{{.Tags}}{{else}}<span class="muted">—</span>{{end}}</td>
-            <td>{{if .Enabled}}<span class="chip ok">{{T "import.enabled"}}</span>{{else}}<span class="chip">{{T "import.disabled"}}</span>{{end}}</td>
+            <td>
+              {{if .Enabled}}<span class="chip ok">{{T "import.enabled"}}</span>
+              {{else if .CatalogOnly}}<span class="chip" title="{{T "import.catalogOnlyHelp"}}">{{T "import.catalogOnly"}}</span>
+              {{else}}<span class="chip"{{if .DisabledReason}} title="{{.DisabledReason}}"{{end}}>{{T "import.disabled"}}</span>{{end}}
+            </td>
             <td>
               {{if .HasKey}}<span class="chip ok">{{T "common.key"}}</span>{{end}}
               {{if .HasCredentials}}<span class="chip warn">{{T "import.credentials"}}</span>{{end}}
