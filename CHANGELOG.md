@@ -12,6 +12,14 @@
 - Istantanea storica dei metadati mantenuta solo per generare il catalogo;
   nessun collegamento a runtime.
 
+### Prestazioni
+- Normalizzatori dei titoli con tabelle `strings.Replacer` precompilate: meno
+  CPU e fino al 76% di allocazioni in meno per pagina Torznab.
+- Snapshot delle righe per i feed piccoli e finestra limitata anche per le
+  query non selettive: la ricerca `1080p` non materializza più l'archivio.
+- Latenza p95 della query stress a 50.000 release: da ~1.981 ms a ~61 ms;
+  RSS dopo il carico: da ~112 MiB a ~66 MiB.
+
 ### Ricerca
 - Ricerca nei nomi dei file dei torrent salvati, con FTS5 trigram.
 - Ordinamento per «più visti» (`times_seen`) e «più presi» (`grab_count`).

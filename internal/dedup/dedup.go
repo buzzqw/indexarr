@@ -87,6 +87,16 @@ var (
 	languagePattern   = regexp.MustCompile(`(?i)\b(ita|italian|eng|english|multi|sub[\s._-]?ita|ita[\s._-]?eng|eng[\s._-]?ita)\b`)
 )
 
+// The normalizers run on every title in every result page. Building a
+// strings.Replacer is far more expensive than using it, so keep the three
+// fixed tables at package level. normalizeCodec deliberately does not remove
+// the hyphen: that matches the historical output for "h-264" and friends.
+var (
+	languageCleaner = strings.NewReplacer(" ", "", "_", "", ".", "", "-", "")
+	sourceCleaner   = strings.NewReplacer(" ", "", "_", "", ".", "", "-", "")
+	codecCleaner    = strings.NewReplacer(" ", "", "_", "", ".", "")
+)
+
 var nonGroups = map[string]bool{
 	"x264": true, "x265": true, "h264": true, "h265": true, "h.264": true,
 	"h.265": true, "hevc": true, "avc": true, "av1": true, "vp9": true,
@@ -276,7 +286,7 @@ func extractLanguages(raw string) string {
 
 func normalizeLanguage(value string) string {
 	value = strings.ToLower(value)
-	value = strings.NewReplacer(" ", "", "_", "", ".", "", "-", "").Replace(value)
+	value = languageCleaner.Replace(value)
 	switch value {
 	case "italian":
 		return "ita"
@@ -288,7 +298,7 @@ func normalizeLanguage(value string) string {
 
 func normalizeSource(value string) string {
 	value = strings.ToLower(value)
-	value = strings.NewReplacer(" ", "", "_", "", ".", "", "-", "").Replace(value)
+	value = sourceCleaner.Replace(value)
 	switch value {
 	case "webdl":
 		return "webdl"
@@ -302,7 +312,7 @@ func normalizeSource(value string) string {
 
 func normalizeCodec(value string) string {
 	value = strings.ToLower(value)
-	value = strings.NewReplacer(" ", "", "_", "", ".", "").Replace(value)
+	value = codecCleaner.Replace(value)
 	switch value {
 	case "x264", "h264", "avc":
 		return "h264"

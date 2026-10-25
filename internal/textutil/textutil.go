@@ -42,9 +42,13 @@ func NormalizeID(raw string) string {
 	return b.String()
 }
 
+// likeEscaper is built once: search builds the same LIKE pattern for every
+// request, and constructing a Replacer dominates the cost of escaping a token.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
 // EscapeLike escapes the LIKE wildcards of a search token.
 func EscapeLike(token string) string {
-	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(token)
+	return likeEscaper.Replace(token)
 }
 
 // Truncate shortens text to max runes, appending an ellipsis when it cuts.

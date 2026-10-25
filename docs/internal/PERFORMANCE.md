@@ -5,7 +5,7 @@ indexarr 2. Le modifiche riguardano solo `internal/store/**` e
 `internal/torznabapi/**`; il generatore di dataset e la suite di misura vivono
 in `internal/perf/**` e non vengono linkati dal binario di produzione.
 
-Ultimo aggiornamento: **23 ottobre 2026**.
+Ultimo aggiornamento: **25 ottobre 2026**.
 
 ---
 
@@ -455,3 +455,76 @@ coordinatore come misura finale; non è stato prolungato a 10/30 minuti.
 - Il campione "prima" e quello "dopo" sono due esecuzioni distinte sullo stesso
   tipo di DB e di seed; la macchina è condivisa, quindi le differenze sotto
   1–2 MiB non sono significative.
+
+---
+
+## 10. Giro CPU/RAM del 25 ottobre 2026
+
+Questo giro non cambia query SQL né schema: riduce il lavoro per richiesta
+Torznab e la memoria temporanea delle fusioni.
+
+### 10.1 Modifiche
+
+1. **Normalizzatori precompilati** (`internal/dedup`): `normalizeLanguage`,
+   `normalizeSource` e `normalizeCodec` costruivano un `strings.Replacer` per
+   ogni titolo. Le tre tabelle sono ora variabili di package. La stessa
+   correzione è stata applicata a `textutil.EscapeLike`, usato nella
+   costruzione dei pattern `LIKE`.
+2. **Snapshot delle righe per i feed piccoli** (`internal/torznabapi`): quando
+   la finestra contiene già tutte le righe, lo snapshot conserva le release
+   fuse, non solo il totale. Le richieste successive dello stesso ciclo Arr
+   evitano del tutto store e fusione.
+3. **Finestra limitata per le query** (`internal/torznabapi`): una ricerca con
+   un termine non selettivo (`1080p`) usava `searchAllFused` e leggeva fino a
+   20.000 righe prima di restituire la prima pagina. Ora usa la stessa finestra
+   di `rssWindowPage` (almeno 500 righe, crescita solo se la fusione non basta
+   a riempire la pagina).
+
+Il totale di una query oltre la finestra resta una stima: è il conteggio dello
+store meno i duplicati osservati nella finestra, come già avveniva per i feed
+RSS. Il comportamento è documentato perché i client non devono usare `total`
+come garanzia di esaustività su archivi molto grandi.
+
+### 10.2 Benchmark in-process
+
+Stesso seed, stessa macchina, `-benchmem`, 200–300 iterazioni; valori medi.
+
+| Benchmark | Prima | Dopo | Δ tempo | Δ allocato |
+|---|---:|---:|---:|---:|
+| `TorznabSearch/items_10` | 6,57 ms · 2,92 MB · 6.955 alloc | **0,95 ms · 0,13 MB · 1.723 alloc** | **−86%** | **−96%** |
+| `TorznabSearch/items_100` | 10,28 ms · 3,83 MB · 17.498 alloc | **4,99 ms · 1,03 MB · 12.268 alloc** | **−52%** | **−73%** |
+| `TorznabSearch/items_100_text` | 4,83 ms · 456 KB | 4,88 ms · 456 KB | ~0 | ~0 |
+| `TorznabSearch/tvsearch_100` | 5,00 ms · 25,6 KB | 4,90 ms · 25,6 KB | ~0 | ~0 |
+| `SearchReleases/50k/text` | 14,0 ms · 728 KB | 14,2 ms · 728 KB | ~0 | ~0 |
+
+Il profilo `alloc_space` prima del giro attribuiva **1.273 MB su 2.011 MB**
+(63%) a `strings.(*Replacer).build`; dopo la correzione la voce scompare dai
+primi posti.
+
+### 10.3 Harness end-to-end
+
+`./scripts/bench.sh`, build di release, 100 richieste sequenziali e 20
+concorrenti per scenario. La macchina è condivisa: i decimali sotto i 5 ms
+sono rumore.
+
+| Dataset | Scenario | p95 prima | p95 dopo | Δ |
+|---|---|---:|---:|---:|
+| 10k | stress `1080p` | 269,8 ms | **38,4 ms** | **−86%** |
+| 10k | 20× stress | 4.672,5 ms | **217,7 ms** | **−95%** |
+| 10k | RSS dopo il carico | 103,3 MiB | **67,7 MiB** | **−34%** |
+| 50k | stress `1080p` | 1.981,3 ms | **61,4 ms** | **−97%** |
+| 50k | 20× stress | 28.767,0 ms | **370,7 ms** | **−99%** |
+| 50k | RSS dopo il carico | 111,8 MiB | **65,7 MiB** | **−41%** |
+| 50k | title+cat | 37,4 ms | 35,1 ms | −6% |
+| 50k | empty | 2,9 ms | 3,7 ms | rumore |
+
+RSS a riposo e startup restano sostanzialmente invariati (46–48 MiB; 104–153
+ms). Il binario resta 20,1 MiB.
+
+### 10.4 Test di non-regressione
+
+- `TestRSSWindowDoesNotFuseArchive` ora verifica anche una query non selettiva
+  (`q=Archive`): 100 item per pagina, `total=20000`, seconda pagina coerente.
+- I test esistenti su fusione e paginazione (`TestFusionRunsBeforePagination`,
+  `TestServarrPaginationReceivesEveryFusedRelease`) restano verdi.
+- `TestEscapeLike` copre i metacaratteri `%`, `_` e la barra rovesciata.

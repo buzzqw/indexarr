@@ -781,6 +781,22 @@ func TestRSSWindowDoesNotFuseArchive(t *testing.T) {
 	if !strings.Contains(page2.Body.String(), `total="20000"`) {
 		t.Fatalf("second RSS page total changed")
 	}
+	// A non-selective query must use the same bounded window: it used to
+	// materialise up to 20k rows before returning the first page.
+	query := do(t, api, "/api?t=search&apikey=secret&q=Archive&limit=100")
+	if got := strings.Count(query.Body.String(), "<item>"); got != 100 {
+		t.Fatalf("query first page items = %d, want 100", got)
+	}
+	if !strings.Contains(query.Body.String(), `total="20000"`) {
+		t.Fatalf("query first page total missing 20000")
+	}
+	queryPage2 := do(t, api, "/api?t=search&apikey=secret&q=Archive&limit=100&offset=100")
+	if got := strings.Count(queryPage2.Body.String(), "<item>"); got != 100 {
+		t.Fatalf("query second page items = %d, want 100", got)
+	}
+	if !strings.Contains(queryPage2.Body.String(), `total="20000"`) {
+		t.Fatalf("query second page total changed")
+	}
 }
 
 func TestRSSWindowFusesDuplicatesAndKeepsTotal(t *testing.T) {
