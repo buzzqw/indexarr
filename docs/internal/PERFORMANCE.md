@@ -736,3 +736,65 @@ indicazione, non come misura certificata.
 
 `TestExtractCacheIsBoundedAndConsistent` verifica che il risultato cached sia
 identico a `extractUncached` e che cache e coda restino entro il limite.
+
+---
+
+## 14. Conteggio visibile senza predicato (25 ottobre 2026)
+
+Il profilo Docker della cache dei titoli attribuiva **11,52 s su 63,33 s**
+(18,2% del CPU) a una sola query dentro `searchTextFast`:
+
+```sql
+SELECT COUNT(*) FROM releases WHERE hidden = 0
+```
+
+Con il predicato SQLite non può usare il contatore delle pagine della tabella:
+percorre tutte le entry dell'indice `releases_visible_seen_id` (50.000 righe),
+circa 4,6 ms per richiesta. Il conteggio senza predicato è invece una lettura
+del contatore; l'insieme nascosto è una minoranza curata.
+
+### 14.1 Modifica
+
+In `internal/store/releases.go`:
+
+```sql
+SELECT (SELECT COUNT(*) FROM releases),
+       (SELECT COUNT(*) FROM releases WHERE hidden = 1)
+```
+
+`visibleCount` restituisce `all - hidden` in una singola lettura coerente. Se
+la curazione crescesse oltre il visibile, il costo resta limitato dallo stesso
+indice che il predicato pagava sempre. Il conteggio filtrato originale resta
+nel test di riferimento.
+
+### 14.2 Misure
+
+Database 50.000 release, stesse copie:
+
+| Misura | Prima | Dopo |
+|---|---:|---:|
+| query di conteggio isolata (mediana) | 4,66 ms | **0,054 ms** |
+| CPU della query in `searchTextFast` | 0,48 s / 2,26 s (21%) | sotto il campionamento |
+| `TorznabSearch/items_100_text` (in-process) | 3,78–3,91 ms | **3,36–3,44 ms** |
+| `SearchReleases/50k/text` | 14,0 ms | **11,5 ms** |
+| Torznab handler, CPU utente / 100 richieste | 3,716 s | **3,011 s (−19%)** |
+| allocazioni handler | 3,35 MB / 20.795 | 3,35 MB / 20.799 |
+
+Il guadagno è sul CPU della query, non sulle allocazioni. La macchina era
+carica (load average ~7 su 4 core), quindi il tempo CPU è più affidabile del
+`ns/op` wall-clock.
+
+### 14.3 Test
+
+`TestVisibleCountMatchesFilteredCount` confronta `visibleCount` con
+`COUNT(*) WHERE hidden = 0` su store vuoto, tutte visibili, tutte nascoste e
+rapporti di curazione 0/1/12/59/60. Il risultato è identico.
+
+### 14.4 Docker e A/B
+
+- `sim/run-docker.sh` passa tutte le asserzioni dopo la cache dei titoli.
+- Il test di carico Docker (50k release, 20 concorrenti) è descritto nella
+  sezione 13.
+- A/B `firstpage_ab3.py` contro `d7837d9`, due giri a porte scambiate:
+  **248/248** titoli distinti, **100%**; `total` e pagine invariati. RSS dopo
+  i due giri: 63,6 MiB baseline, **59,4 MiB** nuovo.

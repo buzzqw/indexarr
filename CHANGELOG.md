@@ -26,6 +26,8 @@
   categoria + seeder minimi: il conteggio usa un indice covering.
 - Cache bounded (2.048 titoli) dei tratti usati dalla fusione: il passaggio
   regex sui titoli non viene ripetuto a ogni ricerca.
+- Conteggio delle release visibili senza predicato (`COUNT(*) - COUNT(hidden)`):
+  elimina una scansione dell'indice da ~4,6 ms per ricerca testuale.
 
 ### Ricerca
 - Ricerca nei nomi dei file dei torrent salvati, con FTS5 trigram.

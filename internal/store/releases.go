@@ -444,10 +444,11 @@ func (s *Store) searchTextFast(ctx context.Context, f Filter, where whereClause,
 			return nil, 0, false, nil
 		}
 		total = raw - hidden
-		if err := s.db.QueryRowContext(ctx,
-			`SELECT COUNT(*) FROM releases WHERE hidden = 0`).Scan(&candidate); err != nil {
+		visible, err := s.visibleCount(ctx)
+		if err != nil {
 			return nil, 0, false, err
 		}
+		candidate = visible
 	} else {
 		// Count the intersection once, without an ephemeral SQL IN index: the
 		// non-text ids are read in one aggregate and tested against the FTS set.
@@ -500,6 +501,27 @@ func (s *Store) searchTextFast(ctx context.Context, f Filter, where whereClause,
 	}
 	releases, err := s.releasesByIDs(ctx, page)
 	return releases, total, true, err
+}
+
+// visibleCount returns how many releases are visible, that is not hidden by
+// curation. Counting with a predicate (WHERE hidden = 0) makes SQLite visit
+// every matching entry of the covering index: about 4 ms at 50k rows, which
+// dominated an unselective text search. The unfiltered COUNT(*) uses the
+// table page counter instead, and the hidden set is a curated minority, so
+// counting it apart and subtracting is far cheaper. If curation ever grows
+// past the visible set the cost stays bounded by the same index walk the
+// filtered count always paid.
+func (s *Store) visibleCount(ctx context.Context) (int64, error) {
+	var all, hidden int64
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT (SELECT COUNT(*) FROM releases),
+		       (SELECT COUNT(*) FROM releases WHERE hidden = 1)`).Scan(&all, &hidden); err != nil {
+		return 0, err
+	}
+	if hidden > all {
+		return 0, nil
+	}
+	return all - hidden, nil
 }
 
 // hiddenMatches counts how many of the given FTS matches are hidden. Reading
