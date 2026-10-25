@@ -32,6 +32,8 @@ Fonti native / RSS ──► scheduler ──► normalizzazione ──► SQLit
   esterni. Compatibile con i client Sonarr/Radarr/Lidarr; ricerca live opzionale
   sugli indexer quando la cache è vuota.
 - **Interfaccia web**: dashboard, ricerca live con filtri e ricerche salvate,
+  ricerca nei nomi dei file dei torrent, ordinamento per più visti/più presi,
+  filtro adulti,
   indice full-text **FTS5** (tokenizer trigram) sulla cache, dettaglio release
   con preferiti/blocklist e invio al client torrent, CRUD
   sorgenti con test, clone, import/export, storico esecuzioni, log in-app,

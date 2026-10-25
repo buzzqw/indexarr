@@ -153,3 +153,29 @@ func TestParseTorrentMetadata(t *testing.T) {
 		t.Fatal("HTML accepted as a torrent")
 	}
 }
+
+func TestParseTorrentFileList(t *testing.T) {
+	single, err := ParseTorrent(testTorrent())
+	if err != nil {
+		t.Fatalf("ParseTorrent single: %v", err)
+	}
+	if len(single.Files) != 1 || single.Files[0].Path != "test.iso" || single.Files[0].Size != 12345 {
+		t.Fatalf("single files = %+v", single.Files)
+	}
+
+	multi := []byte("d4:infod5:filesl" +
+		"d6:lengthi100e4:pathl5:a.mkvee" +
+		"d6:lengthi200e4:pathl5:b.mkvee" +
+		"e4:name3:foo" +
+		"12:piece lengthi16384e6:pieces0:ee")
+	meta, err := ParseTorrent(multi)
+	if err != nil {
+		t.Fatalf("ParseTorrent multi: %v", err)
+	}
+	if len(meta.Files) != 2 || meta.Files[0].Path != "a.mkv" || meta.Files[1].Path != "b.mkv" {
+		t.Fatalf("multi files = %+v", meta.Files)
+	}
+	if meta.Size != 300 {
+		t.Fatalf("multi size = %d", meta.Size)
+	}
+}

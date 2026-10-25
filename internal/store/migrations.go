@@ -37,6 +37,9 @@ const (
 	// indexarr2IndexerCriteriaVersion adds the seed criteria Prowlarr exposes
 	// per indexer and syncs to the *arr applications.
 	indexarr2IndexerCriteriaVersion = 16
+	// indexarr2ReleaseFilesVersion adds the file list of every stored torrent
+	// and a trigram index for searching inside file names.
+	indexarr2ReleaseFilesVersion = 17
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

@@ -1831,5 +1831,11 @@
   "proxies.error.vault": "Vault no disponible: no se pueden guardar las credenciales.",
   "proxies.deleteConfirm": "¿Eliminar este proxy? Los indexers que lo usan se quedarán sin proxy.",
   "proxies.notFound": "Proxy no encontrado.",
-  "pageHelp.proxies": "Gestiona aquí los proxies de red. Asigna uno desde la página de un indexer; las credenciales permanecen en el vault. Si eliminas un proxy, sus indexers se quedan sin él."
+  "pageHelp.proxies": "Gestiona aquí los proxies de red. Asigna uno desde la página de un indexer; las credenciales permanecen en el vault. Si eliminas un proxy, sus indexers se quedan sin él.",
+  "releases.filesSearch": "Buscar en nombres de archivo",
+  "releases.filesSearchHelp": "Con esta opción la búsqueda usa los nombres de archivo de los torrents guardados, no los títulos.",
+  "releases.sortPopular": "Más vistos",
+  "releases.sortGrabs": "Más descargados",
+  "releases.excludeAdult": "Excluir contenido adulto",
+  "releases.excludeAdultHelp": "Oculta la categoría XXX (6000) de los resultados y los recuentos."
 }

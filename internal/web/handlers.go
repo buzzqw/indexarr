@@ -82,6 +82,8 @@ type releasesPage struct {
 	Category       string
 	Sort           string
 	Regex          bool
+	FilesOnly      bool
+	ExcludeAdult   bool
 	InvalidRegex   string
 	FavoritesOnly  bool
 	ShowHidden     bool
@@ -127,6 +129,8 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	query := r.URL.Query()
 	searchQuery := strings.TrimSpace(query.Get("q"))
 	regexMode := query.Get("regex") == "1"
+	filesOnly := query.Get("files") == "1"
+	excludeAdult := query.Get("no_adult") == "1"
 	page := intParam(query.Get("page"), 1)
 	if page < 1 {
 		page = 1
@@ -198,6 +202,12 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	if showDuplicates {
 		advancedFilterCount++
 	}
+	if filesOnly {
+		advancedFilterCount++
+	}
+	if excludeAdult {
+		advancedFilterCount++
+	}
 
 	indexers, _ := s.store.ListIndexers(r.Context())
 	saved, _ := s.store.ListSavedSearches(r.Context())
@@ -211,6 +221,8 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		Category:            category,
 		Sort:                sortMode,
 		Regex:               regexMode,
+		FilesOnly:           filesOnly,
+		ExcludeAdult:        excludeAdult,
 		FavoritesOnly:       favoritesOnly,
 		ShowHidden:          showHidden,
 		ShowDuplicates:      showDuplicates,
@@ -241,6 +253,8 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		Include:       include,
 		Exclude:       exclude,
 		Regex:         regexMode,
+		FilesOnly:     filesOnly,
+		ExcludeAdult:  excludeAdult,
 		FavoritesOnly: favoritesOnly,
 		IncludeHidden: showHidden || favoritesOnly,
 		MinSeeders:    minSeeders,

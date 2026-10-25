@@ -1831,5 +1831,11 @@
   "proxies.error.vault": "Coffre indisponible : impossible d'enregistrer les identifiants.",
   "proxies.deleteConfirm": "Supprimer ce proxy ? Les indexeurs qui l'utilisent n'auront plus de proxy.",
   "proxies.notFound": "Proxy introuvable.",
-  "pageHelp.proxies": "Gérez ici les proxys réseau. Attribuez-en un depuis la page d'un indexeur ; les identifiants restent dans le coffre. Supprimer un proxy laisse les indexeurs sans proxy."
+  "pageHelp.proxies": "Gérez ici les proxys réseau. Attribuez-en un depuis la page d'un indexeur ; les identifiants restent dans le coffre. Supprimer un proxy laisse les indexeurs sans proxy.",
+  "releases.filesSearch": "Rechercher dans les noms de fichiers",
+  "releases.filesSearchHelp": "Avec cette option, la requête cherche dans les noms de fichiers des torrents enregistrés, pas dans les titres.",
+  "releases.sortPopular": "Les plus vus",
+  "releases.sortGrabs": "Les plus téléchargés",
+  "releases.excludeAdult": "Exclure le contenu adulte",
+  "releases.excludeAdultHelp": "Masque la catégorie XXX (6000) des résultats et des comptes."
 }

@@ -105,3 +105,40 @@ func TestPagerUsesFullPagePath(t *testing.T) {
 		t.Errorf("next points to the partial: %q", pager.Next)
 	}
 }
+
+func TestReleasesFileNamesAndAdultFilter(t *testing.T) {
+	env := newTestEnv(t)
+	insertSearchRelease(t, env.store, "Family Show 1080p", "5040")
+	insertSearchRelease(t, env.store, "Adult Show 1080p", "6000")
+
+	// Find the family release in the DB to attach a file list.
+	releases, _, err := env.store.SearchReleases(context.Background(), store.Filter{Query: "Family", Limit: 1})
+	if err != nil || len(releases) != 1 {
+		t.Fatalf("find family release: %+v, %v", releases, err)
+	}
+	if err := env.store.ReplaceReleaseFiles(context.Background(), releases[0].ID, []store.ReleaseFile{
+		{Path: "Family.Show.S01E01.1080p.mkv", Size: 1000},
+	}); err != nil {
+		t.Fatalf("ReplaceReleaseFiles: %v", err)
+	}
+
+	fileBody := get(t, env.handler, "/releases?q=S01E01&files=1").Body.String()
+	if !strings.Contains(fileBody, "Family Show 1080p") || strings.Contains(fileBody, "Adult Show") {
+		t.Error("file-name search did not return only the family release")
+	}
+	if !strings.Contains(fileBody, `name="files"`) {
+		t.Error("the file-name checkbox is missing")
+	}
+	titleBody := get(t, env.handler, "/releases?q=S01E01").Body.String()
+	if strings.Contains(titleBody, "Family Show 1080p") {
+		t.Error("a title search matched a file name")
+	}
+
+	adultBody := get(t, env.handler, "/releases?no_adult=1").Body.String()
+	if strings.Contains(adultBody, "Adult Show") {
+		t.Error("the adult filter did not hide the XXX category")
+	}
+	if !strings.Contains(adultBody, "Family Show") {
+		t.Error("the adult filter hid a non-adult release")
+	}
+}

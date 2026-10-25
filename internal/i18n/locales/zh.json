@@ -1831,5 +1831,11 @@
   "proxies.error.vault": "保险库不可用：无法保存凭据。",
   "proxies.deleteConfirm": "删除此代理？使用它的索引器将没有代理。",
   "proxies.notFound": "未找到代理。",
-  "pageHelp.proxies": "在此管理网络代理。在索引器页面分配代理；凭据保存在保险库中。删除代理后，相关索引器将没有代理。"
+  "pageHelp.proxies": "在此管理网络代理。在索引器页面分配代理；凭据保存在保险库中。删除代理后，相关索引器将没有代理。",
+  "releases.filesSearch": "搜索文件名",
+  "releases.filesSearchHelp": "启用后查询已保存种子中的文件名，而不是标题。",
+  "releases.sortPopular": "最多浏览",
+  "releases.sortGrabs": "最多下载",
+  "releases.excludeAdult": "排除成人内容",
+  "releases.excludeAdultHelp": "从结果和统计中隐藏 XXX 类别（6000）。"
 }

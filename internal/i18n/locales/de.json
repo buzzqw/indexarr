@@ -1831,5 +1831,11 @@
   "proxies.error.vault": "Vault nicht verfügbar: Zugangsdaten können nicht gespeichert werden.",
   "proxies.deleteConfirm": "Diesen Proxy entfernen? Indexer, die ihn nutzen, haben danach keinen Proxy.",
   "proxies.notFound": "Proxy nicht gefunden.",
-  "pageHelp.proxies": "Hier verwaltest du Netzwerk-Proxys. Weise einen auf der Indexer-Seite zu; Zugangsdaten bleiben im Vault. Beim Entfernen verlieren die Indexer ihren Proxy."
+  "pageHelp.proxies": "Hier verwaltest du Netzwerk-Proxys. Weise einen auf der Indexer-Seite zu; Zugangsdaten bleiben im Vault. Beim Entfernen verlieren die Indexer ihren Proxy.",
+  "releases.filesSearch": "Dateinamen durchsuchen",
+  "releases.filesSearchHelp": "Mit dieser Option sucht die Abfrage in den Dateinamen gespeicherter Torrents, nicht in den Titeln.",
+  "releases.sortPopular": "Meistgesehen",
+  "releases.sortGrabs": "Meistgeladen",
+  "releases.excludeAdult": "Erwachseneninhalte ausschließen",
+  "releases.excludeAdultHelp": "Blendet die Kategorie XXX (6000) aus Ergebnissen und Zählern aus."
 }

@@ -316,6 +316,19 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		} else {
 			stats.Updated++
 		}
+		if len(torrent) > 0 {
+			if meta, metaErr := feed.ParseTorrent(torrent); metaErr == nil && len(meta.Files) > 0 {
+				files := make([]store.ReleaseFile, 0, len(meta.Files))
+				for _, file := range meta.Files {
+					files = append(files, store.ReleaseFile{Path: file.Path, Size: file.Size})
+				}
+				if filesErr := m.store.ReplaceReleaseFiles(ctx, release.ID, files); filesErr != nil {
+					m.logger.Warn("indexer: store torrent file names",
+						"indexer", indexer.Slug, "release_id", release.ID,
+						"error", m.redact(indexer.ID, filesErr.Error()))
+				}
+			}
+		}
 
 		if provenanceErr := m.store.RecordReleaseSource(ctx, store.ReleaseSource{
 			ReleaseID:   release.ID,

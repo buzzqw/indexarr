@@ -14,10 +14,15 @@
       <input id="regex" name="regex" type="checkbox" value="1"{{if .Regex}} checked{{end}}>
       {{T "releases.regex"}}
     </label>
+    <label class="inline-check" for="files">
+      <input id="files" name="files" type="checkbox" value="1"{{if .FilesOnly}} checked{{end}}>
+      {{T "releases.filesSearch"}}
+    </label>
     <p class="help">
       {{T "releases.searchHelpExclude"}} <code>{{T "releases.exampleExclude"}}</code>.
       {{T "releases.searchHelpQuotes"}} <code>{{T "releases.exampleQuotes"}}</code>.
       {{T "releases.searchHelpPattern"}} <code>{{T "releases.examplePattern"}}</code>.
+      {{T "releases.filesSearchHelp"}}
     </p>
   </div>
   <div class="field">
@@ -44,6 +49,8 @@
     <select id="sort" name="sort">
       <option value="recent"{{if or (eq .Sort "") (eq .Sort "recent")}} selected{{end}}>{{T "releases.sortRecent"}}</option>
       <option value="seen"{{if eq .Sort "seen"}} selected{{end}}>{{T "releases.sortSeen"}}</option>
+      <option value="popular"{{if eq .Sort "popular"}} selected{{end}}>{{T "releases.sortPopular"}}</option>
+      <option value="grabs"{{if eq .Sort "grabs"}} selected{{end}}>{{T "releases.sortGrabs"}}</option>
       <option value="seeders"{{if eq .Sort "seeders"}} selected{{end}}>{{T "releases.sortSeeders"}}</option>
       <option value="size"{{if eq .Sort "size"}} selected{{end}}>{{T "releases.sortSize"}}</option>
       <option value="title"{{if eq .Sort "title"}} selected{{end}}>{{T "releases.sortTitle"}}</option>
@@ -101,6 +108,11 @@
     <div class="field checkbox">
       <input id="favorites" name="favorites" type="checkbox" value="1"{{if .FavoritesOnly}} checked{{end}}>
       <label for="favorites">{{T "releases.favorites"}}</label>
+    </div>
+    <div class="field checkbox">
+      <input id="no_adult" name="no_adult" type="checkbox" value="1"{{if .ExcludeAdult}} checked{{end}}>
+      <label for="no_adult">{{T "releases.excludeAdult"}}</label>
+      <p class="help">{{T "releases.excludeAdultHelp"}}</p>
     </div>
     <div class="field checkbox">
       <input id="hidden" name="hidden" type="checkbox" value="1"{{if .ShowHidden}} checked{{end}}>

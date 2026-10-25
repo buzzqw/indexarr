@@ -1831,5 +1831,11 @@
   "proxies.error.vault": "Sejf niedostępny: nie można zapisać danych logowania.",
   "proxies.deleteConfirm": "Usunąć to proxy? Indeksery, które go używają, pozostaną bez proxy.",
   "proxies.notFound": "Nie znaleziono proxy.",
-  "pageHelp.proxies": "Tutaj zarządzasz proxy sieciowymi. Przypisz je na stronie indeksera; dane logowania pozostają w sejfie. Usunięcie proxy pozostawia indeksery bez niego."
+  "pageHelp.proxies": "Tutaj zarządzasz proxy sieciowymi. Przypisz je na stronie indeksera; dane logowania pozostają w sejfie. Usunięcie proxy pozostawia indeksery bez niego.",
+  "releases.filesSearch": "Szukaj w nazwach plików",
+  "releases.filesSearchHelp": "Ta opcja przeszukuje nazwy plików zapisanych torrentów, a nie tytuły.",
+  "releases.sortPopular": "Najczęściej widziane",
+  "releases.sortGrabs": "Najczęściej pobierane",
+  "releases.excludeAdult": "Wyklucz treści dla dorosłych",
+  "releases.excludeAdultHelp": "Ukrywa kategorię XXX (6000) w wynikach i licznikach."
 }

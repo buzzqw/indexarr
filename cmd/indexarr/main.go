@@ -27,6 +27,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	coreengine "github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/family"
+	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/health"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
@@ -56,6 +57,36 @@ func maskSecret(value string) string {
 func logWebInterfaceReady(logger *slog.Logger, base, key string) {
 	logger.Info("web interface ready",
 		"url", base, "torznab", base+"/api?apikey="+maskSecret(key))
+}
+
+// backfillReleaseFiles parses the .torrent payloads already in the database
+// and fills release_files. A row is marked parsed even when the torrent has no
+// file list, so a malformed payload is not retried on every boot.
+func backfillReleaseFiles(ctx context.Context, st *store.Store, logger *slog.Logger) {
+	for {
+		items, err := st.ReleasesWithoutFiles(ctx, 200)
+		if err != nil {
+			logger.Warn("file-name backfill: read releases", "error", err)
+			return
+		}
+		if len(items) == 0 {
+			return
+		}
+		for _, item := range items {
+			if ctx.Err() != nil {
+				return
+			}
+			var files []store.ReleaseFile
+			if meta, parseErr := feed.ParseTorrent(item.Torrent); parseErr == nil {
+				for _, file := range meta.Files {
+					files = append(files, store.ReleaseFile{Path: file.Path, Size: file.Size})
+				}
+			}
+			if err := st.ReplaceReleaseFiles(ctx, item.ID, files); err != nil {
+				logger.Warn("file-name backfill: store files", "release_id", item.ID, "error", err)
+			}
+		}
+	}
 }
 
 func main() {
@@ -345,6 +376,7 @@ func main() {
 	// recovers the missing infohashes within a per-site budget.
 	if st != nil {
 		go dedupeLoop(ctx, st, indexerManager, logger)
+		go backfillReleaseFiles(ctx, st, logger)
 	}
 
 	var adminHandler http.Handler

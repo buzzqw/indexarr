@@ -75,6 +75,11 @@ type Filter struct {
 	Quality       string
 	SourceQuality string
 	Language      string
+	// FilesOnly searches the file names parsed from stored .torrent files
+	// instead of release titles.
+	FilesOnly bool
+	// ExcludeAdult removes the XXX category (6xxx) from the results.
+	ExcludeAdult bool
 }
 
 const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
@@ -966,7 +971,28 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 	// them in a single index pass instead of one subquery per term.
 	var ftsPhrases []string
 	var includeClauses []string
-	if f.Regex {
+	if f.FilesOnly {
+		nonText = true
+		var filePhrases []string
+		var fileLikes []string
+		for _, token := range includes {
+			if phrase, ok := ftsPhrase(token); ok {
+				filePhrases = append(filePhrases, phrase)
+				continue
+			}
+			fileLikes = append(fileLikes, "%"+escapeLike(token)+"%")
+		}
+		if len(filePhrases) > 0 {
+			includeClauses = append(includeClauses,
+				`id IN (SELECT release_id FROM release_files_fts WHERE release_files_fts MATCH ?)`)
+			args = append(args, strings.Join(filePhrases, " AND "))
+		}
+		for _, like := range fileLikes {
+			includeClauses = append(includeClauses,
+				`EXISTS (SELECT 1 FROM release_files rf WHERE rf.release_id = releases.id AND rf.path LIKE ? ESCAPE '\')`)
+			args = append(args, like)
+		}
+	} else if f.Regex {
 		nonText = true
 		for _, pattern := range includes {
 			includeClauses = append(includeClauses, `title REGEXP ?`)
@@ -1026,6 +1052,10 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 	}
 	if f.FavoritesOnly {
 		clauses = append(clauses, `favorite = 1`)
+	}
+	if f.ExcludeAdult {
+		nonText = true
+		clauses = append(clauses, `(category = '' OR category NOT LIKE '6%')`)
 	}
 	if f.MinSeeders > 0 {
 		clauses = append(clauses, `seeders >= ?`)
@@ -1165,6 +1195,12 @@ func orderBy(sort string) string {
 		return "search_title ASC"
 	case "seen":
 		return "last_seen_at DESC, id DESC"
+	case "popular":
+		return "times_seen DESC, published_at DESC, id DESC"
+	case "grabs":
+		return `COALESCE((SELECT SUM(grab_count) FROM release_sources
+			WHERE release_sources.release_id = releases.id), 0) DESC,
+			published_at DESC, id DESC`
 	default:
 		return "published_at DESC, id DESC"
 	}

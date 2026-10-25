@@ -12,6 +12,11 @@
 - Istantanea storica dei metadati mantenuta solo per generare il catalogo;
   nessun collegamento a runtime.
 
+### Ricerca
+- Ricerca nei nomi dei file dei torrent salvati, con FTS5 trigram.
+- Ordinamento per «più visti» (`times_seen`) e «più presi» (`grab_count`).
+- Filtro per escludere la categoria XXX.
+
 ### Compatibilità dashboard
 - API Prowlarr v1 in sola lettura: `system/status`, `health`, `indexer`,
   `indexer/{id}` per Homepage/Organizr.

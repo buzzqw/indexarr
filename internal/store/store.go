@@ -472,6 +472,35 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 17 stores the file list parsed from a .torrent and a trigram
+	// index over the paths. The FTS table is maintained manually because the
+	// parent row is a release, not the file row.
+	if err := s.applyMigration(context.Background(), indexarr2ReleaseFilesVersion,
+		"torrent file names", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`CREATE TABLE IF NOT EXISTS release_files (
+					id         INTEGER PRIMARY KEY AUTOINCREMENT,
+					release_id INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+					path       TEXT    NOT NULL DEFAULT '',
+					size       INTEGER NOT NULL DEFAULT 0,
+					UNIQUE(release_id, path)
+				)`,
+				`CREATE INDEX IF NOT EXISTS release_files_release ON release_files(release_id)`,
+				`CREATE VIRTUAL TABLE IF NOT EXISTS release_files_fts USING fts5(
+					release_id UNINDEXED,
+					path,
+					tokenize = 'trigram'
+				)`,
+				`ALTER TABLE releases ADD COLUMN files_parsed_at INTEGER NOT NULL DEFAULT 0`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

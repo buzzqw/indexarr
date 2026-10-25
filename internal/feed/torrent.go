@@ -231,6 +231,14 @@ type TorrentInfo struct {
 	InfoHash string
 	Name     string
 	Size     int64
+	Files    []TorrentFile
+}
+
+// TorrentFile is one file inside a multi-file torrent. Single-file torrents
+// expose the payload name as their only file.
+type TorrentFile struct {
+	Path string
+	Size int64
 }
 
 // ParseTorrent validates a .torrent body and returns its infohash, name and
@@ -289,13 +297,17 @@ func ParseTorrent(data []byte) (TorrentInfo, error) {
 			}
 			meta.Size = size
 		case "files":
-			size, sizeErr := bencodeFileListSize(data, valueStart)
+			files, size, sizeErr := bencodeFiles(data, valueStart)
 			if sizeErr != nil {
 				return TorrentInfo{}, sizeErr
 			}
+			meta.Files = files
 			meta.Size = size
 		}
 		pos = valueEnd
+	}
+	if len(meta.Files) == 0 && meta.Name != "" && meta.Size > 0 {
+		meta.Files = []TorrentFile{{Path: meta.Name, Size: meta.Size}}
 	}
 	return meta, nil
 }
@@ -318,43 +330,79 @@ func bencodeInt(data []byte, pos int) (int64, error) {
 	return value, nil
 }
 
-func bencodeFileListSize(data []byte, pos int) (int64, error) {
+func bencodeFiles(data []byte, pos int) ([]TorrentFile, int64, error) {
 	if pos >= len(data) || data[pos] != 'l' {
-		return 0, errors.New("torrent files is not a list")
+		return nil, 0, errors.New("torrent files is not a list")
 	}
+	var files []TorrentFile
 	total := int64(0)
 	pos++
 	for pos < len(data) && data[pos] != 'e' {
 		if data[pos] != 'd' {
-			return 0, errors.New("torrent file entry is not a dictionary")
+			return nil, 0, errors.New("torrent file entry is not a dictionary")
 		}
-		pos++
-		for pos < len(data) && data[pos] != 'e' {
-			key, next, err := parseBencodeString(data, pos)
-			if err != nil {
-				return 0, err
+		entryStart := pos
+		entryEnd, err := parseBencodeValue(data, pos)
+		if err != nil {
+			return nil, 0, err
+		}
+		var length int64
+		var path string
+		inner := entryStart + 1
+		for inner < entryEnd-1 && data[inner] != 'e' {
+			key, next, keyErr := parseBencodeString(data, inner)
+			if keyErr != nil {
+				return nil, 0, keyErr
 			}
 			valueStart := next
-			valueEnd, err := parseBencodeValue(data, valueStart)
-			if err != nil {
-				return 0, err
+			valueEnd, valueErr := parseBencodeValue(data, valueStart)
+			if valueErr != nil {
+				return nil, 0, valueErr
 			}
-			if string(key) == "length" {
-				size, sizeErr := bencodeInt(data, valueStart)
-				if sizeErr != nil {
-					return 0, sizeErr
+			switch string(key) {
+			case "length":
+				if length, err = bencodeInt(data, valueStart); err != nil {
+					return nil, 0, err
 				}
-				total += size
+			case "path", "path.utf-8":
+				parts, pathErr := bencodeStringList(data, valueStart)
+				if pathErr != nil {
+					return nil, 0, pathErr
+				}
+				if string(key) == "path" || path == "" {
+					path = strings.Join(parts, "/")
+				}
 			}
-			pos = valueEnd
+			inner = valueEnd
 		}
-		if pos >= len(data) {
-			return 0, errors.New("truncated torrent file entry")
+		if path != "" {
+			files = append(files, TorrentFile{Path: path, Size: length})
+			total += length
 		}
-		pos++
+		pos = entryEnd
 	}
 	if pos >= len(data) {
-		return 0, errors.New("truncated torrent files list")
+		return nil, 0, errors.New("truncated torrent files list")
 	}
-	return total, nil
+	return files, total, nil
+}
+
+func bencodeStringList(data []byte, pos int) ([]string, error) {
+	if pos >= len(data) || data[pos] != 'l' {
+		return nil, errors.New("torrent file path is not a list")
+	}
+	var out []string
+	pos++
+	for pos < len(data) && data[pos] != 'e' {
+		value, next, err := parseBencodeString(data, pos)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, string(value))
+		pos = next
+	}
+	if pos >= len(data) {
+		return nil, errors.New("truncated torrent file path")
+	}
+	return out, nil
 }

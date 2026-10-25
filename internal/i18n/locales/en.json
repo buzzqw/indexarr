@@ -1831,5 +1831,11 @@
   "proxies.error.vault": "Vault unavailable: cannot save credentials.",
   "proxies.deleteConfirm": "Remove this proxy? Indexers using it will have no proxy.",
   "proxies.notFound": "Proxy not found.",
-  "pageHelp.proxies": "Manage network proxies here. Assign one from an indexer page; credentials stay in the vault. Removing a proxy leaves its indexers without one."
+  "pageHelp.proxies": "Manage network proxies here. Assign one from an indexer page; credentials stay in the vault. Removing a proxy leaves its indexers without one.",
+  "releases.filesSearch": "Search file names",
+  "releases.filesSearchHelp": "With this option the query searches the file names of stored torrents, not the titles.",
+  "releases.sortPopular": "Most seen",
+  "releases.sortGrabs": "Most grabbed",
+  "releases.excludeAdult": "Exclude adult content",
+  "releases.excludeAdultHelp": "Hides the XXX category (6000) from results and counts."
 }

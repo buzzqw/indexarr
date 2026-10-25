@@ -135,6 +135,7 @@ in indexarr.
 | Connettori di famiglia e API prima dello scraping (§6) | Definizioni fragili copiate sito per sito | Parziale: 8 famiglie, 36 definizioni verificate (WP6, WP7, WP18) |
 | Definizioni tipizzate con fallback, mirror e health integrato (§6.4) | Definizioni che si rompono al primo cambio di layout | Formato fatto; health check non eseguito (WP9) |
 | Seeders aggiornati: TTL e refresh dei risultati restituiti dalla cache | Seeders vecchi che falsano le scelte delle \*arr | Da fare (WP10) |
+| Ricerca nei nomi dei file e ordinamento per popolarità | Trovare un file dentro un torrent senza conoscerne il titolo | Fatto: FTS5 trigram, più visti/più presi, filtro adulti |
 | Vault per credenziali e cookie | Credenziali in chiaro | Fatto lato backend: chiave fuori dai dati e segreti degli indexer cifrati (WP1) |
 | Metriche per indexer e per richiesta (latenza, 429, challenge) | Diagnosi difficile | Parziale |
 | Footprint: ~30 MiB RSS a riposo prima di indexarr 2 (audit) | Runtime .NET | Fatto: ~26–35 MiB a riposo dopo WP3 (budget 40 MiB) |

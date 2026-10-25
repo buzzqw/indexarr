@@ -298,6 +298,15 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 		// Cache the bytes so the next request is local. A cache write failure
 		// must not discard a payload the client can still use.
 		_ = r.store.SavePayload(ctx, releaseID, body, contentType, protocol)
+		if protocol == "torrent" {
+			if meta, metaErr := feed.ParseTorrent(body); metaErr == nil && len(meta.Files) > 0 {
+				files := make([]store.ReleaseFile, 0, len(meta.Files))
+				for _, file := range meta.Files {
+					files = append(files, store.ReleaseFile{Path: file.Path, Size: file.Size})
+				}
+				_ = r.store.ReplaceReleaseFiles(ctx, releaseID, files)
+			}
+		}
 		// Record which copy actually worked, so the merged release keeps a
 		// history of successful fallbacks.
 		_ = r.store.RecordSourceGrab(ctx, releaseID, indexerID)
