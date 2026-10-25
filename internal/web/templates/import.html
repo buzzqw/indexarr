@@ -25,7 +25,8 @@
 <section class="panel">
   <div class="panel-head"><h2>{{T "import.summary"}}</h2></div>
   {{if .Error}}<p class="text-danger">{{.Error}}</p>{{end}}
-  <p class="prose">{{T "import.summaryCounts" .Created .Updated .Skipped .Errors}}</p>
+  <p class="prose">{{T "import.summaryCounts" .Created .Updated .Skipped .Pending .Errors}}</p>
+  {{if .Pending}}<p class="help">{{T "import.pendingSummary" .Pending}}</p>{{end}}
   <div class="table-scroll">
     <table>
       <thead>
@@ -40,8 +41,10 @@
         <tr>
           <td>{{.Name}}</td>
           <td>
-            {{if .Manager}}<span class="chip">{{T "import.viaManager" .Manager}}</span>{{else}}<span class="chip ok">{{T "import.native"}}</span>{{end}}
+            {{if eq .Status "family"}}<span class="chip">{{T "import.family"}}</span>
+            {{else}}<span class="chip ok">{{T "import.native"}}</span>{{end}}
             <code>{{.Target}}</code>
+            {{if .Family}}<span class="badge soft">{{.Family}}</span>{{end}}
           </td>
           <td>
             {{if eq .Action "created"}}{{T "import.action.created"}}{{else if eq .Action "updated"}}{{T "import.action.updated"}}{{else}}{{T "import.action.failed"}}{{end}}
@@ -68,6 +71,7 @@
   <div class="prose">
     <p>{{T "import.previewText1"}}</p>
     <p>{{T "import.previewText2"}}</p>
+    <p>{{T "import.previewText3"}}</p>
   </div>
 </section>
 
@@ -139,6 +143,7 @@
     <p>{{T "import.planPreview"}}</p>
     <p>{{T "import.selectHint"}}</p>
     {{if .Inactive}}<p class="muted">{{T "import.catalogCounts" (len .Indexers) .Active .Inactive}}</p>{{end}}
+    {{if .Pending}}<p class="help">{{T "import.pendingHelp" .Pending}}</p>{{end}}
   </div>
 
   <form method="post" action="/import/apply">
@@ -171,20 +176,26 @@
         <tbody>
           {{range .Indexers}}
           <tr>
-            <td class="check"><input type="checkbox" name="site" value="{{.Index}}"{{if .Enabled}} checked{{end}} aria-label="{{T "import.selectSite" .Name}}"></td>
+            <td class="check">{{if .Applicable}}<input type="checkbox" name="site" value="{{.Index}}"{{if .Enabled}} checked{{end}} aria-label="{{T "import.selectSite" .Name}}">{{else}}<span class="muted" title="{{T "import.reason.noDefinition"}}">—</span>{{end}}</td>
             <td>{{.Name}}</td>
             <td>{{.Implementation}}</td>
             <td>{{.Protocol}}</td>
             <td>
-              {{if .Manager}}<span class="chip">{{T "import.viaManager" .Manager}}</span>{{else}}<span class="chip ok">{{T "import.native"}}</span>{{end}}
-              <code>{{.Target}}</code>
+              {{if eq .Status "pending"}}<span class="chip warn">{{T "import.pending"}}</span>
+              {{else if eq .Status "family"}}<span class="chip">{{T "import.family"}}</span>
+              {{else}}<span class="chip ok">{{T "import.native"}}</span>{{end}}
+              {{if .Target}}<code>{{.Target}}</code>{{end}}
+              {{if .Family}}<span class="badge soft" title="{{T "import.familyHelp"}}">{{.Family}}</span>{{end}}
+              {{if eq .DefinitionState "bozza"}}<span class="badge soft" title="{{T "import.draftHelp"}}">{{T "import.draft"}}</span>{{end}}
+              {{if .Reason}}<p class="sub">{{if eq .Reason "no_definition"}}{{T "import.reason.noDefinition"}}{{else if eq .Reason "missing_credentials"}}{{T "import.reason.missingCredentials"}}{{if .ReasonDetail}} <code>{{.ReasonDetail}}</code>{{end}}{{else if eq .Reason "disabled_upstream"}}{{T "import.reason.disabledUpstream"}}{{else if eq .Reason "not_configured"}}{{T "import.reason.notConfigured"}}{{else}}{{.Reason}}{{end}}</p>{{end}}
             </td>
             <td><code>{{.DefinitionHint}}</code></td>
             <td><code>{{.BaseURL}}</code></td>
             <td>{{if .Categories}}{{.Categories}}{{else}}<span class="muted">—</span>{{end}}</td>
             <td>{{if .Tags}}{{.Tags}}{{else}}<span class="muted">—</span>{{end}}</td>
             <td>
-              {{if .Enabled}}<span class="chip ok">{{T "import.enabled"}}</span>
+              {{if eq .Status "pending"}}<span class="chip warn">{{T "import.pending"}}</span>
+              {{else if .Enabled}}<span class="chip ok">{{T "import.enabled"}}</span>
               {{else if .CatalogOnly}}<span class="chip" title="{{T "import.catalogOnlyHelp"}}">{{T "import.catalogOnly"}}</span>
               {{else}}<span class="chip"{{if .DisabledReason}} title="{{.DisabledReason}}"{{end}}>{{T "import.disabled"}}</span>{{end}}
             </td>

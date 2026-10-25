@@ -33,6 +33,11 @@ type importIndexer struct {
 	Implementation string   `json:"implementation"`
 	Protocol       string   `json:"protocol"`
 	DefinitionHint string   `json:"definition_hint"`
+	DefinitionID   string   `json:"definition_id,omitempty"`
+	NativeStatus   string   `json:"native_status"`
+	NativeReason   string   `json:"native_reason,omitempty"`
+	NativeDetail   string   `json:"native_detail,omitempty"`
+	Family         string   `json:"family,omitempty"`
 	BaseURL        string   `json:"base_url"`
 	Categories     []int    `json:"categories"`
 	Tags           []string `json:"tags"`
@@ -63,6 +68,7 @@ type importResponse struct {
 	Indexers     []importIndexer     `json:"indexers"`
 	Applications []importApplication `json:"applications"`
 	Proxies      []importProxy       `json:"proxies"`
+	Pending      int                 `json:"pending"`
 	Warnings     []string            `json:"warnings"`
 }
 
@@ -86,7 +92,13 @@ func (s *Server) handleImportProwlarr(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, "prowlarr import failed")
 		return
 	}
-	writeJSON(w, http.StatusOK, importPlanResponse(plan, apiKey))
+	targets, err := importers.Targets(plan)
+	if err != nil {
+		s.logger.Error("adminapi: map prowlarr import targets", "error", err)
+		writeError(w, http.StatusInternalServerError, "prowlarr import mapping failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, importPlanResponse(plan, targets, apiKey))
 }
 
 func (s *Server) handleImportJackett(w http.ResponseWriter, r *http.Request) {
@@ -137,14 +149,20 @@ func (s *Server) handleImportJackett(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, "jackett import failed")
 		return
 	}
-	writeJSON(w, http.StatusOK, importPlanResponse(plan, apiKey))
+	targets, err := importers.Targets(plan)
+	if err != nil {
+		s.logger.Error("adminapi: map prowlarr import targets", "error", err)
+		writeError(w, http.StatusInternalServerError, "prowlarr import mapping failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, importPlanResponse(plan, targets, apiKey))
 }
 
 // importPlanResponse converts an importers.Plan into a response that never
 // carries an API key, username, password or credential-bearing URL. Credentials
 // are reported only as booleans, and warnings are redacted once more before
 // leaving the process.
-func importPlanResponse(plan importers.Plan, extraSecrets ...string) importResponse {
+func importPlanResponse(plan importers.Plan, targets []importers.NativeTarget, extraSecrets ...string) importResponse {
 	out := importResponse{
 		Source:       plan.Source,
 		Indexers:     make([]importIndexer, 0, len(plan.Indexers)),
@@ -154,9 +172,9 @@ func importPlanResponse(plan importers.Plan, extraSecrets ...string) importRespo
 	}
 
 	secrets := append([]string(nil), extraSecrets...)
-	for _, in := range plan.Indexers {
+	for i, in := range plan.Indexers {
 		secrets = append(secrets, in.APIKey, in.Username, in.Password)
-		out.Indexers = append(out.Indexers, importIndexer{
+		row := importIndexer{
 			Name:           in.Name,
 			Implementation: in.Implementation,
 			Protocol:       string(in.Protocol),
@@ -171,7 +189,23 @@ func importPlanResponse(plan importers.Plan, extraSecrets ...string) importRespo
 			HasKey:         strings.TrimSpace(in.APIKey) != "",
 			HasBasicAuth: strings.TrimSpace(in.Username) != "" ||
 				strings.TrimSpace(in.Password) != "",
-		})
+		}
+		if i < len(targets) {
+			target := targets[i]
+			row.DefinitionID = target.DefinitionID
+			row.NativeStatus = target.Status
+			if row.NativeStatus == "" {
+				row.NativeStatus = importers.TargetNative
+			}
+			row.NativeReason = target.Reason
+			row.NativeDetail = target.ReasonDetail
+			row.Family = target.Family
+			if row.NativeStatus == importers.TargetPending {
+				// No native route yet: nothing will be created for this row.
+				out.Pending++
+			}
+		}
+		out.Indexers = append(out.Indexers, row)
 	}
 	for _, app := range plan.Applications {
 		secrets = append(secrets, app.APIKey)

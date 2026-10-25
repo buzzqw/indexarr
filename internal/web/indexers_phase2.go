@@ -552,6 +552,7 @@ type siteChoice struct {
 	QuickAdd      bool
 	Configurable  bool
 	Probe         bool
+	ToWrite       bool
 	Reachable     bool
 	OptionalID    string
 	Added         bool
@@ -601,6 +602,7 @@ type sitePickerView struct {
 	Sites       []siteChoice
 	Types       []siteChoice
 	Pager       pager
+	Coverage    string
 	HasFilters  bool
 	ClearURL    string
 	Hidden      []catalogQueryPair
@@ -931,6 +933,18 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 		}
 	}
 	view.Counter = s.translate(r, "idx.catalog.counter", counterTotal, counterVerified)
+	nativeCount, familyCount, pendingCount := 0, 0, 0
+	for _, entry := range sites {
+		switch {
+		case entry.Source == "" || entry.Source == "native":
+			nativeCount++
+		case entry.Family != "":
+			familyCount++
+		default:
+			pendingCount++
+		}
+	}
+	view.Coverage = s.translate(r, "idx.catalog.coverage", nativeCount, familyCount, pendingCount)
 
 	filtered := make([]catalog.IndexEntry, 0, len(sites))
 	for _, entry := range sites {
@@ -964,7 +978,7 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 		return left < right
 	})
 	view.Filtered = s.translate(r, "idx.catalog.filtered", len(filtered), len(sites))
-	view.HasFilters = query != "" || q.Type != "" || q.Language != "" || q.Category != "" || q.Protocol != "" || q.State != ""
+	view.HasFilters = query != "" || q.Type != "" || q.Language != "" || q.Category != "" || q.Protocol != "" || q.State != "" || q.Route != ""
 	view.ShowAll = view.HasFilters || r.URL.Query().Get("all") == "1"
 	if !view.ShowAll {
 		view.Guide = s.buildAddGuide(r, index, added, strings.TrimSpace(r.URL.Query().Get("need")))
@@ -1209,6 +1223,7 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		QuickAdd:      catalogQuickAdd(entry),
 		Configurable:  entry.Source == "" || entry.Source == "native" || entry.Family != "",
 		Probe:         entry.Source != "" && entry.Source != "native",
+		ToWrite:       entry.Source != "" && entry.Source != "native" && entry.Family == "",
 		Reachable:     entry.Reachable,
 		Italian:       entry.Italian || strings.HasPrefix(strings.ToLower(entry.Language), "it"),
 		Usage:         entry.Usage,
@@ -1307,6 +1322,14 @@ func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry
 			Chips: []siteFilterChip{
 				{Label: s.translate(r, "idx.siteState.verified"), URL: catalogFilterURL(r, "state", "verified"), Active: current.State == "verified"},
 				{Label: s.translate(r, "idx.siteState.draft"), URL: catalogFilterURL(r, "state", "testing"), Active: current.State == "testing"},
+			},
+		},
+		siteFilterGroup{
+			Label: s.translate(r, "idx.catalog.route"),
+			Chips: []siteFilterChip{
+				{Label: s.translate(r, "idx.catalog.routeNative"), URL: catalogFilterURL(r, "route", "native"), Active: current.Route == "native"},
+				{Label: s.translate(r, "idx.catalog.routeFamily"), URL: catalogFilterURL(r, "route", "family"), Active: current.Route == "family"},
+				{Label: s.translate(r, "idx.catalog.routePending"), URL: catalogFilterURL(r, "route", "pending"), Active: current.Route == "pending"},
 			},
 		},
 	)
@@ -1452,6 +1475,7 @@ type catalogQuery struct {
 	Category string
 	Protocol string
 	State    string
+	Route    string
 	Sort     string
 	Page     int
 }
@@ -1460,6 +1484,7 @@ var catalogFilterValues = map[string]map[string]bool{
 	"type":  {"public": true, "semi-private": true, "private": true},
 	"proto": {"torrent": true, "usenet": true},
 	"state": {"verified": true, "testing": true},
+	"route": {"native": true, "family": true, "pending": true},
 	"sort":  {"used": true, "name": true},
 	"cat": {
 		"movies": true, "tv": true, "music": true, "books": true,
@@ -1475,6 +1500,7 @@ func parseCatalogQuery(r *http.Request) catalogQuery {
 		Category: catalogFilterValue(values.Get("cat"), "cat"),
 		Protocol: catalogFilterValue(values.Get("proto"), "proto"),
 		State:    catalogFilterValue(values.Get("state"), "state"),
+		Route:    catalogFilterValue(values.Get("route"), "route"),
 		Sort:     catalogFilterValue(values.Get("sort"), "sort"),
 		Page:     intParam(values.Get("page"), 1),
 	}
@@ -1507,6 +1533,20 @@ func catalogEntryMatches(entry catalog.IndexEntry, q catalogQuery, query string)
 	}
 	if q.Protocol != "" && !strings.EqualFold(entry.Protocol, q.Protocol) {
 		return false
+	}
+	switch q.Route {
+	case "native":
+		if entry.Source != "" && entry.Source != "native" {
+			return false
+		}
+	case "family":
+		if entry.Family == "" || entry.Source == "" || entry.Source == "native" {
+			return false
+		}
+	case "pending":
+		if entry.Source == "" || entry.Source == "native" || entry.Family != "" {
+			return false
+		}
 	}
 	switch q.State {
 	case "verified":
@@ -1573,6 +1613,9 @@ func catalogHiddenFilters(query string, q catalogQuery) []catalogQueryPair {
 	}
 	if q.State != "" {
 		out = append(out, catalogQueryPair{"state", q.State})
+	}
+	if q.Route != "" {
+		out = append(out, catalogQueryPair{"route", q.Route})
 	}
 	return out
 }

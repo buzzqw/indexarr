@@ -101,21 +101,27 @@ func newImportToken() (string, error) {
 }
 
 type importIndexerRow struct {
-	Index          int
-	Name           string
-	Implementation string
-	Protocol       string
-	DefinitionHint string
-	BaseURL        string
-	Categories     string
-	Tags           string
-	Enabled        bool
-	CatalogOnly    bool
-	DisabledReason string
-	HasKey         bool
-	HasCredentials bool
-	Target         string
-	Manager        string
+	Index           int
+	Name            string
+	Implementation  string
+	Protocol        string
+	DefinitionHint  string
+	BaseURL         string
+	Categories      string
+	Tags            string
+	Enabled         bool
+	CatalogOnly     bool
+	DisabledReason  string
+	HasKey          bool
+	HasCredentials  bool
+	Target          string
+	Manager         string
+	Status          string
+	Reason          string
+	ReasonDetail    string
+	Family          string
+	DefinitionState string
+	Applicable      bool
 }
 
 type importApplicationRow struct {
@@ -139,6 +145,7 @@ type importPlanView struct {
 	Indexers     []importIndexerRow
 	Active       int
 	Inactive     int
+	Pending      int
 	Applications []importApplicationRow
 	Proxies      []importProxyRow
 	Warnings     []string
@@ -148,6 +155,8 @@ type importSummaryRow struct {
 	Name    string
 	Target  string
 	Manager string
+	Status  string
+	Family  string
 	Action  string
 }
 
@@ -155,6 +164,7 @@ type importSummaryView struct {
 	Created int
 	Updated int
 	Skipped int
+	Pending int
 	Errors  int
 	Rows    []importSummaryRow
 	Error   string
@@ -420,8 +430,21 @@ func importPlanFrom(plan importers.Plan, targets []importers.NativeTarget, token
 			view.Inactive++
 		}
 		if i < len(targets) {
-			row.Target = targets[i].DefinitionID
-			row.Manager = managerLabel(targets[i].ViaManager)
+			target := targets[i]
+			row.Target = target.DefinitionID
+			row.Manager = managerLabel(target.ViaManager)
+			row.Status = target.Status
+			if row.Status == "" {
+				row.Status = importers.TargetNative
+			}
+			row.Reason = target.Reason
+			row.ReasonDetail = target.ReasonDetail
+			row.Family = target.Family
+			row.DefinitionState = target.DefinitionState
+			row.Applicable = row.Status != importers.TargetPending
+			if !row.Applicable {
+				view.Pending++
+			}
 		}
 		view.Indexers = append(view.Indexers, row)
 	}
@@ -450,6 +473,7 @@ func importSummaryFrom(result importers.ApplyResult) *importSummaryView {
 		Created: result.Created,
 		Updated: result.Updated,
 		Skipped: result.Skipped,
+		Pending: len(result.Pending),
 		Errors:  result.Errors,
 	}
 	for _, item := range result.Applied {
@@ -461,6 +485,8 @@ func importSummaryFrom(result importers.ApplyResult) *importSummaryView {
 			Name:    item.Name,
 			Target:  item.DefinitionID,
 			Manager: managerLabel(item.ViaManager),
+			Status:  item.Status,
+			Family:  item.Family,
 			Action:  action,
 		})
 	}

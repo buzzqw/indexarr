@@ -217,29 +217,29 @@ func TestFromJackettAPIRejectsBadURLWithoutLeakingKey(t *testing.T) {
 	}
 }
 
-func TestDeduplicatePrefersNativeThenProwlarrThenJackett(t *testing.T) {
-	jackett := NativeTarget{
-		Name: "Site", Slug: "site", DefinitionID: nativeDefinition,
-		SiteKey: "site.example", ViaManager: "jackett", BaseURL: "http://jackett/1",
+func TestDeduplicatePrefersNativeThenFamilyThenPending(t *testing.T) {
+	pending := NativeTarget{
+		Name: "Site", Slug: "site", Status: TargetPending,
+		SiteKey: "site.example", BaseURL: "https://site.example/",
 	}
-	prowlarr := NativeTarget{
-		Name: "Site", Slug: "site", DefinitionID: nativeDefinition,
-		SiteKey: "site.example", ViaManager: "prowlarr", BaseURL: "http://prowlarr/1/api",
+	family := NativeTarget{
+		Name: "Site", Slug: "site", DefinitionID: "jk-site", Status: TargetFamily,
+		Family: "nexusphp", SiteKey: "site.example", BaseURL: "https://site.example/",
 	}
 	native := NativeTarget{
-		Name: "Site", Slug: "site", DefinitionID: "site",
+		Name: "Site", Slug: "site", DefinitionID: "site", Status: TargetNative,
 		SiteKey: "site.example", BaseURL: "https://site.example/",
 	}
 	other := NativeTarget{
-		Name: "Other", Slug: "other", DefinitionID: nativeDefinition,
-		SiteKey: "other.example", ViaManager: "jackett", BaseURL: "http://jackett/2",
+		Name: "Other", Slug: "other", Status: TargetPending,
+		SiteKey: "other.example", BaseURL: "https://other.example/",
 	}
 
-	kept, dropped := Deduplicate([]NativeTarget{jackett, other, prowlarr, native})
+	kept, dropped := Deduplicate([]NativeTarget{pending, other, family, native})
 	if len(kept) != 2 {
 		t.Fatalf("kept = %d, want 2: %+v", len(kept), kept)
 	}
-	if kept[0].DefinitionID != "site" || kept[0].ViaManager != "" {
+	if kept[0].DefinitionID != "site" || kept[0].Status != TargetNative {
 		t.Fatalf("site winner = %+v", kept[0])
 	}
 	if kept[1].Name != "Other" {
@@ -253,32 +253,24 @@ func TestDeduplicatePrefersNativeThenProwlarrThenJackett(t *testing.T) {
 			t.Errorf("covered by %q", item.CoveredBy.Name)
 		}
 	}
-
-	// A Prowlarr and a Jackett bridge with no native definition: Prowlarr wins.
-	kept, dropped = Deduplicate([]NativeTarget{jackett, prowlarr})
-	if len(kept) != 1 || kept[0].ViaManager != "prowlarr" {
-		t.Fatalf("bridge winner = %+v", kept)
-	}
-	if len(dropped) != 1 || dropped[0].Target.ViaManager != "jackett" {
-		t.Fatalf("bridge dropped = %+v", dropped)
-	}
 }
 
 func TestDeduplicateIsIdempotent(t *testing.T) {
 	targets := []NativeTarget{
-		{Name: "A", DefinitionID: nativeDefinition, SiteKey: "a", ViaManager: "jackett"},
-		{Name: "A", DefinitionID: nativeDefinition, SiteKey: "a", ViaManager: "prowlarr"},
-		{Name: "B", DefinitionID: nativeDefinition, SiteKey: "b", ViaManager: "prowlarr"},
+		{Name: "A", Status: TargetPending, SiteKey: "a"},
+		{Name: "A", Status: TargetFamily, DefinitionID: "jk-a", SiteKey: "a"},
+		{Name: "A", Status: TargetNative, DefinitionID: "a", SiteKey: "a"},
+		{Name: "B", Status: TargetNative, DefinitionID: "b", SiteKey: "b"},
 	}
 	first, dropped := Deduplicate(targets)
 	second, droppedAgain := Deduplicate(first)
 	if len(first) != 2 || len(second) != 2 {
 		t.Fatalf("first=%d second=%d", len(first), len(second))
 	}
-	if len(dropped) != 1 || len(droppedAgain) != 0 {
+	if len(dropped) != 2 || len(droppedAgain) != 0 {
 		t.Fatalf("dropped=%d again=%d", len(dropped), len(droppedAgain))
 	}
-	if first[0].ViaManager != "prowlarr" || second[0].ViaManager != "prowlarr" {
+	if first[0].Status != TargetNative || second[0].Status != TargetNative {
 		t.Fatalf("winner changed: %+v -> %+v", first[0], second[0])
 	}
 }
@@ -300,14 +292,14 @@ func TestTorrentLeechRSSTargetKeepsTheFeedInSecrets(t *testing.T) {
 func TestPairChannelsKeepsFeedAndSearchForOneSite(t *testing.T) {
 	feed := NativeTarget{
 		Name: "Site (RSS)", Slug: "site-rss", DefinitionID: "site-rss",
-		SiteKey: "site.example", SiteGroup: "site.example", Channel: "latest",
-		Config: map[string]string{"latest": "true"},
+		Status: TargetNative, SiteKey: "site.example", SiteGroup: "site.example",
+		Channel: "latest", Config: map[string]string{"latest": "true"},
 	}
-	bridge := NativeTarget{
-		Name: "Site", Slug: "site", DefinitionID: nativeDefinition,
-		SiteKey: "site.example", SiteGroup: "site.example", ViaManager: "prowlarr",
+	search := NativeTarget{
+		Name: "Site", Slug: "site", DefinitionID: "site",
+		Status: TargetNative, SiteKey: "site.example", SiteGroup: "site.example",
 	}
-	targets := PairChannels([]NativeTarget{feed, bridge})
+	targets := PairChannels([]NativeTarget{feed, search})
 	kept, dropped := Deduplicate(targets)
 	if len(kept) != 2 || len(dropped) != 0 {
 		t.Fatalf("kept=%d dropped=%d targets=%+v", len(kept), len(dropped), kept)
@@ -320,9 +312,9 @@ func TestPairChannelsKeepsFeedAndSearchForOneSite(t *testing.T) {
 		t.Errorf("feed latest = %q", byChannel["latest"].Config["latest"])
 	}
 	if byChannel["search"].Config["latest"] != "false" {
-		t.Errorf("bridge latest = %q", byChannel["search"].Config["latest"])
+		t.Errorf("search latest = %q", byChannel["search"].Config["latest"])
 	}
 	if byChannel["search"].Config["site"] != "site.example" {
-		t.Errorf("bridge site = %q", byChannel["search"].Config["site"])
+		t.Errorf("search site = %q", byChannel["search"].Config["site"])
 	}
 }

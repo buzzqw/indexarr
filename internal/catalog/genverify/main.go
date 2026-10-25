@@ -84,8 +84,9 @@ type target struct {
 func main() {
 	dir := flag.String("metadata", "internal/catalog/metadata", "metadata directory")
 	out := flag.String("out", "internal/catalog/metadata/verification.yaml", "output file")
-	workers := flag.Int("workers", 16, "parallel GET probes")
-	timeout := flag.Duration("timeout", 15*time.Second, "per-request timeout")
+	workers := flag.Int("workers", 12, "parallel GET probes")
+	timeout := flag.Duration("timeout", 12*time.Second, "per-request timeout")
+	probeAll := flag.Bool("all", false, "also probe private sources and sources with no known family")
 	flag.Parse()
 
 	jackett := loadSnapshot(filepath.Join(*dir, "jackett.json"))
@@ -93,7 +94,7 @@ func main() {
 	families := loadFamilies(filepath.Join(*dir, "families.yaml"))
 	manual := loadManual(filepath.Join(*dir, "manual.yaml"))
 
-	targets := collectTargets(jackett, prowlarr, families, manual)
+	targets := collectTargets(jackett, prowlarr, families, manual, *probeAll)
 	if len(targets) == 0 {
 		fmt.Fprintln(os.Stderr, "genverify: no targets")
 		os.Exit(2)
@@ -168,7 +169,7 @@ func main() {
 	fmt.Printf("verified live: %d, failed/blocked: %d, total: %d\n", ok, failed, len(results))
 }
 
-func collectTargets(jackett, prowlarr snapshot, families familyManifest, manual manualManifest) []target {
+func collectTargets(jackett, prowlarr snapshot, families familyManifest, manual manualManifest, probeAll bool) []target {
 	var out []target
 	seenURL := map[string]bool{}
 	add := func(item target) {
@@ -182,7 +183,7 @@ func collectTargets(jackett, prowlarr snapshot, families familyManifest, manual 
 		out = append(out, item)
 	}
 	for _, site := range jackett.Sites {
-		include := site.Type == "public" || site.Type == "semi-private"
+		include := probeAll || site.Type == "public" || site.Type == "semi-private"
 		if _, ok := families.Families[site.SourceID]; ok {
 			include = true
 		}
@@ -264,11 +265,15 @@ func htmlTitle(body []byte) string {
 func familyMarkers(body []byte) []string {
 	text := strings.ToLower(string(body))
 	var out []string
+	// Only markers that name the software or one of its distinctive paths are
+	// used. Weak generic paths (getrss.php, ajax.php?action, download.php?id=)
+	// appear on several families and would mislabel a site; a wrong family is
+	// worse than a source queued for a written definition.
 	for family, markers := range map[string][]string{
 		catalog.FamilyUnit3D:        {"unit3d", "api/torrents", "/api/v1/torrents"},
-		catalog.FamilyGazelle:       {"gazelle", "torrents.php?action", "ajax.php?action"},
-		catalog.FamilyNexusPHP:      {"nexusphp", "takelogin.php", "getrss.php"},
-		catalog.FamilyTorrentTrader: {"torrenttrader", "torrent trader", "download.php?id=", "index.php?page=torrents"},
+		catalog.FamilyGazelle:       {"gazelle", "torrents.php?action=torrents"},
+		catalog.FamilyNexusPHP:      {"nexusphp"},
+		catalog.FamilyTorrentTrader: {"torrenttrader", "torrent trader"},
 		catalog.FamilyXbtit:         {"xbtit", "btiteam", "xbtitfm", "jscript/xbtit.js"},
 	} {
 		for _, marker := range markers {

@@ -17,6 +17,7 @@
     <div>
       <h2>{{.Title}}</h2>
       <p class="muted">{{.Subtitle}}</p>
+      {{if .Coverage}}<p class="muted catalog-coverage">{{.Coverage}}</p>{{end}}
     </div>
     <span class="muted catalog-counter">{{.Counter}}</span>
   </div>
@@ -101,10 +102,10 @@
             <input type="hidden" name="definition_id" value="{{.ID}}">
             <button class="btn small" type="submit" title="{{T "tip.addAdd"}}">{{T "idx.catalog.add"}}</button>
           </form>
-          {{else if .Configurable}}
-          <a class="btn small" href="/indexers/new?definition={{.ID}}" title="{{T "tip.addConfigure"}}">{{T "idx.catalog.configure"}}</a>
           {{else}}
-          <span class="chip">{{T "idx.catalog.familyMissing"}}</span>
+          {{if .Configurable}}<a class="btn small" href="/indexers/new?definition={{.ID}}" title="{{T "tip.addConfigure"}}">{{T "idx.catalog.configure"}}</a>{{end}}
+          {{if .Probe}}<form method="post" action="/indexers/catalog/probe"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small" type="submit">{{T "idx.catalog.probe"}}</button></form>{{end}}
+          {{if .ToWrite}}<span class="chip" title="{{T "tip.catalogToWrite"}}">{{T "idx.catalog.toWrite"}}</span>{{end}}
           {{end}}
         </div>
       </li>
@@ -174,9 +175,11 @@
       <div class="catalog-actions">
         {{if .Added}}<a class="btn small" href="/indexers/{{.AddedID}}">{{T "idx.catalog.alreadyAdded"}}</a>
         {{else if .QuickAdd}}<form method="post" action="/indexers/catalog/add"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small primary" type="submit">{{T "idx.catalog.add"}}</button></form>
-        {{else if .Probe}}<form method="post" action="/indexers/catalog/probe"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small primary" type="submit">{{T "idx.catalog.probe"}}</button></form>
-        {{else if .Configurable}}<a class="btn small" href="/indexers/new?definition={{.ID}}">{{T "idx.catalog.configure"}}</a>
-        {{else}}<span class="chip">{{T "idx.catalog.familyMissing"}}</span>{{end}}
+        {{else}}
+        {{if .Configurable}}<a class="btn small" href="/indexers/new?definition={{.ID}}">{{T "idx.catalog.configure"}}</a>{{end}}
+        {{if .Probe}}<form method="post" action="/indexers/catalog/probe"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small primary" type="submit">{{T "idx.catalog.probe"}}</button></form>{{end}}
+        {{if .ToWrite}}<span class="chip" title="{{T "tip.catalogToWrite"}}">{{T "idx.catalog.toWrite"}}</span>{{end}}
+        {{end}}
       </div>
     </li>
     {{end}}

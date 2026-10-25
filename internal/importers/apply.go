@@ -8,8 +8,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/catalog"
+	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/vault"
 )
@@ -20,16 +22,27 @@ type AppliedIndexer struct {
 	ID           int64
 	Name         string
 	DefinitionID string
+	Status       string
+	Family       string
 	ViaManager   string
 	Updated      bool
 }
 
+// PendingTarget is a manager source indexarr does not own natively yet. It is
+// reported to the caller instead of being turned into a Torznab proxy.
+type PendingTarget struct {
+	Name   string
+	Reason string
+}
+
 // ApplyResult summarises one import run. Created and Updated count the native
-// indexers written; Skipped counts duplicate targets in the same selection;
-// Errors counts the failure that stopped the run (zero when err is nil).
+// indexers written; Pending counts sources left in the catalog queue;
+// Skipped counts duplicate targets in the same selection; Errors counts the
+// failure that stopped the run (zero when err is nil).
 type ApplyResult struct {
 	Applied []AppliedIndexer
 	Dropped []DroppedTarget
+	Pending []PendingTarget
 	Created int
 	Updated int
 	Skipped int
@@ -75,9 +88,26 @@ func ApplyTargets(ctx context.Context, st *store.Store, secretVault *vault.Vault
 		}
 		seen[key] = true
 
+		if targetStatus(target) == TargetPending {
+			// No native definition or family connector: keep the source in
+			// the catalog queue and create nothing. A proxy towards the
+			// manager would look like a migration while leaving indexarr
+			// dependent on it, which is exactly what native adoption removes.
+			result.Pending = append(result.Pending, PendingTarget{
+				Name:   target.Name,
+				Reason: target.Reason,
+			})
+			continue
+		}
 		if err := validateTarget(target); err != nil {
 			result.Errors++
 			return result, err
+		}
+		if targetStatus(target) == TargetFamily && len(target.DefinitionBody) > 0 {
+			if err := upsertTargetDefinition(ctx, st, target); err != nil {
+				result.Errors++
+				return result, err
+			}
 		}
 		slug, current, found := chooseIndexer(existing, target)
 		configJSON, err := encodeConfig(target.Config)
@@ -99,6 +129,8 @@ func ApplyTargets(ctx context.Context, st *store.Store, secretVault *vault.Vault
 		item := AppliedIndexer{
 			Name:         target.Name,
 			DefinitionID: target.DefinitionID,
+			Status:       targetStatus(target),
+			Family:       target.Family,
 			ViaManager:   target.ViaManager,
 		}
 		created := false
@@ -137,6 +169,41 @@ func ApplyTargets(ctx context.Context, st *store.Store, secretVault *vault.Vault
 		})
 	}
 	return result, nil
+}
+
+// upsertTargetDefinition stores the definition synthesized for a family site
+// before the indexer row that references it. Built-in definitions are already
+// written by catalog.Sync; this path only handles the derived family bodies.
+func upsertTargetDefinition(ctx context.Context, st *store.Store, target NativeTarget) error {
+	// A definition the user edited locally is never overwritten by a later
+	// import: the site row is only a starting point, not the source of truth.
+	if current, err := st.GetDefinition(ctx, target.DefinitionID); err == nil &&
+		current.Origin == catalog.OriginLocal {
+		return nil
+	}
+	parsed, err := definition.Parse(target.DefinitionBody)
+	if err != nil {
+		return fmt.Errorf("definition for %q: %w", target.Name, err)
+	}
+	state := strings.TrimSpace(target.DefinitionState)
+	if state == "" {
+		state = "bozza"
+	}
+	family := strings.TrimSpace(target.Family)
+	if family == "" {
+		family = strings.TrimSpace(parsed.Connector)
+	}
+	return st.UpsertDefinition(ctx, store.Definition{
+		ID:            target.DefinitionID,
+		SchemaVersion: parsed.Schema,
+		Family:        family,
+		State:         state,
+		Origin:        "catalog",
+		Author:        "indexarr",
+		Body:          string(target.DefinitionBody),
+		Hash:          definition.Fingerprint(target.DefinitionBody),
+		UpdatedAt:     time.Now().UTC(),
+	})
 }
 
 func validateTarget(target NativeTarget) error {

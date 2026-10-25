@@ -88,7 +88,7 @@ func TestApplyCreatesNativeIndexersAndSealsSecrets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("applyPlan: %v", err)
 	}
-	if result.Created != 3 || result.Updated != 0 || len(result.Applied) != 3 {
+	if result.Created != 2 || result.Updated != 0 || len(result.Applied) != 2 || len(result.Pending) != 1 {
 		t.Fatalf("result = %+v", result)
 	}
 
@@ -97,8 +97,8 @@ func TestApplyCreatesNativeIndexersAndSealsSecrets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListIndexers: %v", err)
 	}
-	if len(rows) != 3 {
-		t.Fatalf("got %d indexers, want 3: %+v", len(rows), rows)
+	if len(rows) != 2 {
+		t.Fatalf("got %d indexers, want 2: %+v", len(rows), rows)
 	}
 
 	byName := make(map[string]store.Indexer, len(rows))
@@ -126,7 +126,7 @@ func TestApplyCreatesNativeIndexersAndSealsSecrets(t *testing.T) {
 	if err := json.Unmarshal([]byte(alpha.ConfigJSON), &alphaConfig); err != nil {
 		t.Fatalf("Alpha config: %v", err)
 	}
-	if alphaConfig["url"] != "http://prowlarr:9696/16/api" {
+	if alphaConfig["url"] != "https://alpha.example.invalid/" {
 		t.Fatalf("Alpha endpoint = %q", alphaConfig["url"])
 	}
 	if alphaConfig["categories"] != "2000,5000" {
@@ -139,16 +139,14 @@ func TestApplyCreatesNativeIndexersAndSealsSecrets(t *testing.T) {
 		t.Fatalf("Alpha metadata = %+v", alpha)
 	}
 
-	if byName["Disabled Site"].Enabled {
-		t.Fatalf("disabled upstream indexer was re-enabled")
+	if _, ok := byName["Disabled Site"]; ok {
+		t.Fatalf("a pending source must not create an indexer")
 	}
 
 	// Secrets are sealed: the columns must not contain the plaintext and the
 	// vault must open them back to the original values.
 	for key, want := range map[string]string{
-		"api_key":  testProwlarrKey,
-		"username": testAlphaUser,
-		"password": testAlphaPass,
+		"api_key": testAlphaKey,
 	} {
 		secret, err := st.GetSecret(ctx, alpha.ID, key)
 		if err != nil {
@@ -206,7 +204,7 @@ func TestApplyIsIdempotentAndUpdatesExistingRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second applyPlan: %v", err)
 	}
-	if second.Created != 0 || second.Updated != 3 || len(second.Applied) != 3 {
+	if second.Created != 0 || second.Updated != 2 || len(second.Applied) != 2 || len(second.Pending) != 1 {
 		t.Fatalf("second result = %+v", second)
 	}
 
@@ -227,8 +225,8 @@ func TestApplyIsIdempotentAndUpdatesExistingRows(t *testing.T) {
 	if byName["Alpha Tracker"].Priority != 99 {
 		t.Fatalf("Alpha priority was not updated: %+v", byName["Alpha Tracker"])
 	}
-	if !byName["Disabled Site"].Enabled {
-		t.Fatalf("Disabled Site enabled state was not updated")
+	if _, ok := byName["Disabled Site"]; ok {
+		t.Fatalf("a pending source must not appear in the indexers table")
 	}
 
 	secret, err := openStore(t, dbPath).GetSecret(ctx, ids["Alpha Tracker"], "api_key")
@@ -236,12 +234,12 @@ func TestApplyIsIdempotentAndUpdatesExistingRows(t *testing.T) {
 		t.Fatalf("GetSecret: %v", err)
 	}
 	plaintext, err := v.Open(secret.Nonce, secret.Ciphertext)
-	if err != nil || plaintext != testProwlarrKey {
+	if err != nil || plaintext != testAlphaKey {
 		t.Fatalf("sealed secret after re-run = %q, %v", plaintext, err)
 	}
 
-	if first.Created != 3 {
-		t.Fatalf("first run created %d, want 3", first.Created)
+	if first.Created != 2 {
+		t.Fatalf("first run created %d, want 2", first.Created)
 	}
 }
 
@@ -252,19 +250,16 @@ func TestApplyKeepsDisabledUpstreamDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Targets: %v", err)
 	}
-	if _, err := applyPlan(ctx, dbPath, testVault(t), targets); err != nil {
+	result, err := applyPlan(ctx, dbPath, testVault(t), targets)
+	if err != nil {
 		t.Fatalf("applyPlan: %v", err)
 	}
+	if len(result.Pending) != 1 || result.Pending[0].Name != "Disabled Site" {
+		t.Fatalf("pending = %+v", result.Pending)
+	}
 
-	row, err := openStore(t, dbPath).GetIndexerBySlug(ctx, "disabled-site")
-	if err != nil {
-		t.Fatalf("GetIndexerBySlug: %v", err)
-	}
-	if row.Enabled {
-		t.Fatalf("disabled site is enabled")
-	}
-	if row.Priority != 30 {
-		t.Fatalf("disabled site priority = %d, want 30", row.Priority)
+	if _, err := openStore(t, dbPath).GetIndexerBySlug(ctx, "disabled-site"); err == nil {
+		t.Fatalf("a source with no native route must not create an indexer")
 	}
 }
 

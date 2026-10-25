@@ -4,16 +4,66 @@
 # "verificata" when this table has a successful GET; private sites stay
 # "da-provvi" even when their login page answers.
 schema: 1
-checked: "2026-10-23"
+checked: "2026-10-25"
 method: GET homepage, redirects followed, no login
 results:
+    jackett:0dayfiles-api:
+        url: https://0dayfiles.net/
+        http: 200
+        final: https://0dayfiles.net/login
+        title: Login - 0DayFiles
+        bytes: 8646
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:0daykiev:
+        url: https://tracker.0day.community/
+        http: 200
+        final: https://tracker.0day.community/login.php?returnto=%2Fbrowse.php
+        title: !!binary wvXu5CA6OiDS8OXq5fAgMGRheS5jb21tdW5pdHk=
+        bytes: 10668
+        checked: "2026-10-25"
     jackett:0magnet:
         url: https://16mag.net/
         http: 200
         final: https://16mag.net/
         title: ØMagnet - Torrent Sharing Made Easy
         bytes: 2445
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:1ptbar-api:
+        url: https://1ptba.com/
+        http: 403
+        final: https://1ptba.com/
+        title: Just a moment...
+        bytes: 5580
+        checked: "2026-10-25"
+    jackett:3dtorrents:
+        url: http://www.3dtorrents.org/
+        http: 200
+        final: http://www.3dtorrents.org/
+        title: 3D Torrents - Enter Into Another Dimension
+        bytes: 7624
+        families:
+            - xbtit
+        checked: "2026-10-25"
+    jackett:3dvault-api:
+        url: https://3dvault.org/
+        http: 200
+        final: https://3dvault.org/login
+        title: Login - 3D Vault
+        bytes: 8648
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:4thd:
+        url: https://4thd.xyz/
+        http: 200
+        final: https://4thd.xyz/
+        title: 4thD
+        bytes: 2610
+        families:
+            - gazelle
+        checked: "2026-10-25"
     jackett:13city:
         url: https://13city.org/
         http: 200
@@ -22,81 +72,211 @@ results:
         bytes: 26277
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:52bt:
         url: https://edoqsc3t.529075.xyz/
-        http: 200
+        http: 410
         final: https://edoqsc3t.529075.xyz/
-        title: 52BT - Discover and share resources faster
-        bytes: 106881
-        checked: "2026-10-23"
+        title: The address is dead.
+        bytes: 27706
+        checked: "2026-10-25"
+    jackett:52pt:
+        url: https://52pt.site/
+        http: 200
+        final: https://52pt.site/login.php
+        title: '52PT :: 登录 - Powered by NexusPHP'
+        bytes: 7960
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:1337x:
         url: https://1337x.to/
         http: 403
         final: https://1337x.to/
         title: Just a moment...
         bytes: 5562
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:Bittorrentfiles:
+        url: https://bittorrentfiles.me/
+        checked: "2026-10-25"
+        error: unexpected EOF
+    jackett:abnormal-api:
+        url: https://abn.lol/
+        http: 200
+        final: https://abn.lol/Home/Login?ReturnUrl=%2F
+        title: Connexion - ABN
+        bytes: 6760
+        checked: "2026-10-25"
+    jackett:abtorrents:
+        url: https://usefultrash.net/
+        http: 200
+        final: https://usefultrash.net/login.php
+        title: Login
+        bytes: 3737
+        checked: "2026-10-25"
     jackett:acgrip:
         url: https://acg.rip/
         http: 200
         final: https://acg.rip/
         title: ACG.RIP
-        bytes: 26813
-        checked: "2026-10-23"
+        bytes: 27656
+        checked: "2026-10-25"
+    jackett:acrossthetasman:
+        url: https://acrossthetasman.com/
+        http: 200
+        final: https://acrossthetasman.com/forum.php
+        title: acrossthetasman.com
+        bytes: 15121
+        checked: "2026-10-25"
+    jackett:aftershock:
+        url: https://aftershock.hu/
+        http: 200
+        final: https://aftershock.hu/login.php?returnto=%2F
+        title: '..::Aftershock::.. :: Bejelentkez&eacute;s'
+        bytes: 27712
+        checked: "2026-10-25"
+    jackett:agsvpt:
+        url: https://www.agsvpt.com/
+        http: 200
+        final: https://www.agsvpt.com/login.php
+        bytes: 25437
+        checked: "2026-10-25"
+    jackett:aidoruonline:
+        url: https://aidoru-online.me/
+        http: 200
+        final: https://aidoru-online.me/
+        checked: "2026-10-25"
+    jackett:aither-api:
+        url: https://aither.cc/
+        http: 200
+        final: https://aither.cc/login
+        title: Login - Aither
+        bytes: 5528
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:alabala-api:
+        url: https://alabala.net/
+        http: 200
+        final: https://alabala.net/login.php?returnto=%2F
+        title: 'AlaBala.net :: Login'
+        bytes: 2632
+        checked: "2026-10-25"
+    jackett:alingpt:
+        url: https://pt.aling.de/
+        http: 200
+        final: https://pt.aling.de/login.php
+        title: 'alingPT :: 登录'
+        bytes: 12416
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:alpharatio:
+        url: https://alpharatio.cc/
+        http: 200
+        final: https://alpharatio.cc/login.php
+        title: 'Login :: AlphaRatio'
+        bytes: 3140
+        checked: "2026-10-25"
+    jackett:amigosshare:
+        url: https://amigos-share.club/
+        http: 200
+        final: https://amigos-share.club/
+        title: Amigos Share Club
+        bytes: 12140
+        checked: "2026-10-25"
     jackett:aniRena:
         url: https://www.anirena.com/
         http: 200
         final: https://www.anirena.com/
         title: AniRena — Anime Torrent Tracker
         bytes: 262144
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:anibt:
         url: https://anibt.net/
         http: 200
         final: https://anibt.net/
         title: AniBT · 动画字幕组与新番分享平台
         bytes: 262144
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:anidub:
         url: https://tr.anidub.com/
         http: 200
         final: https://tr.anidub.com/
         title: AniDUB Tracker Скачать аниме бесплатно на торрент трекер Анидаб
-        bytes: 137143
-        checked: "2026-10-23"
+        bytes: 135806
+        checked: "2026-10-25"
     jackett:anilibria:
         url: https://aniliberty.top/
         http: 200
         final: https://aniliberty.top/
         title: AniLiberty — так звучит аниме!
-        bytes: 231806
-        checked: "2026-10-23"
+        bytes: 262144
+        checked: "2026-10-25"
     jackett:animebybelka:
         url: https://anibelka.com/
         http: 200
         final: https://anibelka.com/
         title: Аниме от Белки. Главная
-        bytes: 140033
-        checked: "2026-10-23"
+        bytes: 139422
+        checked: "2026-10-25"
+    jackett:animebytes:
+        url: https://animebytes.tv/
+        http: 200
+        final: https://animebytes.tv/
+        title: AnimeBytes
+        bytes: 1395
+        checked: "2026-10-25"
     jackett:animelayer:
         url: https://animelayer.ru/
         http: 200
         final: https://animelayer.ru/
         title: Animelayer - популярный аниме трекер
-        bytes: 71342
-        checked: "2026-10-23"
+        bytes: 67501
+        checked: "2026-10-25"
+    jackett:animetorrentsro:
+        url: https://animetorrents.io/
+        http: 200
+        final: https://animetorrents.io/login.php?returnto=%2F
+        title: 'ANIME TORRENTS :: Autentificare'
+        bytes: 2239
+        checked: "2026-10-25"
     jackett:animetosho-xyz:
         url: https://animetosho.net/
         http: 200
         final: https://animetosho.net/
         title: Anime Tosho
-        bytes: 213113
-        checked: "2026-10-23"
+        bytes: 219006
+        checked: "2026-10-25"
+    jackett:animeworld-api:
+        url: https://animeworld.cx/
+        http: 200
+        final: https://animeworld.cx/login
+        title: Einloggen - AnimeWorld
+        bytes: 7211
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:animez:
+        url: https://animez.to/
+        http: 200
+        final: https://animez.to/
+        title: AnimeZ
+        bytes: 36466
+        checked: "2026-10-25"
     jackett:anisource:
         url: https://asnet.pw/
-        checked: "2026-10-23"
+        checked: "2026-10-25"
         error: 'dial tcp [2001:470:1f1d:2e7::ffff]:443: connect: network is unreachable'
+    jackett:anthelion-api:
+        url: https://anthelion.me/
+        http: 200
+        final: https://anthelion.me/login.php
+        title: 'Login :: Anthelion'
+        bytes: 5452
+        families:
+            - gazelle
+        checked: "2026-10-25"
     jackett:arabafenice:
         url: https://www.arabafenice.me/
         http: 200
@@ -105,88 +285,420 @@ results:
         bytes: 12354
         families:
             - xbtit
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:arabicsource-api:
+        url: https://arabicsource.net/
+        http: 200
+        final: https://arabicsource.net/login
+        title: تسجيل الدخول - المصدر العربي
+        bytes: 6001
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:arabp2p:
+        url: https://www.arabp2p.net/
+        http: 200
+        final: https://www.arabp2p.net/
+        title: التراكر المفتوح مصدرك للتورنت العربي ArabP2P
+        bytes: 7329
+        families:
+            - xbtit
+        checked: "2026-10-25"
+    jackett:arabscene:
+        url: https://arabscene.me/
+        http: 200
+        final: https://arabscene.me/
+        title: Welcome to ArabScene | ArabScene
+        bytes: 17989
+        checked: "2026-10-25"
+    jackett:arabtorrents:
+        url: https://arab-torrents.net/
+        http: 200
+        final: https://arab-torrents.net/
+        title: !!binary |
+            V2VsY29tZSB0byBBcmFiLVRvcnJlbnRTIHwg2tHIIMrm0eTKIHwgQXJhYi1Ub3JyZW50Uy
+            B8INrRyCDK5tHkyg==
+        bytes: 16874
+        checked: "2026-10-25"
+    jackett:asiancinema:
+        url: https://eiga.moi/
+        http: 200
+        final: https://eiga.moi/login
+        title: Login - AsianCinema
+        bytes: 15964
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:asiandvdclub:
+        url: https://asiandvdclub.org/
+        http: 200
+        final: https://asiandvdclub.org/
+        title: Asian DVD Club | Asian Cinema Community
+        bytes: 19969
+        checked: "2026-10-25"
+    jackett:astratorrent:
+        url: https://astratorrent.la/
+        http: 200
+        final: https://astratorrent.la/login.php
+        title: AstraTorrent — Le Tracker Privé Francophone 100% Freeleech &amp; Sans Ratio
+        bytes: 72505
+        checked: "2026-10-25"
+    jackett:audiences:
+        url: https://audiences.me/
+        http: 403
+        final: https://audiences.me/login.php
+        title: Just a moment...
+        bytes: 5653
+        checked: "2026-10-25"
     jackett:audiobookbay:
         url: https://audiobookbay.lu/
         http: 200
         final: https://audiobookbay.lu/
         title: Unabridged Audiobooks Free Online
-        bytes: 36402
-        checked: "2026-10-23"
+        bytes: 34636
+        checked: "2026-10-25"
+    jackett:audionews:
+        url: https://audionews.org/
+        http: 200
+        final: https://audionews.org/
+        title: 'Home :: Audionews.org'
+        bytes: 17017
+        checked: "2026-10-25"
+    jackett:aussierules:
+        url: https://aussierul.es/
+        http: 200
+        final: https://aussierul.es/
+        title: Welcome to aussierul.es | aussierul.es
+        bytes: 10306
+        checked: "2026-10-25"
+    jackett:avistaz:
+        url: https://avistaz.to/
+        http: 200
+        final: https://avistaz.to/
+        title: AvistaZ
+        bytes: 5804
+        checked: "2026-10-25"
+    jackett:azusa:
+        url: https://azusa.wiki/
+        http: 200
+        final: https://azusa.wiki/login.php
+        title: '梓喵 :: 登录 - Powered by NexusPHP'
+        bytes: 31254
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:backups:
+        url: https://back-ups.me/
+        http: 200
+        final: https://back-ups.me/
+        title: Welcome to back-ups.me | back-ups.me
+        bytes: 12073
+        checked: "2026-10-25"
+    jackett:bakabt:
+        url: https://bakabt.me/
+        http: 200
+        final: https://bakabt.me/
+        title: Here Now
+        bytes: 2407
+        checked: "2026-10-25"
     jackett:bangumi-moe:
         url: https://bangumi.moe/
         http: 200
         final: https://bangumi.moe/
         title: 番組、萌え
         bytes: 4305
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:baozipt:
+        url: https://p.t-baozi.cc/
+        http: 200
+        final: https://p.t-baozi.cc/login.php
+        title: 'baozi :: 登录 @baozi - Powered by NexusPHP'
+        bytes: 21580
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:beload:
+        url: https://beload.org/
+        http: 200
+        final: https://beload.org/login.php
+        title: Beload - Bejelentkezés
+        bytes: 105364
+        checked: "2026-10-25"
     jackett:best-torrents:
         url: https://best-torrents.com/
         http: 200
         final: https://best-torrents.com/
         title: Best-Torrents.com - NAJLEPSZA BAZA TORRENTOW
-        bytes: 55373
-        checked: "2026-10-23"
+        bytes: 55208
+        checked: "2026-10-25"
+    jackett:bestcore:
+        url: https://best-core.info/
+        http: 200
+        final: https://best-core.info/kulso.php
+        title: Best-Core
+        bytes: 5492
+        checked: "2026-10-25"
+    jackett:beyond-hd-api:
+        url: https://beyond-hd.me/
+        http: 200
+        final: https://beyond-hd.me/login
+        title: Sign In | BeyondHD
+        bytes: 7996
+        checked: "2026-10-25"
+    jackett:bibliotik:
+        url: https://bibliotik.me/
+        http: 200
+        final: https://bibliotik.me/
+        title: Bibliotik / Login
+        bytes: 1256
+        checked: "2026-10-25"
+    jackett:bigcore:
+        url: https://bigcore.eu/
+        http: 200
+        final: https://bigcore.eu/login.php
+        title: BigCore - Bejelentkezés
+        bytes: 10304
+        checked: "2026-10-25"
     jackett:bigfangroup:
         url: https://bigfangroup.org/
         http: 200
         final: https://bigfangroup.org/
         title: !!binary w+vg4u3g/yBCaWdGQU5Hcm91cC5vcmcgLSDx6uD34PL8IOHl5yDw5ePo8fLw4Pbo6A==
-        bytes: 24390
+        bytes: 24196
+        checked: "2026-10-25"
+    jackett:bitagent:
+        url: https://bit-agent.org/
+        http: 200
+        final: https://bit-agent.org/signin?return_to=https%3A%2F%2Fbit-agent.org%2F
+        title: Sign in
+        bytes: 7290
+        checked: "2026-10-25"
+    jackett:bitbazis:
+        url: https://bitbazis.net/
+        http: 200
+        final: https://bitbazis.net/login.php
+        title: Bit-Bázis
+        bytes: 4727
+        checked: "2026-10-25"
+    jackett:bitded:
+        url: http://dedbit-new.dedbit.com/
+        http: 200
+        final: http://dedbit-new.dedbit.com/
+        title: Thailand BitTorrent Tracker
+        bytes: 27143
+        checked: "2026-10-25"
+    jackett:bitgamer:
+        url: https://bitgamer.ch/
+        http: 200
+        final: https://bitgamer.ch/login.php?returnto=%2F
+        title: bitGAMER
+        bytes: 1552
+        checked: "2026-10-25"
+    jackett:bithdtv:
+        url: https://www.bit-hdtv.com/
+        http: 403
+        final: https://www.bit-hdtv.com/
+        title: Just a moment...
+        bytes: 5587
+        checked: "2026-10-25"
+    jackett:bithumen:
+        url: https://bithumen.be/
+        http: 200
+        final: https://bithumen.be/login.php?returnto=%2F
+        title: '-'
+        bytes: 5888
+        checked: "2026-10-25"
+    jackett:bitporn:
+        url: https://bitporn.eu/
+        http: 200
+        final: https://bitporn.eu/login
+        title: Login - BitPorn
+        bytes: 4828
         families:
-            - nexusphp
-        checked: "2026-10-23"
+            - unit3d
+        checked: "2026-10-25"
+    jackett:bitturk:
+        url: https://bitturk.net/
+        http: 403
+        final: https://bitturk.net/
+        title: Just a moment...
+        bytes: 5476
+        checked: "2026-10-25"
+    jackett:bjshare:
+        url: https://bj-share.info/
+        http: 200
+        final: https://bj-share.info/login.php?c
+        title: 'Login :: BJ-Share :: Semeando Amizades'
+        bytes: 3205
+        checked: "2026-10-25"
+    jackett:bluebirdhd:
+        url: https://bluebird-hd.org/
+        http: 200
+        final: https://bluebird-hd.org/
+        title: Under maintenance
+        bytes: 3871
+        checked: "2026-10-25"
     jackett:blueroms:
         url: https://www.blueroms.ws/
         http: 200
         final: https://www.blueroms.ws/
         title: 'BlueRoms: Download Game ROMs and ISOs'
         bytes: 21157
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:bluetorrents:
+        url: https://bluetorrents.com/
+        http: 200
+        final: https://bluetorrents.com/
+        title: Home - BlueTorrents
+        bytes: 23761
+        checked: "2026-10-25"
+    jackett:bluraytracker:
+        url: https://bluraytracker.cz/
+        http: 200
+        final: https://bluraytracker.cz/?p=home&pid=1
+        title: BlurayTracker
+        bytes: 4846
+        checked: "2026-10-25"
+    jackett:blutopia-api:
+        url: https://blutopia.cc/
+        http: 200
+        final: https://blutopia.cc/login
+        title: Login - Blutopia
+        bytes: 10513
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:booktracker:
         url: https://booktracker.org/
         http: 200
         final: https://booktracker.org/
         title: Книжный трекер
         bytes: 262144
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:bootytape:
         url: https://ssl.bootytape.com/
         http: 200
         final: https://ssl.bootytape.com/
         title: Free Porn Sex Torrents Black Homemade Amateur - BootyTapeBTapes
         bytes: 17340
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:borgzelle:
+        url: https://borgzelle.borg/
+        checked: "2026-10-25"
+        error: 'dial tcp: lookup borgzelle.borg on 9.9.9.9:53: no such host'
+    jackett:boxingtorrents:
+        url: https://tc-boxing.com/
+        http: 200
+        final: https://tc-boxing.com/
+        title: Login Page
+        bytes: 8441
+        checked: "2026-10-25"
+    jackett:brasiltracker:
+        url: https://brasiltracker.org/
+        http: 200
+        final: https://brasiltracker.org/
+        title: Brasil Tracker
+        bytes: 2236
+        checked: "2026-10-25"
+    jackett:broadcasthenet:
+        url: https://broadcasthe.net/
+        http: 200
+        final: https://broadcasthe.net/
+        title: BroadcasTheNet
+        bytes: 2511
+        checked: "2026-10-25"
+    jackett:brokenstones:
+        url: https://brokenstones.is/
+        http: 200
+        final: https://brokenstones.is/
+        title: BrokenStones
+        bytes: 1936
+        checked: "2026-10-25"
+    jackett:btarg:
+        url: https://www.btarg.com.ar/
+        http: 200
+        final: https://www.btarg.com.ar/
+        title: BTARG - BitTorrent Argentina
+        bytes: 3670
+        checked: "2026-10-25"
     jackett:btdirectory:
         url: https://btmulu.live/
         http: 403
         final: https://btmulu.live/
         title: Just a moment...
         bytes: 5569
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:btetree:
         url: https://bt.etree.org/
         http: 403
         final: https://bt.etree.org/
         title: Just a moment...
         bytes: 5605
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:btnext:
+        url: https://tracker.btnext.com/
+        http: 200
+        final: https://tracker.btnext.com/?p=home&pid=1
+        title: BTNext
+        bytes: 16639
+        checked: "2026-10-25"
     jackett:btschool:
         url: https://pt.btschool.club/
         http: 200
         final: https://pt.btschool.club/login.php
         title: 'BTSCHOOL :: 登录 比特校园PT小乐园 - Powered by NexusPHP'
-        bytes: 5766
+        bytes: 5557
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:bwtorrents:
+        url: https://bwtorrents.tv/
+        http: 200
+        final: https://bwtorrents.tv/login.php?returnto=%2F
+        title: 'Bwtorrents #1 Desi Tracker'
+        bytes: 2115
+        checked: "2026-10-25"
+    jackett:byrbt:
+        url: https://byr.pt/
+        checked: "2026-10-25"
+        error: 'dial tcp [2001:da8:215:4078:250:56ff:fe97:654d]:443: connect: network is unreachable'
     jackett:byrutor:
         url: https://byrutgame.org/
         http: 200
         final: https://byrutgame.org/
         title: Скачать игры на ПК &#91;последние версии 2026&#93; через торрент бесплатно
         bytes: 262144
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:c411:
+        url: https://c411.org/
+        http: 200
+        final: https://c411.org/login?redirect=%2F
+        title: Connexion - C411, Tracker BitTorrent francophone
+        bytes: 41336
+        checked: "2026-10-25"
+    jackett:cangbaoge:
+        url: https://cangbao.ge/
+        http: 200
+        final: https://cangbao.ge/login.php
+        title: 'CBG :: 登录 - Powered by NexusPHP'
+        bytes: 10390
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:capybarabr:
+        url: https://capybarabr.com/
+        http: 200
+        final: https://capybarabr.com/login
+        title: Entrar - CapybaraBR
+        bytes: 37763
+        checked: "2026-10-25"
+    jackett:carpathians:
+        url: https://mycarpathians.net/
+        http: 200
+        final: https://mycarpathians.net/login.php?returnto=%2F
+        title: Carpathians
+        bytes: 3219
+        checked: "2026-10-25"
     jackett:carpt:
         url: https://carpt.net/
         http: 200
@@ -195,14 +707,28 @@ results:
         bytes: 10122
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:catorrent:
         url: https://catorrent.net/
         http: 200
         final: https://catorrent.net/
         title: Скачать игры через торрент бесплатно - Крупная база игр от Catorrent.net
-        bytes: 43363
-        checked: "2026-10-23"
+        bytes: 44519
+        checked: "2026-10-25"
+    jackett:ceskeforum:
+        url: https://t.ceskeforum.com/
+        http: 200
+        final: https://t.ceskeforum.com/login.php
+        title: 'Torrent tracker :: Vstoupit Tracker CeskeForum'
+        bytes: 5070
+        checked: "2026-10-25"
+    jackett:cgpeers:
+        url: https://cgpeers.to/
+        http: 200
+        final: https://cgpeers.to/
+        title: CGPeers
+        bytes: 11593
+        checked: "2026-10-25"
     jackett:chdbits:
         url: https://ptchdbits.co/
         http: 200
@@ -211,45 +737,253 @@ results:
         bytes: 6234
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:cinemageddon:
+        url: https://cinemageddon.net/
+        http: 200
+        final: https://cinemageddon.net/
+        bytes: 27
+        checked: "2026-10-25"
+    jackett:cinemamovies:
+        url: https://cinemamovies.pl/
+        http: 200
+        final: https://cinemamovies.pl/login.php?returnto=%2F
+        title: 'CinemaMovieS_ZT :: Logowanie'
+        bytes: 4026
+        checked: "2026-10-25"
+    jackett:cinematik:
+        url: https://cinematik.net/
+        http: 200
+        final: https://cinematik.net/login
+        title: Login - Cinematik
+        bytes: 9719
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:cinemaz:
+        url: https://cinemaz.to/
+        http: 200
+        final: https://cinemaz.to/
+        title: CinemaZ
+        bytes: 5912
+        checked: "2026-10-25"
+    jackett:clearjav-api:
+        url: https://clearjav.com/
+        http: 200
+        final: https://clearjav.com/login
+        title: Login - ClearJav
+        bytes: 115070
+        checked: "2026-10-25"
+    jackett:coastalcrew:
+        url: https://coastal-crew.bounceme.net/
+        http: 200
+        final: https://coastal-crew.bounceme.net/jscheck.php
+        title: Coastal Music Crew
+        bytes: 923
+        checked: "2026-10-25"
     jackett:comicat:
         url: https://www.comicat.org/
         http: 200
         final: https://www.comicat.org/public/html/start/
         bytes: 1132
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:concertos:
+        url: https://concertos.live/
+        http: 200
+        final: https://concertos.live/login
+        title: Log in - Concertos
+        bytes: 7061
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:crabpt-api:
+        url: https://crabpt.vip/
+        http: 200
+        final: https://crabpt.vip/login.php
+        title: '蟹黄堡 :: 登录 - Powered by NexusPHP'
+        bytes: 12449
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:crackingpatching:
         url: https://crackingpatching.com/
         http: 200
         final: https://crackingpatching.com/
         title: CrackingPatching - Believe us we can do it!
         bytes: 82558
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:crazyspirits-api:
+        url: https://crazyspirits.com/
+        http: 200
+        final: https://crazyspirits.com/account-login.php?returnto=%2F
+        title: CrazySpirits - Connexion
+        bytes: 38846
+        checked: "2026-10-25"
+    jackett:crnaberza:
+        url: https://www.crnaberza.com/
+        http: 200
+        final: https://www.crnaberza.com/prijava/?redirect_to=https%3A%2F%2Fwww.crnaberza.com%2F
+        title: Prijava – CrnaBerza
+        bytes: 27515
+        checked: "2026-10-25"
+    jackett:crt2fa:
+        url: https://www.cathode-ray.tube/
+        http: 200
+        final: https://www.cathode-ray.tube/
+        title: Cathode-Ray.Tube
+        bytes: 3323
+        checked: "2026-10-25"
+    jackett:cspt:
+        url: https://cspt.top/
+        http: 200
+        final: https://cspt.top/login.php
+        title: '财神 :: 登录 - Powered by NexusPHP'
+        bytes: 7093
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:cyanbug:
+        url: https://cyanbug.net/
+        http: 200
+        final: https://cyanbug.net/login.php
+        title: '大青虫 :: 登录 - Powered by NexusPHP'
+        bytes: 12038
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:cyclingarchiveclub:
+        url: https://cyclingarchive.club/
+        http: 200
+        final: https://cyclingarchive.club/login.php?returnto=%2F
+        title: 'Login :: CyclingArchive.club'
+        bytes: 7622
+        checked: "2026-10-25"
+    jackett:czteam-api:
+        url: https://czteam.me/
+        http: 200
+        final: https://czteam.me/login.php?returnto=%2F
+        title: 'CZTeam Tracker :: Login'
+        bytes: 14509
+        checked: "2026-10-25"
     jackett:damagnet:
         url: https://damag.net/
         http: 200
         final: https://damag.net/
         title: 'Da MagNet: Home'
         bytes: 8994
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:danishbits-api:
+        url: https://danishbits.me/
+        http: 200
+        final: https://danishbits.me/login
+        title: Log ind - DanishBits
+        bytes: 6559
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:darkpeers-api:
+        url: https://darkpeers.org/
+        http: 200
+        final: https://darkpeers.org/login
+        title: Login - DarkPeers
+        bytes: 6359
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:dasunerwartete-api:
+        url: https://dasunerwartete.biz/
+        http: 200
+        final: https://dasunerwartete.biz/login.php
+        title: D-U - Login – Mitglieder
+        bytes: 38328
+        checked: "2026-10-25"
+    jackett:datascene-api:
+        url: https://datascene.xyz/
+        http: 200
+        final: https://datascene.xyz/login
+        title: Login - DataScene
+        bytes: 9615
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:daxiangjiao-api:
+        url: https://pt.daxiangjiao.org/
+        http: 200
+        final: https://pt.daxiangjiao.org/login.php
+        title: 'DaXiangJiao :: 登录 - Powered by NexusPHP'
+        bytes: 20537
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:deildu:
         url: https://deildu.net/
         http: 200
         final: https://deildu.net/login.php?returnto=%2F
         title: !!binary RGVpbGR1Lm5ldCAmcnNhcXVvOyBJbm5za3LhbmluZw==
         bytes: 2565
+        checked: "2026-10-25"
+    jackett:depthstudio:
+        url: https://dstudio.me/
+        http: 200
+        final: https://dstudio.me/login.php
+        title: 'Depth Studio :: 登录 - Powered by NexusPHP'
+        bytes: 16878
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:desigaane:
+        url: https://desigaane.rocks/
+        http: 200
+        final: https://desigaane.rocks/
+        title: Silence is golden
+        bytes: 1978
+        checked: "2026-10-25"
+    jackett:desitorrents-api:
+        url: https://torrent.desi/
+        http: 200
+        final: https://torrent.desi/login
+        title: Login - DesiTorrents
+        bytes: 6325
+        checked: "2026-10-25"
     jackett:devil-torrents:
         url: https://devil-torrents.pl/
         http: 200
         final: https://devil-torrents.pl/
         title: Torrenty - darmowe torrenty , nowe torrenty
-        bytes: 209367
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        bytes: 210500
+        checked: "2026-10-25"
+    jackett:diablotorrent:
+        url: https://diablotorrent.net/
+        http: 200
+        final: https://diablotorrent.net/login
+        title: 'DiabloTorrent :: Belépés'
+        bytes: 11053
+        checked: "2026-10-25"
+    jackett:dicmusic:
+        url: https://dicmusic.com/
+        checked: "2026-10-25"
+        error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+    jackett:digitalcore-api:
+        url: https://digitalcore.club/
+        http: 200
+        final: https://digitalcore.club/
+        title: digitalcore.club
+        bytes: 4482
+        checked: "2026-10-25"
+    jackett:dimeadozen:
+        url: http://www.dimeadozen.org/
+        http: 200
+        final: http://www.dimeadozen.org/
+        title: 'www.dimeadozen.org :: EzTorrent v0.7.0r502'
+        bytes: 12369
+        checked: "2026-10-25"
+    jackett:dirtybytes-api:
+        url: https://dirtybytes.net/
+        http: 200
+        final: https://dirtybytes.net/
+        title: DirtyBytes
+        bytes: 4190
+        checked: "2026-10-25"
     jackett:discfan:
         url: https://discfan.net/
         http: 200
@@ -258,118 +992,223 @@ results:
         bytes: 13379
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:divxtotal:
         url: https://divxtotal.foo/
         http: 200
         final: https://divxtotal.foo/
         title: DivxTotaL - Descargar Torrent Peliculas Series Programas gratis
         bytes: 91387
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:dmhy:
         url: https://share.dmhy.org/
         http: 200
         final: https://share.dmhy.org/
         title: 首頁 - 動漫花園資源網 - 動漫愛好者的自由交流平台
         bytes: 262144
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:docspedia:
+        url: https://www.docspedia.world/
+        http: 200
+        final: https://www.docspedia.world/login.php?returnto=%2F
+        title: 'DocsPedia.world :: Login'
+        bytes: 2872
+        checked: "2026-10-25"
     jackett:dontorrent:
         url: https://dontorrent.channel/
         http: 200
-        final: https://dontorrent.channel/
+        final: https://dontorrent.diy/
         title: Descargar Películas y Series Torrent Gratis en Español - DonTorrent
-        bytes: 38172
-        checked: "2026-10-23"
+        bytes: 39083
+        checked: "2026-10-25"
     jackett:draupnirr:
         url: https://draupnirr.xyz/
         http: 200
         final: https://draupnirr.xyz/login
         title: Connexion — Draupnirr
         bytes: 9907
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:dreadvault-api:
+        url: https://dreadvault.org/
+        http: 200
+        final: https://dreadvault.org/login
+        title: Login - DreadVault
+        bytes: 6062
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:dreamingtree:
         url: https://dreamingtree.org/
         http: 200
         final: https://dreamingtree.org/
         title: dreamingtree
         bytes: 1795
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:drugari:
+        url: http://drugari.org/
+        http: 200
+        final: http://drugari.org/
+        title: Dobro dosli na drugari.org | drugari.org
+        bytes: 15303
+        checked: "2026-10-25"
+    jackett:ds-reloaded:
+        url: https://ds-reloaded.com/
+        http: 200
+        final: https://ds-reloaded.com/login.php?returnto=%2F
+        title: DS.R - Login
+        bytes: 19604
+        checked: "2026-10-25"
+    jackett:dubhe:
+        url: https://dubhe.site/
+        http: 200
+        final: https://dubhe.site/login.php
+        title: '天枢 :: 登录 - Powered by NexusPHP'
+        bytes: 14689
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:dxp:
         url: https://dxp.ru/
         http: 200
         final: https://dxp.ru/login.php
         title: Галактика ДХП
         bytes: 8752
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:ebookbay:
         url: https://ebb.la/
         http: 200
         final: https://ebb.la/
         title: Ebook Online Download, Free Book Torrent on EBook Bay (EBB)
-        bytes: 48142
-        checked: "2026-10-23"
+        bytes: 48178
+        checked: "2026-10-25"
     jackett:ehentai:
         url: https://e-hentai.org/
         http: 200
         final: https://e-hentai.org/
         title: E-Hentai Galleries - The Free Hentai Doujinshi, Manga and Image Gallery System
-        bytes: 62366
-        checked: "2026-10-23"
+        bytes: 55875
+        checked: "2026-10-25"
     jackett:electro-torrent:
         url: https://electro-torrent.pl/
         http: 200
         final: https://electro-torrent.pl/
         title: Electro-Torrent.pl
         bytes: 262144
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:empornium:
+        url: https://emparadise.rs/
+        http: 200
+        final: https://emparadise.rs/
+        title: ':: Emp'
+        bytes: 3870
+        checked: "2026-10-25"
+    jackett:emuwarez:
+        url: https://emuwarez.com/
+        checked: "2026-10-25"
+        error: 'dial tcp: lookup emuwarez.com on 9.9.9.9:53: no such host'
     jackett:epublibre:
         url: https://www.epublibre.org/
         http: 200
         final: https://www.epublibre.org/
         title: epublibre - inicio
-        bytes: 76339
-        checked: "2026-10-23"
+        bytes: 75963
+        checked: "2026-10-25"
     jackett:erai-raws:
         url: https://www.erai-raws.info/
         http: 200
         final: https://www.erai-raws.info/
         title: Erai-raws
         bytes: 172237
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:estone:
+        url: https://estone.cc/
+        http: 200
+        final: https://estone.cc/login.php?returnto=%2F
+        title: eStone | Bejelentkezés
+        bytes: 12977
+        checked: "2026-10-25"
     jackett:ex-torrenty:
         url: https://ex-torrenty.org/
         http: 200
         final: https://ex-torrenty.org/
         title: Ex-torrenty.org - NAJLEPSZA BAZA TORRENTOW
-        bytes: 29965
-        checked: "2026-10-23"
+        bytes: 29776
+        checked: "2026-10-25"
+    jackett:exitorrent-org:
+        url: https://exitorrent.org/
+        http: 200
+        final: https://exitorrent.org/login.php?returnto=%2F
+        title: Logowanie
+        bytes: 4697
+        checked: "2026-10-25"
     jackett:exkinoray:
         url: https://exkinoray.ru/
         http: 200
         final: https://exkinoray.ru/login.php?returnto=
         title: 'ExKinoRay.ru :: Вход'
         bytes: 14296
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:exoticaz:
+        url: https://exoticaz.to/
+        http: 200
+        final: https://exoticaz.to/
+        title: Welcome to ExoticaZ Beta - ExoticaZ
+        bytes: 3544
+        checked: "2026-10-25"
+    jackett:explosiv-world:
+        url: https://explosiv-world.biz/
+        http: 200
+        final: https://explosiv-world.biz/login.php
+        title: E-W - Login – Mitglieder
+        bytes: 48049
+        checked: "2026-10-25"
     jackett:extratorrent-st:
         url: https://extratorrent.st/
         http: 403
         final: https://extratorrent.st/
         title: Just a moment...
         bytes: 5480
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:extremebits:
+        url: https://extremebits.net/
+        http: 200
+        final: https://extremebits.net/login.php
+        title: Login
+        bytes: 747
+        checked: "2026-10-25"
     jackett:eztvl:
         url: https://eztvx.to/
         http: 200
         final: https://eztvx.to/
         title: EZTV - TV Torrents Online Series Download | Official
         bytes: 262144
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:f1carreras-api:
+        url: https://f1carreras.xyz/
+        http: 200
+        final: https://f1carreras.xyz/login
+        title: Login - F1CARRERAS
+        bytes: 5797
+        checked: "2026-10-25"
+    jackett:fanoin:
+        url: https://www.fano.in/
+        http: 200
+        final: https://www.fano.in/
+        title: 'FANO.IN :: Home'
+        bytes: 8485
+        checked: "2026-10-25"
+    jackett:fappaizuri:
+        url: https://www.fappaizuri.me/
+        http: 200
+        final: https://www.fappaizuri.me/
+        checked: "2026-10-25"
+    jackett:femdomcult:
+        url: https://femdomcult.org/
+        http: 200
+        final: https://femdomcult.org/
+        title: ':: FEMDOMCULT'
+        bytes: 3981
+        checked: "2026-10-25"
     jackett:fenyarnyek-tracker:
         url: http://tracker.fenyarnyek.com/
         http: 200
@@ -378,44 +1217,134 @@ results:
         bytes: 7529
         families:
             - xbtit
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:file-tracker:
         url: https://file-tracker.net/
-        http: 522
+        http: 200
         final: https://file-tracker.net/
-        title: 'file-tracker.net | 522: Connection timed out'
-        bytes: 7247
-        checked: "2026-10-23"
+        title: !!binary |
+            w+vg4u3g/yA6OiDR4Oz76SDx4u7h7uTt++kg8vDl6uXwIDo6IGZpbGUtdHJhY2tlci5uZX
+            Qg8erg9+DpIC0g6OPw+ywg9Ojr/Oz7LCDs8+f76vMsIPHu9PI=
+        bytes: 66986
+        checked: "2026-10-25"
+    jackett:fileiplay:
+        url: https://fileiplay.org/
+        http: 200
+        final: https://fileiplay.org/login
+        title: Sign in · FileIplay
+        bytes: 5081
+        checked: "2026-10-25"
+    jackett:filelist:
+        url: https://filelist.io/
+        http: 200
+        final: https://filelist.io/login.php?returnto=%2F
+        title: 'FileList :: Login'
+        bytes: 2733
+        checked: "2026-10-25"
     jackett:filemood:
         url: https://filemood.com/
-        http: 429
+        http: 200
         final: https://filemood.com/
-        title: One moment...
-        bytes: 3288
-        checked: "2026-10-23"
+        title: 'FileMood: your gateway to explore discover and download files'
+        bytes: 6175
+        checked: "2026-10-25"
+    jackett:finelite:
+        url: https://finelite.org/
+        http: 200
+        final: https://finelite.org/login.php?returnto=%2F
+        title: Se ainoa oikea!
+        bytes: 8014
+        checked: "2026-10-25"
+    jackett:flood:
+        url: https://flood.st/
+        http: 200
+        final: https://flood.st/login
+        title: Login – flood
+        bytes: 1189
+        checked: "2026-10-25"
+    jackett:freefarm-api:
+        url: https://pt.0ff.cc/
+        http: 200
+        final: https://pt.0ff.cc/login.php
+        title: 'Farmm :: 登录 农场|Farmm-我们不是资源的创造者，只是优质资源的桥梁与守护者。 - Powered by NexusPHP'
+        bytes: 13803
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:freejavtorrent:
         url: https://www.freejavtorrent.com/
         http: 200
         final: https://www.freejavtorrent.com/
         title: Free JAV Torrent | Best Free Japanese HD Porn Movies Download
         bytes: 56958
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:funfile:
+        url: https://www.funfile.org/
+        http: 200
+        final: https://www.funfile.org/login.php?returnto=%2F
+        title: FunFile | Login
+        bytes: 7460
+        checked: "2026-10-25"
+    jackett:funzone-api:
+        url: https://myfunzone.org/
+        http: 200
+        final: https://myfunzone.org/login
+        title: Login - FunZone Private Tracker
+        bytes: 5804
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:futuretorrent:
+        url: https://futuretorrent.org/
+        http: 200
+        final: https://futuretorrent.org/
+        title: Benvenuto su futuretorrent.org | futuretorrent.org
+        bytes: 20214
+        checked: "2026-10-25"
+    jackett:fuzer:
+        url: https://www.fuzer.xyz/
+        http: 200
+        final: https://www.fuzer.xyz/login.php
+        title: Fuzer - Login
+        bytes: 1755
+        checked: "2026-10-25"
+    jackett:g3minitr4ck3r-api:
+        url: https://gemini-tracker.org/
+        http: 200
+        final: https://gemini-tracker.org/login
+        title: Connexion - G3MINI TR4CK3R
+        bytes: 6839
+        checked: "2026-10-25"
     jackett:gay-torrents:
         url: https://www.gay-torrents.net/
         http: 200
         final: https://www.gay-torrents.net/
         title: Gay Torrents Live Free - Your Free Gay Torrent Site ;) -
         bytes: 4507
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:gaytorrentru:
+        url: https://www.gaytor.rent/
+        http: 200
+        final: https://www.gaytor.rent/
+        title: Gay Torrents — largest gay video library for free · gaytor.rent
+        bytes: 25769
+        checked: "2026-10-25"
     jackett:gazellegamesapi:
         url: https://gazellegames.net/
         http: 200
         final: https://gazellegames.net/login.php
         title: 'Login :: GazelleGames.net'
-        bytes: 7698
+        bytes: 7697
         families:
             - gazelle
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:generationfree-api:
+        url: https://generation-free.org/
+        http: 200
+        final: https://generation-free.org/bienvenue
+        title: GF-FREE — Entrez dans notre univers
+        bytes: 1698
+        checked: "2026-10-25"
     jackett:ggpt:
         url: https://www.gamegamept.com/
         http: 200
@@ -424,7 +1353,14 @@ results:
         bytes: 16319
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:gigatorrents:
+        url: https://gigatorrents.ws/
+        http: 200
+        final: https://gigatorrents.ws/login.php?returnto=%2F
+        title: 'GigaTorrents :: Bejelentkezés'
+        bytes: 3502
+        checked: "2026-10-25"
     jackett:girotorrent:
         url: https://girotorrent.org/
         http: 200
@@ -433,7 +1369,14 @@ results:
         bytes: 15533
         families:
             - xbtit
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:greatposterwall:
+        url: https://greatposterwall.com/
+        http: 200
+        final: https://greatposterwall.com/
+        title: Great Poster Wall
+        bytes: 4486
+        checked: "2026-10-25"
     jackett:haidan:
         url: https://www.haidan.cc/
         http: 200
@@ -442,7 +1385,37 @@ results:
         bytes: 6489
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:haitang:
+        url: https://www.htpt.cc/
+        http: 200
+        final: https://www.htpt.cc/login.php
+        title: 海棠PT - 登录
+        bytes: 16462
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:happyfappy:
+        url: https://www.happyfappy.net/
+        http: 200
+        final: https://www.happyfappy.net/
+        title: ':: HappyFappy'
+        bytes: 3908
+        checked: "2026-10-25"
+    jackett:hawke-uno:
+        url: https://hawke.uno/
+        http: 403
+        final: https://hawke.uno/login
+        title: Just a moment...
+        bytes: 5596
+        checked: "2026-10-25"
+    jackett:hd-club:
+        url: https://hd-czech.eu/
+        http: 200
+        final: https://hd-czech.eu/blocked.php?country=IT
+        title: Přístup zamítnut
+        bytes: 1204
+        checked: "2026-10-25"
     jackett:hd-unit3d-api:
         url: https://hd-united.vn/
         http: 200
@@ -451,7 +1424,50 @@ results:
         bytes: 5581
         families:
             - unit3d
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:hdarea:
+        url: https://hdarea.club/
+        http: 403
+        final: https://hdarea.club/
+        title: Just a moment...
+        bytes: 5582
+        checked: "2026-10-25"
+    jackett:hdbao-api:
+        url: https://hdbao.cc/
+        http: 200
+        final: https://hdbao.cc/login.php
+        title: 'HDBao :: 登录 - Powered by NexusPHP'
+        bytes: 11526
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:hdbitsapi:
+        url: https://hdbits.org/
+        http: 403
+        final: https://hdbits.org/login?returnto=%2F
+        title: Just a moment...
+        bytes: 5676
+        checked: "2026-10-25"
+    jackett:hdc:
+        url: https://hdcity.city/
+        http: 200
+        final: https://hdcity.city/login
+        title: HDCiTY
+        bytes: 5608
+        checked: "2026-10-25"
+    jackett:hdclone:
+        url: https://pt.hdclone.top/
+        http: 200
+        final: https://pt.hdclone.top/login.php
+        title: 'HDClone :: 登录 - Powered by NexusPHP'
+        bytes: 6865
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:hddolby:
+        url: https://www.hddolby.com/
+        checked: "2026-10-25"
+        error: 'dial tcp: lookup www.hddolby.com on 1.1.1.1:53: server misbehaving'
     jackett:hdfans:
         url: https://hdfans.org/
         http: 200
@@ -460,16 +1476,21 @@ results:
         bytes: 13592
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:hdforever-api:
+        url: https://hdf.world/
+        http: 200
+        final: https://hdf.world/
+        title: HD-F
+        bytes: 1548
+        checked: "2026-10-25"
     jackett:hdgalaktik:
         url: https://www.trackerpmr.com/
         http: 200
         final: https://www.trackerpmr.com/
         title: Главная
-        bytes: 32707
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        bytes: 32785
+        checked: "2026-10-25"
     jackett:hdhome:
         url: https://hdhome.org/
         http: 200
@@ -478,7 +1499,7 @@ results:
         bytes: 7048
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:hdkylin:
         url: https://na.hdkylin.com/
         http: 200
@@ -487,14 +1508,37 @@ results:
         bytes: 6104
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:hdolimpo-api:
+        url: https://hd-olimpo.club/
+        http: 200
+        final: https://hd-olimpo.club/login
+        title: Iniciar sesión - HD-Olimpo
+        bytes: 5493
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:hdonly-api:
+        url: https://hd-only.org/
+        http: 200
+        final: https://hd-only.org/
+        title: HD-Only
+        bytes: 1296
+        checked: "2026-10-25"
+    jackett:hdroute:
+        url: http://hdroute.org/
+        http: 200
+        final: http://hdroute.org/login.php
+        title: HDR-登录页
+        bytes: 2776
+        checked: "2026-10-25"
     jackett:hdrtorrent:
         url: https://hdrtorrents.net/
         http: 200
         final: https://hdrtorrents.net/
         title: HDR Torrents - Filmes e Séries Torrent em Alta Definição 2026
-        bytes: 66753
-        checked: "2026-10-23"
+        bytes: 66589
+        checked: "2026-10-25"
     jackett:hdsky:
         url: https://hdsky.me/
         http: 200
@@ -503,7 +1547,16 @@ results:
         bytes: 7889
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:hdspace:
+        url: https://hd-space.org/
+        http: 200
+        final: https://hd-space.org/
+        title: HD-Space - Sharing The Universe .::. Index
+        bytes: 8013
+        families:
+            - xbtit
+        checked: "2026-10-25"
     jackett:hdtime:
         url: https://hdtime.org/
         http: 200
@@ -512,7 +1565,14 @@ results:
         bytes: 9853
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:hdtorrents:
+        url: https://hdts.ru/
+        http: 200
+        final: https://hdts.ru/
+        title: HD-Torrents.org - Index
+        bytes: 7045
+        checked: "2026-10-25"
     jackett:hdtorrentsit:
         url: https://hdtorrents.eu/
         http: 200
@@ -521,7 +1581,14 @@ results:
         bytes: 5432
         families:
             - unit3d
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:hdturk:
+        url: https://hdturk.club/
+        http: 200
+        final: https://hdturk.club/login
+        title: Giriş · HDTurk
+        bytes: 14134
+        checked: "2026-10-25"
     jackett:hdu:
         url: https://pt.upxin.net/
         http: 200
@@ -530,14 +1597,59 @@ results:
         bytes: 18873
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:hdvideo:
+        url: https://hdvideo.top/
+        http: 200
+        final: https://hdvideo.top/login.php
+        bytes: 51
+        checked: "2026-10-25"
+    jackett:hdzero-api:
+        url: https://hdzero.org/
+        http: 403
+        final: https://hdzero.org/
+        title: Just a moment...
+        bytes: 5560
+        checked: "2026-10-25"
+    jackett:hebits:
+        url: https://hebits.net/
+        http: 200
+        final: https://hebits.net/login.php
+        title: 'התחברות :: HeBits'
+        bytes: 4945
+        families:
+            - gazelle
+        checked: "2026-10-25"
+    jackett:hellashut:
+        url: https://hellashut.net/
+        http: 200
+        final: https://hellashut.net/login.php
+        title: HellasHut
+        bytes: 969
+        checked: "2026-10-25"
+    jackett:hellenic-hd-api:
+        url: https://hellenic-hd.cc/
+        http: 200
+        final: https://hellenic-hd.cc/login
+        title: Login - Hellenic-HD
+        bytes: 12274
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:helltorrents:
         url: https://helltorrents.com/
         http: 403
         final: https://helltorrents.com/
         title: Just a moment...
         bytes: 5481
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:herobit:
+        url: https://herobit.info/
+        http: 200
+        final: https://herobit.info/auth.php?action=login&returnto=%2F
+        title: HeroBit | Belépés
+        bytes: 40022
+        checked: "2026-10-25"
     jackett:hhanclub:
         url: https://hhanclub.net/
         http: 200
@@ -546,38 +1658,123 @@ results:
         bytes: 14130
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:hhd-api:
+        url: https://homiehelpdesk.net/
+        http: 200
+        final: https://homiehelpdesk.net/login
+        title: Login - HHD
+        bytes: 17149
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:houseofdevil:
+        url: https://h-o-d.org/
+        http: 200
+        final: https://h-o-d.org/login.php?returnto=%2F
+        bytes: 8487
+        checked: "2026-10-25"
+    jackett:hqmusic:
+        url: https://tracker.hqmusic.info/
+        http: 200
+        final: https://tracker.hqmusic.info/login.php
+        title: 'HQMusic.info :: Login Chốn về của những tâm hồn yêu nhạc !'
+        bytes: 8146
+        checked: "2026-10-25"
+    jackett:hudbt:
+        url: https://hudbt.hust.edu.cn/
+        checked: "2026-10-25"
+        error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
     jackett:huntorrent:
         url: https://huntorrent.org/
         http: 200
         final: https://huntorrent.org/
         title: HunTorrent | Bejelentkezés
-        bytes: 68880
-        checked: "2026-10-23"
+        bytes: 69063
+        checked: "2026-10-25"
+    jackett:hxpt:
+        url: https://www.hxpt.org/
+        http: 200
+        final: https://www.hxpt.org/login.php
+        title: '好学 :: 登录 - Powered by NexusPHP'
+        bytes: 21492
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:ilcorsaroblu:
         url: https://ilcorsaroblu.org/
         http: 200
         final: https://ilcorsaroblu.org/
         title: il CorSaRo Blu
-        bytes: 51133
+        bytes: 51551
         families:
-            - torrenttrader
             - xbtit
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:immortalseed:
+        url: https://immortalseed.me/
+        http: 200
+        final: https://immortalseed.me/
+        title: Welcome to immortalseed.me | immortalseed.me
+        bytes: 12292
+        checked: "2026-10-25"
+    jackett:immortuos:
+        url: https://immortuos.life/
+        http: 200
+        final: https://immortuos.life/login
+        title: Login - Immortuos
+        bytes: 6700
+        checked: "2026-10-25"
+    jackett:indietorrents:
+        url: https://www.indietorrents.com/
+        http: 200
+        final: https://www.indietorrents.com/
+        title: Indietorrents
+        bytes: 1858
+        families:
+            - gazelle
+        checked: "2026-10-25"
+    jackett:infinityhd-api:
+        url: https://infinityhd.net/
+        http: 200
+        final: https://infinityhd.net/login
+        title: Login - InfinityHD
+        bytes: 12765
+        checked: "2026-10-25"
+    jackett:infire:
+        url: https://infire.si/
+        http: 200
+        final: https://infire.si/
+        title: 'Index :: Infire.si'
+        bytes: 262144
+        checked: "2026-10-25"
+    jackett:insanetracker:
+        url: https://newinsane.info/
+        http: 200
+        final: https://newinsane.info/login.php?returnto=%2F
+        title: Bejelentkezés
+        bytes: 3329
+        checked: "2026-10-25"
     jackett:internetarchive:
         url: https://archive.org/
         http: 200
         final: https://archive.org/
         title: 'Internet Archive: Digital Library of Free &amp; Borrowable Texts, Movies, Music &amp; Wayback Machine'
         bytes: 1951
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:iptorrents:
+        url: https://iptorrents.com/
+        http: 200
+        final: https://iptorrents.com/login.php
+        title: iPT – Sign In
+        bytes: 18164
+        checked: "2026-10-25"
     jackett:itatorrents:
         url: https://itatorrents.xyz/
         http: 200
         final: https://itatorrents.xyz/login
         title: Login - ItaTorrents
         bytes: 6237
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:jme-reunit3d-api:
         url: https://jme-reunit3d.de/
         http: 503
@@ -586,30 +1783,66 @@ results:
         bytes: 1139
         families:
             - unit3d
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:jpopsuki:
+        url: https://jpopsuki.eu/
+        http: 200
+        final: https://jpopsuki.eu/
+        title: JPopsuki 2.0
+        bytes: 2515
+        checked: "2026-10-25"
+    jackett:jptv4us-api:
+        url: https://jptv4.us/
+        http: 200
+        final: https://jptv4.us/login
+        title: Login - JPTV4us
+        bytes: 4238
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:kamept:
+        url: https://kamept.com/
+        http: 403
+        final: https://kamept.com/login.php
+        title: Just a moment...
+        bytes: 5651
+        checked: "2026-10-25"
+    jackett:karagarga:
+        url: https://karagarga.in/
+        http: 503
+        final: https://karagarga.in/
+        bytes: 318
+        checked: "2026-10-25"
     jackett:keepfriends:
         url: https://pt.keepfrds.com/
         http: 200
         final: https://pt.keepfrds.com/login.php
         title: Starship
         bytes: 5925
+        checked: "2026-10-25"
+    jackett:kelu:
+        url: https://our.kelu.one/
+        http: 200
+        final: https://our.kelu.one/login.php
+        title: 'Kelu :: 登录 - Powered by NexusPHP'
+        bytes: 20337
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:kickasstorrents-to:
         url: https://kickass.torrentbay.st/
         http: 403
         final: https://kickass.torrentbay.st/
         title: Just a moment...
         bytes: 5636
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:kickasstorrents-ws:
         url: https://kickass.ws/
         http: 403
         final: https://kickass.ws/
         title: Just a moment...
         bytes: 5475
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:kinorun:
         url: http://kinorun.top/
         http: 200
@@ -618,23 +1851,157 @@ results:
             3erx6uv+5+ji7e7lIO/u8O3uIPHq4Pfg8vwsIO/u8O3u4ujk5e4gS0lOT1JVTiDt4CDK6O
             3u8PPtLu7t6+Dp7Q==
         bytes: 14390
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:kinozal:
         url: https://kinozal.me/
         http: 200
         final: https://kinozal.me/
         title: !!binary 0u7w8OXt8iDy8OXq5fAgyujt7ufg6y7MxQ==
-        bytes: 34553
+        bytes: 34477
+        checked: "2026-10-25"
+    jackett:korsar:
+        url: http://filbi1976.org/
+        http: 200
+        final: http://filbi1976.org/ucp.php?mode=login
+        bytes: 14746
+        checked: "2026-10-25"
+    jackett:krazyzone:
+        url: https://krazyzone.net/
+        http: 200
+        final: https://krazyzone.net/
+        checked: "2026-10-25"
+    jackett:kufei-api:
+        url: https://kufei.org/
+        http: 502
+        final: https://kufei.org/
+        title: 'kufei.org | 502: Bad gateway'
+        bytes: 6371
+        checked: "2026-10-25"
+    jackett:kufirc:
+        url: https://kufirc.com/
+        http: 200
+        final: https://kufirc.com/
+        title: ':: Kufirc'
+        bytes: 4331
+        checked: "2026-10-25"
+    jackett:lajidui-api:
+        url: https://pt.lajidui.top/
+        http: 200
+        final: https://pt.lajidui.top/login.php
+        title: 'lajidui :: 登录 - Powered by NexusPHP'
+        bytes: 20094
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:lastdigitalunderground:
+        url: https://theldu.to/
+        http: 200
+        final: https://theldu.to/login
+        title: Login - LDU
+        bytes: 5631
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:lastfiles:
+        url: https://lastfiles.ro/
+        http: 200
+        final: https://lastfiles.ro/login
+        title: LastFiles
+        bytes: 18241
+        checked: "2026-10-25"
+    jackett:lat-team-api:
+        url: https://lat-team.com/
+        http: 200
+        final: https://lat-team.com/login
+        title: Iniciar sesión - Lat-Team
+        bytes: 8168
+        checked: "2026-10-25"
+    jackett:learnflakes:
+        url: https://learnflakes.net/
+        http: 200
+        final: https://learnflakes.net/?p=home&pid=1
+        title: LearnFlakes -IT Learning Community
+        bytes: 13543
+        checked: "2026-10-25"
+    jackett:leech24:
+        url: https://leech24.net/
+        http: 200
+        final: https://leech24.net/
+        checked: "2026-10-25"
+    jackett:lemonhd-net:
+        url: https://lemonhd.net/
+        http: 200
+        final: https://lemonhd.net/login.php
+        title: 'LemonHD :: 登录 - Powered by NexusPHP'
+        bytes: 12154
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:lesaloon:
+        url: https://lesaloonv2-0.lol/
+        http: 403
+        final: https://lesaloonv2-0.lol/yupy_login.php
+        title: Just a moment...
+        bytes: 5672
+        checked: "2026-10-25"
+    jackett:letseed:
+        url: https://letseed.org/
+        http: 200
+        final: https://letseed.org/
+        title: letseed.org&#039;a hoşgeldiniz | letseed.org
+        bytes: 16779
+        checked: "2026-10-25"
+    jackett:libble:
+        url: https://libble.me/
+        http: 200
+        final: https://libble.me/
+        title: Libble.me
+        bytes: 2198
+        checked: "2026-10-25"
+    jackett:libranet:
+        url: https://libranet.org/
+        http: 200
+        final: https://libranet.org/login.php?returnto=%2F
+        title: 'LibraNet :: Login'
+        bytes: 2354
+        checked: "2026-10-25"
+    jackett:linkomanija:
+        url: https://www.linkomanija.net/
+        http: 200
+        final: https://www.linkomanija.net/login.php
+        title: 'LinkoManija.net :: Prisijungimas'
+        bytes: 4318
+        checked: "2026-10-25"
     jackett:linuxtracker:
         url: https://linuxtracker.org/
         http: 200
         final: https://linuxtracker.org/
         title: LinuxTracker
-        bytes: 17834
-        checked: "2026-10-23"
+        bytes: 17613
+        checked: "2026-10-25"
+    jackett:locadora:
+        url: https://locadora.cc/
+        http: 200
+        final: https://locadora.cc/login
+        title: Login - LOCADORA
+        bytes: 4269
+        checked: "2026-10-25"
+    jackett:longpt-api:
+        url: https://longpt.org/
+        http: 200
+        final: https://longpt.org/login.php
+        title: 'LongPT :: 登录 - Powered by NexusPHP'
+        bytes: 14077
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:losslessclub:
+        url: https://losslessclub.com/
+        http: 200
+        final: https://losslessclub.com/forum/index.php
+        title: LosslessClub Forum - Главная страница
+        bytes: 44850
+        checked: "2026-10-25"
     jackett:lostfilm:
         url: https://www.lostfilm.tv/
         http: 200
@@ -644,32 +2011,82 @@ results:
             Cw0LvRjNC90YvQuSDRgdCw0LnRgiDQm9C+0YHRgtGE0LjQu9GM0LwgLSDRg9C90LjQutCw
             0LvRjNC90YvQuSDRgNC10YHRg9GA0YEg0L4g0LfQsNGA0YPQsdC10LbQvdGL0YUg0YHQtd
             GA0A==
-        bytes: 70848
-        checked: "2026-10-23"
+        bytes: 71645
+        checked: "2026-10-25"
+    jackett:lp-bits:
+        url: https://lp-bits.com/
+        http: 200
+        final: https://lp-bits.com/login.php
+        title: 'LP-Bits.com 2.0 :: Login linkin park|linkin park download|meteora|from zero|linkin - Powered by NexusPHP'
+        bytes: 11925
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:lst:
+        url: https://lst.gg/
+        http: 200
+        final: https://lst.gg/login
+        title: Login - LST
+        bytes: 23498
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:luckpt:
+        url: https://pt.luckpt.de/
+        http: 200
+        final: https://pt.luckpt.de/login.php
+        title: 'LuckPT :: 登录 - Powered by NexusPHP'
+        bytes: 12890
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:luminarr-api:
+        url: https://luminarr.me/
+        http: 200
+        final: https://luminarr.me/login
+        title: Login - Luminarr
+        bytes: 4844
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:mactorrentsdownload:
         url: https://www.torrentmac.net/
         http: 200
         final: https://www.torrentmac.net/
         title: Mac Torrents | Torrent Download Apple, Mac OSX Apps &amp; Games Download
-        bytes: 119679
-        checked: "2026-10-23"
+        bytes: 119292
+        checked: "2026-10-25"
+    jackett:madsrevolution:
+        url: https://madsrevolution.net/
+        http: 200
+        final: https://madsrevolution.net/
+        title: MaDs Revolution
+        bytes: 1099
+        checked: "2026-10-25"
+    jackett:magico:
+        url: https://mpellas.me/
+        http: 200
+        final: https://mpellas.me/?p=home&pid=1
+        title: Mpellas
+        bytes: 12371
+        checked: "2026-10-25"
     jackett:magnetcat:
         url: https://magnetcatcat.com/
         http: 403
         final: https://magnetcatcat.com/
         title: Just a moment...
         bytes: 5574
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:magnetdownload:
         url: https://www.magnetdownload.com/
         http: 200
         final: https://www.magnetdownload.com/
         title: MagnetDownload.COM - A Torrent & Magnet Links Search Engine based on DHT
         bytes: 8230
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:magnetico:
         url: http://127.0.0.1:8080/
-        checked: "2026-10-23"
+        checked: "2026-10-25"
         error: 'dial tcp 127.0.0.1:8080: connect: connection refused'
     jackett:magnetz:
         url: https://magnetz.eu/
@@ -677,83 +2094,276 @@ results:
         final: https://magnetz.eu/login
         title: Magnetz
         bytes: 5270
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:majomparade:
+        url: https://majomparade.eu/
+        http: 200
+        final: https://majomparade.eu/login/?url=%2Findex%2F
+        title: Majomparádé | Bejelentkezés
+        bytes: 186399
+        checked: "2026-10-25"
+    jackett:malayabits-api:
+        url: https://malayabits.cc/
+        http: 200
+        final: https://malayabits.cc/login
+        title: Log masuk - MalayaBits
+        bytes: 5782
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:march:
+        url: https://duckboobee.org/
+        http: 200
+        final: https://duckboobee.org/
+        title: 阿里云备案阻断页
+        bytes: 6521
+        checked: "2026-10-25"
     jackett:marinetracker:
         url: https://seatracker.org/
         http: 403
         final: https://seatracker.org/
         title: Just a moment...
         bytes: 5479
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:matrix:
+        url: https://matrixworld.info/
+        http: 200
+        final: https://matrixworld.info/login.php?returnto=%2F
+        title: M.A.T.R.I.X — Bejelentkezés
+        bytes: 7208
+        checked: "2026-10-25"
     jackett:mazepa:
         url: https://mazepa.to/
         http: 200
         final: https://mazepa.to/
         title: Головна - Мазепа Торент - Українське озвучення
-        bytes: 86233
-        checked: "2026-10-23"
+        bytes: 86581
+        checked: "2026-10-25"
+    jackett:mdan:
+        url: https://bt.mdan.org/
+        http: 200
+        final: https://bt.mdan.org/login.php
+        title: Login - MDAN Fansub
+        bytes: 4716
+        checked: "2026-10-25"
     jackett:megapeer:
         url: https://megapeer.vip/
         http: 200
         final: https://megapeer.vip/
         title: !!binary zvLq8Pvy++kg8u7w8OXt8i3y8OXq5fAgOjogTWVnYVBlZXIudmlw
-        bytes: 83404
-        checked: "2026-10-23"
+        bytes: 77117
+        checked: "2026-10-25"
     jackett:mejortorrent:
         url: https://www47.mejortorrent.eu/
         http: 403
         final: https://www47.mejortorrent.eu/
         title: Just a moment...
         bytes: 5614
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:memphis:
+        url: https://memphis.fit/
+        http: 200
+        final: https://memphis.fit/connexion?return=%2F
+        title: Memphis — Connexion · V2
+        bytes: 15258
+        checked: "2026-10-25"
+    jackett:mesevilag:
+        url: https://mese-vilag.net/
+        http: 200
+        final: https://mese-vilag.net/login.php?returnto=%2F
+        title: MeseVilág | Bejelentkezés
+        bytes: 3829
+        checked: "2026-10-25"
+    jackett:metalguru:
+        url: https://metalguru.me/
+        http: 200
+        final: https://metalguru.me/login.php?returnto=%2F
+        title: '...:MetalGuru:... :: Login'
+        bytes: 6243
+        checked: "2026-10-25"
     jackett:metaltracker:
         url: https://en.metal-tracker.com/
         http: 200
         final: https://en.metal-tracker.com/
         title: Metal Download, Rock, Heavy music for free! | Metal Torrent Tracker
-        bytes: 58011
-        checked: "2026-10-23"
+        bytes: 62017
+        checked: "2026-10-25"
+    jackett:midnightscene:
+        url: https://midnightscene.cc/
+        http: 200
+        final: https://midnightscene.cc/login
+        title: Login - MidnightScene
+        bytes: 5931
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:mikan:
         url: https://mikanani.me/
         http: 200
         final: https://mikanani.me/
         title: '&#x871C;&#x67D1;&#x8BA1;&#x5212; - Mikan Project'
-        bytes: 186359
-        checked: "2026-10-23"
+        bytes: 186845
+        checked: "2026-10-25"
+    jackett:milkie:
+        url: https://milkie.cc/
+        http: 200
+        final: https://milkie.cc/
+        title: Milkie
+        bytes: 850
+        checked: "2026-10-25"
+    jackett:milnueve-api:
+        url: https://tracker.milnueve.cc/
+        http: 200
+        final: https://tracker.milnueve.cc/login
+        title: Iniciar sesión - Milnueve
+        bytes: 6225
+        checked: "2026-10-25"
     jackett:miobt:
         url: https://miobt.com/
         http: 200
         final: https://miobt.com/public/html/start/
         bytes: 1132
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:mixtapetorrent:
         url: http://www.mixtapetorrent.com/
         http: 200
         final: http://www.mixtapetorrent.com/
         title: MixtapeTorrent.com | The Latest Mixtape Downloads, Mixtape News, & Independent Music Promotion
-        bytes: 48634
-        checked: "2026-10-23"
+        bytes: 48632
+        checked: "2026-10-25"
+    jackett:mma-torrents:
+        url: https://mma-torrents.com/
+        http: 200
+        final: https://mma-torrents.com/
+        title: 'MMA-Torrents.com - Mixed Martial Arts Tracker : Home'
+        bytes: 12102
+        families:
+            - torrenttrader
+        checked: "2026-10-25"
+    jackett:mnv:
+        url: https://mnvv2.info/
+        http: 200
+        final: https://mnvv2.info/
+        title: ..::MNV-V2.0::..
+        bytes: 7363
+        checked: "2026-10-25"
+    jackett:mojblink:
+        url: https://www.mojblink.si/
+        http: 200
+        final: http://www.mojblink.si/login
+        title: Mojblink.si - Prijava
+        bytes: 5084
+        checked: "2026-10-25"
+    jackett:momentpt:
+        url: https://www.momentpt.top/
+        http: 200
+        final: https://www.momentpt.top/login.php
+        title: 'Moment :: 登录 - Powered by NexusPHP'
+        bytes: 9373
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:monikadesign-api:
+        url: https://monikadesign.uk/
+        http: 200
+        final: https://monikadesign.uk/login
+        title: 登录 - MonikaDesign
+        bytes: 7434
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:mousebits:
+        url: https://mousebits.com/
+        http: 200
+        final: https://mousebits.com/
+        title: MouseBits .::. Index
+        bytes: 9099
+        families:
+            - xbtit
+        checked: "2026-10-25"
+    jackett:mteamtp:
+        url: https://kp.m-team.cc/
+        http: 200
+        final: https://kp.m-team.cc/
+        title: M-Team
+        bytes: 10277
+        checked: "2026-10-25"
     jackett:musebootlegs:
         url: https://musebootlegs.com/
         http: 403
         final: https://musebootlegs.com/
         title: Just a moment...
         bytes: 5481
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:musopia:
+        url: https://www.musopia.vip/
+        http: 200
+        final: https://www.musopia.vip/login.php
+        title: '音乐乌托邦 :: 登录 - Powered by NexusPHP'
+        bytes: 20347
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:muxuege:
+        url: https://pt.muxuege.org/
+        http: 200
+        final: https://pt.muxuege.org/login.php
+        title: '慕雪阁 :: 登录 - Powered by NexusPHP'
+        bytes: 16284
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:mvgroupforum:
         url: https://forums.mvgroup.org/
         http: 403
         final: https://forums.mvgroup.org/
         title: Just a moment...
-        bytes: 5505
-        checked: "2026-10-23"
+        bytes: 5483
+        checked: "2026-10-25"
+    jackett:myanonamouse:
+        url: https://www.myanonamouse.net/
+        http: 200
+        final: https://www.myanonamouse.net/login.php?returnto=%2F
+        title: Login | My Anonamouse
+        bytes: 7583
+        checked: "2026-10-25"
     jackett:mypornclub:
         url: https://myporn.club/
         http: 200
         final: https://myporn.club/
         title: My Porn Club - Free Sharing Site
-        bytes: 136781
-        checked: "2026-10-23"
+        bytes: 141590
+        checked: "2026-10-25"
+    jackett:myspleen:
+        url: https://www.myspleen.org/
+        http: 200
+        final: https://www.myspleen.org/login.php
+        title: 'MySpleen :: Login'
+        bytes: 1803
+        checked: "2026-10-25"
+    jackett:nanyangpt:
+        url: https://nanyangpt.com/
+        http: 200
+        final: https://nanyangpt.com/login.php
+        title: '南洋PT :: 登录 - Powered by NYPT Project'
+        bytes: 8154
+        checked: "2026-10-25"
+    jackett:ncore:
+        url: https://ncore.pro/
+        http: 200
+        final: https://ncore.pro/login.php
+        title: nCore
+        bytes: 19181
+        checked: "2026-10-25"
+    jackett:nebulanceapi:
+        url: https://nebulance.io/
+        http: 200
+        final: https://nebulance.io/
+        title: Nebulance.io
+        bytes: 1961
+        families:
+            - gazelle
+        checked: "2026-10-25"
     jackett:nekobt:
         url: https://nekobt.to/
         http: 200
@@ -762,50 +2372,130 @@ results:
         bytes: 262144
         families:
             - unit3d
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:nethd:
         url: https://nethd.org/
         http: 200
         final: https://nethd.org/login.php?returnto=
         title: Đăng nhập
         bytes: 6005
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:new-team:
         url: https://new-team.org/
         http: 200
         final: https://new-team.org:443/login.php
         title: Вход • new-team.org
         bytes: 12389
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:newheaven:
+        url: https://newheaven.nl/
+        http: 200
+        final: https://newheaven.nl/
+        title: Web - Community since 2004
+        bytes: 8384
+        checked: "2026-10-25"
+    jackett:newretro:
+        url: https://new-retro.eu/
+        http: 200
+        final: https://new-retro.eu/login.php?returnto=%2F
+        bytes: 5206
+        checked: "2026-10-25"
     jackett:newstudiol:
         url: https://newstudio.tv/
-        checked: "2026-10-23"
+        checked: "2026-10-25"
         error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+    jackett:nicept:
+        url: https://www.nicept.net/
+        http: 200
+        final: https://www.nicept.net/
+        title: Sorry, the website has been stopped
+        bytes: 58683
+        checked: "2026-10-25"
     jackett:nipponsei:
         url: https://nipponsei.minglong.org/
         http: 200
         final: https://nipponsei.minglong.org/
         title: Nipponsei - Music Fresh From Japan
         bytes: 16165
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:nirvana:
+        url: https://nirvana.li/
+        http: 200
+        final: https://nirvana.li/login
+        title: Вход - Nirvana
+        bytes: 11254
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:njtupt:
+        url: https://njtupt.top/
+        http: 200
+        final: https://njtupt.top/login.php
+        title: '浦园PT :: 登录 - Powered by NexusPHP'
+        bytes: 9638
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:nobs:
+        url: https://nobs.rawsmoke.net/
+        http: 200
+        final: https://nobs.rawsmoke.net/login
+        title: Iniciar sesión - NUCLEAR ORDER BIT SYNDICATE
+        bytes: 9014
+        checked: "2026-10-25"
     jackett:noname-clubl:
         url: https://nnmclub.to/
         http: 200
         final: https://nnmclub.to/
         title: !!binary 0u7w8OXt8i3y8OXq5fAgOjogTk5NLUNsdWI=
-        bytes: 148414
+        bytes: 156630
+        checked: "2026-10-25"
+    jackett:norbits:
+        url: https://norbits.net/
+        http: 200
+        final: https://norbits.net/login.php?returnto=%2F
+        title: 'NB :: Login'
+        bytes: 4641
+        checked: "2026-10-25"
+    jackett:nordicbytes:
+        url: https://nordicbytes.org/
+        http: 200
+        final: https://nordicbytes.org/login
+        title: Login - NordicBytes
+        bytes: 4782
+        checked: "2026-10-25"
+    jackett:nordicquality-api:
+        url: https://nordicq.org/
+        http: 200
+        final: https://nordicq.org/login
+        title: Login - NordicQuality
+        bytes: 6357
         families:
-            - torrenttrader
-        checked: "2026-10-23"
+            - unit3d
+        checked: "2026-10-25"
+    jackett:nostradamus:
+        url: https://nostradamus.foo/
+        http: 200
+        final: https://nostradamus.foo/
+        title: Making sure you&#39;re not a bot!
+        bytes: 7502
+        checked: "2026-10-25"
+    jackett:novahd:
+        url: https://pt.novahd.top/
+        http: 200
+        final: https://pt.novahd.top/login.php
+        title: 'NovaHD :: 登录 - Powered by NexusPHP'
+        bytes: 46264
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:nyaasi:
         url: https://nyaa.si/
         http: 200
         final: https://nyaa.si/
         title: 'Browse :: Nyaa'
-        bytes: 120390
-        checked: "2026-10-23"
+        bytes: 118160
+        checked: "2026-10-25"
     jackett:okpt:
         url: https://www.okpt.net/
         http: 200
@@ -814,14 +2504,36 @@ results:
         bytes: 14506
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:oldgreektracker:
+        url: https://oldgreektracker.xyz/
+        checked: "2026-10-25"
+        error: EOF
+    jackett:oldtoonsworld:
+        url: https://oldtoons.world/
+        http: 200
+        final: https://oldtoons.world/login
+        title: Login - Oldtoons
+        bytes: 5718
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:onejav:
         url: https://onejav.com/
-        http: 200
+        http: 403
         final: https://onejav.com/
-        title: OneJAV.com - Free JAV Torrents
-        bytes: 82848
-        checked: "2026-10-23"
+        title: Just a moment...
+        bytes: 5568
+        checked: "2026-10-25"
+    jackett:onlyencodes-api:
+        url: https://onlyencodes.cc/
+        http: 200
+        final: https://onlyencodes.cc/login
+        title: Login - OnlyEncodes+
+        bytes: 5781
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:opencd:
         url: https://open.cd/
         http: 200
@@ -830,44 +2542,209 @@ results:
         bytes: 7026
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:opensharing:
         url: https://opensharing.org/
+        checked: "2026-10-25"
+        error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+    jackett:order66:
+        url: https://executeorder66.info/
         http: 200
-        final: https://opensharing.org/
-        title: '&bull; Портал'
-        bytes: 55748
-        checked: "2026-10-23"
+        final: https://executeorder66.info/account-login.php?returnto=%2F
+        title: 'ExecuteOrder66 : Login'
+        bytes: 14619
+        checked: "2026-10-25"
+    jackett:orpheus:
+        url: https://orpheus.network/
+        http: 200
+        final: https://orpheus.network/
+        title: This is a mirage
+        bytes: 1248
+        checked: "2026-10-25"
+    jackett:oshenpt-api:
+        url: https://www.oshen.win/
+        http: 200
+        final: https://www.oshen.win/login.php
+        title: 'OshenPT :: 登录 - Powered by NexusPHP'
+        bytes: 11992
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:ourbits:
+        url: https://ourbits.club/
+        http: 403
+        final: https://ourbits.club/
+        title: Just a moment...
+        bytes: 5583
+        checked: "2026-10-25"
+    jackett:p2pbg:
+        url: https://www.p2pbg.com/
+        http: 200
+        final: https://www.p2pbg.com/login
+        title: Login
+        bytes: 22870
+        families:
+            - xbtit
+        checked: "2026-10-25"
     jackett:panda:
         url: https://pandapt.net/
         http: 200
         final: https://pandapt.net/login.php
         title: 'PANDA :: 登录 熊猫高清'
-        bytes: 8175
+        bytes: 8177
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:pandacd:
         url: https://pandacd.io/
         http: 200
         final: https://pandacd.io/
         title: PandaCD
         bytes: 193658
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:parabellumhd-api:
+        url: https://parabellumhd.cx/
+        http: 200
+        final: https://parabellumhd.cx/login
+        title: Iniciar sesión - ParabellumHD
+        bytes: 14118
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:party-tracker:
+        url: https://party-tracker.info/
+        http: 200
+        final: https://party-tracker.info/login.php
+        title: Party-Tracker
+        bytes: 7414
+        checked: "2026-10-25"
+    jackett:passthepopcorn:
+        url: https://passthepopcorn.me/
+        http: 200
+        final: https://passthepopcorn.me/
+        title: 'Login :: PassThePopcorn'
+        bytes: 4635
+        checked: "2026-10-25"
     jackett:pctorrent:
         url: https://pc-torrents.games/
         http: 200
         final: https://pc-torrents.games/
         title: !!binary 0erg9+Dy/CDo4/D7IPfl8OXnIPLu8PDl7fI=
-        bytes: 24928
-        checked: "2026-10-23"
+        bytes: 24833
+        checked: "2026-10-25"
+    jackett:peeratiko:
+        url: https://peeratiko.org/
+        http: 200
+        final: https://peeratiko.org/
+        title: 'Peeratiko.org :: Login'
+        bytes: 4106
+        checked: "2026-10-25"
+    jackett:peergarden:
+        url: https://peergarden.org/
+        http: 200
+        final: https://peergarden.org/login
+        title: Login - PeerGarden
+        bytes: 6688
+        checked: "2026-10-25"
+    jackett:peersfm:
+        url: https://peers.fm/
+        http: 200
+        final: https://peers.fm/login.php
+        title: Login - Peers.FM
+        bytes: 3342
+        checked: "2026-10-25"
+    jackett:periodical:
+        url: https://periodical.me/
+        http: 200
+        final: https://periodical.me/login
+        title: 'Periodical :: Login'
+        bytes: 3010
+        checked: "2026-10-25"
+    jackett:phoenixproject:
+        url: https://phoenixproject.app/
+        http: 200
+        final: https://phoenixproject.app/
+        title: 'This is a mirage :: Phoenix Project'
+        bytes: 1959
+        checked: "2026-10-25"
+    jackett:phoenixpt-api:
+        url: https://pt.521.best/
+        http: 200
+        final: https://pt.521.best/login.php
+        title: '凤凰PT :: 登录 - Powered by NexusPHP'
+        bytes: 20090
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:pier720:
+        url: https://720pier.ru/
+        http: 403
+        final: https://720pier.ru/
+        title: 403 Forbidden
+        bytes: 239
+        checked: "2026-10-25"
+    jackett:pignetwork:
+        url: https://piggo.me/
+        http: 403
+        final: https://piggo.me/
+        title: Just a moment...
+        bytes: 5558
+        checked: "2026-10-25"
+    jackett:pixelcove:
+        url: https://www.pixelcove.me/
+        http: 200
+        final: https://www.pixelcove.me/
+        title: PixelCove
+        bytes: 3401
+        checked: "2026-10-25"
+    jackett:pixelhd:
+        url: https://pixelhd.me/
+        http: 200
+        final: https://pixelhd.me/
+        title: PiXELHD
+        bytes: 2780
+        checked: "2026-10-25"
+    jackett:playletpt:
+        url: https://playlet.cc/
+        http: 200
+        final: https://playlet.cc/login.php
+        title: 'PlayLet :: 登录 - Powered by NexusPHP'
+        bytes: 28287
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:plugintorrent:
         url: https://plugintorrent.com/
         http: 200
         final: https://plugintorrent.com/
         title: Plugintorrent.com - Free Torrent source for VST Plugin, Audio Sample, Library, Preset, DAW, and Audio Software since 2015
-        bytes: 237450
-        checked: "2026-10-23"
+        bytes: 239062
+        checked: "2026-10-25"
+    jackett:podzemlje:
+        url: https://podzemlje.net/
+        http: 200
+        final: https://podzemlje.net/login
+        title: Login - PODZEMLJE
+        bytes: 6506
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:polishtorrent:
+        url: https://polishtorrent.top/
+        http: 200
+        final: https://polishtorrent.top/login
+        title: Login - Polish Torrent
+        bytes: 13912
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:polishtracker-api:
+        url: https://pte.nu/
+        http: 200
+        final: https://pte.nu/login
+        title: PT Login
+        bytes: 5445
+        checked: "2026-10-25"
     jackett:pornolab:
         url: https://pornolab.net/
         http: 200
@@ -876,39 +2753,85 @@ results:
             wejy8u7w8OXt8iDy8OXq5fAgUG9ybm9MYWIuTmV0LiDE5evo8uXx/CDz5O7i7uv88fLi6P
             /s6CE=
         bytes: 516
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:pornotorrent:
         url: https://pornotorrent.com.br/
-        http: 502
+        http: 200
         final: https://pornotorrent.com.br/
-        title: 'pornotorrent.com.br | 502: Bad gateway'
-        bytes: 6432
-        checked: "2026-10-23"
+        title: Porno Torrent - Download de filmes adultos via torrent
+        bytes: 131302
+        checked: "2026-10-25"
     jackett:pornrips:
         url: https://pornrips.to/
         http: 200
         final: https://pornrips.to/
         title: PornRips.To &#8211; Home of PRT 1080p &amp; 720p HEVC x265 Porn XXX Releases
-        bytes: 160836
-        checked: "2026-10-23"
+        bytes: 165996
+        checked: "2026-10-25"
     jackett:pornxlab:
         url: https://www.pornxlab.com/
         http: 200
         final: https://www.pornxlab.com/
         title: PornXLab - Free Porn Studio Movie Torrents
         bytes: 55797
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:portugas-api:
+        url: https://portugas.org/
+        http: 200
+        final: https://portugas.org/login
+        title: Login - Portugas
+        bytes: 7578
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:postman-api:
         url: http://tracker2.postman.i2p/
-        checked: "2026-10-23"
+        checked: "2026-10-25"
         error: 'dial tcp: lookup tracker2.postman.i2p on 9.9.9.9:53: no such host'
+    jackett:pretome:
+        url: https://pretome.info/
+        http: 200
+        final: https://pretome.info/index.php?page=home&returnto=%2F
+        title: pretome
+        bytes: 3533
+        checked: "2026-10-25"
+    jackett:privatehd:
+        url: https://privatehd.to/
+        http: 200
+        final: https://privatehd.to/
+        title: PrivateHD
+        bytes: 5458
+        checked: "2026-10-25"
+    jackett:proaudiotorrents:
+        url: https://proaudiotorrents.org/
+        http: 200
+        final: https://proaudiotorrents.org/
+        title: '.:: ProAudioTorrents ::.'
+        bytes: 4756
+        checked: "2026-10-25"
     jackett:proporno:
         url: https://proporno.org/
         http: 200
         final: https://proporno.org/
         title: скачать порно торренты на proporno
-        bytes: 69180
-        checked: "2026-10-23"
+        bytes: 72106
+        checked: "2026-10-25"
+    jackett:ptcafe-api:
+        url: https://ptcafe.club/
+        http: 502
+        final: https://ptcafe.club/
+        title: 'ptcafe.club | 502: Bad gateway'
+        bytes: 6384
+        checked: "2026-10-25"
+    jackett:ptcc:
+        url: https://cc.mypt.cc/
+        http: 200
+        final: https://cc.mypt.cc/login.php
+        title: '我的PT(CPT) | 人類資源庫 :: 登录 | 中國-臺灣'
+        bytes: 8068
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:pterclub:
         url: https://pterclub.net/
         http: 200
@@ -917,7 +2840,48 @@ results:
         bytes: 31527
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:ptfans:
+        url: https://ptfans.cc/
+        http: 200
+        final: https://ptfans.cc/login.php
+        title: 'PTFans :: 登录 - Powered by NexusPHP'
+        bytes: 9217
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:ptfiles:
+        url: https://ptfiles.net/
+        http: 200
+        final: https://ptfiles.net/loginproc/index.php?ts=1792914971
+        title: ptf login
+        bytes: 9730
+        checked: "2026-10-25"
+    jackett:ptgtk:
+        url: https://pt.gtkpw.xyz/
+        http: 200
+        final: https://pt.gtkpw.xyz/login.php
+        title: 'PT GTK :: 登录 BT|电影|韩剧|美剧|日剧|资源|下载|影视|剧集|电影资源|学习资料 - Powered by NexusPHP'
+        bytes: 13724
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:pthome:
+        url: https://www.pthome.net/
+        http: 403
+        final: https://www.pthome.net/
+        title: Just a moment...
+        bytes: 5572
+        checked: "2026-10-25"
+    jackett:ptitzmx:
+        url: https://pt.itzmx.com/
+        http: 200
+        final: https://pt.itzmx.com/login.php
+        title: PT分享站 - itzmx.com
+        bytes: 6503
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:ptlgs:
         url: https://ptlgs.org/
         http: 200
@@ -926,7 +2890,23 @@ results:
         bytes: 11598
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:ptsbao:
+        url: https://ptsbao.club/
+        http: 200
+        final: https://ptsbao.club/
+        title: 403 Forbidden
+        bytes: 138
+        checked: "2026-10-25"
+    jackett:ptskit:
+        url: https://www.ptskit.org/
+        http: 200
+        final: https://www.ptskit.org/login.php
+        title: '拾刻 :: 登录 - Powered by NexusPHP'
+        bytes: 13551
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:pttey:
         url: https://pt.tey.cc/
         http: 200
@@ -935,16 +2915,18 @@ results:
         bytes: 13257
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:pttime:
         url: https://www.pttime.org/
         http: 200
         final: https://www.pttime.org/login.php?returnto=
         title: 'PTT :: 登录 - 分享你所爱，他所求，得我所愿！'
-        bytes: 21443
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        bytes: 21439
+        checked: "2026-10-25"
+    jackett:ptying:
+        url: https://pt.ying.us.kg/
+        checked: "2026-10-25"
+        error: 'dial tcp: lookup pt.ying.us.kg on 9.9.9.9:53: no such host'
     jackett:ptzone:
         url: https://ptzone.xyz/
         http: 200
@@ -953,51 +2935,177 @@ results:
         bytes: 12950
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:punkshorror:
+        url: https://punck-tracker.net/
+        http: 200
+        final: https://punck-tracker.net/login.php
+        title: Punk's Horror Tracker | Login
+        bytes: 14973
+        checked: "2026-10-25"
+    jackett:puntotorrent:
+        url: https://xbt.puntotorrent.com/
+        http: 200
+        final: https://xbt.puntotorrent.com/
+        title: PuntoTorrent .::. Index->Login
+        bytes: 13666
+        families:
+            - xbtit
+        checked: "2026-10-25"
     jackett:pussytorrents:
         url: https://pussytorrents.org/
         http: 200
         final: https://pussytorrents.org/
         title: 'Login :: Pussytorrents.org'
         bytes: 16556
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:putao:
         url: https://pt.sjtu.edu.cn/
         http: 200
         final: https://pt.sjtu.edu.cn/login.php
         title: '葡萄 :: 登录'
         bytes: 8885
+        checked: "2026-10-25"
+    jackett:pwtorrents:
+        url: https://pwtorrents.net/
+        http: 200
+        final: https://pwtorrents.net/login.php?returnto=%2F
+        title: Pro Wrestling Torrents
+        bytes: 1670
+        checked: "2026-10-25"
+    jackett:qingwa:
+        url: https://www.qingwapt.com/
+        http: 200
+        final: https://wiki.qingwapt.org/docs
+        title: 欢迎来到青蛙 - 青蛙 Wiki
+        bytes: 178366
+        checked: "2026-10-25"
+    jackett:r3vwtf:
+        url: https://r3vuk.wtf/
+        http: 200
+        final: https://r3vuk.wtf/login.php?returnto=%2F
+        title: 'R3V WTF! :: Login'
+        bytes: 7445
+        checked: "2026-10-25"
+    jackett:racing4everyone-api:
+        url: https://racing4everyone.eu/
+        http: 200
+        final: https://racing4everyone.eu/login
+        title: Login - R4E
+        bytes: 7416
         families:
-            - nexusphp
-        checked: "2026-10-23"
+            - unit3d
+        checked: "2026-10-25"
+    jackett:racing4us:
+        url: https://racing4us.site/
+        http: 200
+        final: https://racing4us.site/
+        title: R4US .::. Index
+        bytes: 13361
+        families:
+            - xbtit
+        checked: "2026-10-25"
+    jackett:racingforme:
+        url: https://www.racingfor.me/
+        http: 200
+        final: https://www.racingfor.me/front
+        title: ':: crankShaft v2.2.2'
+        bytes: 1641
+        checked: "2026-10-25"
+    jackett:railgunpt:
+        url: https://bilibili.download/
+        checked: "2026-10-25"
+        error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
     jackett:rainbowtracker:
         url: https://gaytracker.ru/
         http: 200
         final: https://gaytracker.ru/forum/login.php
         title: 'Вход :: Радужный трекер'
         bytes: 9027
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:rastastugan-api:
+        url: https://rastastugan.org/
+        http: 200
+        final: https://rastastugan.org/login
+        title: Login - Rastastugan
+        bytes: 6981
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:redacted:
+        url: https://redacted.sh/
+        http: 200
+        final: https://redacted.sh/
+        title: Redacted
+        bytes: 1609
+        checked: "2026-10-25"
+    jackett:redstartorrent:
+        url: http://rstorrent.org.pl/
+        http: 200
+        final: http://rstorrent.org.pl/login.php
+        title: 'RST :: Login'
+        bytes: 2632
+        checked: "2026-10-25"
+    jackett:reelflix-api:
+        url: https://reelflix.cc/
+        http: 200
+        final: https://reelflix.cc/login
+        title: Login - ReelFliX
+        bytes: 7244
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:retroflix:
+        url: https://retroflix.net/
+        http: 200
+        final: https://retroflix.net/login
+        title: Log in | Retroflix
+        bytes: 4415
+        checked: "2026-10-25"
+    jackett:retromoviesclub-api:
+        url: https://retro-movies.club/
+        http: 200
+        final: https://retro-movies.club/login
+        title: Login - Retro Movies Club
+        bytes: 5667
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:retrotoon:
+        url: https://www.retrotoon.world/
+        http: 200
+        final: https://retrotoon.world/login.php
+        title: 'RetroToon World :: Login'
+        bytes: 6075
+        checked: "2026-10-25"
+    jackett:revopeers:
+        url: https://revopeers.me/
+        http: 200
+        final: https://revopeers.me/login.php
+        title: 'RevoPeers :: Login'
+        bytes: 3653
+        checked: "2026-10-25"
     jackett:rgfootball:
         url: https://rgfootball.net/
         http: 200
         final: https://rgfootball.net/
         title: Спортивный торрент-трекер RGFootball.net. Футбол Онлайн
         bytes: 262144
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:rintor:
         url: https://rintor.org/
         http: 200
         final: https://rintor.org/
         title: RinTor.Org - Порно торрент трекер Скачать бесплатно порнофильмы русское порно
-        bytes: 113996
-        checked: "2026-10-23"
+        bytes: 114277
+        checked: "2026-10-25"
     jackett:rintornet:
         url: https://www.rintor.net/
         http: 200
         final: https://www.rintor.net/
         title: RinTor.NeT - Открытый порно торрент трекер без регистрации | Скачать порно
-        bytes: 96786
-        checked: "2026-10-23"
+        bytes: 102231
+        checked: "2026-10-25"
     jackett:riperam:
         url: https://riperam.org/
         http: 200
@@ -1007,8 +3115,31 @@ results:
             wg0YLQvtGA0YDQtdC90YIu0KHQvNC+0YLRgNC10YLRjCDQvtC90LvQsNC50L0uINCk0LjQ
             u9GM0LzRiywg0YHQtdGA0LjQsNC70YssINC80YPQt9GL0LrQsCwg0LjQs9GA0YsgLCDRgd
             C+0Q==
-        bytes: 210146
-        checked: "2026-10-23"
+        bytes: 212341
+        checked: "2026-10-25"
+    jackett:rockethd:
+        url: https://rocket-hd.cc/
+        http: 200
+        final: https://rocket-hd.cc/login
+        title: Einloggen - RocketHD
+        bytes: 11070
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:romanianmetaltorrents:
+        url: https://metal.iplay.ro/
+        http: 200
+        final: https://metal.iplay.ro/
+        title: Romanian Metal Torrents 20 years edition
+        bytes: 5175
+        checked: "2026-10-25"
+    jackett:rousi-pro:
+        url: https://rousi.pro/
+        http: 200
+        final: https://rousi.pro/
+        title: PeerGo
+        bytes: 6520
+        checked: "2026-10-25"
     jackett:rudub:
         url: https://r4.rudub.world/
         http: 200
@@ -1016,43 +3147,107 @@ results:
         title: !!binary |
             0ezu8vDl8vwg8eXw6ODr+yDu7evg6e0g4eXx7+vg8u3uLCDt7uLo7eroIPHl8Ojg6+7iID
             IwMjYsIO/l8OXi7uQg6CDu5+Lz9+ji4O3o5SBSdUR1YiDt4CBSdUR1Yi5UVg==
-        bytes: 41738
-        checked: "2026-10-23"
+        bytes: 42306
+        checked: "2026-10-25"
     jackett:rustorka:
         url: https://rustorka.com/
         http: 403
         final: https://rustorka.com/forum/index.php
         title: Каптча
         bytes: 5567
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:rutor:
         url: https://rutor.info/
         http: 200
         final: https://rutor.info/
         title: 'rutor.info :: Свободный торрент трекер'
-        bytes: 179582
-        checked: "2026-10-23"
+        bytes: 129083
+        checked: "2026-10-25"
     jackett:rutracker:
         url: https://rutracker.org/
         http: 200
         final: https://rutracker.org/forum/index.php
         title: RuTracker.org
         bytes: 96767
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:rutracker-ru:
         url: http://rutracker.ru/
         http: 200
         final: http://rutracker.ru/
         title: 'Home :: RuTracker.RU - Свободный торрент трекер'
-        bytes: 218447
-        checked: "2026-10-23"
+        bytes: 218644
+        checked: "2026-10-25"
+    jackett:samaritano:
+        url: https://samaritano.cc/
+        http: 200
+        final: https://samaritano.cc/login
+        title: Login - SAMARITANO
+        bytes: 19928
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:sbpt:
+        url: https://sbpt.link/
+        http: 502
+        final: https://sbpt.link/
+        title: 'sbpt.link | 502: Bad gateway'
+        bytes: 6371
+        checked: "2026-10-25"
+    jackett:scenehd:
+        url: https://scenehd.org/
+        http: 200
+        final: https://scenehd.org/login.php?returnto=%2F
+        bytes: 1880
+        checked: "2026-10-25"
+    jackett:scenerush:
+        url: https://www.scene-rush.pt/
+        http: 200
+        final: https://www.scene-rush.pt/
+        title: SceneRush
+        bytes: 8434
+        checked: "2026-10-25"
+    jackett:scenetime-api:
+        url: https://www.scenetime.com/
+        http: 200
+        final: https://www.scenetime.com/login.php
+        title: SceneTime - Members Sign In | Private Tracker &amp; 4K contents
+        bytes: 91632
+        checked: "2026-10-25"
+    jackett:secretcinema:
+        url: https://secret-cinema.pw/
+        http: 503
+        final: https://secret-cinema.pw/
+        title: Site Maintenance
+        bytes: 1629
+        checked: "2026-10-25"
+    jackett:seedcore-api:
+        url: https://seedcore.net/
+        http: 200
+        final: https://seedcore.net/login
+        title: SeedCore.net - Login
+        bytes: 12683
+        checked: "2026-10-25"
+    jackett:seedfile:
+        url: https://seedfile.io/
+        http: 200
+        final: https://seedfile.io/
+        title: 'SeedFile.io • Bittorrent Tracker :: Login — SeedFile.io'
+        bytes: 8922
+        checked: "2026-10-25"
+    jackett:seedpool-api:
+        url: https://seedpool.org/
+        http: 200
+        final: https://seedpool.org/login
+        title: Login - seedpool
+        bytes: 5349
+        checked: "2026-10-25"
     jackett:selezen:
         url: https://use.selezen.club/
         http: 200
         final: https://use.selezen.club/
-        title: Поиск фильмов - online.selezen.net
-        bytes: 12560
-        checked: "2026-10-23"
+        title: seleZen - скачать торрент фильмы и игры
+        bytes: 117184
+        checked: "2026-10-25"
     jackett:sewerpt:
         url: https://sewerpt.com/
         http: 200
@@ -1061,21 +3256,44 @@ results:
         bytes: 13665
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:sextorrent-api:
+        url: https://sextorrent.myds.me/
+        http: 200
+        final: https://sextorrent.myds.me/login
+        title: Login - SEXTORRENT
+        bytes: 5642
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:sexypics:
         url: https://www.sexy-pics.us/
         http: 200
         final: https://www.sexy-pics.us/
-        title: Download XXX (385,750 Torrent Files) Page 1 - Sexy-Pics
-        bytes: 41800
-        checked: "2026-10-23"
+        title: Download XXX (386,105 Torrent Files) Page 1 - Sexy-Pics
+        bytes: 43625
+        checked: "2026-10-25"
+    jackett:shadowbit:
+        url: https://shadowbit.cc/
+        http: 200
+        final: https://shadowbit.cc/login.php
+        title: Login
+        bytes: 2349
+        checked: "2026-10-25"
+    jackett:shakaw:
+        url: https://tracker.shakaw.com.br/
+        http: 200
+        final: https://tracker.shakaw.com.br/
+        title: 'ShaKaw :: Entrar'
+        bytes: 4771
+        checked: "2026-10-25"
     jackett:shanaproject:
         url: https://www.shanaproject.com/
         http: 200
         final: https://www.shanaproject.com/
         title: Shana Project
-        bytes: 115443
-        checked: "2026-10-23"
+        bytes: 114908
+        checked: "2026-10-25"
     jackett:shareisland-api:
         url: https://shareisland.org/
         http: 200
@@ -1084,35 +3302,80 @@ results:
         bytes: 5404
         families:
             - unit3d
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:shazbat:
+        url: https://www.shazbat.tube/
+        http: 200
+        final: https://www.shazbat.tube/login
+        title: SHAZBAT.TUBE
+        bytes: 3785
+        checked: "2026-10-25"
+    jackett:siambit:
+        url: https://bearbit.org/
+        http: 200
+        final: https://bearbit.org/login.php?returnto=%2F
+        title: Login - -
+        bytes: 31332
+        checked: "2026-10-25"
+    jackett:simurg:
+        url: https://simurg.world/
+        http: 200
+        final: https://simurg.world/
+        title: Simurg
+        bytes: 1443
+        checked: "2026-10-25"
+    jackett:siqi:
+        url: https://si-qi.xyz/
+        http: 200
+        final: https://si-qi.xyz/login.php
+        title: '思齐 :: 登录 高清图书站 - Powered by NexusPHP'
+        bytes: 9069
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:skidrowrepack:
         url: https://skidrowrepack.com/
         http: 200
         final: https://skidrowrepack.com/
         title: Games torrent free download - SkidrowRepack.com
         bytes: 41147
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:skipthecommercials-api:
+        url: https://skipthecommercials.xyz/
+        http: 200
+        final: https://skipthecommercials.xyz/login
+        title: Login - STC
+        bytes: 20960
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:sktorrent:
         url: https://sktorrent.eu/
         http: 200
         final: https://sktorrent.eu/torrent/torrents_v2.php?active=0
         title: Sk-CzTorrent | stiahni si HD Filmy online - Torrents
-        bytes: 50014
-        checked: "2026-10-23"
+        bytes: 56554
+        checked: "2026-10-25"
     jackett:sktorrent-org:
         url: https://sktorrent.org/
         http: 200
         final: https://sktorrent.org/
         title: Sktorrent - Torrent Search Engine
-        bytes: 11916
-        checked: "2026-10-23"
+        bytes: 11899
+        checked: "2026-10-25"
+    jackett:snowpt:
+        url: https://skyeysnow.com/
+        http: 200
+        final: https://skyeysnow.com/
+        bytes: 37
+        checked: "2026-10-25"
     jackett:sosulki:
         url: https://sosulki.bosk.cc/
         http: 200
         final: https://sosulki.bosk.cc/
         title: Порно торрент трекер XXX sosulki.bosk.cc
-        bytes: 68468
-        checked: "2026-10-23"
+        bytes: 70120
+        checked: "2026-10-25"
     jackett:soulvoice:
         url: https://pt.soulvoice.club/
         http: 200
@@ -1121,7 +3384,53 @@ results:
         bytes: 12082
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:speedapp:
+        url: https://speedapp.io/
+        http: 200
+        final: https://speedapp.io/login
+        title: Login | SpeedApp
+        bytes: 20695
+        checked: "2026-10-25"
+    jackett:speedcd:
+        url: https://speed.cd/
+        http: 403
+        final: https://speed.cd/login
+        title: Just a moment...
+        bytes: 5595
+        checked: "2026-10-25"
+    jackett:speedmasterhd:
+        url: https://speedmaster-hd.net/
+        http: 200
+        final: https://speedmaster-hd.net/jscheck.php
+        title: Speedmaster HD
+        bytes: 3398
+        checked: "2026-10-25"
+    jackett:spiritofrevolution:
+        url: https://sor-next.org/
+        http: 200
+        final: https://sor-next.org/jscheck.php
+        title: Spirit of Revolution
+        bytes: 2642
+        checked: "2026-10-25"
+    jackett:sportscora:
+        url: https://sportscora.com/
+        http: 200
+        final: https://sportscora.com/login
+        title: Login - UNIT3D
+        bytes: 6670
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:sportscult:
+        url: https://sportscult.org/
+        http: 200
+        final: https://sportscult.org/
+        title: SportsCult .::. Index
+        bytes: 6824
+        families:
+            - xbtit
+        checked: "2026-10-25"
     jackett:springsunday:
         url: https://springsunday.net/
         http: 200
@@ -1130,42 +3439,220 @@ results:
         bytes: 4743
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:stellarwinds:
+        url: https://stellarwinds.me/
+        http: 200
+        final: https://stellarwinds.me/login.php
+        title: Stellarwinds - Login
+        bytes: 4365
+        checked: "2026-10-25"
     jackett:subsplease:
         url: https://subsplease.org/
         http: 200
         final: https://subsplease.org/
         title: SubsPlease &#8211; One stop shop for new anime
         bytes: 29459
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:sukebeinyaasi:
         url: https://sukebei.nyaa.si/
         http: 200
         final: https://sukebei.nyaa.si/
         title: 'Browse :: Sukebei'
-        bytes: 147640
-        checked: "2026-10-23"
+        bytes: 139417
+        checked: "2026-10-25"
+    jackett:superbits:
+        url: https://superbits.org/
+        http: 200
+        final: https://superbits.org/
+        title: Superbits.org - Sveriges största bittorrent tracker.
+        bytes: 1626
+        checked: "2026-10-25"
+    jackett:swarmazon-api:
+        url: https://swarmazon.club/
+        http: 200
+        final: https://swarmazon.club/en/account/login.php
+        title: Login | Swarmazon
+        bytes: 6315
+        checked: "2026-10-25"
+    jackett:tangpt:
+        url: https://www.tangpt.top/
+        http: 200
+        final: https://www.tangpt.top/login.php
+        title: '不可躺 :: 登录 - Powered by NexusPHP'
+        bytes: 10027
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:tapochek:
+        url: https://tapochek.net/
+        http: 200
+        final: https://tapochek.net/
+        title: '&#1043;&#1083;&#1072;&#1074;&#1085;&#1072;&#1103;'
+        bytes: 223218
+        checked: "2026-10-25"
+    jackett:tasmanit:
+        url: https://tasmanit.es/
+        http: 200
+        final: https://tasmanit.es/
+        title: Welcome to tasmanit.es | tasmanit.es
+        bytes: 10179
+        checked: "2026-10-25"
+    jackett:teamctgame:
+        url: https://tctg.pm/
+        http: 200
+        final: https://tctg.pm/bienvenue.php
+        bytes: 4972
+        checked: "2026-10-25"
+    jackett:teamflix:
+        url: https://tracker.teamflix.cc/
+        http: 200
+        final: https://tracker.teamflix.cc/login
+        title: TeamFlix
+        bytes: 4920
+        checked: "2026-10-25"
+    jackett:teamhd:
+        url: https://teamhd.org/
+        http: 200
+        final: https://teamhd.org/login.php?returnto=index.php
+        title: Вход::TeamHD
+        bytes: 3471
+        checked: "2026-10-25"
+    jackett:teamos:
+        url: https://www.teamos.xyz/
+        http: 200
+        final: https://www.teamos.xyz/
+        title: TeamOS – Custom Windows ISOs, AIO Builds, Games &amp; Software
+        bytes: 220753
+        checked: "2026-10-25"
+    jackett:thebrothers:
+        url: https://leo-test.store/
+        http: 200
+        final: https://leo-test.store/
+        bytes: 77
+        checked: "2026-10-25"
+    jackett:thecrazyones:
+        url: https://thecrazyones.hopto.org/
+        http: 200
+        final: https://thecrazyones.hopto.org/jscheck.php
+        title: The-Crazy-Ones
+        bytes: 916
+        checked: "2026-10-25"
+    jackett:theempire:
+        url: https://theempire.click/
+        http: 200
+        final: https://theempire.click/login.php
+        title: 'TheEmpire :: Login'
+        bytes: 3856
+        checked: "2026-10-25"
+    jackett:thefallingangels:
+        url: https://tfa.tf/
+        http: 200
+        final: https://tfa.tf/jscheck.php
+        title: The Falling Angels
+        bytes: 1545
+        checked: "2026-10-25"
+    jackett:thegeeks:
+        url: https://thegeeks.click/
+        checked: "2026-10-25"
+        error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+    jackett:thekitchen:
+        url: https://thekitchen.click/
+        http: 200
+        final: https://thekitchen.click/login.php
+        title: 'TheKitchen :: Login'
+        bytes: 3868
+        checked: "2026-10-25"
+    jackett:theleachzone-api:
+        url: https://tlzdigital.com/
+        http: 200
+        final: https://tlzdigital.com/login
+        title: Login - The Leach Zone
+        bytes: 5348
+        checked: "2026-10-25"
     jackett:themixingbowl:
         url: https://tmb.dj/
         http: 503
         final: https://tmb.dj/
         title: 'themixingbowl.org :: Site Maintenance'
         bytes: 1932
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:thenewfun:
+        url: https://the-new-fun.com/
+        http: 200
+        final: https://the-new-fun.com/login.php?returnto=%2F
+        bytes: 3296
+        checked: "2026-10-25"
+    jackett:thenewheaven:
+        url: https://tnhv2.com/
+        http: 403
+        final: https://tnhv2.com/
+        title: 403 Forbidden
+        bytes: 315
+        checked: "2026-10-25"
+    jackett:theoccult:
+        url: https://theoccult.click/
+        http: 200
+        final: https://theoccult.click/login.php
+        title: 'TheOccult :: Login'
+        bytes: 3830
+        checked: "2026-10-25"
+    jackett:theoldschool-api:
+        url: https://theoldschool.cc/
+        http: 200
+        final: https://theoldschool.cc/login
+        title: Se connecter - The Old School
+        bytes: 5517
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:thepiratebay:
         url: https://thepiratebay.org/
         http: 200
         final: https://thepiratebay.org/index.html
         title: Download music, movies, games, software! The Pirate Bay - The galaxy's most resilient BitTorrent site
         bytes: 5276
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:theplace:
+        url: https://theplace.click/
+        http: 200
+        final: https://theplace.click/login.php
+        title: 'ThePlace :: Login'
+        bytes: 3318
+        checked: "2026-10-25"
     jackett:therarbg:
         url: https://therarbg.to/
         http: 200
         final: https://therarbg.to/
         title: Download Latest Top Torrents in Multiple Categories The RarBg
-        bytes: 183345
-        checked: "2026-10-23"
+        bytes: 183290
+        checked: "2026-10-25"
+    jackett:theshow:
+        url: https://theshow.click/
+        http: 200
+        final: https://theshow.click/login.php
+        title: 'TheShow :: Login'
+        bytes: 3829
+        checked: "2026-10-25"
+    jackett:thevault:
+        url: https://thevault.click/
+        checked: "2026-10-25"
+        error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+    jackett:thewordmusic:
+        url: https://thewordmusic.org/
+        http: 200
+        final: https://thewordmusic.org/login.php?returnto=%2F
+        bytes: 3257
+        checked: "2026-10-25"
+    jackett:thorhub-api:
+        url: https://thorhub.eu/
+        http: 200
+        final: https://thorhub.eu/login
+        title: Login - Thor HUB
+        bytes: 5377
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:tjupt:
         url: https://tjupt.org/
         http: 200
@@ -1174,7 +3661,7 @@ results:
         bytes: 6956
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:tlfbits:
         url: https://pt.eastgame.org/
         http: 200
@@ -1183,217 +3670,506 @@ results:
         bytes: 6311
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:tmghub:
+        url: https://tmghub.org/
+        http: 200
+        final: https://tmghub.org/
+        title: TmGHuB.org .::. Index
+        bytes: 18110
+        families:
+            - xbtit
+        checked: "2026-10-25"
+    jackett:tocashare:
+        url: https://tocashare.biz/
+        http: 200
+        final: https://tocashare.biz/login
+        title: Login - SAPIBR
+        bytes: 6340
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:tokyotosho:
         url: https://www.tokyotosho.info/
         http: 200
         final: https://www.tokyotosho.info/
         title: 'Tokyo Toshokan :: #tokyotosho @ irc.rizon.net :: Torrent Listing'
-        bytes: 97001
-        checked: "2026-10-23"
+        bytes: 99029
+        checked: "2026-10-25"
     jackett:toloka:
         url: https://toloka.to/
+        checked: "2026-10-25"
+        error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+    jackett:tormac:
+        url: https://tormac.org/
         http: 200
-        final: https://toloka.to/
-        title: Гуртом — торрент-толока
-        bytes: 23292
-        checked: "2026-10-23"
+        final: https://tormac.org/
+        title: TorMac.org Mac BitTorrent Tracker
+        bytes: 94374
+        checked: "2026-10-25"
+    jackett:tornado:
+        url: https://www.tornado.si/
+        http: 200
+        final: https://www.tornado.si/?p=home&pid=1
+        title: Tornado.si
+        bytes: 4861
+        checked: "2026-10-25"
+    jackett:torrent-heaven:
+        url: https://www.torrentheaven.org/
+        http: 200
+        final: https://www.torrentheaven.org/login.php?returnto=%2F
+        title: 'Torrent Heaven : Login'
+        bytes: 3751
+        checked: "2026-10-25"
     jackett:torrent-pirat:
         url: http://www.torrent-pirat.com/
+        checked: "2026-10-25"
+        error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+    jackett:torrent-turk:
+        url: https://torrent-turk.de/
         http: 200
-        final: http://www.torrent-pirat.com/
-        title: '&bull; Портал'
-        bytes: 55001
-        checked: "2026-10-23"
+        final: https://torrent-turk.de/?p=home&pid=1
+        title: TOrrent-tuRK | TORK
+        bytes: 37785
+        checked: "2026-10-25"
     jackett:torrent9:
         url: https://www7.torrent9.to/
         http: 200
         final: https://www7.torrent9.to/
         title: Torrent9.to - Telecharger avec Torrent9 Officiel
         bytes: 128187
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:torrentbd:
+        url: https://www.torrentbd.net/
+        http: 403
+        final: https://www.torrentbd.net/
+        title: Just a moment...
+        bytes: 5482
+        checked: "2026-10-25"
     jackett:torrentby:
         url: https://torrent.by/
         http: 200
         final: https://torrent.by/
         title: Торрент трекер - torrent.by
         bytes: 262144
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:torrentbyte:
         url: https://torrentbyte.cc/
         http: 403
         final: https://torrentbyte.cc/
         title: Just a moment...
         bytes: 5479
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:torrentbytes:
+        url: https://www.torrentbytes.net/
+        http: 200
+        final: https://www.torrentbytes.net/login.php?returnto=%2F
+        bytes: 2939
+        checked: "2026-10-25"
+    jackett:torrentccf:
+        url: https://et8.org/
+        http: 200
+        final: https://et8.org/login.php
+        title: 'TCCF :: 登录'
+        bytes: 6356
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:torrentclaw:
+        url: https://torrentclaw.com/
+        http: 200
+        final: https://torrentclaw.com/
+        title: TorrentClaw — Torrent Search Engine
+        bytes: 262144
+        checked: "2026-10-25"
     jackett:torrentcore:
         url: https://torrentcore.xyz/
         http: 403
         final: https://torrentcore.xyz/
         title: Just a moment...
         bytes: 5480
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:torrentday:
+        url: https://tday.love/
+        http: 200
+        final: https://tday.love/login.php
+        title: TorrentDay – Member Access
+        bytes: 7285
+        checked: "2026-10-25"
+    jackett:torrentdd:
+        url: https://www.torrentdd.com/
+        http: 200
+        final: https://www.torrentdd.com/
+        title: 'เว็บบิท โหลดบิท ดาวน์โหลด bit torrent :: TorrentDD.com'
+        bytes: 5722
+        checked: "2026-10-25"
     jackett:torrentdownload:
         url: https://www.torrentdownload.info/
         http: 200
         final: https://www.torrentdownload.info/
         title: TorrentDownload - Free Torrents Download
-        bytes: 40781
-        checked: "2026-10-23"
+        bytes: 40078
+        checked: "2026-10-25"
     jackett:torrentdownloads:
         url: https://www.torrentdownloads.pro/
         http: 200
         final: https://www.torrentdownloads.pro/
         title: Torrent Downloads - download free torrents!
-        bytes: 92391
-        checked: "2026-10-23"
+        bytes: 95285
+        checked: "2026-10-25"
+    jackett:torrenteros-api:
+        url: https://torrenteros.org/
+        http: 200
+        final: https://torrenteros.org/login
+        title: Iniciar sesión - TTR
+        bytes: 11050
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:torrenthaven-api:
+        url: https://torrenthaven.org/
+        http: 200
+        final: https://torrenthaven.org/login
+        title: Login - TORRENT HAVEN
+        bytes: 5937
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:torrenthr-api:
+        url: https://www.torrenthr.org/
+        http: 200
+        final: https://www.torrenthr.org/login
+        title: Prijava - TorrentHR
+        bytes: 7567
+        checked: "2026-10-25"
+    jackett:torrenting:
+        url: https://torrenting.com/
+        http: 200
+        final: https://torrenting.com/login.php
+        title: Sign in — Torrenting.com
+        bytes: 14078
+        checked: "2026-10-25"
     jackett:torrentkitty:
         url: https://www.torrentkitty.cam/
         http: 200
         final: https://www.torrentkitty.cam/
         title: Torrent Kitty - Free Torrent To Magnet Link Conversion Service
-        bytes: 28977
-        checked: "2026-10-23"
+        bytes: 29070
+        checked: "2026-10-25"
+    jackett:torrentlt:
+        url: https://torrent.ai/
+        http: 200
+        final: https://torrent.ai/lt/account-login.php?returnto=%2Flt%2Fmain
+        title: Torrent.ai (buvęs Torrent.lt) – Prisijungimas
+        bytes: 5185
+        checked: "2026-10-25"
     jackett:torrentmasters:
         url: https://torrentmasters.org/
         http: 200
         final: https://torrentmasters.org/login/index/?url=%2F
         title: TorrentMasters | Bejelentkezés
         bytes: 8105
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:torrentnetwork:
+        url: https://tntracker.org/
+        http: 200
+        final: https://tntracker.org/
+        title: TN > {{ptitle|translate}}
+        bytes: 17033
+        checked: "2026-10-25"
     jackett:torrentproject2:
         url: https://torrentproject.cc/
         http: 200
         final: https://torrentproject.cc/
         title: TorrentProject - Torrent Search Engine
         bytes: 11284
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:torrentscsv:
         url: https://torrents-csv.com/
         http: 200
         final: https://torrents-csv.com/
         title: Making sure you&#39;re not a bot!
         bytes: 7181
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:torrentsome:
         url: https://torrentsome269.com/
         http: 200
         final: https://torrentsome269.com/
         title: 토렌트썸-TORRENTSOME
-        bytes: 109090
-        checked: "2026-10-23"
+        bytes: 110053
+        checked: "2026-10-25"
+    jackett:torrentsyndikat:
+        url: https://torrent-syndikat.org/
+        http: 200
+        final: https://torrent-syndikat.org/
+        title: torrent-syndikat.org&nbsp;-&nbsp;Diese Website steht zum Verkauf!&nbsp;-&nbsp;Informationen zum Thema torrent-syndikat.
+        bytes: 4361
+        checked: "2026-10-25"
     jackett:torrenttip:
         url: https://torrenttip249.top/
         http: 200
         final: https://torrenttip249.top/
         title: Home - 토렌트팁::torrenttip
-        bytes: 109720
-        checked: "2026-10-23"
+        bytes: 111252
+        checked: "2026-10-25"
     jackett:torrenttrader:
         url: https://the-torrent-trader.com/
         http: 200
         final: https://the-torrent-trader.com/login.php?returnto=%2F
         bytes: 5044
         families:
-            - nexusphp
-        checked: "2026-10-23"
-    jackett:totheglory:
+            - torrenttrader
+        checked: "2026-10-25"
+    jackett:totheglory2fa:
         url: https://totheglory.im/
         http: 200
         final: https://totheglory.im/login.php
         title: 'TTG :: 用户登录'
         bytes: 27024
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:tr4ker:
         url: https://tr4ker.net/
         http: 200
         final: https://tr4ker.net/
         title: TR4KER
         bytes: 790
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:trackermk:
+        url: https://trackermk.com/
+        http: 200
+        final: https://trackermk.com/
+        title: 'TrackerMK :: Добредојде на TrackerMK'
+        bytes: 19071
+        checked: "2026-10-25"
+    jackett:trackerzero:
+        url: https://trackerzero.it/
+        http: 200
+        final: https://trackerzero.it/
+        bytes: 1305
+        checked: "2026-10-25"
     jackett:traht:
         url: https://traht.org/
         http: 200
         final: https://traht.org/
         title: !!binary w+vg4u3g/yB8IFRyYWhULm9yZyAtINLu8PDl7fIg8vDl6uXwIOTr/yDi5/Du8ev79SE=
-        bytes: 34053
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        bytes: 33798
+        checked: "2026-10-25"
+    jackett:trancetraffic:
+        url: https://www.trancetraffic.com/
+        http: 200
+        final: https://www.trancetraffic.com/login.php?returnto=%2F
+        title: 'TranceTraffic :: Login'
+        bytes: 7173
+        checked: "2026-10-25"
+    jackett:trezzor:
+        url: https://tracker.czech-server.com/
+        http: 200
+        final: https://tracker.czech-server.com/
+        title: TreZzoR Tracker - Index
+        bytes: 6649
+        checked: "2026-10-25"
     jackett:tribalmixes:
         url: https://www.tribalmixes.com/
         http: 200
         final: https://www.tribalmixes.com/
         title: DJ Mixes, Livesets, Club Mixes, Track-Lists | TribalMixes
-        bytes: 34490
-        checked: "2026-10-23"
+        bytes: 34484
+        checked: "2026-10-25"
+    jackett:turkseed-api:
+        url: https://turkseed.com/
+        http: 200
+        final: https://turkseed.com/login
+        title: Hesap Giriş - TURKSEED
+        bytes: 12246
+        checked: "2026-10-25"
+    jackett:turktorrent:
+        url: https://turktorrent.us/
+        http: 200
+        final: https://turktorrent.us/?p=home&pid=1
+        title: TurkTorrent.us
+        bytes: 15303
+        checked: "2026-10-25"
+    jackett:tvstore:
+        url: https://tvstore.me/
+        http: 200
+        final: https://tvstore.me/login.php?returnto=%2F
+        title: TvStore&nbsp;|&nbsp;Bejelentkezés
+        bytes: 6458
+        checked: "2026-10-25"
     jackett:u2:
         url: https://u2.dmhy.org/
         http: 200
         final: https://u2.dmhy.org/portal.php
         title: 'Access Point :: U2'
         bytes: 30055
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:u3c3:
         url: https://u3c3.com/
         http: 200
         final: https://u3c3.com/
         title: U3C3
-        bytes: 153394
-        checked: "2026-10-23"
+        bytes: 139217
+        checked: "2026-10-25"
+    jackett:ubits:
+        url: https://ubits.club/
+        http: 403
+        final: https://ubits.club/
+        title: Just a moment...
+        bytes: 5560
+        checked: "2026-10-25"
     jackett:uindex:
         url: https://uindex.org/
         http: 200
         final: https://uindex.org/
         title: UIndex – The Index of Everything You Need!
-        bytes: 186605
-        checked: "2026-10-23"
+        bytes: 186246
+        checked: "2026-10-25"
+    jackett:ultrabits-api:
+        url: https://ultrabits.org/
+        http: 200
+        final: https://ultrabits.org/login
+        title: Ultrabits
+        bytes: 20134
+        checked: "2026-10-25"
+    jackett:ultrahd:
+        url: https://ultrahd.net/
+        http: 200
+        final: https://ultrahd.net/login.php
+        title: 'UltraHD :: 登录 - Powered by NexusPHP'
+        bytes: 8264
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:unbreakable:
+        url: https://unbreakable5.eu/
+        http: 200
+        final: https://unbreakable5.eu/login.php?returnto=%2F
+        bytes: 4658
+        checked: "2026-10-25"
     jackett:unionfansub:
         url: https://torrent.unionfansub.com/
         http: 200
         final: https://torrent.unionfansub.com/
         title: Torrent ‹ Unión Fansub
         bytes: 2550
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     jackett:uniotaku:
         url: https://tracker.uniotaku.com/
         http: 200
         final: https://tracker.uniotaku.com/
         title: UniOtaku - União dos Otakus
         bytes: 6047
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:unlimitz:
+        url: https://www.unlimitz.biz/
+        http: 200
+        final: https://www.unlimitz.biz/login.php
+        title: !!binary |
+            VW5saW1pdHouYml6IOTB6MHVxdTB1LUgq9XqtCEhISDgodS5w+nNwiAoTm8gTGltaXQgU2
+            VlZCEhISBPdmVyIDEwMCkgOjogTG9naW4=
+        bytes: 10220
+        checked: "2026-10-25"
+    jackett:uploadcx:
+        url: https://upload.cx/
+        http: 200
+        final: https://upload.cx/login
+        title: Login - ULCX
+        bytes: 6737
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:upscalevault-api:
+        url: https://upscalevault.com/
+        http: 200
+        final: https://upscalevault.com/login
+        title: Login - Upscale Vault
+        bytes: 5623
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:utopia:
+        url: https://utp.to/
+        http: 200
+        final: https://utp.to/login
+        title: Вхід - UTOPIA
+        bytes: 4656
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:uztracker:
         url: https://uztracker.me/
         http: 200
         final: https://uztracker.me/
         title: 'Главная :: UzTracker.me Трекер для всех'
-        bytes: 210563
-        checked: "2026-10-23"
+        bytes: 210977
+        checked: "2026-10-25"
+    jackett:v3x:
+        url: https://v3x.club/
+        http: 200
+        final: https://v3x.club/
+        title: V3X
+        bytes: 20180
+        checked: "2026-10-25"
+    jackett:vault-network:
+        url: https://vault-network.net/
+        http: 200
+        final: https://vault-network.net/
+        title: Welcome to The Vault | The Vault
+        bytes: 8592
+        checked: "2026-10-25"
+    jackett:vc-lib:
+        url: https://pt.vclib.online/
+        http: 200
+        final: https://pt.vclib.online/login.php
+        title: 'VC-Lib :: 登录 - Powered by NexusPHP'
+        bytes: 12385
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:vietmediaf:
+        url: https://tracker.vietmediaf.store/
+        http: 200
+        final: https://tracker.vietmediaf.store/login
+        title: Login - VietMediaF
+        bytes: 7090
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:vsthouse:
         url: https://vsthouse.ru/
         http: 200
         final: https://vsthouse.ru/
         title: VSTi инструменты, VST плагины, программы - Все для создания музыки
-        bytes: 158116
-        checked: "2026-10-23"
+        bytes: 160217
+        checked: "2026-10-25"
     jackett:vstorrent:
         url: https://vstorrent.org/
         http: 200
         final: https://vstorrent.org/
         title: VSTorrent - Torrent Resource For Your Creativity
-        bytes: 246080
-        checked: "2026-10-23"
+        bytes: 249929
+        checked: "2026-10-25"
     jackett:vsttorrents:
         url: https://vsttorrentz.net/
         http: 200
         final: https://vsttorrentz.net/
         title: VST Torrent | Download Free Latest VST Plugins
-        bytes: 121137
-        checked: "2026-10-23"
+        bytes: 120983
+        checked: "2026-10-25"
+    jackett:whiteangel:
+        url: https://white-angel.hu/
+        http: 200
+        final: https://white-angel.hu/login.php
+        title: !!binary V2hpdGUgQW5nZWwgLSBCZWplbGVudGtleulzIC8gUmVnaXN6dHLhY2nz
+        bytes: 11520
+        checked: "2026-10-25"
+    jackett:wihd:
+        url: https://world-in-hd.net/
+        http: 200
+        final: https://world-in-hd.net/
+        title: WiHD V4 est ouverte
+        bytes: 8530
+        checked: "2026-10-25"
     jackett:wintersakura:
         url: https://wintersakura.net/
         http: 200
@@ -1402,13 +4178,30 @@ results:
         bytes: 12118
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:world-of-tomorrow-api:
+        url: https://w-o-t.pro/
+        http: 200
+        final: https://w-o-t.pro/login.php?login=false&fehler=required
+        title: World-Of-Tomorrow — Login
+        bytes: 24920
+        checked: "2026-10-25"
     jackett:world-torrent:
         url: https://ww2-darkfox.officiel.cc/
         http: 200
-        final: https://ww2-darkfox.officiel.cc/
-        bytes: 262144
-        checked: "2026-10-23"
+        final: https://www-darkfox.officiel.cc
+        title: 'Darkfox: Plateforme de Téléchargement Francophone'
+        bytes: 10448
+        checked: "2026-10-25"
+    jackett:xdy-api:
+        url: https://xdypt.vip/
+        http: 200
+        final: https://xdypt.vip/login.php
+        title: '修道院 :: 登录 - Powered by NexusPHP'
+        bytes: 22300
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:xingtan:
         url: https://xingtan.one/
         http: 200
@@ -1417,62 +4210,162 @@ results:
         bytes: 8942
         families:
             - nexusphp
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:xingwan:
+        url: https://xingwan.cc/
+        http: 200
+        final: https://xingwan.cc/login.php
+        title: '星湾 :: 登录 - Powered by NexusPHP'
+        bytes: 12199
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:xingyung:
+        url: https://pt.xingyungept.org/
+        http: 200
+        final: https://pt.xingyungept.org/login.php
+        title: '星陨阁 :: 登录 - Powered by NexusPHP'
+        bytes: 12289
+        families:
+            - nexusphp
+        checked: "2026-10-25"
+    jackett:xloli-api:
+        url: https://mua.xloli.cc/
+        http: 404
+        final: https://mua.xloli.cc/
+        checked: "2026-10-25"
+    jackett:xspeeds:
+        url: https://www.xspeeds.eu/
+        http: 200
+        final: https://www.xspeeds.eu/
+        title: 'xspeeds.eu :: Welcome to xspeeds.eu'
+        bytes: 12476
+        checked: "2026-10-25"
+    jackett:xtorrenty:
+        url: https://xtorrenty.org/
+        http: 200
+        final: https://xtorrenty.org/
+        bytes: 44
+        checked: "2026-10-25"
+    jackett:xtremebytes:
+        url: https://xtremebytes.net/
+        http: 200
+        final: https://xtremebytes.net/login.php?returnto=%2F
+        title: 'Xtreme Bytes :: Login'
+        bytes: 3744
+        checked: "2026-10-25"
+    jackett:xwtclassics2fa:
+        url: https://xwt-classics.net/
+        http: 200
+        final: https://xwt-classics.net/login.php
+        title: 'XWT-Classics :: Login'
+        bytes: 12628
+        checked: "2026-10-25"
+    jackett:xwtorrents2fa:
+        url: https://xtremewrestlingtorrents.net/
+        http: 200
+        final: https://xtremewrestlingtorrents.net/login.php
+        title: 'XWT :: Login'
+        bytes: 12774
+        checked: "2026-10-25"
     jackett:xxxclub:
         url: https://xxxclub.to/
         http: 200
         final: https://xxxclub.to/
         title: 'XXXClub : Adult , Porn , XXX , Videos , Download , Torrents'
-        bytes: 35263
-        checked: "2026-10-23"
+        bytes: 35439
+        checked: "2026-10-25"
     jackett:xxxtor:
         url: https://xxxtor.com/
+        checked: "2026-10-25"
+        error: context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+    jackett:yggreborn-api:
+        url: https://www.yggreborn.org/
         http: 200
-        final: https://xxxtor.com/
-        title: XXXTor.Com - Порно Бесплатно и Без Регистрации!
-        bytes: 93183
-        checked: "2026-10-23"
+        final: https://www.yggreborn.org/login?next=/?
+        title: YggReborn | Connexion
+        bytes: 15718
+        checked: "2026-10-25"
     jackett:yts:
         url: https://yts.gg/
         http: 200
         final: https://web.yts.gg/
         title: YTS - The New Official Home of YTS YIFY Movies (Formerly YTS.MX)
         bytes: 262144
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:yuscene-api:
+        url: https://yu-scene.net/
+        http: 200
+        final: https://yu-scene.net/login
+        title: Login - YUSCENE
+        bytes: 6927
+        families:
+            - unit3d
+        checked: "2026-10-25"
     jackett:zamundalife:
         url: https://zamunda.life/
         http: 200
         final: https://zamunda.life/
         title: Zamunda.LIFE - Търсачка за магнитни линкове от Zamunda, ArenaBG и Zelka
         bytes: 6382
-        checked: "2026-10-23"
+        checked: "2026-10-25"
+    jackett:zappateers:
+        url: https://zappateers.com/
+        http: 200
+        final: https://zappateers.com/login
+        title: Login - Zappateers
+        bytes: 5588
+        families:
+            - unit3d
+        checked: "2026-10-25"
+    jackett:zenith:
+        url: https://znth.cx/
+        http: 403
+        final: https://znth.cx/
+        title: Just a moment...
+        bytes: 5557
+        checked: "2026-10-25"
+    jackett:zmpt-api:
+        url: https://zmpt.cc/
+        http: 403
+        final: https://zmpt.cc/login.php
+        title: Just a moment...
+        bytes: 5627
+        checked: "2026-10-25"
+    jackett:zrpt:
+        url: https://naturept.top/
+        http: 200
+        final: https://naturept.top/login.php
+        title: '自然 :: 登录 - Powered by NexusPHP'
+        bytes: 20220
+        families:
+            - nexusphp
+        checked: "2026-10-25"
     jackett:ztracker:
         url: https://ztracker.cc/
         http: 200
         final: https://ztracker.cc/login.php
         title: !!binary WnRyYWNrZXIuY2MgOjogQmVqZWxlbnRrZXrpcw==
-        bytes: 23023
-        families:
-            - nexusphp
-        checked: "2026-10-23"
+        bytes: 21329
+        checked: "2026-10-25"
     prowlarr:4:
         url: https://www.limetorrents.fun/
         http: 200
         final: https://www.limetorrents.fun/
         title: LimeTorrents - Download Verified Torrents
         bytes: 8362
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     prowlarr:12:
         url: https://knaben.org/
         http: 200
         final: https://knaben.org/
         title: Knaben Database
         bytes: 95306
-        checked: "2026-10-23"
+        checked: "2026-10-25"
     prowlarr:14:
         url: https://www.torrentleech.org/
         http: 200
         final: https://www.torrentleech.org/
         title: 'Login :: TorrentLeech.org'
         bytes: 11747
-        checked: "2026-10-23"
+        checked: "2026-10-25"

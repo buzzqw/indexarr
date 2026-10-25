@@ -2,14 +2,17 @@
 
 indexarr non contiene un parser per ogni tracker: parla **Torznab** (e Newznab
 nella forma compatibile con i torrent). Tutto ciò che espone questo protocollo
-funziona senza modifiche; per il resto si usa Jackett o Prowlarr come traduttore.
+funziona senza modifiche. Per il resto indexarr adotta la fonte con una
+definizione nativa o con un connettore di famiglia; se non ha né l'una né
+l'altro, la fonte resta in coda e **non** viene creato un proxy verso Jackett o
+Prowlarr.
 
 ## Matrice
 
 | Sorgente | Stato | Note |
 | --- | --- | --- |
-| **Jackett** | completo | Base URL: percorso aggregato aggiunto da solo. URL del singolo indice: usato così com'è. |
-| **Prowlarr** | completo | Con una query usa `/api/v1/search` (JSON); senza query elenca gli indici torrent abilitati e interroga il Torznab di ciascuno. |
+| **Jackett** | come sorgente scelta a mano | Base URL: percorso aggregato aggiunto da solo. URL del singolo indice: usato così com'è. Non è più il ripiego automatico dell'import. |
+| **Prowlarr** | come sorgente scelta a mano | Con una query usa `/api/v1/search` (JSON); senza query elenca gli indici torrent abilitati e interroga il Torznab di ciascuno. Non è più il ripiego automatico dell'import. |
 | **MirCrew** (`mircrew-indexer`) | completo | Base o `/api`; magnet in link/enclosure; seeder assenti; `/status` per il login al forum; risposte lente. |
 | **Torznab diretto** | completo (torrent) | Qualunque URL che contiene `/api` o `torznab` è usato così com'è; altrimenti viene aggiunto `/api`. |
 | **Newznab / usenet** | non supportato | Le voci usenet non hanno un `.torrent` valido e vengono scartate. |
@@ -20,7 +23,7 @@ funziona senza modifiche; per il resto si usa Jackett o Prowlarr come traduttore
 | **HTTP Basic** | completo | Campi dedicati per sorgente, usati per ricerche e download. |
 | **API key** | completo | Inviata come `apikey` e come header `X-Api-Key`; può essere vuota. |
 | **Cloudflare / challenge** | con FlareSolverr | Retry automatico per RSS e Torznab diretto; indirizzi LAN esclusi. |
-| **API proprietarie** | non gestite | Esporle tramite Jackett/Prowlarr. |
+| **API proprietarie** | non gestite in automatico | La fonte resta in coda «da scrivere» finché non esiste una definizione nativa. Nessun proxy automatico verso Jackett/Prowlarr. |
 
 ## MirCrew
 
@@ -82,7 +85,8 @@ Gextto:
 Limiti: prima pagina, massimo 50 release per sorgente; se il layout cambia o il
 sito richiede il login, il test riporta l'errore. **Quick add** riconosce l'host;
 **Default category** assegna una categoria Torznab quando la pagina non la
-fornisce. Gli altri siti senza RSS vanno esposti tramite Jackett/Prowlarr.
+fornisce. Gli altri siti senza RSS restano nella coda nativa: il catalogo li
+mostra come «da scrivere» e non crea un endpoint Torznab verso il manager.
 
 ## Cloudflare
 
@@ -105,8 +109,9 @@ API key compresa, viene inviato al servizio FlareSolverr.
 1. Se espone **Torznab**, creare una sorgente con l'URL completo e la API key (se
    presente). Il tipo *Direct Torznab* evita ogni euristica sul gestore.
 2. Se richiede **HTTP Basic**, compilare i campi dedicati.
-3. Se parla solo la sua **API proprietaria**, aggiungerlo a Jackett o Prowlarr e
-   usare quello come sorgente: indexarr non implementa protocol ad-hoc.
+3. Se parla solo la sua **API proprietaria**, la fonte resta in coda: si scrive
+   una definizione nativa osservando il sito. indexarr non crea un proxy verso
+   Jackett/Prowlarr e non implementa protocolli ad-hoc.
 4. Se il servizio espone un **`/status`** accanto a `/api`, il test lo legge
    automaticamente quando il JSON contiene `ok` o `logged_in`.
 

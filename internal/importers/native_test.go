@@ -52,10 +52,11 @@ func TestNativeTargetsFromJackettFixture(t *testing.T) {
 	}
 
 	torrent := findTarget(t, targets, "1337x")
-	// 1337x is now a verified native definition, so the verified catalog wins
-	// over the manager bridge for the same hint.
-	if torrent.DefinitionID != "1337x" || torrent.ViaManager != "" {
+	if torrent.DefinitionID != "1337x" || torrent.Status != TargetNative {
 		t.Fatalf("1337x target = %+v", torrent)
+	}
+	if torrent.DefinitionState != "verificata" {
+		t.Fatalf("1337x state = %q", torrent.DefinitionState)
 	}
 	if torrent.BaseURL != "https://1337x.example.invalid/" {
 		t.Fatalf("1337x endpoint = %q", torrent.BaseURL)
@@ -77,8 +78,11 @@ func TestNativeTargetsFromJackettFixture(t *testing.T) {
 	}
 
 	usenet := findTarget(t, targets, "Test Usenet")
-	if usenet.DefinitionID != nativeDefinition || usenet.ViaManager != "jackett" {
-		t.Fatalf("usenet target = %+v", usenet)
+	if usenet.Status != TargetPending || usenet.DefinitionID != "" {
+		t.Fatalf("a source without a native route must stay pending: %+v", usenet)
+	}
+	if usenet.Reason != ReasonNoDefinition {
+		t.Fatalf("pending reason = %q", usenet.Reason)
 	}
 	if usenet.Enabled {
 		t.Fatalf("disabled upstream indexer was re-enabled")
@@ -118,7 +122,7 @@ func TestNativeTargetsFromProwlarrFixture(t *testing.T) {
 	}
 
 	extto := findTarget(t, targets, "ExtTo")
-	if extto.DefinitionID != "extto" || extto.ViaManager != "" {
+	if extto.DefinitionID != "extto" || extto.Status != TargetNative {
 		t.Fatalf("ExtTo should use the verified hint: %+v", extto)
 	}
 	if extto.Config["filter"] != "c=TV" {
@@ -129,7 +133,7 @@ func TestNativeTargetsFromProwlarrFixture(t *testing.T) {
 	}
 
 	galaxy := findTarget(t, targets, "Torrent Galaxy Mirror")
-	if galaxy.DefinitionID != "torrentgalaxy" || galaxy.ViaManager != "" {
+	if galaxy.DefinitionID != "torrentgalaxy" || galaxy.Status != TargetNative {
 		t.Fatalf("host match should select torrentgalaxy: %+v", galaxy)
 	}
 	if galaxy.BaseURL != "https://torrentgalaxy.one/" {
@@ -137,7 +141,7 @@ func TestNativeTargetsFromProwlarrFixture(t *testing.T) {
 	}
 
 	corsaro := findTarget(t, targets, "Corsaro")
-	if corsaro.DefinitionID != "corsaro" {
+	if corsaro.DefinitionID != "corsaro" || corsaro.Status != TargetNative {
 		t.Fatalf("Corsaro should use the verified hint: %+v", corsaro)
 	}
 
@@ -150,16 +154,25 @@ func TestNativeTargetsFromProwlarrFixture(t *testing.T) {
 	}
 
 	leech := findTarget(t, targets, "TorrentLeech")
-	if leech.DefinitionID != nativeDefinition || leech.ViaManager != "prowlarr" {
-		t.Fatalf("a bozza definition must fall back to the bridge: %+v", leech)
+	if leech.DefinitionID != "torrentleech" || leech.Status != TargetNative {
+		t.Fatalf("a draft definition is still a native route: %+v", leech)
 	}
-	if leech.BaseURL != server.URL+"/15/api" {
-		t.Fatalf("TorrentLeech endpoint = %q", leech.BaseURL)
+	if leech.DefinitionState != "bozza" {
+		t.Fatalf("TorrentLeech state = %q", leech.DefinitionState)
+	}
+	if leech.Enabled || leech.Reason != ReasonMissingCredentials {
+		t.Fatalf("TorrentLeech must wait for credentials: %+v", leech)
 	}
 
 	alpha := findTarget(t, targets, "Alpha")
-	if alpha.BaseURL != server.URL+"/16/api" || alpha.Secrets["api_key"] != prowlarrAPIKey {
-		t.Fatalf("Alpha target = %+v", alpha)
+	if alpha.DefinitionID != "torznab-generic" || alpha.Status != TargetNative {
+		t.Fatalf("a Torznab implementation is a native generic source: %+v", alpha)
+	}
+	if alpha.Config["url"] != "https://alpha.example.invalid/" {
+		t.Fatalf("Alpha endpoint = %q", alpha.Config["url"])
+	}
+	if alpha.Secrets["api_key"] != "alpha-key-SECRET" {
+		t.Fatalf("Alpha API key was not preserved")
 	}
 	if strings.Contains(alpha.BaseURL, prowlarrAPIKey) {
 		t.Fatalf("Prowlarr API key leaked into the endpoint: %q", alpha.BaseURL)
@@ -169,21 +182,73 @@ func TestNativeTargetsFromProwlarrFixture(t *testing.T) {
 	}
 
 	disabled := findTarget(t, targets, "Disabled Site")
-	if disabled.Enabled {
-		t.Fatalf("disabled Prowlarr indexer was re-enabled")
-	}
-	if disabled.DefinitionID != nativeDefinition {
-		t.Fatalf("Disabled Site definition = %q", disabled.DefinitionID)
+	if disabled.Status != TargetPending {
+		t.Fatalf("Disabled Site = %+v", disabled)
 	}
 
 	requireSecretsAbsent(t, targetText(targets), prowlarrAPIKey, "alpha-key-SECRET",
 		"corsaro-user-SECRET", "corsaro-pass-SECRET", "tl-rsskey-SECRET")
 }
 
+func TestFamilySiteBecomesNativeTarget(t *testing.T) {
+	entries := builtinEntries(t)
+	indexer := Indexer{
+		Name:     "13City",
+		Protocol: ProtocolTorrent,
+		RemoteID: "13city",
+		SiteURL:  "https://13city.org/",
+		Username: "user-SECRET",
+		Password: "pass-SECRET",
+		Enabled:  true,
+		Priority: 12,
+		Tags:     []string{"tv"},
+	}
+	target := Target("jackett", "http://jackett:9117", "manager-key-SECRET", indexer, entries)
+	if target.Status != TargetFamily || target.Family != catalog.FamilyNexusPHP {
+		t.Fatalf("family target = %+v", target)
+	}
+	if target.DefinitionID != "jk-13city" || len(target.DefinitionBody) == 0 {
+		t.Fatalf("family definition not synthesized: %+v", target)
+	}
+	if target.Config["url"] != "https://13city.org/" {
+		t.Fatalf("family base URL = %q", target.Config["url"])
+	}
+	if target.Secrets["username"] != "user-SECRET" || target.Secrets["password"] != "pass-SECRET" {
+		t.Fatalf("family credentials were not preserved: %+v", target.Secrets)
+	}
+	if _, ok := target.Secrets["passkey"]; ok {
+		t.Fatalf("the account password must not be copied into the passkey setting")
+	}
+	if !target.Enabled || target.Reason != "" {
+		t.Fatalf("family target should be enabled: %+v", target)
+	}
+}
+
+func TestFamilySiteWithoutCredentialsIsDisabled(t *testing.T) {
+	entries := builtinEntries(t)
+	target := Target("jackett", "http://jackett:9117", "manager-key-SECRET", Indexer{
+		Name:     "13City",
+		Protocol: ProtocolTorrent,
+		RemoteID: "13city",
+		SiteURL:  "https://13city.org/",
+		Enabled:  true,
+	}, entries)
+	if target.Status != TargetFamily {
+		t.Fatalf("target = %+v", target)
+	}
+	if target.Enabled || target.Reason != ReasonMissingCredentials {
+		t.Fatalf("a family site without credentials must be disabled: %+v", target)
+	}
+	if target.ReasonDetail == "" {
+		t.Fatalf("the missing setting should be named")
+	}
+}
+
 func TestTargetKeepsUpstreamMetadata(t *testing.T) {
 	entries := builtinEntries(t)
 	indexer := Indexer{
-		Name:           "Some Tracker",
+		Name:           "Some Usenet",
+		Implementation: "Newznab",
 		Protocol:       ProtocolUsenet,
 		DefinitionHint: "some-tracker",
 		RemoteID:       "42",
@@ -198,7 +263,7 @@ func TestTargetKeepsUpstreamMetadata(t *testing.T) {
 		Enabled:        false,
 	}
 	target := Target("prowlarr", "http://prowlarr:9696", "manager-key-SECRET", indexer, entries)
-	if target.DefinitionID != nativeDefinition || target.ViaManager != "prowlarr" {
+	if target.DefinitionID != "newznab-generic" || target.Status != TargetNative {
 		t.Fatalf("target = %+v", target)
 	}
 	if target.Enabled || target.Priority != 7 || target.Protocol != ProtocolUsenet {
@@ -210,71 +275,51 @@ func TestTargetKeepsUpstreamMetadata(t *testing.T) {
 	if target.Config["categories"] != "2000,5000" {
 		t.Fatalf("categories = %q", target.Config["categories"])
 	}
-	if target.Secrets["api_key"] != "manager-key-SECRET" ||
-		target.Secrets["username"] != "user-SECRET" ||
-		target.Secrets["password"] != "pass-SECRET" {
+	if target.Secrets["api_key"] != "api-SECRET" {
 		t.Fatalf("credentials were not preserved as secrets")
 	}
-	if target.BaseURL != "http://prowlarr:9696/42/api" {
-		t.Fatalf("Prowlarr endpoint = %q", target.BaseURL)
+	if target.BaseURL != "https://some.example.invalid/" {
+		t.Fatalf("native endpoint = %q", target.BaseURL)
 	}
 }
 
-func TestBridgeToLocalManagerAllowsPrivateAddress(t *testing.T) {
+func TestTargetNeverBuildsManagerEndpoint(t *testing.T) {
 	entries := builtinEntries(t)
 	target := Target("prowlarr", "http://192.168.1.161:9696", "manager-key-SECRET", Indexer{
 		Name: "Local", DefinitionHint: "unknown-local-site", RemoteID: "7",
-		SiteURL: "http://192.168.1.161:9696/7", Protocol: ProtocolTorrent, Enabled: true,
-	}, entries)
-	if target.Config["allow_private"] != "true" {
-		t.Fatalf("bridge to a LAN manager did not opt into private addresses: %+v", target.Config)
-	}
-	public := Target("prowlarr", "https://prowlarr.example.invalid", "manager-key-SECRET", Indexer{
-		Name: "Public", DefinitionHint: "unknown-public-site", RemoteID: "8",
 		SiteURL: "https://tracker.example.invalid/", Protocol: ProtocolTorrent, Enabled: true,
 	}, entries)
-	if _, ok := public.Config["allow_private"]; ok {
-		t.Fatalf("public manager should not opt into private addresses: %+v", public.Config)
+	if target.Status != TargetPending {
+		t.Fatalf("target = %+v", target)
+	}
+	if target.BaseURL != "https://tracker.example.invalid/" || target.Config["allow_private"] != "" {
+		t.Fatalf("a pending target must keep the site URL only: %+v", target)
+	}
+	if _, ok := target.Secrets["api_key"]; ok {
+		t.Fatalf("a pending target must not carry the manager API key")
 	}
 }
 
-func TestTargetFallsBackWithoutVerifiedDefinition(t *testing.T) {
+func TestDraftHintIsNativeAndUnknownHostIsPending(t *testing.T) {
 	entries := builtinEntries(t)
-	cases := []struct {
-		name    string
-		indexer Indexer
-	}{
-		{
-			name: "draft hint",
-			indexer: Indexer{
-				Name: "TorrentLeech", Protocol: ProtocolTorrent,
-				DefinitionHint: "torrentleech",
-				BaseURL:        "https://rss.torrentleech.org/",
-				SiteURL:        "https://rss.torrentleech.org/",
-			},
-		},
-		{
-			name: "unknown host",
-			indexer: Indexer{
-				Name: "Unknown", Protocol: ProtocolTorrent,
-				DefinitionHint: "unknown-tracker",
-				BaseURL:        "https://unknown.example.invalid/",
-				SiteURL:        "https://unknown.example.invalid/",
-			},
-		},
+	draft := Target("jackett", "http://jackett:9117", "jackett-key", Indexer{
+		Name: "TorrentLeech", Protocol: ProtocolTorrent,
+		DefinitionHint: "torrentleech",
+		BaseURL:        "https://rss.torrentleech.org/",
+		SiteURL:        "https://rss.torrentleech.org/",
+	}, entries)
+	if draft.Status != TargetNative || draft.DefinitionID != "torrentleech" {
+		t.Fatalf("draft target = %+v", draft)
 	}
-	for _, test := range cases {
-		t.Run(test.name, func(t *testing.T) {
-			test.indexer.RemoteID = "9"
-			target := Target("jackett", "http://jackett:9117", "jackett-key", test.indexer, entries)
-			if target.DefinitionID != nativeDefinition || target.ViaManager != "jackett" {
-				t.Fatalf("target = %+v", target)
-			}
-			want := "http://jackett:9117/api/v2.0/indexers/9/results/torznab/"
-			if target.BaseURL != want {
-				t.Fatalf("endpoint = %q, want %q", target.BaseURL, want)
-			}
-		})
+
+	unknown := Target("jackett", "http://jackett:9117", "jackett-key", Indexer{
+		Name: "Unknown", Protocol: ProtocolTorrent, RemoteID: "9",
+		DefinitionHint: "unknown-tracker",
+		BaseURL:        "https://unknown.example.invalid/",
+		SiteURL:        "https://unknown.example.invalid/",
+	}, entries)
+	if unknown.Status != TargetPending || unknown.Reason != ReasonNoDefinition {
+		t.Fatalf("unknown target = %+v", unknown)
 	}
 }
 
@@ -284,7 +329,7 @@ func TestTargetKeyIsStable(t *testing.T) {
 	if a.Key() != b.Key() {
 		t.Fatalf("keys differ: %q vs %q", a.Key(), b.Key())
 	}
-	c := NativeTarget{DefinitionID: nativeDefinition, BaseURL: "https://extto.org", Slug: "extto"}
+	c := NativeTarget{DefinitionID: "", BaseURL: "https://extto.org", Slug: "extto"}
 	if a.Key() == c.Key() {
 		t.Fatalf("definition must be part of the idempotency key")
 	}

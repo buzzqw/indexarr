@@ -110,7 +110,7 @@ attive; resta in lista finché esistono utenti.
 | Motore: login di ogni tipo (form, CSRF, cookie, token, API key, Basic), flussi a più passi, paginazione, HTML/JSON/XML, categorie, errori del sito, download a più passaggi, mirror | Suite di test del motore con fixture per ogni funzione | fatto (WP5: `download.resolve`) |
 | Connettori di famiglia per i software di tracker più diffusi | Ogni famiglia testata su fixture di almeno due siti | parziale: 8 famiglie (RSS inclusa), verifiche reali su 3 siti |
 | Catalogo nativo che copre l'inventario prioritario (§7.3) | 100% dell'inventario prioritario `verificato` | parziale: 4 verificati (ExtTo, TorrentGalaxy, Corsaro, Knaben), TorrentLeech `bozza` |
-| Siti senza definizione nativa tramite Jackett/Prowlarr (§7.4) | Ogni indexer importato funziona come indexer Torznab nativo | fatto (WP8; nessun percorso sorgenti separato dopo WP16) |
+| Siti senza definizione nativa: coda nativa, nessun proxy (§7.4) | Ogni fonte importata è nativa o resta in coda; nessun indexer punta al manager | parziale: 155 fonti via software noto, 464 in coda al 25/10 |
 | Connettore Newznab generico con preset per gli indexer Usenet noti (come i preset di Prowlarr) | Caps importate dall'indexer; test su fixture Newznab | parziale: generico sì, preset no |
 
 La parità del catalogo si misura così: **100% dei siti dell'utente
@@ -412,18 +412,21 @@ Il catalogo si scrive in ordine di valore, non in ordine alfabetico:
 
 ### 7.4 Jackett e Prowlarr per i siti senza definizione nativa
 
-Riscrivere il catalogo richiede tempo. Perché l'utente abbia il 100% dei suoi
-siti al giorno uno:
+**Decisione del coordinatore (25/10):** indexarr non crea più indexer Torznab
+che puntano al manager. Un proxy non è una sorgente propria e lascia intatta
+la dipendenza che la 2.1 deve togliere.
 
-- i siti che non hanno ancora una definizione nativa funzionano come indexer
-  Torznab nativi che puntano all'endpoint per-indexer del Jackett o del
-  Prowlarr dell'utente;
-- la UI e l'import mostrano per ogni sito se è nativo o passa dal manager;
-- quando esce la definizione nativa, l'indexer si può sostituire senza toccare
-  le applicazioni \*arr.
+- una fonte importata è **nativa** (definizione di catalogo) oppure usa un
+  **connettore di famiglia** con l'URL del sito;
+- se non ha né l'una né l'altra, **non viene creata**: resta nel catalogo con
+  il filtro «da scrivere» e con il motivo visibile;
+- la UI mostra per ogni fonte la via e il contatore di copertura;
+- quando esce la definizione nativa, la fonte si adotta senza toccare le
+  applicazioni \*arr.
 
-indexarr non legge né esegue definizioni Cardigann: interroga solo l'endpoint
-Torznab di un servizio già installato dall'utente, in sola lettura.
+Jackett e Prowlarr restano leggibili in sola lettura per costruire il piano;
+non sono mai un percorso di ricerca a runtime. indexarr non legge né esegue
+definizioni Cardigann.
 
 ### 7.5 Verifica continua
 
@@ -534,9 +537,11 @@ come indexer nativi e non esiste più un secondo scheduler.
 | `internal/backup`, `internal/web` | Restano ed estendono |
 | nuovi | `internal/definition`, `internal/engine`, `internal/family`, `internal/appsync`, `internal/vault`, `internal/importers` |
 
-Jackett e Prowlarr restano utilizzabili in sola lettura: l'import crea un indexer
-Torznab che punta al loro endpoint per-indexer. Non c'è migrazione di dati dal
-vecchio database e non c'è rollback del vault: il DB di produzione si ricrea.
+Jackett e Prowlarr restano utilizzabili in sola lettura per l'adozione: l'import
+crea solo indexer nativi. Una fonte senza definizione o famiglia resta in coda
+e non produce un endpoint Torznab verso il manager. Non c'è migrazione di dati
+dal vecchio database e non c'è rollback del vault: il DB di produzione si
+ricrea.
 
 ---
 
@@ -567,7 +572,7 @@ tutta verde.
 | **Alpha interna** | Inventario prioritario riscritto e verificato | Uso quotidiano su istanza propria | Fatto: import da Jackett/Prowlarr in indexer nativi (WP8) |
 | **M3 — Distribuzione** | Endpoint per indexer e filtrati, alias Jackett, errori Torznab, limiti query/grab, proxy | \*arr collegate senza Jackett/Prowlarr | Fatto |
 | **M4 — App sync** | Tutte le applicazioni del §3.2, livelli di sync, riconciliazione | Prowlarr rimovibile | Quasi fatto: 5 app su 7, rollback mancante (WP13) |
-| **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita; siti mancanti via Jackett/Prowlarr | Da fare |
+| **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita; coda «da scrivere» visibile, nessun proxy | In corso: 155 fonti via software noto, 464 in coda al 25/10 |
 | **M6 — Usenet** | Connettore Newznab e preset, endpoint Newznab, proxy `.nzb`, SABnzbd/NZBGet, sync Newznab verso le \*arr | Indexer Usenet gestiti come in Prowlarr | Fatto lato codice; nessun indexer Usenet reale verificato |
 | **Beta** | Health check opt-in; documentazione per chi scrive definizioni | Checklist §3 quasi completa | — |
 | **1.0** | Checklist §3 verde | Rilascio pubblico | — |

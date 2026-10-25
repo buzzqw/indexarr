@@ -49,10 +49,11 @@ indexer is probed; a copy of the Jackett data directory is the offline
 fallback. Prowlarr is read with the official v1 API.
 
 With -apply and -db it creates native indexers in a disposable indexarr
-database: verified catalog definitions where available, otherwise a native
-torznab indexer pointed at the manager's per-indexer endpoint. The same site
-arriving from several sources is imported once, preferring a verified native
-definition, then Prowlarr, then Jackett.
+database: catalog definitions or family connectors where available. A source
+with neither stays in the catalog queue and creates no indexer: this tool
+never builds a Torznab proxy towards the manager. The same site arriving from
+several sources is imported once, preferring a catalog definition, then a
+family connector.
 
 The optional INDEXARR_TORRENTLEECH_RSS_URL environment variable adds the
 native torrentleech-rss indexer. The value contains a personal rsskey: it is
@@ -299,6 +300,9 @@ func targetKind(target importers.NativeTarget) string {
 // redactTarget removes the vaulted values from a target before any output.
 func redactTarget(target importers.NativeTarget) importers.NativeTarget {
 	target.Secrets = nil
+	// The synthesized body is already in the catalog: printing it would bury
+	// the plan under hundreds of YAML lines.
+	target.DefinitionBody = nil
 	return target
 }
 
@@ -311,26 +315,34 @@ func redactTargets(targets []importers.NativeTarget) []importers.NativeTarget {
 }
 
 func printApplySummary(result importers.ApplyResult, dbPath, keySource string) {
-	native, bridges := 0, 0
+	native, family := 0, 0
 	for _, item := range result.Applied {
-		if item.ViaManager == "" {
-			native++
+		if item.Status == importers.TargetFamily {
+			family++
 		} else {
-			bridges++
+			native++
 		}
 	}
-	fmt.Printf("applied %d indexers to %s: %d created, %d updated, %d duplicates skipped (%d native, %d torznab bridge)\n",
-		len(result.Applied), dbPath, result.Created, result.Updated, result.Skipped, native, bridges)
+	fmt.Printf("applied %d indexers to %s: %d created, %d updated, %d duplicates skipped, %d queued (%d native, %d family)\n",
+		len(result.Applied), dbPath, result.Created, result.Updated, result.Skipped,
+		len(result.Pending), native, family)
 	for _, item := range result.Applied {
 		action := "created"
 		if item.Updated {
 			action = "updated"
 		}
 		kind := "native"
-		if item.ViaManager != "" {
-			kind = "torznab bridge"
+		if item.Status == importers.TargetFamily {
+			kind = "family"
 		}
 		fmt.Printf("  %-14s %-40s %s (%s)\n", kind, item.Name, action, item.DefinitionID)
+	}
+	for i, item := range result.Pending {
+		if i == 20 {
+			fmt.Printf("  %-14s %d more queued sources not listed\n", "queued", len(result.Pending)-20)
+			break
+		}
+		fmt.Printf("  %-14s %-40s %s\n", "queued", item.Name, item.Reason)
 	}
 	for _, item := range result.Dropped {
 		fmt.Printf("  %-14s %-40s non importato: già coperto da %s\n",

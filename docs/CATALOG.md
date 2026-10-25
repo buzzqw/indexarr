@@ -12,23 +12,39 @@ Prowlarr): nome, URL, privacy, lingua, categorie e, quando la pagina del sito
 lo dimostra, la famiglia software. Non vengono mai generate da una definizione
 Cardigann e il repository non importa Cardigann.
 
-## Numeri al 2026-10-23
+## Numeri al 2026-10-25
 
 | Misura | Valore |
 | --- | ---: |
-| Totale voci nel catalogo (definizioni + voci leggere) | **224** |
-| Definizioni native | 48 |
-| Voci leggere | **176** |
-| Verificate | **132** |
-| Da provare (`da-provvi`) | **89** |
-| Morte (`morta`) | **3** |
-| Pubbliche verificate (native + leggere, host unici) | **95** |
-| Voci italiane | **11** |
+| Totale voci nel catalogo (definizioni + voci leggere) | **621** |
+| Definizioni native | 53 |
+| Voci leggere | **568** |
+| Verificate | **129** |
+| Da provare (`da-provvi`) | **488** |
+| Morte (`morta`) | **4** |
+| Pubbliche verificate (native + leggere, host unici) | **92** |
+| Voci italiane | **13** |
 
-Le 95 pubbliche verificate sono 36 definizioni native pubbliche più 59 voci
+Le 92 pubbliche verificate sono 37 definizioni native pubbliche più 55 voci
 leggere pubbliche; i duplicati per host sono stati esclusi. Le voci leggere
-private sono 45 e restano tutte `da-provvi`: senza un account non si può
+private sono 438 e restano tutte `da-provvi`: senza un account non si può
 verificare la ricerca.
+
+Il catalogo ora contiene **tutte** le fonti dei manager, comprese le private
+senza una famiglia riconosciuta. Una fonte senza via nativa non viene nascosta:
+resta in coda con il filtro **da scrivere** e non produce alcun proxy.
+
+### Copertura nativa del catalogo Jackett
+
+| Via | Fonti | Note |
+| --- | ---: | --- |
+| Definizione nativa (id o host) | **19** | definizioni verificate o in prova |
+| Software noto (connettore di famiglia) | **155** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
+| Da scrivere | **464** | 329 private, 72 pubbliche, 63 semiprivate |
+| **Totale catalogo Jackett** | **638** | istantanea dei metadati del 23/10 |
+
+La somma non include le 6 fonti già configurate in Jackett quando coincidono
+con una definizione nativa.
 
 ## Stati onesti
 
@@ -40,9 +56,11 @@ verificare la ricerca.
 - **`da-provvi`**: nessuna prova, oppure sito privato raggiungibile ma senza
   account, oppure `403`/`5xx`/login/anti-bot. È il badge giusto per un privato
   che non è stato provato dall'interno.
-- **`morta`**: il `GET` è fallito per DNS, connessione rifiutata o timeout
-  persistente. La riga resta nel catalogo con la prova del fallimento, ma
-  `proposable: false` e non deve essere proposta.
+- **`morta`**: il `GET` è fallito perché il nome non risolve o la connessione
+  è stata rifiutata. La riga resta nel catalogo con la prova del fallimento,
+  ma `proposable: false` e non deve essere proposta. Un timeout, una rotta
+  IPv6 irraggiungibile o un errore TLS sono **inconcludenti**: la voce resta
+  `da-provvi` e viene riprovata, perché non dimostrano che il sito sia morto.
 - **`bozza`** (definizione nativa): definizione scritta ma non ancora provata
   dal vivo. Per `ilDraGoNeRo` significa anche che serve un account.
 
@@ -51,17 +69,21 @@ marcata viva senza un `GET` registrato.
 
 ## Famiglie coperte
 
-Le famiglie sono registrate solo con una prova nella pagina del sito o nel
-nome stesso del manager. `probable` significa che la forma dell'API/login è
-quella della famiglia ma il nome del prodotto non compare nel HTML.
+Le famiglie sono registrate con una prova nella pagina del sito, nel nome
+stesso del manager o in un marcatore forte osservato dal vivo (per esempio
+`nexusphp`, `unit3d`, `xbtit`, `gazelle`, `torrent trader`). I marcatori
+generici condivisi da più software (`getrss.php`, `ajax.php?action`,
+`download.php?id=`) non sono più usati: una famiglia sbagliata è peggio di una
+fonte in coda. Se una pagina mostra due famiglie, la voce resta senza famiglia
+finché non viene osservata meglio.
 
 | Famiglia | Voci | Esempi e prova |
 | --- | ---: | --- |
-| UNIT3D | 6 | HDTorrents.it, ShareIsland, ItaTorrents (`probable`), JME-REUNIT3D, HD-UNiT3D, `unit3d-generic` |
-| Gazelle | 2 | GazelleGames; `gazelle-generic` |
-| NexusPHP | 34 | SewerPT, HDU, HHanClub, OpenCD, HDSky, CHDBits, PterClub, …; `nexusphp-generic` |
+| UNIT3D | 59 | HDTorrents.it, ShareIsland, ItaTorrents, JME-REUNIT3D, HD-UNiT3D e altre rilevate dal vivo; `unit3d-generic` |
+| Gazelle | 6 | GazelleGames e altre rilevate dal vivo; `gazelle-generic` |
+| NexusPHP | 76 | SewerPT, HDU, HHanClub, OpenCD, HDSky, CHDBits, PterClub, …; `nexusphp-generic` |
 | TorrentTrader | 2 | The Torrent Trader (`takelogin.php`, logo); `torrenttrader-generic` |
-| XBTIT | 5 | il CorSaRo Blu, ArabaFenice, Girotorrent, Fenyarnyek; `xbtit-generic` |
+| XBTIT | 12 | il CorSaRo Blu, ArabaFenice, Girotorrent, Fenyarnyek e altre; `xbtit-generic` |
 | Torznab | 4 | MirCrew (ponte locale), Torlock, TorrentFunk; `torznab-generic` |
 | custom | 2 | ExtTo (HTML pubblico), ilDraGoNeRo (forum phpBB) |
 
@@ -97,9 +119,9 @@ Tutto è GET, tranne la scrittura dei file generati.
 set -a; . ~/.config/indexarr-dev/managers.env; set +a
 go run ./internal/catalog/genmeta
 
-# 2. Prova live delle voci pubbliche, semipubbliche, delle famiglie note e
-#    delle voci manuali. Solo GET, nessun login.
-go run ./internal/catalog/genverify -workers 16 -timeout 45s
+# 2. Prova live di tutto il catalogo, private comprese. Solo GET sulla home
+#    page, nessun login, nessuna scrittura sui siti (-all).
+go run ./internal/catalog/genverify -all -workers 16 -timeout 10s
 
 # 3. Rigenera sites.yaml e index.json (non tocca la rete)
 go generate ./internal/catalog

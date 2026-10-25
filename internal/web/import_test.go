@@ -91,7 +91,7 @@ func TestImportPageRenders(t *testing.T) {
 		t.Fatalf("GET /import = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
-	for _, want := range []string{"Import", "Prowlarr", "Jackett", "Preview, no changes", "does not create definitions"} {
+	for _, want := range []string{"Native adoption", "Prowlarr", "Jackett", "Preview, no changes", "creates no proxy to the manager"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("import page missing %q", want)
 		}
@@ -243,8 +243,12 @@ func TestImportJackettFullCatalogShowsInactiveSources(t *testing.T) {
 			t.Errorf("plan missing %q", want)
 		}
 	}
-	if !strings.Contains(body, `name="site" value="1" aria-label="Select Beta"`) {
-		t.Errorf("inactive catalog row is selected by default")
+	if !strings.Contains(body, "Beta") || !strings.Contains(body, "to write") {
+		t.Errorf("the inactive catalog row should be listed as to write: %s", body)
+	}
+	if strings.Contains(body, `name="site" value="1" aria-label="Seleziona Beta"`) ||
+		strings.Contains(body, `name="site" value="1" aria-label="Select Beta"`) {
+		t.Errorf("a source with no native route must not be selectable")
 	}
 	if strings.Contains(body, apiKey) {
 		t.Fatal("the full catalog plan leaked the API key")
@@ -336,8 +340,8 @@ func TestImportApplyImportsOnlySelectedSites(t *testing.T) {
 	}
 	body := applied.Body.String()
 	for _, want := range []string{
-		"Import result", "Added: 1", "Updated: 0", "Skipped: 0", "Errors: 0",
-		"Alpha", "via Prowlarr", "Connect an app",
+		"Import result", "Added: 1", "Updated: 0", "Skipped: 0", "Queued: 0", "Errors: 0",
+		"Alpha", "native", "Connect an app",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("summary missing %q", want)

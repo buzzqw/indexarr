@@ -120,11 +120,13 @@ Chi arriva da Jackett o Prowlarr non deve riconfigurare niente:
 - **Prowlarr**: indexarr legge la configurazione tramite la sua API (URL + API
   key) oppure dal database, e importa indexer, credenziali, tag, proxy,
   applicazioni e impostazioni di sync.
-- **Jackett**: importa gli indexer configurati con le credenziali.
-- Ogni indexer importato viene associato alla definizione nativa di indexarr
-  per quel sito. Se la definizione non esiste ancora, il sito continua a
-  funzionare tramite il **ponte** (il Jackett/Prowlarr dell'utente usato come
-  sorgente Torznab) finché la definizione nativa non è pronta.
+- **Jackett**: importa gli indexer configurati. L'API di Jackett non espone le
+  password dei tracker: una fonte privata nasce disattivata con il motivo
+  «credenziali da inserire» e si completa una volta in indexarr.
+- Ogni indexer importato viene associato a una definizione nativa di indexarr
+  per quel sito, oppure a un connettore di famiglia. Se non esiste ancora una
+  via nativa, la fonte **resta in coda** nel catalogo e non viene creato un
+  proxy verso Jackett/Prowlarr.
 - **Le \*arr**: l'app sync sostituisce gli indexer puntati a Jackett/Prowlarr
   con quelli di indexarr, mantenendo priorità e impostazioni; prima fa una
   copia e permette il rollback.
@@ -274,8 +276,9 @@ Descritte in dettaglio in [indexarr2.md](../indexarr2.md). In sintesi:
   scraping HTML solo come ultima scelta.
 - **Definizioni che resistono**: campi tipizzati, selettori con fallback,
   mirror, flussi a passi espliciti, health check integrato, test obbligatori.
-- **Nessun sito perso**: i siti non ancora riscritti passano dal ponte verso il
-  Jackett/Prowlarr dell'utente; il ponte si svuota sito per sito.
+- **Nessun sito perso**: i siti non ancora riscritti restano nel catalogo con
+  lo stato «da scrivere»; la coda si svuota sito per sito, senza proxy verso
+  il manager.
 - **Pipeline a stadi e moduli**: le nuove funzioni si innestano senza toccare
   il nucleo.
 - **Torrent e Usenet** nello stesso indexer.
@@ -339,7 +342,7 @@ del progetto.
 | Prima ricerca dopo l'installazione | < 2 minuti per un utente nuovo | da misurare |
 | Migrazione da Prowlarr | Un'azione, nessuna riconfigurazione delle \*arr | da fare |
 | Parità | Checklist di indexarr2.md §3 tutta verde | da fare |
-| Siti dell'utente funzionanti al giorno uno | 100% (nativi o tramite ponte) | da fare |
+| Siti dell'utente funzionanti al giorno uno | 100% (nativi) oppure in coda visibile, senza proxy | parziale: 155 via software noto, 464 in coda |
 | Inventario prioritario con definizione nativa verificata | 100% alla 1.0 | da fare |
 
 ---
@@ -392,7 +395,7 @@ Cose che oggi nessun indexer fa, o fa bene.
 | **Ora → 1.0** | Parità completa (indexarr2.md), piattaforme Tier 1, migrazione da Jackett/Prowlarr, budget di risorse in CI, benchmark pubblico |
 | **1.x** | Tutti i canali di distribuzione (§3.2), studio delle definizioni, riparazione assistita, Tier 2 completo, traduzioni |
 | **2.x** | Annunci IRC, rete di salute delle definizioni, ricerca che capisce, multi-utente |
-| **Sempre** | Catalogo nativo che cresce, ponte che si svuota, numeri del §8 rispettati |
+| **Sempre** | Catalogo nativo che cresce, coda «da scrivere» che si svuota, numeri del §8 rispettati |
 
 ---
 

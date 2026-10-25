@@ -118,6 +118,9 @@ func TestImportProwlarr(t *testing.T) {
 	if !indexer.Enabled || indexer.Priority != 10 {
 		t.Errorf("indexer state = %+v", indexer)
 	}
+	if indexer.NativeStatus != "native" || indexer.DefinitionID != "torznab-generic" {
+		t.Errorf("native route = %+v", indexer)
+	}
 
 	if len(body.Applications) != 1 {
 		t.Fatalf("applications = %+v", body.Applications)
@@ -210,6 +213,12 @@ func TestImportJackett(t *testing.T) {
 	}
 	if indexer.BaseURL != "http://127.0.0.1:9117/api/v2.0/indexers/alpha/results/torznab/" {
 		t.Errorf("base URL = %q", indexer.BaseURL)
+	}
+	if indexer.NativeStatus != "pending" || indexer.DefinitionID != "" {
+		t.Errorf("a source with no native route = %+v", indexer)
+	}
+	if body.Pending != 1 {
+		t.Errorf("pending = %d, want 1", body.Pending)
 	}
 	assertImportSecretsAbsent(t, res.body, importJackettKey)
 }

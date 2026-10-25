@@ -26,7 +26,6 @@ func TestFamilyMarkers(t *testing.T) {
 		`<script src="/jscript/xbtit.js"></script>`: "xbtit",
 		`Powered by NexusPHP`:                       "nexusphp",
 		`<title>Login :: GazelleGames.net</title>`:  "gazelle",
-		`<form action="takelogin.php">`:             "nexusphp",
 		`<h1>Torrent Trader</h1>`:                   "torrenttrader",
 		`<div class="Jackett">UNIT3D</div>`:         "unit3d",
 	}
@@ -40,6 +39,22 @@ func TestFamilyMarkers(t *testing.T) {
 		}
 		if !ok {
 			t.Errorf("familyMarkers(%q) = %v, want %q", body, found, want)
+		}
+	}
+}
+
+func TestFamilyMarkersIgnoreSharedPaths(t *testing.T) {
+	// These paths appear on several families (and on custom trackers), so
+	// they must not label a site on their own.
+	for _, body := range []string{
+		`<form action="takelogin.php">`,
+		`<a href="getrss.php">RSS</a>`,
+		`<script>ajax.php?action=torrents</script>`,
+		`<a href="download.php?id=12">download</a>`,
+		`<a href="index.php?page=torrents">torrents</a>`,
+	} {
+		if found := familyMarkers([]byte(body)); len(found) != 0 {
+			t.Errorf("familyMarkers(%q) = %v, want no family", body, found)
 		}
 	}
 }

@@ -160,12 +160,21 @@ func main() {
 			continue
 		}
 		family, knownFamily := families.Families[item.SourceID]
-		include := item.Type == "public" || item.Type == "semi-private" || knownFamily || italianPriority[item.SourceID]
-		if !include {
-			continue
-		}
 		key := "jackett:" + item.SourceID
 		live, hasLive := verification.Results[key]
+		// A live probe can prove the software family even when the curated
+		// table has no entry. Only one detected family is accepted: two markers
+		// on the same page are ambiguous, not a stronger claim.
+		if !knownFamily && hasLive {
+			if detected := singleFamily(live.Families); detected != "" {
+				family = familyEntry{
+					Family:     detected,
+					Confidence: "possible",
+					Evidence:   "live GET markers on " + live.URL,
+				}
+				knownFamily = true
+			}
+		}
 		state, evidence := decideState(item.Type, knownFamily, live, hasLive)
 		id := "jk-" + slugify(item.SourceID)
 		site := catalog.Site{
@@ -205,6 +214,16 @@ func main() {
 		family, knownFamily := families.Families[item.SourceID]
 		key := "prowlarr:" + item.SourceID
 		live, hasLive := verification.Results[key]
+		if !knownFamily && hasLive {
+			if detected := singleFamily(live.Families); detected != "" {
+				family = familyEntry{
+					Family:     detected,
+					Confidence: "possible",
+					Evidence:   "live GET markers on " + live.URL,
+				}
+				knownFamily = true
+			}
+		}
 		state, evidence := decideState(item.Type, knownFamily, live, hasLive)
 		site := catalog.Site{
 			ID:          "pr-" + slugify(item.SourceID),
@@ -252,7 +271,7 @@ func main() {
 	sort.SliceStable(sites, func(i, j int) bool { return sites[i].ID < sites[j].ID })
 	manifest := output{
 		Schema:  1,
-		Updated: "2026-10-23",
+		Updated: "2026-10-25",
 		Source:  "jackett+prowlarr",
 		Sites:   sites,
 	}
@@ -286,7 +305,12 @@ func decideState(siteType string, familyKnown bool, live catalogVerification, ha
 	}
 	evidence := evidenceText(live)
 	if live.Error != "" {
-		return catalog.SiteStateDead, evidence
+		if deadProbeError(live.Error) {
+			return catalog.SiteStateDead, evidence
+		}
+		// A timeout, an IPv6 route or a TLS hiccup says nothing about the site:
+		// it stays "da provvi" and is retried on the next probe run.
+		return catalog.SiteStateTry, evidence + "; probe inconclusive"
 	}
 	if live.HTTP >= 200 && live.HTTP < 400 {
 		if siteType == "private" {
@@ -301,6 +325,19 @@ func decideState(siteType string, familyKnown bool, live catalogVerification, ha
 		return catalog.SiteStateVerified, evidence
 	}
 	return catalog.SiteStateTry, evidence
+}
+
+// deadProbeError is deliberately narrow: only a name that does not resolve or
+// a refused connection proves the address is gone. Timeouts and IPv6 routes
+// are transient and must not remove a source from the catalog.
+func deadProbeError(text string) bool {
+	text = strings.ToLower(text)
+	for _, marker := range []string{"no such host", "connection refused"} {
+		if strings.Contains(text, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func evidenceText(live catalogVerification) string {
@@ -330,6 +367,26 @@ func isLoginOrChallenge(live catalogVerification) bool {
 		}
 	}
 	return false
+}
+
+// singleFamily returns the detected family only when the page carries exactly
+// one family marker. Ambiguous pages stay without a family: a wrong connector
+// is worse than a source queued for a definition.
+func singleFamily(families []string) string {
+	seen := map[string]bool{}
+	value := ""
+	for _, family := range families {
+		family = strings.ToLower(strings.TrimSpace(family))
+		if family == "" || seen[family] {
+			continue
+		}
+		seen[family] = true
+		value = family
+	}
+	if len(seen) != 1 {
+		return ""
+	}
+	return value
 }
 
 func familyID(entry familyEntry, known bool) string {

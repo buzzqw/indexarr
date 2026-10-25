@@ -229,6 +229,12 @@ func TestDefinitionForSiteBuildsFamilyDefinition(t *testing.T) {
 	if def.Connector != FamilyUnit3D || def.Meta.Type != "private" {
 		t.Errorf("definition = connector %q type %q", def.Connector, def.Meta.Type)
 	}
+	if !def.Meta.HasLatest() {
+		t.Error("a family site must keep the periodic latest run: the connector implements Latest")
+	}
+	if def.HasLatestList() {
+		t.Error("a synthesized family row has no stored latest page; store_latest must stay off")
+	}
 	names := map[string]bool{}
 	for _, setting := range def.Settings {
 		names[setting.Name] = true

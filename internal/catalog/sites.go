@@ -215,6 +215,12 @@ func siteIndexEntry(site Site) IndexEntry {
 		Source:     site.Source,
 		Evidence:   site.Evidence,
 		Proposable: site.State != SiteStateDead,
+		// Family connectors implement Latest themselves (browse/API page), so
+		// a known-software row is a scheduled source even without a YAML
+		// latest block. It is not "storable": there is no latest page to
+		// memorise.
+		Latest:    site.Family != "",
+		Scheduled: site.Family != "",
 	}
 }
 
@@ -258,8 +264,7 @@ func DefinitionForSite(site Site) ([]byte, error) {
 			Author:      "indexarr",
 			Description: site.Description,
 			URLs:        []string{site.URL},
-			Updated:     "2026-10-23",
-			Latest:      boolPtr(false),
+			Updated:     "2026-10-25",
 		},
 		Settings:   settings,
 		Categories: categories,
@@ -327,8 +332,6 @@ func containsGroup(values []string, want string) bool {
 	}
 	return false
 }
-
-func boolPtr(value bool) *bool { return &value }
 
 // SiteStats is the small report the UI and the release notes need: how many
 // rows are verified, still to try and dead, split by source type.
