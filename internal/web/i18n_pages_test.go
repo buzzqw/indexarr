@@ -55,3 +55,29 @@ func TestLegacyPagesRenderAllLanguages(t *testing.T) {
 		}
 	}
 }
+
+func TestMaintenanceFormsHaveHelp(t *testing.T) {
+	env := newTestEnv(t)
+	actions := []string{"integrity", "quick_check", "foreign_keys", "vacuum", "optimize", "checkpoint", "analyze", "reindex", "reset_errors", "dedupe", "clear_torrents", "prune", "purge_days", "purge_indexer", "purge_no_links", "purge_hidden", "clear_runs", "clear_runs_days", "reset_api_usage", "delete_all"}
+	for _, lang := range []string{"en", "it", "de", "fr", "es", "pl", "zh"} {
+		body := get(t, env.handler, "/settings?section=maintenance&lang="+lang).Body.String()
+		for _, action := range actions {
+			marker := `name="action" value="` + action + `"`
+			if !strings.Contains(body, marker) {
+				t.Errorf("%s: maintenance action %s has no form", lang, action)
+				continue
+			}
+			pos := strings.Index(body, marker)
+			start := strings.LastIndex(body[:pos], "<form")
+			end := strings.Index(body[pos:], "</form>")
+			if start < 0 || end < 0 {
+				t.Errorf("%s: cannot inspect form for %s", lang, action)
+				continue
+			}
+			block := body[start : pos+end]
+			if !strings.Contains(block, `<p class="help">`) || strings.Contains(block, `class="help"></p>`) {
+				t.Errorf("%s: form %s has no help text", lang, action)
+			}
+		}
+	}
+}
