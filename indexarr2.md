@@ -79,7 +79,7 @@ package di `docs/internal/NEXT-STEPS.md` la aggiorna qui.
 
 | Voce | Verifica | Stato (23/10) |
 |---|---|---|
-| Applicazioni: Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian | Test di integrazione contro le versioni supportate di ciascuna | parziale: Mylar3/LazyLibrarian `ErrUnsupported` (WP13) |
+| Applicazioni: Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian | Test di integrazione contro le versioni supportate di ciascuna | fatto: 7/7 (Servarr v3, Mylar3/Lazy via API comandi); snapshot/rollback solo Servarr |
 | Livelli di sync: disabilitato, solo aggiunta/rimozione, sync completo | Test sul ciclo completo | fatto |
 | Indexer sincronizzati con il protocollo giusto: Torznab per i torrent, Newznab per Usenet | Test con indexer misti | fatto |
 | Campi sincronizzati: nome, URL, API key, categorie, priorità, tag, seeders minimi, seed ratio, seed time, season pack seed time, abilitazione RSS/ricerca automatica/interattiva | Confronto con ciò che Prowlarr scrive nell'app | parziale: verificati URL, categorie, protocollo, flag; seed da verificare |
@@ -571,7 +571,7 @@ tutta verde.
 | **M2 — Catalogo** | Inventario dei siti, connettori di famiglia, prime definizioni, studio delle definizioni, CI del catalogo | Siti propri tutti funzionanti | Fatto: 8 famiglie, 36 definizioni verificate, RSS nativa (WP6, WP7, WP18) |
 | **Alpha interna** | Inventario prioritario riscritto e verificato | Uso quotidiano su istanza propria | Fatto: catalogo nativo e adozione delle fonti (WP8) |
 | **M3 — Distribuzione** | Endpoint per indexer e filtrati, alias Jackett, errori Torznab, limiti query/grab, proxy | \*arr collegate senza Jackett/Prowlarr | Fatto |
-| **M4 — App sync** | Tutte le applicazioni del §3.2, livelli di sync, riconciliazione | Prowlarr rimovibile | Quasi fatto: 5 app su 7, rollback mancante (WP13) |
+| **M4 — App sync** | Tutte le applicazioni del §3.2, livelli di sync, riconciliazione | Prowlarr rimovibile | Fatto: 7 app su 7; rollback automatico per le 5 Servarr |
 | **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita; coda «da scrivere» visibile, nessun proxy | In corso: 155 fonti via software noto, 413 in coda al 25/10 |
 | **M6 — Usenet** | Connettore Newznab e preset, endpoint Newznab, proxy `.nzb`, SABnzbd/NZBGet, sync Newznab verso le \*arr | Indexer Usenet gestiti come in Prowlarr | Fatto lato codice; nessun indexer Usenet reale verificato |
 | **Beta** | Health check opt-in; documentazione per chi scrive definizioni | Checklist §3 quasi completa | — |
@@ -730,7 +730,7 @@ strict) e `./sim/run.sh`.
 | WP10 | da fare | refresh periodico dei seeders |
 | WP11 | fatto | FlareSolverr nativo e stato `blocked` |
 | WP12 | fatto | CI multipiattaforma e budget |
-| WP13 | da fare | parità residua (import applicato completo, Mylar3/LazyLibrarian, rollback sync, notifiche health/grab) |
+| WP13 | da fare | parità residua (notifiche health/grab, i18n legacy, rollback per Mylar3/LazyLibrarian) |
 | WP14 | fasi 1, 1b, 1c, 2 e 3 fatte; 4–5 da fare | UI da pannello tecnico a prodotto semplice |
 | WP-R | fatto | dettagli dopo limit/dedup, fixture senza symlink, build Windows, redazione, `example-html` |
 | WP15 | da fare | parametri condizionali nelle definizioni (v1.1) |

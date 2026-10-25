@@ -12,6 +12,10 @@
 - Istantanea storica dei metadati mantenuta solo per generare il catalogo;
   nessun collegamento a runtime.
 
+### App sync
+- Mylar3 e LazyLibrarian gestiscono i provider Torznab/Newznab via API comandi:
+  elenco, aggiunta, modifica, rimozione. Sette applicazioni su sette.
+
 ### Gestione indexer
 - Proxy HTTP/HTTPS/SOCKS5 con pagina dedicata e API `/api/v2/proxies`.
 - Limiti query/grab e seed criteria (seeder minimi, ratio, seed time, season

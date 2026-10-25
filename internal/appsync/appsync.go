@@ -4,9 +4,9 @@
 //
 // The Servarr family (Sonarr/Radarr/Lidarr/Readarr/Whisparr) is implemented
 // against its v3 HTTP API, with a v1 compatibility fallback. Mylar3 and
-// LazyLibrarian currently expose only a connectivity test; their Torznab
-// settings API has not been verified, so indexer management returns
-// ErrUnsupported instead of guessing endpoints.
+// LazyLibrarian use their /api command interface (listProviders/addProvider/
+// changeProvider/delProvider and the listNabProviders variant). ErrUnsupported
+// remains for adapters that cannot manage indexers.
 package appsync
 
 import (

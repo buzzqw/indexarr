@@ -2,7 +2,6 @@ package appsync
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -225,28 +224,116 @@ func TestSimpleClientsVersionError(t *testing.T) {
 	}
 }
 
-func TestSimpleClientsUnsupportedIndexerOperations(t *testing.T) {
+func TestSimpleClientsManageProviders(t *testing.T) {
 	t.Parallel()
 
 	for _, kind := range []Kind{KindMylar3, KindLazyLibrarian} {
-		client, err := New(Config{Kind: kind, URL: "http://127.0.0.1:1", APIKey: "key"})
-		if err != nil {
-			t.Fatalf("New(%s): %v", kind, err)
-		}
-		ctx := context.Background()
+		t.Run(string(kind), func(t *testing.T) {
+			var mu sync.Mutex
+			seen := map[string]url.Values{}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				query := r.URL.Query()
+				mu.Lock()
+				seen[query.Get("cmd")] = query
+				mu.Unlock()
+				w.Header().Set("Content-Type", "application/json")
+				switch query.Get("cmd") {
+				case "getVersion":
+					_, _ = w.Write([]byte(`{"version":"1.2.3"}`))
+				case "listProviders", "listNabProviders":
+					_, _ = w.Write([]byte(`{"success":true,"data":{"torznabs":[{"name":"indexarr · Site","host":"http://indexarr:8484/torznab/site","apikey":"key","categories":"2000,5000","enabled":true}],"newznabs":[]}}`))
+				default:
+					_, _ = w.Write([]byte(`{"success":true}`))
+				}
+			}))
+			defer server.Close()
 
-		if _, err := client.ListIndexers(ctx); !errors.Is(err, ErrUnsupported) {
-			t.Errorf("%s ListIndexers error = %v, want ErrUnsupported", kind, err)
-		}
-		if _, err := client.AddIndexer(ctx, IndexerSpec{Name: "x"}); !errors.Is(err, ErrUnsupported) {
-			t.Errorf("%s AddIndexer error = %v, want ErrUnsupported", kind, err)
-		}
-		if _, err := client.UpdateIndexer(ctx, 1, IndexerSpec{Name: "x"}); !errors.Is(err, ErrUnsupported) {
-			t.Errorf("%s UpdateIndexer error = %v, want ErrUnsupported", kind, err)
-		}
-		if err := client.DeleteIndexer(ctx, 1); !errors.Is(err, ErrUnsupported) {
-			t.Errorf("%s DeleteIndexer error = %v, want ErrUnsupported", kind, err)
-		}
+			client, err := New(Config{Kind: kind, URL: server.URL, APIKey: "app-key"})
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			ctx := context.Background()
+			if version, err := client.Test(ctx); err != nil || !strings.Contains(version, "1.2.3") {
+				t.Fatalf("Test = %q, %v", version, err)
+			}
+
+			remote, err := client.ListIndexers(ctx)
+			if err != nil || len(remote) != 1 {
+				t.Fatalf("ListIndexers = %+v, %v", remote, err)
+			}
+			if remote[0].Name != "indexarr · Site" || remote[0].ID == 0 {
+				t.Fatalf("remote = %+v", remote[0])
+			}
+			snapshotter, ok := client.(Snapshotter)
+			if !ok {
+				t.Fatal("simple client does not implement Snapshotter")
+			}
+			payload, err := snapshotter.IndexerSnapshot(ctx)
+			if err != nil {
+				t.Fatalf("IndexerSnapshot: %v", err)
+			}
+			specs, err := SnapshotSpecs(payload)
+			if err != nil || len(specs) != 1 || specs[0].Name != remote[0].Name {
+				t.Fatalf("snapshot specs = %+v, %v", specs, err)
+			}
+
+			if remote[0].RawHash != SpecHash(IndexerSpec{
+				Name: "indexarr · Site", BaseURL: "http://indexarr:8484/torznab/site",
+				APIKey: "key", Categories: []int{2000, 5000},
+				Implementation: "Torznab", ConfigContract: "TorznabSettings",
+				Protocol: "torrent", EnableRSS: true,
+				EnableAutomaticSearch: true, EnableInteractiveSearch: true, Priority: 25,
+			}) {
+				t.Fatal("remote hash does not match the parsed provider")
+			}
+
+			spec := IndexerSpec{
+				Name: "indexarr · Site", BaseURL: "http://indexarr:8484/torznab/site",
+				APIKey: "key", Categories: []int{2000, 5000}, Protocol: "torrent",
+				Priority: 10, MinSeeders: 5, SeedRatio: 1.5, SeedTimeMinutes: 60,
+			}
+			if _, err := client.AddIndexer(ctx, spec); err != nil {
+				t.Fatalf("AddIndexer: %v", err)
+			}
+			if _, err := client.UpdateIndexer(ctx, remote[0].ID, spec); err != nil {
+				t.Fatalf("UpdateIndexer: %v", err)
+			}
+			if err := client.DeleteIndexer(ctx, remote[0].ID); err != nil {
+				t.Fatalf("DeleteIndexer: %v", err)
+			}
+
+			mu.Lock()
+			defer mu.Unlock()
+			for _, command := range []string{"addProvider", "changeProvider", "delProvider"} {
+				query, ok := seen[command]
+				if !ok {
+					t.Fatalf("%s was not called", command)
+				}
+				if query.Get("apikey") != "app-key" {
+					t.Errorf("%s lost the app API key", command)
+				}
+				if command != "delProvider" {
+					if query.Get("host") != spec.BaseURL || query.Get("prov_apikey") != spec.APIKey {
+						t.Errorf("%s provider params = %v", command, query)
+					}
+					if query.Get("categories") != "2000,5000" {
+						t.Errorf("%s categories = %q", command, query.Get("categories"))
+					}
+				}
+			}
+			if kind == KindLazyLibrarian {
+				add := seen["addProvider"]
+				if add.Get("seeders") != "5" || add.Get("seed_ratio") != "1.5" || add.Get("seed_duration") != "60" {
+					t.Errorf("Lazy seed params = %v", add)
+				}
+				if add.Get("dlpriority") != "41" {
+					t.Errorf("Lazy priority = %q, want 41", add.Get("dlpriority"))
+				}
+			}
+			if kind == KindMylar3 && seen["addProvider"].Get("prio") != "" {
+				t.Errorf("Mylar received an unsupported priority")
+			}
+		})
 	}
 }
 

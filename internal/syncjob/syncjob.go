@@ -675,7 +675,7 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind 
 			protocol = "torrent"
 		}
 
-		specs = append(specs, appsync.IndexerSpec{
+		spec := appsync.IndexerSpec{
 			Name:           appsync.ManagedPrefix + indexer.Name,
 			Implementation: implementation,
 			ConfigContract: contract,
@@ -694,7 +694,23 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind 
 			SeedRatio:                 indexer.SeedRatio,
 			SeedTimeMinutes:           indexer.SeedTimeMinutes,
 			SeasonPackSeedTimeMinutes: indexer.SeasonPackSeedTimeMinutes,
-		})
+		}
+		// The two simple applications do not store every field. Normalize the
+		// spec to what they can represent, otherwise every sync would compute
+		// a different hash and rewrite the same provider forever.
+		if kind == appsync.KindMylar3 {
+			spec.Tags = nil
+			spec.Priority = 25
+			spec.MinSeeders = 0
+			spec.SeedRatio = 0
+			spec.SeedTimeMinutes = 0
+			spec.SeasonPackSeedTimeMinutes = 0
+		}
+		if kind == appsync.KindLazyLibrarian {
+			spec.Tags = nil
+			spec.SeasonPackSeedTimeMinutes = 0
+		}
+		specs = append(specs, spec)
 		ids = append(ids, indexer.ID)
 	}
 	return specs, ids, nil
