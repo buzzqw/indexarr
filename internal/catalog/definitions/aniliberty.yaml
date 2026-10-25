@@ -1,0 +1,70 @@
+# VERIFICATA (verified). AniLiberty public JSON API.
+#
+# Written from the public API responses captured on 2026-10-25 in
+# fixtures/aniliberty/search.json
+# (https://aniliberty.top/api/v1/app/search/releases?query=naruto) and
+# torrents.json
+# (https://aniliberty.top/api/v1/anime/torrents/release/413). Search returns
+# releases; the torrents endpoint for each release id supplies magnet and size.
+schema: 1
+
+meta:
+  id: aniliberty
+  name: AniLiberty
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Russian anime catalog with torrents and magnets from the JSON API.
+  urls:
+    - https://aniliberty.top/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+categories:
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "MOVIE", standard: 2000, desc: "Movies" }
+  - { site: "OVA", standard: 5070, desc: "OVA" }
+  - { site: "ONA", standard: 5070, desc: "ONA" }
+  - { site: "SPECIAL", standard: 5070, desc: "Specials" }
+
+search:
+  request:
+    get: /api/v1/app/search/releases
+    params:
+      query: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: json
+    rows: { path: "" }
+    fields:
+      title:    { path: "name.main", filters: [trim] }
+      details:  { path: "id", filters: [{ prefix: "/api/v1/anime/torrents/release/" }], type: url }
+      category: { path: "type.value", type: category }
+      date:     { path: "fresh_at", type: date }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  size: { path: "0.size" }
+  extract:
+    - magnet: { path: "0.magnet" }
+
+health:
+  query: naruto
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/aniliberty/search.json
+    expect: { min_rows: 2, required: [title, details, category, date] }
+  - name: torrents
+    fixture: fixtures/aniliberty/torrents.json
+    expect: { min_rows: 0 }

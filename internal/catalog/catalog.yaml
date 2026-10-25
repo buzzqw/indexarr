@@ -374,3 +374,18 @@ definitions:
     state: verificata
     author: indexarr
     note: "Public TorrentMac search; size and torrent resolved from the detail page, real fixture."
+  - id: nekobt
+    file: definitions/nekobt.yaml
+    state: verificata
+    author: indexarr
+    note: "Public nekoBT search; magnet in the result row, real fixture."
+  - id: therarbg
+    file: definitions/therarbg.yaml
+    state: verificata
+    author: indexarr
+    note: "Public TheRARBG search; magnet resolved from the detail page, real fixture."
+  - id: aniliberty
+    file: definitions/aniliberty.yaml
+    state: verificata
+    author: indexarr
+    note: "Public AniLiberty JSON API; magnet and size from the torrents endpoint, real fixture."

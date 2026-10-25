@@ -40,10 +40,10 @@ sono nostri.
 
 | Via | Fonti |
 |---|---:|
-| Definizione nativa | 59 (41 verificate, 18 in bozza) |
+| Definizione nativa | 62 (44 verificate, 18 in bozza) |
 | Software noto (NexusPHP, UNIT3D, Gazelle, XBTIT, TorrentTrader) | 155 |
-| **Native o software noto** | **214 su 613** |
-| In coda «da scrivere» | 399 |
+| **Native o software noto** | **217 su 613** |
+| In coda «da scrivere» | 396 |
 
 Sulle 638 voci dell'istantanea Jackett: 29 definizioni native, 155 software
 noto, 184 con via nativa (28,8%); il resto è coda. La differenza con le 403

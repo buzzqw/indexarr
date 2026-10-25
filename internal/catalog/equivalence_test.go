@@ -763,3 +763,108 @@ func TestTorrentMacNativeFixture(t *testing.T) {
 		t.Errorf("download = %q", first.DownloadURL)
 	}
 }
+
+func TestNekoBTNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/search" {
+			http.NotFound(w, r)
+			return
+		}
+		if got := r.URL.Query().Get("q"); got != "matrix" {
+			t.Errorf("q param = %q", got)
+		}
+		serveFile(t, w, "nekobt/search.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "nekobt", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if !strings.Contains(first.Title, "Soar High") {
+		t.Errorf("title = %q", first.Title)
+	}
+	if !strings.HasPrefix(first.Magnet, "magnet:") {
+		t.Errorf("magnet = %q", first.Magnet)
+	}
+	if first.Size <= 0 || first.Seeders <= 0 {
+		t.Errorf("size/seeders = %d/%d", first.Size, first.Seeders)
+	}
+}
+
+func TestTheRARBGNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/get-posts/" {
+			if got := r.URL.Query().Get("keywords"); got != "matrix" {
+				t.Errorf("keywords = %q", got)
+			}
+			serveFile(t, w, "therarbg/search.html")
+			return
+		}
+		serveFile(t, w, "therarbg/detail.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "therarbg", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if !strings.Contains(first.Title, "Matrix Revolutions") {
+		t.Errorf("title = %q", first.Title)
+	}
+	if first.Size <= 0 || first.Seeders <= 0 {
+		t.Errorf("size/seeders = %d/%d", first.Size, first.Seeders)
+	}
+	if !strings.HasPrefix(first.Magnet, "magnet:") {
+		t.Errorf("magnet = %q", first.Magnet)
+	}
+}
+
+func TestAniLibertyNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/app/search/releases" {
+			if got := r.URL.Query().Get("query"); got != "naruto" {
+				t.Errorf("query = %q", got)
+			}
+			serveFile(t, w, "aniliberty/search.json")
+			return
+		}
+		serveFile(t, w, "aniliberty/torrents.json")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "aniliberty", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "naruto", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("items = %d, want 2", len(items))
+	}
+	first := items[0]
+	if !strings.Contains(first.Title, "Наруто") {
+		t.Errorf("title = %q", first.Title)
+	}
+	if first.Size <= 0 {
+		t.Errorf("size = %d", first.Size)
+	}
+	if !strings.HasPrefix(first.Magnet, "magnet:") {
+		t.Errorf("magnet = %q", first.Magnet)
+	}
+}

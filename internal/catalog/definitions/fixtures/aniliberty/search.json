@@ -1,0 +1,174 @@
+[
+  {
+    "id": 413,
+    "type": {
+      "value": "TV",
+      "description": "ТВ"
+    },
+    "year": 2007,
+    "name": {
+      "main": "Наруто Ураганные хроники",
+      "english": "Naruto: Shippuuden",
+      "alternative": null
+    },
+    "alias": "naruto-shippuuden-naruto-uragannye-khroniki",
+    "season": {
+      "value": null,
+      "description": null
+    },
+    "shikimori": {
+      "id": 1735,
+      "url": "https://shikimori.io/animes/1735",
+      "votes": 94221,
+      "rating": 8.67
+    },
+    "mal": {
+      "id": 1735,
+      "url": "https://myanimelist.net/anime/1735",
+      "votes": 1855058,
+      "rating": 8.29
+    },
+    "rating": {
+      "average": null,
+      "votes": 0,
+      "distribution": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 0
+      }
+    },
+    "poster": {
+      "src": "/storage/releases/posters/413/oNGrAgRa8RNXfZNf8NTL4EzOV1PsAiFD.jpg",
+      "preview": "/storage/releases/posters/413/oNGrAgRa8RNXfZNf8NTL4EzOV1PsAiFD.jpg",
+      "thumbnail": "/storage/releases/posters/413/uCGRiImz7iUbFcdQxHYDxpzcbOEUX6Dp.jpg",
+      "optimized": {
+        "src": "/storage/releases/posters/413/MH0zJJK7hdw7lzx1JRVb1Z3bEWuLdCDm.webp",
+        "preview": "/storage/releases/posters/413/MH0zJJK7hdw7lzx1JRVb1Z3bEWuLdCDm.webp",
+        "thumbnail": "/storage/releases/posters/413/mEKmGyLOeoe511ybSF7rgDe6DJJwSJ5E.webp"
+      }
+    },
+    "fresh_at": "2017-03-29T18:53:58+00:00",
+    "created_at": "2017-03-29T18:53:58+00:00",
+    "updated_at": "2024-08-02T19:50:36+00:00",
+    "is_ongoing": false,
+    "age_rating": {
+      "value": "R16_PLUS",
+      "label": "16+",
+      "is_adult": false,
+      "description": "Для людей, достигших возраста шестнадцати лет (16+)"
+    },
+    "publish_day": {
+      "value": 1,
+      "description": "Понедельник"
+    },
+    "description": "Приключения самого известного в мире шиноби продолжаются! Наруто идёт к своей мечте - стать хокаге, преодолевая трудности и попадая в передряги. Его друг, а порой и противник, Саске также не стоит на месте и становится всё сильней, идя к своей целе отомстить брату Итачи. Чем же закончится эта история о дружбе, мечте и мести?\r\n 373 — 393 Четвёртая Мировая Война Шиноби — Обито Учиха\r\n 394 — 413 Прошлое Наруто (экзамен на чуунина)\r\n 414 — 431 Бесконечный Цукуёми: Активация\r\n 432 — 450 Повесть ниндзя Джирайи - \"Сказание о герое Наруто\"\r\n 451 — 458 Истинная история Итачи: свет и тьма\r\n 459 — 479 Ооцуцуки Кагуя + История мудреца шести путей\r\n 480 — 500 После арки Кагуи, мирное время и все дела",
+    "notification": null,
+    "episodes_total": 450,
+    "external_player": "//aniqit.com/serial/2082/5c9170d0e0c62df671cc42c0f946f721/720p?translations=false",
+    "is_in_production": false,
+    "is_blocked_by_geo": false,
+    "is_blocked_by_copyrights": false,
+    "is_comments_closed": false,
+    "comments_count": 0,
+    "added_in_users_favorites": 5233,
+    "average_duration_of_episode": 25,
+    "added_in_planned_collection": 170,
+    "added_in_watched_collection": 1300,
+    "added_in_watching_collection": 135,
+    "added_in_postponed_collection": 18,
+    "added_in_abandoned_collection": 41
+  },
+  {
+    "id": 2495,
+    "type": {
+      "value": "MOVIE",
+      "description": "Фильм"
+    },
+    "year": 2015,
+    "name": {
+      "main": "Боруто (Фильм)",
+      "english": "Boruto: Naruto the Movie",
+      "alternative": null
+    },
+    "alias": "boruto-naruto-the-movie",
+    "season": {
+      "value": "summer",
+      "description": "Лето"
+    },
+    "shikimori": {
+      "id": 28755,
+      "url": "https://shikimori.io/animes/28755",
+      "votes": 24896,
+      "rating": 7.01
+    },
+    "mal": {
+      "id": 28755,
+      "url": "https://myanimelist.net/anime/28755",
+      "votes": 321929,
+      "rating": 7.37
+    },
+    "rating": {
+      "average": null,
+      "votes": 0,
+      "distribution": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0,
+        "6": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0,
+        "10": 0
+      }
+    },
+    "poster": {
+      "src": "/storage/releases/posters/2495/f5aUK7U6t16UXDs9g9otVnF1ycVbgtj7.jpg",
+      "preview": "/storage/releases/posters/2495/f5aUK7U6t16UXDs9g9otVnF1ycVbgtj7.jpg",
+      "thumbnail": "/storage/releases/posters/2495/ePNdxVaHPA6JLSmknaRrBmNeFIWhMg9l.jpg",
+      "optimized": {
+        "src": "/storage/releases/posters/2495/MT5VtyvKYHzEbpUJn2OqJI4FJsReoGR0.webp",
+        "preview": "/storage/releases/posters/2495/MT5VtyvKYHzEbpUJn2OqJI4FJsReoGR0.webp",
+        "thumbnail": "/storage/releases/posters/2495/fuBTePzVeJ98l9ARBo4iT2mbkz0s70K4.webp"
+      }
+    },
+    "fresh_at": "2016-10-23T15:51:17+00:00",
+    "created_at": "2016-10-23T15:51:17+00:00",
+    "updated_at": "2024-08-02T19:51:19+00:00",
+    "is_ongoing": false,
+    "age_rating": {
+      "value": "R16_PLUS",
+      "label": "16+",
+      "is_adult": false,
+      "description": "Для людей, достигших возраста шестнадцати лет (16+)"
+    },
+    "publish_day": {
+      "value": 1,
+      "description": "Понедельник"
+    },
+    "description": "Боруто Узумаки — сын Наруто Узумаки, героя Скрытого листа и 7 Хокагэ. Главный герой сея истории весьма одарен, но ненавидит работу Наруто и поэтому считает его неважным отцом. Боруто считает своего отца героем, и в его сердце возникает желание превзойти героический путь отца, и лучшей идеей для этого становится намерение стать учеником человека, который знал его отца с ранних лет и являлся одновременно соперником и лучшим другом. Но что думает об этом сам Саскэ Учиха? В то время, как команда Боруто обзаведется своим сэнсэем, Боруто будет называть учителем Саскэ. Итак, наступает новая эпоха для жизни нового поколения синоби.",
+    "notification": null,
+    "episodes_total": null,
+    "external_player": "",
+    "is_in_production": false,
+    "is_blocked_by_geo": false,
+    "is_blocked_by_copyrights": false,
+    "is_comments_closed": false,
+    "comments_count": 0,
+    "added_in_users_favorites": 827,
+    "average_duration_of_episode": 105,
+    "added_in_planned_collection": 28,
+    "added_in_watched_collection": 270,
+    "added_in_watching_collection": 7,
+    "added_in_postponed_collection": 4,
+    "added_in_abandoned_collection": 25
+  }
+]

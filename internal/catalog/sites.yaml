@@ -521,24 +521,6 @@ sites:
       source_id: anidub
       checked: "2026-10-25"
       evidence: GET https://tr.anidub.com/ -> HTTP 200, 135806 bytes, title "AniDUB Tracker Скачать аниме бесплатно на торрент трекер Анидаб", checked 2026-10-25
-    - id: jk-anilibria
-      name: Anilibria
-      description: Anilibria is a russian-language anime distribution platform
-      url: https://aniliberty.top/
-      urls:
-        - https://aniliberty.top/
-      type: public
-      language: ru-RU
-      categories:
-        - tv
-        - anime
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: anilibria
-      checked: "2026-10-25"
-      evidence: GET https://aniliberty.top/ -> HTTP 200, 262144 bytes, title "AniLiberty — так звучит аниме!", checked 2026-10-25
     - id: jk-animebybelka
       name: Anime by Belka
       description: Anime by Belka (Аниме от Белки) is a RUSSIAN Semi-Private Torrent Tracker for ANIME
@@ -6672,27 +6654,6 @@ sites:
       checked: "2026-10-25"
       evidence: GET https://nebulance.io/ -> HTTP 200, 1961 bytes, title "Nebulance.io", checked 2026-10-25; private, no account used
       note: 'family gazelle (possible): live GET markers on https://nebulance.io/'
-    - id: jk-nekobt
-      name: nekoBT
-      description: nekoBT is a Public Torrent Tracker for ANIME
-      url: https://nekobt.to/
-      urls:
-        - https://nekobt.to/
-      type: public
-      language: en-US
-      family: unit3d
-      categories:
-        - movies
-        - tv
-        - anime
-      state: verificata
-      required:
-        - apikey
-      source: jackett
-      source_id: nekobt
-      checked: "2026-10-25"
-      evidence: GET https://nekobt.to/ -> HTTP 200, 262144 bytes, title "Home - nekoBT", checked 2026-10-25
-      note: 'family unit3d (possible): live GET markers on https://nekobt.to/'
     - id: jk-nethd
       name: NetHD
       description: NetHD (VietTorrent) is a VIETNAMESE Semi-Private Torrent Tracker for HD MOVIES / TV
@@ -10179,30 +10140,6 @@ sites:
       source_id: theplace
       checked: "2026-10-25"
       evidence: 'GET https://theplace.click/login.php -> HTTP 200, 3318 bytes, title "ThePlace :: Login", checked 2026-10-25; private, no account used'
-    - id: jk-therarbg
-      name: TheRARBG
-      description: TheRARBG is a Public site inspired by RARBG.to for MOVIES / TV / GENERAL
-      url: https://therarbg.to/
-      urls:
-        - https://therarbg.to/
-      type: public
-      language: en-US
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-        - games
-        - software
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: therarbg
-      checked: "2026-10-25"
-      evidence: GET https://therarbg.to/ -> HTTP 200, 183290 bytes, title "Download Latest Top Torrents in Multiple Categories The RarBg", checked 2026-10-25
     - id: jk-theshow
       name: The Show
       description: TheShow (TSBZ) is a Private Torrent Tracker for ENTERTAINMENT-INDUSTRY E-LEARNING

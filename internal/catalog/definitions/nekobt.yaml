@@ -1,0 +1,56 @@
+# VERIFICATA (verified). nekoBT public search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/nekobt/search.html (https://nekobt.to/search?q=matrix). Every row
+# carries a public magnet, size, date and health counters; no detail page is
+# needed.
+schema: 1
+
+meta:
+  id: nekobt
+  name: nekoBT
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public anime tracker with magnets, size and health in the result row.
+  urls:
+    - https://nekobt.to/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+
+categories:
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.table > tbody > tr" }
+    fields:
+      title:    { selector: 'a[href^="/torrents/"]', filters: [trim] }
+      details:  { selector: 'a[href^="/torrents/"]', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      category: { selector: "td:nth-child(2) img", attr: alt, type: category }
+      size:     { selector: "td:nth-child(5)", type: size }
+      date:     { selector: "td:nth-child(6)", type: date, layouts: ["2006-01-02 15:04:05"] }
+      seeders:  { selector: "td:nth-child(7)", type: int }
+      leechers: { selector: "td:nth-child(8)", type: int }
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 4
+
+tests:
+  - name: search
+    fixture: fixtures/nekobt/search.html
+    expect: { min_rows: 4, required: [title, details, magnet, size, seeders] }

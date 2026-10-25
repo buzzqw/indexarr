@@ -99,6 +99,27 @@
     "scheduled": true
   },
   {
+    "id": "aniliberty",
+    "name": "AniLiberty",
+    "description": "Public Russian anime catalog with torrents and magnets from the JSON API.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "aniliberty.top"
+    ],
+    "url": "https://aniliberty.top/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "animetosho",
     "name": "AnimeTosho",
     "description": "Public AnimeTosho HTML search; anime releases with magnets.",
@@ -1211,31 +1232,6 @@
     "url": "https://tr.anidub.com/",
     "source": "jackett",
     "evidence": "GET https://tr.anidub.com/ -\u003e HTTP 200, 135806 bytes, title \"AniDUB Tracker Скачать аниме бесплатно на торрент трекер Анидаб\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-anilibria",
-    "name": "Anilibria",
-    "description": "Anilibria is a russian-language anime distribution platform",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "tv",
-      "anime"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "aniliberty.top"
-    ],
-    "url": "https://aniliberty.top/",
-    "source": "jackett",
-    "evidence": "GET https://aniliberty.top/ -\u003e HTTP 200, 262144 bytes, title \"AniLiberty — так звучит аниме!\", checked 2026-10-25",
     "reachable": true,
     "proposable": true,
     "latest": false
@@ -9072,34 +9068,6 @@
     "scheduled": true
   },
   {
-    "id": "jk-nekobt",
-    "name": "nekoBT",
-    "description": "nekoBT is a Public Torrent Tracker for ANIME",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime"
-    ],
-    "required": [
-      "apikey"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "nekobt.to"
-    ],
-    "url": "https://nekobt.to/",
-    "family": "unit3d",
-    "source": "jackett",
-    "evidence": "GET https://nekobt.to/ -\u003e HTTP 200, 262144 bytes, title \"Home - nekoBT\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": true,
-    "scheduled": true
-  },
-  {
     "id": "jk-nethd",
     "name": "NetHD",
     "description": "NetHD (VietTorrent) is a VIETNAMESE Semi-Private Torrent Tracker for HD MOVIES / TV",
@@ -13556,37 +13524,6 @@
     "latest": false
   },
   {
-    "id": "jk-therarbg",
-    "name": "TheRARBG",
-    "description": "TheRARBG is a Public site inspired by RARBG.to for MOVIES / TV / GENERAL",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "therarbg.to"
-    ],
-    "url": "https://therarbg.to/",
-    "source": "jackett",
-    "evidence": "GET https://therarbg.to/ -\u003e HTTP 200, 183290 bytes, title \"Download Latest Top Torrents in Multiple Categories The RarBg\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-theshow",
     "name": "The Show",
     "description": "TheShow (TSBZ) is a Private Torrent Tracker for ENTERTAINMENT-INDUSTRY E-LEARNING",
@@ -16477,6 +16414,25 @@
     "scheduled": true
   },
   {
+    "id": "nekobt",
+    "name": "nekoBT",
+    "description": "Public anime tracker with magnets, size and health in the result row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "nekobt.to"
+    ],
+    "url": "https://nekobt.to/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "newznab-generic",
     "name": "Newznab (generic)",
     "description": "Generic Newznab indexer; the family connector reads URL and API key.",
@@ -16822,6 +16778,31 @@
     "latest": true,
     "latest_list": true,
     "storable": true
+  },
+  {
+    "id": "therarbg",
+    "name": "TheRARBG",
+    "description": "Public movie, TV and general tracker with magnets on the detail page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "therarbg.to"
+    ],
+    "url": "https://therarbg.to/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "tokyotosho",

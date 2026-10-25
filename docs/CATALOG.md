@@ -18,15 +18,15 @@ Non vengono mai generate da una definizione Cardigann.
 | Misura | Valore |
 | --- | ---: |
 | Totale voci nel catalogo (definizioni + voci leggere) | **622** |
-| Definizioni native | 67 (8 aiutanti generici inclusi) |
-| Voci leggere | **555** |
+| Definizioni native | 70 (8 aiutanti generici inclusi) |
+| Voci leggere | **552** |
 | Verificate | **120** |
 | Da provare (`da-provvi`) | **498** |
 | Morte (`morta`) | **4** |
-| Pubbliche verificate (native + leggere, host unici) | **83** |
+| Pubbliche verificate (native + leggere, host unici) | **86** |
 | Voci italiane | **13** |
 
-Le 83 pubbliche verificate sono conteggiate per host unico, quindi una
+Le 86 pubbliche verificate sono conteggiate per host unico, quindi una
 definizione nativa e una voce leggera dello stesso sito non si sommano. Le
 voci leggere private sono 438 e restano tutte `da-provvi`: senza un account
 non si può verificare la ricerca.

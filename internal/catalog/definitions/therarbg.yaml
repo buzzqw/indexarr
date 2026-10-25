@@ -1,0 +1,74 @@
+# VERIFICATA (verified). TheRARBG public search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/therarbg/search.html (https://therarbg.to/get-posts/?keywords=matrix)
+# and the public detail fixture detail.html. The result row carries title,
+# category, date, size and health; the magnet is on the detail page, so it is
+# resolved while searching.
+schema: 1
+
+meta:
+  id: therarbg
+  name: TheRARBG
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public movie, TV and general tracker with magnets on the detail page.
+  urls:
+    - https://therarbg.to/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+  movie-search: [q]
+  tv-search: [q]
+
+categories:
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Music", standard: 3000, desc: "Audio" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+  - { site: "Apps", standard: 4000, desc: "Applications" }
+  - { site: "Documentaries", standard: 5080, desc: "Documentaries" }
+
+search:
+  request:
+    get: /get-posts/
+    params:
+      keywords: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "tr.list-entry" }
+    fields:
+      title:    { selector: 'a[href^="/post-detail/"]', filters: [trim] }
+      details:  { selector: 'a[href^="/post-detail/"]', attr: href, type: url }
+      category: { selector: 'a[href^="/get-posts/category:"]', attr: href, filters: [{ regex: "category:([^/]+)" }], type: category }
+      date:     { selector: "td:nth-child(4)", type: date, layouts: ["2006-01-02"] }
+      size:     { selector: "td.sizeCell", type: size }
+      seeders:  { selector: 'td[style*="green"]', type: int }
+      leechers: { selector: 'td[style*="red"]', type: int }
+    required: [title, details, size]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  extract:
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/therarbg/search.html
+    expect: { min_rows: 4, required: [title, details, size, category, seeders] }
+  - name: detail
+    fixture: fixtures/therarbg/detail.html
+    expect: { min_rows: 0 }
