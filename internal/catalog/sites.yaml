@@ -6116,29 +6116,6 @@ sites:
       source_id: mdan
       checked: "2026-10-25"
       evidence: GET https://bt.mdan.org/login.php -> HTTP 200, 4716 bytes, title "Login - MDAN Fansub", checked 2026-10-25; private, no account used
-    - id: jk-megapeer
-      name: MegaPeer
-      description: MegaPeer is a RUSSIAN Public Torrent Tracker for MOVIES / TV
-      url: https://megapeer.vip/
-      urls:
-        - https://megapeer.vip/
-      type: public
-      language: ru-RU
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-        - games
-        - software
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: megapeer
-      checked: "2026-10-25"
-      evidence: 'GET https://megapeer.vip/ -> HTTP 200, 77117 bytes, title "\xce\xf2\xea\xf0\xfb\xf2\xfb\xe9 \xf2\xee\xf0\xf0\xe5\xed\xf2-\xf2\xf0\xe5\xea\xe5\xf0 :: MegaPeer.vip", checked 2026-10-25'
     - id: jk-mejortorrent
       name: MejorTorrent
       description: MejorTorrent is a Public site - Hay veces que un torrent viene mejor! :)
@@ -8929,24 +8906,6 @@ sites:
       source_id: rustorka
       checked: "2026-10-25"
       evidence: GET https://rustorka.com/forum/index.php -> HTTP 403, 5567 bytes, title "Каптча", checked 2026-10-25
-    - id: jk-rutor
-      name: RuTor
-      description: RuTor is a RUSSIAN Public site for MOVIES / TV / GENERAL
-      url: https://rutor.info/
-      urls:
-        - https://rutor.info/
-      type: public
-      language: ru-RU
-      categories:
-        - movies
-        - tv
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: rutor
-      checked: "2026-10-25"
-      evidence: 'GET https://rutor.info/ -> HTTP 200, 129083 bytes, title "rutor.info :: Свободный торрент трекер", checked 2026-10-25'
     - id: jk-rutracker
       name: RuTracker.org
       description: RuTracker.org is a RUSSIAN Semi-Private site with a thriving file-sharing community

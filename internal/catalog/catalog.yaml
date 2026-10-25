@@ -354,3 +354,13 @@ definitions:
     state: bozza
     author: indexarr
     note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: rutor
+    file: definitions/rutor.yaml
+    state: verificata
+    author: indexarr
+    note: "Public RuTor search; magnet in the result row, real fixture."
+  - id: megapeer
+    file: definitions/megapeer.yaml
+    state: verificata
+    author: indexarr
+    note: "Public MegaPeer search; direct .torrent link in the row, real fixture."

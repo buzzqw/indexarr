@@ -1,0 +1,58 @@
+# VERIFICATA (verified). MegaPeer public search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/megapeer/search.html (https://megapeer.vip/browse.php?search=matrix).
+# The result row carries a direct /download/<id> .torrent link; no detail page
+# is fetched.
+schema: 1
+
+meta:
+  id: megapeer
+  name: MegaPeer
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Russian tracker with keyword search and a direct .torrent link per row.
+  urls:
+    - https://megapeer.vip/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+
+categories:
+  - { site: "1", standard: 2000, desc: "Movies" }
+  - { site: "2", standard: 5000, desc: "TV" }
+  - { site: "3", standard: 3000, desc: "Audio" }
+  - { site: "4", standard: 4000, desc: "Games" }
+  - { site: "5", standard: 7000, desc: "Books" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+search:
+  request:
+    get: /browse.php
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "tr.table_fon, tr.table_off" }
+    fields:
+      title:    { selector: "a.url", filters: [trim] }
+      details:  { selector: "a.url", attr: href, type: url }
+      download: { selector: 'a[href^="/download/"]', attr: href, type: url }
+      size:     { selector: 'td[align="right"]', type: size }
+      seeders:  { selector: 'font[color="#008000"]', type: int }
+      leechers: { selector: 'font[color="#8b0000"]', type: int }
+    required: [title, download, size]
+
+health:
+  query: matrix
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/megapeer/search.html
+    expect: { min_rows: 4, required: [title, download, size, seeders] }

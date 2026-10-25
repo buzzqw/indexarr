@@ -631,3 +631,65 @@ func TestCorsaroUserStopsPaginationAtMaxAge(t *testing.T) {
 		t.Fatalf("requests = %d, want 1: old page did not stop the walk", got)
 	}
 }
+
+func TestRuTorNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("search") != "matrix" {
+			t.Errorf("search param = %q", r.URL.Query().Get("search"))
+		}
+		serveFile(t, w, "rutor/search.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "rutor", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if !strings.Contains(first.Title, "The Doors") {
+		t.Errorf("title = %q", first.Title)
+	}
+	if !strings.HasPrefix(first.Magnet, "magnet:") {
+		t.Errorf("magnet = %q", first.Magnet)
+	}
+	if first.Size <= 0 || first.Seeders <= 0 {
+		t.Errorf("size/seeders = %d/%d", first.Size, first.Seeders)
+	}
+}
+
+func TestMegaPeerNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("search") != "matrix" {
+			t.Errorf("search param = %q", r.URL.Query().Get("search"))
+		}
+		serveFile(t, w, "megapeer/search.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "megapeer", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if !strings.Contains(first.Title, "The Doors") {
+		t.Errorf("title = %q", first.Title)
+	}
+	if !strings.Contains(first.DownloadURL, "/download/") {
+		t.Errorf("download = %q", first.DownloadURL)
+	}
+	if first.Size <= 0 || first.Seeders <= 0 {
+		t.Errorf("size/seeders = %d/%d", first.Size, first.Seeders)
+	}
+}

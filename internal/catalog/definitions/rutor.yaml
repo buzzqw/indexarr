@@ -1,0 +1,58 @@
+# VERIFICATA (verified). RuTor public search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/rutor/search.html (https://rutor.info/b.php?search=matrix). The
+# result table carries the magnet in the same row as the title; no detail page
+# is fetched. The fixture keeps four real result rows and no scripts or ads.
+schema: 1
+
+meta:
+  id: rutor
+  name: RuTor
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Russian tracker with keyword search and magnet links in the result row.
+  urls:
+    - https://rutor.info/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+
+categories:
+  - { site: "1", standard: 2000, desc: "Movies" }
+  - { site: "2", standard: 5000, desc: "TV" }
+  - { site: "3", standard: 3000, desc: "Audio" }
+  - { site: "4", standard: 4000, desc: "Games" }
+  - { site: "5", standard: 7000, desc: "Books" }
+  - { site: "0", standard: 8000, desc: "Other" }
+
+search:
+  request:
+    get: /b.php
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "tr.gai, tr.tum" }
+    fields:
+      title:    { selector: 'a[href^="/torrent/"]', filters: [trim] }
+      details:  { selector: 'a[href^="/torrent/"]', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      size:     { selector: 'td[align="right"]', type: size }
+      seeders:  { selector: 'span.green', type: int, filters: [{ regex: "([0-9]+)" }] }
+      leechers: { selector: 'span.red', type: int, filters: [{ regex: "([0-9]+)" }] }
+    required: [title, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/rutor/search.html
+    expect: { min_rows: 4, required: [title, magnet, size, seeders] }

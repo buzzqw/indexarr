@@ -8339,36 +8339,6 @@
     "latest": false
   },
   {
-    "id": "jk-megapeer",
-    "name": "MegaPeer",
-    "description": "MegaPeer is a RUSSIAN Public Torrent Tracker for MOVIES / TV",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "megapeer.vip"
-    ],
-    "url": "https://megapeer.vip/",
-    "source": "jackett",
-    "evidence": "GET https://megapeer.vip/ -\u003e HTTP 200, 77117 bytes, title \"\\xce\\xf2\\xea\\xf0\\xfb\\xf2\\xfb\\xe9 \\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2-\\xf2\\xf0\\xe5\\xea\\xe5\\xf0 :: MegaPeer.vip\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-mejortorrent",
     "name": "MejorTorrent",
     "description": "MejorTorrent is a Public site - Hay veces que un torrent viene mejor! :)",
@@ -11937,31 +11907,6 @@
     "url": "https://rustorka.com/",
     "source": "jackett",
     "evidence": "GET https://rustorka.com/forum/index.php -\u003e HTTP 403, 5567 bytes, title \"Каптча\", checked 2026-10-25",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-rutor",
-    "name": "RuTor",
-    "description": "RuTor is a RUSSIAN Public site for MOVIES / TV / GENERAL",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "rutor.info"
-    ],
-    "url": "https://rutor.info/",
-    "source": "jackett",
-    "evidence": "GET https://rutor.info/ -\u003e HTTP 200, 129083 bytes, title \"rutor.info :: Свободный торрент трекер\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -16446,6 +16391,30 @@
     "scheduled": true
   },
   {
+    "id": "megapeer",
+    "name": "MegaPeer",
+    "description": "Public Russian tracker with keyword search and a direct .torrent link per row.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "megapeer.vip"
+    ],
+    "url": "https://megapeer.vip/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "mikan",
     "name": "Mikan Project",
     "description": "Public Mikan Project anime search with magnets and .torrent links.",
@@ -16691,6 +16660,30 @@
     "proposable": true,
     "latest": false,
     "scheduled": true
+  },
+  {
+    "id": "rutor",
+    "name": "RuTor",
+    "description": "Public Russian tracker with keyword search and magnet links in the result row.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "rutor.info"
+    ],
+    "url": "https://rutor.info/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "shanaproject",
