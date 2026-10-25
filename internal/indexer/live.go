@@ -182,6 +182,11 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 		go func(indexer store.Indexer) {
 			defer wg.Done()
 			outcome := m.liveOne(ctx, workCtx, indexer, req, matcher)
+			m.observeLiveStat(outcome)
+			// The response cache is updated as detached workers finish, so a
+			// repeated request within the partial TTL sees the late rows
+			// instead of the first partial answer.
+			m.refreshLiveCache(cacheKey, outcome)
 			results <- outcome
 		}(target)
 	}
@@ -224,15 +229,40 @@ func (m *Manager) SearchLive(ctx context.Context, req LiveQuery) (result LiveRes
 		return result
 	}
 
+	var earlyTimer *time.Timer
+	var early <-chan time.Time
+	answeredLive := 0
 	for len(pending) > 0 {
+		// Once every productive site has answered and only the sites that
+		// usually end in a timeout are still running, grant a short grace
+		// instead of the full wait. Their workers keep running and store what
+		// they find for the next variant or request.
+		if early == nil && answeredLive > 0 && m.allPendingSlack(pending, answeredLive) {
+			earlyTimer = time.NewTimer(liveEarlyGrace)
+			early = earlyTimer.C
+		}
 		select {
 		case outcome := <-results:
 			delete(pending, outcome.IndexerID)
 			result.Indexers = append(result.Indexers, outcome)
 			result.Stored += outcome.Results
+			if !outcome.Skipped {
+				answeredLive++
+			}
+		case <-early:
+			if earlyTimer != nil {
+				earlyTimer.Stop()
+			}
+			return finishPartial(), nil
 		case <-ctx.Done():
+			if earlyTimer != nil {
+				earlyTimer.Stop()
+			}
 			return finishPartial(), nil
 		}
+	}
+	if earlyTimer != nil {
+		earlyTimer.Stop()
 	}
 	m.cacheLive(cacheKey, cacheTTL, result)
 	return result, nil
@@ -374,6 +404,41 @@ func (m *Manager) cacheLive(key string, ttl time.Duration, result LiveResult) {
 		expires: now.Add(ttl),
 		created: now,
 	}
+}
+
+// refreshLiveCache replaces the placeholder of one indexer in a cached
+// partial answer when its detached worker finally finishes. A repeated request
+// inside the partial TTL then sees the late rows instead of the first snapshot.
+func (m *Manager) refreshLiveCache(key string, outcome LiveIndexerResult) {
+	if key == "" || outcome.IndexerID <= 0 {
+		return
+	}
+	m.liveCacheMu.Lock()
+	defer m.liveCacheMu.Unlock()
+	entry, ok := m.liveCache[key]
+	if !ok || time.Now().After(entry.expires) {
+		return
+	}
+	replaced := false
+	for i := range entry.result.Indexers {
+		if entry.result.Indexers[i].IndexerID != outcome.IndexerID {
+			continue
+		}
+		if entry.result.Indexers[i].TimedOut || entry.result.Indexers[i].Skipped {
+			entry.result.Indexers[i] = outcome
+			replaced = true
+		}
+		break
+	}
+	if !replaced {
+		return
+	}
+	stored := 0
+	for _, item := range entry.result.Indexers {
+		stored += item.Results
+	}
+	entry.result.Stored = stored
+	m.liveCache[key] = entry
 }
 
 // liveOne runs one indexer. It is deliberately independent of the request
@@ -810,6 +875,9 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			m.logger.Warn("live search: provenance", "indexer", indexer.Slug, "error", err)
 		}
 		stored++
+	}
+	if stored > 0 {
+		m.store.InvalidateCounts()
 	}
 	return stored, nil
 }

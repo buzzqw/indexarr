@@ -259,7 +259,11 @@ func scanDefinition(scanner interface{ Scan(...any) error }) (Definition, error)
 
 // CreateIndexer inserts an indexer and returns its id.
 func (s *Store) CreateIndexer(ctx context.Context, in Indexer) (int64, error) {
-	return createIndexer(ctx, s.db, in)
+	id, err := createIndexer(ctx, s.db, in)
+	if err == nil {
+		s.InvalidateCounts()
+	}
+	return id, err
 }
 
 func createIndexer(ctx context.Context, db dbExecer, in Indexer) (int64, error) {
@@ -393,6 +397,7 @@ func (s *Store) UpdateIndexer(ctx context.Context, in Indexer) error {
 	if affected == 0 {
 		return fmt.Errorf("indexer %d: %w", in.ID, sql.ErrNoRows)
 	}
+	s.InvalidateCounts()
 	return nil
 }
 
@@ -406,6 +411,7 @@ func (s *Store) DeleteIndexer(ctx context.Context, id int64) error {
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM indexers WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("delete indexer %d: %w", id, err)
 	}
+	s.InvalidateCounts()
 	return nil
 }
 
@@ -508,6 +514,7 @@ func (s *Store) UpsertIndexerState(ctx context.Context, in IndexerState) error {
 	if err != nil {
 		return fmt.Errorf("upsert indexer state %d: %w", in.IndexerID, err)
 	}
+	s.InvalidateCounts()
 	return nil
 }
 
@@ -750,6 +757,7 @@ func (s *Store) CreateApplication(ctx context.Context, in Application) (int64, e
 	if err != nil {
 		return 0, fmt.Errorf("create application: %w", err)
 	}
+	s.InvalidateCounts()
 	return id, nil
 }
 
@@ -819,6 +827,7 @@ func (s *Store) UpdateApplication(ctx context.Context, in Application) error {
 	if affected == 0 {
 		return fmt.Errorf("application %d: %w", in.ID, sql.ErrNoRows)
 	}
+	s.InvalidateCounts()
 	return nil
 }
 
@@ -828,6 +837,7 @@ func (s *Store) DeleteApplication(ctx context.Context, id int64) error {
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM applications WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("delete application %d: %w", id, err)
 	}
+	s.InvalidateCounts()
 	return nil
 }
 
@@ -1057,5 +1067,8 @@ func (s *Store) DeleteProxy(ctx context.Context, id int64) error {
 func (s *Store) SetIndexerProtocol(ctx context.Context, id int64, protocol string) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE indexers SET protocol = ?, updated_at = ? WHERE id = ?`,
 		protocol, time.Now().Unix(), id)
+	if err == nil {
+		s.InvalidateCounts()
+	}
 	return err
 }

@@ -92,6 +92,12 @@ type Manager struct {
 	liveWaiters    atomic.Int64
 	liveWaitersMax atomic.Int64
 	liveQueueDrop  atomic.Int64
+
+	// liveStats keeps a small per-indexer picture of the newest live searches.
+	// The early-finish rule uses it to stop waiting for sites that, on average,
+	// answer late without bringing a result.
+	liveStatsMu sync.Mutex
+	liveStats   map[int64]*liveStatSeries
 }
 
 type liveFlight struct {
@@ -182,7 +188,7 @@ func New(cfg Config) (*Manager, error) {
 	if maxTorrents <= 0 {
 		maxTorrents = DefaultMaxTorrentsPerRun
 	}
-	return &Manager{
+	m := &Manager{
 		store:       cfg.Store,
 		vault:       cfg.Vault,
 		registry:    registry,
@@ -193,8 +199,15 @@ func New(cfg Config) (*Manager, error) {
 		liveCache:   make(map[string]liveCacheEntry),
 		liveFlights: make(map[string]*liveFlight),
 		liveWorkers: make(map[string]*liveWorker),
+		liveStats:   make(map[int64]*liveStatSeries),
 		liveSem:     make(chan struct{}, liveGlobalConcurrency),
-	}, nil
+	}
+	// Best effort: a fresh database simply starts with an empty picture and
+	// the fan-out waits normally until it has measured the sites.
+	seedCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	m.seedLiveStats(seedCtx)
+	cancel()
+	return m, nil
 }
 
 // Connector returns the live connector for one indexer together with the

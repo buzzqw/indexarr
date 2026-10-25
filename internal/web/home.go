@@ -23,6 +23,39 @@ type HomeProblem struct {
 	Kind      string
 }
 
+// HomeStatus is the cached view of computeHomeStatus. The home page and the
+// sidebar badge both read it; the value is derived from every indexer's
+// health, which is too much work to repeat on every page render.
+func (s *Server) HomeStatus(ctx context.Context) HomeStatus {
+	rev := s.store.CountsRevision()
+	now := time.Now()
+	s.statusMu.Lock()
+	if s.statusOK && s.statusRev == rev && now.Sub(s.statusAt) < homeStatusTTL {
+		out := s.status
+		out.Problems = append([]HomeProblem(nil), s.status.Problems...)
+		s.statusMu.Unlock()
+		return out
+	}
+	s.statusMu.Unlock()
+
+	status := s.computeHomeStatus(ctx)
+
+	s.statusMu.Lock()
+	if s.store.CountsRevision() == rev {
+		s.status = status
+		s.statusOK = true
+		s.statusAt = now
+		s.statusRev = rev
+	}
+	s.statusMu.Unlock()
+	return status
+}
+
+// homeStatusTTL bounds how stale the sidebar badge can be. Indexer state and
+// history writes bump the store revision, so a real change clears the cache
+// immediately; the TTL only absorbs repeated reads that change nothing.
+const homeStatusTTL = 10 * time.Second
+
 // HomeStatus is the single source of truth for "does indexarr work?". The home
 // page and the sidebar badge both read this value.
 type HomeStatus struct {
@@ -49,9 +82,10 @@ func (s HomeStatus) HasProblems() bool {
 	return len(s.Problems) > 0
 }
 
-// HomeStatus computes the state from current data only. Errors that happened
-// and then resolved are deliberately not part of it: they stay in Attività.
-func (s *Server) HomeStatus(ctx context.Context) HomeStatus {
+// computeHomeStatus computes the state from current data only. Errors that
+// happened and then resolved are deliberately not part of it: they stay in
+// Attività.
+func (s *Server) computeHomeStatus(ctx context.Context) HomeStatus {
 	status := HomeStatus{Level: "ok"}
 	indexers, err := s.store.ListIndexers(ctx)
 	if err != nil {

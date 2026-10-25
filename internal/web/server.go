@@ -477,6 +477,13 @@ type Server struct {
 	// production; tests replace it with a synthetic index to prove that the
 	// add page never parses the embedded definitions.
 	catalogIndex func() ([]catalog.IndexEntry, error)
+	// status caches the derived home status for a few seconds. statusRev is
+	// the store counter revision it was built from.
+	statusMu  sync.Mutex
+	status    HomeStatus
+	statusAt  time.Time
+	statusRev uint64
+	statusOK  bool
 }
 
 // New builds the HTTP server.
@@ -1046,7 +1053,7 @@ func redirectTab(w http.ResponseWriter, r *http.Request, path, tab string) {
 }
 
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
-	stats, err := s.store.LoadStats(r.Context())
+	stats, err := s.store.CachedStats(r.Context())
 	if err != nil {
 		http.Error(w, `{"status":"error"}`, http.StatusInternalServerError)
 		return

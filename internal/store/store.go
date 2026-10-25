@@ -27,6 +27,8 @@ type Store struct {
 	// channels). It is optional: a store without a vault keeps the legacy
 	// plaintext rows so tests and embedded uses still work.
 	vault *vault.Vault
+	// counts caches the dashboard counters for a few seconds.
+	counts countsCache
 }
 
 // Open opens (and creates when missing) the database at path.

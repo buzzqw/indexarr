@@ -43,6 +43,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			m.recordSample(context.WithoutCancel(ctx), indexer.ID, capture, stats)
 		}
 		m.finishRun(ctx, indexer.ID, query, started, payloadBytes, err, stats)
+		m.store.InvalidateCounts()
 	}()
 
 	if configErr != nil {

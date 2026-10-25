@@ -67,7 +67,7 @@ func (m *Manager) ProbeLatest(ctx context.Context, indexerID int64, limit int) (
 		return LatestProbe{}, fmt.Errorf("probe indexer %s: latest: %w", indexer.Slug, err)
 	}
 	dbSize, _ := m.store.SizeBytes()
-	stats, _ := m.store.LoadStats(ctx)
+	stats, _ := m.store.CachedStats(ctx)
 	avg := int64(2500) // measured default: about 2.5 KB per release with FTS
 	if stats.Releases > 0 && dbSize > 0 {
 		avg = dbSize / stats.Releases

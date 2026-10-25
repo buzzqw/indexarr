@@ -206,6 +206,7 @@ func (s *Store) RecordIndexerHistory(ctx context.Context, in IndexerHistory) (in
 	if err := tx.Commit(); err != nil {
 		return 0, fmt.Errorf("record indexer history: commit: %w", err)
 	}
+	s.InvalidateCounts()
 	return id, nil
 }
 
@@ -520,6 +521,7 @@ func (s *Store) RecordAppSearch(ctx context.Context, in AppSearch) (int64, error
 	if err != nil {
 		return 0, fmt.Errorf("record app search: %w", err)
 	}
+	s.InvalidateCounts()
 	return id, nil
 }
 
@@ -561,6 +563,42 @@ func (s *Store) ListAppSearches(ctx context.Context, limit, offset int) ([]AppSe
 		out = append(out, item)
 	}
 	return out, rows.Err()
+}
+
+// RecentLiveIndexerSamples returns the per-indexer outcomes stored in the
+// newest app searches, newest first. The live fan-out uses them to warm its
+// per-indexer latency picture after a restart.
+func (s *Store) RecentLiveIndexerSamples(ctx context.Context, limit int) ([]AppSearchLive, error) {
+	if limit <= 0 {
+		limit = 500
+	}
+	if limit > 5000 {
+		limit = 5000
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT live_json FROM app_searches
+		WHERE live_json <> '' AND live_json <> '[]'
+		ORDER BY id DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("recent live samples: %w", err)
+	}
+	defer rows.Close()
+	var out []AppSearchLive
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return nil, fmt.Errorf("scan live samples: %w", err)
+		}
+		var entries []AppSearchLive
+		if err := json.Unmarshal([]byte(raw), &entries); err != nil {
+			continue
+		}
+		out = append(out, entries...)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // CountAppSearches returns how many app searches are stored.

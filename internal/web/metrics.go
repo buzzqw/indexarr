@@ -9,7 +9,7 @@ import (
 // metrics exposes the index state in Prometheus text format. Like /healthz it
 // is unauthenticated so a local scraper can read it.
 func (s *Server) metrics(w http.ResponseWriter, r *http.Request) {
-	stats, err := s.store.LoadStats(r.Context())
+	stats, err := s.store.CachedStats(r.Context())
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return

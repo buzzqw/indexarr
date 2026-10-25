@@ -147,7 +147,7 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 		data.Rules, _ = s.store.ListBlocklist(ctx)
 	}
 	if section == "backup" || section == "maintenance" {
-		data.Stats, _ = s.store.LoadStats(ctx)
+		data.Stats, _ = s.store.CachedStats(ctx)
 		data.Growth, _ = s.store.Growth(ctx, time.Now())
 		data.Report, _ = s.store.LoadDBReport(ctx)
 		data.DBPath = s.store.Path()
@@ -784,7 +784,7 @@ type maintenancePage struct {
 }
 
 func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
-	stats, err := s.store.LoadStats(r.Context())
+	stats, err := s.store.CachedStats(r.Context())
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return

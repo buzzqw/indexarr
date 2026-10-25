@@ -199,7 +199,9 @@ func (s *Store) DeleteReleasesByIndexer(ctx context.Context, indexerID int64) (i
 	if err != nil {
 		return 0, fmt.Errorf("delete releases by indexer: %w", err)
 	}
-	return res.RowsAffected()
+	removed, _ := res.RowsAffected()
+	s.InvalidateCounts()
+	return removed, nil
 }
 
 // DeleteReleasesWithoutLinks removes rows that have neither a magnet nor a
@@ -210,7 +212,9 @@ func (s *Store) DeleteReleasesWithoutLinks(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("delete releases without links: %w", err)
 	}
-	return res.RowsAffected()
+	removed, _ := res.RowsAffected()
+	s.InvalidateCounts()
+	return removed, nil
 }
 
 // DeleteHiddenReleases removes every release hidden from the UI.
@@ -219,7 +223,9 @@ func (s *Store) DeleteHiddenReleases(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("delete hidden releases: %w", err)
 	}
-	return res.RowsAffected()
+	removed, _ := res.RowsAffected()
+	s.InvalidateCounts()
+	return removed, nil
 }
 
 // ResetAPIUsage clears the per-key request counters and last-used timestamps.

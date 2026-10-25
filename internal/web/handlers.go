@@ -46,7 +46,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	status := s.HomeStatus(ctx)
-	activity, err := s.store.LoadHomeActivity(ctx)
+	activity, err := s.store.CachedHomeActivity(ctx)
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
