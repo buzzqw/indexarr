@@ -287,7 +287,7 @@ Variabili disponibili:
 - `query.keywords`, `query.season`, `query.ep`, `query.imdbid`, `query.tvdbid`,
   `query.tmdbid`, `query.tvmazeid`, `query.rid`, `query.artist`,
   `query.album`, `query.author`, `query.title`, `query.year`;
-- i valori estratti durante il login (`{{ csrf }}`, `{{ token }}`, …);
+- i valori estratti durante il login o la `search.preflight` (`{{ csrf }}`, `{{ token }}`, …);
 - `categories` — id del sito corrispondenti alle categorie richieste;
 - `page`, `offset`, `limit` — valori scalari della paginazione;
 - `item.title`, `item.guid`, `item.details`, `item.download`, `item.season`,
@@ -334,6 +334,38 @@ continuano a funzionare e ricevono il formato `sxxeyy`.
 Obbligatorio quando `connector` è assente. Se `connector` è presente e `search`
 è omesso, il connettore nativo gestisce la ricerca; se `search` è presente viene
 comunque validato.
+
+### `preflight`
+
+Alcuni siti generano un token CSRF sulla pagina e lo pretendono nella ricerca.
+`preflight` esegue una richiesta una volta prima della ricerca, estrae i valori
+e li rende disponibili come `{{ nome }}` nel template della ricerca.
+
+```yaml
+search:
+  preflight:
+    get: /                      # oppure post, mai entrambi
+    extract:
+      csrf: { selector: 'input[name="_csrf"]', attr: value }
+  request:
+    post: /topic/index
+    form:
+      _csrf: "{{ csrf }}"
+      keywords: "{{ query.keywords }}"
+```
+
+| Campo | Obbligatorio | Regole |
+|---|---|---|
+| `get` / `post` | uno dei due | percorso relativo o URL http/https |
+| `params` | no | query string della preflight |
+| `form` | no | body, solo con `post` |
+| `headers` | no | header della preflight |
+| `extract` | sì | almeno un nome; ogni estrattore usa `selector`/`attr`, `json` o `regex` |
+
+La preflight usa gli stessi cookie, proxy e solver del connettore. Un valore
+estratto vuoto è un errore: la ricerca non parte con un token mancante. I
+valori restano nella sessione del connettore e vengono rinnovati a ogni
+ricerca.
 
 ### `request`
 

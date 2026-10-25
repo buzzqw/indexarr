@@ -607,6 +607,9 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 	if err := c.ensureLogin(ctx); err != nil {
 		return nil, err
 	}
+	if err := c.runSearchPreflight(ctx, req); err != nil {
+		return nil, err
+	}
 
 	var items []Item
 	relogged := false

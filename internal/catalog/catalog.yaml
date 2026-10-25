@@ -424,3 +424,18 @@ definitions:
     state: verificata
     author: indexarr
     note: "Public PandaCD music search; anonymous torrent endpoint and per-format size, real fixture."
+  - id: torrentsome
+    file: definitions/torrentsome.yaml
+    state: verificata
+    author: indexarr
+    note: "Public Torrentsome search with CSRF preflight; real fixture."
+  - id: torrenttip
+    file: definitions/torrenttip.yaml
+    state: verificata
+    author: indexarr
+    note: "Public Torrenttip search with CSRF preflight; real fixture."
+  - id: uindex
+    file: definitions/uindex.yaml
+    state: verificata
+    author: indexarr
+    note: "Public UIndex search via FlareSolverr; real fixture."

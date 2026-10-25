@@ -1,0 +1,65 @@
+# VERIFICATA (verified). Torrenttip public search with CSRF preflight.
+#
+# Written from the public pages captured on 2026-10-25 in
+# fixtures/torrenttip/home.html, search.html and detail.html.
+# The search URL needs the _token generated on the home page: the
+# search.preflight section reads it and the search params template injects it.
+schema: 1
+
+meta:
+  id: torrenttip
+  name: Torrenttip
+  language: ko-KR
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Korean tracker with CSRF-protected search and torrent links.
+  urls:
+    - https://torrenttip249.top/
+  updated: "2026-10-25"
+  latest: false
+
+categories:
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  preflight:
+    get: /
+    extract:
+      token: { selector: 'input[name="_token"]', attr: value }
+  request:
+    get: /search
+    params:
+      _token: "{{ token }}"
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.p-2.flex.flex-row.border-dashed.border-b" }
+    fields:
+      title:   { selector: 'a[href*="/t/"]', filters: [trim] }
+      details: { selector: 'a[href*="/t/"]', attr: href, type: url }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  size: { selector: "div.flex.flex-col.p-2.space-y-2 > div:nth-of-type(2)", filters: [{ regex: "([0-9][0-9.,]*\\s*(?:GB|MB|TB))" }] }
+  extract:
+    - torrent: { selector: 'a[href*="filesbest.xyz/download"]', attr: href, type: url }
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/torrenttip/search.html
+    expect: { min_rows: 4, required: [title, details] }
+  - name: detail
+    fixture: fixtures/torrenttip/detail.html
+    expect: { min_rows: 0 }

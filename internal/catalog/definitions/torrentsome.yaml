@@ -1,0 +1,65 @@
+# VERIFICATA (verified). Torrentsome public search with CSRF preflight.
+#
+# Written from the public pages captured on 2026-10-25 in
+# fixtures/torrentsome/home.html, search.html and detail.html.
+# The search form requires the _csrf token generated on the home page: the
+# search.preflight section reads it and the search form template injects it.
+schema: 1
+
+meta:
+  id: torrentsome
+  name: Torrentsome
+  language: ko-KR
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Korean tracker with CSRF-protected search and magnet links.
+  urls:
+    - https://torrentsome269.com/
+  updated: "2026-10-25"
+  latest: false
+
+categories:
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  preflight:
+    get: /
+    extract:
+      csrf: { selector: 'input[name="_csrf"]', attr: value }
+  request:
+    post: /topic/index
+    form:
+      _csrf: "{{ csrf }}"
+      keywords: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "li.flex.flex-row.py-2" }
+    fields:
+      title:   { selector: "a.flex-grow", filters: [trim] }
+      details: { selector: "a.flex-grow", attr: href, type: url }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  size: { selector: "div.p-2.border-b.border-dashed:nth-of-type(2)", filters: [{ regex: "([0-9][0-9.,]*\\s*(?:GB|MB|TB))" }] }
+  extract:
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/torrentsome/search.html
+    expect: { min_rows: 4, required: [title, details] }
+  - name: detail
+    fixture: fixtures/torrentsome/detail.html
+    expect: { min_rows: 0 }

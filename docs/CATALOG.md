@@ -18,8 +18,8 @@ Non vengono mai generate da una definizione Cardigann.
 | Misura | Valore |
 | --- | ---: |
 | Totale voci nel catalogo (definizioni + voci leggere) | **623** |
-| Definizioni native | 77 (8 aiutanti generici inclusi) |
-| Voci leggere | **546** |
+| Definizioni native | 80 (8 aiutanti generici inclusi) |
+| Voci leggere | **543** |
 | Verificate | **121** |
 | Da provare (`da-provvi`) | **498** |
 | Morte (`morta`) | **4** |

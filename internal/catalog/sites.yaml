@@ -10772,27 +10772,6 @@ sites:
       source_id: torrentnetwork
       checked: "2026-10-25"
       evidence: GET https://tntracker.org/ -> HTTP 200, 17033 bytes, title "TN > {{ptitle|translate}}", checked 2026-10-25; private, no account used
-    - id: jk-torrentsome
-      name: Torrentsome
-      description: Torrentsome is a KOREAN Public tracker for Korean media.
-      url: https://torrentsome269.com/
-      urls:
-        - https://torrentsome269.com/
-      type: public
-      language: ko-KR
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: torrentsome
-      checked: "2026-10-25"
-      evidence: GET https://torrentsome269.com/ -> HTTP 200, 110053 bytes, title "토렌트썸-TORRENTSOME", checked 2026-10-25
     - id: jk-torrentsyndikat
       name: Torrent-Syndikat
       description: Torrent-Syndikat is a GERMAN Private general tracker
@@ -10816,29 +10795,6 @@ sites:
       source_id: torrentsyndikat
       checked: "2026-10-25"
       evidence: GET https://torrent-syndikat.org/ -> HTTP 200, 4361 bytes, title "torrent-syndikat.org&nbsp;-&nbsp;Diese Website steht zum Verkauf!&nbsp;-&nbsp;Informationen zum Thema torrent-syndikat.", checked 2026-10-25; private, no account used
-    - id: jk-torrenttip
-      name: Torrenttip
-      description: Torrenttip (토렌트팁) is a Public KOREAN tracker for Korean media.
-      url: https://torrenttip249.top/
-      urls:
-        - https://torrenttip249.top/
-      type: public
-      language: ko-KR
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-        - games
-        - software
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: torrenttip
-      checked: "2026-10-25"
-      evidence: GET https://torrenttip249.top/ -> HTTP 200, 111252 bytes, title "Home - 토렌트팁::torrenttip", checked 2026-10-25
     - id: jk-torrenttrader
       name: Torrent Trader
       description: Torrent Trader is a GERMAN Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -11167,29 +11123,6 @@ sites:
       source_id: ubits
       checked: "2026-10-25"
       evidence: GET https://ubits.club/ -> HTTP 403, 5560 bytes, title "Just a moment...", checked 2026-10-25
-    - id: jk-uindex
-      name: Uindex
-      description: Uindex is a Public Torrent Tracker for MOVIES / TV / MUSIC / GENERAL
-      url: https://uindex.org/
-      urls:
-        - https://uindex.org/
-      type: public
-      language: en-US
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - games
-        - software
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: uindex
-      checked: "2026-10-25"
-      evidence: GET https://uindex.org/ -> HTTP 200, 186246 bytes, title "UIndex – The Index of Everything You Need!", checked 2026-10-25
     - id: jk-ultrabits-api
       name: Ultrabits (API)
       description: Ultrabits is a NORDIC Private Torrent Tracker for MOVIES / TV / GENERAL

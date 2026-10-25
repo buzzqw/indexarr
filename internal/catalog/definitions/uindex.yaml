@@ -1,0 +1,60 @@
+# VERIFICATA (verified). UIndex public search via FlareSolverr.
+#
+# Written from the public search page captured on 2026-10-25 through the local
+# FlareSolverr (https://uindex.org/search.php?search=matrix, HTTP 200 after the
+# Cloudflare check). The result row carries category, title, detail link,
+# magnet, size and health.
+schema: 1
+
+meta:
+  id: uindex
+  name: UIndex
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public DHT index protected by Cloudflare, with magnets and size in the result row.
+  urls:
+    - https://uindex.org/
+  updated: "2026-10-25"
+  latest: false
+
+categories:
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "TV", standard: 5000, desc: "TV" }
+  - { site: "Music", standard: 3000, desc: "Audio" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "Software", standard: 4000, desc: "Applications" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search.php
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "tr" }
+    fields:
+      title:    { selector: "a.sr-torrent-link", filters: [trim] }
+      details:  { selector: "a.sr-torrent-link", attr: href, type: url }
+      magnet:   { selector: "a.sr-magnet", attr: href }
+      category: { selector: "a.sr-cat-badge", filters: [{ regex: "([A-Za-z]+)" }], type: category }
+      size:     { selector: "td.sr-col-size", type: size }
+      seeders:  { selector: "span.sr-seed", type: int }
+      leechers: { selector: "span.sr-leech", type: int }
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/uindex/search.html
+    expect: { min_rows: 4, required: [title, details, magnet, size, seeders] }

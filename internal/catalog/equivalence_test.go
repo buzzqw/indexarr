@@ -1015,3 +1015,114 @@ func TestAniBTRSSFixture(t *testing.T) {
 		}
 	}
 }
+
+func TestTorrentsomeNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/":
+			serveFile(t, w, "torrentsome/home.html")
+		case r.URL.Path == "/topic/index":
+			if r.Method != http.MethodPost {
+				t.Errorf("method = %s, want POST", r.Method)
+			}
+			if got := r.PostFormValue("_csrf"); got == "" {
+				t.Error("missing _csrf in search form")
+			}
+			if got := r.PostFormValue("keywords"); got != "matrix" {
+				t.Errorf("keywords = %q", got)
+			}
+			serveFile(t, w, "torrentsome/search.html")
+		default:
+			serveFile(t, w, "torrentsome/detail.html")
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "torrentsome", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if first.Size <= 0 {
+		t.Errorf("size = %d", first.Size)
+	}
+	if !strings.HasPrefix(first.Magnet, "magnet:") {
+		t.Errorf("magnet = %q", first.Magnet)
+	}
+}
+
+func TestTorrenttipNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/":
+			serveFile(t, w, "torrenttip/home.html")
+		case r.URL.Path == "/search":
+			if got := r.URL.Query().Get("_token"); got == "" {
+				t.Error("missing _token in search query")
+			}
+			if got := r.URL.Query().Get("q"); got != "matrix" {
+				t.Errorf("q = %q", got)
+			}
+			serveFile(t, w, "torrenttip/search.html")
+		default:
+			serveFile(t, w, "torrenttip/detail.html")
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "torrenttip", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if first.Size <= 0 {
+		t.Errorf("size = %d", first.Size)
+	}
+	if !strings.Contains(first.DownloadURL, "filesbest.xyz/download") {
+		t.Errorf("download = %q", first.DownloadURL)
+	}
+}
+
+func TestUIndexNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/search.php" {
+			http.NotFound(w, r)
+			return
+		}
+		if got := r.URL.Query().Get("search"); got != "matrix" {
+			t.Errorf("search param = %q", got)
+		}
+		serveFile(t, w, "uindex/search.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "uindex", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if first.Size <= 0 || first.Seeders <= 0 {
+		t.Errorf("size/seeders = %d/%d", first.Size, first.Seeders)
+	}
+	if !strings.HasPrefix(first.Magnet, "magnet:") {
+		t.Errorf("magnet = %q", first.Magnet)
+	}
+}

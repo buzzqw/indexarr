@@ -256,6 +256,10 @@ type Condition struct {
 
 // Search describes how to issue and interpret a search.
 type Search struct {
+	// Preflight optionally reads one page before the search to collect a CSRF
+	// token or a similar one-shot value. The extracted values are available to
+	// the search template as {{ name }}.
+	Preflight  *Preflight `yaml:"preflight,omitempty" json:"preflight,omitempty"`
 	Request    Request    `yaml:"request,omitempty" json:"request,omitempty"`
 	Pagination Pagination `yaml:"pagination,omitempty" json:"pagination,omitempty"`
 	Response   Response   `yaml:"response,omitempty" json:"response,omitempty"`
@@ -263,6 +267,18 @@ type Search struct {
 	// {{ query.keywords }}: "sxxeyy" (default), "1x05" or "separate". With
 	// "separate" the template can use query.season and query.ep itself.
 	KeywordsFormat string `yaml:"keywords_format,omitempty" json:"keywords_format,omitempty"`
+}
+
+// Preflight is a small GET/POST request executed once before a search. It
+// extracts named values (typically CSRF tokens) from the response and stores
+// them in the connector session, where search templates can read them.
+type Preflight struct {
+	Get     string               `yaml:"get,omitempty" json:"get,omitempty"`
+	Post    string               `yaml:"post,omitempty" json:"post,omitempty"`
+	Params  map[string]string    `yaml:"params,omitempty" json:"params,omitempty"`
+	Form    map[string]string    `yaml:"form,omitempty" json:"form,omitempty"`
+	Headers map[string]string    `yaml:"headers,omitempty" json:"headers,omitempty"`
+	Extract map[string]Extractor `yaml:"extract" json:"extract"`
 }
 
 // Request is the HTTP request template for a search.

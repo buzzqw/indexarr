@@ -46,8 +46,11 @@
 ### Catalogo
 - Nuove definizioni native pubbliche **DivxTotal**, **Mac Torrents**,
   **nekoBT**, **TheRARBG**, **AniLiberty**, **0Magnet**, **Torrent Kitty**,
-  **TorrentProject2**, **RuTracker.RU**, **AniBT**, **Sukebei** e
-  **PandaCD**, con fixture reali.
+  **TorrentProject2**, **RuTracker.RU**, **AniBT**, **Sukebei**,
+  **PandaCD**, **Torrentsome**, **Torrenttip** e **UIndex**, con fixture reali.
+- `search.preflight` estrae token CSRF dalla pagina e li inietta nella
+  ricerca; Torrentsome e Torrenttip lo usano.
+- UIndex è protetto da Cloudflare e passa da FlareSolverr quando configurato.
 - Il parser RSS legge le estensioni `torrentUrl` e `fileSize` usate dal feed
   AniBT.
 - AniLiberty usa l'API JSON: ricerca dei release e magnet/dimensione

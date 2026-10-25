@@ -286,6 +286,30 @@ func validateSession(session *Session, add func(string, ...any)) {
 }
 
 func validateSearch(search Search, add func(string, ...any)) {
+	if search.Preflight != nil {
+		pre := search.Preflight
+		if pre.Get != "" && pre.Post != "" {
+			add("search.preflight: get and post are mutually exclusive")
+		} else if pre.Get == "" && pre.Post == "" {
+			add("search.preflight: must have get or post")
+		}
+		if len(pre.Extract) == 0 {
+			add("search.preflight.extract: at least one value is required")
+		}
+		for name, extractor := range pre.Extract {
+			if strings.TrimSpace(name) == "" {
+				add("search.preflight.extract: name must not be empty")
+			}
+			if extractor.Selector == "" && extractor.JSON == "" && extractor.Regex == "" {
+				add("search.preflight.extract.%s: needs selector, json or regex", name)
+			}
+			if extractor.Regex != "" {
+				if _, err := regexp.Compile(extractor.Regex); err != nil {
+					add("search.preflight.extract.%s: invalid regex", name)
+				}
+			}
+		}
+	}
 	if search.Request.Get != "" && search.Request.Post != "" {
 		add("search.request: get and post are mutually exclusive")
 	} else if search.Request.Get == "" && search.Request.Post == "" {

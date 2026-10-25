@@ -408,6 +408,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "preflight": {
+          "$ref": "#/$defs/preflight"
+        },
         "request": {
           "$ref": "#/$defs/request"
         },
@@ -427,6 +430,47 @@
           "description": "How the TV episode marker is appended to query.keywords; separate leaves query.season and query.ep to the template."
         }
       }
+    },
+    "preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 2,
+      "properties": {
+        "get": {
+          "type": "string"
+        },
+        "post": {
+          "type": "string"
+        },
+        "params": {
+          "$ref": "#/$defs/params"
+        },
+        "form": {
+          "$ref": "#/$defs/params"
+        },
+        "headers": {
+          "$ref": "#/$defs/params"
+        },
+        "extract": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/extractor"
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "get"
+          ]
+        },
+        {
+          "required": [
+            "post"
+          ]
+        }
+      ]
     },
     "latest": {
       "type": "object",

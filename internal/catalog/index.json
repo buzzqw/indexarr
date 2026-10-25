@@ -14353,34 +14353,6 @@
     "latest": false
   },
   {
-    "id": "jk-torrentsome",
-    "name": "Torrentsome",
-    "description": "Torrentsome is a KOREAN Public tracker for Korean media.",
-    "language": "ko-KR",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "torrentsome269.com"
-    ],
-    "url": "https://torrentsome269.com/",
-    "source": "jackett",
-    "evidence": "GET https://torrentsome269.com/ -\u003e HTTP 200, 110053 bytes, title \"토렌트썸-TORRENTSOME\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-torrentsyndikat",
     "name": "Torrent-Syndikat",
     "description": "Torrent-Syndikat is a GERMAN Private general tracker",
@@ -14406,36 +14378,6 @@
     "url": "https://torrent-syndikat.org/",
     "source": "jackett",
     "evidence": "GET https://torrent-syndikat.org/ -\u003e HTTP 200, 4361 bytes, title \"torrent-syndikat.org\u0026nbsp;-\u0026nbsp;Diese Website steht zum Verkauf!\u0026nbsp;-\u0026nbsp;Informationen zum Thema torrent-syndikat.\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-torrenttip",
-    "name": "Torrenttip",
-    "description": "Torrenttip (토렌트팁) is a Public KOREAN tracker for Korean media.",
-    "language": "ko-KR",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "torrenttip249.top"
-    ],
-    "url": "https://torrenttip249.top/",
-    "source": "jackett",
-    "evidence": "GET https://torrenttip249.top/ -\u003e HTTP 200, 111252 bytes, title \"Home - 토렌트팁::torrenttip\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -14857,36 +14799,6 @@
     "url": "https://ubits.club/",
     "source": "jackett",
     "evidence": "GET https://ubits.club/ -\u003e HTTP 403, 5560 bytes, title \"Just a moment...\", checked 2026-10-25",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-uindex",
-    "name": "Uindex",
-    "description": "Uindex is a Public Torrent Tracker for MOVIES / TV / MUSIC / GENERAL",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "uindex.org"
-    ],
-    "url": "https://uindex.org/",
-    "source": "jackett",
-    "evidence": "GET https://uindex.org/ -\u003e HTTP 200, 186246 bytes, title \"UIndex – The Index of Everything You Need!\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -17078,6 +16990,38 @@
     "latest": false
   },
   {
+    "id": "torrentsome",
+    "name": "Torrentsome",
+    "description": "Public Korean tracker with CSRF-protected search and magnet links.",
+    "language": "ko-KR",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "torrentsome269.com"
+    ],
+    "url": "https://torrentsome269.com/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "torrenttip",
+    "name": "Torrenttip",
+    "description": "Public Korean tracker with CSRF-protected search and torrent links.",
+    "language": "ko-KR",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "torrenttip249.top"
+    ],
+    "url": "https://torrenttip249.top/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "torrenttrader-generic",
     "name": "TorrentTrader (generic)",
     "description": "Generic TorrentTrader/TBDev tracker; form login and HTML search.",
@@ -17133,6 +17077,30 @@
     "proposable": true,
     "latest": false,
     "scheduled": true
+  },
+  {
+    "id": "uindex",
+    "name": "UIndex",
+    "description": "Public DHT index protected by Cloudflare, with magnets and size in the result row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "uindex.org"
+    ],
+    "url": "https://uindex.org/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "unit3d-generic",
