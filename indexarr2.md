@@ -94,9 +94,10 @@ attive; resta in lista finché esistono utenti.
 |---|---|---|
 | Aggiunta da catalogo con form generato dai `settings` della definizione | Test UI su definizioni di ciascun tipo di login | fatto; usabilità rifatta (UI fase 2) |
 | Test indexer (login, ricerca, download) con esito strutturato | Esito per fase, non solo "ok/errore" | parziale |
-| Proxy per indexer: HTTP, SOCKS4/5, FlareSolverr | Test con proxy simulati | fatto: FlareSolverr nativo con retry sulla challenge e stato `blocked` (WP11) |
-| Limiti per indexer: query/giorno, grab/giorno | Le \*arr ricevono l'errore Torznab corretto al superamento | fatto |
-| Priorità, tag, abilitazione, redirect del download | Test | parziale |
+| Proxy per indexer: HTTP/HTTPS/SOCKS5, FlareSolverr | Test con proxy simulati | fatto: UI e API proxy, per-indexer; SOCKS4 non supportato |
+| Limiti per indexer: query/giorno, grab/giorno | Le \*arr ricevono l'errore Torznab corretto al superamento | fatto: API e form |
+| Priorità, tag, abilitazione | Test | fatto: form e API |
+| Seed criteria: seeder minimi, ratio, seed time, season pack | Valori nel form e sincronizzati alle \*arr | fatto: DB, form, API e app sync |
 | Storico query e grab, statistiche per indexer | Visibili in UI e API | parziale: statistiche nel dettaglio (UI fase 2) |
 | Health: indexer falliti, disabilitati temporaneamente, motivo | Stato visibile e notificabile | da fare (WP9) |
 | Ricerca manuale dalla UI e invio ai client di download: qBittorrent e Transmission (esistenti), più Deluge e rTorrent; SABnzbd e NZBGet per Usenet | Test end-to-end con client simulato | parziale: client fatti, UI con un solo client (WP14) |

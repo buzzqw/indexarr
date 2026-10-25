@@ -454,6 +454,24 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 16 adds the per-indexer seed criteria. The *arr applications
+	// receive the same values through the app sync.
+	if err := s.applyMigration(context.Background(), indexarr2IndexerCriteriaVersion,
+		"indexer seed criteria", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`ALTER TABLE indexers ADD COLUMN min_seeders INTEGER NOT NULL DEFAULT 0`,
+				`ALTER TABLE indexers ADD COLUMN seed_ratio REAL NOT NULL DEFAULT 0`,
+				`ALTER TABLE indexers ADD COLUMN seed_time_minutes INTEGER NOT NULL DEFAULT 0`,
+				`ALTER TABLE indexers ADD COLUMN season_pack_seed_time_minutes INTEGER NOT NULL DEFAULT 0`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

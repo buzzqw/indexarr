@@ -321,3 +321,29 @@ func TestSimpleClientErrorRedactsKey(t *testing.T) {
 		t.Fatalf("error does not mention the HTTP status: %v", err)
 	}
 }
+
+func TestDesiredFieldsCarrySeedCriteria(t *testing.T) {
+	spec := IndexerSpec{
+		BaseURL: "https://indexarr.example/torznab/site", APIKey: "key",
+		Protocol: "torrent", MinSeeders: 5, SeedRatio: 1.5,
+		SeedTimeMinutes: 60, SeasonPackSeedTimeMinutes: 90,
+	}
+	fields := desiredFields(spec)
+	if fields["minimumSeeders"] != 5 || fields["seedRatio"] != 1.5 ||
+		fields["seedTime"] != 60 || fields["seasonPackSeedTime"] != 90 {
+		t.Fatalf("seed fields = %#v", fields)
+	}
+
+	// Zero is sent for torrents so a cleared value converges.
+	zero := desiredFields(IndexerSpec{BaseURL: "https://x", Protocol: "torrent"})
+	for _, key := range []string{"minimumSeeders", "seedRatio", "seedTime", "seasonPackSeedTime"} {
+		if _, ok := zero[key]; !ok {
+			t.Errorf("zero value missing for %s", key)
+		}
+	}
+	// Usenet has no seed criteria.
+	usenet := desiredFields(IndexerSpec{BaseURL: "https://x", Protocol: "usenet", MinSeeders: 5})
+	if _, ok := usenet["minimumSeeders"]; ok {
+		t.Error("seed criteria sent for a usenet indexer")
+	}
+}

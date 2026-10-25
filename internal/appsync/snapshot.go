@@ -59,17 +59,21 @@ func CountSnapshotIndexers(payload []byte) int {
 func specFromSnapshotEntry(entry map[string]any) IndexerSpec {
 	fields := fieldMap(entry["fields"])
 	return IndexerSpec{
-		Name:                    asString(entry["name"]),
-		Implementation:          asString(entry["implementation"]),
-		ConfigContract:          asString(entry["configContract"]),
-		BaseURL:                 asString(fields["baseUrl"]),
-		APIKey:                  asString(fields["apiKey"]),
-		Categories:              asIntSlice(fields["categories"]),
-		Priority:                asInt(entry["priority"]),
-		Tags:                    asIntSlice(entry["tags"]),
-		EnableRSS:               asBool(entry["enableRss"]),
-		EnableAutomaticSearch:   asBool(entry["enableAutomaticSearch"]),
-		EnableInteractiveSearch: asBool(entry["enableInteractiveSearch"]),
-		Protocol:                asString(entry["protocol"]),
+		Name:                      asString(entry["name"]),
+		Implementation:            asString(entry["implementation"]),
+		ConfigContract:            asString(entry["configContract"]),
+		BaseURL:                   asString(fields["baseUrl"]),
+		APIKey:                    asString(fields["apiKey"]),
+		Categories:                asIntSlice(fields["categories"]),
+		Priority:                  asInt(entry["priority"]),
+		Tags:                      asIntSlice(entry["tags"]),
+		EnableRSS:                 asBool(entry["enableRss"]),
+		EnableAutomaticSearch:     asBool(entry["enableAutomaticSearch"]),
+		EnableInteractiveSearch:   asBool(entry["enableInteractiveSearch"]),
+		Protocol:                  asString(entry["protocol"]),
+		MinSeeders:                asInt(fields["minimumSeeders"]),
+		SeedRatio:                 asFloat(fields["seedRatio"]),
+		SeedTimeMinutes:           asInt(fields["seedTime"]),
+		SeasonPackSeedTimeMinutes: asInt(fields["seasonPackSeedTime"]),
 	}
 }

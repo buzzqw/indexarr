@@ -22,34 +22,44 @@ var secretFragments = []string{
 }
 
 type indexerRequest struct {
-	DefinitionID    string         `json:"definition_id"`
-	Name            string         `json:"name"`
-	Slug            string         `json:"slug"`
-	Protocol        string         `json:"protocol"`
-	Priority        *int           `json:"priority"`
-	Tags            []string       `json:"tags"`
-	Enabled         *bool          `json:"enabled"`
-	QueryLimit      *int           `json:"query_limit"`
-	GrabLimit       *int           `json:"grab_limit"`
-	IntervalSeconds *int           `json:"interval_seconds"`
-	Settings        map[string]any `json:"settings"`
+	DefinitionID              string         `json:"definition_id"`
+	Name                      string         `json:"name"`
+	Slug                      string         `json:"slug"`
+	Protocol                  string         `json:"protocol"`
+	Priority                  *int           `json:"priority"`
+	Tags                      []string       `json:"tags"`
+	Enabled                   *bool          `json:"enabled"`
+	QueryLimit                *int           `json:"query_limit"`
+	GrabLimit                 *int           `json:"grab_limit"`
+	ProxyID                   *int64         `json:"proxy_id"`
+	MinSeeders                *int           `json:"min_seeders"`
+	SeedRatio                 *float64       `json:"seed_ratio"`
+	SeedTimeMinutes           *int           `json:"seed_time_minutes"`
+	SeasonPackSeedTimeMinutes *int           `json:"season_pack_seed_time_minutes"`
+	IntervalSeconds           *int           `json:"interval_seconds"`
+	Settings                  map[string]any `json:"settings"`
 }
 
 type indexerResponse struct {
-	ID              int64     `json:"id"`
-	DefinitionID    string    `json:"definition_id"`
-	Protocol        string    `json:"protocol"`
-	Slug            string    `json:"slug"`
-	Name            string    `json:"name"`
-	Enabled         bool      `json:"enabled"`
-	Priority        int       `json:"priority"`
-	Tags            []string  `json:"tags"`
-	QueryLimit      int       `json:"query_limit"`
-	GrabLimit       int       `json:"grab_limit"`
-	IntervalSeconds int       `json:"interval_seconds"`
-	HasSecrets      bool      `json:"has_secrets"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID                        int64     `json:"id"`
+	DefinitionID              string    `json:"definition_id"`
+	Protocol                  string    `json:"protocol"`
+	Slug                      string    `json:"slug"`
+	Name                      string    `json:"name"`
+	Enabled                   bool      `json:"enabled"`
+	Priority                  int       `json:"priority"`
+	Tags                      []string  `json:"tags"`
+	QueryLimit                int       `json:"query_limit"`
+	GrabLimit                 int       `json:"grab_limit"`
+	ProxyID                   *int64    `json:"proxy_id,omitempty"`
+	MinSeeders                int       `json:"min_seeders"`
+	SeedRatio                 float64   `json:"seed_ratio"`
+	SeedTimeMinutes           int       `json:"seed_time_minutes"`
+	SeasonPackSeedTimeMinutes int       `json:"season_pack_seed_time_minutes"`
+	IntervalSeconds           int       `json:"interval_seconds"`
+	HasSecrets                bool      `json:"has_secrets"`
+	CreatedAt                 time.Time `json:"created_at"`
+	UpdatedAt                 time.Time `json:"updated_at"`
 }
 
 type searchRequest struct {
@@ -253,19 +263,30 @@ func (s *Server) handleIndexerCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if msg := s.validateIndexerCriteria(ctx, req.ProxyID, req.QueryLimit, req.GrabLimit,
+		req.MinSeeders, req.SeedRatio, req.SeedTimeMinutes, req.SeasonPackSeedTimeMinutes); msg != "" {
+		writeError(w, http.StatusBadRequest, msg)
+		return
+	}
+	criteria := criteriaFromRequest(req)
 
 	id, err := s.store.CreateIndexer(ctx, store.Indexer{
-		DefinitionID:    definitionID,
-		Protocol:        protocol,
-		Slug:            slug,
-		Name:            name,
-		Enabled:         enabled,
-		Priority:        priority,
-		ConfigJSON:      string(configJSON),
-		Tags:            joinTags(req.Tags),
-		QueryLimit:      queryLimit,
-		GrabLimit:       grabLimit,
-		IntervalSeconds: interval,
+		DefinitionID:              definitionID,
+		Protocol:                  protocol,
+		Slug:                      slug,
+		Name:                      name,
+		Enabled:                   enabled,
+		Priority:                  priority,
+		ConfigJSON:                string(configJSON),
+		Tags:                      joinTags(req.Tags),
+		QueryLimit:                queryLimit,
+		GrabLimit:                 grabLimit,
+		ProxyID:                   criteria.proxyID,
+		MinSeeders:                criteria.minSeeders,
+		SeedRatio:                 criteria.seedRatio,
+		SeedTimeMinutes:           criteria.seedTimeMinutes,
+		SeasonPackSeedTimeMinutes: criteria.seasonPackSeedTimeMinutes,
+		IntervalSeconds:           interval,
 	})
 	if err != nil {
 		if isUniqueError(err) {
@@ -374,6 +395,27 @@ func (s *Server) handleIndexerUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.GrabLimit != nil {
 		in.GrabLimit = *req.GrabLimit
+	}
+	if msg := s.validateIndexerCriteria(ctx, req.ProxyID, req.QueryLimit, req.GrabLimit,
+		req.MinSeeders, req.SeedRatio, req.SeedTimeMinutes, req.SeasonPackSeedTimeMinutes); msg != "" {
+		writeError(w, http.StatusBadRequest, msg)
+		return
+	}
+	criteria := criteriaFromRequest(req)
+	if criteria.proxySet {
+		in.ProxyID = criteria.proxyID
+	}
+	if criteria.minSeedersSet {
+		in.MinSeeders = criteria.minSeeders
+	}
+	if criteria.seedRatioSet {
+		in.SeedRatio = criteria.seedRatio
+	}
+	if criteria.seedTimeSet {
+		in.SeedTimeMinutes = criteria.seedTimeMinutes
+	}
+	if criteria.seasonPackSet {
+		in.SeasonPackSeedTimeMinutes = criteria.seasonPackSeedTimeMinutes
 	}
 	if req.IntervalSeconds != nil {
 		interval, err := intervalFromRequest(req.IntervalSeconds, 0)
@@ -648,6 +690,65 @@ func (s *Server) handleIndexerRun(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type indexerCriteria struct {
+	proxyID                   *int64
+	proxySet                  bool
+	minSeeders                int
+	minSeedersSet             bool
+	seedRatio                 float64
+	seedRatioSet              bool
+	seedTimeMinutes           int
+	seedTimeSet               bool
+	seasonPackSeedTimeMinutes int
+	seasonPackSet             bool
+}
+
+func criteriaFromRequest(req indexerRequest) indexerCriteria {
+	out := indexerCriteria{}
+	if req.ProxyID != nil {
+		out.proxySet = true
+		if *req.ProxyID > 0 {
+			id := *req.ProxyID
+			out.proxyID = &id
+		}
+	}
+	if req.MinSeeders != nil {
+		out.minSeeders, out.minSeedersSet = *req.MinSeeders, true
+	}
+	if req.SeedRatio != nil {
+		out.seedRatio, out.seedRatioSet = *req.SeedRatio, true
+	}
+	if req.SeedTimeMinutes != nil {
+		out.seedTimeMinutes, out.seedTimeSet = *req.SeedTimeMinutes, true
+	}
+	if req.SeasonPackSeedTimeMinutes != nil {
+		out.seasonPackSeedTimeMinutes, out.seasonPackSet = *req.SeasonPackSeedTimeMinutes, true
+	}
+	return out
+}
+
+func (s *Server) validateIndexerCriteria(ctx context.Context, proxyID *int64,
+	queryLimit, grabLimit, minSeeders *int, seedRatio *float64,
+	seedTime, seasonPack *int) string {
+	for _, value := range []*int{queryLimit, grabLimit, minSeeders, seedTime, seasonPack} {
+		if value != nil && *value < 0 {
+			return "limits and seed criteria must be zero or positive"
+		}
+	}
+	if seedRatio != nil && *seedRatio < 0 {
+		return "seed_ratio must be zero or positive"
+	}
+	if proxyID != nil && *proxyID > 0 {
+		if _, err := s.store.GetProxy(ctx, *proxyID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return "proxy not found"
+			}
+			return "internal error"
+		}
+	}
+	return ""
+}
+
 func (s *Server) indexerExists(w http.ResponseWriter, r *http.Request, id int64) bool {
 	if _, err := s.store.GetIndexer(r.Context(), id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -667,20 +768,25 @@ func (s *Server) indexerResponse(r *http.Request, in store.Indexer) (indexerResp
 		return indexerResponse{}, err
 	}
 	return indexerResponse{
-		ID:              in.ID,
-		DefinitionID:    in.DefinitionID,
-		Protocol:        in.Protocol,
-		Slug:            in.Slug,
-		Name:            in.Name,
-		Enabled:         in.Enabled,
-		Priority:        in.Priority,
-		Tags:            splitTags(in.Tags),
-		QueryLimit:      in.QueryLimit,
-		GrabLimit:       in.GrabLimit,
-		IntervalSeconds: in.IntervalSeconds,
-		HasSecrets:      len(secrets) > 0,
-		CreatedAt:       in.CreatedAt,
-		UpdatedAt:       in.UpdatedAt,
+		ID:                        in.ID,
+		DefinitionID:              in.DefinitionID,
+		Protocol:                  in.Protocol,
+		Slug:                      in.Slug,
+		Name:                      in.Name,
+		Enabled:                   in.Enabled,
+		Priority:                  in.Priority,
+		Tags:                      splitTags(in.Tags),
+		QueryLimit:                in.QueryLimit,
+		GrabLimit:                 in.GrabLimit,
+		ProxyID:                   in.ProxyID,
+		MinSeeders:                in.MinSeeders,
+		SeedRatio:                 in.SeedRatio,
+		SeedTimeMinutes:           in.SeedTimeMinutes,
+		SeasonPackSeedTimeMinutes: in.SeasonPackSeedTimeMinutes,
+		IntervalSeconds:           in.IntervalSeconds,
+		HasSecrets:                len(secrets) > 0,
+		CreatedAt:                 in.CreatedAt,
+		UpdatedAt:                 in.UpdatedAt,
 	}, nil
 }
 

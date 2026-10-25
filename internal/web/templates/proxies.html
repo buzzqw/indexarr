@@ -1,0 +1,92 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{T "proxies.title"}}</h1>
+    <p class="muted">{{T "proxies.subtitle"}}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/settings?section=advanced">{{T "proxies.back"}}</a>
+  </div>
+</section>
+
+{{if .Error}}<p class="flash danger" role="alert">{{.Error}}</p>{{end}}
+{{if .Message}}<p class="flash ok" role="status">{{.Message}}</p>{{end}}
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "proxies.list" (len .Rows)}}</h2></div>
+  <p class="help">{{T "proxies.help"}}</p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "proxies.kind"}}</th>
+          <th scope="col">{{T "proxies.url"}}</th>
+          <th scope="col">{{T "proxies.auth"}}</th>
+          <th scope="col">{{T "proxies.inUse"}}</th>
+          <th scope="col" class="right">{{T "common.actions"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td><span class="chip">{{.Kind}}</span></td>
+          <td><code>{{.URL}}</code></td>
+          <td>{{if .HasAuth}}<span class="chip warn">{{T "proxies.authConfigured"}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+          <td>{{.InUse}}</td>
+          <td class="right">
+            <a class="btn small" href="{{.EditURL}}">{{T "common.edit"}}</a>
+            <form method="post" action="/proxies/{{.ID}}/delete" onsubmit="return confirm('{{T "proxies.deleteConfirm"}}');">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small danger" type="submit">{{T "common.delete"}}</button>
+            </form>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="5" class="empty">{{T "proxies.empty"}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel form">
+  <div class="panel-head"><h2>{{if .Edit}}{{T "proxies.editTitle"}}{{else}}{{T "proxies.newTitle"}}{{end}}</h2></div>
+  <form method="post" action="{{if .Edit}}/proxies/{{.Edit.ID}}{{else}}/proxies{{end}}">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="form-grid">
+      <div class="field">
+        <label for="proxy_kind">{{T "proxies.kind"}}</label>
+        <select id="proxy_kind" name="kind">
+          {{range .Kinds}}<option value="{{.}}"{{if eq $.Kind .}} selected{{end}}>{{.}}</option>{{end}}
+        </select>
+        <p class="help">{{T "proxies.kindHelp"}}</p>
+      </div>
+      <div class="field grow">
+        <label for="proxy_url">{{T "proxies.url"}}</label>
+        <input id="proxy_url" name="url" type="text" required value="{{.URL}}" placeholder="http://proxy.example:8080">
+        <p class="help">{{T "proxies.urlHelp"}}</p>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="proxy_username">{{T "proxies.username"}}</label>
+        <input id="proxy_username" name="username" type="text" value="{{.Username}}" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="proxy_password">{{T "proxies.password"}}</label>
+        <input id="proxy_password" name="password" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasAuth}}{{T "proxies.passwordConfigured"}}{{end}}">
+      </div>
+    </div>
+    {{if .HasAuth}}
+    <label class="check"><input type="checkbox" name="clear_auth" value="1"> <span>{{T "proxies.clearAuth"}}</span></label>
+    {{end}}
+    <div class="actions">
+      {{if .Edit}}<a class="btn" href="/proxies">{{T "common.cancel"}}</a>{{end}}
+      <button class="btn primary" type="submit">{{if .Edit}}{{T "common.save"}}{{else}}{{T "proxies.add"}}{{end}}</button>
+    </div>
+  </form>
+  <div class="prose">
+    <p>{{T "proxies.footer"}}</p>
+  </div>
+</section>
+{{end}}

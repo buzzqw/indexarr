@@ -36,6 +36,8 @@ Fonti native / RSS ──► scheduler ──► normalizzazione ──► SQLit
   con preferiti/blocklist e invio al client torrent, CRUD
   sorgenti con test, clone, import/export, storico esecuzioni, log in-app,
   impostazioni e manutenzione.
+- **Gestione per indexer**: proxy HTTP/HTTPS/SOCKS5, limiti query/grab,
+  seeder minimi, seed ratio/time, priorità e tag.
 - **Operatività**: API key multiple con revoca e rate limit, notifiche
   webhook/Telegram, auto-disable delle sorgenti, backup automatici con rotazione
   e ripristino dalla UI, metriche Prometheus.

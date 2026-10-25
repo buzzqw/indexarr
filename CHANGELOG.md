@@ -12,6 +12,11 @@
 - Istantanea storica dei metadati mantenuta solo per generare il catalogo;
   nessun collegamento a runtime.
 
+### Gestione indexer
+- Proxy HTTP/HTTPS/SOCKS5 con pagina dedicata e API `/api/v2/proxies`.
+- Limiti query/grab e seed criteria (seeder minimi, ratio, seed time, season
+  pack) nel form, nel DB e nel sync verso le \*arr.
+
 ### Catalogo
 - Rilevazione del software dal vivo con marcatori forti; 155 fonti con
   software noto.

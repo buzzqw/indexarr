@@ -56,7 +56,7 @@ func TestIndexarr2Schema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2NotifyVersion {
+	if version != indexarr2IndexerCriteriaVersion {
 		t.Fatalf("schema version = %d, want %d", version, indexarr2ActivityVersion)
 	}
 	var name string
@@ -139,7 +139,7 @@ func TestMigrationIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2NotifyVersion {
+	if version != indexarr2IndexerCriteriaVersion {
 		t.Fatalf("schema version = %d", version)
 	}
 	if err := second.DB().QueryRowContext(ctx,
@@ -170,7 +170,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2NotifyVersion {
+	if version != indexarr2IndexerCriteriaVersion {
 		t.Fatalf("schema version after failure = %d", version)
 	}
 	var tables int
@@ -734,7 +734,7 @@ func TestDropLegacySourcesMigration(t *testing.T) {
 	}
 	defer migrated.Close()
 	version, err := migrated.schemaVersion(ctx)
-	if err != nil || version != indexarr2NotifyVersion {
+	if err != nil || version != indexarr2IndexerCriteriaVersion {
 		t.Fatalf("schema version = %d, %v", version, err)
 	}
 	for _, table := range []string{"sources", "runs"} {

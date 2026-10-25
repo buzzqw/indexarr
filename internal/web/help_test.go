@@ -15,7 +15,7 @@ func TestEveryPageHelpKeyExistsInEveryLanguage(t *testing.T) {
 	keys := []string{
 		"home", "search", "release", "indexers", "indexer_add", "indexer_detail",
 		"indexer_form", "app", "app_form", "client_form", "activity", "settings",
-		"setup", "definitions", "definition", "definition_form",
+		"setup", "proxies", "definitions", "definition", "definition_form",
 		"maintenance", "rules", "run", "discover",
 	}
 	for _, lang := range i18n.Supported() {

@@ -681,15 +681,19 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind 
 			ConfigContract: contract,
 			// Servarr appends its own apiPath (/api) to this base URL, so the
 			// value is the per-site Torznab root, exactly like Prowlarr.
-			BaseURL:                 s.baseURL + "/torznab/" + slug,
-			APIKey:                  indexarrKey,
-			Categories:              appsync.CategoriesForKind(kind, cats),
-			Priority:                clampPriority(indexer.Priority),
-			Tags:                    tagsForLabels(indexer.Tags, tagIDs),
-			EnableRSS:               true,
-			EnableAutomaticSearch:   true,
-			EnableInteractiveSearch: true,
-			Protocol:                protocol,
+			BaseURL:                   s.baseURL + "/torznab/" + slug,
+			APIKey:                    indexarrKey,
+			Categories:                appsync.CategoriesForKind(kind, cats),
+			Priority:                  clampPriority(indexer.Priority),
+			Tags:                      tagsForLabels(indexer.Tags, tagIDs),
+			EnableRSS:                 true,
+			EnableAutomaticSearch:     true,
+			EnableInteractiveSearch:   true,
+			Protocol:                  protocol,
+			MinSeeders:                indexer.MinSeeders,
+			SeedRatio:                 indexer.SeedRatio,
+			SeedTimeMinutes:           indexer.SeedTimeMinutes,
+			SeasonPackSeedTimeMinutes: indexer.SeasonPackSeedTimeMinutes,
 		})
 		ids = append(ids, indexer.ID)
 	}

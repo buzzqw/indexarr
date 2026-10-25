@@ -1779,49 +1779,57 @@ type categoryOptionGroup struct {
 
 type compactFormView struct {
 	base
-	Choosing            bool
-	Picker              *sitePickerView
-	IsNew               bool
-	Indexer             store.Indexer
-	DefinitionID        string
-	DefinitionName      string
-	Derived             bool
-	Name                string
-	Protocol            string
-	ProtocolKnown       bool
-	ProtocolLabel       string
-	Slug                string
-	Priority            int
-	Tags                string
-	Query               string
-	DefaultCategory     string
-	CategoryGroups      []categoryOptionGroup
-	UserAgent           string
-	AllowPrivate        bool
-	StoreLatest         bool
-	MinSize             string
-	Challenge           string
-	ChallengeOptions    []indexerSettingOption
-	FlareSolverrURL     string
-	FlareSolverrTimeout string
-	Enabled             bool
-	URLValue            string
-	URLPlaceholder      string
-	URLSecret           bool
-	URLChoices          []indexerSettingOption
-	ShowURL             bool
-	URLLabel            string
-	IntervalSeconds     int
-	Categories          []categoryChoice
-	CategoryHelp        string
-	Help                string
-	RequiredFields      []indexerSettingField
-	AdvancedFields      []indexerSettingField
-	Problems            []string
-	Note                string
-	StateWarning        string
-	MirrorWarning       string
-	ChangeSiteURL       string
+	Choosing                  bool
+	Picker                    *sitePickerView
+	IsNew                     bool
+	Indexer                   store.Indexer
+	DefinitionID              string
+	DefinitionName            string
+	Derived                   bool
+	Name                      string
+	Protocol                  string
+	ProtocolKnown             bool
+	ProtocolLabel             string
+	Slug                      string
+	Priority                  int
+	Tags                      string
+	ProxyID                   int64
+	Proxies                   []proxyOption
+	QueryLimit                int
+	GrabLimit                 int
+	MinSeeders                int
+	SeedRatio                 float64
+	SeedTimeMinutes           int
+	SeasonPackSeedTimeMinutes int
+	Query                     string
+	DefaultCategory           string
+	CategoryGroups            []categoryOptionGroup
+	UserAgent                 string
+	AllowPrivate              bool
+	StoreLatest               bool
+	MinSize                   string
+	Challenge                 string
+	ChallengeOptions          []indexerSettingOption
+	FlareSolverrURL           string
+	FlareSolverrTimeout       string
+	Enabled                   bool
+	URLValue                  string
+	URLPlaceholder            string
+	URLSecret                 bool
+	URLChoices                []indexerSettingOption
+	ShowURL                   bool
+	URLLabel                  string
+	IntervalSeconds           int
+	Categories                []categoryChoice
+	CategoryHelp              string
+	Help                      string
+	RequiredFields            []indexerSettingField
+	AdvancedFields            []indexerSettingField
+	Problems                  []string
+	Note                      string
+	StateWarning              string
+	MirrorWarning             string
+	ChangeSiteURL             string
 }
 
 func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current *store.Indexer, in *indexersvc.Input, problems []string, prefillURL string) (compactFormView, error) {
@@ -1843,6 +1851,15 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		data.Priority = current.Priority
 		data.Tags = current.Tags
 		data.Enabled = current.Enabled
+		data.QueryLimit = current.QueryLimit
+		data.GrabLimit = current.GrabLimit
+		data.MinSeeders = current.MinSeeders
+		data.SeedRatio = current.SeedRatio
+		data.SeedTimeMinutes = current.SeedTimeMinutes
+		data.SeasonPackSeedTimeMinutes = current.SeasonPackSeedTimeMinutes
+		if current.ProxyID != nil {
+			data.ProxyID = *current.ProxyID
+		}
 	}
 	if current != nil {
 		data.IntervalSeconds = current.IntervalSeconds
@@ -1861,7 +1878,36 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		if in.Enabled != nil {
 			data.Enabled = *in.Enabled
 		}
+		if in.QueryLimit != nil {
+			data.QueryLimit = *in.QueryLimit
+		}
+		if in.GrabLimit != nil {
+			data.GrabLimit = *in.GrabLimit
+		}
+		if in.MinSeeders != nil {
+			data.MinSeeders = *in.MinSeeders
+		}
+		if in.SeedRatio != nil {
+			data.SeedRatio = *in.SeedRatio
+		}
+		if in.SeedTimeMinutes != nil {
+			data.SeedTimeMinutes = *in.SeedTimeMinutes
+		}
+		if in.SeasonPackSeedTimeMinutes != nil {
+			data.SeasonPackSeedTimeMinutes = *in.SeasonPackSeedTimeMinutes
+		}
+		if in.ProxyID != nil {
+			data.ProxyID = *in.ProxyID
+		}
+		if in.ClearProxy {
+			data.ProxyID = 0
+		}
 	}
+	proxies, err := s.proxyOptions(r)
+	if err != nil {
+		return compactFormView{}, err
+	}
+	data.Proxies = proxies
 	parsed, _, err := s.loadDefinitionForForm(r, defID)
 	if err != nil {
 		return compactFormView{}, err

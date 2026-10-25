@@ -501,6 +501,15 @@ func desiredFields(spec IndexerSpec) map[string]any {
 	fields["baseUrl"] = normalizeURLString(spec.BaseURL)
 	fields["apiKey"] = spec.APIKey
 	fields["categories"] = intsOrEmpty(spec.Categories)
+	if !strings.EqualFold(strings.TrimSpace(spec.Protocol), "usenet") {
+		// indexarr owns these fields, exactly like Prowlarr. Sending zero is
+		// necessary to clear a value and to make the next reconciliation
+		// converge on the same hash.
+		fields["minimumSeeders"] = spec.MinSeeders
+		fields["seedRatio"] = spec.SeedRatio
+		fields["seedTime"] = spec.SeedTimeMinutes
+		fields["seasonPackSeedTime"] = spec.SeasonPackSeedTimeMinutes
+	}
 	return fields
 }
 
@@ -580,17 +589,21 @@ func remoteFromMap(payload map[string]any) RemoteIndexer {
 func rawHash(name, implementation, configContract string, fields map[string]any,
 	priority int, tags []int, enableRSS, enableAutomaticSearch, enableInteractiveSearch bool) string {
 	return SpecHash(IndexerSpec{
-		Name:                    name,
-		Implementation:          implementation,
-		ConfigContract:          configContract,
-		BaseURL:                 asString(fields["baseUrl"]),
-		APIKey:                  asString(fields["apiKey"]),
-		Categories:              asIntSlice(fields["categories"]),
-		Priority:                priority,
-		Tags:                    tags,
-		EnableRSS:               enableRSS,
-		EnableAutomaticSearch:   enableAutomaticSearch,
-		EnableInteractiveSearch: enableInteractiveSearch,
+		Name:                      name,
+		Implementation:            implementation,
+		ConfigContract:            configContract,
+		BaseURL:                   asString(fields["baseUrl"]),
+		APIKey:                    asString(fields["apiKey"]),
+		Categories:                asIntSlice(fields["categories"]),
+		Priority:                  priority,
+		Tags:                      tags,
+		EnableRSS:                 enableRSS,
+		EnableAutomaticSearch:     enableAutomaticSearch,
+		EnableInteractiveSearch:   enableInteractiveSearch,
+		MinSeeders:                asInt(fields["minimumSeeders"]),
+		SeedRatio:                 asFloat(fields["seedRatio"]),
+		SeedTimeMinutes:           asInt(fields["seedTime"]),
+		SeasonPackSeedTimeMinutes: asInt(fields["seasonPackSeedTime"]),
 	})
 }
 
@@ -653,6 +666,28 @@ func asInt(value any) int {
 		}
 	case string:
 		if number, err := strconv.Atoi(strings.TrimSpace(typed)); err == nil {
+			return number
+		}
+	}
+	return 0
+}
+
+func asFloat(value any) float64 {
+	switch typed := value.(type) {
+	case float64:
+		return typed
+	case float32:
+		return float64(typed)
+	case int:
+		return float64(typed)
+	case int64:
+		return float64(typed)
+	case json.Number:
+		if number, err := typed.Float64(); err == nil {
+			return number
+		}
+	case string:
+		if number, err := strconv.ParseFloat(strings.TrimSpace(typed), 64); err == nil {
 			return number
 		}
 	}

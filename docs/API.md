@@ -244,6 +244,8 @@ del server Torznab, senza cookie e senza CSRF.
 | POST | `/api/v2/indexers/{id}/test` | test per fase (reach/auth/search) |
 | POST | `/api/v2/indexers/{id}/search` | ricerca live, senza URL del tracker |
 | POST | `/api/v2/indexers/{id}/run` | un run di ingestion |
+| GET/POST | `/api/v2/proxies` | elenco / crea un proxy HTTP, HTTPS o SOCKS5 |
+| GET/PUT/DELETE | `/api/v2/proxies/{id}` | dettaglio / aggiorna / cancella un proxy |
 | GET/POST | `/api/v2/applications` | elenco / collega una \*arr |
 | GET/PUT/DELETE | `/api/v2/applications/{id}` | dettaglio / aggiorna / scollega |
 | POST | `/api/v2/applications/{id}/sync` | riconcilia un'applicazione |
@@ -257,9 +259,21 @@ curl -X POST "http://localhost:8484/api/v2/indexers?apikey=$KEY" \
   -d '{
         "definition_id": "newznab-generic",
         "name": "Il mio Usenet",
+        "proxy_id": 1,
+        "query_limit": 100,
+        "grab_limit": 50,
+        "min_seeders": 2,
+        "seed_ratio": 1.5,
+        "seed_time_minutes": 60,
+        "season_pack_seed_time_minutes": 90,
         "settings": {"url": "https://indexer.example/api", "apikey": "..."}
       }'
 ```
+
+`proxy_id` punta a un proxy creato con `/api/v2/proxies`; `0` lo rimuove.
+`query_limit` e `grab_limit` sono per giorno; `min_seeders`, `seed_ratio`,
+`seed_time_minutes` e `season_pack_seed_time_minutes` vengono sincronizzati
+alle applicazioni. Zero significa nessun limite o valore predefinito.
 
 I valori con nome che contiene `api_key`, `apikey`, `token`, `password`,
 `passkey`, `secret` o `cookie` vengono cifrati nel vault; gli altri finiscono

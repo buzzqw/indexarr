@@ -508,3 +508,54 @@ func TestCreateRejectsManagerEndpoint(t *testing.T) {
 		t.Fatalf("Create error = %v, want ErrManagerEndpoint", err)
 	}
 }
+
+func TestCreateStoresManagementCriteria(t *testing.T) {
+	svc, st, _, _ := newService(t)
+	storeDefinition(t, st, "test-criteria", testDefinition("test-criteria", true, false))
+	proxyID, err := st.CreateProxy(context.Background(), store.Proxy{
+		Kind: "http", URL: "http://127.0.0.1:8080",
+	})
+	if err != nil {
+		t.Fatalf("CreateProxy: %v", err)
+	}
+	minSeeders, seedTime, seasonPack, query, grab := 5, 60, 90, 10, 20
+	ratio := 1.5
+	created, err := svc.Create(context.Background(), Input{
+		DefinitionID:              "test-criteria",
+		Name:                      "Criteria",
+		Priority:                  intPtr(20),
+		ProxyID:                   &proxyID,
+		MinSeeders:                &minSeeders,
+		SeedRatio:                 &ratio,
+		SeedTimeMinutes:           &seedTime,
+		SeasonPackSeedTimeMinutes: &seasonPack,
+		QueryLimit:                &query,
+		GrabLimit:                 &grab,
+		Settings:                  map[string]string{"url": "https://example.invalid/"},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if created.MinSeeders != 5 || created.SeedRatio != 1.5 ||
+		created.SeedTimeMinutes != 60 || created.SeasonPackSeedTimeMinutes != 90 ||
+		created.QueryLimit != 10 || created.GrabLimit != 20 ||
+		created.ProxyID == nil || *created.ProxyID != proxyID {
+		t.Fatalf("stored criteria = %+v", created)
+	}
+
+	// Clearing the proxy and setting a zero seed value must persist.
+	zero := 0
+	var clearProxy *int64
+	updated, err := svc.Update(context.Background(), created.ID, Input{
+		ClearProxy: true,
+		MinSeeders: &zero,
+		QueryLimit: &zero,
+		ProxyID:    clearProxy,
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if updated.ProxyID != nil || updated.MinSeeders != 0 || updated.QueryLimit != 0 {
+		t.Fatalf("cleared criteria = %+v", updated)
+	}
+}

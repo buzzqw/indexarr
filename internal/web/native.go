@@ -695,6 +695,30 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 			settings[name] = strings.TrimSpace(r.FormValue("setting_" + name))
 		}
 	}
+	proxyID, clearProxy, err := parseProxySelection(r.FormValue("proxy_id"))
+	if err != nil {
+		return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.proxy"))
+	}
+	criteria := map[string]*int{
+		"query_limit":                   nil,
+		"grab_limit":                    nil,
+		"min_seeders":                   nil,
+		"seed_time_minutes":             nil,
+		"season_pack_seed_time_minutes": nil,
+	}
+	for name := range criteria {
+		value, present, err := parseNonNegativeInt(r.FormValue(name))
+		if err != nil {
+			return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.criteriaNumber"))
+		}
+		if present {
+			criteria[name] = &value
+		}
+	}
+	seedRatio, seedRatioPresent, err := parseNonNegativeFloat(r.FormValue("seed_ratio"))
+	if err != nil {
+		return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.criteriaNumber"))
+	}
 	var interval *int
 	if values, present := r.Form["interval_seconds"]; present {
 		seconds := 0
@@ -711,16 +735,67 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 		interval = &seconds
 	}
 	return indexersvc.Input{
-		DefinitionID:    strings.TrimSpace(r.FormValue("definition_id")),
-		Name:            strings.TrimSpace(r.FormValue("name")),
-		Slug:            strings.TrimSpace(r.FormValue("slug")),
-		Protocol:        strings.TrimSpace(r.FormValue("protocol")),
-		Priority:        &priority,
-		Tags:            splitTagList(r.FormValue("tags")),
-		Enabled:         &enabled,
-		IntervalSeconds: interval,
-		Settings:        settings,
+		DefinitionID:              strings.TrimSpace(r.FormValue("definition_id")),
+		Name:                      strings.TrimSpace(r.FormValue("name")),
+		Slug:                      strings.TrimSpace(r.FormValue("slug")),
+		Protocol:                  strings.TrimSpace(r.FormValue("protocol")),
+		Priority:                  &priority,
+		Tags:                      splitTagList(r.FormValue("tags")),
+		Enabled:                   &enabled,
+		IntervalSeconds:           interval,
+		Settings:                  settings,
+		ProxyID:                   proxyID,
+		ClearProxy:                clearProxy,
+		QueryLimit:                criteria["query_limit"],
+		GrabLimit:                 criteria["grab_limit"],
+		MinSeeders:                criteria["min_seeders"],
+		SeedTimeMinutes:           criteria["seed_time_minutes"],
+		SeasonPackSeedTimeMinutes: criteria["season_pack_seed_time_minutes"],
+		SeedRatio:                 seedRatioPtr(seedRatio, seedRatioPresent),
 	}, nil
+}
+
+func seedRatioPtr(value float64, present bool) *float64 {
+	if !present {
+		return nil
+	}
+	return &value
+}
+
+func parseProxySelection(raw string) (*int64, bool, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw == "0" {
+		return nil, true, nil
+	}
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		return nil, false, errors.New("invalid proxy")
+	}
+	return &id, false, nil
+}
+
+func parseNonNegativeInt(raw string) (int, bool, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, false, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 0 {
+		return 0, false, errors.New("invalid non-negative integer")
+	}
+	return value, true, nil
+}
+
+func parseNonNegativeFloat(raw string) (float64, bool, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, false, nil
+	}
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil || value < 0 {
+		return 0, false, errors.New("invalid non-negative number")
+	}
+	return value, true, nil
 }
 
 func firstValue(values []string) string {

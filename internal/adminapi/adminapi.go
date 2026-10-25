@@ -98,6 +98,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v2/indexers/{id}/search", s.handleIndexerSearch)
 	mux.HandleFunc("POST /api/v2/indexers/{id}/run", s.handleIndexerRun)
 
+	mux.HandleFunc("GET /api/v2/proxies", s.handleProxyList)
+	mux.HandleFunc("POST /api/v2/proxies", s.handleProxyCreate)
+	mux.HandleFunc("GET /api/v2/proxies/{id}", s.handleProxyGet)
+	mux.HandleFunc("PUT /api/v2/proxies/{id}", s.handleProxyUpdate)
+	mux.HandleFunc("DELETE /api/v2/proxies/{id}", s.handleProxyDelete)
+
 	mux.HandleFunc("GET /api/v2/applications", s.handleApplicationList)
 	mux.HandleFunc("POST /api/v2/applications", s.handleApplicationCreate)
 	mux.HandleFunc("POST /api/v2/applications/sync", s.handleApplicationSyncAll)

@@ -34,6 +34,9 @@ const (
 	// outside the settings table, the anti-spam timestamps and the last
 	// notified run state of every indexer.
 	indexarr2NotifyVersion = 15
+	// indexarr2IndexerCriteriaVersion adds the seed criteria Prowlarr exposes
+	// per indexer and syncs to the *arr applications.
+	indexarr2IndexerCriteriaVersion = 16
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

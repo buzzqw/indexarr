@@ -120,6 +120,50 @@
 
     <div class="form-grid">
       <div class="field grow">
+        <label for="proxy_id">{{T "indexerForm.proxy"}}</label>
+        <select id="proxy_id" name="proxy_id">
+          <option value="0">{{T "indexerForm.proxyNone"}}</option>
+          {{range .Proxies}}<option value="{{.ID}}"{{if eq $.ProxyID .ID}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+        <p class="help">{{T "indexerForm.proxyHelp"}} <a href="/proxies">{{T "indexerForm.proxyManage"}}</a></p>
+      </div>
+      <div class="field">
+        <label for="query_limit">{{T "indexerForm.queryLimit"}}</label>
+        <input id="query_limit" name="query_limit" type="number" min="0" step="1" value="{{.QueryLimit}}">
+        <p class="help">{{T "indexerForm.queryLimitHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="grab_limit">{{T "indexerForm.grabLimit"}}</label>
+        <input id="grab_limit" name="grab_limit" type="number" min="0" step="1" value="{{.GrabLimit}}">
+        <p class="help">{{T "indexerForm.grabLimitHelp"}}</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="min_seeders">{{T "indexerForm.minSeeders"}}</label>
+        <input id="min_seeders" name="min_seeders" type="number" min="0" step="1" value="{{.MinSeeders}}">
+        <p class="help">{{T "indexerForm.minSeedersHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="seed_ratio">{{T "indexerForm.seedRatio"}}</label>
+        <input id="seed_ratio" name="seed_ratio" type="number" min="0" step="0.1" value="{{printf "%.2f" .SeedRatio}}">
+        <p class="help">{{T "indexerForm.seedRatioHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="seed_time_minutes">{{T "indexerForm.seedTime"}}</label>
+        <input id="seed_time_minutes" name="seed_time_minutes" type="number" min="0" step="1" value="{{.SeedTimeMinutes}}">
+        <p class="help">{{T "indexerForm.seedTimeHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="season_pack_seed_time_minutes">{{T "indexerForm.seasonPackSeedTime"}}</label>
+        <input id="season_pack_seed_time_minutes" name="season_pack_seed_time_minutes" type="number" min="0" step="1" value="{{.SeasonPackSeedTimeMinutes}}">
+        <p class="help">{{T "indexerForm.seasonPackSeedTimeHelp"}}</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field grow">
         <label for="query">{{T "idx.query"}}</label>
         <input id="query" name="query" type="text" value="{{.Query}}" placeholder="{{T "indexerForm.queryPlaceholder"}}">
       </div>

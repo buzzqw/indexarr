@@ -107,7 +107,7 @@ var pageNames = []string{
 	"dashboard", "releases", "release",
 	"run", "rules", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
-	"applications", "application_form", "activity", "setup",
+	"applications", "application_form", "activity", "setup", "proxies",
 	"download_client_form", "site_preview", "smartfeed_form", "store_warning",
 }
 
@@ -671,6 +671,10 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /logs/download", s.logsDownload)
 	ui.HandleFunc("POST /logs/clear", s.logsClear)
 	ui.HandleFunc("POST /logs/level", s.logsSetLevel)
+	ui.HandleFunc("GET /proxies", s.proxiesPage)
+	ui.HandleFunc("POST /proxies", s.proxyCreate)
+	ui.HandleFunc("POST /proxies/{id}", s.proxyUpdate)
+	ui.HandleFunc("POST /proxies/{id}/delete", s.proxyDelete)
 	ui.HandleFunc("GET /settings", s.settingsPage)
 	ui.HandleFunc("GET /settings/secrets/{name}", s.settingsSecret)
 	ui.HandleFunc("GET /settings/secrets/key/{id}", s.settingsSecret)
@@ -926,6 +930,8 @@ func pageHelpKey(r *http.Request) string {
 		return "activity"
 	case path == "/settings":
 		return "settings"
+	case path == "/proxies":
+		return "proxies"
 	case path == "/setup":
 		return "setup"
 	case path == "/definitions" || path == "/settings/definitions":

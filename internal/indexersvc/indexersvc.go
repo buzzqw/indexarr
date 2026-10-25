@@ -79,6 +79,16 @@ type Input struct {
 	// explicit zero means the global default.
 	IntervalSeconds *int
 	Settings        map[string]string
+	// Optional indexer management fields. Nil means "leave unchanged" on
+	// update; Create treats nil as zero.
+	ProxyID                   *int64
+	ClearProxy                bool
+	QueryLimit                *int
+	GrabLimit                 *int
+	MinSeeders                *int
+	SeedRatio                 *float64
+	SeedTimeMinutes           *int
+	SeasonPackSeedTimeMinutes *int
 }
 
 // Create validates the definition, splits the settings, stores the public
@@ -166,17 +176,28 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 	if stored && (in.IntervalSeconds == nil || *in.IntervalSeconds == 0) {
 		interval = storedInterval()
 	}
+	criteria, err := criteriaFromInput(in)
+	if err != nil {
+		return store.Indexer{}, err
+	}
 
 	id, err := s.store.CreateIndexer(ctx, store.Indexer{
-		DefinitionID:    definitionID,
-		Protocol:        protocol,
-		Slug:            slug,
-		Name:            name,
-		Enabled:         enabled,
-		Priority:        priority,
-		ConfigJSON:      configJSON,
-		Tags:            joinTags(in.Tags),
-		IntervalSeconds: interval,
+		DefinitionID:              definitionID,
+		Protocol:                  protocol,
+		Slug:                      slug,
+		Name:                      name,
+		Enabled:                   enabled,
+		Priority:                  priority,
+		ConfigJSON:                configJSON,
+		Tags:                      joinTags(in.Tags),
+		IntervalSeconds:           interval,
+		ProxyID:                   criteria.proxyID,
+		QueryLimit:                criteria.queryLimit,
+		GrabLimit:                 criteria.grabLimit,
+		MinSeeders:                criteria.minSeeders,
+		SeedRatio:                 criteria.seedRatio,
+		SeedTimeMinutes:           criteria.seedTimeMinutes,
+		SeasonPackSeedTimeMinutes: criteria.seasonPackSeedTimeMinutes,
 	})
 	if err != nil {
 		if isUniqueError(err) {
@@ -261,6 +282,31 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 	}
 	if in.Tags != nil {
 		current.Tags = joinTags(in.Tags)
+	}
+	criteria, err := criteriaFromInput(in)
+	if err != nil {
+		return store.Indexer{}, err
+	}
+	if criteria.proxySet {
+		current.ProxyID = criteria.proxyID
+	}
+	if criteria.querySet {
+		current.QueryLimit = criteria.queryLimit
+	}
+	if criteria.grabSet {
+		current.GrabLimit = criteria.grabLimit
+	}
+	if criteria.minSeedersSet {
+		current.MinSeeders = criteria.minSeeders
+	}
+	if criteria.seedRatioSet {
+		current.SeedRatio = criteria.seedRatio
+	}
+	if criteria.seedTimeSet {
+		current.SeedTimeMinutes = criteria.seedTimeMinutes
+	}
+	if criteria.seasonPackSet {
+		current.SeasonPackSeedTimeMinutes = criteria.seasonPackSeedTimeMinutes
 	}
 
 	var sealed map[string]sealedSecret
@@ -716,6 +762,71 @@ func settingText(value any) string {
 		}
 		return string(encoded)
 	}
+}
+
+// criteriaFromInput validates and copies the optional management fields. The
+// boolean flags let Update distinguish "not sent" from an explicit zero.
+func criteriaFromInput(in Input) (criteriaValues, error) {
+	var out criteriaValues
+	out.proxyID = in.ProxyID
+	out.proxySet = in.ProxyID != nil || in.ClearProxy
+	if out.proxySet && in.ClearProxy {
+		out.proxyID = nil
+	}
+	if in.QueryLimit != nil {
+		if *in.QueryLimit < 0 {
+			return out, errors.New("query_limit must be zero or positive")
+		}
+		out.queryLimit, out.querySet = *in.QueryLimit, true
+	}
+	if in.GrabLimit != nil {
+		if *in.GrabLimit < 0 {
+			return out, errors.New("grab_limit must be zero or positive")
+		}
+		out.grabLimit, out.grabSet = *in.GrabLimit, true
+	}
+	if in.MinSeeders != nil {
+		if *in.MinSeeders < 0 {
+			return out, errors.New("min_seeders must be zero or positive")
+		}
+		out.minSeeders, out.minSeedersSet = *in.MinSeeders, true
+	}
+	if in.SeedRatio != nil {
+		if *in.SeedRatio < 0 {
+			return out, errors.New("seed_ratio must be zero or positive")
+		}
+		out.seedRatio, out.seedRatioSet = *in.SeedRatio, true
+	}
+	if in.SeedTimeMinutes != nil {
+		if *in.SeedTimeMinutes < 0 {
+			return out, errors.New("seed_time_minutes must be zero or positive")
+		}
+		out.seedTimeMinutes, out.seedTimeSet = *in.SeedTimeMinutes, true
+	}
+	if in.SeasonPackSeedTimeMinutes != nil {
+		if *in.SeasonPackSeedTimeMinutes < 0 {
+			return out, errors.New("season_pack_seed_time_minutes must be zero or positive")
+		}
+		out.seasonPackSeedTimeMinutes, out.seasonPackSet = *in.SeasonPackSeedTimeMinutes, true
+	}
+	return out, nil
+}
+
+type criteriaValues struct {
+	proxyID                   *int64
+	proxySet                  bool
+	queryLimit                int
+	querySet                  bool
+	grabLimit                 int
+	grabSet                   bool
+	minSeeders                int
+	minSeedersSet             bool
+	seedRatio                 float64
+	seedRatioSet              bool
+	seedTimeMinutes           int
+	seedTimeSet               bool
+	seasonPackSeedTimeMinutes int
+	seasonPackSet             bool
 }
 
 func validProtocol(protocol string) bool {

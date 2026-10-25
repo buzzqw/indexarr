@@ -109,7 +109,14 @@ type IndexerSpec struct {
 	EnableAutomaticSearch   bool
 	EnableInteractiveSearch bool
 	Protocol                string // torrent|usenet
-	AdditionalFields        map[string]any
+	// Seed criteria copied to the *arr Torznab indexer. Zero keeps the app
+	// default; the fields are always sent for torrent indexers so an explicit
+	// zero clears a previous value.
+	MinSeeders                int
+	SeedRatio                 float64
+	SeedTimeMinutes           int
+	SeasonPackSeedTimeMinutes int
+	AdditionalFields          map[string]any
 }
 
 // RemoteIndexer is an indexer as reported by an application.
@@ -236,18 +243,22 @@ func normalizeBaseURL(raw string) (string, error) {
 // perpetually different. AdditionalFields is a forward-compatibility seam and
 // is not fingerprinted.
 type fingerprint struct {
-	Name                    string `json:"name"`
-	Implementation          string `json:"implementation"`
-	ConfigContract          string `json:"configContract"`
-	BaseURL                 string `json:"baseUrl"`
-	APIKey                  string `json:"apiKey"`
-	Categories              []int  `json:"categories"`
-	Priority                int    `json:"priority"`
-	Tags                    []int  `json:"tags"`
-	EnableRSS               bool   `json:"enableRss"`
-	EnableAutomaticSearch   bool   `json:"enableAutomaticSearch"`
-	EnableInteractiveSearch bool   `json:"enableInteractiveSearch"`
-	Protocol                string `json:"protocol"`
+	Name                    string  `json:"name"`
+	Implementation          string  `json:"implementation"`
+	ConfigContract          string  `json:"configContract"`
+	BaseURL                 string  `json:"baseUrl"`
+	APIKey                  string  `json:"apiKey"`
+	Categories              []int   `json:"categories"`
+	Priority                int     `json:"priority"`
+	Tags                    []int   `json:"tags"`
+	EnableRSS               bool    `json:"enableRss"`
+	EnableAutomaticSearch   bool    `json:"enableAutomaticSearch"`
+	EnableInteractiveSearch bool    `json:"enableInteractiveSearch"`
+	Protocol                string  `json:"protocol"`
+	MinSeeders              int     `json:"minimumSeeders"`
+	SeedRatio               float64 `json:"seedRatio"`
+	SeedTimeMinutes         int     `json:"seedTime"`
+	SeasonPackSeedTimeMin   int     `json:"seasonPackSeedTime"`
 }
 
 // SpecHash returns a stable sha256 fingerprint of the parts of spec that
@@ -268,6 +279,10 @@ func SpecHash(spec IndexerSpec) string {
 		EnableAutomaticSearch:   spec.EnableAutomaticSearch,
 		EnableInteractiveSearch: spec.EnableInteractiveSearch,
 		Protocol:                protocol,
+		MinSeeders:              spec.MinSeeders,
+		SeedRatio:               spec.SeedRatio,
+		SeedTimeMinutes:         spec.SeedTimeMinutes,
+		SeasonPackSeedTimeMin:   spec.SeasonPackSeedTimeMinutes,
 	}
 	encoded, err := json.Marshal(canonical)
 	if err != nil {
