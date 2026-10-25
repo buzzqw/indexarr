@@ -1,0 +1,39 @@
+# VERIFICATA (verified). AniBT public magnets RSS.
+#
+# Written from the public feed captured on 2026-10-25 in
+# fixtures/anibt/feed.xml (https://anibt.net/rss/magnets.xml). The feed uses
+# the anibt:torrentUrl extension and anibt:fileSize instead of enclosures; the
+# generic RSS parser reads both.
+schema: 1
+connector: rss
+
+meta:
+  id: anibt
+  name: AniBT
+  language: zh-CN
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public anime release feed with torrent URLs and file sizes.
+  urls:
+    - https://anibt.net/rss/magnets.xml
+  updated: "2026-10-25"
+
+settings:
+  - { name: url, type: text, label: Feed URL, help: "RSS or Atom feed URL", required: true, default: "https://anibt.net/rss/magnets.xml" }
+
+categories:
+  - { site: "5070", standard: 5070, desc: "Anime" }
+  - { site: "5000", standard: 5000, desc: "TV" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: anime
+  min_rows: 0
+
+tests:
+  - name: feed
+    fixture: fixtures/anibt/feed.xml
+    expect: { min_rows: 4 }

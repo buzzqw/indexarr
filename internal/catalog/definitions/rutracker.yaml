@@ -1,0 +1,52 @@
+# VERIFICATA (verified). RuTracker.RU public search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/rutracker/search.html (http://rutracker.ru/tracker.php?nm=matrix).
+# The result row carries title, detail link, size, health and a magnet.
+schema: 1
+
+meta:
+  id: rutracker
+  name: RuTracker.RU
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Russian TorrentPier tracker with magnets in the result row.
+  urls:
+    - http://rutracker.ru/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+
+categories:
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+search:
+  request:
+    get: /tracker.php
+    params:
+      nm: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: 'tr[id^="tor_"]' }
+    fields:
+      title:    { selector: "a.genmed.tLink", filters: [trim] }
+      details:  { selector: "a.genmed.tLink", attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      size:     { selector: "a.tr-dl", type: size }
+      seeders:  { selector: "td.seedmed b", type: int }
+      leechers: { selector: "td.leechmed b", type: int }
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/rutracker/search.html
+    expect: { min_rows: 4, required: [title, details, magnet, size, seeders] }

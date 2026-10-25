@@ -463,26 +463,6 @@ sites:
       source_id: amigosshare
       checked: "2026-10-25"
       evidence: GET https://amigos-share.club/ -> HTTP 200, 12140 bytes, title "Amigos Share Club", checked 2026-10-25; private, no account used
-    - id: jk-anibt
-      name: Anibt
-      description: Anibt is a CHINESE Public aggregate indexer for ANIME"
-      url: https://anibt.net/
-      urls:
-        - https://anibt.net/
-      type: public
-      language: zh-CN
-      categories:
-        - tv
-        - anime
-        - music
-        - books
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: anibt
-      checked: "2026-10-25"
-      evidence: GET https://anibt.net/ -> HTTP 200, 262144 bytes, title "AniBT · 动画字幕组与新番分享平台", checked 2026-10-25
     - id: jk-anidub
       name: AniDUB
       description: AniDUB is a RUSSIAN Semi-Private tracker and release group for Anime
@@ -8853,30 +8833,6 @@ sites:
       source_id: rutracker
       checked: "2026-10-25"
       evidence: GET https://rutracker.org/forum/index.php -> HTTP 200, 96767 bytes, title "RuTracker.org", checked 2026-10-25
-    - id: jk-rutracker-ru
-      name: RuTracker.RU
-      description: RuTracker.RU is a RUSSIAN Public Torrent Tracker for MOVIES / TV / GENERAL
-      url: http://rutracker.ru/
-      urls:
-        - http://rutracker.ru/
-      type: public
-      language: ru-RU
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-        - games
-        - software
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: rutracker-ru
-      checked: "2026-10-25"
-      evidence: 'GET http://rutracker.ru/ -> HTTP 200, 218644 bytes, title "Home :: RuTracker.RU - Свободный торрент трекер", checked 2026-10-25'
     - id: jk-samaritano
       name: SAMARITANO (API)
       description: SAMARITANO is a BRAZILIAN Private tracker for MOVIES / TV / GENERAL

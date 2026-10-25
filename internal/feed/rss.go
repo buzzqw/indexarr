@@ -35,6 +35,8 @@ type rssItem struct {
 	Attrs       []torznabAt `xml:"attr"`
 	MagnetURL   string      `xml:"magneturl"`
 	InfoHash    string      `xml:"infohash"`
+	TorrentURL  string      `xml:"torrentUrl"`
+	FileSize    string      `xml:"fileSize"`
 	Description string      `xml:"description"`
 }
 
@@ -209,6 +211,10 @@ func convertRSSItem(raw rssItem) (Item, bool) {
 		torrentURL = strings.TrimSpace(raw.Enclosure.URL)
 	} else if LooksLikeTorrentURL(raw.Link, "") {
 		torrentURL = strings.TrimSpace(raw.Link)
+	} else if LooksLikeTorrentURL(raw.TorrentURL, "") {
+		// Some feeds (AniBT) keep the torrent in a namespaced extension
+		// instead of an <enclosure>.
+		torrentURL = strings.TrimSpace(raw.TorrentURL)
 	}
 	if magnet == "" && hash != "" && torrentURL == "" {
 		magnet = MagnetFromHash(hash, title)
@@ -222,7 +228,7 @@ func convertRSSItem(raw rssItem) (Item, bool) {
 		TorrentURL: torrentURL,
 		Usenet:     usenet,
 		InfoHash:   hash,
-		Size:       firstSize(attrs["size"], raw.Size, raw.Enclosure.Length),
+		Size:       firstSize(attrs["size"], raw.Size, raw.FileSize, raw.Enclosure.Length),
 		Seeders:    atoiUnknown(attrs["seeders"]),
 		Leechers:   atoiUnknown(firstNonEmpty(attrs["peers"], attrs["leechers"])),
 		Category:   NormalizeCategory(append(categoryAttrs, raw.Categories...)...),

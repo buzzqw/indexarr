@@ -45,8 +45,10 @@
 
 ### Catalogo
 - Nuove definizioni native pubbliche **DivxTotal**, **Mac Torrents**,
-  **nekoBT**, **TheRARBG**, **AniLiberty**, **0Magnet**, **Torrent Kitty** e
-  **TorrentProject2**, con fixture reali.
+  **nekoBT**, **TheRARBG**, **AniLiberty**, **0Magnet**, **Torrent Kitty**,
+  **TorrentProject2**, **RuTracker.RU** e **AniBT**, con fixture reali.
+- Il parser RSS legge le estensioni `torrentUrl` e `fileSize` usate dal feed
+  AniBT.
 - AniLiberty usa l'API JSON: ricerca dei release e magnet/dimensione
   dall'endpoint torrents.
 - La sezione `download` può leggere anche la dimensione dalla pagina di

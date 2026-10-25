@@ -115,6 +115,30 @@
     "scheduled": true
   },
   {
+    "id": "anibt",
+    "name": "AniBT",
+    "description": "Public anime release feed with torrent URLs and file sizes.",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "anibt.net"
+    ],
+    "url": "https://anibt.net/rss/magnets.xml",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
     "id": "aniliberty",
     "name": "AniLiberty",
     "description": "Public Russian anime catalog with torrents and magnets from the JSON API.",
@@ -1170,33 +1194,6 @@
     "url": "https://amigos-share.club/",
     "source": "jackett",
     "evidence": "GET https://amigos-share.club/ -\u003e HTTP 200, 12140 bytes, title \"Amigos Share Club\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-anibt",
-    "name": "Anibt",
-    "description": "Anibt is a CHINESE Public aggregate indexer for ANIME\"",
-    "language": "zh-CN",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "tv",
-      "anime",
-      "music",
-      "books"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "anibt.net"
-    ],
-    "url": "https://anibt.net/",
-    "source": "jackett",
-    "evidence": "GET https://anibt.net/ -\u003e HTTP 200, 262144 bytes, title \"AniBT · 动画字幕组与新番分享平台\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -11894,37 +11891,6 @@
     "latest": false
   },
   {
-    "id": "jk-rutracker-ru",
-    "name": "RuTracker.RU",
-    "description": "RuTracker.RU is a RUSSIAN Public Torrent Tracker for MOVIES / TV / GENERAL",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "rutracker.ru"
-    ],
-    "url": "http://rutracker.ru/",
-    "source": "jackett",
-    "evidence": "GET http://rutracker.ru/ -\u003e HTTP 200, 218644 bytes, title \"Home :: RuTracker.RU - Свободный торрент трекер\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-samaritano",
     "name": "SAMARITANO (API)",
     "description": "SAMARITANO is a BRAZILIAN Private tracker for MOVIES / TV / GENERAL",
@@ -16580,6 +16546,22 @@
       "rutor.info"
     ],
     "url": "https://rutor.info/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "rutracker",
+    "name": "RuTracker.RU",
+    "description": "Public Russian TorrentPier tracker with magnets in the result row.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "rutracker.ru"
+    ],
+    "url": "http://rutracker.ru/",
     "source": "native",
     "proposable": true,
     "latest": false

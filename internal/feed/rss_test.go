@@ -199,3 +199,29 @@ func TestRSSProtocolInferenceFixtures(t *testing.T) {
 		}
 	}
 }
+
+func TestParseRSSNamespacedTorrentURLAndFileSize(t *testing.T) {
+	body := []byte(`<?xml version="1.0"?>
+<rss version="2.0" xmlns:anibt="https://anibt.net/xmlns/rss/1.0/"><channel><title>AniBT</title>
+<item>
+  <title>Release 04</title>
+  <link>https://anibt.net/release/rel_x</link>
+  <guid isPermaLink="false">rel_x</guid>
+  <anibt:torrentUrl>https://anibt.net/api/torrent/rel_x.torrent</anibt:torrentUrl>
+  <anibt:fileSize>1454440210</anibt:fileSize>
+</item>
+</channel></rss>`)
+	items, err := ParseRSS(body)
+	if err != nil {
+		t.Fatalf("ParseRSS: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items = %d, want 1", len(items))
+	}
+	if items[0].TorrentURL != "https://anibt.net/api/torrent/rel_x.torrent" {
+		t.Errorf("torrent = %q", items[0].TorrentURL)
+	}
+	if items[0].Size != 1454440210 {
+		t.Errorf("size = %d", items[0].Size)
+	}
+}
