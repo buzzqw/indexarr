@@ -162,3 +162,26 @@ func TestExtractFeatures(t *testing.T) {
 		t.Errorf("year = %d", got.Year)
 	}
 }
+
+func TestExtractCacheIsBoundedAndConsistent(t *testing.T) {
+	parsedTitles.Lock()
+	parsedTitles.entries = make(map[string]Features, featureCacheMax)
+	parsedTitles.order = nil
+	parsedTitles.Unlock()
+
+	title := "Show.S01E02.1080p.WEB-DL.x264-GRP"
+	want := extractUncached(title)
+	if got := Extract(title); got != want {
+		t.Fatalf("cached Extract = %+v, want %+v", got, want)
+	}
+	for i := 0; i < featureCacheMax+10; i++ {
+		Extract("Filler " + time.Unix(int64(i), 0).Format(time.RFC3339Nano))
+	}
+	parsedTitles.RLock()
+	size := len(parsedTitles.entries)
+	order := len(parsedTitles.order)
+	parsedTitles.RUnlock()
+	if size > featureCacheMax || order > featureCacheMax {
+		t.Fatalf("cache size/order = %d/%d, want <= %d", size, order, featureCacheMax)
+	}
+}

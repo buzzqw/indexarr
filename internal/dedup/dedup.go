@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/textutil"
@@ -107,8 +108,49 @@ var nonGroups = map[string]bool{
 	"mkv": true, "mp4": true, "avi": true, "torrent": true,
 }
 
-// Extract parses the identifying features of a release title.
+// featureCacheMax bounds the parsed-title cache. Result pages repeat the same
+// releases across Arr polls and duplicate comparisons, while a pathological
+// feed may contain tens of thousands of distinct titles; an unbounded map
+// would trade CPU for a memory leak.
+const featureCacheMax = 2048
+
+type featureCacheEntry struct {
+	key      string
+	features Features
+}
+
+var parsedTitles = struct {
+	sync.RWMutex
+	entries map[string]Features
+	order   []string
+}{entries: make(map[string]Features, featureCacheMax)}
+
+// Extract parses the identifying features of a release title. Results are
+// cached because the regex pass is the most expensive part of fusion and the
+// same titles are seen repeatedly by the Arr clients.
 func Extract(title string) Features {
+	parsedTitles.RLock()
+	features, ok := parsedTitles.entries[title]
+	parsedTitles.RUnlock()
+	if ok {
+		return features
+	}
+	features = extractUncached(title)
+	parsedTitles.Lock()
+	if _, exists := parsedTitles.entries[title]; !exists {
+		if len(parsedTitles.entries) >= featureCacheMax {
+			oldest := parsedTitles.order[0]
+			parsedTitles.order = parsedTitles.order[1:]
+			delete(parsedTitles.entries, oldest)
+		}
+		parsedTitles.entries[title] = features
+		parsedTitles.order = append(parsedTitles.order, title)
+	}
+	parsedTitles.Unlock()
+	return features
+}
+
+func extractUncached(title string) Features {
 	lower := strings.ToLower(strings.TrimSpace(title))
 	trimmed := trimMediaExtension(lower)
 	out := Features{Normalized: textutil.NormalizeTitle(trimmed)}

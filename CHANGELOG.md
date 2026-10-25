@@ -24,6 +24,8 @@
   Torznab ripetuta non riesegue il join su `release_sources`.
 - Indice composito `(hidden, category, seeders, published_at, id)` per i filtri
   categoria + seeder minimi: il conteggio usa un indice covering.
+- Cache bounded (2.048 titoli) dei tratti usati dalla fusione: il passaggio
+  regex sui titoli non viene ripetuto a ogni ricerca.
 
 ### Ricerca
 - Ricerca nei nomi dei file dei torrent salvati, con FTS5 trigram.

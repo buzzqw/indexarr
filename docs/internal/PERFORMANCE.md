@@ -686,3 +686,53 @@ fresche del DB, live disattivato:
 
 `TestVisibleCategorySeedersIndexExists` verifica che l’indice sia creato su un
 DB nuovo. I test di ricerca, categoria e seeder esistenti restano verdi.
+
+---
+
+## 13. Cache dei tratti dei titoli (25 ottobre 2026)
+
+Il test di carico Docker (50.000 release, 20 richieste concorrenti) mostrava
+ancora `regexp.(*Regexp).backtrack` al **21% del CPU** durante la ricerca
+`q=1080p`: ogni pagina richiamava `dedup.Extract` sui titoli, ripetendo la
+stessa estrazione regex.
+
+### 13.1 Modifica
+
+In `internal/dedup`:
+
+- `Extract` mantiene una cache FIFO bounded di **2.048 titoli**;
+- il valore è `Features`, calcolato da `extractUncached`;
+- il limite evita che un archivio di titoli tutti diversi trasformi la cache
+  in una crescita di memoria illimitata;
+- il cache è condiviso e protetto da `RWMutex`; il percorso di lettura non
+  copia il titolo.
+
+Il caso d’uso reale è il polling ripetuto delle stesse release da parte di
+Sonarr/Radarr: la cache non cambia i risultati, elimina il ricalcolo.
+
+### 13.2 Test Docker
+
+- `sim/run-docker.sh`: tutte le asserzioni end-to-end passano.
+- Load test dedicato: database da 50.000 release, container
+  `indexarr-sim:local`, 20 richieste concorrenti, endpoint Torznab `limit=100`.
+
+| Scenario | Prima | Dopo |
+|---|---:|---:|
+| `q=1080p`, 400 richieste, 20 concorrenti | 57,9 rps · p95 443 ms | **69,8 rps · p95 392 ms** |
+| `q=1080p`, 20 s di profilo | 71,4 s di CPU campionata | **63,3 s** |
+| `q=` vuota | 1.040,9 rps · p95 27,8 ms | 1.056,0 rps · p95 29,1 ms |
+| `q=benchmark movie 1234` | 69,3 rps · p95 382 ms | 66,5 rps · p95 409 ms (rumore) |
+
+Il profilo CPU dopo la cache non mostra più `regexp` fra le prime voci; il
+costo dominante è SQLite/FTS. La cache occupa circa **2 MB** di heap; il
+profilo heap del container è sceso da 18,7 MB a 12,9 MB nella stessa prova,
+quindi il footprint netto non è aumentato.
+
+I numeri Docker sono più rumorosi dei benchmark in-process (container,
+page cache e 20 richieste concorrenti); le differenze vanno lette come
+indicazione, non come misura certificata.
+
+### 13.3 Test
+
+`TestExtractCacheIsBoundedAndConsistent` verifica che il risultato cached sia
+identico a `extractUncached` e che cache e coda restino entro il limite.
