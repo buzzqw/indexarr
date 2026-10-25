@@ -53,6 +53,7 @@
           <th scope="col">{{T "common.name"}}</th>
           <th scope="col">{{T "common.url"}}</th>
           <th scope="col" title="{{T "tip.appSyncLevel"}}">{{T "applications.level"}}</th>
+          <th scope="col" title="{{T "tip.appTagFilter"}}">{{T "applications.tagFilter"}}</th>
           <th scope="col" title="{{T "tip.appLastSync"}}">{{T "applications.lastSync"}}</th>
           <th scope="col">{{T "common.lastError"}}</th>
           <th scope="col" class="right">{{T "common.actions"}}</th>
@@ -65,12 +66,17 @@
           <td><a href="/applications/{{.Application.ID}}/edit">{{.Application.Name}}</a></td>
           <td><code>{{.Application.URL}}</code></td>
           <td>{{syncLevelLabel .Application.SyncLevel}}</td>
+          <td>{{if .Application.TagFilter}}<code>{{.Application.TagFilter}}</code>{{else}}<span class="muted" title="{{T "tip.appTagFilterAll"}}">{{T "applications.tagFilterAll"}}</span>{{end}}</td>
           <td class="nowrap">{{date .Application.LastSyncAt}}</td>
           <td>{{if .Application.LastError}}<span class="text-danger" title="{{.Application.LastError}}">{{truncate .Application.LastError 80}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
           <td class="right nowrap">
             <form method="post" action="/applications/{{.Application.ID}}/sync">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
               <button class="btn small" type="submit" title="{{T "tip.appSyncNow"}}">{{T "common.sync"}}</button>
+            </form>
+            <form method="post" action="/applications/{{.Application.ID}}/snapshot">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small" type="submit" title="{{T "tip.appSnapshot"}}">{{T "applications.snapshotNow"}}</button>
             </form>
             <a class="btn small" href="/applications/{{.Application.ID}}/edit">{{T "common.edit"}}</a>
             <form method="post" action="/applications/{{.Application.ID}}/delete" data-confirm="{{T "applications.deleteConfirm"}}">
@@ -91,6 +97,56 @@
   </div>
   {{end}}
 </section>
+
+{{if .Rows}}
+<section class="panel" id="snapshots">
+  <div class="panel-head"><h2>{{T "applications.snapshotsTitle"}}</h2></div>
+  <p class="help">{{T "applications.snapshotsHelp"}}</p>
+  {{range .Rows}}
+  {{$app := .}}
+  <details class="advanced">
+    <summary title="{{T "tip.appSnapshotList"}}">{{.Application.Name}} · {{T "applications.snapshotCount" (len .Snapshots)}}</summary>
+    <div class="advanced-body">
+      {{if .Snapshots}}
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col" title="{{T "tip.appSnapshotDate"}}">{{T "applications.snapshotDate"}}</th>
+              <th scope="col" title="{{T "tip.appSnapshotReason"}}">{{T "applications.snapshotReason"}}</th>
+              <th scope="col" title="{{T "tip.appSnapshotIndexers"}}">{{T "applications.snapshotIndexers"}}</th>
+              <th scope="col" class="right">{{T "common.actions"}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Snapshots}}
+            <tr>
+              <td class="nowrap">{{date .CreatedAt}}</td>
+              <td><span class="chip">{{T .ReasonKey}}</span></td>
+              <td>{{.IndexerCount}}</td>
+              <td class="right nowrap">
+                <form method="post" action="/applications/{{$app.Application.ID}}/restore/{{.ID}}" data-confirm="{{T "applications.restoreConfirm" $app.Application.Name}}">
+                  <input type="hidden" name="csrf" value="{{$.CSRF}}">
+                  <button class="btn small" type="submit" title="{{T "tip.appRestore"}}">{{T "applications.restore"}}</button>
+                </form>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <p class="muted">{{T "applications.snapshotsEmpty"}}</p>
+      {{end}}
+      <form method="post" action="/applications/{{.Application.ID}}/snapshot">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <button class="btn small" type="submit" title="{{T "tip.appSnapshot"}}">{{T "applications.snapshotNow"}}</button>
+      </form>
+    </div>
+  </details>
+  {{end}}
+</section>
+{{end}}
 
 <section class="panel" id="clients">
   <div class="panel-head">
@@ -172,4 +228,9 @@
     <p class="help">{{T "applications.levelsHelp"}}</p>
   </div>
 </details>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "applications.footerTitle"}}</h2></div>
+  <p class="help">{{T "applications.footer"}}</p>
+</section>
 {{end}}

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/syncjob"
@@ -277,5 +278,93 @@ func TestApplicationSyncWithoutService(t *testing.T) {
 	page = get(t, env.handler, recorder.Header().Get("Location"))
 	if !strings.Contains(page.Body.String(), "not configured") {
 		t.Fatal("sync all did not degrade with a clear message")
+	}
+}
+
+// TestApplicationSnapshotsPanel renders the snapshot list and the restore
+// action in every language, with the confirmation text in place.
+func TestApplicationSnapshotsPanel(t *testing.T) {
+	env, v := newApplicationEnv(t, false)
+	app := seedApplication(t, env.store, v, "Sonarr", "full", "key")
+	snapshotID, err := env.store.CreateAppSnapshot(context.Background(), store.AppSnapshot{
+		AppID: app.ID, Reason: store.SnapshotReasonSync, IndexerCount: 3,
+		Payload: `[{"name":"indexarr · A"}]`,
+	})
+	if err != nil {
+		t.Fatalf("CreateAppSnapshot: %v", err)
+	}
+	app.TagFilter = "tv, 4k"
+	if err := env.store.UpdateApplication(context.Background(), app); err != nil {
+		t.Fatalf("UpdateApplication: %v", err)
+	}
+
+	for _, lang := range []string{"en", "it", "de", "fr", "es", "pl", "zh"} {
+		body := get(t, env.handler, "/applications?lang="+lang).Body.String()
+		for _, want := range []string{
+			"snapshots", "/applications/" + strconvI(app.ID) + "/restore/" + strconvI(snapshotID), "name=\"csrf\"",
+			"tv, 4k", "data-confirm=",
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s: applications page missing %q", lang, want)
+			}
+		}
+		if strings.Contains(body, ">applications.") || strings.Contains(body, ">snapshot.") ||
+			strings.Contains(body, ">tip.") {
+			t.Errorf("%s: unresolved i18n key in the applications page", lang)
+		}
+	}
+
+	form := get(t, env.handler, "/applications/"+strconvI(app.ID)+"/edit").Body.String()
+	for _, want := range []string{`name="tag_filter"`, `value="tv, 4k"`, "Tags"} {
+		if !strings.Contains(form, want) {
+			t.Errorf("application form missing %q", want)
+		}
+	}
+}
+
+// TestApplicationSnapshotActionsGuarded covers the two snapshot endpoints when
+// the sync service is not configured and when the snapshot id is invalid.
+func TestApplicationSnapshotActionsGuarded(t *testing.T) {
+	env, v := newApplicationEnv(t, false)
+	app := seedApplication(t, env.store, v, "Sonarr", "full", "key")
+	token, cookie := csrfFrom(t, env.handler, "/applications")
+
+	for _, path := range []string{
+		"/applications/" + strconvI(app.ID) + "/snapshot",
+		"/applications/" + strconvI(app.ID) + "/restore/1",
+		"/applications/" + strconvI(app.ID) + "/restore/not-a-number",
+	} {
+		recorder := postForm(t, env.handler, path, url.Values{"csrf": {token}}, cookie)
+		if recorder.Code != http.StatusSeeOther {
+			t.Fatalf("POST %s = %d, want a redirect", path, recorder.Code)
+		}
+		location := recorder.Header().Get("Location")
+		if !strings.HasPrefix(location, "/applications") {
+			t.Errorf("POST %s Location = %q", path, location)
+		}
+	}
+}
+
+func TestNormalizeTagFilter(t *testing.T) {
+	cases := map[string]string{
+		"":              "",
+		" tv, TV , 4k ": "tv, 4k",
+		"tv,,anime,,tv": "tv, anime",
+		"4K":            "4K",
+		" tv ,  tv  ":   "tv",
+		"one,two,three": "one, two, three",
+	}
+	for raw, want := range cases {
+		if got := normalizeTagFilter(raw); got != want {
+			t.Errorf("normalizeTagFilter(%q) = %q, want %q", raw, got, want)
+		}
+	}
+	long := strings.Repeat("à", 400) + "," + strings.Repeat("b", 400)
+	got := normalizeTagFilter(long)
+	if len([]rune(got)) > 200 {
+		t.Errorf("filter has %d runes, want at most 200", len([]rune(got)))
+	}
+	if !utf8.ValidString(got) {
+		t.Error("filter is not valid UTF-8")
 	}
 }

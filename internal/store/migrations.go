@@ -26,6 +26,10 @@ const (
 	indexarr2TGxHashlessVersion     = 11
 	indexarr2DownloadStatusVersion  = 12
 	indexarr2SeedersCheckedVersion  = 13
+	// indexarr2AppSnapshotsVersion adds app_snapshots (the state of an
+	// application's indexer list before every change) and the per-application
+	// tag filter used by the sync.
+	indexarr2AppSnapshotsVersion = 14
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

@@ -977,17 +977,23 @@ func TestStartWaitCancellation(t *testing.T) {
 	svc.interval = 20 * time.Millisecond
 	svc.Start(ctx)
 
-	// Wait for the initial sync plus at least one tick.
+	// Wait for the initial sync plus at least one tick. The sync reads the
+	// indexer list twice (the snapshot reads it too), so last_sync_at is the
+	// reliable signal that a sync completed.
+	var (
+		app store.Application
+		err error
+	)
 	deadline := time.Now().Add(3 * time.Second)
-	for fake.listCount() < 2 {
+	for {
+		app, err = st.GetApplication(ctx, appID)
+		if err == nil && !app.LastSyncAt.IsZero() && fake.listCount() >= 2 {
+			break
+		}
 		if time.Now().After(deadline) {
 			t.Fatalf("automatic sync did not run (list calls = %d)", fake.listCount())
 		}
 		time.Sleep(5 * time.Millisecond)
-	}
-	app, err := st.GetApplication(ctx, appID)
-	if err != nil {
-		t.Fatalf("GetApplication: %v", err)
 	}
 	if app.LastSyncAt.IsZero() {
 		t.Error("automatic sync did not record last_sync_at")
@@ -1029,6 +1035,292 @@ func TestClampPriority(t *testing.T) {
 	for in, want := range tests {
 		if got := clampPriority(in); got != want {
 			t.Errorf("clampPriority(%d) = %d, want %d", in, got, want)
+		}
+	}
+}
+
+func (f *fakeServarr) edit(id int, fn func(map[string]any)) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if item, ok := f.items[id]; ok && item != nil {
+		fn(item)
+	}
+}
+
+func (f *fakeServarr) remove(name string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for id, item := range f.items {
+		if item["name"] == name {
+			delete(f.items, id)
+			return
+		}
+	}
+}
+
+// TestSyncSnapshotsBeforeEveryChange proves the safety net: a sync that
+// modifies the application stores the previous list first, while a no-op sync
+// stores nothing.
+func TestSyncSnapshotsBeforeEveryChange(t *testing.T) {
+	ctx := context.Background()
+	st := newSyncStore(t, true)
+	v := newSyncVault(t)
+	fake := newFakeServarr(t, testAppKey)
+
+	createTestDefinition(t, st, "snap-def", "torrent", 5000)
+	alpha := createTestIndexer(t, st, "snap-def", "torrent", "alpha", "Alpha", true, 25)
+	createTestIndexer(t, st, "snap-def", "torrent", "beta", "Beta", true, 25)
+	appID := createTestApplication(t, st, v, "sonarr", "Sonarr", fake.server.URL, testAppKey, "full")
+	svc := newSyncService(t, st, v, testBaseURL)
+
+	if _, err := svc.SyncApp(ctx, appID); err != nil {
+		t.Fatalf("first SyncApp: %v", err)
+	}
+	snapshots, err := st.ListAppSnapshots(ctx, appID)
+	if err != nil {
+		t.Fatalf("ListAppSnapshots: %v", err)
+	}
+	if len(snapshots) != 1 {
+		t.Fatalf("snapshots after first sync = %d, want 1", len(snapshots))
+	}
+	if snapshots[0].Reason != store.SnapshotReasonSync || snapshots[0].IndexerCount != 0 {
+		t.Fatalf("first snapshot = %#v", snapshots[0])
+	}
+	if strings.Contains(snapshots[0].Payload, testAppKey) {
+		t.Fatal("the snapshot contains the application API key")
+	}
+
+	// A no-op sync does not create a snapshot.
+	if _, err := svc.SyncApp(ctx, appID); err != nil {
+		t.Fatalf("no-op SyncApp: %v", err)
+	}
+	snapshots, _ = st.ListAppSnapshots(ctx, appID)
+	if len(snapshots) != 1 {
+		t.Fatalf("a no-op sync created a snapshot: %d", len(snapshots))
+	}
+
+	// A real change stores the state from before the change.
+	alpha.Priority = 40
+	if err := st.UpdateIndexer(ctx, alpha); err != nil {
+		t.Fatalf("UpdateIndexer: %v", err)
+	}
+	if _, err := svc.SyncApp(ctx, appID); err != nil {
+		t.Fatalf("changing SyncApp: %v", err)
+	}
+	snapshots, _ = st.ListAppSnapshots(ctx, appID)
+	if len(snapshots) != 2 {
+		t.Fatalf("snapshots after change = %d, want 2", len(snapshots))
+	}
+	if snapshots[0].IndexerCount != 2 {
+		t.Errorf("snapshot indexer count = %d, want 2", snapshots[0].IndexerCount)
+	}
+	for _, name := range []string{appsync.ManagedPrefix + "Alpha", appsync.ManagedPrefix + "Beta"} {
+		if !strings.Contains(snapshots[0].Payload, name) {
+			t.Errorf("snapshot payload misses %q", name)
+		}
+	}
+}
+
+// TestSyncTagFilter proves that an application only receives the indexerr
+// indexers whose labels match its filter, and that changing the filter both
+// adds and removes managed indexers.
+func TestSyncTagFilter(t *testing.T) {
+	ctx := context.Background()
+	st := newSyncStore(t, true)
+	v := newSyncVault(t)
+	fake := newFakeServarr(t, testAppKey)
+
+	createTestDefinition(t, st, "filter-def", "torrent", 5000)
+	alpha := createTestIndexer(t, st, "filter-def", "torrent", "alpha", "Alpha", true, 25)
+	alpha.Tags = "TV, Anime"
+	if err := st.UpdateIndexer(ctx, alpha); err != nil {
+		t.Fatalf("UpdateIndexer alpha: %v", err)
+	}
+	beta := createTestIndexer(t, st, "filter-def", "torrent", "beta", "Beta", true, 25)
+	beta.Tags = "Movies"
+	if err := st.UpdateIndexer(ctx, beta); err != nil {
+		t.Fatalf("UpdateIndexer beta: %v", err)
+	}
+
+	appID := createTestApplication(t, st, v, "sonarr", "Sonarr", fake.server.URL, testAppKey, "full")
+	app, err := st.GetApplication(ctx, appID)
+	if err != nil {
+		t.Fatalf("GetApplication: %v", err)
+	}
+	app.TagFilter = "tv"
+	if err := st.UpdateApplication(ctx, app); err != nil {
+		t.Fatalf("UpdateApplication filter: %v", err)
+	}
+	svc := newSyncService(t, st, v, testBaseURL)
+
+	if _, err := svc.SyncApp(ctx, appID); err != nil {
+		t.Fatalf("filtered SyncApp: %v", err)
+	}
+	if fake.find(appsync.ManagedPrefix+"Alpha") == nil {
+		t.Error("the matching indexer was not added")
+	}
+	if fake.find(appsync.ManagedPrefix+"Beta") != nil {
+		t.Error("an indexer outside the tag filter was added")
+	}
+	if fake.count() != 1 {
+		t.Fatalf("remote indexers = %d, want 1", fake.count())
+	}
+
+	// Clearing the filter includes every indexer.
+	app.TagFilter = ""
+	if err := st.UpdateApplication(ctx, app); err != nil {
+		t.Fatalf("UpdateApplication clear: %v", err)
+	}
+	if _, err := svc.SyncApp(ctx, appID); err != nil {
+		t.Fatalf("cleared SyncApp: %v", err)
+	}
+	if fake.count() != 2 {
+		t.Fatalf("remote indexers after clearing = %d, want 2", fake.count())
+	}
+
+	// A narrower filter removes only the managed indexer that no longer
+	// matches.
+	fake.addManual("Manual tracker", "https://manual.example/api")
+	app.TagFilter = "movies"
+	if err := st.UpdateApplication(ctx, app); err != nil {
+		t.Fatalf("UpdateApplication movies: %v", err)
+	}
+	result, err := svc.SyncApp(ctx, appID)
+	if err != nil {
+		t.Fatalf("movies SyncApp: %v", err)
+	}
+	if result.Deleted != 1 {
+		t.Fatalf("movies result = %+v", result)
+	}
+	if fake.find(appsync.ManagedPrefix+"Alpha") != nil {
+		t.Error("the filtered-out indexer is still in the app")
+	}
+	if fake.find(appsync.ManagedPrefix+"Beta") == nil {
+		t.Error("the matching indexer was removed")
+	}
+	if fake.find("Manual tracker") == nil {
+		t.Error("the manual indexer was touched")
+	}
+}
+
+// TestRestoreRecreatesUpdatesAndDeletesOnlyManaged covers the whole restore
+// contract against a fake Servarr.
+func TestRestoreRecreatesUpdatesAndDeletesOnlyManaged(t *testing.T) {
+	ctx := context.Background()
+	st := newSyncStore(t, true)
+	v := newSyncVault(t)
+	fake := newFakeServarr(t, testAppKey)
+
+	createTestDefinition(t, st, "restore-def", "torrent", 5000)
+	createTestIndexer(t, st, "restore-def", "torrent", "alpha", "Alpha", true, 25)
+	createTestIndexer(t, st, "restore-def", "torrent", "beta", "Beta", true, 25)
+	appID := createTestApplication(t, st, v, "sonarr", "Sonarr", fake.server.URL, testAppKey, "full")
+	svc := newSyncService(t, st, v, testBaseURL)
+
+	if _, err := svc.SyncApp(ctx, appID); err != nil {
+		t.Fatalf("SyncApp: %v", err)
+	}
+	alphaItem := fake.find(appsync.ManagedPrefix + "Alpha")
+	betaItem := fake.find(appsync.ManagedPrefix + "Beta")
+	if alphaItem == nil || betaItem == nil {
+		t.Fatal("the initial sync did not add both indexers")
+	}
+	alphaID := fakeRemoteID(t, alphaItem)
+	betaID := fakeRemoteID(t, betaItem)
+
+	// The operator asks for a checkpoint of the healthy state.
+	checkpoint, err := svc.SnapshotApp(ctx, appID)
+	if err != nil {
+		t.Fatalf("SnapshotApp: %v", err)
+	}
+
+	// The operator then breaks the app by hand: an indexer is edited, one is
+	// deleted, an extra managed indexer is added and a manual one appears.
+	fake.edit(alphaID, func(item map[string]any) {
+		item["priority"] = float64(5)
+		item["name"] = appsync.ManagedPrefix + "Alpha renamed"
+	})
+	fake.remove(appsync.ManagedPrefix + "Beta")
+	fake.addManual(appsync.ManagedPrefix+"Extra", "https://indexarr.example/torznab/extra")
+	fake.addManual("Manual tracker", "https://manual.example/api")
+
+	result, err := svc.Restore(ctx, appID, checkpoint)
+	if err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	if result.Updated != 1 || result.Added != 1 || result.Deleted != 1 {
+		t.Fatalf("restore result = %+v", result)
+	}
+
+	restoredAlpha := fake.find(appsync.ManagedPrefix + "Alpha")
+	if restoredAlpha == nil {
+		t.Fatal("the edited indexer was not restored under its old name")
+	}
+	if got := restoredAlpha["priority"]; got != float64(25) {
+		t.Errorf("restored priority = %v, want 25", got)
+	}
+	if got := fakeField(restoredAlpha, "apiKey"); got != testIndexarrKey {
+		t.Errorf("restored apiKey = %v, want the current indexarr key", got)
+	}
+	if fake.find(appsync.ManagedPrefix+"Beta") == nil {
+		t.Error("the deleted indexer was not recreated")
+	}
+	if fake.find(appsync.ManagedPrefix+"Extra") != nil {
+		t.Error("the extra managed indexer was not removed")
+	}
+	if fake.find("Manual tracker") == nil {
+		t.Error("the manual indexer was deleted by the restore")
+	}
+	_ = betaID
+
+	// A restore stores the state it found, so it is itself reversible.
+	snapshots, err := st.ListAppSnapshots(ctx, appID)
+	if err != nil {
+		t.Fatalf("ListAppSnapshots: %v", err)
+	}
+	if snapshots[0].Reason != store.SnapshotReasonBeforeRestore {
+		t.Fatalf("newest snapshot reason = %q, want before-restore", snapshots[0].Reason)
+	}
+	if snapshots[0].IndexerCount != 3 {
+		t.Errorf("before-restore count = %d, want 3", snapshots[0].IndexerCount)
+	}
+
+	links, err := st.ListAppIndexers(ctx, appID)
+	if err != nil {
+		t.Fatalf("ListAppIndexers: %v", err)
+	}
+	if len(links) != 2 {
+		t.Fatalf("app_indexers after restore = %d, want 2: %+v", len(links), links)
+	}
+}
+
+// TestSnapshotRetentionTwenty keeps the newest 20 snapshots for an app.
+func TestSnapshotRetentionTwenty(t *testing.T) {
+	ctx := context.Background()
+	st := newSyncStore(t, true)
+	v := newSyncVault(t)
+	fake := newFakeServarr(t, testAppKey)
+
+	createTestDefinition(t, st, "retention-def", "torrent", 5000)
+	createTestIndexer(t, st, "retention-def", "torrent", "alpha", "Alpha", true, 25)
+	appID := createTestApplication(t, st, v, "sonarr", "Sonarr", fake.server.URL, testAppKey, "full")
+	svc := newSyncService(t, st, v, testBaseURL)
+
+	for i := 0; i < store.AppSnapshotRetention+2; i++ {
+		if _, err := svc.SnapshotApp(ctx, appID); err != nil {
+			t.Fatalf("SnapshotApp %d: %v", i, err)
+		}
+	}
+	snapshots, err := st.ListAppSnapshots(ctx, appID)
+	if err != nil {
+		t.Fatalf("ListAppSnapshots: %v", err)
+	}
+	if len(snapshots) != store.AppSnapshotRetention {
+		t.Fatalf("snapshots = %d, want %d", len(snapshots), store.AppSnapshotRetention)
+	}
+	for _, snapshot := range snapshots {
+		if snapshot.Reason != store.SnapshotReasonManual {
+			t.Errorf("manual snapshot reason = %q", snapshot.Reason)
 		}
 	}
 }

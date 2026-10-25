@@ -94,14 +94,35 @@ type IndexerHistory struct {
 
 // Application is a downstream *arr instance.
 type Application struct {
-	ID         int64
-	Kind       string
-	Name       string
-	URL        string
-	APIKeyEnc  []byte
-	SyncLevel  string
+	ID        int64
+	Kind      string
+	Name      string
+	URL       string
+	APIKeyEnc []byte
+	SyncLevel string
+	// TagFilter is the comma-separated list of indexarr tag labels that belong
+	// to this application. Empty means "every indexer".
+	TagFilter  string
 	LastSyncAt time.Time
 	LastError  string
+}
+
+// Snapshot reasons. They mirror the CHECK constraint of app_snapshots.reason.
+const (
+	SnapshotReasonSync          = "sync"
+	SnapshotReasonManual        = "manual"
+	SnapshotReasonBeforeRestore = "before-restore"
+)
+
+// AppSnapshot is the indexer list of one application at a point in time. The
+// application API key is never part of Payload.
+type AppSnapshot struct {
+	ID           int64
+	AppID        int64
+	CreatedAt    time.Time
+	Reason       string
+	IndexerCount int
+	Payload      string
 }
 
 // AppIndexer links an application to one indexer it knows about.
@@ -720,11 +741,12 @@ func (s *Store) CreateApplication(ctx context.Context, in Application) (int64, e
 	var id int64
 	err := s.db.QueryRowContext(ctx, `
 		INSERT INTO applications(kind, name, url, api_key_enc, sync_level,
-			last_sync_at, last_error, created_at, updated_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+			tag_filter, last_sync_at, last_error, created_at, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
 		in.Kind, in.Name, in.URL, in.APIKeyEnc, in.SyncLevel,
-		in.LastSyncAt.Unix(), in.LastError, time.Now().Unix(), time.Now().Unix()).Scan(&id)
+		in.TagFilter, in.LastSyncAt.Unix(), in.LastError,
+		time.Now().Unix(), time.Now().Unix()).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create application: %w", err)
 	}
@@ -734,7 +756,8 @@ func (s *Store) CreateApplication(ctx context.Context, in Application) (int64, e
 // GetApplication loads one application by id.
 func (s *Store) GetApplication(ctx context.Context, id int64) (Application, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, kind, name, url, api_key_enc, sync_level, last_sync_at, last_error
+		SELECT id, kind, name, url, api_key_enc, sync_level, tag_filter,
+			last_sync_at, last_error
 		FROM applications WHERE id = ?`, id)
 	out, err := scanApplication(row)
 	if err != nil {
@@ -749,7 +772,8 @@ func (s *Store) GetApplication(ctx context.Context, id int64) (Application, erro
 // ListApplications returns every application ordered by name.
 func (s *Store) ListApplications(ctx context.Context) ([]Application, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, kind, name, url, api_key_enc, sync_level, last_sync_at, last_error
+		SELECT id, kind, name, url, api_key_enc, sync_level, tag_filter,
+			last_sync_at, last_error
 		FROM applications ORDER BY name COLLATE NOCASE, id`)
 	if err != nil {
 		return nil, err
@@ -770,7 +794,7 @@ func scanApplication(scanner interface{ Scan(...any) error }) (Application, erro
 	var out Application
 	var lastSync int64
 	if err := scanner.Scan(&out.ID, &out.Kind, &out.Name, &out.URL,
-		&out.APIKeyEnc, &out.SyncLevel, &lastSync, &out.LastError); err != nil {
+		&out.APIKeyEnc, &out.SyncLevel, &out.TagFilter, &lastSync, &out.LastError); err != nil {
 		return Application{}, err
 	}
 	out.LastSyncAt = unixTime(lastSync)
@@ -784,9 +808,9 @@ func (s *Store) UpdateApplication(ctx context.Context, in Application) error {
 	}
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE applications SET kind = ?, name = ?, url = ?, api_key_enc = ?,
-			sync_level = ?, last_sync_at = ?, last_error = ?, updated_at = ?
+			sync_level = ?, tag_filter = ?, last_sync_at = ?, last_error = ?, updated_at = ?
 		WHERE id = ?`,
-		in.Kind, in.Name, in.URL, in.APIKeyEnc, in.SyncLevel,
+		in.Kind, in.Name, in.URL, in.APIKeyEnc, in.SyncLevel, in.TagFilter,
 		in.LastSyncAt.Unix(), in.LastError, time.Now().Unix(), in.ID)
 	if err != nil {
 		return fmt.Errorf("update application %d: %w", in.ID, err)
@@ -798,7 +822,8 @@ func (s *Store) UpdateApplication(ctx context.Context, in Application) error {
 	return nil
 }
 
-// DeleteApplication removes an application and its app_indexers rows.
+// DeleteApplication removes an application, its app_indexers rows and its
+// snapshots (both through ON DELETE CASCADE).
 func (s *Store) DeleteApplication(ctx context.Context, id int64) error {
 	if _, err := s.db.ExecContext(ctx, `DELETE FROM applications WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("delete application %d: %w", id, err)
@@ -852,6 +877,108 @@ func (s *Store) DeleteAppIndexer(ctx context.Context, applicationID, indexerID i
 		return fmt.Errorf("delete app indexer: %w", err)
 	}
 	return nil
+}
+
+// AppSnapshotRetention is the number of snapshots kept per application. Older
+// rows are pruned by CreateAppSnapshot inside the same transaction.
+const AppSnapshotRetention = 20
+
+// CreateAppSnapshot stores one snapshot and keeps only the newest
+// AppSnapshotRetention rows for the application. It returns the new id.
+func (s *Store) CreateAppSnapshot(ctx context.Context, in AppSnapshot) (int64, error) {
+	reason := strings.TrimSpace(in.Reason)
+	switch reason {
+	case SnapshotReasonSync, SnapshotReasonManual, SnapshotReasonBeforeRestore:
+	case "":
+		reason = SnapshotReasonManual
+	default:
+		return 0, fmt.Errorf("app snapshot: invalid reason %q", in.Reason)
+	}
+	if in.Payload == "" {
+		in.Payload = "[]"
+	}
+	if in.IndexerCount < 0 {
+		in.IndexerCount = 0
+	}
+	if in.CreatedAt.IsZero() {
+		in.CreatedAt = time.Now()
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("app snapshot: begin: %w", err)
+	}
+	defer tx.Rollback()
+
+	var id int64
+	if err := tx.QueryRowContext(ctx, `
+		INSERT INTO app_snapshots(app_id, created_at, reason, indexer_count, payload)
+		VALUES(?, ?, ?, ?, ?)
+		RETURNING id`,
+		in.AppID, in.CreatedAt.Unix(), reason, in.IndexerCount, in.Payload).Scan(&id); err != nil {
+		return 0, fmt.Errorf("app snapshot: insert: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM app_snapshots
+		WHERE app_id = ? AND id NOT IN (
+			SELECT id FROM app_snapshots WHERE app_id = ?
+			ORDER BY created_at DESC, id DESC LIMIT ?
+		)`, in.AppID, in.AppID, AppSnapshotRetention); err != nil {
+		return 0, fmt.Errorf("app snapshot: prune: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("app snapshot: commit: %w", err)
+	}
+	return id, nil
+}
+
+const appSnapshotColumns = `id, app_id, created_at, reason, indexer_count, payload`
+
+// ListAppSnapshots returns the snapshots of one application, newest first.
+func (s *Store) ListAppSnapshots(ctx context.Context, applicationID int64) ([]AppSnapshot, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT `+appSnapshotColumns+` FROM app_snapshots
+		WHERE app_id = ? ORDER BY created_at DESC, id DESC`, applicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AppSnapshot
+	for rows.Next() {
+		item, err := scanAppSnapshot(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+// GetAppSnapshot loads one snapshot, scoped to its application so a crafted id
+// can never read another app's state.
+func (s *Store) GetAppSnapshot(ctx context.Context, applicationID, snapshotID int64) (AppSnapshot, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT `+appSnapshotColumns+` FROM app_snapshots
+		WHERE app_id = ? AND id = ?`, applicationID, snapshotID)
+	item, err := scanAppSnapshot(row)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return AppSnapshot{}, fmt.Errorf("app snapshot %d: %w", snapshotID, sql.ErrNoRows)
+		}
+		return AppSnapshot{}, err
+	}
+	return item, nil
+}
+
+func scanAppSnapshot(scanner interface{ Scan(...any) error }) (AppSnapshot, error) {
+	var out AppSnapshot
+	var created int64
+	if err := scanner.Scan(&out.ID, &out.AppID, &created, &out.Reason,
+		&out.IndexerCount, &out.Payload); err != nil {
+		return AppSnapshot{}, err
+	}
+	out.CreatedAt = unixTime(created)
+	return out, nil
 }
 
 // CreateProxy inserts a proxy and returns its id.

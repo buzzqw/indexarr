@@ -156,6 +156,32 @@ func (c *servarrClient) ListIndexers(ctx context.Context) ([]RemoteIndexer, erro
 	return out, nil
 }
 
+// IndexerSnapshot returns the application's raw indexer list for a snapshot.
+// The list is validated as a JSON array before it is stored, and the
+// application API key is redacted even though it travels only in a header:
+// a snapshot must never become a place where a secret is written down.
+func (c *servarrClient) IndexerSnapshot(ctx context.Context) ([]byte, error) {
+	op := fmt.Sprintf("appsync: %s snapshot indexers", c.kind)
+	status, body, err := c.do(ctx, http.MethodGet, "/indexer", nil)
+	if err != nil {
+		return nil, err
+	}
+	if !isSuccess(status) {
+		return nil, apiError(op, status, body, c.apiKey)
+	}
+	body = bytes.TrimSpace(body)
+	if len(body) == 0 {
+		return []byte("[]"), nil
+	}
+	if body[0] != '[' || !json.Valid(body) {
+		return nil, fmt.Errorf("%s: unexpected response", op)
+	}
+	if c.apiKey != "" {
+		body = bytes.ReplaceAll(body, []byte(c.apiKey), []byte("[REDACTED]"))
+	}
+	return body, nil
+}
+
 // AddIndexer obtains the schema template (when available), merges the desired
 // fields and creates the indexer.
 func (c *servarrClient) AddIndexer(ctx context.Context, spec IndexerSpec) (RemoteIndexer, error) {

@@ -8,16 +8,16 @@
 // desired. Manually created indexers in the application (those without the
 // appsync.ManagedPrefix) are never touched.
 //
-// Rollback is deliberately not implemented in this wave. Because the desired
-// state is authoritative, "undoing" a sync means restoring the previous
-// indexer configuration and running the job again; a future snapshot table of
-// app_indexers will provide real one-click rollback. No fake rollback is
-// stored here.
+// Before a sync changes anything it stores a snapshot of the application's
+// indexer list (app_snapshots). The App page lists those snapshots and can
+// restore one; a restore only touches the indexers whose name carries the
+// ManagedPrefix, creates a before-restore snapshot of its own, and still
+// re-applies the current desired state on the next scheduled sync.
 //
 // Secrets: the application API key is decrypted with the vault and passed only
 // to the appsync client. Logs contain application names and counters, never
 // API keys or URLs with credentials. The appsync client redacts the key from
-// every error it returns.
+// every error it returns, and snapshots never include it.
 package syncjob
 
 import (
@@ -241,50 +241,22 @@ func (s *Service) run(ctx context.Context) {
 
 // sync performs the reconciliation for one enabled application.
 func (s *Service) sync(ctx context.Context, app store.Application, result *SyncResult) (err error) {
-	if s.vault == nil {
-		return errors.New("syncjob: vault is not configured; cannot decrypt the application API key")
-	}
-	if len(app.APIKeyEnc) == 0 {
-		return fmt.Errorf("syncjob: application %q has no API key", app.Name)
-	}
-	apiKey, err := s.vault.OpenString(string(app.APIKeyEnc))
+	client, appKey, indexarrKey, err := s.connect(ctx, app)
 	if err != nil {
-		return fmt.Errorf("syncjob: decrypt API key for %q: %w", app.Name, err)
-	}
-	if strings.TrimSpace(apiKey) == "" {
-		return fmt.Errorf("syncjob: application %q has an empty API key", app.Name)
-	}
-
-	if s.baseURL == "" {
-		return errors.New("syncjob: public base URL is not configured")
-	}
-	settings, err := s.store.LoadSettings(ctx)
-	if err != nil {
-		return fmt.Errorf("syncjob: load settings: %w", err)
-	}
-	indexarrKey := strings.TrimSpace(settings.APIKey)
-	if indexarrKey == "" {
-		return errors.New("syncjob: indexarr API key is not configured")
+		return err
 	}
 	// Defence in depth: even if an application echoes the submitted indexer
 	// settings in an error body, neither key may reach last_error, a log line
 	// or the admin API. appsync already redacts the application key.
-	defer func() { err = scrubError(err, apiKey, indexarrKey) }()
-
-	client, err := s.clientFor(app, apiKey)
-	if err != nil {
-		return fmt.Errorf("syncjob: create %s client for %q: %w", app.Kind, app.Name, err)
-	}
-	if client == nil {
-		return fmt.Errorf("syncjob: create %s client for %q: no client returned", app.Kind, app.Name)
-	}
+	defer func() { err = scrubError(err, appKey, indexarrKey) }()
 
 	remote, err := client.ListIndexers(ctx)
 	if err != nil {
 		return fmt.Errorf("syncjob: %s: list indexers: %w", app.Name, err)
 	}
 	desired, indexerIDs, err := s.desiredIndexers(ctx, indexarrKey,
-		appsync.Kind(strings.ToLower(strings.TrimSpace(app.Kind))), client)
+		appsync.Kind(strings.ToLower(strings.TrimSpace(app.Kind))), client,
+		splitTags(app.TagFilter))
 	if err != nil {
 		return err
 	}
@@ -302,6 +274,14 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 		}
 	}
 
+	// Snapshot before the first change. A snapshot failure aborts the sync
+	// instead of modifying the application without a way back.
+	if len(actions) > 0 {
+		if _, err := s.recordSnapshot(ctx, app.ID, store.SnapshotReasonSync, client); err != nil {
+			return fmt.Errorf("syncjob: %s: snapshot before sync: %w", app.Name, err)
+		}
+	}
+
 	links, err := s.store.ListAppIndexers(ctx, app.ID)
 	if err != nil {
 		return fmt.Errorf("syncjob: %s: list existing app indexers: %w", app.Name, err)
@@ -310,16 +290,232 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 	for _, link := range links {
 		byRemote[link.RemoteID] = link.IndexerID
 	}
-	indexerByBaseURL := make(map[string]int64, len(desired))
+	byName, byBaseURL, err := s.mappingFor(ctx, desired)
+	if err != nil {
+		return fmt.Errorf("syncjob: %s: map indexers: %w", app.Name, err)
+	}
 	desiredIDs := make(map[int64]bool, len(indexerIDs))
-	for i, spec := range desired {
-		indexerByBaseURL[spec.BaseURL] = indexerIDs[i]
-		desiredIDs[indexerIDs[i]] = true
+	for _, id := range indexerIDs {
+		desiredIDs[id] = true
 	}
 
-	// Apply in a deterministic order: additions, then updates, then removals.
-	// A failure on one site must not abort the remaining sites: Prowlarr keeps
-	// syncing the rest and reports the failed indexer on the next run.
+	return s.applyActions(ctx, app, client, actions, links, byName, byBaseURL,
+		byRemote, desiredIDs, result)
+}
+
+// connect resolves the application API key, loads the indexarr Torznab key and
+// builds the appsync client. The caller must scrub errors with both keys.
+func (s *Service) connect(ctx context.Context, app store.Application) (appsync.Client, string, string, error) {
+	if s.vault == nil {
+		return nil, "", "", errors.New("syncjob: vault is not configured; cannot decrypt the application API key")
+	}
+	if len(app.APIKeyEnc) == 0 {
+		return nil, "", "", fmt.Errorf("syncjob: application %q has no API key", app.Name)
+	}
+	apiKey, err := s.vault.OpenString(string(app.APIKeyEnc))
+	if err != nil {
+		return nil, "", "", fmt.Errorf("syncjob: decrypt API key for %q: %w", app.Name, err)
+	}
+	if strings.TrimSpace(apiKey) == "" {
+		return nil, "", "", fmt.Errorf("syncjob: application %q has an empty API key", app.Name)
+	}
+
+	if s.baseURL == "" {
+		return nil, "", "", errors.New("syncjob: public base URL is not configured")
+	}
+	settings, err := s.store.LoadSettings(ctx)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("syncjob: load settings: %w", err)
+	}
+	indexarrKey := strings.TrimSpace(settings.APIKey)
+	if indexarrKey == "" {
+		return nil, "", "", errors.New("syncjob: indexarr API key is not configured")
+	}
+
+	client, err := s.clientFor(app, apiKey)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("syncjob: create %s client for %q: %w", app.Kind, app.Name, err)
+	}
+	if client == nil {
+		return nil, "", "", fmt.Errorf("syncjob: create %s client for %q: no client returned", app.Kind, app.Name)
+	}
+	return client, apiKey, indexarrKey, nil
+}
+
+// recordSnapshot stores the current indexer list of an application. Clients
+// without indexer management return ErrUnsupported: they have nothing to
+// snapshot and nothing to restore.
+func (s *Service) recordSnapshot(ctx context.Context, appID int64, reason string, client appsync.Client) (int64, error) {
+	snapshotter, ok := client.(appsync.Snapshotter)
+	if !ok {
+		return 0, nil
+	}
+	payload, err := snapshotter.IndexerSnapshot(ctx)
+	if err != nil {
+		if errors.Is(err, appsync.ErrUnsupported) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return s.store.CreateAppSnapshot(ctx, store.AppSnapshot{
+		AppID:        appID,
+		Reason:       reason,
+		IndexerCount: appsync.CountSnapshotIndexers(payload),
+		Payload:      string(payload),
+	})
+}
+
+// SnapshotApp stores a manual snapshot of the application's current indexer
+// list. It is the "save a checkpoint now" action of the App page.
+func (s *Service) SnapshotApp(ctx context.Context, applicationID int64) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	app, err := s.store.GetApplication(ctx, applicationID)
+	if err != nil {
+		return 0, err
+	}
+	client, appKey, indexarrKey, err := s.connect(ctx, app)
+	if err != nil {
+		return 0, scrubError(err, appKey, indexarrKey)
+	}
+	id, err := s.recordSnapshot(ctx, app.ID, store.SnapshotReasonManual, client)
+	if err != nil {
+		return 0, scrubError(fmt.Errorf("syncjob: %s: manual snapshot: %w", app.Name, err),
+			appKey, indexarrKey)
+	}
+	if id == 0 {
+		return 0, appsync.ErrUnsupported
+	}
+	return id, nil
+}
+
+// Restore returns the indexers managed by indexarr to the state stored in one
+// snapshot. Operator-created indexers are never touched. A before-restore
+// snapshot is taken first, so a restore is itself reversible.
+func (s *Service) Restore(ctx context.Context, applicationID, snapshotID int64) (result SyncResult, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	result = SyncResult{ApplicationID: applicationID}
+	app, err := s.store.GetApplication(ctx, applicationID)
+	if err != nil {
+		result.Err = err
+		return result, err
+	}
+	result.Name = app.Name
+
+	client, appKey, indexarrKey, err := s.connect(ctx, app)
+	if err != nil {
+		result.Err = err
+		return result, err
+	}
+	defer func() {
+		if err != nil {
+			err = scrubError(err, appKey, indexarrKey)
+			result.Err = err
+		}
+	}()
+
+	target, err := s.store.GetAppSnapshot(ctx, app.ID, snapshotID)
+	if err != nil {
+		return result, fmt.Errorf("syncjob: %s: load snapshot: %w", app.Name, err)
+	}
+	remote, err := client.ListIndexers(ctx)
+	if err != nil {
+		return result, fmt.Errorf("syncjob: %s: list indexers: %w", app.Name, err)
+	}
+	if _, err := s.recordSnapshot(ctx, app.ID, store.SnapshotReasonBeforeRestore, client); err != nil {
+		return result, fmt.Errorf("syncjob: %s: snapshot before restore: %w", app.Name, err)
+	}
+
+	desired, err := appsync.SnapshotSpecs([]byte(target.Payload))
+	if err != nil {
+		return result, fmt.Errorf("syncjob: %s: %w", app.Name, err)
+	}
+	// The API key of a managed indexer is indexarr's own Torznab key, not the
+	// application key. Sending the current one keeps a restored indexer
+	// working after a key rotation instead of reviving a stale credential.
+	for i := range desired {
+		desired[i].APIKey = indexarrKey
+	}
+
+	// A restore is always complete: add, update and delete. Operator-created
+	// indexers are not in desired and Reconcile never deletes them.
+	actions := appsync.Reconcile(desired, remote, appsync.ReconcileOptions{SyncLevel: "full"})
+	links, err := s.store.ListAppIndexers(ctx, app.ID)
+	if err != nil {
+		return result, fmt.Errorf("syncjob: %s: list existing app indexers: %w", app.Name, err)
+	}
+	byRemote := make(map[string]int64, len(links))
+	for _, link := range links {
+		byRemote[link.RemoteID] = link.IndexerID
+	}
+	byName, byBaseURL, err := s.mappingFor(ctx, desired)
+	if err != nil {
+		return result, fmt.Errorf("syncjob: %s: map indexers: %w", app.Name, err)
+	}
+	desiredIDs := make(map[int64]bool, len(desired))
+	for _, spec := range desired {
+		if id, ok := localIndexerID(spec, byName, byBaseURL); ok {
+			desiredIDs[id] = true
+		}
+	}
+
+	if err := s.applyActions(ctx, app, client, actions, links, byName, byBaseURL,
+		byRemote, desiredIDs, &result); err != nil {
+		result.Err = err
+		s.record(ctx, app, err)
+		return result, err
+	}
+	s.record(ctx, app, nil)
+	s.logger.Info("syncjob: application restored",
+		"application", app.Name, "snapshot", snapshotID,
+		"added", result.Added, "updated", result.Updated, "deleted", result.Deleted,
+		"skipped", result.Skipped)
+	return result, nil
+}
+
+// mappingFor maps the desired specs to local indexer ids by managed name and,
+// as a fallback, by Torznab base URL.
+func (s *Service) mappingFor(ctx context.Context, desired []appsync.IndexerSpec) (map[string]int64, map[string]int64, error) {
+	indexers, err := s.store.ListIndexers(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	byName := make(map[string]int64, len(indexers))
+	byBaseURL := make(map[string]int64, len(indexers))
+	for _, indexer := range indexers {
+		byName[appsync.ManagedPrefix+indexer.Name] = indexer.ID
+		byBaseURL[s.baseURL+"/torznab/"+indexer.Slug] = indexer.ID
+	}
+	return byName, byBaseURL, nil
+}
+
+// localIndexerID finds the local indexer a desired spec belongs to. The slug
+// (in the Torznab base URL) is unique, so it wins over the display name, which
+// indexarr does not constrain.
+func localIndexerID(spec appsync.IndexerSpec, byName, byBaseURL map[string]int64) (int64, bool) {
+	if id, ok := byBaseURL[normalizeSpecURL(spec.BaseURL)]; ok {
+		return id, true
+	}
+	if id, ok := byName[spec.Name]; ok {
+		return id, true
+	}
+	return 0, false
+}
+
+func normalizeSpecURL(raw string) string {
+	return strings.TrimRight(strings.TrimSpace(raw), "/")
+}
+
+// applyActions performs add, update and delete in a deterministic order and
+// records the outcome. A failure on one indexer never aborts the others.
+func (s *Service) applyActions(ctx context.Context, app store.Application, client appsync.Client,
+	actions []appsync.Action, links []store.AppIndexer,
+	byName, byBaseURL, byRemote map[string]int64, desiredIDs map[int64]bool,
+	result *SyncResult) error {
+
 	var actionErr error
 	remember := func(err error) {
 		if actionErr == nil {
@@ -338,9 +534,9 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 			result.Skipped++
 			continue
 		}
-		indexerID, ok := indexerByBaseURL[action.Spec.BaseURL]
+		indexerID, ok := localIndexerID(action.Spec, byName, byBaseURL)
 		if !ok {
-			remember(fmt.Errorf("syncjob: internal: no local indexer for %q", action.Spec.Name))
+			remember(fmt.Errorf("syncjob: %s: no local indexer for %q", app.Name, action.Spec.Name))
 			continue
 		}
 		if err := s.store.UpsertAppIndexer(ctx, store.AppIndexer{
@@ -365,9 +561,9 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 			result.Skipped++
 			continue
 		}
-		indexerID, ok := indexerByBaseURL[action.Spec.BaseURL]
+		indexerID, ok := localIndexerID(action.Spec, byName, byBaseURL)
 		if !ok {
-			remember(fmt.Errorf("syncjob: internal: no local indexer for %q", action.Spec.Name))
+			remember(fmt.Errorf("syncjob: %s: no local indexer for %q", app.Name, action.Spec.Name))
 			continue
 		}
 		remoteID := action.RemoteID
@@ -406,9 +602,9 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 	}
 
 	// Forget links to indexers that are no longer desired (disabled, deleted
-	// or removed from the app's managed set). This also cleans rows left by an
-	// earlier interrupted sync, but never drops a link whose remote deletion
-	// just failed: the next sync will retry it.
+	// or excluded by the tag filter). This also cleans rows left by an earlier
+	// interrupted sync, but never drops a link whose remote deletion just
+	// failed: the next sync will retry it.
 	for _, link := range links {
 		if desiredIDs[link.IndexerID] || failedDeletes[link.RemoteID] {
 			continue
@@ -420,22 +616,31 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 	return actionErr
 }
 
-// desiredIndexers builds the desired specs from every enabled indexer. The
-// returned IDs are parallel to the specs. Categories are narrowed to what the
-// target application consumes and tags are translated to the application's
-// tag IDs, so one per-site indexer carries the same priority and labels as the
-// indexer in indexarr.
-func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind appsync.Kind, client appsync.Client) ([]appsync.IndexerSpec, []int64, error) {
+// desiredIndexers builds the desired specs from every enabled indexer that
+// matches the application's tag filter. The returned IDs are parallel to the
+// specs. Categories are narrowed to what the target application consumes and
+// tags are translated to the application's tag IDs, so one per-site indexer
+// carries the same priority and labels as the indexer in indexarr.
+//
+// filter is the parsed applications.tag_filter. An empty filter means "all";
+// otherwise an indexer belongs to the app when it has at least one of the
+// labels. Matching is case-insensitive, like the tag labels themselves.
+func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind appsync.Kind, client appsync.Client, filter []string) ([]appsync.IndexerSpec, []int64, error) {
 	indexers, err := s.store.ListIndexers(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("syncjob: list indexers: %w", err)
 	}
 
 	labels := make([]string, 0)
+	selected := make([]store.Indexer, 0, len(indexers))
 	for _, indexer := range indexers {
 		if !indexer.Enabled {
 			continue
 		}
+		if !matchesTagFilter(indexer.Tags, filter) {
+			continue
+		}
+		selected = append(selected, indexer)
 		for _, label := range splitTags(indexer.Tags) {
 			labels = append(labels, label)
 		}
@@ -446,12 +651,9 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind 
 	}
 
 	categories := make(map[string][]int)
-	specs := make([]appsync.IndexerSpec, 0, len(indexers))
-	ids := make([]int64, 0, len(indexers))
-	for _, indexer := range indexers {
-		if !indexer.Enabled {
-			continue
-		}
+	specs := make([]appsync.IndexerSpec, 0, len(selected))
+	ids := make([]int64, 0, len(selected))
+	for _, indexer := range selected {
 		slug := strings.TrimSpace(indexer.Slug)
 		if slug == "" {
 			return nil, nil, fmt.Errorf("syncjob: indexer %d has no slug", indexer.ID)
@@ -599,6 +801,31 @@ func syncLevel(level string) string {
 	default:
 		return "disabled"
 	}
+}
+
+// matchesTagFilter reports whether an indexer belongs to an application. An
+// empty filter means every indexer; otherwise one shared label is enough.
+// Labels are compared case-insensitively, as Servarr does.
+func matchesTagFilter(raw string, filter []string) bool {
+	if len(filter) == 0 {
+		return true
+	}
+	wanted := make(map[string]bool, len(filter))
+	for _, label := range filter {
+		key := strings.ToLower(strings.TrimSpace(label))
+		if key != "" {
+			wanted[key] = true
+		}
+	}
+	if len(wanted) == 0 {
+		return true
+	}
+	for _, label := range splitTags(raw) {
+		if wanted[strings.ToLower(label)] {
+			return true
+		}
+	}
+	return false
 }
 
 // splitTags turns the comma-separated label list stored with an indexer into

@@ -387,6 +387,34 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 14 stores the indexer list of an application before every
+	// change, so the App page can restore a previous state, and adds the tag
+	// filter that decides which indexarr indexers belong to each app. It is
+	// additive: existing applications keep an empty filter, which means "all".
+	if err := s.applyMigration(context.Background(), indexarr2AppSnapshotsVersion,
+		"app snapshots and tag filters", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`ALTER TABLE applications ADD COLUMN tag_filter TEXT NOT NULL DEFAULT ''`,
+				`CREATE TABLE IF NOT EXISTS app_snapshots (
+					id            INTEGER PRIMARY KEY AUTOINCREMENT,
+					app_id        INTEGER NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+					created_at    INTEGER NOT NULL DEFAULT 0,
+					reason        TEXT    NOT NULL DEFAULT 'sync'
+						CHECK (reason IN ('sync', 'manual', 'before-restore')),
+					indexer_count INTEGER NOT NULL DEFAULT 0,
+					payload       TEXT    NOT NULL DEFAULT '[]'
+				)`,
+				`CREATE INDEX IF NOT EXISTS app_snapshots_app
+					ON app_snapshots(app_id, created_at DESC, id DESC)`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

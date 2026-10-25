@@ -56,7 +56,7 @@ func TestIndexarr2Schema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2SeedersCheckedVersion {
+	if version != indexarr2AppSnapshotsVersion {
 		t.Fatalf("schema version = %d, want %d", version, indexarr2ActivityVersion)
 	}
 	var name string
@@ -139,7 +139,7 @@ func TestMigrationIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2SeedersCheckedVersion {
+	if version != indexarr2AppSnapshotsVersion {
 		t.Fatalf("schema version = %d", version)
 	}
 	if err := second.DB().QueryRowContext(ctx,
@@ -170,7 +170,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2SeedersCheckedVersion {
+	if version != indexarr2AppSnapshotsVersion {
 		t.Fatalf("schema version after failure = %d", version)
 	}
 	var tables int
@@ -734,7 +734,7 @@ func TestDropLegacySourcesMigration(t *testing.T) {
 	}
 	defer migrated.Close()
 	version, err := migrated.schemaVersion(ctx)
-	if err != nil || version != indexarr2SeedersCheckedVersion {
+	if err != nil || version != indexarr2AppSnapshotsVersion {
 		t.Fatalf("schema version = %d, %v", version, err)
 	}
 	for _, table := range []string{"sources", "runs"} {
@@ -823,5 +823,101 @@ func TestSetDefinitionStateKeepsTheDefinition(t *testing.T) {
 	}
 	if err := st.SetDefinitionState(ctx, "missing", "stabile"); !errors.Is(err, sql.ErrNoRows) {
 		t.Errorf("missing definition error = %v", err)
+	}
+}
+
+func TestAppSnapshotsAndTagFilter(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+
+	appID, err := st.CreateApplication(ctx, Application{
+		Kind: "sonarr", Name: "Sonarr", URL: "http://sonarr.test:8989",
+		SyncLevel: "full", TagFilter: "tv, 4k",
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	app, err := st.GetApplication(ctx, appID)
+	if err != nil {
+		t.Fatalf("GetApplication: %v", err)
+	}
+	if app.TagFilter != "tv, 4k" {
+		t.Fatalf("tag filter = %q", app.TagFilter)
+	}
+
+	payload := `[{"name":"indexarr · A"},{"name":"Manual"}]`
+	baseID, err := st.CreateAppSnapshot(ctx, AppSnapshot{
+		AppID: appID, Reason: SnapshotReasonSync, IndexerCount: 2, Payload: payload,
+		CreatedAt: time.Unix(1_600_000_000, 0),
+	})
+	if err != nil {
+		t.Fatalf("CreateAppSnapshot: %v", err)
+	}
+	// An invalid reason is rejected instead of silently stored.
+	if _, err := st.CreateAppSnapshot(ctx, AppSnapshot{
+		AppID: appID, Reason: "sometimes", Payload: "[]",
+	}); err == nil {
+		t.Fatal("CreateAppSnapshot accepted an invalid reason")
+	}
+
+	// A snapshot can only be read through its own application.
+	otherID, err := st.CreateApplication(ctx, Application{
+		Kind: "radarr", Name: "Radarr", URL: "http://radarr.test:7878", SyncLevel: "full",
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication other: %v", err)
+	}
+	if _, err := st.GetAppSnapshot(ctx, otherID, baseID); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("cross-application snapshot read = %v", err)
+	}
+	got, err := st.GetAppSnapshot(ctx, appID, baseID)
+	if err != nil {
+		t.Fatalf("GetAppSnapshot: %v", err)
+	}
+	if got.Reason != SnapshotReasonSync || got.Payload != payload {
+		t.Fatalf("snapshot = %#v", got)
+	}
+
+	// Retention keeps exactly the newest 20 rows, newest first.
+	for i := 0; i < 25; i++ {
+		if _, err := st.CreateAppSnapshot(ctx, AppSnapshot{
+			AppID: appID, Reason: SnapshotReasonManual,
+			IndexerCount: i, Payload: `[{"name":"indexarr · A"}]`,
+			CreatedAt: time.Unix(1_700_000_000+int64(i), 0),
+		}); err != nil {
+			t.Fatalf("CreateAppSnapshot %d: %v", i, err)
+		}
+	}
+	snapshots, err := st.ListAppSnapshots(ctx, appID)
+	if err != nil {
+		t.Fatalf("ListAppSnapshots: %v", err)
+	}
+	if len(snapshots) != AppSnapshotRetention {
+		t.Fatalf("snapshots = %d, want %d", len(snapshots), AppSnapshotRetention)
+	}
+	if snapshots[0].IndexerCount != 24 {
+		t.Errorf("newest snapshot count = %d, want 24", snapshots[0].IndexerCount)
+	}
+	for i := 1; i < len(snapshots); i++ {
+		if snapshots[i].CreatedAt.After(snapshots[i-1].CreatedAt) {
+			t.Fatalf("snapshots are not newest first at %d", i)
+		}
+	}
+
+	// A snapshot can only be read through its own application.
+	if _, err := st.GetAppSnapshot(ctx, otherID, snapshots[0].ID); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("cross-application snapshot read = %v", err)
+	}
+
+	// Deleting the application removes its snapshots.
+	if err := st.DeleteApplication(ctx, appID); err != nil {
+		t.Fatalf("DeleteApplication: %v", err)
+	}
+	remaining, err := st.ListAppSnapshots(ctx, appID)
+	if err != nil {
+		t.Fatalf("ListAppSnapshots after delete: %v", err)
+	}
+	if len(remaining) != 0 {
+		t.Fatalf("snapshots after delete = %d", len(remaining))
 	}
 }

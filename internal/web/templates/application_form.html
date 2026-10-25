@@ -62,6 +62,12 @@
           <p class="help">{{T "application.syncLevelHelp"}}</p>
         </div>
       </div>
+      <div class="field">
+        <label for="tag_filter" title="{{T "tip.appTagFilter"}}">{{T "application.tagFilter"}}</label>
+        <input id="tag_filter" name="tag_filter" type="text" maxlength="200" value="{{.TagFilter}}" placeholder="{{T "application.tagFilterPlaceholder"}}" title="{{T "tip.appTagFilter"}}">
+        <p class="help">{{T "application.tagFilterHelp"}}</p>
+        <p class="help">{{T "application.tagFilterWhere"}}</p>
+      </div>
     </div>
   </details>
 
@@ -70,6 +76,11 @@
     <a class="btn" href="/applications">{{T "application.cancelAction"}}</a>
   </div>
 </form>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "applications.footerTitle"}}</h2></div>
+  <p class="help">{{T "application.footer"}}</p>
+</section>
 
 {{if not .IsNew}}
 <section class="panel danger-zone">
