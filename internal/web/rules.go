@@ -57,12 +57,12 @@ func (s *Server) rulesDelete(w http.ResponseWriter, r *http.Request) {
 func (s *Server) releaseFavorite(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/releases", "", "invalid release id")
+		redirect(w, r, "/releases", "", s.translate(r, "release.flash.invalidID"))
 		return
 	}
 	release, err := s.store.GetRelease(r.Context(), id)
 	if err != nil {
-		redirect(w, r, "/releases", "", "release not found")
+		redirect(w, r, "/releases", "", s.translate(r, "release.flash.notFound"))
 		return
 	}
 	if _, err := s.store.SetReleaseFlags(r.Context(), id, !release.Favorite, release.Hidden); err != nil {
@@ -75,21 +75,21 @@ func (s *Server) releaseFavorite(w http.ResponseWriter, r *http.Request) {
 func (s *Server) releaseHide(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/releases", "", "invalid release id")
+		redirect(w, r, "/releases", "", s.translate(r, "release.flash.invalidID"))
 		return
 	}
 	release, err := s.store.GetRelease(r.Context(), id)
 	if err != nil {
-		redirect(w, r, "/releases", "", "release not found")
+		redirect(w, r, "/releases", "", s.translate(r, "release.flash.notFound"))
 		return
 	}
 	if _, err := s.store.SetReleaseFlags(r.Context(), id, release.Favorite, !release.Hidden); err != nil {
 		redirect(w, r, "/releases/"+fmt.Sprint(id), "", err.Error())
 		return
 	}
-	message := "Release hidden"
+	message := s.translate(r, "release.flash.hidden")
 	if release.Hidden {
-		message = "Release visible again"
+		message = s.translate(r, "release.flash.visible")
 	}
 	redirect(w, r, "/releases/"+fmt.Sprint(id), message, "")
 }
@@ -97,12 +97,12 @@ func (s *Server) releaseHide(w http.ResponseWriter, r *http.Request) {
 func (s *Server) releaseBlock(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/releases", "", "invalid release id")
+		redirect(w, r, "/releases", "", s.translate(r, "release.flash.invalidID"))
 		return
 	}
 	release, err := s.store.GetRelease(r.Context(), id)
 	if err != nil {
-		redirect(w, r, "/releases", "", "release not found")
+		redirect(w, r, "/releases", "", s.translate(r, "release.flash.notFound"))
 		return
 	}
 	kind, value := store.BlockKindTitle, release.Title
@@ -122,5 +122,5 @@ func (s *Server) releaseBlock(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/releases/"+fmt.Sprint(id), "", err.Error())
 		return
 	}
-	redirect(w, r, "/releases", "Release blocked and hidden; future runs will skip it", "")
+	redirect(w, r, "/releases", s.translate(r, "release.flash.blocked"), "")
 }

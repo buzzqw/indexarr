@@ -777,30 +777,30 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", "Database vacuumed", "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.vacuumed"), "")
 	case "integrity":
 		result, err := s.store.IntegrityCheck(ctx)
 		if err != nil {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", "Integrity check: "+result, "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.integrity", result), "")
 	case "quick_check":
 		result, err := s.store.QuickCheck(ctx)
 		if err != nil {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", "Quick check: "+result, "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.quick", result), "")
 	case "foreign_keys":
 		violations, err := s.store.ForeignKeyCheck(ctx)
 		if err != nil {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		message := "Foreign key check: ok"
+		message := s.translate(r, "maintenance.foreignOK")
 		if violations > 0 {
-			message = fmt.Sprintf("Foreign key check: %d violation(s) found", violations)
+			message = s.translate(r, "maintenance.foreignBad", violations)
 		}
 		redirect(w, r, "/settings?section=maintenance", message, "")
 	case "optimize":
@@ -808,16 +808,16 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", "Planner statistics refreshed and WAL checkpointed", "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.optimized"), "")
 	case "checkpoint":
 		busy, logFrames, checkpointed, err := s.store.Checkpoint(ctx)
 		if err != nil {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		message := fmt.Sprintf("WAL checkpoint: %d frame(s) written and WAL truncated", checkpointed)
+		message := s.translate(r, "maintenance.checkpoint", checkpointed)
 		if busy != 0 {
-			message = fmt.Sprintf("WAL checkpoint incomplete: %d of %d frame(s) still pending",
+			message = s.translate(r, "maintenance.checkpointPending",
 				logFrames-checkpointed, logFrames)
 		}
 		redirect(w, r, "/settings?section=maintenance", message, "")
@@ -826,20 +826,20 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", "Planner statistics rebuilt (ANALYZE)", "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.analyzed"), "")
 	case "reindex":
 		if err := s.store.Reindex(ctx); err != nil {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", "Indexes rebuilt", "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.reindexed"), "")
 	case "reset_errors":
 		removed, err := s.store.ResetIndexerErrors(ctx)
 		if err != nil {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", fmt.Sprintf("Cleared errors for %d indexer(s)", removed), "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.errorsCleared", removed), "")
 	case "prune":
 		settings, err := s.store.LoadSettings(ctx)
 		if err != nil {
@@ -847,7 +847,7 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if settings.RetentionDays <= 0 {
-			redirect(w, r, "/settings?section=maintenance", "", "Set retention days in Settings first")
+			redirect(w, r, "/settings?section=maintenance", "", s.translate(r, "maintenance.needRetention"))
 			return
 		}
 		before := time.Now().AddDate(0, 0, -settings.RetentionDays)
@@ -856,14 +856,14 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", fmt.Sprintf("%d release(s) older than %d days removed", removed, settings.RetentionDays), "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.pruned", removed, settings.RetentionDays), "")
 	case "clear_torrents":
 		removed, err := s.store.ClearTorrents(ctx)
 		if err != nil {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", fmt.Sprintf("%d stored .torrent file(s) removed; magnets were kept", removed), "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.torrentsCleared", removed), "")
 	case "dedupe":
 		stats, err := s.store.MergeDuplicates(ctx)
 		if err != nil {
@@ -879,7 +879,7 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", fmt.Sprintf("%d old run(s) removed", removed), "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.runsCleared", removed), "")
 	case "purge_days":
 		days, err := intInRange(r.FormValue("days"), 30, 36500)
 		if err != nil {
@@ -892,16 +892,16 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		redirect(w, r, "/settings?section=maintenance",
-			fmt.Sprintf("%d release(s) not seen in the last %d day(s) removed", removed, days), "")
+			s.translate(r, "maintenance.purgedDays", removed, days), "")
 	case "purge_indexer":
 		indexerID, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("indexer_id")), 10, 64)
 		if err != nil || indexerID <= 0 {
-			redirect(w, r, "/settings?section=maintenance", "", "Choose an indexer to purge")
+			redirect(w, r, "/settings?section=maintenance", "", s.translate(r, "maintenance.chooseIndexer"))
 			return
 		}
 		indexerRow, err := s.store.GetIndexer(ctx, indexerID)
 		if err != nil {
-			redirect(w, r, "/settings?section=maintenance", "", "Choose an indexer to purge")
+			redirect(w, r, "/settings?section=maintenance", "", s.translate(r, "maintenance.chooseIndexer"))
 			return
 		}
 		removed, err := s.store.DeleteReleasesByIndexer(ctx, indexerID)
@@ -910,7 +910,7 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		redirect(w, r, "/settings?section=maintenance",
-			fmt.Sprintf("%d release(s) from %s removed", removed, indexerRow.Name), "")
+			s.translate(r, "maintenance.purgedIndexer", removed, indexerRow.Name), "")
 	case "purge_no_links":
 		removed, err := s.store.DeleteReleasesWithoutLinks(ctx)
 		if err != nil {
@@ -918,14 +918,14 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		redirect(w, r, "/settings?section=maintenance",
-			fmt.Sprintf("%d release(s) without magnet or .torrent removed", removed), "")
+			s.translate(r, "maintenance.purgedNoLinks", removed), "")
 	case "purge_hidden":
 		removed, err := s.store.DeleteHiddenReleases(ctx)
 		if err != nil {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", fmt.Sprintf("%d hidden release(s) removed", removed), "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.purgedHidden", removed), "")
 	case "clear_runs_days":
 		days, err := intInRange(r.FormValue("days"), 30, 36500)
 		if err != nil {
@@ -938,7 +938,7 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		redirect(w, r, "/settings?section=maintenance",
-			fmt.Sprintf("%d run(s) older than %d day(s) removed", removed, days), "")
+			s.translate(r, "maintenance.clearedRunsDays", removed, days), "")
 	case "reset_api_usage":
 		removed, err := s.store.ResetAPIUsage(ctx)
 		if err != nil {
@@ -946,10 +946,10 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		redirect(w, r, "/settings?section=maintenance",
-			fmt.Sprintf("API usage counters reset for %d key(s)", removed), "")
+			s.translate(r, "maintenance.apiReset", removed), "")
 	case "delete_all":
 		if r.FormValue("confirm") != "DELETE" {
-			redirect(w, r, "/settings?section=maintenance", "", `Type DELETE in the confirmation field`)
+			redirect(w, r, "/settings?section=maintenance", "", s.translate(r, "maintenance.deleteConfirmWord"))
 			return
 		}
 		removed, err := s.store.DeleteAllReleases(ctx)
@@ -957,9 +957,9 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}
-		redirect(w, r, "/settings?section=maintenance", fmt.Sprintf("All %d release(s) deleted", removed), "")
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.allDeleted", removed), "")
 	default:
-		redirect(w, r, "/settings?section=maintenance", "", "Unknown maintenance action")
+		redirect(w, r, "/settings?section=maintenance", "", s.translate(r, "maintenance.unknown"))
 	}
 }
 

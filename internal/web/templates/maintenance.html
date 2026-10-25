@@ -1,262 +1,69 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>Maintenance</h1>
-    <p class="muted">Database status, retention and backups. Every action works on the active SQLite file.</p>
+    <h1>{{T "settings.section.maintenance"}}</h1>
+    <p class="muted">{{T "maintenance.intro"}}</p>
   </div>
-  <a class="btn primary" href="/maintenance/backup">Scarica backup</a>
+  <a class="btn primary" href="/maintenance/backup">{{T "settings.download"}}</a>
 </section>
 
-<section class="cards" aria-label="Database summary">
-  <article class="card">
-    <span class="label">Database size</span>
-    <strong>{{bytes .Stats.DBBytes}}</strong>
-    <span class="hint">{{.DBPath}}</span>
-  </article>
-  <article class="card">
-    <span class="label">Releases</span>
-    <strong>{{.Stats.Releases}}</strong>
-    <span class="hint">{{.Stats.Torrents}} with .torrent</span>
-  </article>
-  <article class="card">
-    <span class="label">Stored .torrent data</span>
-    <strong>{{bytes .Stats.TorrentBytes}}</strong>
-    <span class="hint">included in the database</span>
-  </article>
-  <article class="card">
-    <span class="label">SQLite</span>
-    <strong>{{.SQLiteVersion}}</strong>
-    <span class="hint">retention: {{if .RetentionDays}}{{.RetentionDays}} days{{else}}unlimited{{end}}</span>
-  </article>
-  <article class="card">
-    <span class="label">Indexers with errors</span>
-    <strong>{{.Report.Indexers}}</strong>
-    <span class="hint">{{.Stats.EnabledIndexers}} of {{.Stats.Indexers}} enabled</span>
-  </article>
+<section class="cards" aria-label="{{T "maintenance.databaseSummary"}}">
+  <article class="card"><span class="label">{{T "settings.dbSize"}}</span><strong>{{bytes .Stats.DBBytes}}</strong><span class="hint">{{.DBPath}}</span></article>
+  <article class="card"><span class="label">{{T "settings.dbReleases"}}</span><strong>{{.Stats.Releases}}</strong><span class="hint">{{T "settings.dbTorrents" .Stats.Torrents}}</span></article>
+  <article class="card"><span class="label">{{T "settings.dbTorrentData"}}</span><strong>{{bytes .Stats.TorrentBytes}}</strong></article>
+  <article class="card"><span class="label">{{T "settings.dbSQLite"}}</span><strong>{{.SQLiteVersion}}</strong><span class="hint">{{if .RetentionDays}}{{T "settings.dbRetention" .RetentionDays}}{{else}}{{T "settings.dbRetentionNone"}}{{end}}</span></article>
+  <article class="card"><span class="label">{{T "maintenance.errors"}}</span><strong>{{.Report.Indexers}}</strong><span class="hint">{{T "maintenance.enabledOf" .Stats.EnabledIndexers .Stats.Indexers}}</span></article>
 </section>
 
 <section class="panel">
-  <div class="panel-head">
-    <h2>Database report</h2>
-    <a class="btn small" href="/maintenance">Refresh</a>
-  </div>
+  <div class="panel-head"><h2>{{T "settings.dbReport"}}</h2><a class="btn small" href="/maintenance">{{T "maintenance.refresh"}}</a></div>
   <dl class="detail">
-    <dt>File</dt>
-    <dd><code>{{.DBPath}}</code></dd>
-    <dt>Pages</dt>
-    <dd>{{.Report.PageCount}} × {{bytes .Report.PageSize}} · free {{.Report.FreelistCount}} pages ({{bytes .Report.FreeBytes}})</dd>
-    <dt>Journal</dt>
-    <dd>{{.Report.JournalMode}} · auto-vacuum {{if eq .Report.AutoVacuum 1}}full{{else if eq .Report.AutoVacuum 2}}incremental{{else}}off{{end}} · WAL {{bytes .Report.WALBytes}} · SHM {{bytes .Report.SHMBytes}}</dd>
-    <dt>Rows</dt>
-    <dd>releases {{.Report.Releases}} · indexers {{.Report.Indexers}} · history {{.Report.History}} · blocklist {{.Report.Blocklist}} · saved searches {{.Report.SavedSearches}} · API keys {{.Report.APIKeys}} · settings {{.Report.Settings}}</dd>
-    <dt>Releases</dt>
-    <dd>{{.Report.ReleasesTorrent}} with .torrent · {{.Report.ReleasesMagnet}} with magnet · {{.Report.ReleasesNoLink}} without links · {{.Report.Hidden}} hidden · {{.Report.Favorites}} favorites</dd>
+    <dt>{{T "settings.dbFile"}}</dt><dd><code>{{.DBPath}}</code></dd>
+    <dt>{{T "settings.dbPages"}}</dt><dd>{{.Report.PageCount}} × {{bytes .Report.PageSize}} · {{T "settings.dbFree"}} {{.Report.FreelistCount}} ({{bytes .Report.FreeBytes}})</dd>
+    <dt>{{T "settings.dbJournal"}}</dt><dd>{{.Report.JournalMode}} · {{T "maintenance.autoVacuum"}} {{if eq .Report.AutoVacuum 1}}{{T "maintenance.autoFull"}}{{else if eq .Report.AutoVacuum 2}}{{T "maintenance.autoIncremental"}}{{else}}{{T "maintenance.autoOff"}}{{end}} · WAL {{bytes .Report.WALBytes}} · SHM {{bytes .Report.SHMBytes}}</dd>
+    <dt>{{T "settings.dbRows"}}</dt><dd>{{T "settings.dbRowsValue" .Report.Releases .Report.Indexers .Report.History .Report.Blocklist .Report.SavedSearches .Report.APIKeys}}</dd>
+    <dt>{{T "settings.dbReleases"}}</dt><dd>{{T "maintenance.releaseMetrics" .Report.ReleasesTorrent .Report.ReleasesMagnet .Report.ReleasesNoLink .Report.Hidden .Report.Favorites}}</dd>
   </dl>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Checks and housekeeping</h2></div>
+  <div class="panel-head"><h2>{{T "settings.checksTitle"}}</h2></div>
   <div class="action-grid">
-    <form method="post" action="/maintenance">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="integrity">
-      <button class="btn" type="submit">Integrity check</button>
-      <p class="help">Runs the full <code>PRAGMA integrity_check</code> and reports the verdict.</p>
-    </form>
-    <form method="post" action="/maintenance">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="quick_check">
-      <button class="btn" type="submit">Quick check</button>
-      <p class="help">Runs <code>PRAGMA quick_check</code>: much faster than the full check, suitable for routine use.</p>
-    </form>
-    <form method="post" action="/maintenance">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="foreign_keys">
-      <button class="btn" type="submit">Foreign key check</button>
-      <p class="help">Runs <code>PRAGMA foreign_key_check</code> and reports orphaned rows, if any.</p>
-    </form>
-    <form method="post" action="/maintenance">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="vacuum">
-      <button class="btn" type="submit">Vacuum database</button>
-      <p class="help">Rebuilds the file and returns free pages to disk. Can take a while on large caches.</p>
-    </form>
-    <form method="post" action="/maintenance">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="optimize">
-      <button class="btn" type="submit">Optimize planner</button>
-      <p class="help">Runs <code>PRAGMA optimize</code> and checkpoints the WAL. Cheap and safe while the service runs.</p>
-    </form>
-    <form method="post" action="/maintenance">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="checkpoint">
-      <button class="btn" type="submit">Checkpoint WAL</button>
-      <p class="help">Writes pending WAL frames into the main file and truncates the <code>-wal</code> file.</p>
-    </form>
-    <form method="post" action="/maintenance">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="analyze">
-      <button class="btn" type="submit">Analyze tables</button>
-      <p class="help">Runs <code>ANALYZE</code> to rebuild query-planner statistics after large changes.</p>
-    </form>
-    <form method="post" action="/maintenance">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="reindex">
-      <button class="btn" type="submit">Rebuild indexes</button>
-      <p class="help">Runs <code>REINDEX</code>. Useful after a large deletion; can take a while.</p>
-    </form>
-    <form method="post" action="/maintenance" data-confirm="Clear the last error and the open circuit of every indexer? Disabled indexers stay disabled.">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="reset_errors">
-      <button class="btn" type="submit">Clear indexer errors</button>
-      <p class="help">Does not re-enable an indexer; it only resets the error state and backoff.</p>
-    </form>
+    <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="integrity"><button class="btn" type="submit">{{T "settings.check.integrity"}}</button></form>
+    <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="quick_check"><button class="btn" type="submit">{{T "settings.check.quick"}}</button></form>
+    <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="foreign_keys"><button class="btn" type="submit">{{T "settings.check.foreign"}}</button></form>
+    <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="vacuum"><button class="btn" type="submit">{{T "settings.check.vacuum"}}</button></form>
+    <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="optimize"><button class="btn" type="submit">{{T "settings.check.optimize"}}</button></form>
+    <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="checkpoint"><button class="btn" type="submit">{{T "settings.check.checkpoint"}}</button></form>
+    <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="analyze"><button class="btn" type="submit">{{T "settings.check.analyze"}}</button></form>
+    <form method="post" action="/maintenance"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reindex"><button class="btn" type="submit">{{T "settings.check.reindex"}}</button></form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.resetErrorsConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reset_errors"><button class="btn" type="submit">{{T "settings.check.resetErrors"}}</button></form>
   </div>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Cleanup and retention</h2></div>
+  <div class="panel-head"><h2>{{T "settings.cleanupTitle"}}</h2></div>
   <div class="action-grid">
-    <form method="post" action="/maintenance" data-confirm="Merge rows that share an infohash?">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="dedupe">
-      <button class="btn" type="submit">Merge duplicates</button>
-      <p class="help">Keeps the oldest row per infohash and the best data of the copies.</p>
-    </form>
-    <form method="post" action="/maintenance" data-confirm="Delete stored .torrent files? Magnets and metadata are kept.">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="clear_torrents">
-      <button class="btn" type="submit">Clear .torrent files</button>
-      <p class="help">Shrinks the database; Torznab clients will receive magnets instead of files.</p>
-    </form>
-    <form method="post" action="/maintenance" data-confirm="Delete releases not seen within the retention window?">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="prune">
-      <button class="btn" type="submit">Apply retention now</button>
-      <p class="help">Uses the retention in Settings ({{if .RetentionDays}}{{.RetentionDays}} days{{else}}not set{{end}}).</p>
-    </form>
-    <form method="post" action="/maintenance" data-confirm="Delete releases not seen in the selected number of days?">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="purge_days">
-      <div class="field">
-        <label for="purge_days">Older than (days)</label>
-        <input id="purge_days" name="days" type="number" min="1" max="36500" value="{{.DefaultPurgeDays}}" required>
-      </div>
-      <button class="btn" type="submit">Purge by age</button>
-      <p class="help">Deletes releases whose <code>last_seen_at</code> is older than the chosen window.</p>
-    </form>
-    <form method="post" action="/maintenance" data-confirm="Delete every cached release from the selected indexer?">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="purge_indexer">
-      <div class="field">
-        <label for="purge_indexer">Indexer</label>
-        <select id="purge_indexer" name="indexer_id" required>
-          <option value="">Choose an indexer…</option>
-          {{range .Indexers}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
-        </select>
-      </div>
-      <button class="btn danger" type="submit">Purge indexer</button>
-      <p class="help">Removes only releases supplied by that indexer; releases also seen elsewhere stay.</p>
-    </form>
-    <form method="post" action="/maintenance" data-confirm="Delete releases that have neither a magnet nor a .torrent file?">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="purge_no_links">
-      <button class="btn danger" type="submit">Delete dead releases</button>
-      <p class="help">Rows without a magnet and without a stored <code>.torrent</code> cannot be used by clients.</p>
-    </form>
-    <form method="post" action="/maintenance" data-confirm="Delete every hidden release?">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="purge_hidden">
-      <button class="btn danger" type="submit">Delete hidden releases</button>
-      <p class="help">Removes the releases hidden from search and counts them out of the cache size.</p>
-    </form>
-    <form method="post" action="/maintenance" data-confirm="Delete run history older than the selected number of days?">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="clear_runs_days">
-      <div class="field">
-        <label for="run_days">Runs older than (days)</label>
-        <input id="run_days" name="days" type="number" min="1" max="36500" value="30" required>
-      </div>
-      <button class="btn" type="submit">Clear run history</button>
-      <p class="help">Only the history is removed; releases and indexers are untouched.</p>
-    </form>
-    <form method="post" action="/maintenance" data-confirm="Reset request counters and last-used dates for every API key?">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <input type="hidden" name="action" value="reset_api_usage">
-      <button class="btn" type="submit">Reset API usage</button>
-      <p class="help">Clears the per-key request counters; the keys themselves keep working.</p>
-    </form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.dedupeConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="dedupe"><button class="btn" type="submit">{{T "settings.cleanup.dedupe"}}</button></form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.clearTorrentsConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="clear_torrents"><button class="btn" type="submit">{{T "settings.cleanup.clearTorrents"}}</button></form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.pruneConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="prune"><button class="btn" type="submit">{{T "settings.cleanup.prune"}}</button></form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.purgeDaysConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="purge_days"><div class="field"><label for="purge_days">{{T "settings.cleanup.days"}}</label><input id="purge_days" name="days" type="number" min="1" max="36500" value="{{.DefaultPurgeDays}}" required></div><button class="btn" type="submit">{{T "settings.cleanup.purgeDays"}}</button></form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.purgeIndexerConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="purge_indexer"><div class="field"><label for="purge_indexer">{{T "settings.cleanup.indexer"}}</label><select id="purge_indexer" name="indexer_id" required><option value="">{{T "settings.cleanup.chooseIndexer"}}</option>{{range .Indexers}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></div><button class="btn danger" type="submit">{{T "settings.cleanup.purgeIndexer"}}</button></form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.purgeNoLinksConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="purge_no_links"><button class="btn danger" type="submit">{{T "settings.cleanup.purgeNoLinks"}}</button></form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.purgeHiddenConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="purge_hidden"><button class="btn danger" type="submit">{{T "settings.cleanup.purgeHidden"}}</button></form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.clearRunsConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="clear_runs_days"><div class="field"><label for="run_days">{{T "settings.cleanup.runsDays"}}</label><input id="run_days" name="days" type="number" min="1" max="36500" value="30" required></div><button class="btn" type="submit">{{T "settings.cleanup.clearRuns"}}</button></form>
+    <form method="post" action="/maintenance" data-confirm="{{T "settings.resetAPIUsageConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reset_api_usage"><button class="btn" type="submit">{{T "settings.cleanup.resetAPIUsage"}}</button></form>
   </div>
 </section>
 
 <section class="panel">
-  <div class="panel-head">
-    <h2>Backups</h2>
-    <form method="post" action="/maintenance/backup-now">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn" type="submit">Backup now</button>
-    </form>
-  </div>
-  <p class="help">
-    Automatic backups: {{if .BackupEnabled}}every {{.BackupIntervalHours}} hours, keeping {{.BackupKeep}}{{else}}disabled{{end}}.
-    Directory: <code>{{.BackupDir}}</code>. A restore is staged and applied when the service restarts.
-  </p>
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr><th scope="col">File</th><th scope="col">Size</th><th scope="col">Created</th><th scope="col" class="right">Actions</th></tr>
-      </thead>
-      <tbody>
-        {{range .Backups}}
-        <tr>
-          <td><code>{{.Name}}</code>{{if .Automatic}} <span class="chip">automatic</span>{{else}} <span class="chip warn">pre-restore</span>{{end}}</td>
-          <td>{{bytes .Size}}</td>
-          <td class="nowrap">{{date .ModTime}}</td>
-          <td class="right nowrap">
-            <a class="btn small" href="/maintenance/backups/{{.Name}}">Download</a>
-            <form method="post" action="/maintenance/backups/{{.Name}}/delete" data-confirm="Delete this backup file?">
-              <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small danger" type="submit">Delete</button>
-            </form>
-          </td>
-        </tr>
-        {{else}}
-        <tr><td colspan="4" class="empty">No backup files yet. Create one now or enable automatic backups in Settings.</td></tr>
-        {{end}}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="panel-head"><h2>Restore from file</h2></div>
-  <p class="help">
-    Upload a validated indexarr <code>.db</code> backup. The file is checked, then staged; the service restarts
-    and applies it before opening the database. The current database is copied to <code>{{.BackupDir}}</code>
-    as <code>pre-restore-*.db</code> first. Use this only with a trusted backup.
-  </p>
-  <form method="post" action="/maintenance/restore?csrf={{.CSRF}}" enctype="multipart/form-data"
-    data-confirm="Restore this backup? The service will restart and replace the current database.">
-    <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <div class="field">
-      <label for="backup_file">Backup file</label>
-      <input id="backup_file" name="backup" type="file" accept=".db,application/octet-stream" required>
-    </div>
-    <div class="actions">
-      <button class="btn danger" type="submit">Upload and restore</button>
-    </div>
-  </form>
-</section>
-
-<section class="panel danger-zone">
-  <div class="panel-head"><h2>Danger zone</h2></div>
-  <p>Deleting every release empties the cache. The next source run rebuilds it from the indexers.</p>
-  <form method="post" action="/maintenance" data-confirm="Really delete every cached release?">
-    <input type="hidden" name="csrf" value="{{.CSRF}}">
-    <input type="hidden" name="action" value="delete_all">
-    <div class="field">
-      <label for="confirm">Type DELETE to confirm</label>
-      <input id="confirm" name="confirm" type="text" autocomplete="off" spellcheck="false" placeholder="DELETE">
-    </div>
-    <button class="btn danger" type="submit">Delete all releases</button>
-  </form>
+  <div class="panel-head"><h2>{{T "settings.backupNowTitle"}}</h2><form method="post" action="/maintenance/backup-now"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="btn" type="submit">{{T "settings.backupNow"}}</button></form></div>
+  <p class="help">{{T "maintenance.automaticSummary" .BackupEnabled .BackupIntervalHours .BackupKeep}} <code>{{.BackupDir}}</code></p>
+  <div class="table-scroll"><table><thead><tr><th scope="col">{{T "settings.backupFile"}}</th><th scope="col">{{T "settings.dbSize"}}</th><th scope="col">{{T "settings.created"}}</th><th scope="col" class="right">{{T "common.actions"}}</th></tr></thead><tbody>
+    {{range .Backups}}<tr><td><code>{{.Name}}</code>{{if .Automatic}} <span class="chip">{{T "settings.backupAutomatic"}}</span>{{else}} <span class="chip warn">{{T "settings.backupPreRestore"}}</span>{{end}}</td><td>{{bytes .Size}}</td><td class="nowrap">{{date .ModTime}}</td><td class="right nowrap"><a class="btn small" href="/maintenance/backups/{{.Name}}">{{T "settings.download"}}</a><form method="post" action="/maintenance/backups/{{.Name}}/delete" data-confirm="{{T "settings.backupDeleteConfirm"}}"><input type="hidden" name="csrf" value="{{$.CSRF}}"><button class="btn small danger" type="submit">{{T "common.delete"}}</button></form></td></tr>{{else}}<tr><td colspan="4" class="empty">{{T "settings.backupEmpty"}}</td></tr>{{end}}
+  </tbody></table></div>
+  <div class="panel-head"><h2>{{T "settings.restoreTitle"}}</h2></div>
+  <p class="help">{{T "settings.restoreHelp"}}</p>
+  <form method="post" action="/maintenance/restore?csrf={{.CSRF}}" enctype="multipart/form-data" data-confirm="{{T "settings.restoreConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><div class="field"><label for="backup_file">{{T "settings.backupFile"}}</label><input id="backup_file" name="backup" type="file" accept=".db,application/octet-stream" required></div><button class="btn danger" type="submit">{{T "settings.restoreAction"}}</button></form>
 </section>
 {{end}}
