@@ -32,8 +32,8 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 70 {
-		t.Fatalf("len(Builtins()) = %d, want 70", len(entries))
+	if len(entries) != 72 {
+		t.Fatalf("len(Builtins()) = %d, want 72", len(entries))
 	}
 
 	verified := map[string]bool{
@@ -81,6 +81,8 @@ func TestBuiltinsValid(t *testing.T) {
 		"nekobt":             true,
 		"therarbg":           true,
 		"aniliberty":         true,
+		"0magnet":            true,
+		"torrentkitty":       true,
 	}
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
@@ -211,8 +213,8 @@ func TestIndexShapeIsStable(t *testing.T) {
 			t.Errorf("corsaro categories = %v, want %q", corsaro.Categories, group)
 		}
 	}
-	if index[0].ID != "1337x" {
-		t.Errorf("first index id = %q, want 1337x", index[0].ID)
+	if index[0].ID != "0magnet" {
+		t.Errorf("first index id = %q, want 0magnet", index[0].ID)
 	}
 	if last := index[len(index)-1].ID; last != "yts" {
 		t.Errorf("last index id = %q, want yts", last)
@@ -310,6 +312,8 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 		"nekobt",
 		"therarbg",
 		"aniliberty",
+		"0magnet",
+		"torrentkitty",
 	}
 	if len(entries) != len(want) {
 		t.Fatalf("len(Builtins()) = %d, want %d", len(entries), len(want))
@@ -330,8 +334,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 70 {
-		t.Fatalf("manifest has %d definitions, want 70", len(items))
+	if len(items) != 72 {
+		t.Fatalf("manifest has %d definitions, want 72", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")

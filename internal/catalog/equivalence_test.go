@@ -868,3 +868,64 @@ func TestAniLibertyNativeFixture(t *testing.T) {
 		t.Errorf("magnet = %q", first.Magnet)
 	}
 }
+
+func Test0MagnetNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/search" {
+			if got := r.URL.Query().Get("q"); got != "matrix" {
+				t.Errorf("q param = %q", got)
+			}
+			serveFile(t, w, "0magnet/search.html")
+			return
+		}
+		serveFile(t, w, "0magnet/detail.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "0magnet", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if first.Size <= 0 {
+		t.Errorf("size = %d", first.Size)
+	}
+	if !strings.HasPrefix(first.Magnet, "magnet:") {
+		t.Errorf("magnet = %q", first.Magnet)
+	}
+}
+
+func TestTorrentKittyNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/search/matrix" {
+			http.NotFound(w, r)
+			return
+		}
+		serveFile(t, w, "torrentkitty/search.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "torrentkitty", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if first.Size <= 0 {
+		t.Errorf("size = %d", first.Size)
+	}
+	if !strings.HasPrefix(first.Magnet, "magnet:") {
+		t.Errorf("magnet = %q", first.Magnet)
+	}
+}

@@ -389,3 +389,13 @@ definitions:
     state: verificata
     author: indexarr
     note: "Public AniLiberty JSON API; magnet and size from the torrents endpoint, real fixture."
+  - id: 0magnet
+    file: definitions/0magnet.yaml
+    state: verificata
+    author: indexarr
+    note: "Public 0Magnet search; magnet read from the detail input, real fixture."
+  - id: torrentkitty
+    file: definitions/torrentkitty.yaml
+    state: verificata
+    author: indexarr
+    note: "Public TorrentKitty search; magnet in the result row, real fixture."

@@ -1,5 +1,21 @@
 [
   {
+    "id": "0magnet",
+    "name": "0Magnet",
+    "description": "Public DHT magnet index with title, size and date in the result row.",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "16mag.net"
+    ],
+    "url": "https://16mag.net/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "1337x",
     "name": "1337x",
     "description": "Public 1337x keyword search through the 1337x.tube mirror.",
@@ -638,30 +654,6 @@
     "url": "https://tracker.0day.community/",
     "source": "jackett",
     "evidence": "GET https://tracker.0day.community/login.php?returnto=%2Fbrowse.php -\u003e HTTP 200, 10668 bytes, title \"\\xc2\\xf5\\xee\\xe4 :: \\xd2\\xf0\\xe5\\xea\\xe5\\xf0 0day.community\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-0magnet",
-    "name": "0Magnet",
-    "description": "ØMagnet is a CHINESE Public tracker for Asian 3X (JAV)",
-    "language": "zh-CN",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "16mag.net"
-    ],
-    "url": "https://16mag.net/",
-    "source": "jackett",
-    "evidence": "GET https://16mag.net/ -\u003e HTTP 200, 2445 bytes, title \"ØMagnet - Torrent Sharing Made Easy\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -14328,27 +14320,6 @@
     "latest": false
   },
   {
-    "id": "jk-torrentkitty",
-    "name": "TorrentKitty",
-    "description": "TorrentKitty is a Public torrent indexer",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "torrentkitty.cam"
-    ],
-    "url": "https://www.torrentkitty.cam/",
-    "source": "jackett",
-    "evidence": "GET https://www.torrentkitty.cam/ -\u003e HTTP 200, 29070 bytes, title \"Torrent Kitty - Free Torrent To Magnet Link Conversion Service\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-torrentlt",
     "name": "Torrent.LT",
     "description": "Torrent.LT is a LITHUANIAN Private Torrent Tracker for 0DAY / GENERAL",
@@ -17001,6 +16972,22 @@
     "latest": true,
     "latest_list": true,
     "storable": true
+  },
+  {
+    "id": "torrentkitty",
+    "name": "Torrent Kitty",
+    "description": "Public Chinese magnet index with magnets, size and date in the result row.",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "torrentkitty.cam"
+    ],
+    "url": "https://www.torrentkitty.cam/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "torrentleech",

@@ -1,0 +1,50 @@
+# VERIFICATA (verified). TorrentKitty public search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/torrentkitty/search.html (https://www.torrentkitty.cam/search/matrix).
+# Every row carries the display name, a detail link, a magnet and the size;
+# no detail page is needed.
+schema: 1
+
+meta:
+  id: torrentkitty
+  name: Torrent Kitty
+  language: zh-CN
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Chinese magnet index with magnets, size and date in the result row.
+  urls:
+    - https://www.torrentkitty.cam/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+
+categories:
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+search:
+  request:
+    get: "/search/{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "tr" }
+    fields:
+      title:   { selector: "td.name", filters: [trim] }
+      details: { selector: 'a[rel="information"]', attr: href, type: url }
+      magnet:  { selector: 'a[rel="magnet"]', attr: href }
+      size:    { selector: "td.size", type: size }
+      date:    { selector: "td.date", type: date, layouts: ["2006-01-02"] }
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/torrentkitty/search.html
+    expect: { min_rows: 4, required: [title, details, magnet, size] }
