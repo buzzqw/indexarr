@@ -1,0 +1,33 @@
+# BOZZA (draft). Public RSS feed preset.
+#
+# The feed was probed on 2026-10-25 and contains torrent links (magnet or
+# .torrent). No offline fixture yet: the state stays "bozza" until the feed is
+# captured and tested. The generic RSS connector handles the parsing.
+schema: 1
+connector: rss
+
+meta:
+  id: dmhy
+  name: dmhy
+  language: zh-CN
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Chinese anime RSS feed with magnet and .torrent links.
+  urls:
+    - https://share.dmhy.org/topics/rss/rss.xml
+  updated: "2026-10-25"
+
+settings:
+  - { name: url, type: text, label: Feed URL, help: "RSS or Atom feed URL", required: true, default: "https://share.dmhy.org/topics/rss/rss.xml" }
+
+categories:
+  - { site: "5070", standard: 5070, desc: "Anime" }
+  - { site: "5000", standard: 5000, desc: "TV" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: test
+  min_rows: 0

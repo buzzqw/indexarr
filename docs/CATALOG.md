@@ -18,15 +18,15 @@ Non vengono mai generate da una definizione Cardigann.
 | Misura | Valore |
 | --- | ---: |
 | Totale voci nel catalogo (definizioni + voci leggere) | **621** |
-| Definizioni native | 53 |
-| Voci leggere | **568** |
-| Verificate | **129** |
-| Da provare (`da-provvi`) | **488** |
+| Definizioni native | 63 (8 aiutanti generici inclusi) |
+| Voci leggere | **558** |
+| Verificate | **119** |
+| Da provare (`da-provvi`) | **498** |
 | Morte (`morta`) | **4** |
-| Pubbliche verificate (native + leggere, host unici) | **92** |
+| Pubbliche verificate (native + leggere, host unici) | **82** |
 | Voci italiane | **13** |
 
-Le 92 pubbliche verificate sono 37 definizioni native pubbliche più 55 voci
+Le 82 pubbliche verificate sono 37 definizioni native pubbliche più 45 voci
 leggere pubbliche; i duplicati per host sono stati esclusi. Le voci leggere
 private sono 438 e restano tutte `da-provvi`: senza un account non si può
 verificare la ricerca.
@@ -39,9 +39,9 @@ resta in coda con il filtro **da scrivere** e non produce alcun proxy.
 
 | Via | Fonti | Note |
 | --- | ---: | --- |
-| Definizione nativa (id o host) | **19** | definizioni verificate o in prova |
+| Definizione nativa (id o host) | **29** | definizioni verificate o in prova |
 | Software noto (connettore di famiglia) | **155** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **464** | 329 private, 72 pubbliche, 63 semiprivate |
+| Da scrivere | **454** | 329 private, 62 pubbliche, 63 semiprivate |
 | **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 
 La somma non include le 6 fonti già configurate in Jackett quando coincidono

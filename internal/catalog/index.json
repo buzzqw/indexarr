@@ -75,6 +75,30 @@
     "scheduled": true
   },
   {
+    "id": "acgrip",
+    "name": "ACG.RIP",
+    "description": "Public anime RSS feed with .torrent enclosures.",
+    "language": "ja-JP",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "acg.rip"
+    ],
+    "url": "https://acg.rip/.xml",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
     "id": "animetosho",
     "name": "AnimeTosho",
     "description": "Public AnimeTosho HTML search; anime releases with magnets.",
@@ -295,6 +319,54 @@
     "latest_list": true,
     "scheduled": true,
     "feed_only": true
+  },
+  {
+    "id": "crackingpatching",
+    "name": "CrackingPatching",
+    "description": "Public software and games RSS feed with magnet links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "crackingpatching.com"
+    ],
+    "url": "https://crackingpatching.com/feed",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
+    "id": "dmhy",
+    "name": "dmhy",
+    "description": "Public Chinese anime RSS feed with magnet and .torrent links.",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "anime"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "share.dmhy.org"
+    ],
+    "url": "https://share.dmhy.org/topics/rss/rss.xml",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
   },
   {
     "id": "example-html",
@@ -808,30 +880,6 @@
     "url": "https://usefultrash.net/",
     "source": "jackett",
     "evidence": "GET https://usefultrash.net/login.php -\u003e HTTP 200, 3737 bytes, title \"Login\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-acgrip",
-    "name": "ACG.RIP",
-    "description": "ACG.RIP is a CHINESE Public torrent tracker for the latest anime and Japanese related torrents",
-    "language": "zh-CN",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "tv"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "acg.rip"
-    ],
-    "url": "https://acg.rip/",
-    "source": "jackett",
-    "evidence": "GET https://acg.rip/ -\u003e HTTP 200, 27656 bytes, title \"ACG.RIP\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -3418,31 +3466,6 @@
     "scheduled": true
   },
   {
-    "id": "jk-crackingpatching",
-    "name": "CrackingPatching",
-    "description": "CrackingPatching is a Public tracker for Software and Apps",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "crackingpatching.com"
-    ],
-    "url": "https://crackingpatching.com/",
-    "source": "jackett",
-    "evidence": "GET https://crackingpatching.com/ -\u003e HTTP 200, 82558 bytes, title \"CrackingPatching - Believe us we can do it!\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-crazyspirits-api",
     "name": "CrazySpirits (API)",
     "description": "Crazy Spirits is a FRENCH Private Torrent Tracker for MOVIES / TV / GENERAL",
@@ -4140,36 +4163,6 @@
     "url": "https://divxtotal.foo/",
     "source": "jackett",
     "evidence": "GET https://divxtotal.foo/ -\u003e HTTP 200, 91387 bytes, title \"DivxTotaL - Descargar Torrent Peliculas Series Programas gratis\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-dmhy",
-    "name": "dmhy",
-    "description": "dmhy is a TAIWANESE Public magnet tracker for ANIME",
-    "language": "zh-TW",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "share.dmhy.org"
-    ],
-    "url": "https://share.dmhy.org/",
-    "source": "jackett",
-    "evidence": "GET https://share.dmhy.org/ -\u003e HTTP 200, 262144 bytes, title \"首頁 - 動漫花園資源網 - 動漫愛好者的自由交流平台\", checked 2026-10-25",
     "reachable": true,
     "proposable": true,
     "latest": false
@@ -8007,31 +8000,6 @@
     "scheduled": true
   },
   {
-    "id": "jk-mactorrentsdownload",
-    "name": "Mac Torrents Download",
-    "description": "Mac Torrents Download is a Public tracker for Mac software",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "torrentmac.net"
-    ],
-    "url": "https://www.torrentmac.net/",
-    "source": "jackett",
-    "evidence": "GET https://www.torrentmac.net/ -\u003e HTTP 200, 119292 bytes, title \"Mac Torrents | Torrent Download Apple, Mac OSX Apps \u0026amp; Games Download\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-madsrevolution",
     "name": "MaDs Revolution",
     "description": "MaDs Revolution is a GERMAN Private Torrent Tracker for MOVIES / TV / GENERAL",
@@ -9334,30 +9302,6 @@
     "latest": false
   },
   {
-    "id": "jk-nipponsei",
-    "name": "Nipponsei",
-    "description": "Nipponsei is a Public site for MUSIC fresh from JAPAN",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "music"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "nipponsei.minglong.org"
-    ],
-    "url": "https://nipponsei.minglong.org/",
-    "source": "jackett",
-    "evidence": "GET https://nipponsei.minglong.org/ -\u003e HTTP 200, 16165 bytes, title \"Nipponsei - Music Fresh From Japan\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-nirvana",
     "name": "Nirvana (API)",
     "description": "Nirvana is a Private RUSSIAN Tracker for MOVIES / TV",
@@ -10428,31 +10372,6 @@
     "scheduled": true
   },
   {
-    "id": "jk-plugintorrent",
-    "name": "plugintorrent",
-    "description": "plugintorrent is a Public site for AUDIO apps, plugins and samples",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "plugintorrent.com"
-    ],
-    "url": "https://plugintorrent.com/",
-    "source": "jackett",
-    "evidence": "GET https://plugintorrent.com/ -\u003e HTTP 200, 239062 bytes, title \"Plugintorrent.com - Free Torrent source for VST Plugin, Audio Sample, Library, Preset, DAW, and Audio Software since 2015\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-podzemlje",
     "name": "Podzemlje",
     "description": "Podzemlje is an EX-YU Private Torrent Tracker for MOVIES / TV / GENERAL",
@@ -10585,30 +10504,6 @@
     "url": "https://pornotorrent.com.br/",
     "source": "jackett",
     "evidence": "GET https://pornotorrent.com.br/ -\u003e HTTP 200, 131302 bytes, title \"Porno Torrent - Download de filmes adultos via torrent\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-pornrips",
-    "name": "PornRips",
-    "description": "PornRips is a Public site for 3X",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "pornrips.to"
-    ],
-    "url": "https://pornrips.to/",
-    "source": "jackett",
-    "evidence": "GET https://pornrips.to/ -\u003e HTTP 200, 165996 bytes, title \"PornRips.To \u0026#8211; Home of PRT 1080p \u0026amp; 720p HEVC x265 Porn XXX Releases\", checked 2026-10-25",
     "reachable": true,
     "proposable": true,
     "latest": false
@@ -13113,30 +13008,6 @@
     "url": "https://stellarwinds.me/",
     "source": "jackett",
     "evidence": "GET https://stellarwinds.me/login.php -\u003e HTTP 200, 4365 bytes, title \"Stellarwinds - Login\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-sukebeinyaasi",
-    "name": "sukebei.nyaa.si",
-    "description": "sukebei.nyaa is a Public torrent site focused on adult Eastern ASIAN media including anime, manga, games and JAV",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "sukebei.nyaa.si"
-    ],
-    "url": "https://sukebei.nyaa.si/",
-    "source": "jackett",
-    "evidence": "GET https://sukebei.nyaa.si/ -\u003e HTTP 200, 139417 bytes, title \"Browse :: Sukebei\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -15679,56 +15550,6 @@
     "latest": false
   },
   {
-    "id": "jk-vstorrent",
-    "name": "VSTorrent",
-    "description": "VSTorrent is a Public site for AUDIO apps, plugins and samples",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "vstorrent.org"
-    ],
-    "url": "https://vstorrent.org/",
-    "source": "jackett",
-    "evidence": "GET https://vstorrent.org/ -\u003e HTTP 200, 249929 bytes, title \"VSTorrent - Torrent Resource For Your Creativity\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-vsttorrents",
-    "name": "VST Torrentz",
-    "description": "VST Torrentz is a Public site for AUDIO apps, plugins and samples",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "vsttorrentz.net"
-    ],
-    "url": "https://vsttorrentz.net/",
-    "source": "jackett",
-    "evidence": "GET https://vsttorrentz.net/ -\u003e HTTP 200, 120983 bytes, title \"VST Torrent | Download Free Latest VST Plugins\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-whiteangel",
     "name": "White Angel",
     "description": "White Angel is a HUNGARIAN Private Tracker for MOVIES / TV",
@@ -16601,6 +16422,30 @@
     "scheduled": true
   },
   {
+    "id": "mactorrentsdownload",
+    "name": "Mac Torrents Download",
+    "description": "Public macOS software RSS feed with .torrent links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "torrentmac.net"
+    ],
+    "url": "https://www.torrentmac.net/feed/",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
     "id": "mikan",
     "name": "Mikan Project",
     "description": "Public Mikan Project anime search with magnets and .torrent links.",
@@ -16726,6 +16571,30 @@
     "scheduled": true
   },
   {
+    "id": "nipponsei",
+    "name": "Nipponsei",
+    "description": "Public anime music RSS feed with .torrent links.",
+    "language": "ja-JP",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime",
+      "music"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "nipponsei.minglong.org"
+    ],
+    "url": "https://nipponsei.minglong.org/tracker/rss.php",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
     "id": "nyaa",
     "name": "Nyaa",
     "description": "Public Nyaa HTML search with magnets in the result row.",
@@ -16745,6 +16614,53 @@
       "nyaa.si"
     ],
     "url": "https://nyaa.si/",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
+    "id": "plugintorrent",
+    "name": "plugintorrent",
+    "description": "Public software RSS feed with magnet links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "plugintorrent.com"
+    ],
+    "url": "https://plugintorrent.com/feed/",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
+    "id": "pornrips",
+    "name": "PornRips",
+    "description": "Public adult RSS feed with .torrent links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "pornrips.to"
+    ],
+    "url": "https://pornrips.to/feed/",
     "source": "native",
     "proposable": true,
     "latest": false,
@@ -16863,6 +16779,30 @@
       "subsplease.org"
     ],
     "url": "https://subsplease.org/",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
+    "id": "sukebeinyaasi",
+    "name": "sukebei.nyaa.si",
+    "description": "Public adult anime RSS feed with .torrent links.",
+    "language": "ja-JP",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "sukebei.nyaa.si"
+    ],
+    "url": "https://sukebei.nyaa.si/rss",
     "source": "native",
     "proposable": true,
     "latest": false,
@@ -17249,6 +17189,54 @@
     ],
     "url": "https://unit3d.example.invalid/",
     "family": "unit3d",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
+    "id": "vstorrent",
+    "name": "VSTorrent",
+    "description": "Public audio software RSS feed with magnet links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "vstorrent.org"
+    ],
+    "url": "https://vstorrent.org/feed/",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
+    "id": "vsttorrentz",
+    "name": "VST Torrentz",
+    "description": "Public audio software RSS feed with magnet links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "vsttorrentz.net"
+    ],
+    "url": "https://vsttorrentz.net/feed/",
     "source": "native",
     "proposable": true,
     "latest": false,

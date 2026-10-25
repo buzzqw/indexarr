@@ -303,3 +303,54 @@ definitions:
     file: definitions/fosstorrents.yaml
     state: verificata
     author: indexarr
+
+  - id: acgrip
+    file: definitions/acgrip.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: crackingpatching
+    file: definitions/crackingpatching.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: dmhy
+    file: definitions/dmhy.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: mactorrentsdownload
+    file: definitions/mactorrentsdownload.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: nipponsei
+    file: definitions/nipponsei.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: plugintorrent
+    file: definitions/plugintorrent.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: pornrips
+    file: definitions/pornrips.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: sukebeinyaasi
+    file: definitions/sukebeinyaasi.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: vstorrent
+    file: definitions/vstorrent.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."
+  - id: vsttorrentz
+    file: definitions/vsttorrentz.yaml
+    state: bozza
+    author: indexarr
+    note: "Public RSS feed preset; feed probed for torrent links, fixture pending."

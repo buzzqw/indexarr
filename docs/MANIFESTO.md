@@ -339,7 +339,7 @@ del progetto.
 | Prima ricerca dopo l'installazione | < 2 minuti per un utente nuovo | da misurare |
 | Sostituzione di Prowlarr | Fonti dal catalogo nativo; le \*arr passano a indexarr | parziale: 200 fonti con via nativa, 413 in coda |
 | Parità | Checklist di indexarr2.md §3 tutta verde | da fare |
-| Siti dell'utente funzionanti al giorno uno | 100% (nativi) oppure in coda visibile, senza proxy | parziale: 155 via software noto, 413 in coda |
+| Siti dell'utente funzionanti al giorno uno | 100% (nativi) oppure in coda visibile, senza proxy | parziale: 210 con via nativa, 403 in coda |
 | Inventario prioritario con definizione nativa verificata | 100% alla 1.0 | da fare |
 
 ---

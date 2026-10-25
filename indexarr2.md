@@ -572,7 +572,7 @@ tutta verde.
 | **Alpha interna** | Inventario prioritario riscritto e verificato | Uso quotidiano su istanza propria | Fatto: catalogo nativo e adozione delle fonti (WP8) |
 | **M3 — Distribuzione** | Endpoint per indexer e filtrati, alias Jackett, errori Torznab, limiti query/grab, proxy | \*arr collegate senza Jackett/Prowlarr | Fatto |
 | **M4 — App sync** | Tutte le applicazioni del §3.2, livelli di sync, riconciliazione | Prowlarr rimovibile | Fatto: 7 app su 7; rollback automatico per le 5 Servarr |
-| **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita; coda «da scrivere» visibile, nessun proxy | In corso: 155 fonti via software noto, 413 in coda al 25/10 |
+| **M5 — Copertura** | Famiglie e siti della coda lunga, rete di salute opt-in, riparazione assistita | Quota nativa in crescita; coda «da scrivere» visibile, nessun proxy | In corso: 210 fonti con via nativa, 403 in coda al 25/10 |
 | **M6 — Usenet** | Connettore Newznab e preset, endpoint Newznab, proxy `.nzb`, SABnzbd/NZBGet, sync Newznab verso le \*arr | Indexer Usenet gestiti come in Prowlarr | Fatto lato codice; nessun indexer Usenet reale verificato |
 | **Beta** | Health check opt-in; documentazione per chi scrive definizioni | Checklist §3 quasi completa | — |
 | **1.0** | Checklist §3 verde | Rilascio pubblico | — |

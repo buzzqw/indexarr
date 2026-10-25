@@ -40,13 +40,13 @@ sono nostri.
 
 | Via | Fonti |
 |---|---:|
-| Definizione nativa | 45 (37 verificate, 8 in bozza) |
+| Definizione nativa | 55 (37 verificate, 18 in bozza) |
 | Software noto (NexusPHP, UNIT3D, Gazelle, XBTIT, TorrentTrader) | 155 |
-| **Native o software noto** | **200 su 613** |
-| In coda «da scrivere» | 413 |
+| **Native o software noto** | **210 su 613** |
+| In coda «da scrivere» | 403 |
 
-Sulle 638 voci dell'istantanea Jackett: 19 definizioni native, 155 software
-noto, 174 con via nativa (27,3%); il resto è coda. La differenza con le 413
+Sulle 638 voci dell'istantanea Jackett: 29 definizioni native, 155 software
+noto, 184 con via nativa (28,8%); il resto è coda. La differenza con le 403
 righe reali è dovuta ai doppioni di host.
 
 ## Le fonti dell'utente
