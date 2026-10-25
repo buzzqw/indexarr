@@ -688,6 +688,7 @@ numerate sono tre:
 | GET/POST | `/api/v2/applications` |
 | GET/PUT/DELETE | `/api/v2/applications/{id}` |
 | POST | `/api/v2/applications/sync`, `/api/v2/applications/{id}/sync` |
+| GET | `/api/v1/system/status`, `/api/v1/health`, `/api/v1/indexer`, `/api/v1/indexer/{id}` (compatibilità Prowlarr, sola lettura) |
 
 Tutte le rotte sono autenticate con la stessa API key del server Torznab
 (`apikey`, `X-Api-Key` o `Authorization: Bearer`). Non esistono più le rotte

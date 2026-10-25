@@ -79,6 +79,12 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/v2/health", s.handleHealth)
 
+	// Prowlarr-compatible read-only surface for dashboards.
+	mux.HandleFunc("GET /api/v1/system/status", s.handleProwlarrSystemStatus)
+	mux.HandleFunc("GET /api/v1/health", s.handleProwlarrHealth)
+	mux.HandleFunc("GET /api/v1/indexer", s.handleProwlarrIndexerList)
+	mux.HandleFunc("GET /api/v1/indexer/{id}", s.handleProwlarrIndexerGet)
+
 	mux.HandleFunc("GET /api/v2/definitions", s.handleDefinitionList)
 	mux.HandleFunc("POST /api/v2/definitions", s.handleDefinitionCreate)
 	mux.HandleFunc("POST /api/v2/definitions/validate", s.handleDefinitionValidate)

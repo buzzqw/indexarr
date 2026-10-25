@@ -280,6 +280,22 @@ I valori con nome che contiene `api_key`, `apikey`, `token`, `password`,
 in `config_json`. Le definizioni built-in sono oggi in stato `bozza`: non sono
 state verificate contro un sito live.
 
+## Compatibilità Prowlarr v1 (sola lettura)
+
+Per le dashboard che leggono l'API di Prowlarr (Homepage, Organizr, …) sono
+disponibili tre rotte equivalenti, autenticate con la stessa API key
+(`apikey`, `X-Api-Key` o `Authorization: Bearer`):
+
+| Metodo | Rotta | Risposta |
+|---|---|---|
+| GET | `/api/v1/system/status` | nome applicazione, versione, autenticazione |
+| GET | `/api/v1/health` | elenco dei problemi (vuoto quando è tutto ok) |
+| GET | `/api/v1/indexer` | elenco indexer in formato Prowlarr |
+| GET | `/api/v1/indexer/{id}` | un indexer |
+
+Sono **sola lettura** e non creano alcun collegamento verso Prowlarr: servono
+solo a chi ha una dashboard che parla quel dialetto.
+
 ## Cambiamenti 2.0.0-rc1
 
 - `total` è il numero di release dopo la fusione ed è stabile su tutte le pagine; ogni pagina è piena tranne l’ultima.

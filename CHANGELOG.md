@@ -12,6 +12,10 @@
 - Istantanea storica dei metadati mantenuta solo per generare il catalogo;
   nessun collegamento a runtime.
 
+### Compatibilità dashboard
+- API Prowlarr v1 in sola lettura: `system/status`, `health`, `indexer`,
+  `indexer/{id}` per Homepage/Organizr.
+
 ### App sync
 - Mylar3 e LazyLibrarian gestiscono i provider Torznab/Newznab via API comandi:
   elenco, aggiunta, modifica, rimozione. Sette applicazioni su sette.

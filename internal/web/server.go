@@ -713,6 +713,7 @@ func (s *Server) Handler() http.Handler {
 	outer.Handle("/dl/", s.torznab)
 	if s.admin != nil {
 		outer.Handle("/api/v2/", s.admin)
+		outer.Handle("/api/v1/", s.admin)
 	}
 	outer.HandleFunc("GET /healthz", s.healthz)
 	outer.HandleFunc("GET /metrics", s.metrics)
