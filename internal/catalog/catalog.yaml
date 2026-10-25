@@ -414,3 +414,13 @@ definitions:
     state: verificata
     author: indexarr
     note: "Public AniBT RSS; namespaced torrentUrl and fileSize, real fixture."
+  - id: sukebei
+    file: definitions/sukebei.yaml
+    state: verificata
+    author: indexarr
+    note: "Public adult RSS feed; .torrent in <link> with nyaa:* metadata, real fixture."
+  - id: pandacd
+    file: definitions/pandacd.yaml
+    state: verificata
+    author: indexarr
+    note: "Public PandaCD music search; anonymous torrent endpoint and per-format size, real fixture."

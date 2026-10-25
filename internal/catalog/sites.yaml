@@ -7247,23 +7247,6 @@ sites:
       checked: "2026-10-25"
       evidence: 'GET https://pandapt.net/login.php -> HTTP 200, 8177 bytes, title "PANDA :: 登录 熊猫高清", checked 2026-10-25; private, no account used'
       note: 'family nexusphp (confirmed): GET https://pandapt.net/login.php -> 200, NexusPHP login form'
-    - id: jk-pandacd
-      name: PandaCD
-      description: PandaCD is a Public Tracker for MUSIC (Creative Commons and artist-permitted content)
-      url: https://pandacd.io/
-      urls:
-        - https://pandacd.io/
-      type: public
-      language: en-US
-      categories:
-        - music
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: pandacd
-      checked: "2026-10-25"
-      evidence: GET https://pandacd.io/ -> HTTP 200, 193658 bytes, title "PandaCD", checked 2026-10-25
     - id: jk-parabellumhd-api
       name: ParabellumHD (API)
       description: ParabellumHD is a SPANISH Private Torrent Tracker for HEVC & AV1-encoded MOVIES / TV

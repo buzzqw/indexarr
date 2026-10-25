@@ -9856,30 +9856,6 @@
     "scheduled": true
   },
   {
-    "id": "jk-pandacd",
-    "name": "PandaCD",
-    "description": "PandaCD is a Public Tracker for MUSIC (Creative Commons and artist-permitted content)",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "music"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "pandacd.io"
-    ],
-    "url": "https://pandacd.io/",
-    "source": "jackett",
-    "evidence": "GET https://pandacd.io/ -\u003e HTTP 200, 193658 bytes, title \"PandaCD\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-parabellumhd-api",
     "name": "ParabellumHD (API)",
     "description": "ParabellumHD is a SPANISH Private Torrent Tracker for HEVC \u0026 AV1-encoded MOVIES / TV",
@@ -16454,6 +16430,22 @@
     "scheduled": true
   },
   {
+    "id": "pandacd",
+    "name": "PandaCD",
+    "description": "Public music release search with per-format torrent sizes.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "pandacd.io"
+    ],
+    "url": "https://pandacd.io/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "plugintorrent",
     "name": "plugintorrent",
     "description": "Public software RSS feed with magnet links.",
@@ -16653,6 +16645,31 @@
       "subsplease.org"
     ],
     "url": "https://subsplease.org/",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
+    "id": "sukebei",
+    "name": "Sukebei",
+    "description": "Public Sukebei adult anime and real-life torrent feed with .torrent links.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime",
+      "xxx"
+    ],
+    "required": [
+      "default-category",
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "sukebei.nyaa.si"
+    ],
+    "url": "https://sukebei.nyaa.si/?page=rss",
     "source": "native",
     "proposable": true,
     "latest": false,

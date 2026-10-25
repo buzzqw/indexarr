@@ -1,0 +1,55 @@
+# VERIFICATA (verified). Sukebei public RSS feed.
+#
+# Written from the public feed captured on 2026-10-25 in
+# fixtures/sukebei/feed.xml (https://sukebei.nyaa.si/?page=rss). The feed is
+# application/xml: every item puts the .torrent download link in <link> and
+# carries the nyaa:* extension (seeders, leechers, size, infoHash, categoryId).
+# There is no <enclosure> and no magnet, so the generic RSS parser stores the
+# .torrent URL as TorrentURL and no detail resolution is needed. The site is
+# adult-only: the default category is 6000 (XXX), while the Art - Anime
+# sub-category maps to 5070 (Anime).
+schema: 1
+connector: rss
+
+meta:
+  id: sukebei
+  name: Sukebei
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Sukebei adult anime and real-life torrent feed with .torrent links.
+  urls:
+    - https://sukebei.nyaa.si/?page=rss
+  updated: "2026-10-25"
+
+settings:
+  - { name: url, type: text, label: Feed URL, help: "RSS or Atom feed URL", required: true, default: "https://sukebei.nyaa.si/?page=rss" }
+  - name: default-category
+    type: text
+    label: "Default category"
+    help: "Standard Torznab category used when the feed has only text categories."
+    default: "6000"
+    required: true
+
+categories:
+  - { site: "1_0", standard: 5070, desc: "Art" }
+  - { site: "1_1", standard: 5070, desc: "Art - Anime" }
+  - { site: "1_2", standard: 6000, desc: "Art - Doujinshi" }
+  - { site: "1_3", standard: 6000, desc: "Art - Games" }
+  - { site: "1_4", standard: 6000, desc: "Art - Pictures" }
+  - { site: "2_0", standard: 6000, desc: "Real Life" }
+  - { site: "2_1", standard: 6000, desc: "Real Life - Pictures" }
+  - { site: "2_2", standard: 6000, desc: "Real Life - Videos" }
+
+capabilities:
+  search: [q]
+
+health:
+  query: test
+  min_rows: 1
+
+tests:
+  - name: feed
+    fixture: fixtures/sukebei/feed.xml
+    expect: { min_rows: 4 }

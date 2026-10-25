@@ -1,0 +1,65 @@
+# VERIFICATA (verified). PandaCD public music search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/pandacd/search.html (https://pandacd.io/index.php?search=matrix)
+# and the public detail fixture detail.html (https://pandacd.io/release/13313-within-the-matrix/).
+# The result cards carry the artist and the release title plus the detail link;
+# the details page lists one torrent row per format with files, size, snatches,
+# seeders and leechers. The torrent file is served anonymously by the
+# action=download endpoint, so the definition resolves the first (highest
+# quality) format row on search and reads its real size. The card list has no
+# category column, so rows keep the 8000 fallback.
+schema: 1
+
+meta:
+  id: pandacd
+  name: PandaCD
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public music release search with per-format torrent sizes.
+  urls:
+    - https://pandacd.io/
+  updated: "2026-10-25"
+  latest: false
+
+categories:
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /index.php
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.album div.card" }
+    fields:
+      title:   { selector: "div.card-text.fw-bold", filters: [trim] }
+      details: { selector: 'div.card-text a[href*="/release/"]', attr: href, type: url }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  size: { selector: 'table[id^="torrents_"] tbody tr.torrent-row td:nth-of-type(3)', type: size }
+  extract:
+    - torrent: { selector: 'table[id^="torrents_"] tbody tr.torrent-row a[href*="action=download"]', attr: href, type: url }
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/pandacd/search.html
+    expect: { min_rows: 3, required: [title, details] }
+  - name: detail
+    fixture: fixtures/pandacd/detail.html
+    expect: { min_rows: 0 }
