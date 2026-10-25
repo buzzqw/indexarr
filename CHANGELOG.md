@@ -40,6 +40,10 @@
   pack) nel form, nel DB e nel sync verso le \*arr.
 
 ### Catalogo
+- Nuove definizioni native pubbliche **DivxTotal** e **Mac Torrents**, con
+  torrent e dimensione risolti dalla pagina di dettaglio e fixture reali.
+- La sezione `download` può leggere anche la dimensione dalla pagina di
+  dettaglio (`size`), per i listing che non la espongono nella riga.
 - Rilevazione del software dal vivo con marcatori forti; 155 fonti con
   software noto.
 - Coda «da scrivere» visibile con filtro e contatore di copertura.

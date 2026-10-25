@@ -519,6 +519,10 @@
         "title": {
           "$ref": "#/$defs/field",
           "description": "Optional full title extracted from the details page."
+        },
+        "size": {
+          "$ref": "#/$defs/field",
+          "description": "Optional file size extracted from the details page."
         }
       }
     },

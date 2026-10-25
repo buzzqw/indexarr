@@ -467,6 +467,7 @@ download:
   resolve_on: grab            # search | grab (default)
   from: details               # campo della ricerca, default details
   max_concurrent: 2           # 1..8, default 2
+  size: { selector: "table.torrentInfoTable tr:nth-child(1) td", filters: [{ regex: "([0-9][0-9.,]*\\s*(?:B|KB|MB|GB|TB))" }] }
   extract:
     - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
     - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
@@ -477,6 +478,7 @@ download:
 | `resolve_on` | no | `search` oppure `grab` (default) |
 | `from` | no | nome di un campo dichiarato in `search.response.fields`; vuoto = `details` |
 | `max_concurrent` | no | da 1 a 8; `0` o assente = 2. Valori fuori intervallo sono rifiutati |
+| `size` | no | campo letto dalla pagina di dettaglio; il valore viene interpretato come dimensione e applicato alla release |
 | `select` | no | vuoto oppure `season_episode`: sceglie fra più estrattori quello della stagione/episodio richiesti |
 | `before` | no | azione generale prima del download (per esempio il «grazie» di un forum); richiede `resolve_on: grab` |
 | `extract` | sì | almeno un estrattore; ogni voce ha **solo** `magnet` o **solo** `torrent` |
@@ -581,6 +583,7 @@ sono disponibili nell'azione.
   `post`, mai entrambi, e ogni estrattore deve avere `selector`, `json` o
   `regex` valido;
 - `extract` non può essere vuoto;
+- `size`, quando presente, è un `Field` con `selector` o `path`;
 - ogni voce deve avere esattamente uno tra `magnet` e `torrent`;
 - ogni campo deve avere `selector` o `path` non vuoti, un `type` ammesso e
   filtri validi (`replace: old:new`, `query_param` con nome, `regex`

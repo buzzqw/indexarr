@@ -1,0 +1,79 @@
+# VERIFICATA (verified). DivxTotal public search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/divxtotal/search.html (https://divxtotal.foo/?s=matrix) and the
+# public detail fixture detail.html. The result table has no magnet: each
+# detail page exposes a download_tt.php link that redirects to the .torrent,
+# so the download section resolves the detail page while searching.
+schema: 1
+
+meta:
+  id: divxtotal
+  name: DivxTotal
+  language: es-ES
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Spanish movie and series tracker with a torrent link on each detail page.
+  urls:
+    - https://divxtotal.foo/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+  movie-search: [q]
+  tv-search: [q]
+
+categories:
+  - { site: "accion", standard: 2000, desc: "Action" }
+  - { site: "accion-peleas", standard: 2000, desc: "Action" }
+  - { site: "aventura", standard: 2000, desc: "Adventure" }
+  - { site: "animacion", standard: 2000, desc: "Animation" }
+  - { site: "belica", standard: 2000, desc: "War" }
+  - { site: "ciencia-ficcion", standard: 2000, desc: "Science fiction" }
+  - { site: "comedia", standard: 2000, desc: "Comedy" }
+  - { site: "documental", standard: 5080, desc: "Documentary" }
+  - { site: "drama", standard: 2000, desc: "Drama" }
+  - { site: "fantastico", standard: 2000, desc: "Fantasy" }
+  - { site: "intriga", standard: 2000, desc: "Thriller" }
+  - { site: "sci-fi", standard: 2000, desc: "Science fiction" }
+  - { site: "series", standard: 5000, desc: "TV" }
+  - { site: "terror", standard: 2000, desc: "Horror" }
+  - { site: "western", standard: 2000, desc: "Western" }
+
+search:
+  request:
+    get: /
+    params:
+      s: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.table > tbody > tr" }
+    fields:
+      title:    { selector: "td:nth-child(1) a", filters: [trim] }
+      details:  { selector: "td:nth-child(1) a", attr: href, type: url }
+      category: { selector: "td:nth-child(2) a", attr: href, filters: [{ regex: "/category/([^/]+)/" }], type: category }
+      date:     { selector: "td:nth-child(3)", type: date, layouts: ["02-01-2006"] }
+      size:     { selector: "td:nth-child(4)", type: size }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  extract:
+    - torrent: { selector: 'a[href*="download_tt.php"]', attr: href, type: url }
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/divxtotal/search.html
+    expect: { min_rows: 4, required: [title, details, size] }
+  - name: detail
+    fixture: fixtures/divxtotal/detail.html
+    expect: { min_rows: 0 }

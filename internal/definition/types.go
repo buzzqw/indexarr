@@ -313,6 +313,9 @@ type Download struct {
 	// Title optionally replaces the truncated title from a listing with the
 	// full title found on the details page.
 	Title *Field `yaml:"title,omitempty" json:"title,omitempty"`
+	// Size optionally reads the file size from the details page. It is used
+	// by listings that omit the size in the result row.
+	Size *Field `yaml:"size,omitempty" json:"size,omitempty"`
 	// Select chooses among multiple extracted targets. Empty keeps the
 	// historical behaviour (the first target that yields a value wins).
 	// "season_episode" matches the requested season/episode carried by the

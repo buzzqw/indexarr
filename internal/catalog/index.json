@@ -345,6 +345,26 @@
     "scheduled": true
   },
   {
+    "id": "divxtotal",
+    "name": "DivxTotal",
+    "description": "Public Spanish movie and series tracker with a torrent link on each detail page.",
+    "language": "es-ES",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "divxtotal.foo"
+    ],
+    "url": "https://divxtotal.foo/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "dmhy",
     "name": "dmhy",
     "description": "Public Chinese anime RSS feed with magnet and .torrent links.",
@@ -4139,33 +4159,6 @@
     "proposable": true,
     "latest": true,
     "scheduled": true
-  },
-  {
-    "id": "jk-divxtotal",
-    "name": "DivxTotal",
-    "description": "DivxTotal is a SPANISH site for Movies, TV series and Software",
-    "language": "es-ES",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "divxtotal.foo"
-    ],
-    "url": "https://divxtotal.foo/",
-    "source": "jackett",
-    "evidence": "GET https://divxtotal.foo/ -\u003e HTTP 200, 91387 bytes, title \"DivxTotaL - Descargar Torrent Peliculas Series Programas gratis\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
   },
   {
     "id": "jk-docspedia",
@@ -17085,6 +17078,26 @@
     "proposable": true,
     "latest": false,
     "scheduled": true
+  },
+  {
+    "id": "torrentmac",
+    "name": "Mac Torrents",
+    "description": "Public macOS application and game tracker with a .torrent link on each detail page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentmac.net"
+    ],
+    "url": "https://www.torrentmac.net/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "torrentscsv",

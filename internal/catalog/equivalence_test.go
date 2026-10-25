@@ -693,3 +693,73 @@ func TestMegaPeerNativeFixture(t *testing.T) {
 		t.Errorf("size/seeders = %d/%d", first.Size, first.Seeders)
 	}
 }
+
+func TestDivxTotalNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			if got := r.URL.Query().Get("s"); got != "matrix" {
+				t.Errorf("s param = %q", got)
+			}
+			serveFile(t, w, "divxtotal/search.html")
+			return
+		}
+		serveFile(t, w, "divxtotal/detail.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "divxtotal", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if first.Title != "Matrix" {
+		t.Errorf("title = %q", first.Title)
+	}
+	if first.Size <= 0 {
+		t.Errorf("size = %d", first.Size)
+	}
+	if !strings.Contains(first.DownloadURL, "download_tt.php") {
+		t.Errorf("download = %q", first.DownloadURL)
+	}
+}
+
+func TestTorrentMacNativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			if got := r.URL.Query().Get("s"); got != "matrix" {
+				t.Errorf("s param = %q", got)
+			}
+			serveFile(t, w, "torrentmac/search.html")
+			return
+		}
+		serveFile(t, w, "torrentmac/detail.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "torrentmac", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if !strings.Contains(first.Title, "Focus Matrix") {
+		t.Errorf("title = %q", first.Title)
+	}
+	if first.Size <= 0 {
+		t.Errorf("size = %d", first.Size)
+	}
+	if !strings.HasSuffix(first.DownloadURL, ".torrent") {
+		t.Errorf("download = %q", first.DownloadURL)
+	}
+}

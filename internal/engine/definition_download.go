@@ -28,6 +28,7 @@ type resolvedDownload struct {
 	DownloadURL string
 	InfoHash    string
 	Title       string
+	Size        int64
 }
 
 func (r resolvedDownload) empty() bool {
@@ -236,6 +237,9 @@ func applyResolvedDownload(item *Item, result resolvedDownload) {
 	if strings.TrimSpace(result.Title) != "" {
 		item.Title = strings.TrimSpace(result.Title)
 	}
+	if result.Size > 0 {
+		item.Size = result.Size
+	}
 	if result.Magnet != "" {
 		item.Magnet = result.Magnet
 		if result.InfoHash != "" {
@@ -305,6 +309,12 @@ func (c *DefinitionConnector) fetchDetailsDownload(ctx context.Context, target *
 			title = strings.TrimSpace(value)
 		}
 	}
+	size := int64(0)
+	if c.def.Download.Size != nil {
+		if value, err := c.extractDetailField(response, *c.def.Download.Size); err == nil {
+			size = parseSize(value)
+		}
+	}
 	candidates, err := c.extractDownloadCandidates(response)
 	if err != nil {
 		return resolvedDownload{}, err
@@ -317,6 +327,7 @@ func (c *DefinitionConnector) fetchDetailsDownload(ctx context.Context, target *
 		return resolvedDownload{}, errors.New("download: no magnet matches the requested season and episode")
 	}
 	result.Title = title
+	result.Size = size
 	return result, nil
 }
 

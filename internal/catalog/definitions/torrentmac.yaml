@@ -1,0 +1,70 @@
+# VERIFICATA (verified). TorrentMac public search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/torrentmac/search.html (https://www.torrentmac.net/?s=matrix) and
+# the public detail fixture detail.html. The listing has title, detail URL,
+# date and category; the size and the .torrent link are on the detail page,
+# so the download section resolves both while searching.
+schema: 1
+
+meta:
+  id: torrentmac
+  name: Mac Torrents
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public macOS application and game tracker with a .torrent link on each detail page.
+  urls:
+    - https://www.torrentmac.net/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+
+categories:
+  - { site: "Application", standard: 4000, desc: "Applications" }
+  - { site: "Productivity", standard: 4000, desc: "Productivity" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Adobe", standard: 4000, desc: "Adobe apps" }
+  - { site: "Apple", standard: 4000, desc: "Apple apps" }
+  - { site: "Office", standard: 4000, desc: "Office" }
+  - { site: "Photography", standard: 4000, desc: "Photography" }
+  - { site: "Graphics & Design", standard: 4000, desc: "Graphics" }
+
+search:
+  request:
+    get: /
+    params:
+      s: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "article" }
+    fields:
+      title:    { selector: "h2.post-title a", filters: [trim] }
+      details:  { selector: "h2.post-title a", attr: href, type: url }
+      category: { selector: 'p.meta a[rel="category"]', type: category }
+      date:     { selector: "p.meta time", attr: datetime, type: date }
+    required: [title, details]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  size: { selector: "table.torrentInfoTable tr:nth-child(1) td", filters: [{ regex: "([0-9][0-9.,]*\\s*(?:B|KB|MB|GB|TB|KIB|MIB|GIB|TIB))" }] }
+  extract:
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
+
+health:
+  query: matrix
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/torrentmac/search.html
+    expect: { min_rows: 4, required: [title, details, category, date] }
+  - name: detail
+    fixture: fixtures/torrentmac/detail.html
+    expect: { min_rows: 0 }

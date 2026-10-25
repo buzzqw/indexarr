@@ -2824,26 +2824,6 @@ sites:
       checked: "2026-10-25"
       evidence: 'GET https://discfan.net/login.php -> HTTP 200, 13379 bytes, title "DiscFan :: 登錄 - Powered by NexusPHP", checked 2026-10-25; private, no account used'
       note: 'family nexusphp (confirmed): GET https://discfan.net/login.php -> 200, title ''Powered by NexusPHP'''
-    - id: jk-divxtotal
-      name: DivxTotal
-      description: DivxTotal is a SPANISH site for Movies, TV series and Software
-      url: https://divxtotal.foo/
-      urls:
-        - https://divxtotal.foo/
-      type: public
-      language: es-ES
-      categories:
-        - movies
-        - tv
-        - games
-        - software
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: divxtotal
-      checked: "2026-10-25"
-      evidence: GET https://divxtotal.foo/ -> HTTP 200, 91387 bytes, title "DivxTotaL - Descargar Torrent Peliculas Series Programas gratis", checked 2026-10-25
     - id: jk-docspedia
       name: DocsPedia
       description: DocsPedia is a Private Torrent Tracker for E-LEARNING
