@@ -479,6 +479,10 @@ Torznab e la memoria temporanea delle fusioni.
    20.000 righe prima di restituire la prima pagina. Ora usa la stessa finestra
    di `rssWindowPage` (almeno 500 righe, crescita solo se la fusione non basta
    a riempire la pagina).
+4. **Snapshot compatti** (`internal/torznabapi`): prima di conservare una
+   pagina fusa, la slice viene copiata alla lunghezza esatta. La capacità
+   residua della finestra (fino a 500 righe) non resta più appesa allo
+   snapshot; il peso dello snapshot conta anche l'overhead per release.
 
 Il totale di una query oltre la finestra resta una stima: è il conteggio dello
 store meno i duplicati osservati nella finestra, come già avveniva per i feed
@@ -521,7 +525,22 @@ sono rumore.
 RSS a riposo e startup restano sostanzialmente invariati (46–48 MiB; 104–153
 ms). Il binario resta 20,1 MiB.
 
-### 10.4 Test di non-regressione
+### 10.4 A/B sulle copie del DB
+
+`tools/firstpage_ab3.py` contro `d7837d9`, due giri a porte scambiate, copie
+fresche del DB di produzione con la ricerca live disattivata. Tutte le 12
+query con risultati hanno gli stessi titoli distinti (248/248, **100%**); le
+4 query senza risultati restano 0 su entrambi. Nessuna query scende sotto
+l'85%.
+
+Dopo i due giri i due processi occupano 58,7 MiB (baseline) e 64,3 MiB
+(nuovo): +5,6 MiB, il costo dello snapshot delle righe per i feed piccoli.
+Senza la compattazione delle slice il nuovo processo arrivava a 73,1 MiB;
+la correzione lo riporta vicino al baseline. Nel test end-to-end dopo il
+carico il nuovo processo resta comunque molto sotto il baseline
+(65,7 MiB contro 111,8 MiB a 50k).
+
+### 10.5 Test di non-regressione
 
 - `TestRSSWindowDoesNotFuseArchive` ora verifica anche una query non selettiva
   (`q=Archive`): 100 item per pagina, `total=20000`, seconda pagina coerente.

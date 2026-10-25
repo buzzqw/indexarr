@@ -15,8 +15,9 @@
 ### Prestazioni
 - Normalizzatori dei titoli con tabelle `strings.Replacer` precompilate: meno
   CPU e fino al 76% di allocazioni in meno per pagina Torznab.
-- Snapshot delle righe per i feed piccoli e finestra limitata anche per le
-  query non selettive: la ricerca `1080p` non materializza più l'archivio.
+- Snapshot delle righe per i feed piccoli, con slice compattate, e finestra
+  limitata anche per le query non selettive: la ricerca `1080p` non
+  materializza più l'archivio.
 - Latenza p95 della query stress a 50.000 release: da ~1.981 ms a ~61 ms;
   RSS dopo il carico: da ~112 MiB a ~66 MiB.
 

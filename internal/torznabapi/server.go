@@ -631,6 +631,9 @@ func (s *Server) cachedSnapshot(key string) (searchSnapshot, bool) {
 }
 
 func (s *Server) storeSnapshot(key string, releases []store.Release, total, duplicates int64, totalOnly bool) {
+	if !totalOnly {
+		releases = compactReleases(releases)
+	}
 	weight := snapshotWeight(releases)
 	if totalOnly {
 		releases = nil
@@ -679,12 +682,25 @@ func (s *Server) snapshotBytesLocked() int64 {
 
 func snapshotWeight(releases []store.Release) int64 {
 	const base = 192
-	total := int64(base)
+	const releaseOverhead = 256
+	total := int64(base) + int64(len(releases))*releaseOverhead
 	for _, release := range releases {
 		total += int64(len(release.Title) + len(release.SearchTitle) + len(release.GUID) +
 			len(release.Magnet) + len(release.Torrent) + len(release.Payload))
 	}
 	return total
+}
+
+// compactReleases drops the unused tail capacity before a slice is kept in a
+// snapshot. FuseReleases sizes its output for the whole read window, so a
+// short fused page used to retain the full window's backing array.
+func compactReleases(releases []store.Release) []store.Release {
+	if cap(releases) == len(releases) {
+		return releases
+	}
+	out := make([]store.Release, len(releases))
+	copy(out, releases)
+	return out
 }
 
 // liveQueryEligible decides whether a Torznab function is a real search or an

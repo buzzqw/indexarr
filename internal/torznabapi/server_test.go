@@ -849,3 +849,16 @@ func TestDownloadErrorsAreReadable(t *testing.T) {
 		}
 	}
 }
+
+func TestCompactReleasesDropsSlackCapacity(t *testing.T) {
+	in := make([]store.Release, 2, 500)
+	in[0].Title = "first"
+	in[1].Title = "second"
+	out := compactReleases(in)
+	if len(out) != 2 || cap(out) != 2 {
+		t.Fatalf("compactReleases len/cap = %d/%d, want 2/2", len(out), cap(out))
+	}
+	if out[0].Title != "first" || out[1].Title != "second" {
+		t.Fatalf("compactReleases changed data: %+v", out)
+	}
+}
