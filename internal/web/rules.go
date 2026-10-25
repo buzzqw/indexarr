@@ -21,7 +21,7 @@ func (s *Server) rulesPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, "rules", rulesPage{
-		base:  s.newBase(r, "Regole", "rules"),
+		base:  s.newBase(r, "rules.title", "rules"),
 		Rules: rules,
 	}, http.StatusOK)
 }
@@ -31,27 +31,27 @@ func (s *Server) rulesAdd(w http.ResponseWriter, r *http.Request) {
 	value := strings.TrimSpace(r.FormValue("value"))
 	note := strings.TrimSpace(r.FormValue("note"))
 	if value == "" {
-		redirect(w, r, "/settings?section=rules", "", "The rule value is required")
+		redirect(w, r, "/settings?section=rules", "", s.translate(r, "rules.valueRequired"))
 		return
 	}
 	if _, err := s.store.AddBlocklistRule(r.Context(), kind, value, note); err != nil {
 		redirect(w, r, "/settings?section=rules", "", err.Error())
 		return
 	}
-	redirect(w, r, "/settings?section=rules", "Rule added; future runs will skip matching releases", "")
+	redirect(w, r, "/settings?section=rules", s.translate(r, "rules.added"), "")
 }
 
 func (s *Server) rulesDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/rules", "", "invalid rule id")
+		redirect(w, r, "/rules", "", s.translate(r, "rules.invalidID"))
 		return
 	}
 	if _, err := s.store.DeleteBlocklistRule(r.Context(), id); err != nil {
 		redirect(w, r, "/settings?section=rules", "", err.Error())
 		return
 	}
-	redirect(w, r, "/settings?section=rules", "Rule deleted", "")
+	redirect(w, r, "/settings?section=rules", s.translate(r, "rules.deleted"), "")
 }
 
 func (s *Server) releaseFavorite(w http.ResponseWriter, r *http.Request) {

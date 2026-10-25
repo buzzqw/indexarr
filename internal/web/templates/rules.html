@@ -1,53 +1,48 @@
 {{define "content"}}
 <section class="page-head">
   <div>
-    <h1>Rules</h1>
-    <p class="muted">Blocklist applicata durante l'acquisizione. Le release corrispondenti non vengono salvate, anche se un indexer continua a restituirle.</p>
+    <h1>{{T "rules.title"}}</h1>
+    <p class="muted">{{T "rules.intro"}}</p>
   </div>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Add rule</h2></div>
+  <div class="panel-head"><h2>{{T "rules.addTitle"}}</h2></div>
   <form class="prose" method="post" action="/rules">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
     <div class="form-grid">
       <div class="field">
-        <label for="kind">Rule type</label>
+        <label for="kind">{{T "rules.type"}}</label>
         <select id="kind" name="kind">
-          <option value="infohash">Infohash</option>
-          <option value="title">Title contains</option>
-          <option value="regex">Title regex</option>
-          <option value="source">Source name</option>
-          <option value="category">Category (e.g. 5000)</option>
+          <option value="infohash">{{T "rules.kind.infohash"}}</option>
+          <option value="title">{{T "rules.kind.title"}}</option>
+          <option value="regex">{{T "rules.kind.regex"}}</option>
+          <option value="source">{{T "rules.kind.source"}}</option>
+          <option value="category">{{T "rules.kind.category"}}</option>
         </select>
       </div>
       <div class="field grow">
-        <label for="value">Value</label>
-        <input id="value" name="value" type="text" required spellcheck="false" placeholder="infohash, text, regex, source name or category">
+        <label for="value">{{T "rules.value"}}</label>
+        <input id="value" name="value" type="text" required spellcheck="false" placeholder="{{T "rules.valuePlaceholder"}}">
       </div>
       <div class="field grow">
-        <label for="note">Note (optional)</label>
-        <input id="note" name="note" type="text" placeholder="why this rule exists">
+        <label for="note">{{T "rules.note"}}</label>
+        <input id="note" name="note" type="text" placeholder="{{T "rules.notePlaceholder"}}">
       </div>
     </div>
     <div class="actions">
-      <button class="btn primary" type="submit">Add rule</button>
+      <button class="btn primary" type="submit">{{T "rules.add"}}</button>
     </div>
-    <p class="help">
-      Regexes are case-insensitive and use Go/RE2 syntax. A category rule <code>5000</code>
-      matches the whole <code>5xxx</code> subtree. Use <strong>Block release</strong> on a
-      release to add the rule and hide it at the same time; rules added here affect future
-      runs, not releases already in the cache.
-    </p>
+    <p class="help">{{T "rules.help"}}</p>
   </form>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Active rules</h2></div>
+  <div class="panel-head"><h2>{{T "rules.active"}}</h2></div>
   <div class="table-scroll">
     <table>
       <thead>
-        <tr><th scope="col">Type</th><th scope="col">Value</th><th scope="col">Note</th><th scope="col">Created</th><th scope="col" class="right">Actions</th></tr>
+        <tr><th scope="col">{{T "rules.type"}}</th><th scope="col">{{T "rules.value"}}</th><th scope="col">{{T "rules.note"}}</th><th scope="col">{{T "settings.created"}}</th><th scope="col" class="right">{{T "common.actions"}}</th></tr>
       </thead>
       <tbody>
         {{range .Rules}}
@@ -57,14 +52,14 @@
           <td>{{if .Note}}{{.Note}}{{else}}<span class="muted">—</span>{{end}}</td>
           <td class="nowrap">{{date .CreatedAt}}</td>
           <td class="right">
-            <form method="post" action="/rules/{{.ID}}/delete" data-confirm="Delete this rule?">
+            <form method="post" action="/rules/{{.ID}}/delete" data-confirm="{{T "rules.deleteConfirm"}}">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
-              <button class="btn small danger" type="submit">Delete</button>
+              <button class="btn small danger" type="submit">{{T "common.delete"}}</button>
             </form>
           </td>
         </tr>
         {{else}}
-        <tr><td colspan="5" class="empty">No rules. Releases matching a rule will no longer be added.</td></tr>
+        <tr><td colspan="5" class="empty">{{T "rules.empty"}}</td></tr>
         {{end}}
       </tbody>
     </table>
