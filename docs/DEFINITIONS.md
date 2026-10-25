@@ -73,9 +73,13 @@ sulla directory del catalogo con `validate -catalog`.
 `meta.interval` è additivo e facoltativo. Un feed "ultime 24 h" ha bisogno di
 aggiornamenti più frequenti di un sito con la ricerca, quindi la definizione
 può suggerire una durata Go (`15m`, `2h`). Alla creazione dell'indexer il campo
-"Intervallo" in Avanzate è precompilato con questo valore; l'utente può
-cambiarlo o impostarlo a `0` per usare l'intervallo globale. Un valore inferiore
-a 60s è rifiutato. Il formato resta `schema: 1`.
+"Intervallo di aggiornamento" è precompilato con questo valore, fuori da
+Avanzate; l'utente può cambiarlo con le scelte rapide (15 minuti–24 ore), con
+un valore in secondi, o impostarlo a `0` per usare l'intervallo globale. Un
+valore inferiore a 60s è rifiutato. Il valore effettivo compare nell'elenco e
+nella scheda; «Riduci la frequenza» raddoppia quello della sola sorgente che ha
+risposto 429. L'intervallo riguarda gli aggiornamenti automatici: le ricerche
+dal vivo delle app non vengono ritardate. Il formato resta `schema: 1`.
 
 ### Elenco delle novità
 

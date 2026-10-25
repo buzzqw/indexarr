@@ -30,9 +30,11 @@ esterni obbligatori: l'unica dipendenza è il driver SQLite puro Go
 ```
 
 1. Lo **scheduler nativo** (`internal/native`) esegue un giro all'avvio e poi
-   ogni `default_interval_seconds`, con un minimo di 60 secondi. Ogni indexer
-   abilitato passa da `indexer.Manager.Run`; l'ordine degli esiti è deterministico
-   per id.
+   ogni `default_interval_seconds`, con un minimo di 60 secondi. Un
+   `interval_seconds` positivo sulla singola sorgente sostituisce il valore
+   globale solo per lei; il pulsante «Riduci la frequenza» raddoppia quello
+   della sorgente che ha risposto 429. Ogni indexer abilitato passa da
+   `indexer.Manager.Run`; l'ordine degli esiti è deterministico per id.
 2. I **worker** sono limitati (impostazione `workers`, default 2). Un indexer
    disabilitato viene saltato e riportato come tale.
 3. `Manager.Run` carica la definizione, costruisce o riusa il connettore in cache,
@@ -155,6 +157,9 @@ offre una deduplica esplicita che conserva la riga più vecchia e i dati miglior
 ## Scheduler e affidabilità
 
 - Giro completo all'avvio e poi ogni `default_interval_seconds`; minimo 60 secondi.
+  Ogni sorgente può avere un `interval_seconds` proprio, mostrato nell'elenco e
+  nella scheda; «Riduci la frequenza» lo raddoppia solo per la sorgente che ha
+  risposto 429. Le ricerche dal vivo non sono soggette a questo intervallo.
 - Worker limitati (`workers`); un run manuale e uno periodico dello stesso indexer
   non si sovrappongono grazie al manager e allo storico.
 - Timeout per richiesta dal transport; un errore viene registrato in

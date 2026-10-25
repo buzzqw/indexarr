@@ -93,6 +93,8 @@
     <dd>{{if .LastRun}}{{date .LastRun.StartedAt}} <span class="muted">({{ago .LastRun.StartedAt}})</span>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</dd>
     <dt>{{T "idx.detail.nextUpdate"}}</dt>
     <dd>{{if .HasNext}}{{until .NextUpdate}}{{else}}<span class="muted">—</span>{{end}}</dd>
+    <dt>{{T "idx.detail.frequency"}}</dt>
+    <dd>{{.FrequencyLabel}} <span class="muted">({{.FrequencySource}})</span> <a href="/indexers/{{.Indexer.ID}}/edit" title="{{T "idx.detail.frequencyEditTip"}}">{{T "common.edit"}}</a></dd>
     <dt>{{T "idx.detail.queries"}}</dt>
     <dd>{{.Stats.Queries}}</dd>
     <dt>{{T "idx.detail.avgLatency"}}</dt>

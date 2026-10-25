@@ -1,6 +1,6 @@
 {{define "status-dot"}}<span class="status-dot status-{{.State}}" role="img" aria-label="{{.Label}}" title="{{T "tip.statusDot"}}"><span class="dot" aria-hidden="true"></span><span class="sr-only">{{.Label}}</span></span>{{end}}
 
-{{define "problem"}}<p class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span>{{.Text}}</span>{{if .ActionLabel}} <a class="problem-action" href="{{.ActionURL}}">{{.ActionLabel}}</a>{{end}}</p>{{end}}
+{{define "problem"}}<div class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span>{{.Text}}</span>{{if .ActionLabel}}{{if .ActionPost}} <form class="problem-form" method="post" action="{{.ActionPost}}"><input type="hidden" name="csrf" value="{{.CSRF}}">{{if .ActionReturn}}<input type="hidden" name="return" value="{{.ActionReturn}}">{{end}}<button class="problem-action problem-button" type="submit"{{if .ActionTitle}} title="{{.ActionTitle}}"{{end}}>{{.ActionLabel}}</button></form>{{else}} <a class="problem-action" href="{{.ActionURL}}"{{if .ActionTitle}} title="{{.ActionTitle}}"{{end}}>{{.ActionLabel}}</a>{{end}}{{end}}</div>{{end}}
 
 {{define "advanced-open"}}<details class="advanced"{{if .Open}} open{{end}}><summary>{{if .Title}}{{.Title}}{{else}}{{T "component.advanced"}}{{end}}</summary><div class="advanced-body">{{end}}
 

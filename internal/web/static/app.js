@@ -530,3 +530,38 @@ if ("serviceWorker" in navigator) {
     protocol.value = usenet.has(kind.value) ? "usenet" : "torrent";
   });
 })();
+
+// Per-source refresh interval: the list of common choices only fills the
+// number field that is actually submitted. Without JavaScript the field still
+// accepts any value, so the form never depends on this enhancement.
+(() => {
+  document.querySelectorAll("[data-interval-editor]").forEach((editor) => {
+    const picker = editor.querySelector("[data-interval-picker]");
+    const input = editor.querySelector('input[name="interval_seconds"]');
+    const preview = editor.querySelector("[data-interval-preview]");
+    if (!picker || !input) {
+      return;
+    }
+    const syncFromInput = () => {
+      const value = String(Number(input.value || "0"));
+      const option = Array.from(picker.options).find((item) => item.value === value && item.value !== "custom");
+      picker.value = option ? value : "custom";
+      if (preview) {
+        preview.textContent = option ? option.textContent : "";
+      }
+    };
+    picker.addEventListener("change", () => {
+      if (picker.value === "custom") {
+        input.focus();
+        if (typeof input.select === "function") {
+          input.select();
+        }
+        return;
+      }
+      input.value = picker.value;
+      syncFromInput();
+    });
+    input.addEventListener("input", syncFromInput);
+    syncFromInput();
+  });
+})();

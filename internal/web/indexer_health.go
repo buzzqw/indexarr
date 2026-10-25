@@ -188,7 +188,9 @@ func (s *Server) problemForMessage(r *http.Request, in store.Indexer, message st
 		return uiProblem{
 			Text:        s.translate(r, "idx.problem.rate"),
 			ActionLabel: s.translate(r, "idx.problem.rateAction"),
-			ActionURL:   "/settings",
+			ActionPost:  "/indexers/" + strconv.FormatInt(in.ID, 10) + "/frequency",
+			ActionTitle: s.translate(r, "idx.problem.rateTip"),
+			CSRF:        csrfToken(r.Context()),
 		}
 	case strings.Contains(raw, "403") || strings.Contains(raw, "forbidden") || strings.Contains(raw, "cloudflare"):
 		return uiProblem{

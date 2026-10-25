@@ -43,6 +43,12 @@
   elenco, aggiunta, modifica, rimozione. Sette applicazioni su sette.
 
 ### Gestione indexer
+- Frequenza personale per sorgente visibile nel form (fuori da Avanzate) e
+  nell'elenco, con scelte rapide in minuti/ore e il valore effettivo
+  («predefinita globale» o «impostata per questa sorgente»).
+- «Riduci la frequenza», sul problema 429, raddoppia l'intervallo della sola
+  sorgente che ha risposto troppo spesso e conferma il nuovo valore. Le
+  ricerche dal vivo delle app non vengono rallentate.
 - Proxy HTTP/HTTPS/SOCKS5 con pagina dedicata e API `/api/v2/proxies`.
 - Limiti query/grab e seed criteria (seeder minimi, ratio, seed time, season
   pack) nel form, nel DB e nel sync verso le \*arr.

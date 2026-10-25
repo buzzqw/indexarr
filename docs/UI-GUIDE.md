@@ -55,7 +55,9 @@ da solo V3, V5 e metà di V2: per questo le fasi 2–3 vengono dopo WP16.
    categorie, URL di un sito noto, user agent: si derivano dalla definizione.
 5. **Ogni pagina vuota dice cosa fare** con un pulsante, non con un paragrafo.
 6. **Ogni errore ha causa e rimedio in una frase**, con l'azione a portata di
-   clic ("Il sito risponde 429: troppe richieste. [Riduci la frequenza]").
+   clic ("Il sito risponde 429: troppe richieste. [Riduci la frequenza]"). Il
+   rimedio cambia solo la sorgente che ha il problema: il pulsante raddoppia
+   il suo intervallo e lascia invariati gli altri siti.
 7. **Un numero, una fonte.** Se due parti della pagina parlano dello stesso
    stato devono leggere lo stesso valore dal modello. Niente "169 errori" e
    "tutto ok" sulla stessa schermata.
@@ -210,6 +212,12 @@ Indexer                                   [Importa]  [Aggiungi indexer]
   massa (seleziona → disattiva/elimina) compaiono solo dopo aver
   selezionato.
 - Clic sul nome → pagina dettaglio. Mobile: card con nome, badge, stato.
+- Sotto l'ultimo aggiornamento ogni riga mostra la frequenza effettiva
+  ("ogni 1 h (predefinita globale)" oppure "ogni 3 h (impostata per questa
+  sorgente)"). «Riduci la frequenza», sulla riga che ha risposto 429,
+  raddoppia l'intervallo di quella sola sorgente e conferma il nuovo valore.
+  Le ricerche dal vivo delle app non vengono rallentate: l'intervallo governa
+  gli aggiornamenti automatici.
 - **Più filtri sullo stesso sito** (oggi 19 "extto.org (n)") diventano un
   solo indexer con "3 filtri" (vedi 4.4). Fino a WP15 il dettaglio mostra i
   filtri come elenco di impostazioni; dopo WP15 come scelte guidate.
@@ -245,6 +253,7 @@ Aggiungi Corsaro                                         ← Cambia sito
 
 Nome          [ Corsaro                    ]
 Categorie     [✓] Film  [✓] Serie TV  [ ] Musica      (dalla definizione)
+Frequenza     [ Ogni ora ▾ ]  [ 3600 ]  ogni 1 h       (solo questa sorgente)
 
 ▸ Avanzate
     Priorità, tag, nome nell'URL, user agent, proxy,
@@ -254,9 +263,11 @@ Categorie     [✓] Film  [✓] Serie TV  [ ] Musica      (dalla definizione)
 ```
 
 - Cosa mostra il form: **solo** i `settings` della definizione con
-  `required: true`, più Nome (precompilato) e Categorie (caselle con nomi,
-  precompilate dalla definizione). Se la definizione non ha campi
-  obbligatori, il form ha solo Nome e Categorie.
+  `required: true`, più Nome (precompilato), Categorie (caselle con nomi,
+  precompilate dalla definizione) e Frequenza. La frequenza è un valore di
+  quella sola sorgente: 0 o vuoto usa il predefinito delle Impostazioni, le
+  scelte rapide riempiono il campo in secondi e il minimo è 60. Non rallenta
+  le ricerche dal vivo delle app.
 - Mai mostrare: Protocollo (dalla definizione), URL per un sito con
   `meta.urls` (si sceglie da un menu solo se ce ne sono più d'uno, in
   Avanzate), Query fissa e Categoria predefinita (in Avanzate o eliminate),

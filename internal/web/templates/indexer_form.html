@@ -76,6 +76,21 @@
   </div>
   {{end}}
 
+  <div class="form-grid">
+    <div class="field grow" data-interval-editor>
+      <label for="interval_seconds">{{T "indexerForm.interval"}}</label>
+      <div class="interval-row">
+        <select id="interval_picker" data-interval-picker aria-label="{{T "indexerForm.frequencyQuick"}}" title="{{T "indexerForm.frequencyQuick"}}">
+          {{range .IntervalChoices}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+        <input id="interval_seconds" name="interval_seconds" type="number" min="0" step="60" value="{{.IntervalSeconds}}" title="{{T "indexerForm.intervalTip"}}">
+        <span class="muted interval-preview" data-interval-preview>{{.FrequencyLabel}}</span>
+      </div>
+      <p class="help">{{T "indexerForm.frequencyHelp"}}</p>
+      <p class="help">{{T "indexerForm.intervalHelp"}}</p>
+    </div>
+  </div>
+
   {{template "advanced-open" (advanced (T "component.advanced"))}}
     <div class="form-grid">
       <div class="field">
@@ -98,11 +113,6 @@
       <div class="field">
         <label for="priority">{{T "idx.priority"}}</label>
         <input id="priority" name="priority" type="number" value="{{.Priority}}">
-      </div>
-      <div class="field">
-        <label for="interval_seconds">{{T "indexerForm.interval"}}</label>
-        <input id="interval_seconds" name="interval_seconds" type="number" min="0" step="60" value="{{.IntervalSeconds}}">
-        <p class="help">{{T "indexerForm.intervalHelp"}}</p>
       </div>
     </div>
 

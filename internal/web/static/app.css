@@ -1197,6 +1197,21 @@ pre.yaml {
   font-size: 0.84rem;
 }
 .problem-action { color: var(--danger); font-weight: 700; }
+.problem-form { display: inline; margin: 0; }
+.problem-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.interval-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.interval-row select { flex: 1 1 12rem; min-width: 10rem; }
+.interval-row input { flex: 0 1 8rem; }
+.interval-preview { white-space: nowrap; }
+.indexer-updated .frequency { display: block; margin-top: 0.15rem; font-size: 0.78rem; }
 
 .advanced { margin-top: 1rem; }
 .advanced > summary {

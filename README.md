@@ -21,8 +21,11 @@ Fonti native / RSS ──► scheduler ──► normalizzazione ──► SQLit
   Jackett e Prowlarr **non** sono sorgenti: indexarr li sostituisce.
 - **Quick add e scoperta feed**: incolla un URL e indexarr riconosce Torznab,
   RSS o listing HTML; “Discover feeds” estrae i feed dichiarati da una pagina.
-- **Acquisizione periodica**: ogni sorgente ha il proprio intervallo; al primo
-  avvio parte subito. Dopo un errore ritenta con backoff.
+- **Acquisizione periodica**: ogni sorgente ha il proprio intervallo, visibile
+  nella scheda e nell'elenco; al primo avvio parte subito. Dopo un errore
+  ritenta con backoff. Se un sito risponde 429, «Riduci la frequenza» raddoppia
+  l'intervallo di quella sola sorgente (le ricerche dal vivo delle app restano
+  immediate).
 - **Cache SQLite**: titolo, dimensione, seeder/leecher, categoria, data, GUID,
   infohash, id esterni (IMDb/TMDB/TVDB), magnet e file `.torrent`.
 - **Deduplica**: per infohash quando disponibile, altrimenti per GUID/URL/titolo;

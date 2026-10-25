@@ -31,11 +31,17 @@ type statusDot struct {
 	Label string
 }
 
-// uiProblem is the one-sentence cause plus the action next to it.
+// uiProblem is the one-sentence cause plus the action next to it. Most actions
+// are links; a few change one setting in place, so they are POSTed with the
+// page CSRF token instead of navigating away from the list.
 type uiProblem struct {
-	Text        string
-	ActionLabel string
-	ActionURL   string
+	Text         string
+	ActionLabel  string
+	ActionURL    string
+	ActionPost   string
+	ActionReturn string
+	ActionTitle  string
+	CSRF         string
 }
 
 // uiEmpty is the empty state used by the list and the site chooser.
@@ -84,6 +90,11 @@ type indexerRowView struct {
 	FiltersLabel string
 	LastUpdate   time.Time
 	Problem      *uiProblem
+	// FrequencyLabel is how often the scheduler runs this source ("ogni 1 h").
+	// FrequencySource says whether it comes from the source or the global
+	// default, so the list never hides which setting is in force.
+	FrequencyLabel  string
+	FrequencySource string
 	// SearchOnly means the definition has no periodic latest run. The list
 	// must say that instead of "never updated".
 	SearchOnly bool
@@ -143,9 +154,15 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 	defs := s.definitionCache(r)
 	apps, _ := s.store.ListApplications(r.Context())
 	_ = apps
+	settings, settingsErr := s.store.LoadSettings(r.Context())
+	if settingsErr != nil {
+		settings = store.DefaultSettings()
+	}
+	globalInterval := settings.DefaultInterval()
 
 	for _, in := range indexers {
-		view := s.indexerRowView(r, in, defs)
+		view := s.indexerRowView(r, in, defs, globalInterval)
+		view.setProblemReturn("/indexers")
 		data.Total++
 		attention := view.Status.State == "problem" || view.Status.State == "degraded" || view.Status.State == "blocked"
 		if attention {
@@ -229,13 +246,82 @@ func indexerRowMatches(row indexerRowView, query string, def *definition.Definit
 	return false
 }
 
-func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[string]*definition.Definition) indexerRowView {
+// setProblemReturn records the page a one-click problem action comes back to.
+// The handler accepts only the list or this source's detail page.
+func (v *indexerRowView) setProblemReturn(path string) {
+	if v.Problem != nil {
+		v.Problem.ActionReturn = path
+	}
+}
+
+// frequencyLabels renders the effective frequency of one source and where it
+// comes from. A zero interval means "use the global default", which is shown
+// explicitly so the list never hides the setting in force.
+func (s *Server) frequencyLabels(r *http.Request, own int, global time.Duration) (string, string) {
+	seconds := own
+	source := s.translate(r, "idx.frequencyOwn")
+	if seconds <= 0 {
+		seconds = int(global / time.Second)
+		if seconds <= 0 {
+			seconds = 3600
+		}
+		source = s.translate(r, "idx.frequencyGlobal")
+	}
+	return intervalEveryLabel(requestLanguage(r), seconds), source
+}
+
+// intervalPresets are the quick choices of the per-source frequency. They are
+// a shortcut only: the number field next to the list stays the value that is
+// submitted, so the form keeps working without JavaScript.
+var intervalPresets = []int{0, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400}
+
+func intervalChoices(lang i18n.Language, current int) []indexerSettingOption {
+	out := make([]indexerSettingOption, 0, len(intervalPresets)+1)
+	found := false
+	for _, seconds := range intervalPresets {
+		selected := seconds == current
+		if selected {
+			found = true
+		}
+		out = append(out, indexerSettingOption{
+			Value:    strconv.Itoa(seconds),
+			Label:    intervalEveryLabel(lang, seconds),
+			Selected: selected,
+		})
+	}
+	out = append(out, indexerSettingOption{
+		Value:    "custom",
+		Label:    i18n.T(lang, "indexerForm.intervalCustom"),
+		Selected: !found,
+	})
+	return out
+}
+
+// intervalEveryLabel is the localized "every N minutes/hours/days" used by the
+// list, the detail page and the one-click confirmation.
+func intervalEveryLabel(lang i18n.Language, seconds int) string {
+	switch {
+	case seconds <= 0:
+		return i18n.T(lang, "indexerForm.intervalGlobal")
+	case seconds >= 86400 && seconds%86400 == 0:
+		return i18n.T(lang, "time.everyDays", seconds/86400)
+	case seconds >= 3600 && seconds%3600 == 0:
+		return i18n.T(lang, "time.everyHours", seconds/3600)
+	case seconds >= 60 && seconds%60 == 0:
+		return i18n.T(lang, "time.everyMinutes", seconds/60)
+	default:
+		return i18n.T(lang, "time.everySeconds", seconds)
+	}
+}
+
+func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[string]*definition.Definition, globalInterval time.Duration) indexerRowView {
 	def := defs[in.DefinitionID]
 	row := indexerRowView{
 		Indexer: in,
 		Badges:  s.indexerBadges(r, in, def),
 		Filters: len(indexerFilterValues(in)),
 	}
+	row.FrequencyLabel, row.FrequencySource = s.frequencyLabels(r, in.IntervalSeconds, globalInterval)
 	if row.Filters == 1 {
 		row.FiltersLabel = s.translate(r, "idx.filtersOne")
 		if detail := filterSummary(indexerFilterValues(in)); detail != "" {
@@ -374,7 +460,9 @@ func (s *Server) problemFor(r *http.Request, in store.Indexer, state store.Index
 		return &uiProblem{
 			Text:        s.translate(r, "idx.problem.rate"),
 			ActionLabel: s.translate(r, "idx.problem.rateAction"),
-			ActionURL:   "/settings",
+			ActionPost:  detail + "/frequency",
+			ActionTitle: s.translate(r, "idx.problem.rateTip"),
+			CSRF:        csrfToken(r.Context()),
 		}
 	case strings.Contains(raw, "403") || strings.Contains(raw, "forbidden") || strings.Contains(raw, "cloudflare"):
 		return &uiProblem{
@@ -1820,6 +1908,8 @@ type compactFormView struct {
 	ShowURL                   bool
 	URLLabel                  string
 	IntervalSeconds           int
+	IntervalChoices           []indexerSettingOption
+	FrequencyLabel            string
 	Categories                []categoryChoice
 	CategoryHelp              string
 	Help                      string
@@ -1919,6 +2009,12 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 			data.IntervalSeconds = int(suggested / time.Second)
 		}
 	}
+	globalInterval := store.DefaultSettings().DefaultInterval()
+	if settings, err := s.store.LoadSettings(r.Context()); err == nil {
+		globalInterval = settings.DefaultInterval()
+	}
+	data.IntervalChoices = intervalChoices(requestLanguage(r), data.IntervalSeconds)
+	data.FrequencyLabel, _ = s.frequencyLabels(r, data.IntervalSeconds, globalInterval)
 	if !data.Derived {
 		switch s.definitionState(r, defID) {
 		case "bozza", "degradata":
@@ -2406,6 +2502,8 @@ type indexerDetailView struct {
 	LastError         string
 	NextUpdate        time.Time
 	HasNext           bool
+	FrequencyLabel    string
+	FrequencySource   string
 	HasState          bool
 	State             store.IndexerState
 	Stats             detailStatView
@@ -2586,6 +2684,14 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	settings, settingsErr := s.store.LoadSettings(r.Context())
 	if settingsErr != nil {
 		settings = store.DefaultSettings()
+	}
+	data.FrequencyLabel, data.FrequencySource = s.frequencyLabels(r, in.IntervalSeconds, settings.DefaultInterval())
+	detailPath := "/indexers/" + strconv.FormatInt(in.ID, 10)
+	for i := range data.Problems {
+		data.Problems[i].ActionReturn = detailPath
+	}
+	if data.Problem != nil {
+		data.Problem.ActionReturn = detailPath
 	}
 	if latency, found, latencyErr := s.store.IndexerLatency(r.Context(), in.ID, 50); latencyErr == nil && found {
 		data.LatencyP50 = formatLatency(latency.P50MS)
@@ -2807,6 +2913,76 @@ func (s *Server) indexerToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirect(w, r, "/indexers", s.translate(r, "idx.disabledMessage", current.Name), "")
+}
+
+// frequencyReturnPath limits the post-action redirect to the two pages that
+// can show the one-click frequency action. Anything else falls back to the
+// source detail page, so a crafted form cannot turn the handler into an open
+// redirect.
+func frequencyReturnPath(raw string, id int64) string {
+	detail := "/indexers/" + strconv.FormatInt(id, 10)
+	switch strings.TrimSpace(raw) {
+	case "/indexers", detail:
+		return strings.TrimSpace(raw)
+	default:
+		return detail
+	}
+}
+
+// indexerReduceFrequency implements the "Riduci la frequenza" action of a rate
+// limited source. It doubles the interval that is currently in force (the
+// source's own value, or the global default when it has none), keeps it within
+// the same 30-day ceiling the form accepts, and never touches the other
+// sources. Live app searches are not delayed: the interval governs the
+// automatic updates only.
+func (s *Server) indexerReduceFrequency(w http.ResponseWriter, r *http.Request) {
+	const (
+		minInterval = 30 * 60
+		maxInterval = 30 * 24 * 60 * 60
+	)
+	if s.svc == nil {
+		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.serviceUnavailable"))
+		return
+	}
+	id, err := pathID(r)
+	if err != nil {
+		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.invalidID"))
+		return
+	}
+	current, err := s.store.GetIndexer(r.Context(), id)
+	if err != nil {
+		redirect(w, r, "/indexers", "", s.indexerErrorMessage(r, err))
+		return
+	}
+	target := frequencyReturnPath(r.FormValue("return"), id)
+	settings, settingsErr := s.store.LoadSettings(r.Context())
+	if settingsErr != nil {
+		settings = store.DefaultSettings()
+	}
+	base := current.IntervalSeconds
+	if base <= 0 {
+		base = settings.DefaultIntervalSeconds
+	}
+	if base <= 0 {
+		base = 3600
+	}
+	if base >= maxInterval {
+		redirect(w, r, target, "", s.translate(r, "idx.frequencyMax", current.Name))
+		return
+	}
+	next := base * 2
+	if next < minInterval {
+		next = minInterval
+	}
+	if next > maxInterval {
+		next = maxInterval
+	}
+	if _, err := s.svc.Update(r.Context(), id, indexersvc.Input{IntervalSeconds: &next}); err != nil {
+		redirect(w, r, target, "", s.indexerFriendlyError(r, err))
+		return
+	}
+	redirect(w, r, target,
+		s.translate(r, "idx.frequencyReduced", current.Name, intervalEveryLabel(requestLanguage(r), next)), "")
 }
 
 func (s *Server) indexerDuplicate(w http.ResponseWriter, r *http.Request) {

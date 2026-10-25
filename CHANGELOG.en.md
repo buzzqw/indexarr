@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.0 (in progress)
+
+### Indexer management
+- Each source has its own refresh frequency, visible in the form (outside
+  “Advanced”) and in the list, with minute/hour quick choices and the value
+  actually in force (“global default” or “set for this source”).
+- “Reduce the frequency”, on the 429 problem, doubles the interval of that one
+  source and confirms the new value. Live app searches are not slowed down.
+
 ## 2.0.0-rc1
 
 First release candidate of indexarr 2.
