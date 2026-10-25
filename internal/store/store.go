@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/vault"
 	_ "modernc.org/sqlite"
 )
 
@@ -22,6 +23,10 @@ import (
 type Store struct {
 	db   *sql.DB
 	path string
+	// vault seals and opens the settings-level secrets (notification
+	// channels). It is optional: a store without a vault keeps the legacy
+	// plaintext rows so tests and embedded uses still work.
+	vault *vault.Vault
 }
 
 // Open opens (and creates when missing) the database at path.
@@ -406,6 +411,38 @@ func (s *Store) migrate() error {
 				)`,
 				`CREATE INDEX IF NOT EXISTS app_snapshots_app
 					ON app_snapshots(app_id, created_at DESC, id DESC)`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
+	// Migration 15 adds the notification state: sealed settings secrets, the
+	// anti-spam ledger and the last notified run state of every indexer. The
+	// tables are additive; existing rows are untouched.
+	if err := s.applyMigration(context.Background(), indexarr2NotifyVersion,
+		"notification secrets, anti-spam and state", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`CREATE TABLE IF NOT EXISTS app_secrets (
+					key        TEXT PRIMARY KEY,
+					nonce      BLOB NOT NULL,
+					ciphertext BLOB NOT NULL,
+					updated_at INTEGER NOT NULL DEFAULT 0
+				)`,
+				`CREATE TABLE IF NOT EXISTS notify_events (
+					kind         TEXT NOT NULL,
+					source       TEXT NOT NULL,
+					last_sent_at INTEGER NOT NULL DEFAULT 0,
+					PRIMARY KEY (kind, source)
+				)`,
+				`CREATE TABLE IF NOT EXISTS indexer_notify_state (
+					indexer_id INTEGER PRIMARY KEY REFERENCES indexers(id) ON DELETE CASCADE,
+					state      TEXT    NOT NULL DEFAULT '',
+					updated_at INTEGER NOT NULL DEFAULT 0
+				)`,
 			} {
 				if _, err := tx.Exec(statement); err != nil {
 					return err

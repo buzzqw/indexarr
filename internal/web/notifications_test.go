@@ -1,0 +1,195 @@
+package web
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"sync/atomic"
+	"testing"
+
+	"github.com/buzzqw/indexarr/internal/notify"
+	"github.com/buzzqw/indexarr/internal/store"
+)
+
+func TestNotificationsSectionKeepsSecretsMasked(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	hook := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer hook.Close()
+	webhookURL := hook.URL + "/indexarr/TOPSECRETHOOK"
+
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=notifications")
+	recorder := postForm(t, env.handler, "/settings", url.Values{
+		"csrf":                    {token},
+		"section":                 {"notifications"},
+		"notify_webhook_url":      {webhookURL},
+		"notify_telegram_token":   {"999:SECRETTELEGRAM"},
+		"notify_telegram_chat_id": {"42"},
+		"notify_new_releases":     {"on"},
+		"notify_failures":         {"on"},
+		"notify_grab_failed":      {"on"},
+		"notify_catalog_updated":  {"on"},
+		"notify_backup_failed":    {"on"},
+		"notify_cooldown_minutes": {"45"},
+	}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("notifications save = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	stored, err := env.store.LoadSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.NotifyWebhookURL != webhookURL {
+		t.Errorf("stored webhook = %q", stored.NotifyWebhookURL)
+	}
+	if stored.NotifyCooldownMinutes != 45 {
+		t.Errorf("stored cooldown = %d", stored.NotifyCooldownMinutes)
+	}
+	// The settings table holds neither secret in clear.
+	var plaintext int
+	if err := env.store.DB().QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM settings WHERE key IN (?, ?)`,
+		store.KeyNotifyWebhook, store.KeyNotifyTelegramToken).Scan(&plaintext); err != nil {
+		t.Fatal(err)
+	}
+	if plaintext != 0 {
+		t.Errorf("plaintext notification settings in the database = %d", plaintext)
+	}
+
+	page := get(t, env.handler, "/settings?section=notifications").Body.String()
+	if strings.Contains(page, "TOPSECRETHOOK") || strings.Contains(page, "SECRETTELEGRAM") {
+		t.Error("the notifications page contains a stored secret")
+	}
+	for _, want := range []string{
+		`id="notify_webhook_url"`, `id="notify_telegram_token"`,
+		`name="notify_grab_failed"`, `name="notify_catalog_updated"`,
+		`name="notify_backup_failed"`, `name="notify_cooldown_minutes"`,
+		`action="/settings/notifications/test"`, "••••••••",
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("notifications page missing %q", want)
+		}
+	}
+
+	request, _ := http.NewRequest(http.MethodGet, "/settings/secrets/webhook", nil)
+	request.Header.Set("X-Requested-With", "fetch")
+	secret := getWith(t, env.handler, request)
+	if secret.Code != http.StatusOK || !strings.Contains(secret.Body.String(), "TOPSECRETHOOK") {
+		t.Errorf("webhook show = %d: %s", secret.Code, secret.Body.String())
+	}
+	if secret.Header().Get("Cache-Control") != "no-store" {
+		t.Error("the webhook secret response is cacheable")
+	}
+	plain, _ := http.NewRequest(http.MethodGet, "/settings/secrets/webhook", nil)
+	if code := getWith(t, env.handler, plain).Code; code != http.StatusNotFound {
+		t.Errorf("webhook secret without the fetch header = %d, want 404", code)
+	}
+}
+
+func TestTestNotificationButtonUsesTheWebhook(t *testing.T) {
+	env := newTestEnv(t)
+	var received atomic.Int64
+	var payload notify.Event
+	hook := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&payload)
+		received.Add(1)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer hook.Close()
+	ctx := context.Background()
+	settings, _ := env.store.LoadSettings(ctx)
+	settings.NotifyWebhookURL = hook.URL
+	if err := env.store.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=notifications")
+	recorder := postForm(t, env.handler, "/settings/notifications/test", url.Values{
+		"csrf": {token},
+	}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("test button = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if location := recorder.Header().Get("Location"); !strings.Contains(location, "msg=") ||
+		!strings.Contains(location, "Test+notification+sent") {
+		t.Errorf("test button redirect = %q", location)
+	}
+	if received.Load() != 1 {
+		t.Fatalf("webhook calls = %d, want 1", received.Load())
+	}
+	if payload.Kind != notify.KindTest {
+		t.Errorf("test payload kind = %q", payload.Kind)
+	}
+}
+
+func TestTestNotificationButtonUsesTelegramAndHidesTheToken(t *testing.T) {
+	env := newTestEnv(t)
+	var path, text string
+	telegram := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		path = r.URL.Path
+		text = r.Form.Get("text")
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer telegram.Close()
+	oldBase := notify.TelegramAPIBase
+	notify.TelegramAPIBase = telegram.URL
+	defer func() { notify.TelegramAPIBase = oldBase }()
+
+	const token = "123456:TOPSECRETBOT"
+	ctx := context.Background()
+	settings, _ := env.store.LoadSettings(ctx)
+	settings.NotifyWebhookURL = ""
+	settings.NotifyTelegramToken = token
+	settings.NotifyTelegramChatID = "-100"
+	if err := env.store.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+
+	csrf, cookie := csrfFrom(t, env.handler, "/settings?section=notifications")
+	recorder := postForm(t, env.handler, "/settings/notifications/test", url.Values{"csrf": {csrf}}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("telegram test = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if path != "/bot"+token+"/sendMessage" {
+		t.Errorf("Telegram path = %q", path)
+	}
+	if !strings.Contains(text, "indexarr") {
+		t.Errorf("Telegram text = %q", text)
+	}
+	if body := recorder.Body.String(); strings.Contains(body, token) {
+		t.Error("the test response contains the Telegram token")
+	}
+	if dumped := env.logs.Dump(0, ""); strings.Contains(dumped, token) {
+		t.Errorf("the application log contains the Telegram token: %s", dumped)
+	}
+}
+
+func TestTestNotificationWithoutChannelsReportsTheReason(t *testing.T) {
+	env := newTestEnv(t)
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=notifications")
+	recorder := postForm(t, env.handler, "/settings/notifications/test", url.Values{"csrf": {token}}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("test without channels = %d", recorder.Code)
+	}
+	if location := recorder.Header().Get("Location"); !strings.Contains(location, "err=") ||
+		!strings.Contains(location, "no+notification+channel") {
+		t.Errorf("missing-channel redirect = %q", location)
+	}
+}
+
+func TestNotificationLanguageFollowsTheInterface(t *testing.T) {
+	env := newTestEnv(t)
+	if code := get(t, env.handler, "/language/it").Code; code != http.StatusFound && code != http.StatusSeeOther {
+		t.Fatalf("language redirect = %d", code)
+	}
+	settings, _ := env.store.LoadSettings(context.Background())
+	if settings.UILanguage != "it" {
+		t.Errorf("stored notification language = %q, want it", settings.UILanguage)
+	}
+}

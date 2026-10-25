@@ -3,11 +3,14 @@ package store
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/buzzqw/indexarr/internal/vault"
 )
 
 // Setting keys. They are stored one row per key so a new option can be added
@@ -37,6 +40,11 @@ const (
 	KeyNotifyTelegramChat   = "notify_telegram_chat_id"
 	KeyNotifyNewReleases    = "notify_new_releases"
 	KeyNotifyFailures       = "notify_failures"
+	KeyNotifyGrabFailed     = "notify_grab_failed"
+	KeyNotifyCatalogUpdated = "notify_catalog_updated"
+	KeyNotifyBackupFailed   = "notify_backup_failed"
+	KeyNotifyCooldown       = "notify_cooldown_minutes"
+	KeyUILanguage           = "ui_language"
 	KeyAutoDisableAfter     = "auto_disable_after"
 	KeyLogLevel             = "log_level"
 	KeyAPIRateLimit         = "api_rate_limit_per_minute"
@@ -78,22 +86,33 @@ type Settings struct {
 	StoredSourceLimit int
 	// StoredRetentionDays is the retention of releases that came only from a
 	// stored source. Zero keeps them forever; favorites and downloads survive.
-	StoredRetentionDays    int
-	MaxTorrentBytes        int64
-	FetchTimeoutSeconds    int
-	Workers                int
-	MaxTorrentsPerRun      int
-	FetchTorrents          bool
-	UserAgent              string
-	UIUser                 string
-	UIPasswordHash         string
-	TorznabDownloadFactor  int
-	TorznabUploadFactor    int
-	NotifyWebhookURL       string
-	NotifyTelegramToken    string
-	NotifyTelegramChatID   string
-	NotifyNewReleases      bool
-	NotifyFailures         bool
+	StoredRetentionDays   int
+	MaxTorrentBytes       int64
+	FetchTimeoutSeconds   int
+	Workers               int
+	MaxTorrentsPerRun     int
+	FetchTorrents         bool
+	UserAgent             string
+	UIUser                string
+	UIPasswordHash        string
+	TorznabDownloadFactor int
+	TorznabUploadFactor   int
+	NotifyWebhookURL      string
+	NotifyTelegramToken   string
+	NotifyTelegramChatID  string
+	NotifyNewReleases     bool
+	// NotifyFailures gates the indexer state changes: a site that becomes
+	// unreachable, blocked, degraded or healthy again.
+	NotifyFailures       bool
+	NotifyGrabFailed     bool
+	NotifyCatalogUpdated bool
+	NotifyBackupFailed   bool
+	// NotifyCooldownMinutes is the anti-spam window for the same event kind
+	// and source. Zero means the documented default.
+	NotifyCooldownMinutes int
+	// UILanguage is the language the operator uses, also used for the
+	// notification messages, because background jobs have no request.
+	UILanguage             string
 	AutoDisableAfter       int
 	LogLevel               string
 	APIRateLimit           int
@@ -140,6 +159,11 @@ func DefaultSettings() Settings {
 		TorznabUploadFactor:        1,
 		NotifyNewReleases:          true,
 		NotifyFailures:             true,
+		NotifyGrabFailed:           true,
+		NotifyCatalogUpdated:       true,
+		NotifyBackupFailed:         true,
+		NotifyCooldownMinutes:      30,
+		UILanguage:                 "en",
 		AutoDisableAfter:           0,
 		BackupEnabled:              true,
 		BackupIntervalHours:        24,
@@ -166,6 +190,18 @@ func (s Settings) SeedersTTL() time.Duration {
 		hours = 6
 	}
 	return time.Duration(hours) * time.Hour
+}
+
+// NotifyCooldown is the anti-spam window for one event kind and source.
+func (s Settings) NotifyCooldown() time.Duration {
+	minutes := s.NotifyCooldownMinutes
+	if minutes <= 0 {
+		minutes = 30
+	}
+	if minutes > 7*24*60 {
+		minutes = 7 * 24 * 60
+	}
+	return time.Duration(minutes) * time.Minute
 }
 
 func (s Settings) DefaultInterval() time.Duration {
@@ -241,6 +277,27 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.NotifyTelegramChatID = strings.TrimSpace(values[KeyNotifyTelegramChat])
 	out.NotifyNewReleases = boolValue(values, KeyNotifyNewReleases, true)
 	out.NotifyFailures = boolValue(values, KeyNotifyFailures, true)
+	out.NotifyGrabFailed = boolValue(values, KeyNotifyGrabFailed, true)
+	out.NotifyCatalogUpdated = boolValue(values, KeyNotifyCatalogUpdated, true)
+	out.NotifyBackupFailed = boolValue(values, KeyNotifyBackupFailed, true)
+	out.NotifyCooldownMinutes = intValue(values, KeyNotifyCooldown, 30, 1, 7*24*60)
+	out.UILanguage = strings.ToLower(strings.TrimSpace(values[KeyUILanguage]))
+	switch out.UILanguage {
+	case "en", "it", "de", "fr", "es", "pl", "zh":
+	default:
+		out.UILanguage = "en"
+	}
+	// The channels live sealed in app_secrets. Opening them here keeps every
+	// caller on the same Settings value, while the plaintext never reaches the
+	// database. A missing row or a wrong master key leaves the field empty.
+	if s.vault != nil {
+		if value, ok := s.openAppSecret(ctx, AppSecretNotifyWebhook); ok {
+			out.NotifyWebhookURL = value
+		}
+		if value, ok := s.openAppSecret(ctx, AppSecretNotifyTelegramToken); ok {
+			out.NotifyTelegramToken = value
+		}
+	}
 	out.AutoDisableAfter = intValue(values, KeyAutoDisableAfter, 0, 0, 100)
 	out.LogLevel = strings.ToLower(strings.TrimSpace(values[KeyLogLevel]))
 	switch out.LogLevel {
@@ -303,11 +360,14 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyUIPasswordHash:       in.UIPasswordHash,
 		KeyTorznabDownloadFac:   strconv.Itoa(in.TorznabDownloadFactor),
 		KeyTorznabUploadFactor:  strconv.Itoa(in.TorznabUploadFactor),
-		KeyNotifyWebhook:        strings.TrimSpace(in.NotifyWebhookURL),
-		KeyNotifyTelegramToken:  strings.TrimSpace(in.NotifyTelegramToken),
 		KeyNotifyTelegramChat:   strings.TrimSpace(in.NotifyTelegramChatID),
 		KeyNotifyNewReleases:    boolString(in.NotifyNewReleases),
 		KeyNotifyFailures:       boolString(in.NotifyFailures),
+		KeyNotifyGrabFailed:     boolString(in.NotifyGrabFailed),
+		KeyNotifyCatalogUpdated: boolString(in.NotifyCatalogUpdated),
+		KeyNotifyBackupFailed:   boolString(in.NotifyBackupFailed),
+		KeyNotifyCooldown:       strconv.Itoa(in.NotifyCooldownMinutes),
+		KeyUILanguage:           strings.ToLower(strings.TrimSpace(in.UILanguage)),
 		KeyAutoDisableAfter:     strconv.Itoa(in.AutoDisableAfter),
 		KeyLogLevel:             strings.ToLower(strings.TrimSpace(in.LogLevel)),
 		KeyAPIRateLimit:         strconv.Itoa(in.APIRateLimit),
@@ -349,7 +409,62 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 			return fmt.Errorf("save setting %s: %w", key, err)
 		}
 	}
+	// The two notification secrets are sealed in app_secrets, never written in
+	// clear. Without a vault the legacy plaintext rows are kept, so an
+	// installation with no master key still delivers what it can.
+	if s.vault != nil {
+		for _, item := range []struct{ secret, value string }{
+			{AppSecretNotifyWebhook, strings.TrimSpace(in.NotifyWebhookURL)},
+			{AppSecretNotifyTelegramToken, strings.TrimSpace(in.NotifyTelegramToken)},
+		} {
+			if err := saveSealedSetting(ctx, tx, s.vault, item.secret, item.value); err != nil {
+				return err
+			}
+		}
+		for _, legacy := range []string{KeyNotifyWebhook, KeyNotifyTelegramToken} {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM settings WHERE key = ?`, legacy); err != nil {
+				return fmt.Errorf("drop plaintext setting %s: %w", legacy, err)
+			}
+		}
+	} else {
+		for key, value := range map[string]string{
+			KeyNotifyWebhook:       strings.TrimSpace(in.NotifyWebhookURL),
+			KeyNotifyTelegramToken: strings.TrimSpace(in.NotifyTelegramToken),
+		} {
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO settings(key, value) VALUES(?, ?)
+				 ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value); err != nil {
+				return fmt.Errorf("save setting %s: %w", key, err)
+			}
+		}
+	}
 	return tx.Commit()
+}
+
+// saveSealedSetting seals (or removes) one settings-level secret inside an
+// open transaction. An empty value removes the row.
+func saveSealedSetting(ctx context.Context, tx *sql.Tx, v *vault.Vault, key, plaintext string) error {
+	if plaintext == "" {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM app_secrets WHERE key = ?`, key); err != nil {
+			return fmt.Errorf("remove app secret %q: %w", key, err)
+		}
+		return nil
+	}
+	nonce, ciphertext, err := v.Seal(plaintext)
+	if err != nil {
+		return fmt.Errorf("seal app secret %q: %w", key, err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO app_secrets(key, nonce, ciphertext, updated_at)
+		VALUES(?, ?, ?, ?)
+		ON CONFLICT(key) DO UPDATE SET
+			nonce = excluded.nonce,
+			ciphertext = excluded.ciphertext,
+			updated_at = excluded.updated_at`,
+		key, nonce, ciphertext, time.Now().Unix()); err != nil {
+		return fmt.Errorf("save app secret %q: %w", key, err)
+	}
+	return nil
 }
 
 // SetSetting writes one option, leaving the others untouched.

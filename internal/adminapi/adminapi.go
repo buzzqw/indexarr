@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/syncjob"
 	"github.com/buzzqw/indexarr/internal/vault"
@@ -35,6 +36,8 @@ type Config struct {
 	Sync    *syncjob.Service // optional: enables application sync endpoints
 	Logger  *slog.Logger
 	Version string // optional, reported by /api/v2/health
+	// Notifier reports a catalog update. It is optional.
+	Notifier *notify.Dispatcher
 }
 
 // Server serves the versioned admin API.
@@ -45,6 +48,7 @@ type Server struct {
 	syncService *syncjob.Service
 	logger      *slog.Logger
 	version     string
+	notifier    *notify.Dispatcher
 }
 
 // New builds an admin API server. A store is required; every other field is
@@ -63,6 +67,7 @@ func New(cfg Config) (*Server, error) {
 		manager:     cfg.Manager,
 		syncService: cfg.Sync,
 		logger:      logger,
+		notifier:    cfg.Notifier,
 		version:     strings.TrimSpace(cfg.Version),
 	}, nil
 }

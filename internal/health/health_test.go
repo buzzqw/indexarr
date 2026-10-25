@@ -221,8 +221,11 @@ func TestCheckerTransitionsTheDefinitionAndKeepsIt(t *testing.T) {
 	if stored.Body != definitionBody || stored.Hash != hash {
 		t.Error("the health transition rewrote the definition")
 	}
-	if len(events) != 1 || events[0].Kind != "indexer_degraded" || events[0].Source != "Health Test" {
+	if len(events) != 1 || events[0].Kind != notify.KindIndexerState || events[0].Source != "Health Test" {
 		t.Errorf("notifications = %#v", events)
+	}
+	if events[0].Previous != notify.StateOK || events[0].Current != notify.StateDegraded {
+		t.Errorf("degraded notification states = %q -> %q", events[0].Previous, events[0].Current)
 	}
 
 	failing.Store(false)
@@ -238,6 +241,14 @@ func TestCheckerTransitionsTheDefinitionAndKeepsIt(t *testing.T) {
 	}
 	if stored.Body != definitionBody {
 		t.Error("recovery rewrote the definition body")
+	}
+	// A recovery is a state change too: the operator who was told about the
+	// degradation is told when the site is healthy again.
+	if len(events) != 2 || events[1].Kind != notify.KindIndexerState {
+		t.Fatalf("recovery notifications = %#v", events)
+	}
+	if events[1].Previous != notify.StateDegraded || events[1].Current != notify.StateOK {
+		t.Errorf("recovery notification states = %q -> %q", events[1].Previous, events[1].Current)
 	}
 
 	history, err := st.ListIndexerHistory(ctx, id, 10)

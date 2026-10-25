@@ -33,6 +33,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/logsafe"
 	"github.com/buzzqw/indexarr/internal/native"
+	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/syncjob"
 	"github.com/buzzqw/indexarr/internal/vault"
@@ -141,8 +142,19 @@ func main() {
 		fatal(err)
 	}
 	defer st.Close()
-
 	startupCtx, startupCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// From here on the settings-level secrets (Telegram token, webhook URL)
+	// are sealed in app_secrets. The migration moves the plaintext rows of an
+	// older installation once, then the plaintext key is gone.
+	if secretVault != nil {
+		st.AttachVault(secretVault)
+		if moved, migrateErr := st.MigrateSettingsSecrets(startupCtx); migrateErr != nil {
+			logger.Warn("cannot move the notification secrets into the vault", "error", migrateErr)
+		} else if moved > 0 {
+			logger.Info("notification secrets moved into the vault", "secrets", moved)
+		}
+	}
+
 	if settings, err := st.LoadSettings(startupCtx); err == nil && settings.LogLevel != "" {
 		levelVar.Set(parseLevel(settings.LogLevel))
 	}
@@ -183,10 +195,17 @@ func main() {
 		settings = store.DefaultSettings()
 	}
 
+	notifier := notify.NewDispatcher(st, logger)
 	if written, syncErr := catalog.Sync(ctx, st); syncErr != nil {
 		logger.Warn("cannot sync the built-in catalog", "error", syncErr)
 	} else if written > 0 {
 		logger.Info("built-in catalog synchronized", "definitions", written)
+		notifier.DispatchAsync(ctx, settings, notify.Event{
+			Kind:   notify.KindCatalogUpdated,
+			Source: "built-in catalog",
+			Count:  written,
+			Path:   "/settings?section=advanced",
+		})
 	}
 	if paired, pairErr := catalog.PairKnownChannels(ctx, st); pairErr != nil {
 		logger.Warn("cannot pair known feed/search channels", "error", pairErr)
@@ -266,7 +285,7 @@ func main() {
 	}
 	if indexerManager != nil && secretVault != nil {
 		resolver, resolverErr := downloadproxy.New(downloadproxy.Config{
-			Store: st, Vault: secretVault, Manager: indexerManager,
+			Store: st, Vault: secretVault, Manager: indexerManager, Notifier: notifier,
 		})
 		if resolverErr != nil {
 			logger.Warn("download proxy disabled", "error", resolverErr)
@@ -295,6 +314,7 @@ func main() {
 			Logger:   logger,
 			Interval: settings.DefaultInterval(),
 			Workers:  settings.Workers,
+			Notifier: notifier,
 		})
 		if err != nil {
 			logger.Warn("native scheduler disabled", "error", err)
@@ -309,7 +329,7 @@ func main() {
 	var healthChecker *health.Checker
 	if indexerManager != nil {
 		healthChecker, err = health.New(health.Config{
-			Store: st, Manager: indexerManager, Logger: logger,
+			Store: st, Manager: indexerManager, Logger: logger, Notifier: notifier,
 		})
 		if err != nil {
 			logger.Warn("health checker disabled", "error", err)
@@ -330,7 +350,7 @@ func main() {
 	var adminHandler http.Handler
 	adminServer, err := adminapi.New(adminapi.Config{
 		Store: st, Vault: secretVault, Manager: indexerManager, Sync: syncService,
-		Logger: logger, Version: version,
+		Logger: logger, Version: version, Notifier: notifier,
 	})
 	if err != nil {
 		logger.Warn("admin API disabled", "error", err)

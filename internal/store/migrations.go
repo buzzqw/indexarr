@@ -30,6 +30,10 @@ const (
 	// application's indexer list before every change) and the per-application
 	// tag filter used by the sync.
 	indexarr2AppSnapshotsVersion = 14
+	// indexarr2NotifyVersion stores the notification channels' secrets sealed
+	// outside the settings table, the anti-spam timestamps and the last
+	// notified run state of every indexer.
+	indexarr2NotifyVersion = 15
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -154,6 +158,30 @@ var indexarr2FoundationSchema = []string{
 		PRIMARY KEY (application_id, indexer_id)
 	)`,
 	`CREATE INDEX IF NOT EXISTS app_indexers_indexer ON app_indexers(indexer_id)`,
+	// app_secrets holds the settings-level secrets (notification channels)
+	// sealed with the vault key. They are deliberately not in `settings`, so a
+	// database dump never contains the Telegram token or the webhook URL.
+	`CREATE TABLE IF NOT EXISTS app_secrets (
+		key        TEXT PRIMARY KEY,
+		nonce      BLOB NOT NULL,
+		ciphertext BLOB NOT NULL,
+		updated_at INTEGER NOT NULL DEFAULT 0
+	)`,
+	// notify_events is the anti-spam ledger: one row per event kind and
+	// source, holding the last successful delivery.
+	`CREATE TABLE IF NOT EXISTS notify_events (
+		kind         TEXT NOT NULL,
+		source       TEXT NOT NULL,
+		last_sent_at INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY (kind, source)
+	)`,
+	// indexer_notify_state remembers the last notified condition of an
+	// indexer, so a notification is sent on a change and not on every failure.
+	`CREATE TABLE IF NOT EXISTS indexer_notify_state (
+		indexer_id INTEGER PRIMARY KEY REFERENCES indexers(id) ON DELETE CASCADE,
+		state      TEXT    NOT NULL DEFAULT '',
+		updated_at INTEGER NOT NULL DEFAULT 0
+	)`,
 }
 
 // applyMigration records and runs one numbered migration. It is a no-op when

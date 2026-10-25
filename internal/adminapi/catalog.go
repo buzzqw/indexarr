@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/buzzqw/indexarr/internal/catalog"
+	"github.com/buzzqw/indexarr/internal/notify"
 )
 
 type catalogEntry struct {
@@ -52,6 +53,17 @@ func (s *Server) handleCatalogSync(w http.ResponseWriter, r *http.Request) {
 		s.logger.Error("adminapi: sync catalog", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
+	}
+	if written > 0 && s.notifier != nil {
+		settings, err := s.store.LoadSettings(r.Context())
+		if err == nil {
+			s.notifier.DispatchAsync(r.Context(), settings, notify.Event{
+				Kind:   notify.KindCatalogUpdated,
+				Source: "admin API",
+				Count:  written,
+				Path:   "/settings?section=advanced",
+			})
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"written": written})
 }

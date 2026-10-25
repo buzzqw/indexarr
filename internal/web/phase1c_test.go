@@ -47,7 +47,7 @@ func TestSettingsSecretsStayOutOfInitialHTML(t *testing.T) {
 	seedSettingsSecrets(t, env)
 
 	body := get(t, env.handler, "/settings?section=security").Body.String()
-	general := get(t, env.handler, "/settings?section=general").Body.String()
+	general := get(t, env.handler, "/settings?section=notifications").Body.String()
 	for _, secret := range []string{
 		env.apiKey,
 		"SYNTHETICTELEGRAMTOKEN",

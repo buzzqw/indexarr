@@ -319,6 +319,10 @@ class Database:
             "SELECT COUNT(*) FROM indexer_secrets WHERE indexer_id = ? AND key = ?",
             (indexer_id, key))[0][0]
 
+    def app_secret_count(self, key: str) -> int:
+        return self.query(
+            "SELECT COUNT(*) FROM app_secrets WHERE key = ?", (key,))[0][0]
+
     def app(self, name: str):
         rows = self.query(
             "SELECT id, name, url, sync_level, length(api_key_enc) FROM applications WHERE name = ?",
@@ -686,36 +690,59 @@ def main() -> int:
         print("==> settings general")
         session.navigate("/settings?section=general")
         session.set_value("#public_url", base)
+        session.submit_section("general")
+        check("Settings saved" in session.text(), "general settings report saved")
+        check(session.has_near_flash(), "general confirmation is next to the Save button")
+        check(db.setting("public_url") == base, "public_url is saved")
+
+        print("==> settings notifications")
+        session.navigate("/settings?section=notifications")
         session.set_value("#notify_webhook_url", fixture_url + "/hook")
         session.set_value("#notify_telegram_token", "e2e-telegram-token")
         session.set_value("#notify_telegram_chat_id", "11111")
         session.set_checked("#notify_new_releases", True)
         session.set_checked("#notify_failures", True)
-        session.submit_section("general")
-        check("Settings saved" in session.text(), "general settings report saved")
-        check(session.has_near_flash(), "general confirmation is next to the Save button")
-        check(db.setting("public_url") == base, "public_url is saved")
-        check(db.setting("notify_webhook_url") == fixture_url + "/hook", "webhook is saved")
-        check(db.setting("notify_telegram_token") == "e2e-telegram-token", "Telegram token is saved")
-        session.navigate("/settings?section=general")
-        check(session.value("#public_url") == base, "public_url survives a reload")
+        session.set_checked("#notify_grab_failed", True)
+        session.set_checked("#notify_catalog_updated", True)
+        session.set_checked("#notify_backup_failed", True)
+        session.set_value("#notify_cooldown_minutes", "45")
+        session.submit_section("notifications")
+        check("Settings saved" in session.text(), "notification settings report saved")
+        check(db.setting("notify_webhook_url") == "", "the webhook is not in the settings table")
+        check(db.setting("notify_telegram_token") == "", "the Telegram token is not in the settings table")
+        check(db.app_secret_count("notify_webhook_url") == 1, "webhook is sealed in the vault table")
+        check(db.app_secret_count("notify_telegram_token") == 1, "Telegram token is sealed in the vault table")
+        check(db.setting("notify_cooldown_minutes") == "45", "anti-spam window is saved")
+        session.navigate("/settings?section=notifications")
         check(session.value("#notify_telegram_token") == "", "secret field is blank after reload")
-        check("stored" in (session.cdp.eval(
+        check("••••" in (session.cdp.eval(
             "document.querySelector('#notify_telegram_token').placeholder") or ""),
-            "Telegram field says a value is stored")
+            "Telegram field shows a masked placeholder")
+        check("••••" in (session.cdp.eval(
+            "document.querySelector('#notify_webhook_url').placeholder") or ""),
+            "webhook field shows a masked placeholder")
+        # Show is an explicit action and returns the stored value.
+        session.click('#notify_webhook_url ~ button[data-secret-show]')
+        time.sleep(0.5)
+        check(session.value("#notify_webhook_url") == fixture_url + "/hook",
+              "Show reveals the stored webhook only on request")
         # Blank secret preserves; changing chat id still saves.
+        session.navigate("/settings?section=notifications")
         session.set_value("#notify_telegram_chat_id", "22222")
-        session.submit_section("general")
-        check(db.setting("notify_telegram_token") == "e2e-telegram-token",
+        session.submit_section("notifications")
+        check(db.app_secret_count("notify_telegram_token") == 1,
               "blank Telegram token preserves the stored value")
         check(db.setting("notify_telegram_chat_id") == "22222", "changed chat id is saved")
         # Clear-secret checkbox with data-confirm.
         before = session.confirm_count()
-        session.navigate("/settings?section=general")
+        session.navigate("/settings?section=notifications")
         session.set_checked('input[name="notify_telegram_token_remove"]', True)
-        session.submit_section("general")
+        session.submit_section("notifications")
         check(session.confirm_count() == before + 1, "remove-secret checkbox asks for confirmation")
-        check(db.setting("notify_telegram_token") == "", "remove-secret checkbox clears the token")
+        check(db.app_secret_count("notify_telegram_token") == 0, "remove-secret checkbox clears the token")
+        # The test button reports a readable result.
+        session.submit_form("/settings/notifications/test")
+        check("Test notification sent" in session.text(), "test notification reports success")
 
         print("==> settings updates")
         session.navigate("/settings?section=updates")

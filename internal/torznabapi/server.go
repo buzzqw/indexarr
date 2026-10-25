@@ -28,6 +28,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -968,7 +969,7 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 	case ".torrent":
 		usenet = false
 	}
-	body, contentType, filename, payloadErr := s.releasePayload(r.Context(), release, usenet)
+	body, contentType, filename, payloadErr := s.releasePayload(notify.WithApp(r.Context(), appFromRequest(r)), release, usenet)
 	if payloadErr != nil {
 		s.writeDownloadError(w, payloadErr)
 		return

@@ -70,7 +70,7 @@ func TestMigration2AddsPayloadColumnsToLegacyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2AppSnapshotsVersion {
+	if version != indexarr2NotifyVersion {
 		t.Fatalf("schema version = %d, want %d", version, indexarr2ActivityVersion)
 	}
 	for _, column := range []string{"protocol", "payload", "payload_type"} {

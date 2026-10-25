@@ -38,17 +38,21 @@ type settingsSection struct {
 
 type settingsPage struct {
 	base
-	Section        string
-	Sections       []settingsSection
-	Settings       store.Settings
-	FieldErrors    map[string]string
-	MaxTorrentMB   int64
-	TorznabBase    string
-	TorznabMasked  string
-	AdditionalKeys []settingsAPIKey
-	BackupDir      string
-	VaultKey       vault.Info
-	LogLevel       string
+	Section       string
+	Sections      []settingsSection
+	Settings      store.Settings
+	FieldErrors   map[string]string
+	MaxTorrentMB  int64
+	TorznabBase   string
+	TorznabMasked string
+	// The notification secrets never reach the HTML: only whether one is
+	// stored, so the field can show a masked placeholder.
+	WebhookStored       bool
+	TelegramTokenStored bool
+	AdditionalKeys      []settingsAPIKey
+	BackupDir           string
+	VaultKey            vault.Info
+	LogLevel            string
 	// Rules
 	Rules []store.BlocklistRule
 	// Maintenance and backups
@@ -73,6 +77,7 @@ type settingsPage struct {
 
 var settingsSections = []settingsSection{
 	{ID: "general", Label: "settings.section.general"},
+	{ID: "notifications", Label: "settings.section.notifications"},
 	{ID: "security", Label: "settings.section.security"},
 	{ID: "network", Label: "settings.section.network"},
 	{ID: "updates", Label: "settings.section.updates"},
@@ -111,6 +116,7 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 	// and download-client password are only submitted when the operator enters
 	// a new value; an empty field leaves the stored one untouched.
 	public.APIKey = ""
+	public.NotifyWebhookURL = ""
 	public.NotifyTelegramToken = ""
 	public.DownloadClientPassword = ""
 	section = settingsSectionID(section)
@@ -121,19 +127,21 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 		sections = append(sections, item)
 	}
 	data := settingsPage{
-		base:           s.newBaseT(r, "shell.settings", "settings"),
-		Section:        section,
-		Sections:       sections,
-		Settings:       public,
-		FieldErrors:    map[string]string{},
-		MaxTorrentMB:   settings.MaxTorrentBytes / (1 << 20),
-		TorznabBase:    baseURL,
-		TorznabMasked:  baseURL + "?apikey=••••••",
-		AdditionalKeys: views,
-		BackupDir:      backup.Dir(s.store.Path()),
-		VaultKey:       s.vaultKey,
-		LogLevel:       s.levelName(),
-		Definitions:    nil,
+		base:                s.newBaseT(r, "shell.settings", "settings"),
+		Section:             section,
+		Sections:            sections,
+		Settings:            public,
+		FieldErrors:         map[string]string{},
+		MaxTorrentMB:        settings.MaxTorrentBytes / (1 << 20),
+		TorznabBase:         baseURL,
+		TorznabMasked:       baseURL + "?apikey=••••••",
+		WebhookStored:       strings.TrimSpace(settings.NotifyWebhookURL) != "",
+		TelegramTokenStored: strings.TrimSpace(settings.NotifyTelegramToken) != "",
+		AdditionalKeys:      views,
+		BackupDir:           backup.Dir(s.store.Path()),
+		VaultKey:            s.vaultKey,
+		LogLevel:            s.levelName(),
+		Definitions:         nil,
 	}
 	if section == "rules" {
 		data.Rules, _ = s.store.ListBlocklist(ctx)
@@ -284,12 +292,21 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			renderInvalidField("public_url", s.translate(r, "settings.error.publicURL"))
 			return false
 		}
+		return true
+	}
+	applyNotifications := func() bool {
 		rawWebhook := strings.TrimSpace(r.FormValue("notify_webhook_url"))
-		in.NotifyWebhookURL, _ = normalizeHTTPURL(rawWebhook)
-		if rawWebhook != "" && in.NotifyWebhookURL == "" {
-			in.NotifyWebhookURL = rawWebhook
-			renderInvalidField("notify_webhook_url", s.translate(r, "settings.error.webhookURL"))
-			return false
+		switch {
+		case r.FormValue("notify_webhook_remove") != "":
+			in.NotifyWebhookURL = ""
+		case rawWebhook != "":
+			normalized, ok := normalizeHTTPURL(rawWebhook)
+			if !ok {
+				in.NotifyWebhookURL = rawWebhook
+				renderInvalidField("notify_webhook_url", s.translate(r, "settings.error.webhookURL"))
+				return false
+			}
+			in.NotifyWebhookURL = normalized
 		}
 		if r.FormValue("notify_telegram_token_remove") != "" {
 			in.NotifyTelegramToken = ""
@@ -303,6 +320,15 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		}
 		in.NotifyNewReleases = r.FormValue("notify_new_releases") != ""
 		in.NotifyFailures = r.FormValue("notify_failures") != ""
+		in.NotifyGrabFailed = r.FormValue("notify_grab_failed") != ""
+		in.NotifyCatalogUpdated = r.FormValue("notify_catalog_updated") != ""
+		in.NotifyBackupFailed = r.FormValue("notify_backup_failed") != ""
+		var parseErr error
+		if in.NotifyCooldownMinutes, parseErr = s.formInt(r, "notify_cooldown_minutes",
+			current.NotifyCooldownMinutes, 1, 7*24*60); parseErr != nil {
+			renderInvalid(parseErr.Error())
+			return false
+		}
 		return true
 	}
 	applySecurity := func() bool {
@@ -475,6 +501,11 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if all || section == "notifications" {
+		if !applyNotifications() {
+			return
+		}
+	}
 	if all || section == "security" {
 		if !applySecurity() {
 			return
@@ -639,6 +670,28 @@ func (s *Server) settingsTestFlareSolverr(w http.ResponseWriter, r *http.Request
 	}
 	s.log.Info("FlareSolverr test ok", "endpoint", endpoint, "bytes", len(body))
 	redirect(w, r, "/settings?section=network", s.translate(r, "settings.flaresolverrOK", len(body)), "")
+}
+
+// settingsTestNotification sends one real message to the configured channels,
+// bypassing the switches and the anti-spam window, and reports the outcome on
+// the page. The delivery error is scrubbed by the notify package, so a token
+// can never appear in the flash message or in the log.
+func (s *Server) settingsTestNotification(w http.ResponseWriter, r *http.Request) {
+	settings, err := s.store.LoadSettings(r.Context())
+	if err != nil {
+		s.renderError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 20*time.Second)
+	defer cancel()
+	if err := s.notifier.SendTest(ctx, settings); err != nil {
+		s.log.Warn("test notification failed", "subsystem", "notify", "error", err)
+		redirect(w, r, "/settings?section=notifications", "",
+			s.translate(r, "settings.testNotificationFailed", err.Error()))
+		return
+	}
+	s.log.Info("test notification sent", "subsystem", "notify")
+	redirect(w, r, "/settings?section=notifications", s.translate(r, "settings.testNotificationOK"), "")
 }
 
 func (s *Server) formInt(r *http.Request, key string, fallback, min, max int) (int, error) {
@@ -1021,6 +1074,10 @@ func (s *Server) settingsSecret(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case name == "apikey":
 		value = settings.APIKey
+	case name == "webhook":
+		value = settings.NotifyWebhookURL
+	case name == "telegram_token":
+		value = settings.NotifyTelegramToken
 	case name == "torznab":
 		if settings.APIKey == "" {
 			http.Error(w, "not found", http.StatusNotFound)

@@ -25,6 +25,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/native"
+	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/syncjob"
 	"github.com/buzzqw/indexarr/internal/torznabapi"
@@ -460,6 +461,9 @@ type Server struct {
 	vaultKey vault.Info
 	sync     *syncjob.Service
 	polite   *engine.Politeness
+	// notifier applies the notification switches, the anti-spam window and
+	// the test button. It shares the store with the rest of the server.
+	notifier *notify.Dispatcher
 	// importPlans holds short-lived previews between /import and /import/apply.
 	// Secrets stay in this process memory and never reach the HTML.
 	importPlans *importPlanStore
@@ -494,6 +498,12 @@ func New(cfg Config) *Server {
 		level = new(slog.LevelVar)
 		level.Set(slog.LevelInfo)
 	}
+	// The web layer owns the settings forms, so it must be able to seal and
+	// open the settings-level secrets even when the caller did not attach the
+	// vault to the store itself.
+	if cfg.Store != nil && cfg.Vault != nil {
+		cfg.Store.AttachVault(cfg.Vault)
+	}
 	// Embedders and tests may pass a working vault without the key-location
 	// metadata. In that case the vault is available, just without a path.
 	if cfg.Vault != nil && cfg.VaultKey.Kind == "" {
@@ -518,6 +528,7 @@ func New(cfg Config) *Server {
 		vaultKey:       cfg.VaultKey,
 		sync:           cfg.Sync,
 		polite:         cfg.Politeness,
+		notifier:       notify.NewDispatcher(cfg.Store, logger),
 		importPlans:    newImportPlanStore(),
 		smartfeedPlans: newSmartfeedPlanStore(),
 		pendingStores:  newPendingStoreSet(),
@@ -669,6 +680,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /settings/apikeys", s.settingsAPIKeyAdd)
 	ui.HandleFunc("POST /settings/apikeys/{id}/delete", s.settingsAPIKeyDelete)
 	ui.HandleFunc("POST /settings/flaresolverr/test", s.settingsTestFlareSolverr)
+	ui.HandleFunc("POST /settings/notifications/test", s.settingsTestNotification)
 	ui.HandleFunc("POST /settings/public-url", s.settingsPublicURL)
 	ui.HandleFunc("POST /settings/setup/reopen", s.setupReopen)
 	ui.HandleFunc("GET /download-clients", s.downloadClientsRedirect)
@@ -831,6 +843,10 @@ func (s *Server) setLanguage(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 		Secure:   requestIsHTTPS(r),
 	})
+	// Background notifications have no request, so they use the last language
+	// the operator chose. The write is best-effort and never blocks the
+	// redirect.
+	_ = s.store.SetSetting(r.Context(), store.KeyUILanguage, string(lang))
 	target := "/"
 	if referer := strings.TrimSpace(r.Header.Get("Referer")); referer != "" {
 		if parsed, err := url.Parse(referer); err == nil &&

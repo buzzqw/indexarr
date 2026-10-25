@@ -460,6 +460,9 @@ type Config struct {
 	Thresholds Thresholds
 	// Notify replaces the default webhook/Telegram delivery in tests.
 	Notify func(context.Context, store.Settings, notify.Event)
+	// Notifier applies the notification switches and the anti-spam window.
+	// When nil, New builds one on the same store.
+	Notifier *notify.Dispatcher
 }
 
 // Result is the outcome of one health check.
@@ -484,6 +487,7 @@ type Checker struct {
 	interval   time.Duration
 	thresholds Thresholds
 	notify     func(context.Context, store.Settings, notify.Event)
+	notifier   *notify.Dispatcher
 
 	startOnce sync.Once
 	wg        sync.WaitGroup
@@ -509,6 +513,10 @@ func New(cfg Config) (*Checker, error) {
 	if interval <= 0 {
 		interval = defaultHealthRun
 	}
+	notifier := cfg.Notifier
+	if notifier == nil {
+		notifier = notify.NewDispatcher(cfg.Store, logger)
+	}
 	return &Checker{
 		store:      cfg.Store,
 		manager:    cfg.Manager,
@@ -517,6 +525,7 @@ func New(cfg Config) (*Checker, error) {
 		interval:   interval,
 		thresholds: cfg.Thresholds.normalized(),
 		notify:     cfg.Notify,
+		notifier:   notifier,
 	}, nil
 }
 
@@ -635,42 +644,44 @@ func (c *Checker) transitionDefinition(ctx context.Context, settings store.Setti
 	}
 	c.logger.Info("definition state changed", "definition", definition.ID,
 		"indexer", source.Slug, "from", definition.State, "to", next)
-	if next == CatalogDegraded {
-		c.sendDegraded(ctx, settings, store.Indexer{
-			ID: source.IndexerID, Name: source.Name, Slug: source.Slug,
-		}, definition.State, cause)
-	}
+	c.sendStateChange(ctx, settings, store.Indexer{
+		ID: source.IndexerID, Name: source.Name, Slug: source.Slug,
+	}, definition.State, next, cause)
 }
 
-func (c *Checker) sendDegraded(ctx context.Context, settings store.Settings, row store.Indexer, from string, cause error) {
+// sendStateChange reports a catalog state transition, in both directions: a
+// site that becomes degraded and one that recovers. The event is sent only
+// when the state actually changes, which is what the health job guarantees.
+func (c *Checker) sendStateChange(ctx context.Context, settings store.Settings, row store.Indexer, from, to string, cause error) {
 	event := notify.Event{
-		Kind:   "indexer_degraded",
-		Source: row.Name,
-		Error:  c.manager.RedactError(row.ID, cause),
-		At:     c.clock.Now().UTC(),
-	}
-	if from != "" {
-		event.Titles = []string{"catalog state: " + from + " -> " + CatalogDegraded}
+		Kind:     notify.KindIndexerState,
+		Source:   row.Name,
+		Previous: notifyState(from),
+		Current:  notifyState(to),
+		Error:    c.manager.RedactError(row.ID, cause),
+		At:       c.clock.Now().UTC(),
+		Path:     "/indexers",
 	}
 	if c.notify != nil {
 		c.notify(ctx, settings, event)
 		return
 	}
-	cfg := notify.Config{
-		WebhookURL:     settings.NotifyWebhookURL,
-		TelegramToken:  settings.NotifyTelegramToken,
-		TelegramChatID: settings.NotifyTelegramChatID,
+	c.notifier.DispatchAsync(ctx, settings, event)
+}
+
+// notifyState maps a catalog state to the notification vocabulary. The two
+// healthy catalog states are reported as "ok".
+func notifyState(catalogState string) string {
+	switch strings.ToLower(strings.TrimSpace(catalogState)) {
+	case CatalogDegraded:
+		return notify.StateDegraded
+	case CatalogVerified, CatalogStable:
+		return notify.StateOK
+	case CatalogDraft:
+		return ""
+	default:
+		return ""
 	}
-	if !notify.Configured(cfg) {
-		return
-	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		if err := notify.Send(ctx, cfg, event); err != nil {
-			c.logger.Warn("degraded notification failed", "error", err)
-		}
-	}()
 }
 
 // Start begins the periodic pass. The first run waits for the jitter instead

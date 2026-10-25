@@ -17,6 +17,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/vault"
 )
@@ -489,5 +490,67 @@ func TestGrabFallsBackToAnotherCopy(t *testing.T) {
 		if source.IndexerID == goodID && source.LastDownloadError != "" {
 			t.Errorf("working copy kept an error: %+v", source)
 		}
+	}
+}
+
+// TestGrabFailureNotifiesWhenEveryCopyFails covers the failed-grab event: it
+// is sent only after the fallback loop is exhausted, with the title, the app
+// and the readable reason.
+func TestGrabFailureNotifiesWhenEveryCopyFails(t *testing.T) {
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	defer bad.Close()
+	st := testStore(t)
+	v := testVault(t)
+	manager := testManager(t, st, v)
+	firstID := seedTorrentTorznabNamed(t, st, v, bad.URL, "tz-fail-a")
+	secondID := seedTorrentTorznabNamed(t, st, v, bad.URL, "tz-fail-b")
+
+	events := make(chan notify.Event, 4)
+	dispatcher := notify.NewDispatcher(st, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	dispatcher.Deliver = func(_ context.Context, _ notify.Config, event notify.Event) error {
+		events <- event
+		return nil
+	}
+	settings, _ := st.LoadSettings(context.Background())
+	settings.NotifyGrabFailed = true
+	settings.NotifyWebhookURL = "http://hooks.invalid/indexarr"
+	if err := st.SaveSettings(context.Background(), settings); err != nil {
+		t.Fatal(err)
+	}
+
+	resolver, err := New(Config{Store: st, Vault: v, Manager: manager, Notifier: dispatcher})
+	if err != nil {
+		t.Fatal(err)
+	}
+	release := insertTorrentRelease(t, st, "all-fail", "Dune Part Two 2024")
+	for _, id := range []int64{firstID, secondID} {
+		ref, _ := indexer.SealDownloadRef(v, id, engine.Item{
+			Title: release.Title, GUID: "rel-1", DownloadURL: bad.URL + "/download",
+		})
+		if err := st.RecordReleaseSource(context.Background(), store.ReleaseSource{
+			ReleaseID: release.ID, IndexerID: id, DownloadRef: ref,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx := notify.WithApp(context.Background(), "sonarr")
+	if _, err := resolver.Resolve(ctx, release.ID); err == nil {
+		t.Fatal("all copies failing did not return an error")
+	}
+	select {
+	case event := <-events:
+		if event.Kind != notify.KindGrabFailed {
+			t.Fatalf("event kind = %q", event.Kind)
+		}
+		if event.Title != "Dune Part Two 2024" || event.App != "sonarr" || event.Error == "" {
+			t.Errorf("failed-grab event = %#v", event)
+		}
+		if event.Path != "/releases" {
+			t.Errorf("failed-grab path = %q", event.Path)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no failed-grab notification")
 	}
 }

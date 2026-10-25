@@ -23,39 +23,6 @@
       {{with index .FieldErrors "public_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
       <p class="help">{{T "settings.publicURLHelp"}}</p>
     </div>
-    <div class="panel-head"><h2>{{T "settings.notificationsTitle"}}</h2></div>
-    <div class="form-grid">
-      <div class="field grow">
-        <label for="notify_webhook_url">{{T "settings.webhookURL"}}</label>
-        <input id="notify_webhook_url" name="notify_webhook_url" type="text" inputmode="url" autocomplete="off" spellcheck="false" value="{{.Settings.NotifyWebhookURL}}" placeholder="{{T "settings.webhookPlaceholder"}}">
-        {{with index .FieldErrors "notify_webhook_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
-        <p class="help">{{T "settings.webhookHelp"}}</p>
-      </div>
-      <div class="field">
-        <label for="notify_telegram_token">{{T "settings.telegramToken"}}</label>
-        <div class="secret-field" data-secret-change-field>
-          <input id="notify_telegram_token" name="notify_telegram_token" type="password" value="" placeholder="{{T "settings.secretStored"}}" autocomplete="new-password">
-          <button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>
-        </div>
-        <label class="check muted"><input type="checkbox" name="notify_telegram_token_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
-        <p class="help">{{T "settings.telegramTokenHelp"}} {{T "settings.secretEmptyHelp"}}</p>
-      </div>
-      <div class="field">
-        <label for="notify_telegram_chat_id">{{T "settings.telegramChatID"}}</label>
-        <input id="notify_telegram_chat_id" name="notify_telegram_chat_id" type="text" value="{{.Settings.NotifyTelegramChatID}}">
-        <p class="help">{{T "settings.telegramChatHelp"}}</p>
-      </div>
-    </div>
-    <div class="form-grid">
-      <div class="field checkbox">
-        <input id="notify_new_releases" name="notify_new_releases" type="checkbox"{{if .Settings.NotifyNewReleases}} checked{{end}}>
-        <label for="notify_new_releases">{{T "settings.notifyNewReleases"}}</label>
-      </div>
-      <div class="field checkbox">
-        <input id="notify_failures" name="notify_failures" type="checkbox"{{if .Settings.NotifyFailures}} checked{{end}}>
-        <label for="notify_failures">{{T "settings.notifyFailures"}}</label>
-      </div>
-    </div>
     <div class="actions">
       <button class="btn primary" type="submit">{{T "settings.save"}}</button>
     </div>
@@ -67,6 +34,97 @@
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn" type="submit">{{T "settings.setupReopen"}}</button>
     </form>
+  </section>
+  {{end}}
+
+  {{if eq .Section "notifications"}}
+  <section class="panel">
+    <div class="panel-head"><h2>{{T "settings.notificationsTitle"}}</h2></div>
+    <p class="help" title="{{T "settings.notificationsIntro"}}">{{T "settings.notificationsIntro"}}</p>
+  </section>
+  <form class="panel form" method="post" action="/settings">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <input type="hidden" name="section" value="notifications">
+    <div class="panel-head"><h2 title="{{T "settings.channelsHelp"}}">{{T "settings.channelsTitle"}}</h2></div>
+    <p class="help">{{T "settings.channelsHelp"}}</p>
+    <div class="form-grid">
+      <div class="field grow">
+        <label for="notify_webhook_url" title="{{T "settings.webhookHelp"}}">{{T "settings.webhookURL"}}</label>
+        <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/webhook">
+          <input id="notify_webhook_url" name="notify_webhook_url" type="password" inputmode="url" autocomplete="off" spellcheck="false" value="" placeholder="{{if .WebhookStored}}••••••••{{else}}{{T "settings.webhookPlaceholder"}}{{end}}" title="{{T "settings.webhookStoredHelp"}}">
+          <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}" title="{{T "settings.webhookShow"}}">{{T "common.show"}}</button>
+          <button class="btn" type="button" data-secret-copy title="{{T "common.copy"}}">{{T "common.copy"}}</button>
+        </div>
+        {{with index .FieldErrors "notify_webhook_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+        <label class="check muted"><input type="checkbox" name="notify_webhook_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.webhookRemove"}}</span></label>
+        <p class="help">{{T "settings.webhookHelp"}} {{T "settings.webhookStoredHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="notify_telegram_token" title="{{T "settings.telegramTokenHelp"}}">{{T "settings.telegramToken"}}</label>
+        <div class="secret-field" data-secret-change-field data-secret-field data-secret-url="/settings/secrets/telegram_token">
+          <input id="notify_telegram_token" name="notify_telegram_token" type="password" value="" placeholder="{{if .TelegramTokenStored}}••••••••{{else}}{{T "settings.secretStored"}}{{end}}" autocomplete="new-password" title="{{T "settings.telegramStoredHelp"}}">
+          <button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>
+          <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>
+          <button class="btn" type="button" data-secret-copy>{{T "common.copy"}}</button>
+        </div>
+        <label class="check muted"><input type="checkbox" name="notify_telegram_token_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+        <p class="help">{{T "settings.telegramTokenHelp"}} {{T "settings.telegramStoredHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="notify_telegram_chat_id" title="{{T "settings.telegramChatHelp"}}">{{T "settings.telegramChatID"}}</label>
+        <input id="notify_telegram_chat_id" name="notify_telegram_chat_id" type="text" value="{{.Settings.NotifyTelegramChatID}}" title="{{T "settings.telegramChatHelp"}}">
+        <p class="help">{{T "settings.telegramChatHelp"}}</p>
+      </div>
+    </div>
+    <div class="panel-head"><h2 title="{{T "settings.eventsHelp"}}">{{T "settings.eventsTitle"}}</h2></div>
+    <p class="help">{{T "settings.eventsHelp"}}</p>
+    <div class="form-grid">
+      <div class="field checkbox">
+        <input id="notify_new_releases" name="notify_new_releases" type="checkbox"{{if .Settings.NotifyNewReleases}} checked{{end}} title="{{T "settings.notifyNewReleasesHelp"}}">
+        <label for="notify_new_releases" title="{{T "settings.notifyNewReleasesHelp"}}">{{T "settings.notifyNewReleases"}}</label>
+        <p class="help">{{T "settings.notifyNewReleasesHelp"}}</p>
+      </div>
+      <div class="field checkbox">
+        <input id="notify_failures" name="notify_failures" type="checkbox"{{if .Settings.NotifyFailures}} checked{{end}} title="{{T "settings.notifyFailuresHelp"}}">
+        <label for="notify_failures" title="{{T "settings.notifyFailuresHelp"}}">{{T "settings.notifyFailures"}}</label>
+        <p class="help">{{T "settings.notifyFailuresHelp"}}</p>
+      </div>
+      <div class="field checkbox">
+        <input id="notify_grab_failed" name="notify_grab_failed" type="checkbox"{{if .Settings.NotifyGrabFailed}} checked{{end}} title="{{T "settings.notifyGrabFailedHelp"}}">
+        <label for="notify_grab_failed" title="{{T "settings.notifyGrabFailedHelp"}}">{{T "settings.notifyGrabFailed"}}</label>
+        <p class="help">{{T "settings.notifyGrabFailedHelp"}}</p>
+      </div>
+      <div class="field checkbox">
+        <input id="notify_catalog_updated" name="notify_catalog_updated" type="checkbox"{{if .Settings.NotifyCatalogUpdated}} checked{{end}} title="{{T "settings.notifyCatalogUpdatedHelp"}}">
+        <label for="notify_catalog_updated" title="{{T "settings.notifyCatalogUpdatedHelp"}}">{{T "settings.notifyCatalogUpdated"}}</label>
+        <p class="help">{{T "settings.notifyCatalogUpdatedHelp"}}</p>
+      </div>
+      <div class="field checkbox">
+        <input id="notify_backup_failed" name="notify_backup_failed" type="checkbox"{{if .Settings.NotifyBackupFailed}} checked{{end}} title="{{T "settings.notifyBackupFailedHelp"}}">
+        <label for="notify_backup_failed" title="{{T "settings.notifyBackupFailedHelp"}}">{{T "settings.notifyBackupFailed"}}</label>
+        <p class="help">{{T "settings.notifyBackupFailedHelp"}}</p>
+      </div>
+    </div>
+    <div class="panel-head"><h2 title="{{T "settings.notifyCooldownHelp"}}">{{T "settings.antiSpamTitle"}}</h2></div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="notify_cooldown_minutes" title="{{T "settings.notifyCooldownHelp"}}">{{T "settings.notifyCooldown"}}</label>
+        <input id="notify_cooldown_minutes" name="notify_cooldown_minutes" type="number" min="1" max="10080" step="1" value="{{.Settings.NotifyCooldownMinutes}}" title="{{T "settings.notifyCooldownHelp"}}">
+        <p class="help">{{T "settings.notifyCooldownHelp"}}</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="submit">{{T "settings.save"}}</button>
+    </div>
+  </form>
+  <section class="panel">
+    <div class="panel-head"><h2 title="{{T "settings.testHelp"}}">{{T "settings.testTitle"}}</h2></div>
+    <p class="help">{{T "settings.testHelp"}}</p>
+    <form method="post" action="/settings/notifications/test">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn" type="submit" title="{{T "settings.testHelp"}}">{{T "settings.testNotification"}}</button>
+    </form>
+    <p class="help">{{T "settings.notificationsHelp"}}</p>
   </section>
   {{end}}
 

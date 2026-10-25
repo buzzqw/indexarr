@@ -24,6 +24,7 @@ func TestLegacyPagesRenderAllLanguages(t *testing.T) {
 		"/releases/" + strconv.FormatInt(rel.ID, 10),
 		"/rules",
 		"/settings?section=general",
+		"/settings?section=notifications",
 		"/settings?section=maintenance",
 		"/indexers/new",
 	}

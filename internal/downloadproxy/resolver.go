@@ -17,6 +17,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/vault"
 )
@@ -141,14 +142,17 @@ type Config struct {
 	Store   *store.Store
 	Vault   *vault.Vault
 	Manager *indexer.Manager
+	// Notifier reports a grab that failed on every copy. It is optional.
+	Notifier *notify.Dispatcher
 }
 
 // Resolver serves release payloads, fetching through the indexer manager when
 // only an opaque reference is stored.
 type Resolver struct {
-	store   *store.Store
-	vault   *vault.Vault
-	manager *indexer.Manager
+	store    *store.Store
+	vault    *vault.Vault
+	manager  *indexer.Manager
+	notifier *notify.Dispatcher
 }
 
 // New builds a Resolver. The vault may be nil, but then opaque references
@@ -160,7 +164,7 @@ func New(cfg Config) (*Resolver, error) {
 	if cfg.Manager == nil {
 		return nil, ErrManagerRequired
 	}
-	return &Resolver{store: cfg.Store, vault: cfg.Vault, manager: cfg.Manager}, nil
+	return &Resolver{store: cfg.Store, vault: cfg.Vault, manager: cfg.Manager, notifier: cfg.Notifier}, nil
 }
 
 // Payload is the downloadable form of a release: bytes plus how to serve them,
@@ -307,15 +311,48 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 	}
 
 	if lastErr != nil {
-		if classified, ok := lastErr.(*Error); ok {
-			return Payload{}, classified
-		}
-		return Payload{}, classifyDownloadError(lastErr)
+		classified := classifyDownloadError(lastErr)
+		r.notifyGrabFailed(ctx, release, classified)
+		return Payload{}, classified
 	}
 	if !earliestQuarantine.IsZero() {
-		return Payload{}, &Error{Kind: ErrQuarantined, Message: "download link temporarily quarantined", RetryAfter: earliestQuarantine}
+		quarantined := &Error{Kind: ErrQuarantined, Message: "download link temporarily quarantined", RetryAfter: earliestQuarantine}
+		r.notifyGrabFailed(ctx, release, quarantined)
+		return Payload{}, quarantined
 	}
-	return Payload{}, &Error{Kind: ErrTemporary, Message: "download unavailable"}
+	unavailable := &Error{Kind: ErrTemporary, Message: "download unavailable"}
+	r.notifyGrabFailed(ctx, release, unavailable)
+	return Payload{}, unavailable
+}
+
+// notifyGrabFailed reports a grab that failed on every copy of a merged
+// release, after the fallback loop is exhausted. The event carries the title,
+// the downstream application and the readable reason; the anti-spam window is
+// keyed on the release, so a client retrying the same grab is not spammed.
+func (r *Resolver) notifyGrabFailed(ctx context.Context, release store.Release, cause error) {
+	if r == nil || r.notifier == nil {
+		return
+	}
+	settings, err := r.store.LoadSettings(ctx)
+	if err != nil {
+		return
+	}
+	reason := ""
+	if cause != nil {
+		reason = cause.Error()
+	}
+	app := notify.AppFrom(ctx)
+	if app == "" {
+		app = "unknown"
+	}
+	r.notifier.DispatchAsync(ctx, settings, notify.Event{
+		Kind:   notify.KindGrabFailed,
+		Source: release.Title,
+		Title:  release.Title,
+		App:    app,
+		Error:  reason,
+		Path:   "/releases",
+	})
 }
 
 func (r *Resolver) recordSourceFailure(ctx context.Context, releaseID, indexerID int64, err *Error) {

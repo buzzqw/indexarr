@@ -63,6 +63,9 @@ type Config struct {
 	Interval time.Duration // 0 => settings.DefaultInterval(), at least 60s
 	Workers  int           // 0 => 2
 	OnResult func(RunOutcome)
+	// Notifier applies the notification switches and the anti-spam window.
+	// When nil, New builds one on the same store.
+	Notifier *notify.Dispatcher
 }
 
 // RunOutcome is the result of considering one indexer.
@@ -86,6 +89,7 @@ type Runner struct {
 	interval time.Duration
 	workers  int
 	onResult func(RunOutcome)
+	notifier *notify.Dispatcher
 
 	startOnce     sync.Once
 	wg            sync.WaitGroup
@@ -113,6 +117,10 @@ func New(cfg Config) (*Runner, error) {
 	if workers <= 0 {
 		workers = defaultWorkers
 	}
+	notifier := cfg.Notifier
+	if notifier == nil {
+		notifier = notify.NewDispatcher(cfg.Store, logger)
+	}
 
 	return &Runner{
 		store:    cfg.Store,
@@ -121,6 +129,7 @@ func New(cfg Config) (*Runner, error) {
 		interval: resolveInterval(cfg.Store, cfg.Interval, logger),
 		workers:  workers,
 		onResult: cfg.OnResult,
+		notifier: notifier,
 	}, nil
 }
 
@@ -416,6 +425,9 @@ dispatch:
 			result = append(result, outcomes[i])
 		}
 	}
+	// New releases are grouped per pass: one message for the whole run, not
+	// one per indexer.
+	r.notifyNewReleases(ctx, result)
 	return result
 }
 
@@ -506,6 +518,7 @@ func (r *Runner) RunIndexer(ctx context.Context, id int64) (RunOutcome, error) {
 		return RunOutcome{IndexerID: id}, err
 	}
 	outcome := r.runOne(ctx, indexerRow)
+	r.notifyNewReleases(ctx, []RunOutcome{outcome})
 	return outcome, outcome.Err
 }
 
@@ -547,50 +560,100 @@ func (r *Runner) runOne(ctx context.Context, indexerRow store.Indexer) (outcome 
 	return outcome
 }
 
-// afterRun applies the notification and auto-disable policies after one run.
+// afterRun applies the auto-disable policy and the per-indexer state
+// notification after one run. A message is sent only when the condition
+// changes (ok -> error, error -> blocked, error -> ok, ...), never on every
+// failing run: that is the anti-spam rule of the state event.
 func (r *Runner) afterRun(ctx context.Context, indexerRow store.Indexer, outcome RunOutcome) {
 	settings, err := r.store.LoadSettings(ctx)
 	if err != nil {
 		return
 	}
-	if outcome.Err != nil {
-		disabled := false
+	status := notify.StateOK
+	switch {
+	case outcome.Skipped:
+		// A disabled or search-only indexer says nothing about the site.
+		return
+	case outcome.Err != nil:
+		status = notify.StateError
+		if errors.Is(outcome.Err, engine.ErrChallenge) {
+			status = notify.StateBlocked
+		}
 		if settings.AutoDisableAfter > 0 {
 			statuses, err := r.store.RecentIndexerRunStatuses(ctx, indexerRow.ID, settings.AutoDisableAfter)
 			if err == nil && len(statuses) >= settings.AutoDisableAfter && allErrors(statuses) && indexerRow.Enabled {
 				indexerRow.Enabled = false
 				if err := r.store.UpdateIndexer(ctx, indexerRow); err == nil {
-					disabled = true
+					status = notify.StateDisabled
 					r.logger.Warn("native: indexer auto-disabled after repeated failures",
 						"indexer", indexerRow.Slug, "errors", settings.AutoDisableAfter)
 				}
 			}
 		}
-		if settings.NotifyFailures {
-			kind := "run_failed"
-			if disabled {
-				kind = "indexer_disabled"
-			}
-			r.sendNotification(settings, notify.Event{
-				Kind: kind, Source: indexerRow.Name, Error: r.managerRedacted(indexerRow.ID, outcome.Err),
-			})
-		}
+	}
+	previous, err := r.store.IndexerNotifyState(ctx, indexerRow.ID)
+	if err != nil {
+		r.logger.Warn("native: read the notified state", "indexer", indexerRow.Slug, "error", err)
+		previous = ""
+	}
+	if previous == status {
 		return
 	}
-	if outcome.Stats != nil && outcome.Stats.New > 0 && settings.NotifyNewReleases {
-		var titles []string
+	if err := r.store.SetIndexerNotifyState(ctx, indexerRow.ID, status); err != nil {
+		r.logger.Warn("native: store the notified state", "indexer", indexerRow.Slug, "error", err)
+	}
+	if previous == "" && status == notify.StateOK {
+		// The first healthy run of a new indexer is not a state change.
+		return
+	}
+	r.notifier.DispatchAsync(ctx, settings, notify.Event{
+		Kind:     notify.KindIndexerState,
+		Source:   indexerRow.Name,
+		Previous: previous,
+		Current:  status,
+		Error:    r.managerRedacted(indexerRow.ID, outcome.Err),
+		Path:     "/indexers",
+	})
+}
+
+// notifyNewReleases groups every indexer of one pass into a single message:
+// the anti-spam rule for a new-release burst is the grouping itself.
+func (r *Runner) notifyNewReleases(ctx context.Context, outcomes []RunOutcome) {
+	if len(outcomes) == 0 {
+		return
+	}
+	settings, err := r.store.LoadSettings(ctx)
+	if err != nil {
+		return
+	}
+	total := 0
+	var names []string
+	var titles []string
+	for _, outcome := range outcomes {
+		if outcome.Stats == nil || outcome.Stats.New <= 0 {
+			continue
+		}
+		total += outcome.Stats.New
+		names = append(names, outcome.Name)
 		for _, item := range outcome.Stats.Items {
-			if len(titles) >= 5 {
+			if len(titles) >= 10 {
 				break
 			}
-			if item.Title != "" {
+			if strings.TrimSpace(item.Title) != "" {
 				titles = append(titles, item.Title)
 			}
 		}
-		r.sendNotification(settings, notify.Event{
-			Kind: "new_releases", Source: indexerRow.Name, Count: outcome.Stats.New, Titles: titles,
-		})
 	}
+	if total == 0 {
+		return
+	}
+	r.notifier.DispatchAsync(ctx, settings, notify.Event{
+		Kind:   notify.KindNewReleases,
+		Source: strings.Join(names, ", "),
+		Count:  total,
+		Titles: titles,
+		Path:   "/releases",
+	})
 }
 
 func allErrors(statuses []string) bool {
@@ -605,25 +668,6 @@ func allErrors(statuses []string) bool {
 		}
 	}
 	return true
-}
-
-func (r *Runner) sendNotification(settings store.Settings, event notify.Event) {
-	cfg := notify.Config{
-		WebhookURL:     settings.NotifyWebhookURL,
-		TelegramToken:  settings.NotifyTelegramToken,
-		TelegramChatID: settings.NotifyTelegramChatID,
-	}
-	if !notify.Configured(cfg) {
-		return
-	}
-	event.At = time.Now().UTC()
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		if err := notify.Send(ctx, cfg, event); err != nil {
-			r.logger.Warn("notification failed", "kind", event.Kind, "error", err)
-		}
-	}()
 }
 
 // managerRedacted exposes the manager's redaction without leaking the raw
@@ -664,6 +708,12 @@ func (r *Runner) maybeBackup(ctx context.Context) {
 		if err != nil {
 			r.backupRetry.Store(time.Now().Add(15 * time.Minute).Unix())
 			r.logger.Warn("automatic backup failed", "subsystem", "backup", "error", err)
+			r.notifier.DispatchAsync(ctx, settings, notify.Event{
+				Kind:   notify.KindBackupFailed,
+				Source: "automatic backup",
+				Error:  err.Error(),
+				Path:   "/settings?section=backup",
+			})
 			return
 		}
 		r.backupRetry.Store(0)
