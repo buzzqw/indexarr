@@ -1786,3 +1786,20 @@ pre.yaml {
 }
 .generic-source strong { color: var(--accent); }
 .generic-source code { overflow-wrap: anywhere; font-size: 0.8rem; }
+
+/* Mobile: no page-level horizontal scroll and comfortable touch targets. */
+@media (max-width: 480px) {
+  html, body { max-width: 100%; overflow-x: hidden; }
+  .table-scroll, .releases-table, table { max-width: 100%; }
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .btn, button, input[type="submit"], input[type="button"], select, .menu-item, .site-link, .need-card { min-height: 44px; }
+  .btn.small { min-height: 44px; }
+  img, svg, video { max-width: 100%; height: auto; }
+  pre, code, textarea { overflow-wrap: anywhere; }
+}
+@media (max-width: 480px) {
+  button, .btn, .btn.small, input[type="submit"], input[type="button"], select {
+    min-height: 44px !important;
+    box-sizing: border-box;
+  }
+}

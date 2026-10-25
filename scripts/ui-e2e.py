@@ -960,6 +960,26 @@ def main() -> int:
         check(session.value("#ui_user") == "e2e",
               "changed UI password saves with the new credentials")
 
+        # ---------------------------------------------------------- mobile 390 px
+        print("==> mobile 390 px")
+        session.cdp.send("Emulation.setDeviceMetricsOverride", {
+            "width": 390, "height": 844, "deviceScaleFactor": 1, "mobile": True,
+        })
+        mobile_routes = ["/", "/releases", "/indexers", "/indexers/new", "/applications",
+                         "/activity", "/settings", "/rules", "/maintenance"]
+        for route in mobile_routes:
+            session.navigate(route)
+            width = session.cdp.eval("document.documentElement.scrollWidth")
+            check(width <= 391, f"{route}: no horizontal scroll at 390 px (width {width})")
+            small = session.cdp.eval("""
+              Array.from(document.querySelectorAll('button, a.btn, input[type=submit], select')).filter(function(el){
+                var r=el.getBoundingClientRect();
+                return r.width>0 && r.height>0 && r.height<44;
+              }).length
+            """)
+            check(small == 0, f"{route}: touch targets >= 44 px ({small} too small)")
+        session.cdp.send("Emulation.clearDeviceMetricsOverride", {})
+
     finally:
         if cdp is not None:
             cdp.close()

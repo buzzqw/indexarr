@@ -26,3 +26,6 @@ sim/real/.data/
 
 # Local CI logs
 /ci-logs/
+
+# Python cache
+__pycache__/
