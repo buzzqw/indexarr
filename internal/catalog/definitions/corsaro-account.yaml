@@ -29,7 +29,7 @@ settings:
   - name: cookie
     type: password
     label: "Session cookie"
-    help: "Paste the Cookie request header copied from the browser (the site uses reCAPTCHA)."
+    help: "Log in with a browser, open DevTools → Network, reload a page, select a request to ilcorsaroblu.org and copy its Cookie request header. The site uses reCAPTCHA, so this is the supported login path."
     required: true
   - name: category
     type: text

@@ -146,6 +146,13 @@ func main() {
 	if settings, err := st.LoadSettings(startupCtx); err == nil && settings.LogLevel != "" {
 		levelVar.Set(parseLevel(settings.LogLevel))
 	}
+	if indexers, listErr := st.ListIndexers(startupCtx); listErr == nil {
+		for _, indexer := range indexers {
+			if strings.Contains(indexer.Tags, "__preview") {
+				_ = st.DeleteIndexer(startupCtx, indexer.ID)
+			}
+		}
+	}
 	key, created, err := st.EnsureAPIKey(startupCtx)
 	if err != nil {
 		startupCancel()
