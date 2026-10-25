@@ -513,6 +513,12 @@ func (s *Store) migrate() error {
 			ON releases(hidden, last_seen_at DESC, id DESC)`,
 		`CREATE INDEX IF NOT EXISTS releases_visible_category_published
 			ON releases(hidden, category, published_at DESC, id DESC)`,
+		// A category group plus a minimum seeder count is the common filter
+		// combination. The covering index avoids reading the release row for
+		// the COUNT and for the page ids; SQLite still sorts the category
+		// range by publication date.
+		`CREATE INDEX IF NOT EXISTS releases_visible_category_seeders
+			ON releases(hidden, category, seeders, published_at DESC, id DESC)`,
 		// Superseded by the *_id variants, which also order the id tie-break.
 		`DROP INDEX IF EXISTS releases_visible_published`,
 		`DROP INDEX IF EXISTS releases_visible_seen`,

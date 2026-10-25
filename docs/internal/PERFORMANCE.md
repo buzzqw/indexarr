@@ -619,3 +619,70 @@ fresche del DB, ricerca live disattivata:
 la cache anche dopo la cancellazione della riga, e che alla scadenza torni a
 leggere lo store. I test di provenienza e di paginazione esistenti restano
 verdi.
+
+---
+
+## 12. Indice categoria + seeder (25 ottobre 2026)
+
+Il benchmark `SearchReleases/50k/filters` (sorgente, categoria 2000, seeder
+minimi 25) restava a **65 ms**, il valore più alto fra le query senza testo.
+`EXPLAIN QUERY PLAN` mostrava una scansione dell’indice
+`releases_visible_category_published` con lettura della tabella per il
+predicato `seeders`: il conteggio costava ~47 ms e la pagina ~35 ms.
+
+### 12.1 Modifica
+
+Nuovo indice in `internal/store/store.go`:
+
+```sql
+CREATE INDEX IF NOT EXISTS releases_visible_category_seeders
+  ON releases(hidden, category, seeders, published_at DESC, id DESC);
+```
+
+L’indice è covering per categoria, visibilità e seeder; SQLite continua a
+ordinare il range di categoria, ma non legge più la tabella per il conteggio.
+L’indice occupa **1,24 MB** su 50.000 release. Non è stata cambiata la forma
+delle query né il risultato.
+
+### 12.2 Benchmark store
+
+150 iterazioni, stesso seed.
+
+| Benchmark | Prima | Dopo | Δ |
+|---|---:|---:|---:|
+| `SearchReleases/50k/filters` | 65,0 ms | **17,7 ms** | **−73%** |
+| `SearchReleases/50k/text_filters` | 16,8 ms | 17,4 ms | rumore |
+| `SearchReleases/50k/text_min_size` | 59,0 ms | 57,8 ms | −2% |
+| `SearchReleases/50k/empty` | 3,8 ms | 3,8 ms | ~0 |
+
+Allocazioni per `filters`: 270 KB e 3.154 alloc, invariate.
+
+### 12.3 End-to-end
+
+| Dataset | Scenario | Prima | Dopo |
+|---|---|---|---:|
+| 50k | title p95 | 39,7 ms | **37,9 ms** |
+| 50k | title+cat p95 | 33,2 ms | **32,0 ms** |
+| 50k | stress `1080p` p95 | 60,3 ms | **56,3 ms** |
+| 50k | 20× stress p95 | 350,0 ms | **311,9 ms** |
+| 50k | RSS a riposo | 47,0 MiB | **49,2 MiB** |
+| 10k | RSS a riposo | 45,8 MiB | **46,0 MiB** |
+
+Il picco “dopo il carico” dell’harness è rumoroso (68,7 MiB contro 59,9 MiB);
+dopo 60 secondi di quiete i due processi A/B misurano 69,6 MiB (baseline) e
+70,8 MiB (nuovo), quindi l’indice costa circa **1,1 MiB** stabili, non 9 MiB.
+
+### 12.4 A/B
+
+`tools/firstpage_ab3.py` contro `d7837d9`, due giri a porte scambiate, copie
+fresche del DB, live disattivato:
+
+- **248/248** titoli distinti, **100%** in entrambi i giri;
+- nessuna query con risultati sotto l’85%;
+- 4 query senza risultati restano 0 su entrambi;
+- `total` e pagine invariati.
+
+### 12.5 Test
+
+`TestVisibleCategorySeedersIndexExists` verifica che l’indice sia creato su un
+DB nuovo. I test di ricerca, categoria e seeder esistenti restano verdi.

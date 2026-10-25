@@ -22,6 +22,8 @@
   RSS dopo il carico: da ~112 MiB a ~66 MiB.
 - Cache della provenienza per release (TTL 2 minuti, 1.024 voci): una pagina
   Torznab ripetuta non riesegue il join su `release_sources`.
+- Indice composito `(hidden, category, seeders, published_at, id)` per i filtri
+  categoria + seeder minimi: il conteggio usa un indice covering.
 
 ### Ricerca
 - Ricerca nei nomi dei file dei torrent salvati, con FTS5 trigram.
