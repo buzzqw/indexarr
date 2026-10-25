@@ -399,3 +399,8 @@ definitions:
     state: verificata
     author: indexarr
     note: "Public TorrentKitty search; magnet in the result row, real fixture."
+  - id: torrentproject2
+    file: definitions/torrentproject2.yaml
+    state: verificata
+    author: indexarr
+    note: "Public TorrentProject2 search; magnet decoded from the mylink.cloud detail link, real fixture."

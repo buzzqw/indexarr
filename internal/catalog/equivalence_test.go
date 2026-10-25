@@ -929,3 +929,35 @@ func TestTorrentKittyNativeFixture(t *testing.T) {
 		t.Errorf("magnet = %q", first.Magnet)
 	}
 }
+
+func TestTorrentProject2NativeFixture(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			if got := r.URL.Query().Get("t"); got != "matrix" {
+				t.Errorf("t param = %q", got)
+			}
+			serveFile(t, w, "torrentproject2/search.html")
+			return
+		}
+		serveFile(t, w, "torrentproject2/detail.html")
+	}))
+	t.Cleanup(server.Close)
+
+	connector := nativeConnector(t, "torrentproject2", server.URL)
+	items, err := connector.Search(context.Background(), engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 4 {
+		t.Fatalf("items = %d, want 4", len(items))
+	}
+	first := items[0]
+	if first.Size <= 0 || first.Seeders <= 0 {
+		t.Errorf("size/seeders = %d/%d", first.Size, first.Seeders)
+	}
+	if !strings.HasPrefix(first.Magnet, "magnet:") {
+		t.Errorf("magnet = %q", first.Magnet)
+	}
+}

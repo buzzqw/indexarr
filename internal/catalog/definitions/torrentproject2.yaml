@@ -1,0 +1,63 @@
+# VERIFICATA (verified). TorrentProject2 public search.
+#
+# Written from the public search page captured on 2026-10-25 in
+# fixtures/torrentproject2/search.html (https://torrentproject.cc/?t=matrix)
+# and the public detail fixture detail.html. The result row has title,
+# detail link, health and size; the detail page exposes a mylink.cloud link
+# whose `url` query parameter is the magnet.
+schema: 1
+
+meta:
+  id: torrentproject2
+  name: TorrentProject2
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public DHT search index with size and health in the result row.
+  urls:
+    - https://torrentproject.cc/
+  updated: "2026-10-25"
+  latest: false
+
+capabilities:
+  search: [q]
+
+categories:
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+search:
+  request:
+    get: /
+    params:
+      t: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.tt > div" }
+    fields:
+      title:    { selector: 'a[href^="/t"]', filters: [trim] }
+      details:  { selector: 'a[href^="/t"]', attr: href, type: url }
+      size:     { selector: "span:nth-of-type(5)", type: size }
+      seeders:  { selector: "span:nth-of-type(2)", type: int }
+      leechers: { selector: "span:nth-of-type(3)", type: int }
+    required: [title, details, size]
+
+download:
+  resolve_on: search
+  from: details
+  max_concurrent: 4
+  extract:
+    - magnet: { selector: 'a[href*="mylink.cloud"]', attr: href, filters: [{ query_param: url }] }
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/torrentproject2/search.html
+    expect: { min_rows: 4, required: [title, details, size] }
+  - name: detail
+    fixture: fixtures/torrentproject2/detail.html
+    expect: { min_rows: 0 }

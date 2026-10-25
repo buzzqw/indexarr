@@ -10833,21 +10833,6 @@ sites:
       source_id: torrentnetwork
       checked: "2026-10-25"
       evidence: GET https://tntracker.org/ -> HTTP 200, 17033 bytes, title "TN > {{ptitle|translate}}", checked 2026-10-25; private, no account used
-    - id: jk-torrentproject2
-      name: TorrentProject2
-      description: TorrentProject2 is a Public torrent meta-search engine
-      url: https://torrentproject.cc/
-      urls:
-        - https://torrentproject.cc/
-      type: public
-      language: en-US
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: torrentproject2
-      checked: "2026-10-25"
-      evidence: GET https://torrentproject.cc/ -> HTTP 200, 11284 bytes, title "TorrentProject - Torrent Search Engine", checked 2026-10-25
     - id: jk-torrentsome
       name: Torrentsome
       description: Torrentsome is a KOREAN Public tracker for Korean media.

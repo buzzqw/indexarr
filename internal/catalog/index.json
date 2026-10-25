@@ -14411,27 +14411,6 @@
     "latest": false
   },
   {
-    "id": "jk-torrentproject2",
-    "name": "TorrentProject2",
-    "description": "TorrentProject2 is a Public torrent meta-search engine",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "torrentproject.cc"
-    ],
-    "url": "https://torrentproject.cc/",
-    "source": "jackett",
-    "evidence": "GET https://torrentproject.cc/ -\u003e HTTP 200, 11284 bytes, title \"TorrentProject - Torrent Search Engine\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-torrentsome",
     "name": "Torrentsome",
     "description": "Torrentsome is a KOREAN Public tracker for Korean media.",
@@ -17063,6 +17042,22 @@
       "torrentmac.net"
     ],
     "url": "https://www.torrentmac.net/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "torrentproject2",
+    "name": "TorrentProject2",
+    "description": "Public DHT search index with size and health in the result row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "torrentproject.cc"
+    ],
+    "url": "https://torrentproject.cc/",
     "source": "native",
     "proposable": true,
     "latest": false
