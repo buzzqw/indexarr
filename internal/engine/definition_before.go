@@ -256,6 +256,19 @@ func (c *DefinitionConnector) requestedSeasonEpisode(item Item) (int, int) {
 			}
 		}
 	}
+	// A stored release loses the search attributes and the details URL query.
+	// The title still carries SxxEyy (or "Stagione N" for a pack), so it is the
+	// last fallback for choosing the right magnet inside a multi-episode topic.
+	if season == 0 || episode == 0 {
+		if match := parseReleaseName(item.Title); match.valid {
+			if season == 0 {
+				season = match.season
+			}
+			if episode == 0 {
+				episode = match.episodeStart
+			}
+		}
+	}
 	return season, episode
 }
 
