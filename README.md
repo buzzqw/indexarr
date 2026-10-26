@@ -661,7 +661,7 @@ Struttura dei pacchetti e scelte di progetto: [docs/ARCHITECTURE.md](docs/ARCHIT
 Guida all'uso completa: [docs/USAGE.md](docs/USAGE.md).
 API Torznab: [docs/API.md](docs/API.md); API amministrativa JSON: [docs/ADMIN-API.md](docs/ADMIN-API.md).
 Suite di test e smoke test: [docs/QA.md](docs/QA.md).
-Audit operativo del 23/10/2026: [docs/internal/AUDIT-2026-10-23.md](docs/internal/AUDIT-2026-10-23.md).
+Audit operativo del 23/10/2026: [docs/archive/AUDIT-2026-10-23.md](docs/archive/AUDIT-2026-10-23.md).
 Evoluzione indexarr 2: [indexarr2.md](indexarr2.md).
 
 ## indexarr 2.1

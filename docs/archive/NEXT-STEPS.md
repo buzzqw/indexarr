@@ -6,8 +6,8 @@
 Data: 23 ottobre 2026
 Origine: revisione del codice e della documentazione dopo le ondate 1–8
 (commit `f1ef35b`…`384e541`).
-Collegati: [visione](../indexarr2.md), [piano e contratti](INDEXARR2-PLAN.md),
-[formato definizioni](DEFINITIONS.md), [manifesto](MANIFESTO.md).
+Collegati: [visione](../../indexarr2.md), [piano e contratti](INDEXARR2-PLAN.md),
+[formato definizioni](../DEFINITIONS.md), [manifesto](../MANIFESTO.md).
 
 Questo è il documento operativo da cui partono gli agenti. Ogni work package
 (WP) è autonomo: **perché** serve (con evidenza), **cosa** fare, **dove**,
@@ -179,7 +179,7 @@ codice legacy: inutile riprogettare schermate destinate a sparire.
 | WP11 | FlareSolverr per indexer nativi e stato `blocked` | fatto (globale e per indexer, stato `blocked` in UI; nessuna definizione Cloudflare aggiunta: manca la prova reale) | `f84954d` |
 | WP12 | CI multipiattaforma e budget di risorse | fatto (budget CI: avviso 64 MiB, errore 128 MiB) | `d267576` |
 | WP13 | Parità residua | da fare | |
-| WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](UI-GUIDE.md)) | fase 1, 1b, 1c, 2 e 3 fatte; 4–5 da fare | `c793966` |
+| WP14 | Interfaccia: da pannello tecnico a prodotto semplice ([UI-GUIDE](../UI-GUIDE.md)) | fase 1, 1b, 1c, 2 e 3 fatte; 4–5 da fare | `c793966` |
 | WP-R | Correzioni dalla revisione del checkpoint | fatto (punto 5 annullato) | `b0abb6c` |
 | WP15 | Parametri condizionali nelle definizioni (v1.1) | da fare | |
 | WP16 | Rimozione del percorso legacy | fatto | `4a11fb8` |
@@ -1405,7 +1405,7 @@ Da fare dopo il gruppo C, ognuno come WP separato quando si arriva lì:
 
 ## WP14 — Interfaccia: da pannello tecnico a prodotto semplice
 
-> **Specifica di riferimento: [UI-GUIDE.md](UI-GUIDE.md)** (23/10, dopo il
+> **Specifica di riferimento: [UI-GUIDE.md](../UI-GUIDE.md)** (23/10, dopo il
 > checkpoint `4e429e5`): regole, struttura a 6 voci, pagina per pagina,
 > componenti e fasi 1b–5 allineate a WP16. Questa sezione resta la diagnosi
 > originale; in caso di conflitto vale UI-GUIDE.
@@ -1574,7 +1574,7 @@ func (s *Server) searchSites(w http.ResponseWriter, r *http.Request)
 ### Accettazione (test di usabilità, non solo tecnici)
 
 Cinque compiti, eseguiti da una persona che non ha mai visto indexarr,
-cronometrati e annotati in `docs/UI-USABILITY.md`:
+cronometrati e annotati in `UI-USABILITY.md`:
 
 | Compito | Obiettivo |
 |---|---|
