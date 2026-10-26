@@ -1106,8 +1106,10 @@ pre.yaml {
 .releases-table th:nth-child(4) { width: 5.5rem; }
 .releases-table th:nth-child(5) { width: 11rem; }
 .releases-table th:nth-child(6) { width: 6.5rem; }
+.releases-table th:nth-child(6) { width: 13rem; }
 .releases-table th:nth-child(7) { width: 6.5rem; }
 .releases-table td.release-title { overflow: hidden; }
+.releases-table td.release-actions-cell { overflow: visible; }
 .releases-table .release-title-link,
 .releases-table .release-meta {
   display: block;
@@ -1115,6 +1117,9 @@ pre.yaml {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A long torrent name wraps instead of pushing the download column out of
+   the page: the row grows, the two action buttons stay reachable. */
+.releases-table .release-title-link { white-space: normal; overflow-wrap: anywhere; }
 .releases-table .release-meta { color: var(--muted); font-size: 0.75rem; }
 
 /* WP14 fase 1b — V8: masked secrets with explicit reveal/copy. */
