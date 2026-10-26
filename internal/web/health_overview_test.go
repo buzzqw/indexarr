@@ -254,3 +254,46 @@ func TestAddGuideSearchIsAtTheTopAndFormsGiveFeedback(t *testing.T) {
 		t.Error("the layout does not carry the secret-ready hint")
 	}
 }
+
+func TestIndexerUpdateSavesNewPassword(t *testing.T) {
+	env := newNativeEnv(t)
+	entry, ok := catalog.Get("mircrew")
+	if !ok {
+		t.Fatal("mircrew is not in the catalog")
+	}
+	seedDefinition(t, env.store, "mircrew", "mircrew", string(entry.Body))
+	priority := 25
+	enabled := true
+	created, err := env.server.svc.Create(context.Background(), indexersvc.Input{
+		DefinitionID: "mircrew",
+		Name:         "MirCrew test",
+		Slug:         "mircrew-test",
+		Protocol:     "torrent",
+		Priority:     &priority,
+		Enabled:      &enabled,
+		Settings:     map[string]string{"username": "buzzqw", "password": "old-password"},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	token, cookie := csrfFrom(t, env.handler, "/indexers/"+strconvI(created.ID)+"/edit")
+	edit := get(t, env.handler, "/indexers/"+strconvI(created.ID)+"/edit").Body.String()
+	if !strings.Contains(edit, "data-secret-save") {
+		t.Error("the edit form has no Save button next to the password field")
+	}
+	recorder := postForm(t, env.handler, "/indexers/"+strconvI(created.ID), url.Values{
+		"csrf":                 {token},
+		"definition_id":        {"mircrew"},
+		"name":                 {"MirCrew test"},
+		"setting_username":     {"buzzqw"},
+		"setting_password":     {"new-password"},
+		"setting_flaresolverr": {""},
+	}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("update = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	value, ok := env.server.indexerSecretValue(context.Background(), created.ID, "password")
+	if !ok || value != "new-password" {
+		t.Fatalf("stored password = %q (found %v), want the new value", value, ok)
+	}
+}

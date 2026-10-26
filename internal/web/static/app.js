@@ -166,9 +166,25 @@ if ("serviceWorker" in navigator) {
     if (!input) {
       return;
     }
-    input.value = "";
+    // Never clear a value the user already typed: the stored secret is not in
+    // the field (it is only a placeholder), so clearing can only destroy the
+    // new password.
     input.focus();
     change.hidden = true;
+    const save = field.querySelector("[data-secret-save]");
+    if (save) {
+      save.hidden = false;
+      save.addEventListener("click", () => {
+        if (!input.form) {
+          return;
+        }
+        if (typeof input.form.requestSubmit === "function") {
+          input.form.requestSubmit();
+        } else {
+          input.form.submit();
+        }
+      });
+    }
     field.classList.add("is-changing");
     // Say what to do next: the Change button does not save anything.
     if (!field.querySelector("[data-secret-ready]")) {

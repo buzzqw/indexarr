@@ -186,6 +186,7 @@
       <div class="secret-field" data-secret-change-field>
         <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}">
         {{if .HasSecret}}<button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>{{end}}
+        <button class="btn primary" type="button" data-secret-save hidden>{{T "common.save"}}</button>
       </div>
       {{if .HasSecret}}<label class="check muted"><input type="checkbox" name="clear_{{.Name}}"> <span>{{T "indexerForm.removeSecret"}}</span></label>{{end}}
       {{else if eq .Type "checkbox"}}
@@ -269,6 +270,7 @@
   <div class="secret-field" data-secret-change-field>
     <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}"{{if and .Required (not .HasSecret)}} required{{end}}>
     {{if .HasSecret}}<button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>{{end}}
+    <button class="btn primary" type="button" data-secret-save hidden>{{T "common.save"}}</button>
   </div>
   {{if .HasSecret}}<label class="check muted"><input type="checkbox" name="clear_{{.Name}}"> <span>{{T "indexerForm.removeSecret"}}</span></label>{{end}}
   {{else if eq .Type "checkbox"}}

@@ -16,8 +16,9 @@
   add up and stay highlighted.
 - The catalogue search sits at the top of the guided path, not at the bottom.
 - Every button answers at once: while the form is being sent it shows
-  “Working…”, and “Change” on a password explains that the new value must be
-  typed and then saved, with the field highlighted.
+  “Working…”, and “Change” on a password no longer clears what you already
+  typed; it shows a “Save” button next to the field and explains that the new
+  value must be entered and saved.
 - The catalogue only lists sources that already work: “to write” entries are
   no longer shown.
 - Search results have a “Copy magnet” button next to “Download”.
