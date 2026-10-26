@@ -63,12 +63,12 @@ il quadro reale, non un elenco di intenti:
 
 | Sorgente | Supporto | Come |
 | --- | --- | --- |
-| MirCrew (`mircrew-indexer`) | completo | base o `/api`, magnet in `<link>`/`<enclosure>`, seeder assenti, `/status` |
+| MirCrew | completo | definizione nativa `mircrew` (login, ricerca, magnet al grab con ringraziamento) + sorgente `mircrew-smartfeed` per i topic nuovi |
 | Torznab diretto | completo (torrent) | endpoint completo o base: `/api` viene aggiunto se manca |
 | ExtTo (`extto.org`) | completo (listing HTML) | parser dedicato: titolo e magnet dalla stessa riga, nessuna modifica all'URL |
 | TorrentGalaxy | completo (listing HTML) | parser dedicato delle pagine `post-detail`, con cache dei magnet |
 | Corsaro | completo (listing HTML) | parser dedicato di titoli `/torrent/` e magnet diretti, con cache dei dettagli |
-| Newznab usenet | non supportato | solo torrent: le voci usenet vengono scartate |
+| Newznab / Usenet | completo | ricerca, payload `.nzb` e invio ai client SABnzbd/NZBGet |
 | RSS / Atom | completo | feed normali, enclosure `.torrent` o magnet |
 | Indexer privati con Basic | completo | campi *HTTP username/password* della sorgente |
 | API key in query, header o URL | completo | `apikey` viene inviata come parametro e come `X-Api-Key` |
@@ -664,19 +664,18 @@ Suite di test e smoke test: [docs/QA.md](docs/QA.md).
 Audit operativo del 23/10/2026: [docs/internal/AUDIT-2026-10-23.md](docs/internal/AUDIT-2026-10-23.md).
 Evoluzione indexarr 2: [indexarr2.md](indexarr2.md).
 
-## indexarr 2 (in sviluppo)
+## indexarr 2.1
 
-La prossima generazione dell'indexer (definizioni native, connettori di
-famiglia, vault e catalogo) è in sviluppo nello stesso repository. Il percorso
-legacy resta quello predefinito finché la migrazione non è completa.
+indexarr 2.1 è la versione attuale: definizioni native, connettori di famiglia,
+vault, catalogo dei siti, sincronizzazione delle app, proxy dei download e
+client di download. Jackett e Prowlarr sono sostituiti, non affiancati.
 
-- [Piano di implementazione](docs/internal/INDEXARR2-PLAN.md)
 - [Guida alle definizioni](docs/DEFINITIONS.md) — formato v1, fixture, sicurezza
-- [MirCrew](docs/MIRCREW.md) — ponte Torznab, definizione nativa e sessione FlareSolverr
-- [Architettura indexarr 2](docs/ARCHITECTURE.md#indexarr-2)
-- [Analisi e visione](indexarr2.md)
+- [MirCrew](docs/MIRCREW.md) — definizione nativa, Smartfeed e sessione FlareSolverr
+- [Architettura](docs/ARCHITECTURE.md)
+- [Analisi e visione](indexarr2.md) — documento storico del percorso verso la 2.1
 
-La UI include le pagine **Definizioni** e **Indexer nativi** (form generato dai
+La UI include le pagine **Definizioni** e **Indexer** (form generato dai
 `settings`, test per fase, run manuale). Il sync verso le \*arr si configura da
 `/api/v2/applications`; il proxy serve `.torrent` e `.nzb` senza esporre URL o
 passkey. I client di download supportano qBittorrent, Transmission, Deluge,
@@ -696,13 +695,10 @@ make def-validate   # definizioni di esempio e catalogo, se presente
 
 ## Prossimi passi
 
-Funzioni ancora aperte, in ordine di valore:
-
-- interfaccia multilingua (almeno it/en) con catalogo completo; oggi la UI è in
-  italiano e i messaggi del server sono in inglese;
-- motore di selettori CSS configurabili per siti HTML arbitrari (ExtTo,
-  TorrentGalaxy e Corsaro hanno già parser dedicati);
-- parser dedicati per altri siti non RSS, da aggiungere quando servono.
+- Provare un grab MirCrew reale con ringraziamento.
+- Completare la prova di durata delle sorgenti memorizzate.
+- Ampliare il catalogo nativo e i parser dedicati per i siti che ancora non
+  hanno una via nativa.
 
 ## Limiti
 

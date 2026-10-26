@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.0 (in progress)
+## 2.1.0 — 26 October 2026
 
 ### Indexer management
 - Source page: the Overview tab always shows the address, the
@@ -91,8 +91,9 @@ First release candidate of indexarr 2.
   `INDEXARR_BACKUP_KEEP`.
 
 ### Known limits
-- Native MirCrew and Smartfeed are not verified live (CAPTCHA); they stay
-  experimental.
+- Native MirCrew and Smartfeed are verified live for login and search
+  (Smartfeed: 77 topics). The grab with the thank-you still needs a real
+  download, so the definition stays experimental.
 - Sonarr’s Severance search stays around the measured 10 s: the variants are
   four requests and the first one waits the full window.
 - The stored-source duration test must be completed in production.

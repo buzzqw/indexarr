@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.0 (in corso)
+## 2.1.0 — 26 ottobre 2026
 
 ### Sostituzione di Jackett e Prowlarr
 - Rimossi l'import da Jackett/Prowlarr, la pagina `/import`, le API
@@ -156,8 +156,9 @@ Prima release candidata di indexarr 2.
   `INDEXARR_BACKUP_KEEP`.
 
 ### Limiti noti
-- MirCrew nativo e Smartfeed non sono verificati dal vivo (CAPTCHA); restano
-  marcati sperimentali.
+- MirCrew nativo e Smartfeed sono verificati dal vivo per login e ricerca
+  (Smartfeed: 77 topic). Il grab con ringraziamento va ancora provato con un
+  download reale, quindi la definizione resta sperimentale.
 - La ricerca di Severance con Sonarr resta intorno ai 10 s misurati: le
   varianti sono quattro richieste e la prima attende la finestra piena.
 - La prova di durata delle sorgenti memorizzate va completata in produzione.

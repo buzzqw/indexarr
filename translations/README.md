@@ -12,7 +12,8 @@ I cataloghi effettivi sono incorporati nel binario da `internal/i18n/locales/`:
 | Cinese semplificato | `internal/i18n/locales/zh.json` |
 | Polacco | `internal/i18n/locales/pl.json` |
 
-Ogni file ha le stesse chiavi di `en.json` (794). Per aggiungere una lingua:
+Ogni file ha le stesse chiavi di `en.json`; la parità è verificata da
+`go test ./internal/i18n`. Per aggiungere una lingua:
 
 1. copia `en.json` in `<codice>.json` (es. `pt.json`) e traduci i valori;
 2. aggiungi la costante in `internal/i18n/catalog.go` (`Language`, `supported`,

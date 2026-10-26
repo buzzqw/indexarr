@@ -2,10 +2,16 @@ BINARY  := bin/indexarr
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build test vet fmt run clean qa def-validate e2e ci
+.PHONY: build test vet fmt run clean qa def-validate e2e ci docker
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/indexarr
+
+# Release image with the version baked in. The new rule requires a Docker
+# image at every release so requests and workloads can be tested in a
+# container, not only on the host binary.
+docker:
+	docker build --build-arg VERSION=$(VERSION) -t indexarr:$(VERSION) .
 
 test:
 	go test ./...

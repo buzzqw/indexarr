@@ -1,7 +1,10 @@
 services:
   indexarr:
-    build: .
-    image: indexarr:latest
+    build:
+      context: .
+      args:
+        VERSION: ${INDEXARR_VERSION:-dev}
+    image: indexarr:${INDEXARR_VERSION:-latest}
     container_name: indexarr
     ports:
       - "8484:8484"
