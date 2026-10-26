@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/catalog"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
@@ -295,5 +296,43 @@ func TestIndexerUpdateSavesNewPassword(t *testing.T) {
 	value, ok := env.server.indexerSecretValue(context.Background(), created.ID, "password")
 	if !ok || value != "new-password" {
 		t.Fatalf("stored password = %q (found %v), want the new value", value, ok)
+	}
+}
+
+func TestProblemFilterOffersTestAllProblems(t *testing.T) {
+	env := newNativeEnv(t)
+	seedDefinition(t, env.store, "problem-def", "", `schema: 1
+meta:
+  id: problem-def
+  name: Problem Site
+  type: public
+  protocol: torrent
+  urls: [https://problem.example/]
+search:
+  request:
+    get: /
+  response:
+    type: html
+`)
+	id := seedPhase2Indexer(t, env.store, "problem-def", "problem-site", true, `{}`)
+	ctx := context.Background()
+	if err := env.store.UpsertIndexerState(ctx, store.IndexerState{
+		IndexerID: id, Circuit: "closed", LastError: "HTTP 403: forbidden",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+		IndexerID: id, Kind: "run", Status: "error", Error: "HTTP 403: forbidden",
+		StartedAt: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	problem := get(t, env.handler, "/indexers?state=problem").Body.String()
+	if !strings.Contains(problem, `action="/indexers/test-problems"`) {
+		t.Error("the Problems view has no Test problems button")
+	}
+	all := get(t, env.handler, "/indexers").Body.String()
+	if strings.Contains(all, `action="/indexers/test-problems"`) {
+		t.Error("the Test problems button is shown outside the Problems view")
 	}
 }

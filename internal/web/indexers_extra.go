@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
+	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -35,6 +37,52 @@ func (s *Server) indexersTestAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirect(w, r, "/indexers", s.translate(r, "idx.testAllQueued", count), "")
+}
+
+// indexersTestProblems probes only the sources currently flagged by the health
+// model (problem, degraded or blocked). One click after fixing them checks the
+// real state without re-testing the healthy half of the catalogue.
+func (s *Server) indexersTestProblems(w http.ResponseWriter, r *http.Request) {
+	if s.sched == nil || s.svc == nil {
+		redirect(w, r, "/indexers?state=problem", "", s.translate(r, "indexer.error.serviceUnavailable"))
+		return
+	}
+	indexers, err := s.svc.Indexers(r.Context())
+	if err != nil {
+		redirect(w, r, "/indexers?state=problem", "", err.Error())
+		return
+	}
+	settings, settingsErr := s.store.LoadSettings(r.Context())
+	if settingsErr != nil {
+		settings = store.DefaultSettings()
+	}
+	globalInterval := settings.DefaultInterval()
+	defs := s.definitionCache(r)
+	ids := make([]int64, 0, len(indexers))
+	for _, in := range indexers {
+		if !in.Enabled {
+			continue
+		}
+		view := s.indexerRowView(r, in, defs, globalInterval)
+		switch view.Status.State {
+		case "problem", "degraded", "blocked":
+			ids = append(ids, in.ID)
+		}
+	}
+	if len(ids) == 0 {
+		redirect(w, r, "/indexers?state=problem", s.translate(r, "idx.testProblemsNone"), "")
+		return
+	}
+	count, err := s.sched.TestMany(r.Context(), ids)
+	if err != nil {
+		if errors.Is(err, native.ErrTestAllRunning) {
+			redirect(w, r, "/indexers?state=problem", "", s.translate(r, "idx.testAlreadyRunning"))
+			return
+		}
+		redirect(w, r, "/indexers?state=problem", "", err.Error())
+		return
+	}
+	redirect(w, r, "/indexers?state=problem", s.translate(r, "idx.testProblemsQueued", count), "")
 }
 
 func (s *Server) indexersRunAll(w http.ResponseWriter, r *http.Request) {

@@ -57,6 +57,8 @@
 - In «Aggiungi indexer» tipo e lingua sono elenchi a discesa; i bisogni
   (Film, Libri, …) si sommano e restano evidenziati.
 - La ricerca nel catalogo è in cima al percorso guidato, non più in fondo.
+- Nel filtro **Problemi** c'è **Prova i problemi**: un solo pulsante testa tutte
+  le sorgenti segnalate (problema, degradate, bloccate) e ne aggiorna lo stato.
 - Ogni pulsante dà subito un riscontro: durante l'invio mostra «Attendere…»,
   e «Cambia» su una password non cancella quello che hai già scritto, mostra
   un pulsante «Salva» accanto al campo e spiega che il nuovo valore va
@@ -140,6 +142,9 @@ Prima release candidata di indexarr 2.
 - Percorso guidato «Aggiungi sorgente», schede per uploader e fonti sperimentali.
 - Nella pagina App le tre modalità di collegamento sono schede con margini e
   spaziatura corretti, non più testo appiccicato al bordo del pannello.
+- Documentazione: nuova [guida all'uso](docs/USAGE.md) e
+  [API amministrativa JSON](docs/ADMIN-API.md); l'[API Torznab](docs/API.md)
+  ora elenca anche i percorsi per-indexer e la configurazione dei client.
 - Sette lingue per le parti nuove.
 
 ### Limiti noti

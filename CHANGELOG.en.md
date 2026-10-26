@@ -15,6 +15,8 @@
 - In “Add indexer”, type and language are dropdowns; needs (Films, Books, …)
   add up and stay highlighted.
 - The catalogue search sits at the top of the guided path, not at the bottom.
+- The **Problems** filter has **Test problems**: one button tests every flagged
+  source (problem, degraded, blocked) and refreshes their state.
 - Every button answers at once: while the form is being sent it shows
   “Working…”, and “Change” on a password no longer clears what you already
   typed; it shows a “Save” button next to the field and explains that the new
@@ -75,6 +77,9 @@ First release candidate of indexarr 2.
 - Guided “Add source” flow, uploader and experimental-source cards.
 - On the App page the three ways to connect are real cards with correct
   margins and spacing, no longer text stuck to the panel edge.
+- Documentation: a new [usage guide](docs/USAGE.md) and
+  [JSON admin API](docs/ADMIN-API.md); the [Torznab API](docs/API.md) now lists
+  the per-indexer paths and how to configure each client.
 - Seven languages for the new parts.
 
 ### Known limits

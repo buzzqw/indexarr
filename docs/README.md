@@ -1,7 +1,9 @@
 # Documentazione
 
 - [README](../README.md) — presentazione, avvio rapido, configurazione, uso.
+- [Guida all'uso](USAGE.md) — dal primo avvio alle app, con i problemi frequenti.
 - [API Torznab](API.md) — endpoint, parametri, risposte, download, errori.
+- [API amministrativa JSON](ADMIN-API.md) — definizioni, indexer, proxy, applicazioni.
 - [Architettura](ARCHITECTURE.md) — pacchetti, flusso, database, scelte di progetto.
 - [Vault](VAULT.md) — chiave maestra, ordine di risoluzione, comandi CLI, backup e Docker secrets.
 - [Definizioni](DEFINITIONS.md) — formato nativo v1, sicurezza, fixture e CLI `indexarr-def`.

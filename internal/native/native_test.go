@@ -622,3 +622,52 @@ func TestSeederRefreshSkipsLocalOnlyAndLiveExcluded(t *testing.T) {
 		t.Fatalf("skipped rows were not marked checked: %+v", candidates)
 	}
 }
+
+func TestTestManyProbesOnlyTheGivenIndexers(t *testing.T) {
+	st := newTestStore(t)
+	manager := newTestManager(t, st)
+	runner, err := New(Config{Store: st, Manager: manager, Logger: discardLogger(), Interval: time.Hour, Workers: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := newNativeServer(t, 0, nil)
+	first := seedNative(t, st, "many-first", "many-first", "Many First", server.URL, true)
+	second := seedNative(t, st, "many-second", "many-second", "Many Second", server.URL, true)
+
+	count, err := runner.TestMany(context.Background(), []int64{first})
+	if err != nil {
+		t.Fatalf("TestMany: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("count = %d, want 1", count)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for runner.testingAll.Load() && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if runner.testingAll.Load() {
+		t.Fatal("TestMany did not finish in time")
+	}
+	ctx := context.Background()
+	firstHistory, err := st.ListIndexerHistory(ctx, first, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundTest := false
+	for _, row := range firstHistory {
+		if row.Kind == "test" {
+			foundTest = true
+			break
+		}
+	}
+	if !foundTest {
+		t.Error("the selected indexer was not tested")
+	}
+	secondHistory, err := st.ListIndexerHistory(ctx, second, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(secondHistory) != 0 {
+		t.Errorf("the second indexer was tested too: %+v", secondHistory)
+	}
+}

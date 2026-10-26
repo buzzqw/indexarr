@@ -9,8 +9,18 @@ al momento del download.
 
 Questo documento descrive le due strade disponibili in indexarr:
 
-1. il **ponte** con il servizio Python `mircrew-indexer` (pronto, verificato);
-2. la **definizione nativa `mircrew`** (bozza finché non viene provata dal vivo).
+1. il **ponte** con il servizio Python `mircrew-indexer` (legacy, disabilitato
+   in produzione dal 26/10/2026);
+2. la **definizione nativa `mircrew`** e la sorgente **`mircrew-smartfeed`**
+   (la via attuale).
+
+> **Aggiornamento 26/10/2026.** La via principale è ora la definizione nativa:
+> login e ricerca sono stati provati dal vivo (test delle 12:08, esito ok), la
+> scheda dice «Funziona bene» e il download usa `download.before` per il
+> ringraziamento. La sorgente **MirCrew (Smartfeed)** elenca i topic nuovi ed è
+> abbinata all'indexer MirCrew. Il vecchio `mircrew-indexer` non serve più:
+> è stato fermato e disabilitato dall'avvio automatico; le sezioni che lo
+> riguardano restano come riferimento storico.
 
 La regola non cambia in nessuna delle due: **una ricerca non ringrazia mai**.
 Il ringraziamento è un'azione visibile sul forum, fatta con l'account del
@@ -19,7 +29,7 @@ download.
 
 ---
 
-## 1. Ponte Torznab (soluzione immediata)
+## 1. Ponte Torznab (legacy)
 
 Il servizio `/home/andres/mircrew-indexer` espone un'API Torznab su
 `http://127.0.0.1:9118/api`. indexarr lo aggiunge come **indexer Torznab
@@ -51,9 +61,10 @@ Il test dell'indexer è verde (`reach`, `caps`, `search`) e `tvsearch`
 la radice del servizio risponde con la web UI e il test fallisce con «invalid
 caps XML».
 
-Il ponte è la strada da usare finché la definizione nativa è `bozza`. Non va
-fermato né modificato: il servizio gestisce da solo sessione FlareSolverr,
-login, smartfeed, catalogo e la scelta del magnet per stagione/episodio.
+Il ponte era la strada usata finché la definizione nativa era `bozza`. Ora è
+**legacy**: il servizio è fermo e disabilitato, e la definizione nativa più la
+sorgente Smartfeed coprono ricerca, novità e download con ringraziamento. Le
+note seguenti restano per chi deve riattivarlo o confrontare i due percorsi.
 
 ### Compatibilità Sonarr: `pubDate` mancante
 

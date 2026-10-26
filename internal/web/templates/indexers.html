@@ -24,6 +24,12 @@
       <a class="tab{{if eq .State "problem"}} active{{end}}" href="/indexers?state=problem{{if .Query}}&amp;q={{.Query}}{{end}}">{{T "idx.filterProblems"}} <span class="chip">{{.Problems}}</span></a>
       <a class="tab{{if eq .State "disabled"}} active{{end}}" href="/indexers?state=disabled{{if .Query}}&amp;q={{.Query}}{{end}}">{{T "idx.filterDisabled"}} <span class="chip">{{.Disabled}}</span></a>
     </nav>
+    {{if and (eq .State "problem") (gt .Problems 0)}}
+    <form class="toolbar-action" method="post" action="/indexers/test-problems">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn small" type="submit" title="{{T "idx.testProblemsTip"}}">{{T "idx.testProblems"}}</button>
+    </form>
+    {{end}}
   </div>
 
   <form id="indexer-bulk" method="post" action="/indexers/bulk" class="bulk-form">

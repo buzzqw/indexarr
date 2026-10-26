@@ -1,13 +1,29 @@
 # API Torznab di indexarr
 
-indexarr espone un server Torznab (newznab-compatible) sul percorso `/api`. Lo
-stesso handler risponde su `/torznab/api`, quindi entrambi gli URL funzionano.
+indexarr espone un server Torznab (newznab-compatible). Lo stesso handler
+risponde su più percorsi, così i client che aggiungono `/api` e quelli che
+usano l'URL completo funzionano entrambi.
+
+| Percorso | Significato |
+| --- | --- |
+| `/api` | aggregato (tutti gli indexer) — endpoint consigliato ai client manuali |
+| `/torznab/api` | alias dell'aggregato |
+| `/newznab/api` | alias dell'aggregato |
+| `/api/v2.0/indexers/all/results/torznab/api` | alias compatibile Jackett (aggregato) |
+| `/torznab/{slug}` | base per-indexer: il client aggiunge `/api` |
+| `/torznab/{slug}/api` | endpoint per-indexer completo |
+| `/api/v2.0/indexers/{slug}/results/torznab/api` | alias compatibile Jackett per-indexer |
 
 - Base: `http://<host>:8484`
-- Endpoint di ricerca: `http://<host>:8484/api`
-- Alias: `http://<host>:8484/torznab/api`
+- Endpoint di ricerca aggregato: `http://<host>:8484/api`
 - Autenticazione: parametro `apikey` oppure header `X-Api-Key`
 - Risposta: XML `rss` con namespace `torznab` e `newznab`
+- API amministrativa JSON: vedi [ADMIN-API.md](ADMIN-API.md)
+
+`{slug}` è lo slug della sorgente (per esempio `mircrew` o
+`mircrew-smartfeed`), visibile nella scheda della sorgente. L'endpoint
+per-indexer interroga solo quella sorgente; l'aggregato applica la ricerca live
+a tutte quelle abilitate.
 
 La chiave primaria si trova in **Settings → Torznab API** e può essere rigenerata
 (tutti i client che la usano vanno aggiornati). In **Additional API keys** si
@@ -148,6 +164,30 @@ richiesta. Dietro un reverse proxy imposta `public_url` (per esempio
 
 Se per la release esiste solo il magnet la risposta è `404` con una descrizione XML:
 il client deve usare il link magnet ricevuto nella ricerca.
+
+## Configurare i client
+
+| Client | URL da inserire | Note |
+| --- | --- | --- |
+| Sonarr/Radarr creati da indexarr | `http://<host>:8484/torznab/<slug>` | l'app aggiunge `/api` |
+| Sonarr/Radarr manuale (Torznab) | `http://<host>:8484/torznab/<slug>` | stesso comportamento |
+| gextto (sorgente indexarr) | `http://<host>:8484` | gextto aggiunge `/api` |
+| gextto (Altro/Torznab) | `http://<host>:8484/api` | endpoint completo |
+| curl / script | `http://<host>:8484/api` | aggiungi `?apikey=…` o `X-Api-Key` |
+| dashboard Prowlarr-compatibile | `http://<host>:8484/api/v1/indexer` | sola lettura |
+
+Esempi per-indexer:
+
+```bash
+# capacità del solo MirCrew
+curl 'http://localhost:8484/torznab/mircrew/api?t=caps'
+
+# ricerca TV solo su MirCrew
+curl 'http://localhost:8484/torznab/mircrew/api?t=tvsearch&q=Reacher&season=3&ep=1&apikey=KEY'
+
+# stesso indexer con il percorso compatibile Jackett
+curl 'http://localhost:8484/api/v2.0/indexers/mircrew/results/torznab/api?t=caps'
+```
 
 ## Errori
 

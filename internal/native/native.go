@@ -474,7 +474,44 @@ func (r *Runner) TestAll(ctx context.Context) (int, error) {
 			enabled = append(enabled, indexerRow)
 		}
 	}
-	if len(enabled) == 0 {
+	return r.startTests(ctx, enabled)
+}
+
+// TestMany probes only the given indexers. The overview uses it for the
+// "test all problems" button: the operator fixes a few sources and checks
+// exactly those, without touching healthy sites.
+func (r *Runner) TestMany(ctx context.Context, ids []int64) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	if !r.testingAll.CompareAndSwap(false, true) {
+		return 0, ErrTestAllRunning
+	}
+	indexers, err := r.store.ListIndexers(ctx)
+	if err != nil {
+		r.testingAll.Store(false)
+		return 0, err
+	}
+	wanted := make(map[int64]struct{}, len(ids))
+	for _, id := range ids {
+		wanted[id] = struct{}{}
+	}
+	selected := make([]store.Indexer, 0, len(ids))
+	for _, indexerRow := range indexers {
+		if !indexerRow.Enabled {
+			continue
+		}
+		if _, ok := wanted[indexerRow.ID]; ok {
+			selected = append(selected, indexerRow)
+		}
+	}
+	return r.startTests(ctx, selected)
+}
+
+// startTests starts the background probes and reports how many were queued.
+// The caller must have set testingAll.
+func (r *Runner) startTests(ctx context.Context, rows []store.Indexer) (int, error) {
+	if len(rows) == 0 {
 		r.testingAll.Store(false)
 		return 0, nil
 	}
@@ -482,10 +519,10 @@ func (r *Runner) TestAll(ctx context.Context) (int, error) {
 	go func() {
 		defer r.testingAll.Store(false)
 		defer cancel()
-		r.logger.Info("native: testing indexers", "count", len(enabled))
+		r.logger.Info("native: testing indexers", "count", len(rows))
 		sem := make(chan struct{}, 3)
 		var wg sync.WaitGroup
-		for _, indexerRow := range enabled {
+		for _, indexerRow := range rows {
 			wg.Add(1)
 			sem <- struct{}{}
 			go func(indexerRow store.Indexer) {
@@ -500,9 +537,9 @@ func (r *Runner) TestAll(ctx context.Context) (int, error) {
 			}(indexerRow)
 		}
 		wg.Wait()
-		r.logger.Info("native: test pass finished", "count", len(enabled))
+		r.logger.Info("native: test pass finished", "count", len(rows))
 	}()
-	return len(enabled), nil
+	return len(rows), nil
 }
 
 // RunIndexer runs one indexer, or explains why it was skipped. Unknown ids
