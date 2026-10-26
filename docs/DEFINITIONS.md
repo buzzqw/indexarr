@@ -8,7 +8,7 @@ una definizione.
 Questo documento descrive il formato `schema: 1` accettato da
 `internal/definition`, il connettore `internal/engine` che lo esegue e il CLI
 `indexarr-def`. Per il contesto e le scelte di prodotto:
-[`indexarr2.md`](../indexarr2.md) §6 e [`INDEXARR2-PLAN.md`](internal/INDEXARR2-PLAN.md).
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
 Accanto alle definizioni complete il catalogo ha uno strato di **voci leggere**
 generate da un'istantanea storica dei metadati pubblici (nome, URL, tipo,
@@ -819,7 +819,7 @@ impostazioni che l'utente compila e che il vault cifra.
   di download possono contenere una passkey e non escono dalle API.
 - **Nessuna passkey, cookie o credenziale nelle fixture.** Le fixture sono
   sintetiche e vengono conservate insieme alla definizione.
-- **Clean-room (§6.6 di `indexarr2.md`).** Le definizioni si scrivono osservando
+- **Clean-room.** Le definizioni si scrivono osservando
   il sito (pagine, risposte, documentazione delle API), non copiando file o
   codice di Jackett o Prowlarr. Ogni definizione registra autore, data e le
   fixture da cui è stata scritta; il catalogo è interamente nostro e

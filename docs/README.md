@@ -14,9 +14,4 @@
 - [Prestazioni](internal/PERFORMANCE.md) — benchmark, memoria, latenza e ottimizzazioni.
 - [Compatibilità](COMPATIBILITY.md) — MirCrew, Torznab, RSS e fonti native; Jackett/Prowlarr sono sostituiti.
 - [QA e test](QA.md) — suite `go test`, smoke test end-to-end e checklist mobile.
-- [Documento programmatico](MANIFESTO.md) — ovunque, semplice, leggero: promesse e numeri
 - [Sostituzione di Jackett e Prowlarr](MIGRATION-MANAGERS.md) — nessun import, catalogo nativo, coda e controlli.
-- [indexarr 2](../indexarr2.md) — visione e architettura del nuovo indexer
-  autonomo che sostituisce Jackett/Prowlarr.
-- [Archivio](archive/README.md) — piani, audit e revisioni delle fasi precedenti,
-  conservati come storia ma non più aggiornati.
