@@ -63,6 +63,7 @@
   <div class="panel-body">
     <p class="help">{{T "idx.health.help"}}</p>
     <p class="health-verdict" role="status">{{.Verdict.Text}}</p>
+    {{if .RetryPaused}}<p class="flash warn" role="alert">{{T "idx.retry.paused" .RetryFailures}}</p>{{end}}
     {{if .ProblemDetail}}
     <div class="field">
       <span class="health-error-label">{{T "idx.health.errorTitle"}}{{if .HasProblemAt}} <span class="muted">({{ago .ProblemAt}})</span>{{end}}</span>
@@ -184,6 +185,10 @@
     <dd>{{if .LastRun}}{{date .LastRun.StartedAt}} <span class="muted">({{ago .LastRun.StartedAt}})</span>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</dd>
     <dt>{{T "idx.detail.nextUpdate"}}</dt>
     <dd>{{if .HasNext}}{{until .NextUpdate}}{{else}}<span class="muted">—</span>{{end}}</dd>
+    {{if .HasRetryNext}}<dt>{{T "idx.retry.title"}}</dt>
+    <dd>{{until .RetryNext}} <span class="muted">({{T "idx.retry.attempt" .RetryFailures}})</span></dd>{{end}}
+    {{if .RetryPaused}}<dt>{{T "idx.retry.title"}}</dt>
+    <dd><span class="chip warn">{{T "idx.retry.pausedShort"}}</span></dd>{{end}}
     <dt>{{T "idx.detail.frequency"}}</dt>
     <dd>{{.FrequencyLabel}} <span class="muted">({{.FrequencySource}})</span> <a href="/indexers/{{.Indexer.ID}}/edit" title="{{T "idx.detail.frequencyEditTip"}}">{{T "common.edit"}}</a></dd>
     <dt>{{T "idx.detail.queries"}}</dt>

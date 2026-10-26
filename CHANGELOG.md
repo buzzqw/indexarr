@@ -59,6 +59,9 @@
 - La ricerca nel catalogo è in cima al percorso guidato, non più in fondo.
 - Nel filtro **Problemi** c'è **Prova i problemi**: un solo pulsante testa tutte
   le sorgenti segnalate (problema, degradate, bloccate) e ne aggiorna lo stato.
+- Una sorgente che fallisce viene ritentata dopo **1, 2, 3, 6, 12, 24, 48 e 96
+  ore**; dopo l'ultimo tentativo il scheduler si ferma e aspetta l'utente. Una
+  prova riuscita o una modifica azzerano la scala.
 - Ogni pulsante dà subito un riscontro: durante l'invio mostra «Attendere…»,
   e «Cambia» su una password non cancella quello che hai già scritto, mostra
   un pulsante «Salva» accanto al campo e spiega che il nuovo valore va

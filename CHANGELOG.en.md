@@ -17,6 +17,9 @@
 - The catalogue search sits at the top of the guided path, not at the bottom.
 - The **Problems** filter has **Test problems**: one button tests every flagged
   source (problem, degraded, blocked) and refreshes their state.
+- A failing source is retried after **1, 2, 3, 6, 12, 24, 48 and 96 hours**;
+  after the last attempt the scheduler stops and waits for the operator. A
+  successful test or an edit resets the schedule.
 - Every button answers at once: while the form is being sent it shows
   “Working…”, and “Change” on a password no longer clears what you already
   typed; it shows a “Save” button next to the field and explains that the new

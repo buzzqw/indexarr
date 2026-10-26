@@ -233,10 +233,10 @@ func (r *Runner) runDuePass(ctx context.Context) {
 		r.logger.Warn("native: load settings, using the default interval", "error", err)
 		settings = store.DefaultSettings()
 	}
-	lastRuns, err := r.store.LastRunTimes(ctx)
+	lastRuns, err := r.store.RunRetryStates(ctx)
 	if err != nil {
-		r.logger.Warn("native: load last run times", "error", err)
-		lastRuns = map[int64]time.Time{}
+		r.logger.Warn("native: load retry states", "error", err)
+		lastRuns = map[int64]store.RunRetryState{}
 	}
 	candidates := dueIndexers(indexers, lastRuns, settings.DefaultInterval(), time.Now())
 	outcomes := r.runCandidates(ctx, sortCandidates(candidates))
@@ -266,10 +266,35 @@ func (r *Runner) latestIndexers(ctx context.Context, indexers []store.Indexer) [
 	return out
 }
 
+// retryDelays is the escalating schedule for a source that keeps failing.
+// After the 96 hour step is used and the run fails again, the scheduler stops
+// retrying: the source waits for the operator to fix it and press Test.
+var retryDelays = []time.Duration{
+	time.Hour, 2 * time.Hour, 3 * time.Hour, 6 * time.Hour,
+	12 * time.Hour, 24 * time.Hour, 48 * time.Hour, 96 * time.Hour,
+}
+
+// RetryDelay returns the wait before the next attempt after the given number
+// of consecutive failures. The boolean is false when the schedule is over.
+func RetryDelay(failures int) (time.Duration, bool) {
+	if failures <= 0 || failures > len(retryDelays) {
+		return 0, false
+	}
+	return retryDelays[failures-1], true
+}
+
+// RetryExhausted reports whether the 96 hour step already failed, so the
+// scheduler waits for the operator instead of retrying again.
+func RetryExhausted(failures int) bool {
+	return failures > len(retryDelays)
+}
+
 // dueIndexers filters the enabled indexers whose next run is due. A positive
-// IntervalSeconds overrides the global interval; zero uses the global one. It
-// never changes the global cadence for the other indexers.
-func dueIndexers(indexers []store.Indexer, lastRuns map[int64]time.Time, global time.Duration, now time.Time) []store.Indexer {
+// IntervalSeconds overrides the global interval; zero uses the global one. A
+// source with consecutive failed runs follows retryDelays instead of its
+// normal cadence; after the last step it is left alone until an edit or a
+// successful test resets the streak.
+func dueIndexers(indexers []store.Indexer, states map[int64]store.RunRetryState, global time.Duration, now time.Time) []store.Indexer {
 	if global < minInterval {
 		global = minInterval
 	}
@@ -285,14 +310,28 @@ func dueIndexers(indexers []store.Indexer, lastRuns map[int64]time.Time, global 
 				interval = minInterval
 			}
 		}
+		state := states[indexerRow.ID]
+		failures := state.Failures
+		// An edit after the last failure is the operator saying "I fixed it":
+		// resume the normal interval instead of the frozen backoff.
+		if failures > 0 && indexerRow.UpdatedAt.After(state.LastRun) {
+			failures = 0
+		}
+		if failures > len(retryDelays) {
+			// The 96 hour step already failed: wait for the user. Manual
+			// RunOnce/RunAll still work, and Test resets the streak.
+			continue
+		}
 		due := interval
-		if storedSourceConfig(indexerRow.ConfigJSON) {
+		if failures > 0 {
+			due = retryDelays[failures-1]
+		}
+		if storedSourceConfig(indexerRow.ConfigJSON) && failures == 0 {
 			// Stored sources get a small deterministic stagger so several
-			// sites never fire at the same minute; the interval itself is set
-			// to 30-60 minutes when the switch is enabled.
+			// sites never fire at the same minute; a retry is not staggered.
 			due += time.Duration(storedJitter(indexerRow.ID)) * time.Second
 		}
-		if last, ok := lastRuns[indexerRow.ID]; ok && now.Before(last.Add(due)) {
+		if last := state.LastRun; !last.IsZero() && now.Before(last.Add(due)) {
 			continue
 		}
 		out = append(out, indexerRow)

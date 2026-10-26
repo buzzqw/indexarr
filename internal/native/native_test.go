@@ -430,13 +430,13 @@ func TestDueIndexersHonoursPerIndexerInterval(t *testing.T) {
 		{ID: 3, Enabled: true, IntervalSeconds: 900}, // 15m, last run 5m ago -> not due
 		{ID: 4, Enabled: false, IntervalSeconds: 0},  // disabled
 	}
-	lastRuns := map[int64]time.Time{
-		1: now.Add(-30 * time.Minute),
-		2: now.Add(-20 * time.Minute),
-		3: now.Add(-5 * time.Minute),
-		4: now.Add(-24 * time.Hour),
+	states := map[int64]store.RunRetryState{
+		1: {LastRun: now.Add(-30 * time.Minute)},
+		2: {LastRun: now.Add(-20 * time.Minute)},
+		3: {LastRun: now.Add(-5 * time.Minute)},
+		4: {LastRun: now.Add(-24 * time.Hour)},
 	}
-	due := dueIndexers(indexers, lastRuns, time.Hour, now)
+	due := dueIndexers(indexers, states, time.Hour, now)
 	if len(due) != 1 || due[0].ID != 2 {
 		t.Fatalf("due = %+v, want only indexer 2", due)
 	}
@@ -448,18 +448,18 @@ func TestDueIndexersNeverShortensTheGlobalInterval(t *testing.T) {
 		{ID: 1, Enabled: true},                            // global
 		{ID: 2, Enabled: true, IntervalSeconds: 6 * 3600}, // longer than global
 	}
-	lastRuns := map[int64]time.Time{
-		1: now.Add(-59 * time.Minute),
-		2: now.Add(-2 * time.Hour),
+	states := map[int64]store.RunRetryState{
+		1: {LastRun: now.Add(-59 * time.Minute)},
+		2: {LastRun: now.Add(-2 * time.Hour)},
 	}
-	due := dueIndexers(indexers, lastRuns, time.Hour, now)
+	due := dueIndexers(indexers, states, time.Hour, now)
 	if len(due) != 0 {
 		t.Fatalf("due = %+v, want no indexer before its interval", due)
 	}
 
 	// At the global boundary the global indexer becomes due; the long one
 	// still waits for its own six hours.
-	due = dueIndexers(indexers, lastRuns, time.Hour, now.Add(time.Minute))
+	due = dueIndexers(indexers, states, time.Hour, now.Add(time.Minute))
 	if len(due) != 1 || due[0].ID != 1 {
 		t.Fatalf("due at the boundary = %+v, want only indexer 1", due)
 	}
@@ -467,7 +467,7 @@ func TestDueIndexersNeverShortensTheGlobalInterval(t *testing.T) {
 
 func TestDueIndexersRunsIndexerWithoutHistory(t *testing.T) {
 	now := time.Now()
-	due := dueIndexers([]store.Indexer{{ID: 9, Enabled: true}}, map[int64]time.Time{}, time.Hour, now)
+	due := dueIndexers([]store.Indexer{{ID: 9, Enabled: true}}, map[int64]store.RunRetryState{}, time.Hour, now)
 	if len(due) != 1 || due[0].ID != 9 {
 		t.Fatalf("due = %+v, want the never-run indexer", due)
 	}
@@ -669,5 +669,49 @@ func TestTestManyProbesOnlyTheGivenIndexers(t *testing.T) {
 	}
 	if len(secondHistory) != 0 {
 		t.Errorf("the second indexer was tested too: %+v", secondHistory)
+	}
+}
+
+func TestDueIndexersFollowsTheRetrySchedule(t *testing.T) {
+	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+	indexerRow := store.Indexer{ID: 1, Enabled: true}
+	for _, tc := range []struct {
+		failures int
+		wait     time.Duration
+		due      bool
+	}{
+		{1, time.Hour, true},
+		{2, 119 * time.Minute, false},
+		{7, 47*time.Hour + 59*time.Minute, false},
+		{8, 96 * time.Hour, true},
+	} {
+		state := map[int64]store.RunRetryState{
+			1: {LastRun: now.Add(-tc.wait), Failures: tc.failures},
+		}
+		due := dueIndexers([]store.Indexer{indexerRow}, state, time.Hour, now)
+		if tc.due && len(due) != 1 {
+			t.Errorf("failures=%d: not due at %s", tc.failures, tc.wait)
+		}
+		if !tc.due && len(due) != 0 {
+			t.Errorf("failures=%d: due before %s", tc.failures, tc.wait)
+		}
+	}
+
+	// Nine failures mean the 96 hour step already failed: no more retries.
+	paused := map[int64]store.RunRetryState{
+		1: {LastRun: now.Add(-30 * 24 * time.Hour), Failures: 9},
+	}
+	if due := dueIndexers([]store.Indexer{indexerRow}, paused, time.Hour, now); len(due) != 0 {
+		t.Fatalf("paused source is due: %+v", due)
+	}
+
+	// An edit after the failure resumes the normal interval.
+	edited := indexerRow
+	edited.UpdatedAt = now.Add(-time.Hour)
+	state := map[int64]store.RunRetryState{
+		1: {LastRun: now.Add(-2 * time.Hour), Failures: 9},
+	}
+	if due := dueIndexers([]store.Indexer{edited}, state, time.Hour, now); len(due) != 1 {
+		t.Fatalf("edited source is not due: %+v", due)
 	}
 }

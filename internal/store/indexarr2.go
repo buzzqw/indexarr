@@ -654,6 +654,89 @@ func (s *Store) CountIndexerHistory(ctx context.Context, indexerID int64, kinds 
 	return count, nil
 }
 
+// RunRetryState is the scheduling picture of one indexer: when it last ran,
+// the current streak of failed runs, and the newest success of any check.
+type RunRetryState struct {
+	LastRun     time.Time
+	LastSuccess time.Time
+	Failures    int
+}
+
+// RunRetryStates returns the retry picture for every indexer. The scheduler
+// uses it to space failed runs at 1, 2, 3, 6, 12, 24, 48 and 96 hours and to
+// stop retrying after the last step.
+func (s *Store) RunRetryStates(ctx context.Context) (map[int64]RunRetryState, error) {
+	out := map[int64]RunRetryState{}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT indexer_id, status, started_at FROM (
+			SELECT indexer_id, status, started_at,
+				ROW_NUMBER() OVER (PARTITION BY indexer_id ORDER BY started_at DESC, id DESC) AS rn
+			FROM indexer_history
+			WHERE kind = 'run' AND indexer_id IS NOT NULL
+		) WHERE rn <= 9
+		ORDER BY indexer_id, started_at DESC, rn`)
+	if err != nil {
+		return nil, fmt.Errorf("run retry states: %w", err)
+	}
+	defer rows.Close()
+	counting := map[int64]bool{}
+	for rows.Next() {
+		var id, started int64
+		var status string
+		if err := rows.Scan(&id, &status, &started); err != nil {
+			return nil, err
+		}
+		state := out[id]
+		if state.LastRun.IsZero() {
+			state.LastRun = unixTime(started)
+			counting[id] = true
+		}
+		if counting[id] {
+			if strings.EqualFold(strings.TrimSpace(status), "error") {
+				if state.Failures < 9 {
+					state.Failures++
+				}
+			} else {
+				counting[id] = false
+			}
+		}
+		out[id] = state
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	successRows, err := s.db.QueryContext(ctx, `
+		SELECT indexer_id, MAX(started_at)
+		FROM indexer_history
+		WHERE indexer_id IS NOT NULL AND status = 'ok'
+			AND kind IN ('run', 'search', 'latest', 'health', 'test')
+		GROUP BY indexer_id`)
+	if err != nil {
+		return nil, fmt.Errorf("run retry successes: %w", err)
+	}
+	defer successRows.Close()
+	for successRows.Next() {
+		var id, started int64
+		if err := successRows.Scan(&id, &started); err != nil {
+			return nil, err
+		}
+		state := out[id]
+		state.LastSuccess = unixTime(started)
+		out[id] = state
+	}
+	if err := successRows.Err(); err != nil {
+		return nil, err
+	}
+	for id, state := range out {
+		if state.LastSuccess.After(state.LastRun) {
+			state.Failures = 0
+			out[id] = state
+		}
+	}
+	return out, nil
+}
+
 // LastRunTimes returns the most recent successful or failed scheduled run per
 // indexer. The scheduler uses it to honour per-indexer intervals without an
 // N+1 query per row.

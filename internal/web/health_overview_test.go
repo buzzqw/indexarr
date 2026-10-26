@@ -336,3 +336,37 @@ search:
 		t.Error("the Test problems button is shown outside the Problems view")
 	}
 }
+
+func TestIndexerDetailShowsPausedRetry(t *testing.T) {
+	env := newNativeEnv(t)
+	seedDefinition(t, env.store, "retry-def", "", `schema: 1
+meta:
+  id: retry-def
+  name: Retry Site
+  type: public
+  protocol: torrent
+  urls: [https://retry.example/]
+search:
+  request:
+    get: /
+  response:
+    type: html
+`)
+	id := seedPhase2Indexer(t, env.store, "retry-def", "retry-site", true, `{}`)
+	ctx := context.Background()
+	base := time.Now().Add(time.Minute)
+	for i := 0; i < 9; i++ {
+		if _, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+			IndexerID: id, Kind: "run", Status: "error", Error: "still broken",
+			StartedAt: base.Add(time.Duration(i) * time.Hour),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	body := get(t, env.handler, "/indexers/"+strconvI(id)).Body.String()
+	for _, want := range []string{"Automatic retry", "paused: fix it and press Test", "Automatic retry stopped after 9 failed attempts"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("detail page missing %q", want)
+		}
+	}
+}

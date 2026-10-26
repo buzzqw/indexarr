@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 func TestIndexerIntervalRoundTrip(t *testing.T) {
@@ -70,5 +71,50 @@ func TestLastRunTimes(t *testing.T) {
 	}
 	if _, ok := runs[id]; !ok {
 		t.Fatal("LastRunTimes did not return the run row")
+	}
+}
+
+func TestRunRetryStatesCountsFailuresAndResetsOnSuccess(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	if err := st.UpsertDefinition(ctx, testDefinition("retry-site")); err != nil {
+		t.Fatalf("UpsertDefinition: %v", err)
+	}
+	id, err := st.CreateIndexer(ctx, Indexer{
+		DefinitionID: "retry-site", Slug: "retry-site", Name: "Retry", Enabled: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateIndexer: %v", err)
+	}
+	base := time.Now().Add(-4 * time.Hour)
+	for i := 0; i < 3; i++ {
+		if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+			IndexerID: id, Kind: "run", Status: "error",
+			StartedAt: base.Add(time.Duration(i) * time.Hour),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	states, err := st.RunRetryStates(ctx)
+	if err != nil {
+		t.Fatalf("RunRetryStates: %v", err)
+	}
+	if got := states[id].Failures; got != 3 {
+		t.Fatalf("failures = %d, want 3", got)
+	}
+
+	// A successful test after the last failed run resets the streak.
+	if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+		IndexerID: id, Kind: "test", Status: "ok",
+		StartedAt: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	states, err = st.RunRetryStates(ctx)
+	if err != nil {
+		t.Fatalf("RunRetryStates after success: %v", err)
+	}
+	if got := states[id].Failures; got != 0 {
+		t.Fatalf("failures after success = %d, want 0", got)
 	}
 }

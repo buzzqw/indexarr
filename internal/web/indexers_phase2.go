@@ -20,6 +20,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
+	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/smartfeed"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -2655,24 +2656,31 @@ type indexerAccessRow struct {
 
 type indexerDetailView struct {
 	base
-	Tab                 string
-	Data                *indexerDataView
-	Try                 *indexerTryView
-	Indexer             store.Indexer
-	Status              statusDot
-	Badges              []uiBadge
-	DefinitionID        string
-	DefinitionName      string
-	DefinitionVersion   int
-	Hash                string
-	HashShort           string
-	Origin              string
-	Connector           string
-	Protocol            string
-	LastRun             *store.IndexerHistory
-	LastError           string
-	NextUpdate          time.Time
-	HasNext             bool
+	Tab               string
+	Data              *indexerDataView
+	Try               *indexerTryView
+	Indexer           store.Indexer
+	Status            statusDot
+	Badges            []uiBadge
+	DefinitionID      string
+	DefinitionName    string
+	DefinitionVersion int
+	Hash              string
+	HashShort         string
+	Origin            string
+	Connector         string
+	Protocol          string
+	LastRun           *store.IndexerHistory
+	LastError         string
+	NextUpdate        time.Time
+	HasNext           bool
+	// A failing source follows an escalating retry schedule; RetryPaused
+	// means the 96 hour step already failed and the scheduler waits for the
+	// operator.
+	RetryFailures       int
+	RetryPaused         bool
+	RetryNext           time.Time
+	HasRetryNext        bool
 	FrequencyLabel      string
 	FrequencySource     string
 	HasState            bool
@@ -2943,6 +2951,24 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		}
 		data.NextUpdate = data.LastRun.StartedAt.Add(interval)
 		data.HasNext = true
+	}
+	// A source with repeated failures follows the retry schedule, not the
+	// normal interval; after the last step it waits for the operator.
+	if states, err := s.store.RunRetryStates(r.Context()); err == nil {
+		state := states[in.ID]
+		failures := state.Failures
+		if failures > 0 && in.UpdatedAt.After(state.LastRun) {
+			failures = 0
+		}
+		if failures > 0 {
+			data.RetryFailures = failures
+			if native.RetryExhausted(failures) {
+				data.RetryPaused = true
+			} else if delay, ok := native.RetryDelay(failures); ok {
+				data.RetryNext = state.LastRun.Add(delay)
+				data.HasRetryNext = true
+			}
+		}
 	}
 	data.Stats.AvgLatency = averageLatency(history)
 	secretUpdated := map[string]time.Time{}

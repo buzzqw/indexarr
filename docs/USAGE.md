@@ -118,6 +118,13 @@ sorgenti segnalate (problema, degradate, bloccate) in background e aggiorna il
 loro stato. Dopo aver corretto le credenziali o un indirizzo, un solo click
 verifica i casi rimasti; le sorgenti sane non vengono toccate.
 
+Una sorgente che fallisce non viene ritentata ogni ora: la riprova automatica
+segue la scala **1, 2, 3, 6, 12, 24, 48, 96 ore**. Dopo l'ultimo tentativo
+fallito il scheduler si ferma e aspetta l'utente: la scheda mostra «Riprova
+automatica sospesa». Una prova riuscita o una modifica alla sorgente azzerano
+la scala e riprendono la frequenza normale. Un aggiornamento manuale
+(«Aggiorna ora») funziona comunque.
+
 ---
 
 ## 4. Cercare release
