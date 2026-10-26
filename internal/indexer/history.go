@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"regexp"
@@ -284,9 +285,32 @@ func (m *Manager) Test(ctx context.Context, indexerID int64) (engine.TestResult,
 	}
 	m.recordHistory(ctx, indexer.ID, "test", "", statusFor(ctx, historyErr), started, 0, historyErr, stats)
 	if historyErr == nil {
+		// A successful manual test is a health check too: record it so the
+		// old failure disappears from the status without waiting for the next
+		// scheduled check.
+		m.recordHistory(ctx, indexer.ID, "health", "", "ok", started, 0, nil, stats)
+		m.clearStateError(ctx, indexer.ID)
 		m.recordSample(context.WithoutCancel(ctx), indexer.ID, capture, stats)
 	}
 	return result, err
+}
+
+// clearStateError removes a stale last error after a successful check.
+func (m *Manager) clearStateError(ctx context.Context, indexerID int64) {
+	state, err := m.store.GetIndexerState(ctx, indexerID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		m.logger.Warn("indexer: load state", "indexer_id", indexerID, "error", err)
+		return
+	}
+	state.IndexerID = indexerID
+	if strings.TrimSpace(state.Circuit) == "" {
+		state.Circuit = "closed"
+	}
+	state.LastError = ""
+	state.UpdatedAt = time.Now()
+	if err := m.store.UpsertIndexerState(ctx, state); err != nil {
+		m.logger.Warn("indexer: update state", "indexer_id", indexerID, "error", err)
+	}
 }
 
 // phasesSummary keeps only the failed phases, truncated to a compact row.

@@ -354,3 +354,49 @@ search:
 		t.Fatalf("seen=%d new=%d: a fixed query must not be constrained by the whole category list", stats.Seen, stats.New)
 	}
 }
+
+func TestSuccessfulTestClearsOldError(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	server := newSearchServer(t)
+	manager := newTestManager(t, st, v)
+	indexerID := seedNative(t, st, v, server.URL, true)
+	ctx := context.Background()
+	if _, err := st.RecordIndexerHistory(ctx, store.IndexerHistory{
+		IndexerID: indexerID, Kind: "run", Status: "error", Error: "old failure",
+		StartedAt: time.Now().Add(-time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.UpsertIndexerState(ctx, store.IndexerState{
+		IndexerID: indexerID, Circuit: "closed", LastError: "old failure",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := manager.Test(ctx, indexerID)
+	if err != nil || !result.OK {
+		t.Fatalf("Test = %+v, %v", result, err)
+	}
+	state, err := st.GetIndexerState(ctx, indexerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.LastError != "" {
+		t.Fatalf("last error = %q, want it cleared", state.LastError)
+	}
+	history, err := st.ListIndexerHistory(ctx, indexerID, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundHealth := false
+	for _, row := range history {
+		if row.Kind == "health" && row.Status == "ok" {
+			foundHealth = true
+			break
+		}
+	}
+	if !foundHealth {
+		t.Fatal("a successful test did not record a health success")
+	}
+}
