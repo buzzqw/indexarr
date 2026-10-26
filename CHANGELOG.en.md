@@ -17,6 +17,16 @@
 - The catalogue only lists sources that already work: “to write” entries are
   no longer shown.
 - Search results have a “Copy magnet” button next to “Download”.
+- A MirCrew Smartfeed URL pasted into the RSS form is recognised and routed to
+  the “MirCrew (Smartfeed)” flow, which lists topics and uses the MirCrew
+  indexer for the download and the thank-you; an existing RSS source created
+  with that URL shows a notice and a “Switch to Smartfeed” button.
+- A source whose URL lives in the vault (rsskey, API key) shows the stored
+  address with its secrets masked, no longer the `example.invalid`
+  placeholder.
+- A fixed search (Query field) no longer sends the source's whole category
+  list as one filter: ExtTo with `q=MIRCrew` returns results again instead of
+  zero.
 - Each source has its own refresh frequency, visible in the form (outside
   “Advanced”) and in the list, with minute/hour quick choices and the value
   actually in force (“global default” or “set for this source”).

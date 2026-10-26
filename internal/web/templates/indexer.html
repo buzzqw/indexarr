@@ -15,6 +15,7 @@
     {{end}}
     {{range .Problems}}{{template "problem" .}}{{end}}
     {{if .SlowProblem}}{{template "problem" .SlowProblem}}{{end}}
+    {{if .SmartfeedRSS}}<p class="flash warn" role="alert">{{T "idx.smartfeed.rssWrong"}} <a class="btn small" href="{{.SmartfeedConvertURL}}">{{T "idx.smartfeed.rssConvert"}}</a></p>{{end}}
     {{if .UploaderOnly}}<p class="help uploader-note" title="{{T "idx.detail.uploaderOnlyTip"}}">{{T "idx.detail.uploaderOnly" .UploaderMinutes}}</p>{{end}}
     {{if .CategoryMapped}}<p class="help uploader-note" title="{{T "idx.detail.exttoCategoryTip"}}">{{T "idx.detail.exttoCategory"}}</p>{{end}}
     {{if .Smartfeed}}

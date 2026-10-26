@@ -287,3 +287,70 @@ func TestRunKeepsItemWithoutDate(t *testing.T) {
 		t.Fatalf("undated release dates = published %v first_seen %v", releases[0].PublishedAt, releases[0].FirstSeenAt)
 	}
 }
+
+func TestRunDoesNotSendEveryCategoryAsOneFilterForFixedQuery(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/search":
+			if len(r.URL.Query()["filter"]) > 0 {
+				_, _ = w.Write([]byte(`<html><body><table class="results"></table></body></html>`))
+				return
+			}
+			_, _ = w.Write([]byte(searchHTML))
+		case strings.HasPrefix(r.URL.Path, "/download/"):
+			w.Header().Set("Content-Type", "application/x-bittorrent")
+			_, _ = w.Write(torrentBody)
+		default:
+			_, _ = w.Write([]byte("<html><body>ok</body></html>"))
+		}
+	}))
+	t.Cleanup(server.Close)
+	manager := newTestManager(t, st, v)
+	body := strings.ReplaceAll(`schema: 1
+meta:
+  id: fixed-query-test
+  name: Fixed Query Test
+  type: public
+  protocol: torrent
+  urls: ["http://REPLACE/"]
+categories:
+  - { site: "5", standard: 5040 }
+capabilities:
+  search: [q]
+auth:
+  strategy: none
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+    params_multi:
+      filter:
+        - "c={{ categories }}"
+  response:
+    type: html
+    rows: "table.results tr"
+    fields:
+      title: { selector: "td.name a", filters: [trim] }
+      details: { selector: "td.name a", attr: href, type: url }
+      download: { selector: "a.download", attr: href, type: url }
+      category: { selector: "a.cat", attr: href, filters: [{ query_param: cat }], type: category }
+      size: { selector: "td.size", type: size }
+      seeders: { selector: "td.seeders", type: int }
+      leechers: { selector: "td.leechers", type: int }
+    required: [title, download, size]
+`, "http://REPLACE", server.URL)
+	seedDefinition(t, st, "fixed-query-test", "", body)
+	config := `{"url":"` + server.URL + `","query":"ubuntu","categories":[5040]}`
+	indexerID := createIndexer(t, st, "fixed-query-test", "fixed-query-test", "Fixed Query Test", "torrent", config)
+
+	stats, err := manager.Run(context.Background(), indexerID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if stats.Seen == 0 || stats.New == 0 {
+		t.Fatalf("seen=%d new=%d: a fixed query must not be constrained by the whole category list", stats.Seen, stats.New)
+	}
+}

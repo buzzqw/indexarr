@@ -95,6 +95,13 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	if len(categories) == 0 {
 		categories = connector.Capabilities().Categories
 	}
+	// A fixed search query is not a category-scoped latest list. Sending the
+	// source's whole category selection as one comma-joined filter (ExtTo
+	// turns it into filter=c=Movies,TV,...) makes the site return zero rows;
+	// the query itself is the selection.
+	if query != "" {
+		categories = nil
+	}
 
 	var items []engine.Item
 	if query != "" {

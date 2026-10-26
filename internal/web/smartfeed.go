@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -104,6 +105,33 @@ type smartfeedFormView struct {
 // smartfeedRecognized turns a pasted Smartfeed URL into a short-lived plan and
 // redirects to a form that does not carry the token. It is called from the
 // unified "Add source" resolver.
+// indexerSmartfeedConvert starts the Smartfeed form from an RSS source that
+// was created with a personal Smartfeed URL. The URL itself never leaves the
+// server: the plan store keeps it and the form shows the redacted address.
+func (s *Server) indexerSmartfeedConvert(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.invalidID"))
+		return
+	}
+	in, err := s.store.GetIndexer(r.Context(), id)
+	if err != nil {
+		redirect(w, r, "/indexers", "", s.indexerErrorMessage(r, err))
+		return
+	}
+	detail := "/indexers/" + strconv.FormatInt(id, 10)
+	if !strings.EqualFold(in.DefinitionID, "rss") {
+		redirect(w, r, detail, "", "")
+		return
+	}
+	value, ok := s.indexerSecretValue(r.Context(), id, "url")
+	if !ok || !smartfeed.IsSmartfeedURL(value) {
+		redirect(w, r, detail, "", s.translate(r, "idx.smartfeed.invalidURL"))
+		return
+	}
+	s.smartfeedRecognized(w, r, value)
+}
+
 func (s *Server) smartfeedRecognized(w http.ResponseWriter, r *http.Request, rawURL string) {
 	if s.smartfeedPlans == nil {
 		redirect(w, r, "/indexers/new", "", s.translate(r, "indexer.error.serviceUnavailable"))

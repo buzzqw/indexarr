@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -2337,16 +2338,26 @@ func siteHasRealAddress(defID string, def *definition.Definition) bool {
 
 // redactedSecretURL decrypts a URL secret only to build a redacted label for
 // the edit form. The plaintext never reaches the response.
-func (s *Server) redactedSecretURL(r *http.Request, indexerID int64, key string) string {
+// indexerSecretValue opens one sealed setting. It is used for display
+// decisions (is this URL a Smartfeed?) and never logged.
+func (s *Server) indexerSecretValue(ctx context.Context, indexerID int64, key string) (string, bool) {
 	if s.vault == nil {
-		return ""
+		return "", false
 	}
-	secret, err := s.store.GetSecret(r.Context(), indexerID, key)
+	secret, err := s.store.GetSecret(ctx, indexerID, key)
 	if err != nil {
-		return ""
+		return "", false
 	}
 	value, err := s.vault.Open(secret.Nonce, secret.Ciphertext)
 	if err != nil {
+		return "", false
+	}
+	return string(value), true
+}
+
+func (s *Server) redactedSecretURL(r *http.Request, indexerID int64, key string) string {
+	value, ok := s.indexerSecretValue(r.Context(), indexerID, key)
+	if !ok {
 		return ""
 	}
 	return feed.RedactURLForDisplay(value)
@@ -2449,6 +2460,12 @@ func (s *Server) indexerUnifiedCreate(w http.ResponseWriter, r *http.Request) {
 	if defID == "rss" {
 		if err := s.ensureRSSDefinition(r); err != nil {
 			s.renderIndexerFormProblems(w, r, defID, nil, nil, []string{err.Error()})
+			return
+		}
+		if rawURL := strings.TrimSpace(r.FormValue("url")); smartfeed.IsSmartfeedURL(rawURL) {
+			// A personal Smartfeed URL is not a plain RSS feed: send the user
+			// to the dedicated form, which pairs the native MirCrew indexer.
+			s.smartfeedRecognized(w, r, rawURL)
 			return
 		}
 	}
@@ -2562,6 +2579,12 @@ func (s *Server) indexerUnifiedUpdate(w http.ResponseWriter, r *http.Request) {
 	if defID == "" {
 		defID = current.DefinitionID
 	}
+	if defID == "rss" && strings.EqualFold(current.DefinitionID, "rss") {
+		if rawURL := strings.TrimSpace(r.FormValue("url")); smartfeed.IsSmartfeedURL(rawURL) {
+			s.smartfeedRecognized(w, r, rawURL)
+			return
+		}
+	}
 	parsed, _, err := s.loadDefinitionForForm(r, defID)
 	if err != nil {
 		s.renderCompactFormProblems(w, r, defID, &current, nil, []string{s.translate(r, "indexerForm.definitionInvalid", err.Error())})
@@ -2630,56 +2653,58 @@ type indexerAccessRow struct {
 
 type indexerDetailView struct {
 	base
-	Tab               string
-	Data              *indexerDataView
-	Try               *indexerTryView
-	Indexer           store.Indexer
-	Status            statusDot
-	Badges            []uiBadge
-	DefinitionID      string
-	DefinitionName    string
-	DefinitionVersion int
-	Hash              string
-	HashShort         string
-	Origin            string
-	Connector         string
-	Protocol          string
-	LastRun           *store.IndexerHistory
-	LastError         string
-	NextUpdate        time.Time
-	HasNext           bool
-	FrequencyLabel    string
-	FrequencySource   string
-	HasState          bool
-	State             store.IndexerState
-	Stats             detailStatView
-	Categories        []string
-	FilterRows        []indexerConfigEntry
-	Public            []indexerConfigEntry
-	SecretKeys        []string
-	Releases          []store.Release
-	Run               *indexer.RunStats
-	RunItems          []engine.Item
-	Test              *engine.TestResult
-	Problem           *uiProblem
-	Problems          []uiProblem
-	SlowProblem       *uiProblem
-	CatalogState      string
-	Health            health.Assessment
-	Latest            bool
-	SearchOnly        bool
-	UploaderOnly      bool
-	UploaderMinutes   int
-	CategoryMapped    bool
-	Smartfeed         bool
-	SmartfeedUILink   string
-	HasNative         bool
-	NativeSearchURL   string
-	LatencyP50        string
-	LatencyP95        string
-	HostRequests      []hostRequestView
-	ApplicationCount  int
-	NextStep          uiNextStep
+	Tab                 string
+	Data                *indexerDataView
+	Try                 *indexerTryView
+	Indexer             store.Indexer
+	Status              statusDot
+	Badges              []uiBadge
+	DefinitionID        string
+	DefinitionName      string
+	DefinitionVersion   int
+	Hash                string
+	HashShort           string
+	Origin              string
+	Connector           string
+	Protocol            string
+	LastRun             *store.IndexerHistory
+	LastError           string
+	NextUpdate          time.Time
+	HasNext             bool
+	FrequencyLabel      string
+	FrequencySource     string
+	HasState            bool
+	State               store.IndexerState
+	Stats               detailStatView
+	Categories          []string
+	FilterRows          []indexerConfigEntry
+	Public              []indexerConfigEntry
+	SecretKeys          []string
+	Releases            []store.Release
+	Run                 *indexer.RunStats
+	RunItems            []engine.Item
+	Test                *engine.TestResult
+	Problem             *uiProblem
+	Problems            []uiProblem
+	SlowProblem         *uiProblem
+	CatalogState        string
+	Health              health.Assessment
+	Latest              bool
+	SearchOnly          bool
+	UploaderOnly        bool
+	UploaderMinutes     int
+	CategoryMapped      bool
+	Smartfeed           bool
+	SmartfeedUILink     string
+	SmartfeedRSS        bool
+	SmartfeedConvertURL string
+	HasNative           bool
+	NativeSearchURL     string
+	LatencyP50          string
+	LatencyP95          string
+	HostRequests        []hostRequestView
+	ApplicationCount    int
+	NextStep            uiNextStep
 	// Verdict, the address and the source log answer three questions right
 	// on the Overview tab: does it work, what is the address, what happened.
 	Verdict        healthVerdict
@@ -2921,6 +2946,27 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	if secrets, err := s.store.ListSecrets(r.Context(), in.ID); err == nil {
 		for _, secret := range secrets {
 			data.SecretKeys = append(data.SecretKeys, secret.Key)
+		}
+	}
+	// A feed or Torznab URL is sealed when it carries an rsskey or an API key.
+	// Show the redacted stored address instead of falling back to the
+	// definition's placeholder (example.invalid).
+	for _, key := range data.SecretKeys {
+		if !strings.EqualFold(key, "url") {
+			continue
+		}
+		if redacted := s.redactedSecretURL(r, in.ID, "url"); redacted != "" {
+			data.SiteAddress = redacted
+		}
+		break
+	}
+	// A generic RSS source fed with a personal Smartfeed URL cannot grab
+	// anything: its items are topic links, not .torrent or magnet links. Offer
+	// the conversion to the paired Smartfeed definition.
+	if strings.EqualFold(strings.TrimSpace(in.DefinitionID), "rss") {
+		if value, ok := s.indexerSecretValue(r.Context(), in.ID, "url"); ok && smartfeed.IsSmartfeedURL(value) {
+			data.SmartfeedRSS = true
+			data.SmartfeedConvertURL = detailPath + "/smartfeed"
 		}
 	}
 	// Required credentials belong on the Overview tab too: the operator must

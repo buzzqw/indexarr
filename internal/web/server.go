@@ -648,6 +648,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /indexers/smartfeed", s.smartfeedFormAdd)
 	ui.HandleFunc("GET /indexers/{id}", s.indexerUnifiedDetail)
 	ui.HandleFunc("GET /indexers/{id}/edit", s.indexerUnifiedEdit)
+	ui.HandleFunc("GET /indexers/{id}/smartfeed", s.indexerSmartfeedConvert)
 	ui.HandleFunc("POST /indexers/{id}", s.indexerUnifiedUpdate)
 	ui.HandleFunc("POST /indexers/{id}/delete", s.indexerUnifiedDelete)
 	ui.HandleFunc("POST /indexers/{id}/toggle", s.indexerToggle)

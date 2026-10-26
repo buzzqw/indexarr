@@ -2,6 +2,7 @@ package web
 
 import (
 	"compress/gzip"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/buzzqw/indexarr/internal/catalog"
+	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -170,5 +172,66 @@ func TestIndexerDetailShowsHealthAddressAndAccess(t *testing.T) {
 		if !strings.Contains(visible, want) {
 			t.Errorf("detail page missing %q outside Advanced", want)
 		}
+	}
+}
+
+const testSmartfeedURL = "https://mircrew-releases.org/smartfeed/feed?u=3923&e=Y658PJFFGOWo3l4l7b6HvF2zUmki9YhXUS3M8d73g&f=26&f=28&t=2&x=200"
+
+func TestSmartfeedRSSIsDetectedAndAddressIsShown(t *testing.T) {
+	env := newNativeEnv(t)
+	entry, ok := catalog.Get("rss")
+	if !ok {
+		t.Fatal("rss is not in the catalog")
+	}
+	seedDefinition(t, env.store, "rss", "", string(entry.Body))
+	priority := 25
+	enabled := true
+	created, err := env.server.svc.Create(context.Background(), indexersvc.Input{
+		DefinitionID: "rss",
+		Name:         "Mircrew feed",
+		Slug:         "mircrew-feed",
+		Protocol:     "torrent",
+		Priority:     &priority,
+		Enabled:      &enabled,
+		Settings:     map[string]string{"url": testSmartfeedURL},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	body := get(t, env.handler, "/indexers/"+strconvI(created.ID)).Body.String()
+	if strings.Contains(body, "example.invalid") {
+		t.Error("the overview still shows the definition placeholder instead of the stored URL")
+	}
+	if !strings.Contains(body, "mircrew-releases.org") {
+		t.Error("the overview does not show the stored feed address")
+	}
+	if !strings.Contains(body, "Switch to Smartfeed") {
+		t.Error("the overview does not offer the Smartfeed conversion")
+	}
+
+	recorder := get(t, env.handler, "/indexers/"+strconvI(created.ID)+"/smartfeed")
+	if recorder.Code != http.StatusFound {
+		t.Fatalf("smartfeed conversion = %d, want 302", recorder.Code)
+	}
+	if !strings.HasPrefix(recorder.Header().Get("Location"), "/indexers/smartfeed?plan=") {
+		t.Fatalf("Location = %q", recorder.Header().Get("Location"))
+	}
+}
+
+func TestRSSCreateRedirectsSmartfeedURL(t *testing.T) {
+	env := newNativeEnv(t)
+	token, cookie := csrfFrom(t, env.handler, "/indexers/new?definition=rss")
+	recorder := postForm(t, env.handler, "/indexers", url.Values{
+		"csrf":          {token},
+		"definition_id": {"rss"},
+		"name":          {"Mircrew feed"},
+		"url":           {testSmartfeedURL},
+	}, cookie)
+	if recorder.Code != http.StatusFound {
+		t.Fatalf("create = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.HasPrefix(recorder.Header().Get("Location"), "/indexers/smartfeed?plan=") {
+		t.Fatalf("Location = %q, want the Smartfeed form", recorder.Header().Get("Location"))
 	}
 }

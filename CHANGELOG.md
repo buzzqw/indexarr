@@ -59,6 +59,16 @@
 - Il catalogo mostra solo le fonti già utilizzabili: quelle «da scrivere» non
   compaiono più.
 - Nelle ricerche, accanto a «Scarica» c'è «Copia magnet».
+- Un URL Smartfeed MirCrew incollato nel modulo RSS viene riconosciuto e
+  portato al percorso «MirCrew (Smartfeed)», che elenca i topic e usa
+  l'indexer MirCrew per il download e il grazie; una sorgente RSS già creata
+  con quell'URL mostra l'avviso e il pulsante «Passa a Smartfeed».
+- L'indirizzo di una sorgente con URL nel vault (rsskey, chiave API) mostra
+  l'indirizzo salvato con i segreti oscurati, non più il segnaposto
+  `example.invalid`.
+- Una ricerca fissa (campo Query) non invia più l'intera lista categorie
+  della sorgente come un unico filtro: ExtTo con `q=MIRCrew` torna a
+  restituire risultati invece di zero.
 - Frequenza personale per sorgente visibile nel form (fuori da Avanzate) e
   nell'elenco, con scelte rapide in minuti/ore e il valore effettivo
   («predefinita globale» o «impostata per questa sorgente»).
