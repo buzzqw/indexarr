@@ -169,6 +169,15 @@ if ("serviceWorker" in navigator) {
     input.value = "";
     input.focus();
     change.hidden = true;
+    field.classList.add("is-changing");
+    // Say what to do next: the Change button does not save anything.
+    if (!field.querySelector("[data-secret-ready]")) {
+      const hint = document.createElement("p");
+      hint.className = "help secret-ready";
+      hint.setAttribute("data-secret-ready", "");
+      hint.textContent = document.body.dataset.secretReady || "Now type the new value and press Save.";
+      field.parentNode.insertBefore(hint, field.nextSibling);
+    }
   });
 
   // Remember whether the explanatory paragraph at the bottom of a page was
@@ -574,6 +583,44 @@ if ("serviceWorker" in navigator) {
       if (select.form) {
         select.form.submit();
       }
+    });
+  });
+})();
+
+// Every form answers its button at once. The button keeps its name and value
+// (they are part of the POST) but shows "Working…" until the next page.
+(() => {
+  const workingLabel = document.body.dataset.workingLabel || "Working…";
+  document.addEventListener("submit", (event) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    if (form.dataset.submitting === "1") {
+      event.preventDefault();
+      return;
+    }
+    form.dataset.submitting = "1";
+    const submitter = event.submitter;
+    if (submitter && submitter.tagName === "BUTTON") {
+      submitter.dataset.originalLabel = submitter.textContent;
+      submitter.textContent = workingLabel;
+      submitter.setAttribute("aria-busy", "true");
+    }
+  });
+  // Back/forward cache: restore the labels if the page comes back.
+  window.addEventListener("pageshow", () => {
+    document.querySelectorAll("form[data-submitting]").forEach((form) => {
+      delete form.dataset.submitting;
+      form.querySelectorAll('button[aria-busy="true"]').forEach((button) => {
+        if (button.dataset.originalLabel) {
+          button.textContent = button.dataset.originalLabel;
+        }
+        button.removeAttribute("aria-busy");
+      });
     });
   });
 })();

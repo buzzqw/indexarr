@@ -1126,6 +1126,9 @@ pre.yaml {
 .secret-field { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 .secret-field input { flex: 1 1 18rem; min-width: 10rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .secret-field .btn { flex: 0 0 auto; }
+.secret-field.is-changing input { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
+.secret-ready { margin: 0.35rem 0 0; color: var(--accent); font-weight: 600; }
+button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progress; }
 
 /* WP14 fase 1b — compact language selector in the sidebar footer. */
 .lang-menu { position: relative; margin-top: 0.15rem; }
@@ -1388,7 +1391,7 @@ pre.yaml {
 .guide-actions { flex: 0 0 235px; display: flex; flex-direction: column; gap: 0.4rem; }
 .guide-try { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 .guide-try input { flex: 1 1 100px; min-width: 0; }
-.guide-search { padding: 0.9rem 0 0; }
+.guide-search { padding: 0 0 0.9rem; }
 .catalog-back { margin: 0.7rem 1.1rem 0; }
 .preview-actions { padding: 1rem 0 0; }
 

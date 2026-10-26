@@ -14,7 +14,7 @@
   <script src="/static/app.js?v={{.AssetVersion}}" defer></script>
   {{if .AutoRefresh}}<meta http-equiv="refresh" content="{{.AutoRefresh}}">{{end}}
 </head>
-<body data-copy-done="{{T "common.copied"}}" data-copy-failed="{{T "common.copyFailed"}}"{{if .LiveRefresh}} data-live-refresh="{{.LiveRefresh}}"{{end}}>
+<body data-copy-done="{{T "common.copied"}}" data-copy-failed="{{T "common.copyFailed"}}" data-working-label="{{T "common.working"}}" data-secret-ready="{{T "common.secretReady"}}"{{if .LiveRefresh}} data-live-refresh="{{.LiveRefresh}}"{{end}}>
   <a class="skip" href="#main">{{T "shell.skip"}}</a>
   <div class="app-shell">
     <div class="nav-backdrop" data-nav-close aria-hidden="true"></div>

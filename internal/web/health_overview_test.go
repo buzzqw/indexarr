@@ -235,3 +235,22 @@ func TestRSSCreateRedirectsSmartfeedURL(t *testing.T) {
 		t.Fatalf("Location = %q, want the Smartfeed form", recorder.Header().Get("Location"))
 	}
 }
+
+func TestAddGuideSearchIsAtTheTopAndFormsGiveFeedback(t *testing.T) {
+	env := newNativeEnv(t)
+	body := get(t, env.handler, "/indexers/new").Body.String()
+	search := strings.Index(body, "guide-search")
+	needs := strings.Index(body, "need-grid")
+	if search < 0 || needs < 0 {
+		t.Fatalf("guide markers missing: search=%d needs=%d", search, needs)
+	}
+	if search > needs {
+		t.Error("the catalogue search is below the need cards; it belongs at the top")
+	}
+	if !strings.Contains(body, `data-working-label="Working…"`) {
+		t.Error("the layout does not carry the working label for submit feedback")
+	}
+	if !strings.Contains(body, `data-secret-ready=`) {
+		t.Error("the layout does not carry the secret-ready hint")
+	}
+}

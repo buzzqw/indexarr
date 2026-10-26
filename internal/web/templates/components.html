@@ -45,6 +45,11 @@
   <div class="site-guide">
     <h2 class="guide-title-heading">{{T "idx.guide.title"}}</h2>
     <p class="guide-lead">{{T "idx.guide.subtitle"}}</p>
+    <form class="site-search guide-search" method="get" action="{{.Action}}" role="search">
+      <label class="sr-only" for="site-search">{{T "idx.searchSite"}}</label>
+      <input id="site-search" name="q" type="text" value="{{.Query}}" placeholder="{{T "idx.searchSite"}}" autocomplete="off">
+      <button class="btn" type="submit" title="{{T "tip.addShowAll"}}">{{T "idx.guide.searchAll"}}</button>
+    </form>
     <div class="need-grid" role="list">
       {{range .Guide.Needs}}
       <a class="need-card{{if .Active}} active{{end}}" href="{{.URL}}" title="{{.Tip}}" role="listitem" aria-pressed="{{if .Active}}true{{else}}false{{end}}">
@@ -115,12 +120,6 @@
     {{else}}
     {{template "empty" .Empty}}
     {{end}}
-
-    <form class="site-search guide-search" method="get" action="{{.Action}}" role="search">
-      <label class="sr-only" for="site-search">{{T "idx.searchSite"}}</label>
-      <input id="site-search" name="q" type="text" value="{{.Query}}" placeholder="{{T "idx.searchSite"}}" autocomplete="off">
-      <button class="btn" type="submit" title="{{T "tip.addShowAll"}}">{{T "idx.guide.searchAll"}}</button>
-    </form>
   </div>
   {{else}}
   <p class="catalog-back"><a class="link" href="{{.ClearURL}}">← {{T "idx.guide.backToGuide"}}</a></p>

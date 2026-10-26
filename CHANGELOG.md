@@ -56,6 +56,10 @@
   esempio «Disattivati».
 - In «Aggiungi indexer» tipo e lingua sono elenchi a discesa; i bisogni
   (Film, Libri, …) si sommano e restano evidenziati.
+- La ricerca nel catalogo è in cima al percorso guidato, non più in fondo.
+- Ogni pulsante dà subito un riscontro: durante l'invio mostra «Attendere…»,
+  e «Cambia» su una password spiega che il nuovo valore va scritto e poi
+  salvato, con il campo evidenziato.
 - Il catalogo mostra solo le fonti già utilizzabili: quelle «da scrivere» non
   compaiono più.
 - Nelle ricerche, accanto a «Scarica» c'è «Copia magnet».
