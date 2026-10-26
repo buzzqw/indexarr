@@ -458,6 +458,32 @@
     <article class="card"><span class="label">{{T "settings.dbFTS"}}</span><strong>{{bytes .Growth.FTSBytes}}</strong><span class="hint">{{T "settings.dbGrowthTotal" .Growth.Releases}}</span></article>
   </section>
 
+  <section class="panel" id="useful-sources">
+    <div class="panel-head">
+      <h2>{{T "maintenance.usefulTitle"}}</h2>
+      <span class="muted">{{T "maintenance.usefulWindow" .UsefulDays}}</span>
+    </div>
+    <p class="help">{{T "maintenance.usefulHelp"}}</p>
+    {{if .UsefulSources}}
+    <div class="useful-bars">
+      {{range .UsefulSources}}
+      <div class="useful-row">
+        <div class="useful-head">
+          <span class="useful-name" title="{{.DefinitionID}}">{{.Name}}</span>
+          <span class="badge soft">{{.TypeLabel}}</span>
+          <span class="useful-count">{{T "maintenance.usefulDownloads" .Downloads}}</span>
+          <span class="muted">{{.Share}}%</span>
+        </div>
+        <div class="useful-track" role="img" aria-label="{{.Name}} {{.Share}}%"><span class="useful-bar" style="width: {{.Share}}%"></span></div>
+      </div>
+      {{end}}
+    </div>
+    <p class="help">{{T "maintenance.usefulTotal" .UsefulTotal}}</p>
+    {{else}}
+    <p class="muted">{{T "maintenance.usefulEmpty"}}</p>
+    {{end}}
+  </section>
+
   <section class="panel">
     <div class="panel-head"><h2>{{T "settings.dbReport"}}</h2></div>
     <dl class="detail">

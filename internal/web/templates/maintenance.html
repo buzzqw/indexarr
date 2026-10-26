@@ -11,7 +11,36 @@
   <article class="card"><span class="label">{{T "settings.dbSize"}}</span><strong>{{bytes .Stats.DBBytes}}</strong><span class="hint">{{.DBPath}}</span></article>
   <article class="card"><span class="label">{{T "settings.dbReleases"}}</span><strong>{{.Stats.Releases}}</strong><span class="hint">{{T "settings.dbTorrents" .Stats.Torrents}}</span></article>
   <article class="card"><span class="label">{{T "settings.dbTorrentData"}}</span><strong>{{bytes .Stats.TorrentBytes}}</strong></article>
-  <article class="card"><span class="label">{{T "settings.dbSQLite"}}</span><strong>{{.SQLiteVersion}}</strong><span class="hint">{{if .RetentionDays}}{{T "settings.dbRetention" .RetentionDays}}{{else}}{{T "settings.dbRetentionNone"}}
+  <article class="card"><span class="label">{{T "settings.dbSQLite"}}</span><strong>{{.SQLiteVersion}}</strong><span class="hint">{{if .RetentionDays}}{{T "settings.dbRetention" .RetentionDays}}{{else}}{{T "settings.dbRetentionNone"}}{{end}}</span></article>
+  <article class="card"><span class="label">{{T "maintenance.errors"}}</span><strong>{{.Report.Indexers}}</strong><span class="hint">{{T "maintenance.enabledOf" .Stats.EnabledIndexers .Stats.Indexers}}</span></article>
+</section>
+
+<section class="panel" id="useful-sources">
+  <div class="panel-head">
+    <h2>{{T "maintenance.usefulTitle"}}</h2>
+    <span class="muted">{{T "maintenance.usefulWindow" .UsefulDays}}</span>
+  </div>
+  <p class="help">{{T "maintenance.usefulHelp"}}</p>
+  {{if .UsefulSources}}
+  <div class="useful-bars">
+    {{range .UsefulSources}}
+    <div class="useful-row">
+      <div class="useful-head">
+        <span class="useful-name" title="{{.DefinitionID}}">{{.Name}}</span>
+        <span class="badge soft">{{.TypeLabel}}</span>
+        <span class="useful-count">{{T "maintenance.usefulDownloads" .Downloads}}</span>
+        <span class="muted">{{.Share}}%</span>
+      </div>
+      <div class="useful-track" role="img" aria-label="{{.Name}} {{.Share}}%"><span class="useful-bar" style="width: {{.Share}}%"></span></div>
+    </div>
+    {{end}}
+  </div>
+  <p class="help">{{T "maintenance.usefulTotal" .UsefulTotal}}</p>
+  {{else}}
+  <p class="muted">{{T "maintenance.usefulEmpty"}}</p>
+  {{end}}
+</section>
+
 <section class="panel danger-zone">
   <div class="panel-head"><h2>{{T "maintenance.dangerTitle"}}</h2></div>
   <p>{{T "maintenance.dangerText"}}</p>
@@ -22,9 +51,6 @@
     <button class="btn danger" type="submit">{{T "settings.deleteAll"}}</button>
     <p class="help">{{T "maintenance.help.deleteAllHelp"}}</p>
   </form>
-</section>
-{{end}}</span></article>
-  <article class="card"><span class="label">{{T "maintenance.errors"}}</span><strong>{{.Report.Indexers}}</strong><span class="hint">{{T "maintenance.enabledOf" .Stats.EnabledIndexers .Stats.Indexers}}</span></article>
 </section>
 
 <section class="panel">

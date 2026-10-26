@@ -370,3 +370,38 @@ search:
 		}
 	}
 }
+
+func TestMaintenanceShowsUsefulSources(t *testing.T) {
+	env := newNativeEnv(t)
+	for _, id := range []string{"useful-a", "useful-b"} {
+		seedDefinition(t, env.store, id, "", `schema: 1
+meta:
+  id: `+id+`
+  name: `+id+`
+  type: public
+  protocol: torrent
+  urls: [https://`+id+`.example/]
+search:
+  request:
+    get: /
+  response:
+    type: html
+`)
+	}
+	a := seedPhase2Indexer(t, env.store, "useful-a", "useful-a", true, `{}`)
+	seedPhase2Indexer(t, env.store, "useful-b", "useful-b", true, `{}`)
+	ctx := context.Background()
+	for i := 0; i < 3; i++ {
+		if _, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+			IndexerID: a, Kind: "download", Status: "ok", StartedAt: time.Now(),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	body := get(t, env.handler, "/settings?section=maintenance&lang=it").Body.String()
+	for _, want := range []string{"Fonti più utili", "useful-a", "3 scarichi", "Totale: 3 scarichi", "Web"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("maintenance page missing %q", want)
+		}
+	}
+}

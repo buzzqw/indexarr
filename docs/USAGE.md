@@ -210,6 +210,9 @@ controlla token, chat id e che il bot sia stato avviato nella chat.
   configurati. Una release già scaricata non viene rimossa.
 - **Log**: Attività → Log. Il livello si cambia da Impostazioni → Avanzate.
   Scarica il log dal pulsante dedicato.
+- **Fonti più utili**: in Manutenzione, gli scarichi serviti negli ultimi 30
+  giorni per sorgente, con tipo (Feed, Web, Indexer), numero e percentuale.
+  Serve a vedere quali fonti portano risultati che vengono davvero scaricati.
 - **API key**: Impostazioni → API Torznab. Puoi ruotare la primaria e creare
   chiavi separate per client, revocabili.
 - **Vault**: password e chiavi sono cifrate. L'interfaccia non le mostra mai in

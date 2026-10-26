@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -68,6 +69,9 @@ type settingsPage struct {
 	BackupIntervalHours int
 	BackupKeep          int
 	Indexers            []store.Indexer
+	UsefulSources       []usefulSourceView
+	UsefulTotal         int64
+	UsefulDays          int
 	// Advanced
 	Definitions   []store.Definition
 	CatalogRows   []definitionRow
@@ -162,6 +166,8 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 		data.BackupEnabled = settings.BackupEnabled
 		data.BackupIntervalHours = settings.BackupIntervalHours
 		data.BackupKeep = settings.BackupKeep
+		data.UsefulDays = 30
+		data.UsefulSources, data.UsefulTotal = s.usefulSources(r, data.UsefulDays)
 	}
 	if section == "advanced" {
 		data.Definitions, _ = s.store.ListDefinitions(ctx)
@@ -781,6 +787,65 @@ type maintenancePage struct {
 	BackupIntervalHours int
 	BackupKeep          int
 	Indexers            []store.Indexer
+	UsefulSources       []usefulSourceView
+	UsefulTotal         int64
+	UsefulDays          int
+}
+
+// usefulSourceView is one bar of the "most useful sources" panel: a source
+// name, its kind (feed, web, indexer), the downloads it served and the share
+// of the total.
+type usefulSourceView struct {
+	Name         string
+	DefinitionID string
+	TypeLabel    string
+	Downloads    int64
+	Share        int
+}
+
+func (s *Server) usefulSources(r *http.Request, days int) ([]usefulSourceView, int64) {
+	if days <= 0 {
+		days = 30
+	}
+	stats, err := s.store.SourceDownloadStats(r.Context(), time.Now().AddDate(0, 0, -days))
+	if err != nil {
+		s.log.Warn("maintenance: source download stats", "error", err)
+		return nil, 0
+	}
+	var total int64
+	for _, item := range stats {
+		total += item.Downloads
+	}
+	out := make([]usefulSourceView, 0, len(stats))
+	for _, item := range stats {
+		share := 0
+		if total > 0 {
+			share = int(math.Round(float64(item.Downloads) * 100 / float64(total)))
+		}
+		if share < 1 && item.Downloads > 0 {
+			share = 1
+		}
+		out = append(out, usefulSourceView{
+			Name:         item.Name,
+			DefinitionID: item.DefinitionID,
+			TypeLabel:    s.usefulSourceType(r, item.DefinitionID),
+			Downloads:    item.Downloads,
+			Share:        share,
+		})
+	}
+	return out, total
+}
+
+func (s *Server) usefulSourceType(r *http.Request, definitionID string) string {
+	id := strings.ToLower(strings.TrimSpace(definitionID))
+	switch {
+	case id == "rss" || id == "feed" || strings.Contains(id, "rss"):
+		return s.translate(r, "maintenance.usefulFeed")
+	case strings.Contains(id, "torznab") || strings.Contains(id, "newznab"):
+		return s.translate(r, "maintenance.usefulIndexer")
+	default:
+		return s.translate(r, "maintenance.usefulWeb")
+	}
 }
 
 func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
@@ -803,6 +868,8 @@ func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
 	}
 	version := ""
 	_ = s.store.DB().QueryRowContext(r.Context(), "SELECT sqlite_version()").Scan(&version)
+	usefulDays := 30
+	usefulSources, usefulTotal := s.usefulSources(r, usefulDays)
 	s.render(w, r, "maintenance", maintenancePage{
 		base:                s.newBase(r, "Manutenzione", "maintenance"),
 		Stats:               stats,
@@ -817,6 +884,9 @@ func (s *Server) maintenancePage(w http.ResponseWriter, r *http.Request) {
 		BackupIntervalHours: settings.BackupIntervalHours,
 		BackupKeep:          settings.BackupKeep,
 		Indexers:            indexers,
+		UsefulSources:       usefulSources,
+		UsefulTotal:         usefulTotal,
+		UsefulDays:          usefulDays,
 	}, http.StatusOK)
 }
 
