@@ -92,6 +92,8 @@ func TestBuiltinsValid(t *testing.T) {
 		"torrenttip":         true,
 		"uindex":             true,
 		"torrentbyte":        true,
+		"mircrew":            true,
+		"mircrew-smartfeed":  true,
 		"btdirectory":        true,
 		"ebookbay":           true,
 		"sexypics":           true,

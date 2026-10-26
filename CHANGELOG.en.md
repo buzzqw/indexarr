@@ -91,9 +91,13 @@ First release candidate of indexarr 2.
   `INDEXARR_BACKUP_KEEP`.
 
 ### Known limits
-- Native MirCrew and Smartfeed are verified live for login and search
-  (Smartfeed: 77 topics). The grab with the thank-you still needs a real
-  download, so the definition stays experimental.
-- Sonarr’s Severance search stays around the measured 10 s: the variants are
-  four requests and the first one waits the full window.
-- The stored-source duration test must be completed in production.
+- Native MirCrew and Smartfeed: login, search, a normal grab and a Smartfeed
+  grab verified live on 2026-10-26. The automatic per-season/episode magnet
+  choice inside a topic with several episodes and resolutions is still to be
+  tested live.
+- Severance with Sonarr: measured on 2026-10-26, the first cold variant answers
+  in ~2.6 s and the following ones in ~0.03 s; the old ~10 s limit no longer
+  reproduces. Still to confirm with a real Sonarr search.
+- Stored-source duration test: run in a container with 50,000 releases and 100
+  updates (200 items per pass), 0 errors, stable memory (50.7 → 52.5 MB) and a
+  stable database; the multi-day production soak is still to be completed.

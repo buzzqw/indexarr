@@ -192,35 +192,38 @@ FlareSolverr finto.
   fuori dal repository e mai committate perché contengono utenti reali; topic
   ringraziati nella prova: 226759 (Silo S03, nuovo) e 226850 (Silo S03, già
   ringraziato, riusato).
-- **Stato: bozza.** La definizione è validata e coperta da test offline; la
-  prova live ha coperto login, ricerca e download in sola lettura, ma non il
-  ringraziamento, quindi non viene ancora promossa a «verificata».
-- **Prova live in sola lettura (2026-10-23).** Con la definizione vera, la
-  sessione FlareSolverr e l'account del coordinatore: login riuscito, ricerca
-  `Reacher` con 10 risultati, download del topic 165159 (già ringraziato) con
-  magnet `magnet:?xt=urn:btih:4e9f844c…` e scelta corretta di S03E01. Nessun
-  ringraziamento è stato inviato. Resta `bozza` perché il ramo
-  `download.before` (il «grazie» su un topic non ancora ringraziato) non è stato
-  eseguito dal vivo: è coperto solo dai test offline.
-- La ricerca nativa è solo phpBB HTML: niente smartfeed. `meta.latest: false`,
-  quindi non entra nei feed periodici; risponde alle ricerche.
+- **Stato: verificata (2026-10-26).** Login, ricerca, grab normale e grab da
+  Smartfeed sono stati provati dal vivo con l'account del coordinatore.
+  - Grab normale: *Silo - Stagione 3 (2026) [COMPLETA] 1080p H264 …*, 302 al
+    magnet in 2,2 s, con ringraziamento del topic.
+  - Grab da Smartfeed: *Inside Man (2006) 1080p H264 …*, topic pending elencato
+    dalla Smartfeed e risolto dall'indexer MirCrew nativo, 302 al magnet in
+    7,2 s, con ringraziamento.
+  La selezione fine per stagione/episodio dentro un topic con più magnet resta
+  coperta dai test offline e da provare con un episodio singolo.
+- La ricerca nativa è phpBB HTML; il canale novità è la sorgente separata
+  `mircrew-smartfeed` (`meta.latest: true`). La definizione nativa resta
+  `latest: false` e risponde alle ricerche.
 - Il login dipende dal tema phpBB `prosilver` (nomi dei campi e link «Grazie»).
   Un cambio di tema richiede di aggiornare i selettori.
 - Il numero di ringraziamenti dal vivo va tenuto al minimo: la prova reale deve
   usare **al massimo 3 topic scelti apposta**, come da incarico.
 
-### Promozione a «verificata»
+### Promozione a «verificata» (fatta il 26/10/2026)
 
-Solo dopo una prova reale andata a buon fine:
+Passi eseguiti:
 
-1. aggiungere l'indexer `mircrew` con username, password e URL FlareSolverr;
-2. eseguire il test dell'indexer: login su `ucp.php`, ricerca, download;
-3. verificare nel log che la ricerca non abbia aperto topic e che il grab abbia
-   prodotto un magnet `magnet:?xt=urn:btih:…`;
-4. contare i ringraziamenti (massimo 3) e annotare i topic usati;
-5. cambiare `state: bozza` in `state: verificata` in
-   `internal/catalog/catalog.yaml`, rigenerare l'indice con
-   `go generate ./internal/catalog` e aggiornare questo documento.
+1. indexer `mircrew` aggiunto con username, password e URL FlareSolverr;
+2. test dell'indexer: login su `ucp.php`, ricerca, download;
+3. grab normale (Silo S03) e grab da Smartfeed (Inside Man): entrambi hanno
+   prodotto un magnet `magnet:?xt=urn:btih:…`, con ringraziamento;
+4. topic ringraziati: 2;
+5. `state: verificata` in `internal/catalog/catalog.yaml` per `mircrew` e
+   `mircrew-smartfeed`, indice rigenerato con `make catalog-index` e questo
+   documento aggiornato.
+
+Resta da provare la scelta automatica del magnet giusto dentro un topic che
+contiene più episodi e più risoluzioni (la logica è coperta dai test offline).
 
 ---
 
@@ -271,5 +274,6 @@ ripulito, mai il token.
   sostituisce quello del canale esistente.
 - Fixture RSS e Atom sanitizzate in
   `internal/catalog/definitions/fixtures/mircrew-smartfeed/`.
-- Stato: **bozza**. Nessun login, nessun ringraziamento e nessuna prova live in
-  questo ciclo; la verifica resta rinviata allo sblocco CAPTCHA.
+- Stato: **verificata (2026-10-26)**. La sorgente ha letto 77 topic dal feed
+  personale; il grab di *Inside Man (2006)* è stato risolto dall'indexer
+  MirCrew nativo (302 al magnet in 7,2 s, con ringraziamento).

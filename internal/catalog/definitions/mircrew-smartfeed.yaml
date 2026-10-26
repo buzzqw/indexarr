@@ -1,4 +1,4 @@
-# BOZZA (draft). MirCrew personal Smartfeed (phpBB RSS/Atom).
+# VERIFICATA (verified). MirCrew personal Smartfeed (phpBB RSS/Atom).
 #
 # This is the "latest" channel of MirCrew, not a search indexer. The user
 # pastes the personal URL shown on /smartfeed/ui; it carries the forum user
@@ -26,7 +26,7 @@ meta:
   description: MirCrew personal Smartfeed; pending topics, grabbed through the native MirCrew indexer.
   urls:
     - https://mircrew-releases.org/
-  updated: "2026-10-24"
+  updated: "2026-10-26"
   latest: true
 
 settings:

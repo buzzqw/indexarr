@@ -1,4 +1,4 @@
-# BOZZA (draft). MirCrew native definition.
+# VERIFICATA (verified). MirCrew native definition.
 #
 # MirCrew protects every page with Cloudflare and hides the magnets of a topic
 # until the first post is thanked. The definition therefore uses:
@@ -13,8 +13,8 @@
 # Fixtures were captured from https://mircrew-releases.org on 2026-10-23 and
 # then sanitized: form tokens, session ids, usernames and avatar URLs are
 # synthetic. The topic fixture is a first post that was already thanked, so
-# running the offline test never performs an engagement action. State stays
-# "bozza" until the coordinator verifies it with a real account.
+# running the offline test never performs an engagement action. State is "verificata":
+# login, search and a real grab with thank-you were tested on 2026-10-26.
 schema: 1
 
 meta:
@@ -27,7 +27,7 @@ meta:
   description: MirCrew Italian forum (phpBB, Cloudflare, magnets unlocked by thanking a topic).
   urls:
     - https://mircrew-releases.org/
-  updated: "2026-10-23"
+  updated: "2026-10-26"
   latest: false
 
 settings:
