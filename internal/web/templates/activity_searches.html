@@ -1,3 +1,54 @@
+{{define "app_searches_table"}}
+<div class="table-scroll">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">{{T "activity.searches.app"}}</th>
+        <th scope="col" title="{{T "activity.searches.statusHelp"}}">{{T "activity.searches.status"}}</th>
+        <th scope="col">{{T "activity.searches.query"}}</th>
+        <th scope="col">{{T "activity.searches.indexers"}}</th>
+        <th scope="col">{{T "activity.searches.live"}}</th>
+        <th scope="col">{{T "activity.searches.results"}}</th>
+        <th scope="col">{{T "activity.searches.total"}}</th>
+        <th scope="col">{{T "activity.searches.duration"}}</th>
+        <th scope="col">{{T "activity.searches.error"}}</th>
+        <th scope="col">{{T "activity.searches.when"}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Searches}}
+      <tr>
+        <td><strong>{{textOrDash .App}}</strong><div class="sub">{{.Mode}}</div></td>
+        <td>{{if .Error}}<span class="chip danger" title="{{.Error}}">{{T "activity.searches.failed"}}</span>{{else}}<span class="chip ok" title="{{T "activity.searches.okHelp"}}">{{T "activity.searches.ok"}}</span>{{end}}</td>
+        <td>{{if .Query}}{{truncate .Query 70}}{{else}}<span class="muted">—</span>{{end}}{{if .Params}}<div class="sub"><code>{{truncate .Params 100}}</code></div>{{end}}</td>
+        <td>{{if .Indexers}}{{.Indexers}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td class="app-live">
+          {{range .Live}}
+          <div class="sub">
+            <strong>{{.Name}}</strong>
+            <span class="chip">{{.Mode}}{{if .Fallback}} · {{T "activity.searches.fallback"}}{{end}}</span>
+            {{if .Query}}<code>{{truncate .Query 40}}</code>{{end}}
+            · {{.Results}} {{T "activity.searches.resultsShort"}}
+            {{if .Duration}}· {{.Duration}}{{end}}
+            {{if .TimedOut}}<span class="chip danger">{{T "activity.searches.timeout"}}</span>{{end}}
+            {{if .Skipped}}<span class="chip">{{T "activity.searches.skipped"}}</span>{{end}}
+          </div>
+          {{else}}<span class="muted">—</span>{{end}}
+        </td>
+        <td class="app-results">
+          {{range .ResultRows}}<span class="chip">{{.Name}} · {{.Count}}</span>{{else}}<span class="muted">—</span>{{end}}
+        </td>
+        <td>{{.Total}}{{if .Duplicates}}<div class="sub">{{T "activity.searches.duplicates" .Duplicates}}</div>{{end}}</td>
+        <td class="nowrap">{{if .HasDuration}}{{.Duration}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td class="error-cell">{{if .Error}}<span title="{{.Error}}">{{truncate .Error 90}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+        <td class="nowrap">{{ago .CreatedAt}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+
 {{define "activity_searches_body"}}
 <div class="section-head">
   <p class="muted">{{T "activity.searches.subtitle"}}</p>
@@ -5,52 +56,7 @@
 
 <section class="panel">
   {{if .Searches}}
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">{{T "activity.searches.app"}}</th>
-          <th scope="col">{{T "activity.searches.query"}}</th>
-          <th scope="col">{{T "activity.searches.indexers"}}</th>
-          <th scope="col">{{T "activity.searches.live"}}</th>
-          <th scope="col">{{T "activity.searches.results"}}</th>
-          <th scope="col">{{T "activity.searches.total"}}</th>
-          <th scope="col">{{T "activity.searches.duration"}}</th>
-          <th scope="col">{{T "activity.searches.error"}}</th>
-          <th scope="col">{{T "activity.searches.when"}}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Searches}}
-        <tr>
-          <td><strong>{{textOrDash .App}}</strong><div class="sub">{{.Mode}}</div></td>
-          <td>{{if .Query}}{{truncate .Query 70}}{{else}}<span class="muted">—</span>{{end}}{{if .Params}}<div class="sub"><code>{{truncate .Params 100}}</code></div>{{end}}</td>
-          <td>{{if .Indexers}}{{.Indexers}}{{else}}<span class="muted">—</span>{{end}}</td>
-          <td class="app-live">
-            {{range .Live}}
-            <div class="sub">
-              <strong>{{.Name}}</strong>
-              <span class="chip">{{.Mode}}{{if .Fallback}} · {{T "activity.searches.fallback"}}{{end}}</span>
-              {{if .Query}}<code>{{truncate .Query 40}}</code>{{end}}
-              · {{.Results}} {{T "activity.searches.resultsShort"}}
-              {{if .Duration}}· {{.Duration}}{{end}}
-              {{if .TimedOut}}<span class="chip danger">{{T "activity.searches.timeout"}}</span>{{end}}
-              {{if .Skipped}}<span class="chip">{{T "activity.searches.skipped"}}</span>{{end}}
-            </div>
-            {{else}}<span class="muted">—</span>{{end}}
-          </td>
-          <td class="app-results">
-            {{range .ResultRows}}<span class="chip">{{.Name}} · {{.Count}}</span>{{else}}<span class="muted">—</span>{{end}}
-          </td>
-          <td>{{.Total}}{{if .Duplicates}}<div class="sub">{{T "activity.searches.duplicates" .Duplicates}}</div>{{end}}</td>
-          <td class="nowrap">{{if .HasDuration}}{{.Duration}}{{else}}<span class="muted">—</span>{{end}}</td>
-          <td class="error-cell">{{if .Error}}<span title="{{.Error}}">{{truncate .Error 90}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
-          <td class="nowrap">{{ago .CreatedAt}}</td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-  </div>
+  {{template "app_searches_table" .}}
   {{template "pager" .Pager}}
   {{else}}
   {{template "empty" .Empty}}

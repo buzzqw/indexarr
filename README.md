@@ -347,9 +347,9 @@ L'operazione è registrata nei log.
 | **Dashboard** | Totali, stato degli indexer, ultime release ed esecuzioni |
 | **Releases** | Ricerca live, esclusione `-xxx`, regex, filtri avanzati (qualità, lingua, seeders, dimensione), ricerche salvate, preferiti/nascosti; dettaglio con magnet e `.torrent` |
 | **Indexer** | Elenco unico, Run/Test/Run all/Test all, dettaglio, modifica, export/import JSON e scoperta feed |
-| **Attività** | Storico aggiornamenti da `indexer_history` con esito, query, durata ed errore; log runtime |
+| **Attività** | Storico aggiornamenti da `indexer_history` con esito, query, durata ed errore; nuove release; ricerche delle app |
+| **Log** | Log interni con filtri e livello runtime, richieste ricevute dalle app con esito e tempi, statistiche per app e per indexer collegate alla Manutenzione |
 | **Rules** | Blocklist per infohash, titolo, regex, sorgente o categoria; le release bloccate non vengono più inserite |
-| **Logs** | Ultimi 2000 messaggi, filtro per livello/testo, limite righe, auto-refresh, download, pulizia e livello di log runtime |
 | **Settings** | API key primaria e multiple con rate limit, endpoint Torznab, ricerca live, intervalli, limiti, retention, credenziali UI, notifiche, auto-disable, client torrent e backup |
 | **Maintenance** | Integrity check, vacuum, optimize/checkpoint, reindex, deduplica, pulizia `.torrent`, retention, purge per indexer, backup automatici, download/delete e ripristino |
 

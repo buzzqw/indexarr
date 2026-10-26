@@ -391,6 +391,7 @@ h2 { font-size: 1.02rem; margin: 0; letter-spacing: -0.01em; }
 .panel > .field,
 .panel > .actions,
 .panel > .action-grid,
+.panel > .guide-steps,
 .panel > p,
 .panel > form,
 .panel.form {
@@ -416,6 +417,16 @@ h2 { font-size: 1.02rem; margin: 0; letter-spacing: -0.01em; }
 
 .prose p { margin: 0.45rem 0; }
 .prose strong { color: var(--text); }
+
+.guide-steps {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 85ch;
+  line-height: 1.5;
+}
+.guide-steps li::marker { color: var(--accent); font-weight: 600; }
+.guide-steps a { font-weight: 600; }
 
 .table-scroll { overflow-x: auto; }
 

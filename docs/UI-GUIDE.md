@@ -113,6 +113,7 @@ Regole di testo:
 │ ☰  Indexer      2 ⚠  │   ← badge solo se c'è qualcosa da fare
 │ ⇄  App               │
 │ ◷  Attività          │
+│ ≡  Log               │
 │ ⚙  Impostazioni      │
 │                      │
 │ ─────────────────    │
@@ -126,12 +127,14 @@ Regole di testo:
 | Cerca | Ricerca release | Release |
 | Indexer | Elenco unico dei siti, dettaglio, aggiunta | Indexer + sorgenti + Importa |
 | App | App \*arr **e** client di download | Applicazioni + client da Impostazioni |
-| Attività | Esecuzioni, ricerche ricevute, grab, log | Attività |
+| Attività | Esecuzioni, release nuove, ricerche ricevute, log | Attività |
+| Log | Log interni, richieste delle app, statistiche | Log + Attività |
 | Impostazioni | Sezioni (vedi §4.8) | Impostazioni, Regole, Manutenzione, Definizioni |
 
 URL esistenti: redirect 302 verso la nuova posizione (come già fatto per
-`/sources`, `/runs`, `/logs`). `scripts/ui-smoke.sh` va aggiornato con la
-nuova mappa.
+`/sources` e `/runs`). `/logs` non è più un redirect: è la pagina **Log** con
+tre tab (interni, richieste, statistiche); la vecchia vista resta raggiungibile
+da `/activity?tab=logs`. `scripts/ui-smoke.sh` va aggiornato con la nuova mappa.
 
 Il selettore lingua diventa un menu a tendina nel piede; l'endpoint esce dalla
 sidebar (sta in Home e in App, dove serve).
@@ -374,10 +377,27 @@ Client di download
 
 ### 4.7 Attività
 
-Tab: **Aggiornamenti** (run), **Ricerche** (richieste ricevute dalle app, con
-indexer interrogati e tempi), **Grab**, **Log**. Ogni riga in errore ha la
-frase causa+rimedio della regola 6. Aggiornamento automatico ogni 10 s solo
-mentre la tab è visibile (`document.visibilityState`), con pausa.
+Tab: **Aggiornamenti** (run), **Nuove release**, **Ricerche** (richieste
+ricevute dalle app, con indexer interrogati e tempi), **Log**. Ogni riga in
+errore ha la frase causa+rimedio della regola 6. Aggiornamento automatico ogni
+10 s solo mentre la tab è visibile (`document.visibilityState`), con pausa.
+
+### 4.7.1 Log e statistiche
+
+La pagina **Log** ha tre tab, con in cima un percorso guidato di tre passi:
+
+| Tab | Cosa mostra |
+|---|---|
+| Log interni | Il buffer del processo, con filtri per livello, origine e testo, download `.txt`, pulizia, auto-refresh e livello runtime |
+| Richieste | Una riga per ogni ricerca ricevuta dalle app: query ripulita, esito (ok/fallita), indexer interrogati, risultati, tempo ed errore; contatori su finestra 24h/7g/30g/tutto e filtro «solo fallimenti» |
+| Statistiche | Contatori della finestra (richieste, servite, fallite, percentuale, tempo medio, risultati), tabella per app, tabella per indexer (query, fallimenti, risultati, tempo medio) e classifica delle fonti che hanno servito download |
+
+I contatori delle richieste si appoggiano a `app_searches`; la tabella per
+indexer usa il fan-out live salvato con ogni richiesta. La sezione statistiche
+è collegata alla Manutenzione (che resta la sede di database, backup,
+integrità e retention) e la Manutenzione ha un pulsante **Statistiche
+richieste** che porta qui. Chiavi API, password, cookie e rsskey sono rimossi
+prima del salvataggio.
 
 ### 4.8 Impostazioni
 

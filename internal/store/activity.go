@@ -527,42 +527,7 @@ func (s *Store) RecordAppSearch(ctx context.Context, in AppSearch) (int64, error
 
 // ListAppSearches returns the newest app searches, newest first.
 func (s *Store) ListAppSearches(ctx context.Context, limit, offset int) ([]AppSearch, error) {
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > 500 {
-		limit = 500
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, app, mode, query, params, indexer_ids, indexer_names, results_json,
-			total_results, duplicates_merged, duration_ms, error, live_json, created_at
-		FROM app_searches ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,
-		limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("list app searches: %w", err)
-	}
-	defer rows.Close()
-	var out []AppSearch
-	for rows.Next() {
-		var item AppSearch
-		var ids, names, results, live string
-		var created int64
-		if err := rows.Scan(&item.ID, &item.App, &item.Mode, &item.Query, &item.Params,
-			&ids, &names, &results, &item.TotalResults, &item.DuplicatesMerged,
-			&item.DurationMS, &item.Error, &live, &created); err != nil {
-			return nil, fmt.Errorf("scan app search: %w", err)
-		}
-		_ = json.Unmarshal([]byte(ids), &item.IndexerIDs)
-		_ = json.Unmarshal([]byte(names), &item.IndexerNames)
-		_ = json.Unmarshal([]byte(results), &item.Results)
-		_ = json.Unmarshal([]byte(live), &item.Live)
-		item.CreatedAt = unixTime(created)
-		out = append(out, item)
-	}
-	return out, rows.Err()
+	return s.ListAppSearchesFiltered(ctx, false, limit, offset)
 }
 
 // RecentLiveIndexerSamples returns the per-indexer outcomes stored in the
@@ -603,8 +568,178 @@ func (s *Store) RecentLiveIndexerSamples(ctx context.Context, limit int) ([]AppS
 
 // CountAppSearches returns how many app searches are stored.
 func (s *Store) CountAppSearches(ctx context.Context) (int64, error) {
+	return s.CountAppSearchesFiltered(ctx, false)
+}
+
+// AppSearchTotals is the request-level summary of the app searches received in
+// a time window. Errors counts requests that returned an error to the app.
+type AppSearchTotals struct {
+	Requests int64
+	Errors   int64
+	Results  int64
+	AvgMS    int64
+}
+
+// AppSearchAppStat is one downstream app (Sonarr, Radarr, ...) in the request
+// statistics: how many requests it sent, how many failed and what it received.
+type AppSearchAppStat struct {
+	App      string
+	Requests int64
+	Errors   int64
+	Results  int64
+	AvgMS    int64
+}
+
+// AppSearchIndexerStat aggregates the live fan-out rows stored with each app
+// request: how many times an indexer was queried, how often it failed and the
+// average time it took. Results are the stored rows attributed to it.
+type AppSearchIndexerStat struct {
+	Name     string
+	Requests int64
+	Failures int64
+	Results  int64
+	AvgMS    int64
+}
+
+// sinceUnix converts a window start to the unix value stored in created_at.
+// A zero time means "no lower bound".
+func sinceUnix(since time.Time) int64 {
+	if since.IsZero() {
+		return -1 << 62
+	}
+	return since.Unix()
+}
+
+// AppSearchTotals returns the request counters for app searches started at or
+// after since. A zero since covers the whole history.
+func (s *Store) AppSearchTotals(ctx context.Context, since time.Time) (AppSearchTotals, error) {
+	var out AppSearchTotals
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*),
+			COALESCE(SUM(CASE WHEN error <> '' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(total_results), 0),
+			COALESCE(CAST(AVG(duration_ms) AS INTEGER), 0)
+		FROM app_searches WHERE created_at >= ?`, sinceUnix(since)).
+		Scan(&out.Requests, &out.Errors, &out.Results, &out.AvgMS)
+	if err != nil {
+		return out, fmt.Errorf("app search totals: %w", err)
+	}
+	return out, nil
+}
+
+// AppSearchStatsByApp groups the request counters by downstream application.
+func (s *Store) AppSearchStatsByApp(ctx context.Context, since time.Time) ([]AppSearchAppStat, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT app, COUNT(*),
+			COALESCE(SUM(CASE WHEN error <> '' THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(total_results), 0),
+			COALESCE(CAST(AVG(duration_ms) AS INTEGER), 0)
+		FROM app_searches WHERE created_at >= ?
+		GROUP BY app ORDER BY COUNT(*) DESC, app COLLATE NOCASE`, sinceUnix(since))
+	if err != nil {
+		return nil, fmt.Errorf("app search stats by app: %w", err)
+	}
+	defer rows.Close()
+	var out []AppSearchAppStat
+	for rows.Next() {
+		var item AppSearchAppStat
+		if err := rows.Scan(&item.App, &item.Requests, &item.Errors, &item.Results, &item.AvgMS); err != nil {
+			return nil, fmt.Errorf("scan app search stats by app: %w", err)
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+// AppSearchStatsByIndexer aggregates the per-indexer fan-out outcomes stored
+// in live_json for the searches in the window. Rows without a live fan-out
+// (cached answers) are not counted.
+func (s *Store) AppSearchStatsByIndexer(ctx context.Context, since time.Time, limit int) ([]AppSearchIndexerStat, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT COALESCE(json_extract(j.value, '$.name'), '') AS name,
+			COUNT(*),
+			SUM(CASE WHEN COALESCE(json_extract(j.value, '$.error'), '') <> ''
+				OR COALESCE(json_extract(j.value, '$.timed_out'), 0) > 0
+				THEN 1 ELSE 0 END),
+			COALESCE(SUM(json_extract(j.value, '$.results')), 0),
+			COALESCE(CAST(AVG(json_extract(j.value, '$.duration_ms')) AS INTEGER), 0)
+		FROM app_searches s, json_each(s.live_json) j
+		WHERE s.created_at >= ? AND s.live_json <> '[]'
+		GROUP BY name HAVING name <> ''
+		ORDER BY COUNT(*) DESC, name COLLATE NOCASE
+		LIMIT ?`, sinceUnix(since), limit)
+	if err != nil {
+		return nil, fmt.Errorf("app search stats by indexer: %w", err)
+	}
+	defer rows.Close()
+	var out []AppSearchIndexerStat
+	for rows.Next() {
+		var item AppSearchIndexerStat
+		if err := rows.Scan(&item.Name, &item.Requests, &item.Failures, &item.Results, &item.AvgMS); err != nil {
+			return nil, fmt.Errorf("scan app search stats by indexer: %w", err)
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+// ListAppSearchesFiltered returns the newest app searches, optionally only
+// the ones that returned an error.
+func (s *Store) ListAppSearchesFiltered(ctx context.Context, onlyErrors bool, limit, offset int) ([]AppSearch, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	query := `
+		SELECT id, app, mode, query, params, indexer_ids, indexer_names, results_json,
+			total_results, duplicates_merged, duration_ms, error, live_json, created_at
+		FROM app_searches`
+	if onlyErrors {
+		query += ` WHERE error <> ''`
+	}
+	query += ` ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`
+	rows, err := s.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("list app searches: %w", err)
+	}
+	defer rows.Close()
+	var out []AppSearch
+	for rows.Next() {
+		var item AppSearch
+		var ids, names, results, live string
+		var created int64
+		if err := rows.Scan(&item.ID, &item.App, &item.Mode, &item.Query, &item.Params,
+			&ids, &names, &results, &item.TotalResults, &item.DuplicatesMerged,
+			&item.DurationMS, &item.Error, &live, &created); err != nil {
+			return nil, fmt.Errorf("scan app search: %w", err)
+		}
+		_ = json.Unmarshal([]byte(ids), &item.IndexerIDs)
+		_ = json.Unmarshal([]byte(names), &item.IndexerNames)
+		_ = json.Unmarshal([]byte(results), &item.Results)
+		_ = json.Unmarshal([]byte(live), &item.Live)
+		item.CreatedAt = unixTime(created)
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+// CountAppSearchesFiltered counts the stored app searches, optionally only the
+// ones that returned an error.
+func (s *Store) CountAppSearchesFiltered(ctx context.Context, onlyErrors bool) (int64, error) {
+	query := `SELECT COUNT(*) FROM app_searches`
+	if onlyErrors {
+		query += ` WHERE error <> ''`
+	}
 	var count int64
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM app_searches`).Scan(&count); err != nil {
+	if err := s.db.QueryRowContext(ctx, query).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count app searches: %w", err)
 	}
 	return count, nil

@@ -19,7 +19,9 @@ configurazione di base vedi il [README](../README.md).
 4. Completa o salta il percorso: potrai riaprirlo da Impostazioni.
 
 La dashboard mostra sorgenti, release, problemi e lo stato delle app. La voce
-**Attività** raccoglie esecuzioni, ricerche delle app e log.
+**Attività** raccoglie esecuzioni, nuove release e ricerche delle app. **Log**
+ha i log interni, le richieste ricevute con esito e tempi, e le statistiche per
+app e per indexer.
 
 ---
 
@@ -208,7 +210,7 @@ controlla token, chat id e che il bot sia stato avviato nella chat.
   successiva riallinea le app allo stato attuale di indexarr.
 - **Retention**: le release e lo storico vengono potati secondo i giorni
   configurati. Una release già scaricata non viene rimossa.
-- **Log**: Attività → Log. Il livello si cambia da Impostazioni → Avanzate.
+- **Log**: voce **Log** nella barra laterale → tab **Log interni** (la stessa vista resta in Attività → Log). Il livello si cambia da Impostazioni → Avanzate o direttamente dalla pagina.
   Scarica il log dal pulsante dedicato.
 - **Fonti più utili**: in Manutenzione, gli scarichi serviti negli ultimi 30
   giorni per sorgente, con tipo (Feed, Web, Indexer), numero e percentuale.

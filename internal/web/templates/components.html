@@ -236,3 +236,22 @@
   <input id="{{.ID}}" name="{{if .Name}}{{.Name}}{{else}}{{.ID}}{{end}}" type="password" value="" {{if .Required}}required{{end}} autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}">
   {{if .HasSecret}}<button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}">{{T "common.show"}}</button>{{end}}
 </div>{{end}}
+
+{{define "useful_sources"}}{{if .UsefulSources}}
+<div class="useful-bars">
+  {{range .UsefulSources}}
+  <div class="useful-row">
+    <div class="useful-head">
+      <span class="useful-name" title="{{.DefinitionID}}">{{.Name}}</span>
+      <span class="badge soft">{{.TypeLabel}}</span>
+      <span class="useful-count">{{T "maintenance.usefulDownloads" .Downloads}}</span>
+      <span class="muted">{{.Share}}%</span>
+    </div>
+    <div class="useful-track" role="img" aria-label="{{.Name}} {{.Share}}%"><span class="useful-bar" style="width: {{.Share}}%"></span></div>
+  </div>
+  {{end}}
+</div>
+<p class="help">{{T "maintenance.usefulTotal" .UsefulTotal}}</p>
+{{else}}
+<p class="muted">{{T "maintenance.usefulEmpty"}}</p>
+{{end}}{{end}}

@@ -38,7 +38,8 @@
         <a href="/releases"{{if eq .Section "releases"}} class="active" aria-current="page"{{end}}>{{T "shell.search"}}</a>
         <a href="/indexers"{{if or (eq .Section "indexers") (eq .Section "sources")}} class="active" aria-current="page"{{end}}>{{T "shell.indexers"}}{{if .NavIndexerProblems}}<span class="nav-badge" title="{{T "shell.needsAttention"}}">{{.NavIndexerProblems}}</span>{{end}}</a>
         <a href="/applications"{{if eq .Section "applications"}} class="active" aria-current="page"{{end}}>{{T "shell.applications"}}{{if .NavAppProblems}}<span class="nav-badge" title="{{T "shell.needsAttention"}}">{{.NavAppProblems}}</span>{{end}}</a>
-        <a href="/activity"{{if or (eq .Section "activity") (eq .Section "runs") (eq .Section "logs")}} class="active" aria-current="page"{{end}}>{{T "shell.activity"}}</a>
+        <a href="/activity"{{if or (eq .Section "activity") (eq .Section "runs")}} class="active" aria-current="page"{{end}}>{{T "shell.activity"}}</a>
+        <a href="/logs"{{if eq .Section "logs"}} class="active" aria-current="page"{{end}}>{{T "activity.logs"}}</a>
         <a href="/settings"{{if or (eq .Section "settings") (eq .Section "rules") (eq .Section "maintenance")}} class="active" aria-current="page"{{end}}>{{T "shell.settings"}}</a>
       </nav>
 

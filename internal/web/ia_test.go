@@ -22,6 +22,32 @@ func locationQuery(t *testing.T, location string) (*url.URL, url.Values) {
 	return parsed, parsed.Query()
 }
 
+func TestLogsSectionKeepsLegacyActivityTab(t *testing.T) {
+	env := newTestEnv(t)
+
+	// The Logs section has its own page now.
+	recorder := get(t, env.handler, "/logs?level=error&q=timeout")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET /logs = %d, want 200", recorder.Code)
+	}
+	if body := recorder.Body.String(); !strings.Contains(body, `href="/logs?tab=internal"`) {
+		t.Error("the Logs section is missing its Internal log tab")
+	}
+
+	// The old Activity → Logs tab still exists and keeps its filters.
+	recorder = get(t, env.handler, "/activity?tab=logs&level=error&q=timeout")
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET /activity?tab=logs = %d, want 200", recorder.Code)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, `name="tab" value="logs"`) {
+		t.Error("the Activity log filter lost its tab value")
+	}
+	if !strings.Contains(body, `value="timeout"`) {
+		t.Error("the Activity log filter lost the query")
+	}
+}
+
 func TestLegacyURLsRedirect(t *testing.T) {
 	env := newTestEnv(t)
 
@@ -34,8 +60,6 @@ func TestLegacyURLsRedirect(t *testing.T) {
 		{"/sources?msg=ciao", "", map[string]string{"msg": "ciao"}},
 		{"/runs", "runs", nil},
 		{"/runs?source=3&errors=1", "runs", map[string]string{"source": "3", "errors": "1"}},
-		{"/logs", "logs", nil},
-		{"/logs?level=error&q=timeout", "logs", map[string]string{"level": "error", "q": "timeout"}},
 	}
 	for _, tc := range cases {
 		recorder := get(t, env.handler, tc.path)

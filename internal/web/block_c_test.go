@@ -247,7 +247,6 @@ func TestOldURLsRedirectToNewPositions(t *testing.T) {
 		"/sources":     "/indexers",
 		"/sources/new": "/indexers",
 		"/runs":        "/activity?",
-		"/logs":        "/activity?",
 		"/maintenance": "/settings?section=maintenance",
 		"/definitions": "/settings?section=advanced",
 	}
@@ -260,6 +259,11 @@ func TestOldURLsRedirectToNewPositions(t *testing.T) {
 		if location := recorder.Header().Get("Location"); !strings.Contains(location, want) {
 			t.Errorf("%s -> %q, want %q", path, location, want)
 		}
+	}
+	// /logs is now the Logs section itself: the old Activity tab remains at
+	// /activity?tab=logs, and the new page answers 200.
+	if recorder := get(t, env.handler, "/logs"); recorder.Code != http.StatusOK {
+		t.Errorf("/logs = %d, want 200", recorder.Code)
 	}
 	// The definitions detail and editor stay reachable from Advanced.
 	for _, path := range []string{"/definitions/new", "/definitions/example-html"} {

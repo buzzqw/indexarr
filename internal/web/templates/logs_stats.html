@@ -1,0 +1,110 @@
+{{define "logs_stats_body"}}
+<div class="section-head">
+  <p class="muted">{{T "logs.stats.subtitle" .WindowLabel}}</p>
+</div>
+
+<form class="filters" method="get" action="/logs">
+  <input type="hidden" name="tab" value="stats">
+  <div class="field">
+    <label for="stats_window">{{T "logs.stats.window"}}</label>
+    <select id="stats_window" name="window">
+      {{range .Windows}}<option value="{{.Key}}"{{if .Active}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <p class="help">{{T "logs.stats.windowHelp"}}</p>
+  </div>
+  <div class="field actions-field">
+    <button class="btn primary" type="submit">{{T "logs.apply"}}</button>
+    <a class="btn" href="/logs?tab=requests">{{T "logs.stats.openRequests"}}</a>
+  </div>
+</form>
+
+<section class="cards" aria-label="{{T "logs.stats.cardsLabel"}}">
+  <article class="card" title="{{T "logs.requests.requestsHelp"}}"><span class="label">{{T "logs.requests.requests"}}</span><strong>{{.Totals.Requests}}</strong><span class="hint">{{.WindowLabel}}</span></article>
+  <article class="card" title="{{T "logs.requests.successHelp"}}"><span class="label">{{T "logs.requests.successRate"}}</span><strong>{{.SuccessRate}}</strong><span class="hint">{{T "logs.stats.okOf" (sub .Totals.Requests .Totals.Errors) .Totals.Requests}}</span></article>
+  <article class="card" title="{{T "logs.requests.avgHelp"}}"><span class="label">{{T "logs.requests.avg"}}</span><strong>{{.AvgLatency}}</strong><span class="hint">{{T "logs.stats.avgHint"}}</span></article>
+  <article class="card" title="{{T "logs.stats.resultsHelp"}}"><span class="label">{{T "logs.stats.results"}}</span><strong>{{.Totals.Results}}</strong><span class="hint">{{T "logs.stats.resultsHint"}}</span></article>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "logs.stats.byApp"}}</h2><span class="muted">{{.WindowLabel}}</span></div>
+  <p class="help">{{T "logs.stats.byAppHelp"}}</p>
+  {{if .Apps}}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "logs.stats.app"}}</th>
+          <th scope="col" title="{{T "logs.requests.requestsHelp"}}">{{T "logs.requests.requests"}}</th>
+          <th scope="col" title="{{T "logs.requests.okHelp"}}">{{T "logs.requests.ok"}}</th>
+          <th scope="col" title="{{T "logs.requests.errorsHelp"}}">{{T "logs.requests.errors"}}</th>
+          <th scope="col" title="{{T "logs.stats.resultsHelp"}}">{{T "logs.stats.results"}}</th>
+          <th scope="col" title="{{T "logs.requests.avgHelp"}}">{{T "logs.requests.avg"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Apps}}
+        <tr>
+          <td><strong>{{textOrDash .App}}</strong></td>
+          <td>{{.Requests}}</td>
+          <td>{{.OK}}</td>
+          <td>{{if .Errors}}<span class="chip danger">{{.Errors}}</span>{{else}}0{{end}}</td>
+          <td>{{.Results}}</td>
+          <td class="nowrap">{{.Avg}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="empty">{{T "logs.stats.noRequests"}}</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "logs.stats.byIndexer"}}</h2><span class="muted">{{.WindowLabel}}</span></div>
+  <p class="help">{{T "logs.stats.byIndexerHelp" .IndexerCap}}</p>
+  {{if .Indexers}}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "logs.stats.indexer"}}</th>
+          <th scope="col" title="{{T "logs.stats.callsHelp"}}">{{T "logs.stats.calls"}}</th>
+          <th scope="col" title="{{T "logs.stats.failuresHelp"}}">{{T "logs.stats.failures"}}</th>
+          <th scope="col" title="{{T "logs.stats.resultsHelp"}}">{{T "logs.stats.results"}}</th>
+          <th scope="col" title="{{T "logs.requests.avgHelp"}}">{{T "logs.requests.avg"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Indexers}}
+        <tr>
+          <td><strong>{{.Name}}</strong></td>
+          <td>{{.Requests}}</td>
+          <td>{{if .Failures}}<span class="chip danger">{{.Failures}}</span>{{else}}0{{end}}</td>
+          <td>{{.Results}}</td>
+          <td class="nowrap">{{.Avg}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="empty">{{T "logs.stats.noRequests"}}</p>
+  {{end}}
+</section>
+
+<section class="panel" id="stats-useful-sources">
+  <div class="panel-head">
+    <h2>{{T "maintenance.usefulTitle"}}</h2>
+    <span class="muted">{{T "maintenance.usefulWindow" .UsefulDays}}</span>
+  </div>
+  <p class="help">{{T "maintenance.usefulHelp"}}</p>
+  {{template "useful_sources" .}}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "logs.stats.maintenanceTitle"}}</h2></div>
+  <p class="help">{{T "logs.stats.maintenanceHelp"}}</p>
+  <p><a class="btn" href="/maintenance">{{T "logs.openMaintenance"}}</a></p>
+</section>
+{{end}}

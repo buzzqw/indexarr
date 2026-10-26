@@ -108,7 +108,7 @@ var pageNames = []string{
 	"dashboard", "releases", "release",
 	"run", "rules", "settings", "maintenance", "discover", "error",
 	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
-	"applications", "application_form", "activity", "setup", "proxies",
+	"applications", "application_form", "activity", "logs_section", "setup", "proxies",
 	"download_client_form", "site_preview", "smartfeed_form", "store_warning",
 }
 
@@ -147,7 +147,7 @@ var templateFuncMap = template.FuncMap{
 		return value
 	},
 	"add":  func(a, b int) int { return a + b },
-	"sub":  func(a, b int) int { return a - b },
+	"sub":  func(a, b int64) int64 { return a - b },
 	"mulf": func(a float64, b float64) float64 { return a * b },
 	"pct": func(value, total int64) string {
 		if total <= 0 {
@@ -266,6 +266,11 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 			// Activity embeds the Run, Log, Feed and Searches panels.
 			files = append(files, "templates/runs.html", "templates/logs.html",
 				"templates/activity_feed.html", "templates/activity_searches.html")
+		case "logs_section":
+			// The Logs section embeds the internal log, the requests table and
+			// the statistics panels.
+			files = append(files, "templates/logs.html", "templates/activity_searches.html",
+				"templates/logs_requests.html", "templates/logs_stats.html")
 		case "indexer":
 			// The detail page embeds the Data tab and the Sonarr/Radarr try form.
 			files = append(files, "templates/indexer_data.html", "templates/indexer_try.html")
@@ -674,7 +679,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /rules", s.rulesRedirect)
 	ui.HandleFunc("POST /rules", s.rulesAdd)
 	ui.HandleFunc("POST /rules/{id}/delete", s.rulesDelete)
-	ui.HandleFunc("GET /logs", s.logsRedirect)
+	ui.HandleFunc("GET /logs", s.logsSection)
 	ui.HandleFunc("GET /logs/download", s.logsDownload)
 	ui.HandleFunc("POST /logs/clear", s.logsClear)
 	ui.HandleFunc("POST /logs/level", s.logsSetLevel)
@@ -975,6 +980,8 @@ func pageHelpKey(r *http.Request) string {
 		return "client_form"
 	case path == "/activity" || strings.HasPrefix(path, "/runs"):
 		return "activity"
+	case path == "/logs":
+		return "logs"
 	case path == "/settings":
 		return "settings"
 	case path == "/proxies":

@@ -187,58 +187,64 @@ func (s *Server) activitySearches(r *http.Request) (*activitySearchesView, error
 		},
 	}
 	for _, search := range searches {
-		row := appSearchView{
-			App:        search.App,
-			Mode:       search.Mode,
-			Query:      search.Query,
-			Params:     search.Params,
-			Indexers:   strings.Join(search.IndexerNames, ", "),
-			Total:      search.TotalResults,
-			Duplicates: search.DuplicatesMerged,
-			Error:      search.Error,
-			CreatedAt:  search.CreatedAt,
-		}
-		for _, entry := range search.Live {
-			view := appSearchLiveView{
-				Name:     entry.Name,
-				Mode:     entry.Mode,
-				Query:    entry.Query,
-				Results:  entry.Results,
-				Fallback: entry.Fallback,
-				TimedOut: entry.TimedOut,
-				Skipped:  entry.Skipped,
-				Error:    entry.Error,
-			}
-			if entry.Duration > 0 {
-				if entry.Duration < 1000 {
-					view.Duration = strconv.FormatInt(entry.Duration, 10) + " ms"
-				} else {
-					view.Duration = strconv.FormatFloat(float64(entry.Duration)/1000, 'f', 1, 64) + " s"
-				}
-			}
-			row.Live = append(row.Live, view)
-		}
-		if search.DurationMS > 0 {
-			row.HasDuration = true
-			if search.DurationMS < 1000 {
-				row.Duration = strconv.FormatInt(search.DurationMS, 10) + " ms"
-			} else {
-				row.Duration = strconv.FormatFloat(float64(search.DurationMS)/1000, 'f', 1, 64) + " s"
-			}
-		}
-		names := make([]string, 0, len(search.Results))
-		for name := range search.Results {
-			names = append(names, name)
-		}
-		sort.Slice(names, func(i, j int) bool {
-			return strings.ToLower(names[i]) < strings.ToLower(names[j])
-		})
-		for _, name := range names {
-			row.ResultRows = append(row.ResultRows, appSearchResult{
-				Name: name, Count: search.Results[name],
-			})
-		}
-		view.Searches = append(view.Searches, row)
+		view.Searches = append(view.Searches, s.appSearchView(search))
 	}
 	return view, nil
+}
+
+// appSearchView converts one stored request into the row rendered by the
+// Search table (Activity and the Logs section share it).
+func (s *Server) appSearchView(search store.AppSearch) appSearchView {
+	row := appSearchView{
+		App:        search.App,
+		Mode:       search.Mode,
+		Query:      search.Query,
+		Params:     search.Params,
+		Indexers:   strings.Join(search.IndexerNames, ", "),
+		Total:      search.TotalResults,
+		Duplicates: search.DuplicatesMerged,
+		Error:      search.Error,
+		CreatedAt:  search.CreatedAt,
+	}
+	for _, entry := range search.Live {
+		view := appSearchLiveView{
+			Name:     entry.Name,
+			Mode:     entry.Mode,
+			Query:    entry.Query,
+			Results:  entry.Results,
+			Fallback: entry.Fallback,
+			TimedOut: entry.TimedOut,
+			Skipped:  entry.Skipped,
+			Error:    entry.Error,
+		}
+		if entry.Duration > 0 {
+			if entry.Duration < 1000 {
+				view.Duration = strconv.FormatInt(entry.Duration, 10) + " ms"
+			} else {
+				view.Duration = strconv.FormatFloat(float64(entry.Duration)/1000, 'f', 1, 64) + " s"
+			}
+		}
+		row.Live = append(row.Live, view)
+	}
+	if search.DurationMS > 0 {
+		row.HasDuration = true
+		if search.DurationMS < 1000 {
+			row.Duration = strconv.FormatInt(search.DurationMS, 10) + " ms"
+		} else {
+			row.Duration = strconv.FormatFloat(float64(search.DurationMS)/1000, 'f', 1, 64) + " s"
+		}
+	}
+	names := make([]string, 0, len(search.Results))
+	for name := range search.Results {
+		names = append(names, name)
+	}
+	sort.Slice(names, func(i, j int) bool {
+		return strings.ToLower(names[i]) < strings.ToLower(names[j])
+	})
+	for _, name := range names {
+		row.ResultRows = append(row.ResultRows, appSearchResult{
+			Name: name, Count: search.Results[name],
+		})
+	}
+	return row
 }

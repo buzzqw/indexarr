@@ -4,7 +4,10 @@
     <h1>{{T "settings.section.maintenance"}}</h1>
     <p class="muted">{{T "maintenance.intro"}}</p>
   </div>
-  <a class="btn primary" href="/maintenance/backup">{{T "settings.download"}}</a>
+  <div class="actions">
+    <a class="btn" href="/logs?tab=stats" title="{{T "logs.openStatsHelp"}}">{{T "logs.openStats"}}</a>
+    <a class="btn primary" href="/maintenance/backup">{{T "settings.download"}}</a>
+  </div>
 </section>
 
 <section class="cards" aria-label="{{T "maintenance.databaseSummary"}}">
@@ -21,24 +24,7 @@
     <span class="muted">{{T "maintenance.usefulWindow" .UsefulDays}}</span>
   </div>
   <p class="help">{{T "maintenance.usefulHelp"}}</p>
-  {{if .UsefulSources}}
-  <div class="useful-bars">
-    {{range .UsefulSources}}
-    <div class="useful-row">
-      <div class="useful-head">
-        <span class="useful-name" title="{{.DefinitionID}}">{{.Name}}</span>
-        <span class="badge soft">{{.TypeLabel}}</span>
-        <span class="useful-count">{{T "maintenance.usefulDownloads" .Downloads}}</span>
-        <span class="muted">{{.Share}}%</span>
-      </div>
-      <div class="useful-track" role="img" aria-label="{{.Name}} {{.Share}}%"><span class="useful-bar" style="width: {{.Share}}%"></span></div>
-    </div>
-    {{end}}
-  </div>
-  <p class="help">{{T "maintenance.usefulTotal" .UsefulTotal}}</p>
-  {{else}}
-  <p class="muted">{{T "maintenance.usefulEmpty"}}</p>
-  {{end}}
+  {{template "useful_sources" .}}
 </section>
 
 <section class="panel danger-zone">

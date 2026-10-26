@@ -25,6 +25,11 @@ type logsPage struct {
 	MaxEntries   int
 	DownloadURL  string
 	ProblemsURL  string
+	// FormPath and TabValue keep the filter form on the page that renders it:
+	// the same body is used by Activity (tab=logs) and by the Logs section
+	// (tab=internal).
+	FormPath string
+	TabValue string
 }
 
 func parseLogLevel(raw string) (slog.Level, bool) {
@@ -48,6 +53,13 @@ func (s *Server) logsRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) logsData(r *http.Request) logsPage {
+	return s.logsDataFor(r, "/activity", "logs")
+}
+
+// logsDataFor builds the internal-log view for the page that renders it.
+// formPath is where the filter form submits, tabValue is the tab parameter it
+// must carry (empty on a single-tab page).
+func (s *Server) logsDataFor(r *http.Request, formPath, tabValue string) logsPage {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	levelName := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("level")))
 	minLevel, ok := parseLogLevel(levelName)
@@ -91,6 +103,11 @@ func (s *Server) logsData(r *http.Request) logsPage {
 	if component != "" {
 		problemValues.Set("component", component)
 	}
+	problemsURL := formPath
+	if tabValue != "" {
+		problemValues.Set("tab", tabValue)
+	}
+	problemsURL += "?" + problemValues.Encode()
 	runtimeLevel := "info"
 	if s.level != nil {
 		runtimeLevel = strings.ToLower(s.level.Level().String())
@@ -108,7 +125,9 @@ func (s *Server) logsData(r *http.Request) logsPage {
 		BufferSize:   s.logs.Len(),
 		MaxEntries:   s.logs.Cap(),
 		DownloadURL:  "/logs/download?" + values.Encode(),
-		ProblemsURL:  "/activity?tab=logs&" + problemValues.Encode(),
+		ProblemsURL:  problemsURL,
+		FormPath:     formPath,
+		TabValue:     tabValue,
 	}
 	if auto {
 		data.AutoRefresh = 10

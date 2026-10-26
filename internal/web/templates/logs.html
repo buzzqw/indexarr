@@ -31,8 +31,8 @@
   </form>
 </section>
 
-<form class="filters" method="get" action="/activity">
-  <input type="hidden" name="tab" value="logs">
+<form class="filters" method="get" action="{{.FormPath}}">
+  {{if .TabValue}}<input type="hidden" name="tab" value="{{.TabValue}}">{{end}}
   <div class="field">
     <label for="level">{{T "logs.filterLevel"}}</label>
     <select id="level" name="level">
@@ -70,7 +70,7 @@
   </div>
   <div class="field actions-field">
     <button class="btn primary" type="submit">{{T "logs.apply"}}</button>
-    <a class="btn" href="/activity?tab=logs">{{T "logs.reset"}}</a>
+    <a class="btn" href="{{.FormPath}}{{if .TabValue}}?tab={{.TabValue}}{{end}}">{{T "logs.reset"}}</a>
   </div>
 </form>
 
