@@ -377,10 +377,19 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		s.liveWait(waitCtx, liveQueryFor(mode, filter, app), wait)
 		cancel()
 	}
-	releases, total, err := s.store.SearchReleases(ctx, filter)
-	if err != nil {
-		s.log.Error("torznab: search", "component", "indexarr", "subsystem", "torznab", "error", err)
-		return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
+	// The aggregated endpoint fuses a bounded window below and replaces the
+	// page, so it does not read one here: that query (and its COUNT) was
+	// thrown away on every Arr RSS poll and search.
+	fuse := aggregate && query.Get("duplicates") != "1"
+	var releases []store.Release
+	var total int64
+	if !fuse {
+		var err error
+		releases, total, err = s.store.SearchReleases(ctx, filter)
+		if err != nil {
+			s.log.Error("torznab: search", "component", "indexarr", "subsystem", "torznab", "error", err)
+			return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
+		}
 	}
 	// The live fan-out runs on every request that carries a query. The cache
 	// is not replaced: what came back in time is stored, then the same cache
@@ -414,7 +423,8 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			out.Err = "live search failed"
 			s.log.Warn("torznab: live search", "component", "indexer", "subsystem", "torznab", "error", liveErr)
 		}
-		if liveResult.Stored > 0 {
+		if liveResult.Stored > 0 && !fuse {
+			var err error
 			releases, total, err = s.store.SearchReleases(ctx, filter)
 			if err != nil {
 				s.log.Error("torznab: search after live", "component", "indexarr", "subsystem", "torznab", "error", err)
@@ -427,7 +437,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	// fusion must run over the whole result set, not over the already sliced
 	// page: a page full of duplicates would otherwise be shorter than limit
 	// and Servarr would stop paginating before the real end.
-	if aggregate && query.Get("duplicates") != "1" {
+	if fuse {
 		// A page that follows the first one reuses the snapshot taken for that
 		// query. This keeps total and offsets stable even while late live
 		// results are still being written, and avoids refetching the full set
@@ -574,7 +584,11 @@ func (s *Server) readWindow(ctx context.Context, filter store.Filter, window int
 		if err != nil {
 			return nil, 0, err
 		}
-		total = pageTotal
+		if page.Offset == 0 {
+			total = pageTotal
+		}
+		// The total does not change between the window's pages; count once.
+		page.SkipCount = true
 		all = append(all, releases...)
 		if len(releases) < want || int64(len(all)) >= total {
 			break
@@ -1500,9 +1514,9 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 	id := strconv.FormatInt(release.ID, 10)
 	link := ""
 	switch {
-	case len(release.Torrent) > 0:
+	case release.HasTorrent():
 		link = base + "/dl/" + id + ".torrent?apikey=" + key
-	case len(release.Payload) > 0 && !usenet:
+	case release.HasPayload() && !usenet:
 		link = base + "/dl/" + id + ".torrent?apikey=" + key
 	case usenet:
 		// Newznab clients grab through the same proxy; the resolver fetches an
@@ -1973,7 +1987,7 @@ func (s *Server) definitionForIndexer(ctx context.Context, indexer store.Indexer
 	if err != nil {
 		return nil, err
 	}
-	return definition.Parse([]byte(def.Body))
+	return definition.ParseShared([]byte(def.Body))
 }
 
 func writeIndexerCaps(b *bytes.Buffer, caps engine.Capabilities) {

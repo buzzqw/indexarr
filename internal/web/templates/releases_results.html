@@ -26,7 +26,7 @@
           <tr>
             <td class="check"><input type="checkbox" name="ids" value="{{.ID}}" aria-label="{{T "releases.selectRelease" .Title}}"></td>
             <td class="release-title">
-              <a class="release-title-link" href="/releases/{{.ID}}" title="{{.Title}}">{{.Title}}</a>{{if .Favorite}} <span class="chip" title="{{T "releases.favorite"}}">★</span>{{end}}{{if .Torrent}} <span class="chip">{{T "releases.torrent"}}</span>{{end}}
+              <a class="release-title-link" href="/releases/{{.ID}}" title="{{.Title}}">{{.Title}}</a>{{if .Favorite}} <span class="chip" title="{{T "releases.favorite"}}">★</span>{{end}}{{if .HasTorrent}} <span class="chip">{{T "releases.torrent"}}</span>{{end}}
               <span class="release-meta">{{T "releases.leechersInline" (numOrDash .Leechers)}} · {{if .Category}}{{catName .Category}}{{else}}—{{end}}</span>
             </td>
             <td class="nowrap">{{sizeOrDash .Size}}</td>
@@ -34,7 +34,7 @@
             <td class="nowrap">{{if .PublishedAt.IsZero}}—{{else}}<span title="{{date .PublishedAt}}">{{ago .PublishedAt}}</span>{{end}}</td>
             <td class="right release-actions-cell">
               <span class="release-actions">
-                {{if .Torrent}}<a class="btn small primary" href="/releases/{{.ID}}/torrent" title="{{T "releases.downloadTorrent"}}">{{T "releases.download"}}</a>
+                {{if .HasTorrent}}<a class="btn small primary" href="/releases/{{.ID}}/torrent" title="{{T "releases.downloadTorrent"}}">{{T "releases.download"}}</a>
                 {{else if .Magnet}}<a class="btn small primary" href="{{safeURL .Magnet}}" title="{{T "releases.magnetLink"}}">{{T "releases.download"}}</a>
                 {{else}}<span class="muted">—</span>{{end}}
                 {{with magnetFor .}}<button class="btn small" type="button" data-copy="{{.}}" title="{{T "releases.copyMagnetTip"}}">{{T "release.copyMagnet"}}</button>{{end}}

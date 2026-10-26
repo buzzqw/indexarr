@@ -80,7 +80,7 @@ func (m *Manager) LatestSupported(ctx context.Context, indexer store.Indexer) (b
 		return false, fmt.Errorf("indexer %s: load definition %q: %w",
 			indexer.Slug, indexer.DefinitionID, err)
 	}
-	parsed, err := definition.Parse([]byte(def.Body))
+	parsed, err := definition.ParseShared([]byte(def.Body))
 	if err != nil {
 		return false, fmt.Errorf("indexer %s: parse definition %q: %w",
 			indexer.Slug, def.ID, err)

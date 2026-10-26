@@ -113,6 +113,14 @@ var pageNames = []string{
 }
 
 var templateFuncMap = template.FuncMap{
+	// displayVersion adds the "v" only when the build tag lacks it: git
+	// describe already returns "v2.1.3", which the sidebar showed as "vv2.1.3".
+	"displayVersion": func(version string) string {
+		if version == "" || strings.HasPrefix(version, "v") {
+			return version
+		}
+		return "v" + version
+	},
 	"bytes":      humanBytes,
 	"megabytes":  func(value int64) string { return fmt.Sprintf("%.1f MB", float64(value)/(1024*1024)) },
 	"date":       humanDate,
@@ -475,6 +483,7 @@ type Server struct {
 	// smartfeedPlans holds a pasted Smartfeed URL between recognition and the
 	// confirmation form. The personal token never travels through the HTML.
 	smartfeedPlans *smartfeedPlanStore
+	authCache      verifiedLogins
 	// pendingStores holds the form values of a fourth stored source while the
 	// user reads the measured warning.
 	pendingStores *pendingStoreSet
@@ -814,7 +823,7 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 		}
 		user, password, ok := r.BasicAuth()
 		userOK := subtleCompare(user, settings.UIUser)
-		passwordOK := verifyPassword(settings.UIPasswordHash, password)
+		passwordOK := s.authCache.verify(user, password, settings.UIPasswordHash)
 		if !ok || !userOK || !passwordOK {
 			w.Header().Set("WWW-Authenticate", `Basic realm="indexarr"`)
 			http.Error(w, "authentication required", http.StatusUnauthorized)

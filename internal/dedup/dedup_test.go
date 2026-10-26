@@ -185,3 +185,18 @@ func TestExtractCacheIsBoundedAndConsistent(t *testing.T) {
 		t.Fatalf("cache size/order = %d/%d, want <= %d", size, order, featureCacheMax)
 	}
 }
+
+func TestNormalizedKeyMatchesExtract(t *testing.T) {
+	for _, title := range []string{
+		"The.Show.S01E02.1080p.WEB-DL.x264-GRP",
+		"  Movie Title (2024) [1080p] [ITA ENG] [...",
+		"Album - Artist.torrent",
+		"Some.Release.2160p.UHD.mkv",
+		"",
+		"Ünïcödé Tïtlé 720p…",
+	} {
+		if got, want := NormalizedKey(title), extractUncached(title).Normalized; got != want {
+			t.Errorf("NormalizedKey(%q) = %q, want %q", title, got, want)
+		}
+	}
+}

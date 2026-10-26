@@ -305,20 +305,21 @@ func intervalEveryLabel(lang i18n.Language, seconds int) string {
 
 func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[string]*definition.Definition, globalInterval time.Duration, batch *healthBatch) indexerRowView {
 	def := defs[in.DefinitionID]
+	filters := listFilterValues(in)
 	row := indexerRowView{
 		Indexer: in,
 		Badges:  s.indexerBadges(r, in, def),
-		Filters: len(indexerFilterValues(in)),
+		Filters: len(filters),
 	}
 	row.FrequencyLabel, row.FrequencySource = s.frequencyLabels(r, in.IntervalSeconds, globalInterval)
 	if row.Filters == 1 {
 		row.FiltersLabel = s.translate(r, "idx.filtersOne")
-		if detail := filterSummary(indexerFilterValues(in)); detail != "" {
+		if detail := filterSummary(filters); detail != "" {
 			row.FiltersLabel += ": " + detail
 		}
 	} else if row.Filters > 1 {
 		row.FiltersLabel = s.translate(r, "idx.filters", row.Filters)
-		if detail := filterSummary(indexerFilterValues(in)); detail != "" {
+		if detail := filterSummary(filters); detail != "" {
 			row.FiltersLabel += ": " + detail
 		}
 	}
@@ -584,6 +585,17 @@ func indexerFilterValues(in store.Indexer) map[string]string {
 			out[key] = value
 		}
 	}
+	return out
+}
+
+// listFilterValues is indexerFilterValues without the mode switches. The list
+// row already shows the mode as a badge (Feed, search channel, search only),
+// so a chip reading "store_latest=false" or "smartfeed=true" repeated it with
+// an internal key name. The detail page keeps every value, with its label.
+func listFilterValues(in store.Indexer) map[string]string {
+	out := indexerFilterValues(in)
+	delete(out, "store_latest")
+	delete(out, "smartfeed")
 	return out
 }
 

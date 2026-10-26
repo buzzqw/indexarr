@@ -320,7 +320,7 @@ func (s *Store) MergeDuplicates(ctx context.Context) (DedupeStats, error) {
 		if _, gone := removed[row.meta.ID]; gone {
 			continue
 		}
-		normalized := dedup.Extract(row.meta.Title).Normalized
+		normalized := dedup.NormalizedKey(row.meta.Title)
 		if normalized == "" {
 			continue
 		}
@@ -387,7 +387,7 @@ func FuseReleases(releases []Release) []Release {
 	// with every earlier row; the exact identity rules stay unchanged.
 	buckets := make(map[string][]int, len(releases))
 	for _, rel := range releases {
-		key := dedup.Extract(rel.Title).Normalized
+		key := dedup.NormalizedKey(rel.Title)
 		matched := -1
 		for _, i := range buckets[key] {
 			if dedup.Match(metaFromRelease(out[i]), metaFromRelease(rel), dedup.Options{}) {
@@ -417,8 +417,9 @@ func FuseReleases(releases []Release) []Release {
 			if rel.Magnet == "" {
 				rel.Magnet = keeper.Magnet
 			}
-			if len(rel.Torrent) == 0 {
+			if !rel.HasTorrent() {
 				rel.Torrent = keeper.Torrent
+				rel.torrentStored = keeper.torrentStored
 				rel.TorrentSize = keeper.TorrentSize
 				rel.TorrentFetchedAt = keeper.TorrentFetchedAt
 			}
@@ -431,13 +432,15 @@ func FuseReleases(releases []Release) []Release {
 		if keeper.Magnet == "" {
 			keeper.Magnet = rel.Magnet
 		}
-		if len(keeper.Torrent) == 0 {
+		if !keeper.HasTorrent() {
 			keeper.Torrent = rel.Torrent
+			keeper.torrentStored = rel.torrentStored
 			keeper.TorrentSize = rel.TorrentSize
 			keeper.TorrentFetchedAt = rel.TorrentFetchedAt
 		}
-		if len(keeper.Payload) == 0 {
+		if !keeper.HasPayload() {
 			keeper.Payload = rel.Payload
+			keeper.payloadStored = rel.payloadStored
 			keeper.PayloadType = rel.PayloadType
 		}
 		if keeper.IMDbID == "" {

@@ -511,6 +511,10 @@ func (s *Store) migrate() error {
 			ON releases(hidden, published_at DESC, id DESC)`,
 		`CREATE INDEX IF NOT EXISTS releases_visible_seen_id
 			ON releases(hidden, last_seen_at DESC, id DESC)`,
+		// The dashboard and the activity feed list the newest arrivals. Without
+		// this index every view sorted the whole visible cache.
+		`CREATE INDEX IF NOT EXISTS releases_visible_first_seen_id
+			ON releases(hidden, first_seen_at DESC, id DESC)`,
 		`CREATE INDEX IF NOT EXISTS releases_visible_category_published
 			ON releases(hidden, category, published_at DESC, id DESC)`,
 		// A category group plus a minimum seeder count is the common filter
@@ -527,8 +531,41 @@ func (s *Store) migrate() error {
 			return fmt.Errorf("migrate index: %w", err)
 		}
 	}
+	if err := s.analyzeNewIndexes("releases_visible_first_seen_id"); err != nil {
+		return err
+	}
 	if err := s.migrateFTS(); err != nil {
 		return err
+	}
+	return nil
+}
+
+// analyzeNewIndexes gives an index added to an analysed database its own
+// planner statistics. Without a sqlite_stat1 row SQLite assumes the default
+// selectivity, which made it prefer releases_visible_first_seen_id for the
+// published_at ordering and sort the whole cache instead of walking
+// releases_visible_published_id. A database never analysed has no stat table
+// and needs nothing.
+func (s *Store) analyzeNewIndexes(names ...string) error {
+	var tables int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM sqlite_master
+		WHERE type = 'table' AND name = 'sqlite_stat1'`).Scan(&tables); err != nil {
+		return fmt.Errorf("check planner statistics: %w", err)
+	}
+	if tables == 0 {
+		return nil
+	}
+	for _, name := range names {
+		var rows int
+		if err := s.db.QueryRow(`SELECT COUNT(*) FROM sqlite_stat1 WHERE idx = ?`, name).Scan(&rows); err != nil {
+			return fmt.Errorf("check planner statistics: %w", err)
+		}
+		if rows > 0 {
+			continue
+		}
+		if _, err := s.db.Exec(`ANALYZE ` + name); err != nil {
+			return fmt.Errorf("analyze %s: %w", name, err)
+		}
 	}
 	return nil
 }

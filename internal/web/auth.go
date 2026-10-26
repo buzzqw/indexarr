@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"crypto/pbkdf2"
 )
@@ -62,6 +63,44 @@ func verifyPassword(encoded, password string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare(actual, expected) == 1
+}
+
+// verifiedLogins remembers Basic credentials that already passed PBKDF2. The
+// browser resends them on every request, page asset and poll; deriving 210k
+// iterations each time cost tens of milliseconds of CPU per request. Only
+// successes are cached, so a wrong password still pays the full derivation.
+// The key includes the stored hash: changing the password invalidates it.
+type verifiedLogins struct {
+	mu   sync.Mutex
+	seen map[[32]byte]struct{}
+}
+
+const verifiedLoginsMax = 32
+
+func (v *verifiedLogins) verify(user, password, encoded string) bool {
+	h := sha256.New()
+	for _, part := range []string{user, password, encoded} {
+		h.Write([]byte(part))
+		h.Write([]byte{0})
+	}
+	var key [32]byte
+	copy(key[:], h.Sum(nil))
+	v.mu.Lock()
+	_, ok := v.seen[key]
+	v.mu.Unlock()
+	if ok {
+		return true
+	}
+	if !verifyPassword(encoded, password) {
+		return false
+	}
+	v.mu.Lock()
+	if v.seen == nil || len(v.seen) >= verifiedLoginsMax {
+		v.seen = make(map[[32]byte]struct{}, verifiedLoginsMax)
+	}
+	v.seen[key] = struct{}{}
+	v.mu.Unlock()
+	return true
 }
 
 type contextKey string

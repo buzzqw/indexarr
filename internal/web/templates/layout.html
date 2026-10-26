@@ -44,7 +44,7 @@
       </nav>
 
       <div class="sidebar-foot">
-        <span class="version" title="{{T "shell.versionTitle"}}">v{{.Version}}</span>
+        <span class="version" title="{{T "shell.versionTitle"}}">{{displayVersion .Version}}</span>
         <details class="lang-menu">
           <span class="sr-only">{{T "shell.language"}}</span>
           <summary aria-label="{{T "shell.languageAria"}}">{{.LanguageName}}</summary>
@@ -61,7 +61,7 @@
           <span aria-hidden="true">☰</span>
         </button>
         <a class="brand" href="/"><span class="brand-dot" aria-hidden="true"></span>indexarr</a>
-        <span class="version" title="{{T "shell.versionTitle"}}">v{{.Version}}</span>
+        <span class="version" title="{{T "shell.versionTitle"}}">{{displayVersion .Version}}</span>
       </header>
 
       <main id="main" class="content">

@@ -842,39 +842,24 @@ func (s *Store) ListFeedReleases(ctx context.Context, indexerID int64, limit, of
 }
 
 func prefixedReleaseColumns(alias string) string {
-	columns := strings.Split(releaseColumns, ",")
+	columns := strings.Split(releaseListColumns, ",")
 	for i, column := range columns {
-		columns[i] = alias + "." + strings.TrimSpace(column)
+		column = strings.TrimSpace(column)
+		if strings.HasPrefix(column, "length(") {
+			columns[i] = "length(" + alias + "." + strings.TrimPrefix(column, "length(")
+			continue
+		}
+		columns[i] = alias + "." + column
 	}
 	return strings.Join(columns, ", ")
 }
 
 func scanReleaseWithProvenance(rows *sql.Rows, rel *Release, count *int, names *sql.NullString) error {
-	var published, torrentFetched, firstSeen, lastSeen, downloadedAt int64
-	var favorite, hidden int
-	var torrent, payload []byte
-	err := rows.Scan(
-		&rel.ID, &rel.DedupKey, &rel.InfoHash, &rel.IMDbID, &rel.TMDbID,
-		&rel.TVDbID, &rel.Title, &rel.SearchTitle, &rel.Size, &rel.Seeders,
-		&rel.Leechers, &rel.Category, &published, &rel.GUID, &rel.Magnet,
-		&torrent, &rel.TorrentSize, &torrentFetched, &firstSeen,
-		&lastSeen, &rel.TimesSeen, &favorite, &hidden,
-		&rel.Protocol, &payload, &rel.PayloadType, &downloadedAt, count, names)
+	out, err := scanReleaseExtra(rows, true, count, names)
 	if err != nil {
 		return err
 	}
-	rel.PublishedAt = unixTime(published)
-	rel.TorrentFetchedAt = unixTime(torrentFetched)
-	rel.FirstSeenAt = unixTime(firstSeen)
-	rel.LastSeenAt = unixTime(lastSeen)
-	rel.DownloadedAt = unixTime(downloadedAt)
-	rel.Torrent = torrent
-	rel.Payload = payload
-	if strings.TrimSpace(rel.Protocol) == "" {
-		rel.Protocol = "torrent"
-	}
-	rel.Favorite = favorite != 0
-	rel.Hidden = hidden != 0
+	*rel = out
 	return nil
 }
 

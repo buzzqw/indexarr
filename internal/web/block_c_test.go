@@ -76,25 +76,31 @@ func TestHomeNextStepIsSingleAndOrdered(t *testing.T) {
 	settings, _ := env.store.LoadSettings(ctx)
 	status := HomeStatus{Level: "ok", ActiveIndexers: 2, Apps: 1}
 
-	step := env.server.nextStep(ctx, status, settings, 1)
+	step := env.server.nextStep(ctx, status, settings, 1, 0)
 	if step == nil || step.Key != "home.next.backup" {
 		t.Fatalf("first step = %#v, want backup (the connect card already proposes the address)", step)
 	}
 
 	settings.PublicURL = "http://192.168.1.50:8484"
 	status.Apps = 0
-	step = env.server.nextStep(ctx, status, settings, 1)
+	step = env.server.nextStep(ctx, status, settings, 1, 0)
 	if step == nil || step.Key != "home.next.app" {
 		t.Fatalf("second step = %#v, want app", step)
 	}
+	// Apps configured by hand already search: the hint asks to register
+	// them instead of claiming they cannot see the indexers.
+	step = env.server.nextStep(ctx, status, settings, 1, 42)
+	if step == nil || step.Key != "home.next.appManual" {
+		t.Fatalf("manual-app step = %#v, want appManual", step)
+	}
 	status.Apps = 1
-	step = env.server.nextStep(ctx, status, settings, 0)
+	step = env.server.nextStep(ctx, status, settings, 0, 0)
 	if step == nil || step.Key != "home.next.client" {
 		t.Fatalf("third step = %#v, want download client", step)
 	}
 	// An indexer-only first run points to the first indexer, never to a client.
 	status.ActiveIndexers = 0
-	step = env.server.nextStep(ctx, status, settings, 0)
+	step = env.server.nextStep(ctx, status, settings, 0, 0)
 	if step == nil || step.Key != "home.next.indexer" {
 		t.Fatalf("first-run step = %#v, want indexer", step)
 	}
@@ -111,7 +117,7 @@ func TestHomeNextStepIsSingleAndOrdered(t *testing.T) {
 		t.Fatal(err)
 	}
 	status = HomeStatus{Level: "ok", ActiveIndexers: 1, Apps: 1}
-	if step := env.server.nextStep(ctx, status, settings, 1); step != nil {
+	if step := env.server.nextStep(ctx, status, settings, 1, 0); step != nil {
 		t.Errorf("unexpected next step with everything configured: %#v", step)
 	}
 }

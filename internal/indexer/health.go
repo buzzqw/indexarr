@@ -70,7 +70,7 @@ func (m *Manager) definitionFor(ctx context.Context, indexer store.Indexer) (*de
 	if err != nil {
 		return nil, err
 	}
-	return definition.Parse([]byte(stored.Body))
+	return definition.ParseShared([]byte(stored.Body))
 }
 
 // healthPlan applies the defaults documented in DEFINITIONS.md: query "test"

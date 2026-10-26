@@ -47,7 +47,19 @@ type Release struct {
 	// DownloadedAt is set when a client grabbed this release. A stored-source
 	// retention pass never removes a downloaded release.
 	DownloadedAt time.Time
+
+	// torrentStored and payloadStored are set by the list queries, which
+	// report whether a blob exists without reading it. A result page used to
+	// carry every stored .torrent file (tens of KB each) only to choose a link.
+	torrentStored bool
+	payloadStored bool
 }
+
+// HasTorrent reports a stored .torrent file, loaded or not.
+func (r Release) HasTorrent() bool { return r.torrentStored || len(r.Torrent) > 0 }
+
+// HasPayload reports a stored generic payload (NZB or other), loaded or not.
+func (r Release) HasPayload() bool { return r.payloadStored || len(r.Payload) > 0 }
 
 // Filter selects releases for the web UI and the Torznab endpoint.
 type Filter struct {
@@ -80,6 +92,9 @@ type Filter struct {
 	FilesOnly bool
 	// ExcludeAdult removes the XXX category (6xxx) from the results.
 	ExcludeAdult bool
+	// SkipCount leaves the total at zero when the caller already knows it,
+	// such as the second page of a read window.
+	SkipCount bool
 }
 
 const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
@@ -87,6 +102,15 @@ const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, titl
 	guid, magnet, torrent, torrent_size, torrent_fetched_at,
 	first_seen_at, last_seen_at, times_seen, favorite, hidden,
 	protocol, payload, payload_type, downloaded_at`
+
+// releaseListColumns has the shape of releaseColumns but replaces the torrent
+// and payload blobs with presence flags. SQLite answers length() from the
+// record header, so a result page never reads the blob overflow pages.
+const releaseListColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
+	search_title, size, seeders, leechers, category, published_at,
+	guid, magnet, length(torrent) > 0, torrent_size, torrent_fetched_at,
+	first_seen_at, last_seen_at, times_seen, favorite, hidden,
+	protocol, length(payload) > 0, payload_type, downloaded_at`
 
 // ErrNoPayload reports that a release has neither a torrent nor a generic
 // payload stored.
@@ -356,9 +380,13 @@ func (s *Store) SearchReleases(ctx context.Context, f Filter) ([]Release, int64,
 			return releases, total, nil
 		}
 	}
-	total, err := s.countReleases(ctx, f, where)
-	if err != nil {
-		return nil, 0, err
+	var total int64
+	if !f.SkipCount {
+		var err error
+		total, err = s.countReleases(ctx, f, where)
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 	// A text query is sorted in memory: selecting the page ids first keeps the
 	// wide columns (magnet and payload blobs) out of the sorter, then one
@@ -371,7 +399,7 @@ func (s *Store) SearchReleases(ctx context.Context, f Filter) ([]Release, int64,
 		out, err := s.releasesByIDs(ctx, ids)
 		return out, total, err
 	}
-	query := `SELECT ` + releaseColumns + ` FROM releases` + where.sql +
+	query := `SELECT ` + releaseListColumns + ` FROM releases` + where.sql +
 		` ORDER BY ` + orderBy(f.Sort) + ` LIMIT ? OFFSET ?`
 	rows, err := s.db.QueryContext(ctx, query, append(where.args, limit, offset)...)
 	if err != nil {
@@ -380,7 +408,7 @@ func (s *Store) SearchReleases(ctx context.Context, f Filter) ([]Release, int64,
 	defer rows.Close()
 	var out []Release
 	for rows.Next() {
-		rel, err := scanRelease(rows)
+		rel, err := scanReleaseList(rows)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -430,7 +458,25 @@ func (s *Store) searchTextFast(ctx context.Context, f Filter, where whereClause,
 	// but the binary search below must not depend on that.
 	slices.Sort(ids)
 
-	nonText := buildWhereMode(f, false)
+	// A source selection is applied to the match set here, from the
+	// release_sources index, instead of as a correlated EXISTS in the
+	// non-text predicate: that EXISTS ran once per cached release in each of
+	// the three scans below and made an aggregated Arr search ~20x slower
+	// than the same search without a selection.
+	nonTextFilter := f
+	if sources := filterSourceIDs(f); len(sources) > 0 {
+		sourced, err := s.sourcedReleaseIDs(ctx, sources)
+		if err != nil {
+			return nil, 0, false, err
+		}
+		ids = intersectSorted(ids, sourced)
+		if len(ids) == 0 {
+			return nil, 0, true, nil
+		}
+		nonTextFilter.IndexerID = 0
+		nonTextFilter.IndexerIDs = nil
+	}
+	nonText := buildWhereMode(nonTextFilter, false)
 	var (
 		total     int64
 		candidate int64 // size of the non-text set the prefix is drawn from
@@ -612,6 +658,62 @@ func countIntersection(sorted, candidates []int64) int64 {
 	return count
 }
 
+// filterSourceIDs returns the source selection of a filter, mirroring
+// buildWhereMode: IndexerID wins, and non-positive ids are ignored.
+func filterSourceIDs(f Filter) []int64 {
+	if f.IndexerID > 0 {
+		return []int64{f.IndexerID}
+	}
+	var out []int64
+	for _, id := range f.IndexerIDs {
+		if id > 0 {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// sourcedReleaseIDs returns the sorted, distinct ids of the releases seen
+// from any of the given sources. It reads only the release_sources index.
+func (s *Store) sourcedReleaseIDs(ctx context.Context, sources []int64) ([]int64, error) {
+	placeholders := make([]string, len(sources))
+	args := make([]any, len(sources))
+	for i, id := range sources {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	var joined sql.NullString
+	if err := s.db.QueryRowContext(ctx, `SELECT group_concat(release_id, ',')
+		FROM release_sources WHERE indexer_id IN (`+strings.Join(placeholders, ",")+`)`,
+		args...).Scan(&joined); err != nil {
+		return nil, err
+	}
+	ids, err := parseInts(joined)
+	if err != nil {
+		return nil, err
+	}
+	slices.Sort(ids)
+	return slices.Compact(ids), nil
+}
+
+// intersectSorted returns the ids present in both sorted slices.
+func intersectSorted(a, b []int64) []int64 {
+	out := make([]int64, 0, min(len(a), len(b)))
+	for i, j := 0, 0; i < len(a) && j < len(b); {
+		switch {
+		case a[i] < b[j]:
+			i++
+		case a[i] > b[j]:
+			j++
+		default:
+			out = append(out, a[i])
+			i++
+			j++
+		}
+	}
+	return out
+}
+
 // intersectIDs keeps the candidates that appear in the sorted set, applying
 // offset and limit.
 func intersectIDs(sorted, candidates []int64, offset, limit int) []int64 {
@@ -685,12 +787,40 @@ func (s *Store) countReleases(ctx context.Context, f Filter, where whereClause) 
 		}
 		return total, nil
 	}
+	if !where.fts {
+		if sources := filterSourceIDs(f); len(sources) > 0 {
+			return s.countWithSources(ctx, f, sources)
+		}
+	}
 	var total int64
 	if err := s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM releases`+where.sql, where.args...).Scan(&total); err != nil {
 		return 0, err
 	}
 	return total, nil
+}
+
+// countWithSources counts a source-scoped listing (the Arr RSS feed) as the
+// intersection of two id sets read from indexes: the rows matching the other
+// predicates and the rows seen from the selected sources. The equivalent
+// COUNT with a correlated EXISTS probed release_sources once per cached
+// release and was most of the cost of every RSS poll.
+func (s *Store) countWithSources(ctx context.Context, f Filter, sources []int64) (int64, error) {
+	rest := f
+	rest.IndexerID = 0
+	rest.IndexerIDs = nil
+	ids, err := s.idsForWhere(ctx, buildWhereMode(rest, false))
+	if err != nil {
+		return 0, err
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	sourced, err := s.sourcedReleaseIDs(ctx, sources)
+	if err != nil {
+		return 0, err
+	}
+	return countIntersection(sourced, ids), nil
 }
 
 // searchIDs returns one page of ids in result order.
@@ -725,7 +855,7 @@ func (s *Store) releasesByIDs(ctx context.Context, ids []int64) ([]Release, erro
 		args[i] = id
 	}
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+releaseColumns+` FROM releases WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
+		`SELECT `+releaseListColumns+` FROM releases WHERE id IN (`+strings.Join(placeholders, ",")+`)`,
 		args...)
 	if err != nil {
 		return nil, err
@@ -733,7 +863,7 @@ func (s *Store) releasesByIDs(ctx context.Context, ids []int64) ([]Release, erro
 	defer rows.Close()
 	byID := make(map[int64]Release, len(ids))
 	for rows.Next() {
-		rel, err := scanRelease(rows)
+		rel, err := scanReleaseList(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -762,7 +892,7 @@ func (s *Store) ListIndexerReleases(ctx context.Context, indexerID int64, limit 
 	if limit <= 0 || limit > 100 {
 		limit = 10
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT `+releaseColumns+` FROM releases
+	rows, err := s.db.QueryContext(ctx, `SELECT `+releaseListColumns+` FROM releases
 		WHERE hidden = 0
 		  AND EXISTS (SELECT 1 FROM release_sources rs
 		              WHERE rs.release_id = releases.id AND rs.indexer_id = ?)
@@ -773,7 +903,7 @@ func (s *Store) ListIndexerReleases(ctx context.Context, indexerID int64, limit 
 	defer rows.Close()
 	var out []Release
 	for rows.Next() {
-		rel, err := scanRelease(rows)
+		rel, err := scanReleaseList(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -785,14 +915,14 @@ func (s *Store) ListIndexerReleases(ctx context.Context, indexerID int64, limit 
 // ListRecentReleases returns the newest releases for the dashboard.
 func (s *Store) ListRecentReleases(ctx context.Context, limit int) ([]Release, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+releaseColumns+` FROM releases WHERE hidden = 0 ORDER BY first_seen_at DESC, id DESC LIMIT ?`, limit)
+		`SELECT `+releaseListColumns+` FROM releases WHERE hidden = 0 ORDER BY first_seen_at DESC, id DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []Release
 	for rows.Next() {
-		rel, err := scanRelease(rows)
+		rel, err := scanReleaseList(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -1322,19 +1452,38 @@ func escapeLike(token string) string {
 }
 
 func scanRelease(scanner interface{ Scan(...any) error }) (Release, error) {
+	return scanReleaseExtra(scanner, false)
+}
+
+// scanReleaseList reads a row selected with releaseListColumns.
+func scanReleaseList(scanner interface{ Scan(...any) error }) (Release, error) {
+	return scanReleaseExtra(scanner, true)
+}
+
+// scanReleaseExtra reads releaseColumns (list=false) or releaseListColumns
+// (list=true), followed by any extra destinations.
+func scanReleaseExtra(scanner interface{ Scan(...any) error }, list bool, extra ...any) (Release, error) {
 	var out Release
 	var published, torrentFetched, firstSeen, lastSeen, downloadedAt int64
 	var torrent, payload []byte
+	var torrentFlag, payloadFlag sql.NullBool
 	var favorite, hidden int
+	var torrentDest, payloadDest any = &torrent, &payload
+	if list {
+		torrentDest, payloadDest = &torrentFlag, &payloadFlag
+	}
 	dest := []any{&out.ID, &out.DedupKey, &out.InfoHash, &out.IMDbID, &out.TMDbID,
 		&out.TVDbID, &out.Title, &out.SearchTitle, &out.Size, &out.Seeders,
 		&out.Leechers, &out.Category, &published,
-		&out.GUID, &out.Magnet, &torrent, &out.TorrentSize, &torrentFetched,
+		&out.GUID, &out.Magnet, torrentDest, &out.TorrentSize, &torrentFetched,
 		&firstSeen, &lastSeen, &out.TimesSeen, &favorite, &hidden,
-		&out.Protocol, &payload, &out.PayloadType, &downloadedAt}
+		&out.Protocol, payloadDest, &out.PayloadType, &downloadedAt}
+	dest = append(dest, extra...)
 	if err := scanner.Scan(dest...); err != nil {
 		return Release{}, err
 	}
+	out.torrentStored = torrentFlag.Valid && torrentFlag.Bool
+	out.payloadStored = payloadFlag.Valid && payloadFlag.Bool
 	out.PublishedAt = unixTime(published)
 	out.TorrentFetchedAt = unixTime(torrentFetched)
 	out.FirstSeenAt = unixTime(firstSeen)

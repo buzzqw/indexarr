@@ -66,7 +66,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		Status:       status,
 		Activity:     activity,
 		Stored:       stored,
-		NextStep:     s.nextStep(ctx, status, settings, len(clients)),
+		NextStep:     s.nextStep(ctx, status, settings, len(clients), activity.AppSearches),
 		Clients:      clients,
 		SuggestedURL: suggestedPublicURL(r),
 	}, http.StatusOK)

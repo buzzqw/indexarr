@@ -18,12 +18,15 @@
       <input id="files" name="files" type="checkbox" value="1"{{if .FilesOnly}} checked{{end}}>
       {{T "releases.filesSearch"}}
     </label>
-    <p class="help">
-      {{T "releases.searchHelpExclude"}} <code>{{T "releases.exampleExclude"}}</code>.
-      {{T "releases.searchHelpQuotes"}} <code>{{T "releases.exampleQuotes"}}</code>.
-      {{T "releases.searchHelpPattern"}} <code>{{T "releases.examplePattern"}}</code>.
-      {{T "releases.filesSearchHelp"}}
-    </p>
+    <details class="search-syntax">
+      <summary title="{{T "releases.syntaxTip"}}">{{T "releases.syntaxSummary"}}</summary>
+      <p class="help">
+        {{T "releases.searchHelpExclude"}} <code>{{T "releases.exampleExclude"}}</code>.
+        {{T "releases.searchHelpQuotes"}} <code>{{T "releases.exampleQuotes"}}</code>.
+        {{T "releases.searchHelpPattern"}} <code>{{T "releases.examplePattern"}}</code>.
+        {{T "releases.filesSearchHelp"}}
+      </p>
+    </details>
   </div>
   <div class="field">
     <label for="indexer">{{T "releases.indexer"}}</label>

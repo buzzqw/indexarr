@@ -288,7 +288,7 @@ func TestReleasesPage(t *testing.T) {
 		t.Fatalf("status = %d", recorder.Code)
 	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, "The Show S01E01 1080p") || !strings.Contains(body, "1 release(s) found") {
+	if !strings.Contains(body, "The Show S01E01 1080p") || !strings.Contains(body, "Results: 1") {
 		t.Errorf("releases page:\n%s", body)
 	}
 	detail := get(t, env.handler, "/releases/"+strconv.FormatInt(release.ID, 10))

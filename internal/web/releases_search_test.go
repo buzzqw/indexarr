@@ -82,7 +82,7 @@ func TestReleasesResultsPartial(t *testing.T) {
 	if strings.Contains(body, "<!doctype") || strings.Contains(body, "<html") {
 		t.Error("the partial contains the full layout")
 	}
-	if !strings.Contains(body, "The Show 720p") || !strings.Contains(body, "release(s) found") {
+	if !strings.Contains(body, "The Show 720p") || !strings.Contains(body, "Results: ") {
 		t.Errorf("partial body = %s", body)
 	}
 	if contentType := recorder.Header().Get("Content-Type"); !strings.Contains(contentType, "text/html") {

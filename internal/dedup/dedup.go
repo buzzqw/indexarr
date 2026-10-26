@@ -129,13 +129,10 @@ var parsedTitles = struct {
 // cached because the regex pass is the most expensive part of fusion and the
 // same titles are seen repeatedly by the Arr clients.
 func Extract(title string) Features {
-	parsedTitles.RLock()
-	features, ok := parsedTitles.entries[title]
-	parsedTitles.RUnlock()
-	if ok {
+	if features, ok := cachedFeatures(title); ok {
 		return features
 	}
-	features = extractUncached(title)
+	features := extractUncached(title)
 	parsedTitles.Lock()
 	if _, exists := parsedTitles.entries[title]; !exists {
 		if len(parsedTitles.entries) >= featureCacheMax {
@@ -148,6 +145,24 @@ func Extract(title string) Features {
 	}
 	parsedTitles.Unlock()
 	return features
+}
+
+// NormalizedKey returns Extract(title).Normalized without the regex pass. A
+// bucketing pass over the whole cache needs only this key; running Extract on
+// every title cost seconds of CPU and flushed the parsed-title cache that the
+// Arr result pages rely on.
+func NormalizedKey(title string) string {
+	if features, ok := cachedFeatures(title); ok {
+		return features.Normalized
+	}
+	return textutil.NormalizeTitle(trimMediaExtension(strings.ToLower(strings.TrimSpace(title))))
+}
+
+func cachedFeatures(title string) (Features, bool) {
+	parsedTitles.RLock()
+	features, ok := parsedTitles.entries[title]
+	parsedTitles.RUnlock()
+	return features, ok
 }
 
 func extractUncached(title string) Features {

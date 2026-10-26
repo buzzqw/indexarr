@@ -272,11 +272,8 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 	if err != nil {
 		return nil, fmt.Errorf("indexer %s: load definition %q: %w", indexer.Slug, indexer.DefinitionID, err)
 	}
-	parsed, err := definition.Parse([]byte(def.Body))
-	if err != nil {
-		return nil, fmt.Errorf("indexer %s: parse definition %q: %w", indexer.Slug, def.ID, err)
-	}
-
+	// The key carries the definition fingerprint, so a cached connector was
+	// built from this exact body: the YAML is parsed only on a miss.
 	key := connectorKey(def, indexer)
 	m.mu.Lock()
 	if entry, ok := m.cache[indexer.ID]; ok && entry.key == key {
@@ -284,6 +281,11 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 		return entry.connector, nil
 	}
 	m.mu.Unlock()
+
+	parsed, err := definition.Parse([]byte(def.Body))
+	if err != nil {
+		return nil, fmt.Errorf("indexer %s: parse definition %q: %w", indexer.Slug, def.ID, err)
+	}
 
 	config, err := decodeConfig(indexer.ConfigJSON)
 	if err != nil {

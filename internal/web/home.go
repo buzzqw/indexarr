@@ -208,10 +208,15 @@ type homeNextStep struct {
 
 // nextStep returns at most one action, in the documented order: first indexer,
 // public address, app, download client, backup. Nothing to do → nil.
-func (s *Server) nextStep(ctx context.Context, status HomeStatus, settings store.Settings, clients int) *homeNextStep {
+func (s *Server) nextStep(ctx context.Context, status HomeStatus, settings store.Settings, clients int, appSearches int64) *homeNextStep {
 	switch {
 	case status.ActiveIndexers == 0:
 		return &homeNextStep{Key: "home.next.indexer", ActionKey: "home.action.addIndexer", ActionURL: "/indexers/new"}
+	case status.Apps == 0 && appSearches > 0:
+		// Sonarr/Radarr configured by hand already query the endpoint: saying
+		// that they "cannot see these indexers" next to their search count
+		// contradicted the page.
+		return &homeNextStep{Key: "home.next.appManual", ActionKey: "home.action.registerApp", ActionURL: "/applications/new"}
 	case status.Apps == 0:
 		return &homeNextStep{Key: "home.next.app", ActionKey: "home.action.connectApp", ActionURL: "/applications/new"}
 	case clients == 0 && settings.DownloadClient == "none":

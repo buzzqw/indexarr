@@ -664,6 +664,10 @@ td.error-cell { max-width: 26rem; overflow-wrap: anywhere; }
 .field.grow { flex: 1 1 320px; }
 .field.checkbox { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 0.45rem; }
 .field.checkbox .help { flex-basis: 100%; }
+/* Without a help line the box and its label stay on one row: wrapping put the
+   checkbox alone above a long label such as the logs' auto-refresh. */
+.field.checkbox:not(:has(.help)) { flex-wrap: nowrap; align-self: center; }
+.field.checkbox > input[type="checkbox"] { flex: 0 0 auto; }
 
 label { font-weight: 600; font-size: 0.84rem; }
 
@@ -706,6 +710,8 @@ input[readonly] { background: var(--surface-2); }
 }
 
 .search-status { margin: 0 0 0.55rem; }
+.search-syntax > summary { cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.search-syntax[open] > summary { margin-bottom: 0.3rem; }
 #releases-results[aria-busy="true"] { opacity: 0.55; }
 
 .filter-advanced {
@@ -1460,7 +1466,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 .indexer-list { list-style: none; margin: 0; padding: 0; }
 .indexer-row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) 9rem auto;
+  grid-template-columns: auto auto minmax(0, 1fr) minmax(9rem, max-content) auto;
   align-items: start;
   gap: 0.6rem;
   padding: 0.7rem 1.1rem;
@@ -1473,7 +1479,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 .indexer-name { font-weight: 700; color: var(--text); text-decoration: none; }
 .indexer-name:hover { color: var(--accent); }
 .indexer-main .badges { margin-top: 0.15rem; }
-.indexer-updated { color: var(--muted); font-size: 0.8rem; text-align: right; white-space: normal; max-width: 12rem; line-height: 1.25; }
+.indexer-updated { color: var(--muted); font-size: 0.8rem; text-align: right; white-space: normal; max-width: 16rem; line-height: 1.25; }
 
 .row-menu { position: relative; justify-self: end; }
 .row-menu > summary {
