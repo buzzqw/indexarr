@@ -467,6 +467,29 @@ save_old_binaries() {
 	fi
 }
 
+# prune_old_backups keeps the newest pre-upgrade DB backups and their matching
+# old binaries. Without it every upgrade leaves another 100+ MB snapshot behind.
+# The count is INDEXARR_BACKUP_KEEP (default 3); failures never fail the upgrade.
+prune_old_backups() {
+	local keep="${INDEXARR_BACKUP_KEEP:-3}"
+	[[ "$keep" =~ ^[0-9]+$ ]] || keep=3
+	(( keep >= 1 )) || keep=1
+	local backups=("$BACKUP_DIR"/pre-upgrade-*.db)
+	(( ${#backups[@]} > keep )) || return 0
+	local sorted=()
+	mapfile -t sorted < <(printf '%s\n' "${backups[@]}" | sort)
+	local remove=$(( ${#sorted[@]} - keep ))
+	local i old stamp
+	for ((i = 0; i < remove; i++)); do
+		old="${sorted[i]}"
+		[[ -f "$old" ]] || continue
+		stamp="${old##*/pre-upgrade-}"
+		stamp="${stamp%.db}"
+		rm -f -- "$old" "$BINARY.old-$stamp" || true
+		note "pruned old backup: ${old##*/}"
+	done
+}
+
 install_binaries() {
 	step "installing the new binary"
 	install -m 0755 "$BUILD_DIR/indexarr" "$BINARY" || die "cannot install $BINARY"
@@ -646,6 +669,8 @@ do_apply() {
 
 	ROLLBACK_ARMED=0
 	trap - ERR
+
+	prune_old_backups || true
 
 	printf '\nupgrade complete\n'
 	printf '  version: %s\n' "$EXPECTED_VERSION"

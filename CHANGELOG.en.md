@@ -85,6 +85,11 @@ First release candidate of indexarr 2.
   the per-indexer paths and how to configure each client.
 - Seven languages for the new parts.
 
+### Maintenance
+- `scripts/upgrade.sh` keeps the newest **3** pre-upgrade copies (and their
+  matching binaries) and prunes the older ones; change the count with
+  `INDEXARR_BACKUP_KEEP`.
+
 ### Known limits
 - Native MirCrew and Smartfeed are not verified live (CAPTCHA); they stay
   experimental.
