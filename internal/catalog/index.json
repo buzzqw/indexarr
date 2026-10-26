@@ -16858,13 +16858,14 @@
   {
     "id": "torrentleech",
     "name": "TorrentLeech",
-    "description": "Private TorrentLeech with login and keyword search.",
+    "description": "Private TorrentLeech with login, keyword search and a JSON listing.",
     "language": "en-US",
     "type": "private",
     "protocol": "torrent",
     "categories": [
       "movies",
       "tv",
+      "anime",
       "music",
       "books",
       "games",

@@ -484,11 +484,21 @@ func (c *DefinitionConnector) Download(ctx context.Context, item Item) (Payload,
 	if strings.TrimSpace(item.Magnet) != "" {
 		return Payload{Magnet: item.Magnet}, nil
 	}
-	if c.def.Download != nil && c.def.Download.Before != nil && strings.TrimSpace(item.DetailsURL) != "" {
-		payload, handled, err := c.downloadWithBefore(ctx, item)
-		if handled {
-			return payload, err
+	// A definition that resolves the download at grab time declares where the
+	// link must be read. The item can still carry a DownloadURL that came from
+	// somewhere else (an import from another manager, a stale cache, a bridge
+	// on the local network): using it would bypass the definition and, in the
+	// import case, hit a private address the SSRF guard rightly refuses.
+	// Honor the declared source instead.
+	declaredGrab := c.def.Download != nil && !c.resolvesOnSearch() && strings.TrimSpace(item.DetailsURL) != ""
+	if declaredGrab {
+		if c.def.Download.Before != nil {
+			payload, handled, err := c.downloadWithBefore(ctx, item)
+			if handled {
+				return payload, err
+			}
 		}
+		return c.downloadFromSection(ctx, item)
 	}
 	if strings.TrimSpace(item.DownloadURL) != "" {
 		return c.downloadURL(ctx, item.DownloadURL, item.Title)

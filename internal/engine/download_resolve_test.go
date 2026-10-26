@@ -170,6 +170,58 @@ func TestDefinitionDownloadResolveOnGrab(t *testing.T) {
 	}
 }
 
+func TestDefinitionDownloadGrabIgnoresItemDownloadURL(t *testing.T) {
+	// A grab-time definition declares that the link comes from the details
+	// page. An item can still carry a DownloadURL from an import or a stale
+	// reference (TorrentLeech imported from Prowlarr pointed at
+	// http://192.168.1.161:9696/14/download and the SSRF guard refused it).
+	// The declared path must win, on the indexer's own host.
+	torrent := []byte("grab-torrent")
+	var details, foreign atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/details/2":
+			details.Add(1)
+			writeBody(t, w, fixture(t, "download_details_torrent.html"))
+		case "/files/2.torrent":
+			writeBody(t, w, torrent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		foreign.Add(1)
+		http.NotFound(w, r)
+	}))
+	defer other.Close()
+
+	def := loadTestDefinition(t, "download_resolve.yaml", server.URL)
+	def.Download.ResolveOn = "grab"
+	connector := newConnectorFromDefinition(t, def, newDefinitionClock())
+
+	item := Item{
+		Title:       "Imported Release",
+		DetailsURL:  server.URL + "/details/2",
+		DownloadURL: other.URL + "/download",
+	}
+	payload, err := connector.Download(context.Background(), item)
+	if err != nil {
+		t.Fatalf("Download: %v", err)
+	}
+	if string(payload.Body) != string(torrent) {
+		t.Errorf("body = %q, want %q", payload.Body, torrent)
+	}
+	if got := foreign.Load(); got != 0 {
+		t.Errorf("foreign DownloadURL was requested %d times, want 0", got)
+	}
+	if got := details.Load(); got != 1 {
+		t.Errorf("details requests = %d, want 1", got)
+	}
+}
+
 func TestDefinitionDownloadConcurrencyLimit(t *testing.T) {
 	var inFlight, maxInFlight, detailRequests atomic.Int64
 

@@ -593,10 +593,15 @@ sono disponibili nell'azione.
 - **`resolve_on: grab`** (default quando il campo è assente) — la ricerca non
   apre i dettagli; `Download` li apre al momento del grab. Meno richieste al
   sito, infohash disponibile solo dopo il download.
-- **`Download`** preferisce un magnet già presente, poi un URL di download
-  diretto, poi la pagina di dettaglio risolta con questa sezione. Un redirect
-  della pagina (o del link) verso `magnet:` viene restituito come
-  `Payload.Magnet`.
+- **`Download`** preferisce un magnet già presente. Con `resolve_on: grab` (e
+  una sezione `download`) risolve sempre dalla sorgente dichiarata (`from`,
+  tipicamente la pagina di dettaglio) e **ignora** un `DownloadURL` portato
+  dall'item: quel link può arrivare da un import (per esempio Prowlarr) o da
+  una cache vecchia e puntare a un host diverso, anche privato, che la guardia
+  SSRF rifiuta. Senza sezione `download`, o con `resolve_on: search` (dove il
+  link è già stato risolto dalla sorgente dichiarata), usa un `DownloadURL`
+  diretto e solo dopo la pagina di dettaglio. Un redirect della pagina (o del
+  link) verso `magnet:` viene restituito come `Payload.Magnet`.
 - **`download.before`** viene eseguito solo da `Download`, dopo che il client ha
   scelto la release; una ricerca non apre la pagina di dettaglio e non ringrazia.
 - Con `select: season_episode` la scelta usa la stagione e l'episodio della

@@ -96,11 +96,18 @@ func parseSize(raw string) int64 {
 	}
 
 	cleaned := strings.NewReplacer(",", "", ".", "", " ", "", "\u00a0", "").Replace(raw)
-	if _, err := strconv.ParseInt(cleaned, 10, 64); err != nil {
-		return 0
+	if value, err := strconv.ParseInt(cleaned, 10, 64); err == nil {
+		return value
 	}
-	value, _ := strconv.ParseInt(cleaned, 10, 64)
-	return value
+	// A JSON API can encode a byte count as a float with an exponent, for
+	// example 4.769627296e+09. Accept it when it is a whole number of bytes;
+	// anything fractional stays unknown rather than being rounded.
+	if value, err := strconv.ParseFloat(strings.ReplaceAll(raw, ",", ""), 64); err == nil {
+		if value >= 0 && value <= float64(math.MaxInt64) && value == math.Trunc(value) {
+			return int64(value)
+		}
+	}
+	return 0
 }
 
 func parseHumanNumber(raw string) float64 {

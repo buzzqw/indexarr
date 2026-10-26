@@ -1,0 +1,50 @@
+{
+  "numFound": 3,
+  "order": "desc",
+  "orderBy": "added",
+  "page": 1,
+  "perPage": 100,
+  "torrentList": [
+    {
+      "fid": 241861196,
+      "name": "Example Series S01E02 1080p WEB-DL H 264-GROUP",
+      "filename": "Example.Series.S01E02.1080p.WEB-DL.H.264-GROUP.torrent",
+      "categoryID": 32,
+      "addedTimestamp": "2026-10-26 15:28:44",
+      "size": 4.769627296e+09,
+      "seeders": 42,
+      "leechers": 3,
+      "completed": 17,
+      "download_multiplier": 1,
+      "imdbID": "tt0000001",
+      "tags": "action"
+    },
+    {
+      "fid": 241861197,
+      "name": "Example Movie 2026 BlurayRip 1080p x264-GROUP",
+      "filename": "Example.Movie.2026.BlurayRip.1080p.x264-GROUP.torrent",
+      "categoryID": 14,
+      "addedTimestamp": "2026-10-26 14:56:49",
+      "size": 2.218930069e+09,
+      "seeders": 13,
+      "leechers": 1,
+      "completed": 4,
+      "download_multiplier": 0,
+      "imdbID": "tt0000002",
+      "tags": "drama"
+    },
+    {
+      "fid": 241861198,
+      "name": "Example Album 2026 FLAC",
+      "filename": "Example.Album.2026.FLAC.torrent",
+      "categoryID": 31,
+      "addedTimestamp": "2026-10-26 12:10:03",
+      "size": 5.36870912e+08,
+      "seeders": 7,
+      "leechers": 0,
+      "completed": 2,
+      "download_multiplier": 1,
+      "tags": "music"
+    }
+  ]
+}

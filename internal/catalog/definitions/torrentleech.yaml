@@ -1,14 +1,17 @@
-# IN PROVA (trial). TorrentLeech with login and keyword search.
+# IN PROVA (trial). TorrentLeech with login and JSON search.
 #
-# The public login page was captured on 2026-10-23 in
-# fixtures/torrentleech/login.html (https://www.torrentleech.org/): a plain
-# form posting username/password to /user/account/login/, no CSRF field. The
-# browse path /torrents/browse/list/query/<q> redirects guests to the login
-# page, which is how it was confirmed. Search results and the release page are
-# synthetic fixtures that keep the table and action markup; see
-# fixtures/torrentleech/README.md. The previous RSS-only definition stays
-# available as torrentleech-rss.yaml. State is "bozza" until the coordinator
-# verifies both login and search with an account.
+# Captured on 2026-10-26 with a working account:
+# - the login page (https://www.torrentleech.org/) posts username/password to
+#   /user/account/login/, no CSRF field (fixtures/torrentleech/login.html);
+# - the browse endpoint answers JSON, not HTML:
+#   /torrents/browse/list/query/<q> -> {numFound, torrentList:[...]}. Each row
+#   carries fid, name, filename, categoryID, addedTimestamp, size (a float in
+#   scientific notation), seeders, leechers, completed;
+# - the details page /torrent/<fid> exposes the release button
+#   href="/download/<fid>/<filename>.torrent".
+# Search results and the release page fixtures are synthetic and keep the
+# observed shape; see fixtures/torrentleech/README.md. State is "bozza" until
+# the coordinator verifies login, search and a grab with an account.
 schema: 1
 
 meta:
@@ -18,10 +21,10 @@ meta:
   type: private
   protocol: torrent
   author: indexarr
-  description: Private TorrentLeech with login and keyword search.
+  description: Private TorrentLeech with login, keyword search and a JSON listing.
   urls:
     - https://www.torrentleech.org/
-  updated: "2026-10-23"
+  updated: "2026-10-26"
   latest: false
 
 settings:
@@ -29,12 +32,46 @@ settings:
   - { name: password, type: password, label: "Password", required: true }
 
 categories:
-  - { site: "1", standard: 2000, desc: "Movies" }
-  - { site: "2", standard: 5000, desc: "TV" }
-  - { site: "3", standard: 3000, desc: "Music" }
-  - { site: "4", standard: 4000, desc: "Games" }
-  - { site: "5", standard: 7000, desc: "Books" }
-  - { site: "0", standard: 8000, desc: "Other" }
+  - { site: "8",  standard: 2030, desc: "Movies Cam" }
+  - { site: "9",  standard: 2030, desc: "Movies TS/TC" }
+  - { site: "11", standard: 2030, desc: "Movies DVDRip/DVDScreener" }
+  - { site: "37", standard: 2080, desc: "Movies WEBRip" }
+  - { site: "43", standard: 2040, desc: "Movies HDRip" }
+  - { site: "14", standard: 2040, desc: "Movies BlurayRip" }
+  - { site: "12", standard: 2070, desc: "Movies DVD-R" }
+  - { site: "13", standard: 2050, desc: "Movies Bluray" }
+  - { site: "47", standard: 2045, desc: "Movies 4K" }
+  - { site: "15", standard: 2000, desc: "Movies Boxsets" }
+  - { site: "29", standard: 2020, desc: "Documentaries" }
+  - { site: "36", standard: 2010, desc: "Movies Foreign" }
+  - { site: "26", standard: 5030, desc: "TV Episodes" }
+  - { site: "32", standard: 5040, desc: "TV Episodes HD" }
+  - { site: "27", standard: 5000, desc: "TV Boxsets" }
+  - { site: "34", standard: 5070, desc: "TV Anime" }
+  - { site: "35", standard: 5000, desc: "TV Cartoons" }
+  - { site: "44", standard: 5020, desc: "TV Foreign" }
+  - { site: "17", standard: 4050, desc: "Games PC" }
+  - { site: "42", standard: 4030, desc: "Games Mac" }
+  - { site: "18", standard: 1040, desc: "Games XBOX" }
+  - { site: "19", standard: 1050, desc: "Games XBOX360" }
+  - { site: "40", standard: 1140, desc: "Games XBOXONE" }
+  - { site: "20", standard: 1080, desc: "Games PS2" }
+  - { site: "21", standard: 1080, desc: "Games PS3" }
+  - { site: "39", standard: 1180, desc: "Games PS4" }
+  - { site: "49", standard: 1180, desc: "Games PS5" }
+  - { site: "22", standard: 1020, desc: "Games PSP" }
+  - { site: "28", standard: 1030, desc: "Games Wii" }
+  - { site: "30", standard: 1010, desc: "Games Nintendo DS" }
+  - { site: "48", standard: 1000, desc: "Games Nintendo Switch" }
+  - { site: "23", standard: 4020, desc: "PC ISO" }
+  - { site: "24", standard: 4030, desc: "PC Mac" }
+  - { site: "25", standard: 4040, desc: "PC Mobile" }
+  - { site: "33", standard: 4010, desc: "PC 0-day" }
+  - { site: "38", standard: 7000, desc: "Education" }
+  - { site: "45", standard: 7020, desc: "Books EBooks" }
+  - { site: "46", standard: 7030, desc: "Books Comics" }
+  - { site: "31", standard: 3000, desc: "Audio" }
+  - { site: "16", standard: 3020, desc: "Music videos" }
 
 capabilities:
   search: [q]
@@ -59,16 +96,16 @@ search:
     get: "/torrents/browse/list/query/{{ query.keywords }}"
   pagination: { type: none }
   response:
-    type: html
-    rows: { selector: "table#torrenttable tbody tr" }
+    type: json
+    rows: { path: "torrentList" }
     fields:
-      title:    { selector: "td.name a", filters: [trim] }
-      details:  { selector: "td.name a", attr: href, type: url }
-      category: { selector: "td.category a", attr: href, filters: [{ regex: "category/([0-9]+)" }], type: category }
-      date:     { selector: "td.added", type: date, layouts: ["2006-01-02 15:04:05"] }
-      size:     { selector: "td.size", type: size }
-      seeders:  { selector: "td.seeders", type: int }
-      leechers: { selector: "td.leechers", type: int }
+      title:    { path: "name", filters: [trim] }
+      details:  { path: "fid", filters: [{ prefix: "/torrent/" }], type: url }
+      category: { path: "categoryID", type: category }
+      date:     { path: "addedTimestamp", type: date, layouts: ["2006-01-02 15:04:05"] }
+      size:     { path: "size", type: size }
+      seeders:  { path: "seeders", type: int }
+      leechers: { path: "leechers", type: int }
     required: [title, details]
 
 download:
@@ -85,8 +122,8 @@ health:
 
 tests:
   - name: search
-    fixture: fixtures/torrentleech/search.html
-    expect: { min_rows: 3, required: [title, details, size, seeders] }
+    fixture: fixtures/torrentleech/search.json
+    expect: { min_rows: 3, required: [title, details, size, seeders, category, date] }
   - name: detail
     fixture: fixtures/torrentleech/detail.html
     expect: { min_rows: 0 }
