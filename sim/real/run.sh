@@ -10,7 +10,7 @@
 #   2. App sync: indexarr writes its indexer into real Sonarr and Radarr with
 #      the expected baseUrl, API key, categories, protocol and enable flags.
 #
-# Host ports are isolated. The host services on 8484 and 9117 are never used.
+# Host ports are isolated. The host services on 8788 and 9117 are never used.
 set -euo pipefail
 
 REAL=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -43,7 +43,7 @@ RADARR=http://127.0.0.1:17878
 
 # URL as seen from inside the Compose network. It is also the value stored in
 # public_url, so Sonarr/Radarr receive a reachable indexarr base URL.
-INDEXARR_INTERNAL=http://indexarr:8484
+INDEXARR_INTERNAL=http://indexarr:8788
 
 # A unique suffix lets KEEP=1 reruns add a fresh Prowlarr indexer and bridge
 # source without colliding with the previous run.

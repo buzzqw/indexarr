@@ -12,7 +12,7 @@ func TestLoadCreatesDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.Listen != ":8484" || cfg.LogLevel != "info" || cfg.MemoryLimitMB != 64 {
+	if cfg.Listen != ":8788" || cfg.LogLevel != "info" || cfg.MemoryLimitMB != 64 {
 		t.Errorf("cfg = %#v", cfg)
 	}
 	wantDB := filepath.Join(filepath.Dir(path), "indexarr.db")

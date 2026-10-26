@@ -34,7 +34,7 @@
 #   --data-dir DIR          data directory (default: <repo>/data)
 #   --binary FILE           binary to install (default: <repo>/bin/indexarr)
 #   --port PORT             listen on 127.0.0.1:PORT for a copy test
-#   --listen ADDR           listen address (default: from indexarr.json, else :8484)
+#   --listen ADDR           listen address (default: from indexarr.json, else :8788)
 #   --no-systemd            manage a local process with <data>/indexarr.pid
 #   --unit NAME             systemd unit (default: indexarr)
 #   -h, --help              this help
@@ -78,7 +78,7 @@ Options:
   --data-dir DIR       data directory (default: <repo>/data)
   --binary FILE        binary to install (default: <repo>/bin/indexarr)
   --port PORT          listen on 127.0.0.1:PORT (copy test)
-  --listen ADDR        listen address (default: indexarr.json, else :8484)
+  --listen ADDR        listen address (default: indexarr.json, else :8788)
   --no-systemd         manage a local process with <data>/indexarr.pid
   --unit NAME          systemd unit (default: indexarr)
   -h, --help           this help
@@ -197,7 +197,7 @@ read_config_listen() {
 if [[ -z "$LISTEN" ]]; then
 	LISTEN="$(read_config_listen "$CONFIG")"
 fi
-[[ -n "$LISTEN" ]] || LISTEN=":8484"
+[[ -n "$LISTEN" ]] || LISTEN=":8788"
 
 BASE=""
 HEALTH_URL=""

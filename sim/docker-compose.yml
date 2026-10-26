@@ -60,11 +60,11 @@ services:
       - "-config"
       - "/data/indexarr.json"
       - "-listen"
-      - ":8484"
+      - ":8788"
       - "-db"
       - "/data/indexarr.db"
     ports:
-      - "18484:8484"
+      - "18484:8788"
     volumes:
       - sim-data:/data
     depends_on:
@@ -75,7 +75,7 @@ services:
     networks:
       - simnet
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8484/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8788/healthz"]
       interval: 5s
       timeout: 3s
       retries: 20

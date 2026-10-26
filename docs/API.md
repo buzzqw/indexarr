@@ -14,8 +14,8 @@ usano l'URL completo funzionano entrambi.
 | `/torznab/{slug}/api` | endpoint per-indexer completo |
 | `/api/v2.0/indexers/{slug}/results/torznab/api` | alias compatibile Jackett per-indexer |
 
-- Base: `http://<host>:8484`
-- Endpoint di ricerca aggregato: `http://<host>:8484/api`
+- Base: `http://<host>:8788`
+- Endpoint di ricerca aggregato: `http://<host>:8788/api`
 - Autenticazione: parametro `apikey` oppure header `X-Api-Key`
 - Risposta: XML `rss` con namespace `torznab` e `newznab`
 - API amministrativa JSON: vedi [ADMIN-API.md](ADMIN-API.md)
@@ -90,16 +90,16 @@ query sintetiche. L'endpoint per singolo indexer interroga solo quello.
 
 ```bash
 # Capacità
-curl 'http://localhost:8484/api?t=caps'
+curl 'http://localhost:8788/api?t=caps'
 
 # Ricerca TV
-curl 'http://localhost:8484/api?t=tvsearch&q=Show&season=1&ep=2&cat=5000&apikey=KEY'
+curl 'http://localhost:8788/api?t=tvsearch&q=Show&season=1&ep=2&cat=5000&apikey=KEY'
 
 # Film per IMDb id
-curl 'http://localhost:8484/api?t=movie&imdbid=0133093&apikey=KEY'
+curl 'http://localhost:8788/api?t=movie&imdbid=0133093&apikey=KEY'
 
 # Download del .torrent
-curl -OJ 'http://localhost:8484/dl/42.torrent?apikey=KEY'
+curl -OJ 'http://localhost:8788/dl/42.torrent?apikey=KEY'
 ```
 
 ## Risposta di ricerca
@@ -111,18 +111,18 @@ curl -OJ 'http://localhost:8484/dl/42.torrent?apikey=KEY'
      xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/">
   <channel>
     <title>indexarr</title>
-    <link>http://localhost:8484</link>
+    <link>http://localhost:8788</link>
     <description>indexarr Torznab index</description>
     <newznab:response offset="0" total="1"/>
     <item>
       <title>Show.S01E02.1080p</title>
       <guid isPermaLink="false">0123456789abcdef0123456789abcdef01234567</guid>
-      <link>http://localhost:8484/dl/1.torrent?apikey=KEY</link>
-      <comments>http://localhost:8484/releases/1</comments>
+      <link>http://localhost:8788/dl/1.torrent?apikey=KEY</link>
+      <comments>http://localhost:8788/releases/1</comments>
       <pubDate>Mon, 05 Oct 2026 10:17:44 +0000</pubDate>
       <size>1234567890</size>
       <category>5040</category>
-      <enclosure url="http://localhost:8484/dl/1.torrent?apikey=KEY"
+      <enclosure url="http://localhost:8788/dl/1.torrent?apikey=KEY"
                  length="1234567890" type="application/x-bittorrent"/>
       <torznab:attr name="category" value="5040"/>
       <torznab:attr name="size" value="1234567890"/>
@@ -169,24 +169,24 @@ il client deve usare il link magnet ricevuto nella ricerca.
 
 | Client | URL da inserire | Note |
 | --- | --- | --- |
-| Sonarr/Radarr creati da indexarr | `http://<host>:8484/torznab/<slug>` | l'app aggiunge `/api` |
-| Sonarr/Radarr manuale (Torznab) | `http://<host>:8484/torznab/<slug>` | stesso comportamento |
-| gextto (sorgente indexarr) | `http://<host>:8484` | gextto aggiunge `/api` |
-| gextto (Altro/Torznab) | `http://<host>:8484/api` | endpoint completo |
-| curl / script | `http://<host>:8484/api` | aggiungi `?apikey=…` o `X-Api-Key` |
-| dashboard Prowlarr-compatibile | `http://<host>:8484/api/v1/indexer` | sola lettura |
+| Sonarr/Radarr creati da indexarr | `http://<host>:8788/torznab/<slug>` | l'app aggiunge `/api` |
+| Sonarr/Radarr manuale (Torznab) | `http://<host>:8788/torznab/<slug>` | stesso comportamento |
+| gextto (sorgente indexarr) | `http://<host>:8788` | gextto aggiunge `/api` |
+| gextto (Altro/Torznab) | `http://<host>:8788/api` | endpoint completo |
+| curl / script | `http://<host>:8788/api` | aggiungi `?apikey=…` o `X-Api-Key` |
+| dashboard Prowlarr-compatibile | `http://<host>:8788/api/v1/indexer` | sola lettura |
 
 Esempi per-indexer:
 
 ```bash
 # capacità del solo MirCrew
-curl 'http://localhost:8484/torznab/mircrew/api?t=caps'
+curl 'http://localhost:8788/torznab/mircrew/api?t=caps'
 
 # ricerca TV solo su MirCrew
-curl 'http://localhost:8484/torznab/mircrew/api?t=tvsearch&q=Reacher&season=3&ep=1&apikey=KEY'
+curl 'http://localhost:8788/torznab/mircrew/api?t=tvsearch&q=Reacher&season=3&ep=1&apikey=KEY'
 
 # stesso indexer con il percorso compatibile Jackett
-curl 'http://localhost:8484/api/v2.0/indexers/mircrew/results/torznab/api?t=caps'
+curl 'http://localhost:8788/api/v2.0/indexers/mircrew/results/torznab/api?t=caps'
 ```
 
 ## Errori
@@ -294,7 +294,7 @@ del server Torznab, senza cookie e senza CSRF.
 Esempio:
 
 ```sh
-curl -X POST "http://localhost:8484/api/v2/indexers?apikey=$KEY" \
+curl -X POST "http://localhost:8788/api/v2/indexers?apikey=$KEY" \
   -H 'Content-Type: application/json' \
   -d '{
         "definition_id": "newznab-generic",

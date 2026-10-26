@@ -40,7 +40,7 @@ Rollback all'ultimo backup pre-aggiornamento:
 ```
 
 Opzioni per una prova su una copia: `--data-dir`, `--binary`, `--port 18510`,
-`--no-systemd`, `--unit`. La prova non usa mai `:8484`,
+`--no-systemd`, `--unit`. La prova non usa mai `:8788`,
 `data/`, `bin/indexarr` o systemd.
 
 ## Test offline

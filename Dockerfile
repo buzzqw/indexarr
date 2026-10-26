@@ -25,10 +25,10 @@ ENV HOME=/data
 WORKDIR /data
 COPY --from=build /out/indexarr /usr/local/bin/indexarr
 
-EXPOSE 8484
+EXPOSE 8788
 VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://127.0.0.1:8484/healthz >/dev/null || exit 1
+    CMD wget -qO- http://127.0.0.1:8788/healthz >/dev/null || exit 1
 
-ENTRYPOINT ["indexarr", "-config", "/data/indexarr.json", "-listen", ":8484"]
+ENTRYPOINT ["indexarr", "-config", "/data/indexarr.json", "-listen", ":8788"]

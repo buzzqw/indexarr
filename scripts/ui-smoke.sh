@@ -6,7 +6,7 @@
 # touches its database.
 #
 #   ./scripts/ui-smoke.sh
-#   INDEXARR_BASE=http://127.0.0.1:8484 ./scripts/ui-smoke.sh
+#   INDEXARR_BASE=http://127.0.0.1:8788 ./scripts/ui-smoke.sh
 #   UI_SMOKE_STRICT=1 ./scripts/ui-smoke.sh
 #
 # Exit status: 0 when there are no hard failures; 1 otherwise (with
@@ -14,7 +14,7 @@
 # reported as "pending" while the redesign is in progress and do not fail.
 set -euo pipefail
 
-BASE="${INDEXARR_BASE:-http://127.0.0.1:8484}"
+BASE="${INDEXARR_BASE:-http://127.0.0.1:8788}"
 BASE="${BASE%/}"
 STRICT="${UI_SMOKE_STRICT:-0}"
 

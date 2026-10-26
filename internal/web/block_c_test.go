@@ -81,7 +81,7 @@ func TestHomeNextStepIsSingleAndOrdered(t *testing.T) {
 		t.Fatalf("first step = %#v, want backup (the connect card already proposes the address)", step)
 	}
 
-	settings.PublicURL = "http://192.168.1.50:8484"
+	settings.PublicURL = "http://192.168.1.50:8788"
 	status.Apps = 0
 	step = env.server.nextStep(ctx, status, settings, 1, 0)
 	if step == nil || step.Key != "home.next.app" {
@@ -292,13 +292,13 @@ func TestSettingsSectionsSaveIndependently(t *testing.T) {
 	token, cookie := csrfFrom(t, env.handler, "/settings?section=general")
 	recorder := postForm(t, env.handler, "/settings", url.Values{
 		"csrf": {token}, "section": {"general"},
-		"public_url": {"http://192.168.1.50:8484"},
+		"public_url": {"http://192.168.1.50:8788"},
 	}, cookie)
 	if recorder.Code != http.StatusSeeOther {
 		t.Fatalf("general save = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	updated, _ := env.store.LoadSettings(ctx)
-	if updated.PublicURL != "http://192.168.1.50:8484" {
+	if updated.PublicURL != "http://192.168.1.50:8788" {
 		t.Errorf("public URL = %q", updated.PublicURL)
 	}
 	if updated.DefaultIntervalSeconds != 7200 || updated.Workers != 3 {
@@ -372,13 +372,13 @@ func TestSetupWizardSkipAndReopen(t *testing.T) {
 
 	// Step 1 saves the address and moves on.
 	address := postForm(t, env.handler, "/setup/address", url.Values{
-		"csrf": {token}, "public_url": {"http://192.168.1.50:8484"},
+		"csrf": {token}, "public_url": {"http://192.168.1.50:8788"},
 	}, cookie)
 	if address.Code != http.StatusSeeOther || !strings.Contains(address.Header().Get("Location"), "step=2") {
 		t.Fatalf("address = %d %q", address.Code, address.Header().Get("Location"))
 	}
 	saved, _ := env.store.LoadSettings(ctx)
-	if saved.PublicURL != "http://192.168.1.50:8484" {
+	if saved.PublicURL != "http://192.168.1.50:8788" {
 		t.Errorf("wizard did not save the address: %q", saved.PublicURL)
 	}
 }

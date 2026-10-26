@@ -9,10 +9,10 @@ configurazione di base vedi il [README](../README.md).
 
 ## 1. Primo avvio
 
-1. Apri `http://<host>:8484`.
+1. Apri `http://<host>:8788`.
 2. Il percorso guidato chiede l'indirizzo con cui le app devono raggiungere
    indexarr. Se le app sono su un'altra macchina, metti l'IP della macchina
-   indexarr (per esempio `http://192.168.1.161:8484`), non `localhost`.
+   indexarr (per esempio `http://192.168.1.161:8788`), non `localhost`.
 3. La chiave del vault viene creata al primo avvio. **Conservala**: senza di
    essa le password e le API key salvate non si possono riaprire. Il percorso è
    indicato in Impostazioni → Vault.
@@ -167,17 +167,17 @@ quale app.
 
 Per un client che accetta un solo URL Torznab:
 
-- endpoint aggregato: `http://<host>:8484/api`
+- endpoint aggregato: `http://<host>:8788/api`
 - API key: quella di indexarr
-- per un solo indexer: `http://<host>:8484/torznab/<slug>/api`
+- per un solo indexer: `http://<host>:8788/torznab/<slug>/api`
 
 Sonarr/Radarr creati da indexarr usano invece la base
-`http://<host>:8484/torznab/<slug>`: sono loro ad aggiungere `/api`.
+`http://<host>:8788/torznab/<slug>`: sono loro ad aggiungere `/api`.
 
 ### gextto
 
 In gextto aggiungi una sorgente **indexarr** con URL base
-`http://<host>:8484` (senza `/api`): gextto aggiunge da solo il percorso
+`http://<host>:8788` (senza `/api`): gextto aggiunge da solo il percorso
 Torznab. Se scegli «Altro», usa l'endpoint completo `/api`.
 
 ### Client di download
@@ -251,13 +251,13 @@ ultimo errore e registro: non serve aprire i log di sistema.
 systemctl --user status indexarr.service
 
 # salute e versione
-curl -s http://127.0.0.1:8484/healthz
+curl -s http://127.0.0.1:8788/healthz
 
 # capacità Torznab
-curl -s 'http://127.0.0.1:8484/api?t=caps'
+curl -s 'http://127.0.0.1:8788/api?t=caps'
 
 # elenco indexer dall'API JSON
-curl -s -H "X-Api-Key: $KEY" http://127.0.0.1:8484/api/v2/indexers
+curl -s -H "X-Api-Key: $KEY" http://127.0.0.1:8788/api/v2/indexers
 
 # log in tempo reale
 journalctl --user -u indexarr.service -f

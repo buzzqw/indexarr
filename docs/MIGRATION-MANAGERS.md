@@ -81,7 +81,7 @@ la dipendenza che indexarr deve togliere. Per questo:
 - ogni query delle \*arr deve restituire almeno le stesse release distinte;
 - controllare `app_searches` per `go-http-client` e gli errori;
 - monitorare coda live, timeout e RAM di indexarr;
-- verificare che Sonarr/Radarr continuino a usare solo `indexarr` su `:8484`;
+- verificare che Sonarr/Radarr continuino a usare solo `indexarr` su `:8788`;
 - controllare che non esistano indexer con URL di un manager.
 
 ## Nota

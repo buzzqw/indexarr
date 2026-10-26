@@ -30,7 +30,7 @@ Chiavi fisse della simulazione:
 | Prowlarr (`X-Api-Key`) | `demo-prowlarr` |
 | Deluge (`auth.login`) | `demo` / `demo` |
 
-Le porte 8484 e 9117 non vengono mai usate. In Docker indexarr ascolta `:8484`
+Le porte 8788 e 9117 non vengono mai usate. In Docker indexarr ascolta `:8788`
 nel container, pubblicato su `18484`; simmock ascolta `:19080`.
 
 ## Esecuzione locale

@@ -14,7 +14,7 @@ func TestWebInterfaceLogMasksAPIKey(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, nil))
 	const key = "0123456789abcdef0123456789abcdef"
-	logWebInterfaceReady(logger, "http://localhost:8484", key)
+	logWebInterfaceReady(logger, "http://localhost:8788", key)
 	line := buf.String()
 	if strings.Contains(line, key) {
 		t.Fatalf("log contains the full API key: %s", line)
@@ -31,7 +31,7 @@ func TestOperationalLogsDoNotLeakSecrets(t *testing.T) {
 	const secret = "vault-secret-0123456789abcdef"
 	var buf bytes.Buffer
 	logger := slog.New(logsafe.NewHandler(slog.NewTextHandler(&buf, nil)))
-	logWebInterfaceReady(logger, "http://localhost:8484", secret)
+	logWebInterfaceReady(logger, "http://localhost:8788", secret)
 	logger.Error("live search failed", "error", "GET https://site/api?passkey="+secret)
 	logger.Warn("gextto import failed", "error", "https://rss.example/feed?rsskey="+secret)
 	logger.Warn("jackett import failed", "error", "https://jackett/api?apikey="+secret)

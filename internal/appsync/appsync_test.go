@@ -241,7 +241,7 @@ func TestSimpleClientsManageProviders(t *testing.T) {
 				case "getVersion":
 					_, _ = w.Write([]byte(`{"version":"1.2.3"}`))
 				case "listProviders", "listNabProviders":
-					_, _ = w.Write([]byte(`{"success":true,"data":{"torznabs":[{"name":"indexarr · Site","host":"http://indexarr:8484/torznab/site","apikey":"key","categories":"2000,5000","enabled":true}],"newznabs":[]}}`))
+					_, _ = w.Write([]byte(`{"success":true,"data":{"torznabs":[{"name":"indexarr · Site","host":"http://indexarr:8788/torznab/site","apikey":"key","categories":"2000,5000","enabled":true}],"newznabs":[]}}`))
 				default:
 					_, _ = w.Write([]byte(`{"success":true}`))
 				}
@@ -278,7 +278,7 @@ func TestSimpleClientsManageProviders(t *testing.T) {
 			}
 
 			if remote[0].RawHash != SpecHash(IndexerSpec{
-				Name: "indexarr · Site", BaseURL: "http://indexarr:8484/torznab/site",
+				Name: "indexarr · Site", BaseURL: "http://indexarr:8788/torznab/site",
 				APIKey: "key", Categories: []int{2000, 5000},
 				Implementation: "Torznab", ConfigContract: "TorznabSettings",
 				Protocol: "torrent", EnableRSS: true,
@@ -288,7 +288,7 @@ func TestSimpleClientsManageProviders(t *testing.T) {
 			}
 
 			spec := IndexerSpec{
-				Name: "indexarr · Site", BaseURL: "http://indexarr:8484/torznab/site",
+				Name: "indexarr · Site", BaseURL: "http://indexarr:8788/torznab/site",
 				APIKey: "key", Categories: []int{2000, 5000}, Protocol: "torrent",
 				Priority: 10, MinSeeders: 5, SeedRatio: 1.5, SeedTimeMinutes: 60,
 			}

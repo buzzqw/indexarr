@@ -4,7 +4,7 @@ name: indexarr-real
 #
 # indexarr and simmock are built from this repository; Prowlarr, Sonarr and
 # Radarr are the real LinuxServer.io containers. Every host port is isolated
-# from the host services (no 8484, no 9117): the *arr containers listen on
+# from the host services (no 8788, no 9117): the *arr containers listen on
 # their normal internal ports and are published on 19xxx/18xxx host ports.
 
 services:
@@ -46,7 +46,7 @@ services:
       - "-db"
       - "/data/indexarr.db"
       - "-public-url"
-      - "http://indexarr:8484"
+      - "http://indexarr:8788"
     volumes:
       - indexarr-data:/data
     depends_on:
@@ -69,7 +69,7 @@ services:
       - "-db"
       - "/data/indexarr.db"
     ports:
-      - "18484:8484"
+      - "18484:8788"
     volumes:
       - indexarr-data:/data
     depends_on:
@@ -80,7 +80,7 @@ services:
     networks:
       - realnet
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8484/healthz"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8788/healthz"]
       interval: 5s
       timeout: 3s
       retries: 30

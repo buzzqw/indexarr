@@ -26,7 +26,7 @@ type Config struct {
 // Default returns the configuration used on a first start.
 func Default() Config {
 	return Config{
-		Listen:        ":8484",
+		Listen:        ":8788",
 		DBPath:        "indexarr.db",
 		LogLevel:      "info",
 		MemoryLimitMB: 64,

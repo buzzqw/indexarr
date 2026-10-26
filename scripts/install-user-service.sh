@@ -4,7 +4,7 @@
 #
 #   ./scripts/install-user-service.sh                # build, install, start
 #   ./scripts/install-user-service.sh --no-build     # use bin/indexarr as-is
-#   ./scripts/install-user-service.sh --listen 0.0.0.0:8484
+#   ./scripts/install-user-service.sh --listen 0.0.0.0:8788
 #   ./scripts/install-user-service.sh --linger       # also survive logout/reboot
 #   ./scripts/install-user-service.sh --status
 #   ./scripts/install-user-service.sh --uninstall
@@ -18,7 +18,7 @@ NAME="indexarr"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="${ROOT}/bin/indexarr"
 DATA_DIR=""
-LISTEN=":8484"
+LISTEN=":8788"
 BUILD=1
 LINGER=0
 ACTION="install"
@@ -30,7 +30,7 @@ Uso: install-user-service.sh [opzioni]
 Opzioni:
   --name NOME        Nome del servizio (default: indexarr)
   --data-dir DIR     Directory di config e database (default: <progetto>/data)
-  --listen ADDR      Indirizzo HTTP, per esempio :8484 o 127.0.0.1:8484
+  --listen ADDR      Indirizzo HTTP, per esempio :8788 o 127.0.0.1:8788
   --binary FILE      Binario da usare (default: <progetto>/bin/indexarr)
   --no-build         Non esegue make build
   --linger           Abilita loginctl enable-linger per l'utente corrente

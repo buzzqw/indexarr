@@ -114,7 +114,7 @@ Lo smoke test richiede un'istanza **già avviata** e fa solo richieste `GET`.
 Non avvia, ferma o riavvia il servizio e non legge né scrive il database.
 
 ```sh
-# Istanza locale sulla porta predefinita (http://127.0.0.1:8484)
+# Istanza locale sulla porta predefinita (http://127.0.0.1:8788)
 ./scripts/ui-smoke.sh
 
 # Tramite Make
@@ -124,7 +124,7 @@ make ui-smoke
 INDEXARR_BASE=http://127.0.0.1:9000 ./scripts/ui-smoke.sh
 
 # Con autenticazione Basic attiva, le credenziali possono stare nell'URL
-INDEXARR_BASE=http://utente:password@127.0.0.1:8484 ./scripts/ui-smoke.sh
+INDEXARR_BASE=http://utente:password@127.0.0.1:8788 ./scripts/ui-smoke.sh
 
 # Trasforma i warning in errori (utile in CI)
 UI_SMOKE_STRICT=1 ./scripts/ui-smoke.sh

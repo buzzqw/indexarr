@@ -32,7 +32,7 @@
 #   INDEXARR_BUDGET_KEEP=1         same as --keep
 #
 # The script never touches a running production instance: it uses a random
-# high loopback port (never 8484) and a private temporary directory. The server
+# high loopback port (never 8788) and a private temporary directory. The server
 # process is always killed and the temporary data removed on exit.
 set -euo pipefail
 # Numbers must use a dot: awk comparisons and MiB conversion are locale

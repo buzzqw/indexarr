@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Offline test for scripts/upgrade.sh.
 #
-# It never touches the production data directory, :8484, bin/indexarr or
+# It never touches the production data directory, :8788, bin/indexarr or
 # systemd: every case uses a temporary --data-dir, temporary binaries,
 # --no-systemd and port 18510. When the production DB is readable, each test
 # starts from a VACUUM INTO copy of it (read-only on the original).

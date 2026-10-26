@@ -30,19 +30,19 @@ multimediali o client di download nelle \*arr.
 
 | Servizio | Porta host | Porta container | URL |
 |---|---:|---:|---|
-| indexarr | 18484 | 8484 | `http://127.0.0.1:18484` |
+| indexarr | 18484 | 8788 | `http://127.0.0.1:18484` |
 | simmock | 19080 | 19080 | `http://127.0.0.1:19080` |
 | Prowlarr | 19696 | 9696 | `http://127.0.0.1:19696` |
 | Sonarr | 18989 | 8989 | `http://127.0.0.1:18989` |
 | Radarr | 17878 | 7878 | `http://127.0.0.1:17878` |
 
-Le porte **8484** e **9117** dell'host non vengono mai usate: l'indexarr e il
+Le porte **8788** e **9117** dell'host non vengono mai usate: l'indexarr e il
 Jackett già attivi sulla macchina non vengono toccati. Anche la porta 9696
 dell'host (un Prowlarr preesistente) non viene usata: il Prowlarr della
 simulazione è pubblicato su 19696.
 
 Dentro la rete Compose i nomi sono `simmock`, `indexarr`, `prowlarr`, `sonarr`
-e `radarr`. `public_url` di indexarr è `http://indexarr:8484`, così gli indexer
+e `radarr`. `public_url` di indexarr è `http://indexarr:8788`, così gli indexer
 scritti nelle \*arr usano un URL raggiungibile dai container.
 
 ## Immagini
@@ -166,13 +166,13 @@ La simulazione ha trovato due incompatibilità nel codice attuale:
    `/torznab/api` e `/api`, ma non `/torznab/{slug}/api`. La rotta esiste nel
    package `torznabapi` ed è coperta dai test unitari, ma `internal/web` non la
    inoltra: una richiesta a
-   `http://indexarr:8484/torznab/sim-torznab/api?t=caps` risponde
+   `http://indexarr:8788/torznab/sim-torznab/api?t=caps` risponde
    `404 page not found`.
 2. **`apiPath` viene duplicato.** `syncjob` costruisce
    `public_url + "/torznab/" + slug + "/api"`, mentre Sonarr/Radarr aggiungono
    il campo `apiPath` (default `/api`) del loro schema Torznab. L'URL tentato
    diventa quindi
-   `http://indexarr:8484/torznab/sim-torznab/api/api?t=caps`, che risponde 404.
+   `http://indexarr:8788/torznab/sim-torznab/api/api?t=caps`, che risponde 404.
 
 Di conseguenza il sync restituisce HTTP 502 con `added=0` e nelle \*arr non
 compare alcun indexer. Il runner **non simula un successo**: verifica l'errore
@@ -202,5 +202,5 @@ questa directory).
 - Se il working tree ha modifiche non compilabili in altri package, la build
   usa `HEAD`. Questo è segnalato nel log; usare `CLEAN=1` per renderlo
   esplicito.
-- Il runner non tocca i container o le porte dell'host (indexarr 8484,
+- Il runner non tocca i container o le porte dell'host (indexarr 8788,
   Jackett 9117, Prowlarr 9696).

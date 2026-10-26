@@ -98,7 +98,7 @@ Al primo avvio vengono creati, nella directory corrente:
 - `indexarr.db` — database SQLite;
 - una API key Torznab casuale, stampata nel log e visibile in **Settings**.
 
-Apri <http://localhost:8484>, aggiungi una sorgente e premi **Run**. La stessa
+Apri <http://localhost:8788>, aggiungi una sorgente e premi **Run**. La stessa
 pagina **Settings** mostra l'URL Torznab da consegnare ai client.
 
 Flag disponibili:
@@ -116,7 +116,7 @@ Flag disponibili:
 
 ```json
 {
-  "listen": ":8484",
+  "listen": ":8788",
   "db_path": "indexarr.db",
   "log_level": "info",
   "vault_key_path": "",
@@ -296,14 +296,14 @@ non si aprono. Dettagli in [docs/VAULT.md](docs/VAULT.md).
 Nella pagina **Settings** copia l'endpoint completo:
 
 ```text
-http://<host>:8484/api?apikey=<API_KEY>
+http://<host>:8788/api?apikey=<API_KEY>
 ```
 
 Nel client aggiungi un indexer di tipo **Torznab**:
 
 | Campo | Valore |
 | --- | --- |
-| URL | `http://<host>:8484/api` |
+| URL | `http://<host>:8788/api` |
 | API Key | la chiave mostrata in Settings |
 | Categories | `5000` TV, `2000` Film, `3000` Audio, `7000` Libri |
 
@@ -538,19 +538,19 @@ Crea:
 - avvia il servizio e ne verifica `/healthz`.
 
 ```bash
-./scripts/install-user-service.sh --listen 127.0.0.1:8484   # solo locale
+./scripts/install-user-service.sh --listen 127.0.0.1:8788   # solo locale
 ./scripts/install-user-service.sh --no-build                # usa bin/indexarr
 ./scripts/install-user-service.sh --linger                  # resta attivo dopo il logout
 ./scripts/install-user-service.sh --status
 ./scripts/install-user-service.sh --uninstall               # i dati restano
 ```
 
-Il default è `:8484` su tutte le interfacce: sulla LAN l'indirizzo è
-`http://<IP-del-server>:8484/` (per esempio `http://192.168.1.10:8484/`). Lo
+Il default è `:8788` su tutte le interfacce: sulla LAN l'indirizzo è
+`http://<IP-del-server>:8788/` (per esempio `http://192.168.1.10:8788/`). Lo
 script stampa anche l'indirizzo LAN rilevato e verifica che la porta risponda lì,
 non solo su `127.0.0.1`. L'indirizzo passato con `--listen` viene scritto
 nell'unità e prevale sul `listen` del file di configurazione. Se vuoi limitarlo
-alla sola macchina locale usa `--listen 127.0.0.1:8484` e riesegui lo script.
+alla sola macchina locale usa `--listen 127.0.0.1:8788` e riesegui lo script.
 La UI è senza autenticazione finché non imposti utente e password in **Settings**:
 fallo prima di esporla alla LAN.
 
@@ -592,7 +592,7 @@ stampata). Se un controllo fallisce ripristina automaticamente DB e binario e
 riavvia la versione precedente.
 
 La prova generale su una copia usa `--data-dir`, `--port 18510`, `--no-systemd`
-e binari temporanei; non tocca `:8484`, `data/`, `bin/indexarr` o systemd:
+e binari temporanei; non tocca `:8788`, `data/`, `bin/indexarr` o systemd:
 
 ```bash
 ./scripts/upgrade_test.sh
@@ -630,10 +630,17 @@ alternativa:
 
 ```bash
 docker build -t indexarr .
-docker run -d --name indexarr -p 8484:8484 \
+docker run -d --name indexarr -p 8788:8788 \
   -v indexarr-data:/data \
   indexarr
 ```
+
+La porta predefinita è **8788**, scelta per evitare la 8484 usata da qBittorrent
+in molte installazioni. Il default vale per le installazioni nuove: un
+`indexarr.json` già esistente conserva il valore `listen` scritto al primo
+avvio. Se aggiorni un container creato con la vecchia immagine, aggiorna il
+mapping a `8788:8788` oppure aggiungi `-listen :8484` al comando per restare
+sulla porta precedente.
 
 Il volume **non** contiene la chiave del vault: in Docker usare
 `INDEXARR_MASTER_KEY_FILE` con un secret montato (esempio in

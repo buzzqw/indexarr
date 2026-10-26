@@ -230,7 +230,7 @@ contiene più episodi e più risoluzioni (la logica è coperta dai test offline)
 ## 3. Prova dal banco Sonarr
 
 Il banco è `indexarr-test-sonarr` su `127.0.0.1:18989` (container, senza client
-di download). La produzione su `:8484` non va toccata.
+di download). La produzione su `:8788` non va toccata.
 
 Con il ponte:
 

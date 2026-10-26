@@ -1,5 +1,5 @@
 {
-  "listen": ":8484",
+  "listen": ":8788",
   "db_path": "indexarr.db",
   "log_level": "info"
 }

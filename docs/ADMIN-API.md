@@ -14,7 +14,7 @@ Torznab vedi [API.md](API.md).
 
 ## 1. Nozioni di base
 
-- **Base URL**: `http://<host>:8484`
+- **Base URL**: `http://<host>:8788`
 - **Prefisso**: `/api/v2/`
 - **Content-Type**: `application/json` per ogni corpo inviato
 - **Nessun cookie e nessun CSRF**: pensata per script e servizi
@@ -62,7 +62,7 @@ Tutti gli errori sono JSON:
 ## 2. Avvio rapido
 
 ```bash
-export INDEXARR=http://127.0.0.1:8484
+export INDEXARR=http://127.0.0.1:8788
 export KEY='la-tua-api-key'
 
 curl -s "$INDEXARR/api/v2/health?apikey=$KEY" | jq
@@ -438,7 +438,7 @@ client che aggiunge `/api` ottiene l'endpoint Torznab per-indexer.
 
 ```bash
 KEY='…'
-BASE='http://127.0.0.1:8484'
+BASE='http://127.0.0.1:8788'
 
 curl -s -X POST "$BASE/api/v2/indexers?apikey=$KEY" \
   -H 'Content-Type: application/json' \

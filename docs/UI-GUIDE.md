@@ -159,7 +159,7 @@ Home                                                     [Aggiungi indexer]
 └────────────────────────────────────────────────────────────────────────┘
 
 ┌ Collega le tue app ────────────────────────────────────────────────────┐
-│ URL per Sonarr/Radarr  [ http://192.168.1.50:8484/api      ] [Copia]   │
+│ URL per Sonarr/Radarr  [ http://192.168.1.50:8788/api      ] [Copia]   │
 │ API key                [ ••••••••••••••••                  ] [Copia]   │
 │ Oppure lascia fare a indexarr:                         [Collega un'app]│
 └────────────────────────────────────────────────────────────────────────┘
@@ -426,7 +426,7 @@ saltabile, riapribile da Impostazioni → Generale:
 
 ```text
 Benvenuto in indexarr                                       Passo 1 di 4
-1 Indirizzo     Le tue app ti raggiungono a:  [ http://192.168.1.50:8484 ]
+1 Indirizzo     Le tue app ti raggiungono a:  [ http://192.168.1.50:8788 ]
                                                [Verifica] ✓ raggiungibile
 2 Importa       Hai già Prowlarr o Jackett?  [Importa da Prowlarr] [No]
                 (sola lettura: non modifichiamo nulla)
@@ -595,7 +595,7 @@ Per ogni fase:
   Impostazioni; nessuna stringa letterale nei template.
 - Screenshot prima/dopo a 1440 e 390 px delle pagine toccate, allegati al
   report (in una cartella temporanea, non committati), con istanza su copia
-  del DB e porta diversa da :8484.
+  del DB e porta diversa da :8788.
 - Controllo larghezza: per ogni pagina `document.documentElement.scrollWidth
   <= innerWidth` e nessuna tabella più larga del suo contenitore.
 - Dalla fase 3: i cinque compiti cronometrati di WP14.
