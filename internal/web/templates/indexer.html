@@ -8,6 +8,11 @@
       <span>{{.Status.Label}}</span>
       {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
     </div>
+    {{if .SiteAddress}}
+    <p class="site-address" title="{{T "idx.detail.addressTip"}}"><span class="muted">{{T "idx.detail.address"}}:</span> <a class="link" href="{{.SiteAddress}}" target="_blank" rel="noopener noreferrer">{{.SiteAddress}}</a></p>
+    {{else}}
+    <p class="site-address muted" title="{{T "idx.detail.addressTip"}}">{{T "idx.detail.address"}}: {{T "idx.detail.addressNone"}}</p>
+    {{end}}
     {{range .Problems}}{{template "problem" .}}{{end}}
     {{if .SlowProblem}}{{template "problem" .SlowProblem}}{{end}}
     {{if .UploaderOnly}}<p class="help uploader-note" title="{{T "idx.detail.uploaderOnlyTip"}}">{{T "idx.detail.uploaderOnly" .UploaderMinutes}}</p>{{end}}
@@ -34,7 +39,7 @@
         <a class="menu-item" href="/indexers/{{.Indexer.ID}}/edit">{{T "common.edit"}}</a>
         <form method="post" action="/indexers/{{.Indexer.ID}}/toggle"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="menu-item" type="submit" title="{{T "tip.indexerEnabled"}}">{{if .Indexer.Enabled}}{{T "idx.disable"}}{{else}}{{T "idx.enable"}}{{end}}</button></form>
         <form method="post" action="/indexers/{{.Indexer.ID}}/duplicate"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="menu-item" type="submit" title="{{T "tip.indexerSync"}}">{{T "idx.duplicate"}}</button></form>
-        <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="{{T "idx.deleteConfirm" .Indexer.Name}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><button class="menu-item danger" type="submit" title="{{T "tip.indexerDelete"}}">{{T "idx.delete"}}</button></form>
+        <form method="post" action="/indexers/{{.Indexer.ID}}/delete" data-confirm="{{T "idx.deleteConfirm" .Indexer.Name}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="return" value="{{.ListReturn}}"><button class="menu-item danger" type="submit" title="{{T "tip.indexerDelete"}}">{{T "idx.delete"}}</button></form>
       </div>
     </details>
   </div>
@@ -48,6 +53,91 @@
 {{if eq .Tab "data"}}
 {{template "indexer_data_body" .}}
 {{else}}
+
+<section class="panel health-panel" id="health">
+  <div class="panel-head">
+    <h2>{{T "idx.health.title"}}</h2>
+    <span class="chip {{.Verdict.Class}}">{{.Verdict.Label}}</span>
+  </div>
+  <div class="panel-body">
+    <p class="help">{{T "idx.health.help"}}</p>
+    <p class="health-verdict" role="status">{{.Verdict.Text}}</p>
+    {{if .ProblemDetail}}
+    <div class="field">
+      <span class="health-error-label">{{T "idx.health.errorTitle"}}{{if .HasProblemAt}} <span class="muted">({{ago .ProblemAt}})</span>{{end}}</span>
+      <pre class="health-error">{{.ProblemDetail}}</pre>
+    </div>
+    {{end}}
+
+    <h3 class="sub-head">{{T "idx.health.logTitle"}}</h3>
+    <p class="help">{{T "idx.health.logHelp"}}</p>
+    {{if .LogRows}}
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th scope="col">{{T "runs.started"}}</th>
+          <th scope="col">{{T "idx.data.kind"}}</th>
+          <th scope="col">{{T "runs.outcome"}}</th>
+          <th scope="col">{{T "runs.error"}}</th>
+          <th scope="col">{{T "runs.duration"}}</th>
+        </tr></thead>
+        <tbody>
+          {{range .LogRows}}
+          <tr>
+            <td class="nowrap">{{if .Href}}<a href="{{.Href}}">{{date .When}}</a>{{else}}{{date .When}}{{end}}<div class="sub">{{ago .When}}</div></td>
+            <td>{{kindLabel .Kind}}</td>
+            <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else if eq .Status "blocked"}}<span class="chip warn">{{T "idx.statusBlocked"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
+            <td class="error-cell">{{if .Message}}{{.Message}}{{else}}<span class="muted">—</span>{{end}}</td>
+            <td class="nowrap">{{.Latency}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p class="muted">{{T "idx.health.logEmpty"}}</p>
+    {{end}}
+    <p class="health-more"><a class="link" href="{{.RunsLink}}">{{T "idx.health.logAll"}}</a></p>
+
+    <h3 class="sub-head">{{T "idx.health.appLogTitle"}}</h3>
+    <p class="help">{{T "idx.health.appLogHelp"}}</p>
+    {{if .AppLog}}
+    <div class="health-applog">
+      {{range .AppLog}}
+      <div class="log-row">
+        <time class="log-time" datetime="{{.Time.Format "2006-01-02T15:04:05Z07:00"}}">{{.Time.Format "2006-01-02 15:04:05"}}</time>
+        <span class="log-level {{.LevelClass}}">{{.LevelName}}</span>
+        <div class="log-body">
+          <div class="log-msg">{{if .Component}}<span class="log-tag">{{.Component}}</span>{{end}}{{if .Source}}<span class="log-tag">{{.Source}}</span>{{end}}{{.Message}}</div>
+          {{if .Attrs}}<div class="log-attrs">{{range .Attrs}}<span class="log-attr"><code>{{.Key}}</code>={{.Value}}</span>{{end}}</div>{{end}}
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="muted">{{T "idx.health.appLogEmpty"}}</p>
+    {{end}}
+    <p class="health-more"><a class="link" href="{{.AppLogLink}}">{{T "idx.health.appLogAll"}}</a></p>
+  </div>
+</section>
+
+{{if .AccessFields}}
+<section class="panel" id="access">
+  <div class="panel-head">
+    <h2>{{T "idx.access.title"}}</h2>
+    <a class="btn small" href="{{.AccessEditLink}}">{{if .MissingAccess}}{{T "idx.access.action"}}{{else}}{{T "idx.access.edit"}}{{end}}</a>
+  </div>
+  <div class="panel-body">
+    <p class="help">{{T "idx.access.help"}}</p>
+    <dl class="detail detail-grid">
+      {{range .AccessFields}}
+      <dt>{{.Label}}</dt>
+      <dd>{{if .Configured}}<span class="chip ok">{{T "idx.access.configured"}}</span>{{else}}<span class="chip warn">{{T "idx.access.missing"}}</span>{{end}}</dd>
+      {{end}}
+    </dl>
+  </div>
+</section>
+{{end}}
 
 {{if .Test}}
 <section class="panel">

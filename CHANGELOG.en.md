@@ -3,11 +3,29 @@
 ## 2.1.0 (in progress)
 
 ### Indexer management
+- Source page: the Overview tab always shows the address, the
+  “works / does not work” verdict, the reason, the last error and the log of
+  the latest operations, including process-log lines.
+- Required credentials (username, password, API key) sit at the top of the
+  form in a “Site access” box; the page says which ones are missing and links
+  straight to the form. Catalogue sites that need a login show an “Enter
+  credentials” button.
+- Deleting or disabling a source returns to the filter you came from, for
+  example “Disabled”.
+- In “Add indexer”, type and language are dropdowns; needs (Films, Books, …)
+  add up and stay highlighted.
+- The catalogue only lists sources that already work: “to write” entries are
+  no longer shown.
+- Search results have a “Copy magnet” button next to “Download”.
 - Each source has its own refresh frequency, visible in the form (outside
   “Advanced”) and in the list, with minute/hour quick choices and the value
   actually in force (“global default” or “set for this source”).
 - “Reduce the frequency”, on the 429 problem, doubles the interval of that one
   source and confirms the new value. Live app searches are not slowed down.
+
+### Speed
+- HTML, CSS, JS and SVG responses are gzipped and static files carry an ETag:
+  a repeat visit gets a 304 instead of the whole file.
 
 ## 2.0.0-rc1
 
@@ -40,6 +58,8 @@ First release candidate of indexarr 2.
 
 ### UI
 - Guided “Add source” flow, uploader and experimental-source cards.
+- On the App page the three ways to connect are real cards with correct
+  margins and spacing, no longer text stuck to the panel edge.
 - Seven languages for the new parts.
 
 ### Known limits

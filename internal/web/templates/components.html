@@ -47,7 +47,8 @@
     <p class="guide-lead">{{T "idx.guide.subtitle"}}</p>
     <div class="need-grid" role="list">
       {{range .Guide.Needs}}
-      <a class="need-card{{if .Active}} active{{end}}" href="{{.URL}}" title="{{.Tip}}" role="listitem">
+      <a class="need-card{{if .Active}} active{{end}}" href="{{.URL}}" title="{{.Tip}}" role="listitem" aria-pressed="{{if .Active}}true{{else}}false{{end}}">
+        <span class="need-check" aria-hidden="true">{{if .Active}}✓{{end}}</span>
         <span class="need-label">{{.Label}}</span>
       </a>
       {{end}}
@@ -103,7 +104,7 @@
             <button class="btn small" type="submit" title="{{T "tip.addAdd"}}">{{T "idx.catalog.add"}}</button>
           </form>
           {{else}}
-          {{if .Configurable}}<a class="btn small" href="/indexers/new?definition={{.ID}}" title="{{T "tip.addConfigure"}}">{{T "idx.catalog.configure"}}</a>{{end}}
+          {{if .Configurable}}<a class="btn small{{if ne .Type "public"}} primary{{end}}" href="/indexers/new?definition={{.ID}}" title="{{if ne .Type "public"}}{{T "tip.addCredentials"}}{{else}}{{T "tip.addConfigure"}}{{end}}">{{if ne .Type "public"}}{{T "idx.catalog.credentials"}}{{else}}{{T "idx.catalog.configure"}}{{end}}</a>{{end}}
           {{if .Probe}}<form method="post" action="/indexers/catalog/probe"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small" type="submit">{{T "idx.catalog.probe"}}</button></form>{{end}}
           {{if .ToWrite}}<span class="chip" title="{{T "tip.catalogToWrite"}}">{{T "idx.catalog.toWrite"}}</span>{{end}}
           {{end}}
@@ -130,6 +131,22 @@
     <button class="btn primary" type="submit">{{T "idx.searchAction"}}</button>
   </form>
   <div class="catalog-filters">
+    <form class="catalog-selects" method="get" action="{{.Action}}">
+      {{range .Hidden}}{{if and (ne .Name "type") (ne .Name "language")}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}{{end}}
+      <div class="filter-field">
+        <label for="catalog-type">{{T "common.type"}}</label>
+        <select id="catalog-type" name="type" data-auto-submit>
+          {{range .TypeOptions}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="catalog-language">{{T "idx.catalog.language"}}</label>
+        <select id="catalog-language" name="language" data-auto-submit>
+          {{range .LanguageOptions}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+        </select>
+      </div>
+      <noscript><button class="btn" type="submit">{{T "common.apply"}}</button></noscript>
+    </form>
     {{range .Groups}}
     <div class="filter-group">
       <span class="filter-label">{{.Label}}</span>
@@ -176,7 +193,7 @@
         {{if .Added}}<a class="btn small" href="/indexers/{{.AddedID}}">{{T "idx.catalog.alreadyAdded"}}</a>
         {{else if .QuickAdd}}<form method="post" action="/indexers/catalog/add"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small primary" type="submit">{{T "idx.catalog.add"}}</button></form>
         {{else}}
-        {{if .Configurable}}<a class="btn small" href="/indexers/new?definition={{.ID}}">{{T "idx.catalog.configure"}}</a>{{end}}
+        {{if .Configurable}}<a class="btn small{{if ne .Type "public"}} primary{{end}}" href="/indexers/new?definition={{.ID}}"{{if ne .Type "public"}} title="{{T "tip.addCredentials"}}"{{end}}>{{if ne .Type "public"}}{{T "idx.catalog.credentials"}}{{else}}{{T "idx.catalog.configure"}}{{end}}</a>{{end}}
         {{if .Probe}}<form method="post" action="/indexers/catalog/probe"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="definition_id" value="{{.ID}}"><button class="btn small primary" type="submit">{{T "idx.catalog.probe"}}</button></form>{{end}}
         {{if .ToWrite}}<span class="chip" title="{{T "tip.catalogToWrite"}}">{{T "idx.catalog.toWrite"}}</span>{{end}}
         {{end}}

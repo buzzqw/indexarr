@@ -48,12 +48,18 @@ func TestCookieFieldUsesTranslatedLabelAndHelp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildCompactIndexerForm: %v", err)
 	}
-	if len(form.RequiredFields) != 1 {
-		t.Fatalf("required fields = %+v", form.RequiredFields)
+	fields := append(append([]indexerSettingField{}, form.RequiredFields...), form.AccessFields...)
+	var field indexerSettingField
+	found := false
+	for _, candidate := range fields {
+		if candidate.Name == "cookie" {
+			field = candidate
+			found = true
+			break
+		}
 	}
-	field := form.RequiredFields[0]
-	if field.Name != "cookie" {
-		t.Fatalf("field = %+v, want cookie", field)
+	if !found {
+		t.Fatalf("required fields = %+v, access fields = %+v", form.RequiredFields, form.AccessFields)
 	}
 	if field.Label != "Cookie di sessione" {
 		t.Fatalf("label = %q", field.Label)

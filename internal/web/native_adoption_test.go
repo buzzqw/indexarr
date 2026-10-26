@@ -43,17 +43,21 @@ func TestCatalogCoverageAndRouteFilter(t *testing.T) {
 	env.server.catalogIndex = func() ([]catalog.IndexEntry, error) { return adoptionCatalog(), nil }
 
 	body := get(t, env.handler, "/indexers/new?all=1").Body.String()
-	if !strings.Contains(body, "Coverage: 1 ready sources, 1 with known software, 2 to write.") {
+	if !strings.Contains(body, "Coverage: 1 ready sources, 1 with known software.") {
 		t.Errorf("coverage line missing: %s", body)
+	}
+	// Sources with no route at all are not offered: the user only chooses
+	// what can already work.
+	for _, hidden := range []string{"CharlieQueue", "DeltaQueue"} {
+		if strings.Contains(body, hidden) {
+			t.Errorf("unusable source %q is shown in the catalogue", hidden)
+		}
 	}
 
 	body = get(t, env.handler, "/indexers/new?all=1&route=pending").Body.String()
-	if strings.Contains(body, "AlphaNative") || strings.Contains(body, "BravoFamily") {
-		t.Error("the pending filter returned a source that already has a native route")
-	}
-	for _, want := range []string{"CharlieQueue", "DeltaQueue"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("pending filter missing %q", want)
+	for _, hidden := range []string{"AlphaNative", "BravoFamily", "CharlieQueue", "DeltaQueue"} {
+		if strings.Contains(body, hidden) {
+			t.Errorf("route=pending returned %q", hidden)
 		}
 	}
 

@@ -565,3 +565,15 @@ if ("serviceWorker" in navigator) {
     syncFromInput();
   });
 })();
+
+// Dropdown filters apply as soon as a value changes; the form still has a
+// submit button for browsers without JavaScript.
+(() => {
+  document.querySelectorAll("select[data-auto-submit]").forEach((select) => {
+    select.addEventListener("change", () => {
+      if (select.form) {
+        select.form.submit();
+      }
+    });
+  });
+})();

@@ -52,29 +52,21 @@
   </div>
   {{end}}
 
+  {{if .AccessFields}}
+  <section class="form-access">
+    <h3 class="sub-head">{{T "indexerForm.accessTitle"}}</h3>
+    <p class="help">{{T "indexerForm.accessHelp"}}</p>
+    <div class="form-grid">
+      {{range .AccessFields}}{{template "indexer-setting-field" .}}{{end}}
+    </div>
+  </section>
+  {{else if .NoAccessFields}}
+  <p class="help">{{T "indexerForm.accessNone"}}</p>
+  {{end}}
+
   {{if .Categories}}{{template "category-picker" .}}{{end}}
 
-  {{range .RequiredFields}}
-  <div class="field{{if eq .Type "checkbox"}} checkbox{{end}}">
-    <label for="setting_{{.Name}}">{{.Label}}{{if .Required}} *{{end}}</label>
-    {{if eq .Type "password"}}
-    <div class="secret-field" data-secret-change-field>
-      <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}"{{if and .Required (not .HasSecret)}} required{{end}}>
-      {{if .HasSecret}}<button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>{{end}}
-    </div>
-    {{if .HasSecret}}<label class="check muted"><input type="checkbox" name="clear_{{.Name}}"> <span>{{T "indexerForm.removeSecret"}}</span></label>{{end}}
-    {{else if eq .Type "checkbox"}}
-    <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="checkbox"{{if .Checked}} checked{{end}}>
-    {{else if eq .Type "select"}}
-    <select id="setting_{{.Name}}" name="setting_{{.Name}}">
-      {{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
-    </select>
-    {{else}}
-    <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="text" value="{{.Value}}">
-    {{end}}
-    {{if .Help}}<p class="help">{{.Help}}</p>{{end}}
-  </div>
-  {{end}}
+  {{range .RequiredFields}}{{template "indexer-setting-field" .}}{{end}}
 
   <div class="form-grid">
     <div class="field grow" data-interval-editor>
@@ -268,4 +260,26 @@
   </div>
 </form>
 {{end}}
+{{end}}
+
+{{define "indexer-setting-field"}}
+<div class="field{{if eq .Type "checkbox"}} checkbox{{end}}">
+  <label for="setting_{{.Name}}">{{.Label}}{{if .Required}} *{{end}}</label>
+  {{if eq .Type "password"}}
+  <div class="secret-field" data-secret-change-field>
+    <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}"{{if and .Required (not .HasSecret)}} required{{end}}>
+    {{if .HasSecret}}<button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>{{end}}
+  </div>
+  {{if .HasSecret}}<label class="check muted"><input type="checkbox" name="clear_{{.Name}}"> <span>{{T "indexerForm.removeSecret"}}</span></label>{{end}}
+  {{else if eq .Type "checkbox"}}
+  <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="checkbox"{{if .Checked}} checked{{end}}>
+  {{else if eq .Type "select"}}
+  <select id="setting_{{.Name}}" name="setting_{{.Name}}">
+    {{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+  </select>
+  {{else}}
+  <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="text" value="{{.Value}}">
+  {{end}}
+  {{if .Help}}<p class="help">{{.Help}}</p>{{end}}
+</div>
 {{end}}

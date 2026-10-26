@@ -3,14 +3,41 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/definition"
+	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/health"
+	"github.com/buzzqw/indexarr/internal/i18n"
+	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
+
+// healthVerdict is the plain answer to "does this source work?" that the
+// Overview tab shows above the details: a label, a colour and one sentence.
+type healthVerdict struct {
+	Label string
+	Class string
+	Text  string
+}
+
+// indexerLogRow is one line of the per-source log. It comes from the same
+// indexer_history table as Activity, so the Overview tab and the full run log
+// can never disagree.
+type indexerLogRow struct {
+	ID      int64
+	When    time.Time
+	Kind    string
+	Status  string
+	Message string
+	Latency string
+	Href    string
+}
 
 // indexerHealthView is the one place the interface reads an indexer's state.
 // Home, the sidebar badge, the list and the detail page all come through here,
@@ -176,6 +203,145 @@ func (s *Server) healthProblem(r *http.Request, view indexerHealthView) *uiProbl
 		return nil
 	}
 	return &problems[0]
+}
+
+// verdict answers "does it work well or badly?" in one sentence. The detail
+// comes from the same problems the header shows, so the two never diverge.
+func (s *Server) verdict(r *http.Request, view indexerHealthView, status statusDot, problems []uiProblem) healthVerdict {
+	detail := ""
+	if len(problems) > 0 {
+		detail = strings.TrimSpace(problems[0].Text)
+	}
+	if detail == "" {
+		detail = s.translate(r, "idx.problem.generic")
+	}
+	switch status.State {
+	case "blocked":
+		return healthVerdict{Label: status.Label, Class: "danger", Text: s.translate(r, "idx.health.blocked", detail)}
+	case "problem":
+		return healthVerdict{Label: status.Label, Class: "danger", Text: s.translate(r, "idx.health.problem", detail)}
+	case "degraded":
+		return healthVerdict{Label: status.Label, Class: "warn", Text: s.translate(r, "idx.health.degraded", detail)}
+	case "disabled":
+		return healthVerdict{Label: status.Label, Text: s.translate(r, "idx.health.disabled")}
+	case "testing":
+		return healthVerdict{Label: status.Label, Text: s.translate(r, "idx.health.testing")}
+	default:
+		text := s.translate(r, "idx.health.ok")
+		if view.LastRun != nil {
+			lang := requestLanguage(r)
+			text = s.translate(r, "idx.health.okRun",
+				kindLabelLang(lang, view.LastRun.Kind), humanAgoLang(lang, view.LastRun.StartedAt))
+		}
+		return healthVerdict{Label: status.Label, Class: "ok", Text: text}
+	}
+}
+
+func kindLabelLang(lang i18n.Language, kind string) string {
+	key := "idx.data.kind." + strings.ToLower(strings.TrimSpace(kind))
+	if text := i18n.T(lang, key); text != key {
+		return text
+	}
+	return kind
+}
+
+// indexerSiteAddress normalizes the configured address into a clickable
+// http(s) URL. Credentials, the query string and secret-like path segments are
+// removed, because the address is visible on every page of the detail view.
+func indexerSiteAddress(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" {
+		return ""
+	}
+	switch strings.ToLower(parsed.Scheme) {
+	case "http", "https":
+	default:
+		return ""
+	}
+	return feed.RedactURL(parsed.String())
+}
+
+// indexerLogRows keeps the newest operations of one source. Only "run" rows
+// have a detail page, so only those get a link.
+func indexerLogRows(history []store.IndexerHistory, limit int) []indexerLogRow {
+	if limit <= 0 {
+		limit = 8
+	}
+	out := make([]indexerLogRow, 0, limit)
+	for i := range history {
+		if len(out) >= limit {
+			break
+		}
+		item := history[i]
+		row := indexerLogRow{
+			ID:      item.ID,
+			When:    item.StartedAt,
+			Kind:    item.Kind,
+			Status:  item.Status,
+			Message: strings.TrimSpace(item.Error),
+			Latency: formatLatency(item.LatencyMS),
+		}
+		if row.Message == "" {
+			row.Message = strings.TrimSpace(item.Query)
+		}
+		if strings.EqualFold(strings.TrimSpace(item.Kind), "run") {
+			row.Href = "/runs/" + strconv.FormatInt(item.ID, 10)
+		}
+		out = append(out, row)
+	}
+	return out
+}
+
+// indexerAppLog returns the newest process log lines that belong to one
+// source. Matching uses the attributes the engine writes (indexer, source,
+// indexer_id) and falls back to the slug in the message.
+func (s *Server) indexerAppLog(in store.Indexer, limit int) []logbuffer.Entry {
+	if s.logs == nil {
+		return nil
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	entries := s.logs.SnapshotFilter(logbuffer.Filter{MinLevel: slog.LevelDebug})
+	out := make([]logbuffer.Entry, 0, limit)
+	for _, entry := range entries {
+		if !indexerLogEntryMatches(entry, in) {
+			continue
+		}
+		out = append(out, entry)
+		if len(out) >= limit {
+			break
+		}
+	}
+	return out
+}
+
+func indexerLogEntryMatches(entry logbuffer.Entry, in store.Indexer) bool {
+	slug := strings.ToLower(strings.TrimSpace(in.Slug))
+	name := strings.ToLower(strings.TrimSpace(in.Name))
+	id := strconv.FormatInt(in.ID, 10)
+	for _, attr := range entry.Attrs {
+		key := strings.ToLower(strings.TrimSpace(attr.Key))
+		value := strings.ToLower(strings.TrimSpace(attr.Value))
+		switch key {
+		case "indexer", "source", "indexer_slug":
+			if (slug != "" && value == slug) || (name != "" && value == name) {
+				return true
+			}
+		case "indexer_id", "source_id":
+			if value == id {
+				return true
+			}
+		}
+	}
+	return slug != "" && strings.Contains(strings.ToLower(entry.Message), slug)
 }
 
 // problemForMessage classifies a raw connector error. It stays separate from

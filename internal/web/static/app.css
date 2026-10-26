@@ -1315,6 +1315,31 @@ pre.yaml {
 .filter-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .filter-chips .chip { text-decoration: none; }
 .filter-chips .chip.active { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.catalog-selects { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.7rem; }
+.catalog-selects .filter-field { display: flex; flex-direction: column; gap: 0.2rem; }
+.catalog-selects label { color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.catalog-selects select { min-width: 11rem; }
+.catalog-selects .btn { align-self: flex-end; }
+
+/* App page: the three ways to connect live in real cards, not at the edge. */
+.way-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+}
+.way-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.way-card h3 { margin: 0; font-size: 1rem; }
+.way-card p { margin: 0; color: var(--muted); }
+.way-card .btn { align-self: flex-start; margin-top: auto; }
 .catalog-filtered { margin: 0.2rem 0 0; font-size: 0.8rem; }
 .catalog-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.65rem 0; }
 .catalog-select { flex: 0 0 1.4rem; }
@@ -1330,14 +1355,21 @@ pre.yaml {
 .guide-lead { margin: 0 0 0.8rem; max-width: 75ch; color: var(--muted); }
 .need-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; }
 .need-card {
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center; gap: 0.4rem;
   min-height: 2.9rem; padding: 0.45rem 0.6rem;
-  border: 1px solid var(--border); border-radius: 9px;
+  border: 2px solid var(--border); border-radius: 9px;
   background: var(--surface-2); color: var(--text);
   font-weight: 700; text-align: center; text-decoration: none;
 }
 .need-card:hover { border-color: var(--accent); color: var(--accent); }
-.need-card.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
+.need-card.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.need-card.active:hover { color: var(--accent-contrast); }
+.need-check { display: inline-flex; align-items: center; justify-content: center; width: 1.05rem; font-weight: 900; }
 .guide-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin: 1.1rem 0 0.3rem; }
 .guide-head h3 { margin: 0; }
 .guide-list { padding: 0; }
@@ -1801,6 +1833,44 @@ pre.yaml {
 }
 .generic-source strong { color: var(--accent); }
 .generic-source code { overflow-wrap: anywhere; font-size: 0.8rem; }
+
+/* Overview: verdict, source address and per-source log. */
+.site-address { margin: 0.4rem 0 0; overflow-wrap: anywhere; }
+.site-address .link { font-size: 0.86rem; }
+.health-verdict { margin: 0.15rem 0 0.9rem; font-weight: 600; }
+.health-error-label { display: block; margin-bottom: 0.3rem; color: var(--muted); font-size: 0.84rem; }
+.health-error {
+  max-height: 12rem;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.health-applog {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.health-more { margin: 0.6rem 0 0; }
+.health-panel .sub-head:not(:first-child) { margin-top: 1.3rem; }
+.release-actions { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
+
+/* Edit form: the credential block is the first thing after the address. */
+.form-access {
+  margin: 0.2rem 0 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.form-access .sub-head { margin-top: 0; }
+.form-access .form-grid { margin-top: 0.6rem; }
 
 /* Mobile: no page-level horizontal scroll and comfortable touch targets. */
 @media (max-width: 480px) {

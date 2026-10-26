@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
 	"embed"
 	"fmt"
@@ -117,6 +118,7 @@ var templateFuncMap = template.FuncMap{
 	"date":       humanDate,
 	"dateOnly":   humanDateOnly,
 	"ago":        humanAgo,
+	"magnetFor":  magnetFor,
 	"catName":    categories.Name,
 	"catNameInt": func(id int) string { return categories.Name(strconv.Itoa(id)) },
 	"clientKind": downloadClientKindLabel,
@@ -444,23 +446,24 @@ type Config struct {
 
 // Server serves the web interface, the Torznab API and the health endpoint.
 type Server struct {
-	store    *store.Store
-	log      *slog.Logger
-	version  string
-	started  time.Time
-	torznab  *torznabapi.Server
-	static   http.Handler
-	logs     *logbuffer.Buffer
-	level    *slog.LevelVar
-	restart  func()
-	admin    http.Handler
-	native   *indexer.Manager
-	sched    *native.Runner
-	svc      *indexersvc.Service
-	vault    *vault.Vault
-	vaultKey vault.Info
-	sync     *syncjob.Service
-	polite   *engine.Politeness
+	store       *store.Store
+	log         *slog.Logger
+	version     string
+	started     time.Time
+	torznab     *torznabapi.Server
+	static      http.Handler
+	staticETags map[string]string
+	logs        *logbuffer.Buffer
+	level       *slog.LevelVar
+	restart     func()
+	admin       http.Handler
+	native      *indexer.Manager
+	sched       *native.Runner
+	svc         *indexersvc.Service
+	vault       *vault.Vault
+	vaultKey    vault.Info
+	sync        *syncjob.Service
+	polite      *engine.Politeness
 	// notifier applies the notification switches, the anti-spam window and
 	// the test button. It shares the store with the rest of the server.
 	notifier *notify.Dispatcher
@@ -521,6 +524,7 @@ func New(cfg Config) *Server {
 		started:        cfg.Started,
 		torznab:        torznabapi.New(cfg.Store, logger, cfg.Version),
 		static:         http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
+		staticETags:    staticFileETags(sub),
 		logs:           logs,
 		level:          level,
 		restart:        cfg.Restart,
@@ -719,18 +723,57 @@ func (s *Server) Handler() http.Handler {
 	outer.HandleFunc("GET /healthz", s.healthz)
 	outer.HandleFunc("GET /metrics", s.metrics)
 	outer.HandleFunc("GET /sw.js", s.serviceWorker)
-	outer.Handle("GET /static/", http.HandlerFunc(s.serveStatic))
-	outer.Handle("/", s.authenticate(s.withCSRF(ui)))
+	outer.Handle("GET /static/", withCompression(http.HandlerFunc(s.serveStatic)))
+	outer.Handle("/", s.authenticate(s.withCSRF(withCompression(ui))))
 	return outer
+}
+
+// staticFileETags hashes the embedded assets once at startup. The files are
+// immutable inside a binary, so a repeat visit revalidates with If-None-Match
+// and gets a 304 instead of the whole CSS or JavaScript.
+func staticFileETags(fsys fs.FS) map[string]string {
+	out := map[string]string{}
+	_ = fs.WalkDir(fsys, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return nil
+		}
+		data, readErr := fs.ReadFile(fsys, path)
+		if readErr != nil {
+			return nil
+		}
+		sum := sha256.Sum256(data)
+		out["/static/"+path] = `"` + fmt.Sprintf("%x", sum[:12]) + `"`
+		return nil
+	})
+	return out
+}
+
+func etagMatches(header, etag string) bool {
+	for _, candidate := range strings.Split(header, ",") {
+		candidate = strings.TrimSpace(candidate)
+		candidate = strings.TrimPrefix(candidate, "W/")
+		if candidate == etag {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 	// The JS and CSS are small and change with the binary; no-cache avoids a
-	// browser keeping an old live-search script after an update.
+	// browser keeping an old live-search script after an update. The ETag
+	// still turns a revalidation into an empty 304.
 	if strings.HasSuffix(r.URL.Path, ".webmanifest") {
 		w.Header().Set("Content-Type", "application/manifest+json")
 	}
 	w.Header().Set("Cache-Control", "no-cache")
+	if etag := s.staticETags[r.URL.Path]; etag != "" {
+		w.Header().Set("ETag", etag)
+		if etagMatches(r.Header.Get("If-None-Match"), etag) {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+	}
 	s.static.ServeHTTP(w, r)
 }
 
@@ -1100,6 +1143,24 @@ func humanDateOnly(value time.Time) string {
 
 func humanAgo(value time.Time) string {
 	return humanAgoLang(i18n.EN, value)
+}
+
+// magnetFor returns the link a "copy magnet" button should write to the
+// clipboard. When the source sent a magnet we keep it verbatim; when it sent
+// only an infohash we build the equivalent magnet from the release title.
+func magnetFor(release store.Release) string {
+	if magnet := strings.TrimSpace(release.Magnet); magnet != "" {
+		return magnet
+	}
+	hash := strings.TrimSpace(release.InfoHash)
+	if hash == "" {
+		return ""
+	}
+	uri := "magnet:?xt=urn:btih:" + hash
+	if title := strings.TrimSpace(release.Title); title != "" {
+		uri += "&dn=" + url.QueryEscape(title)
+	}
+	return uri
 }
 
 // humanUntilLang renders a future instant ("in 56 min") for the next update.

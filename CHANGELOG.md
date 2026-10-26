@@ -13,6 +13,8 @@
   nessun collegamento a runtime.
 
 ### Prestazioni
+- Risposte HTML, CSS, JS e SVG compresse con gzip e file statici con ETag:
+  una visita successiva riceve un 304 invece del file intero.
 - Normalizzatori dei titoli con tabelle `strings.Replacer` precompilate: meno
   CPU e fino al 76% di allocazioni in meno per pagina Torznab.
 - Snapshot delle righe per i feed piccoli, con slice compattate, e finestra
@@ -43,6 +45,20 @@
   elenco, aggiunta, modifica, rimozione. Sette applicazioni su sette.
 
 ### Gestione indexer
+- Scheda della sorgente: in Panoramica l'indirizzo è sempre visibile, con il
+  verdetto «funziona / non funziona», il motivo, l'ultimo errore e il registro
+  delle ultime operazioni, comprese le righe del log del processo.
+- Le credenziali richieste (utente, password, chiave API) sono in cima al
+  modulo, nel riquadro «Accesso al sito»; la scheda dice quali mancano e porta
+  direttamente al modulo. Nel catalogo i siti che richiedono un accesso hanno
+  il pulsante «Inserisci credenziali».
+- Eliminando o disattivando una sorgente si torna al filtro di partenza, per
+  esempio «Disattivati».
+- In «Aggiungi indexer» tipo e lingua sono elenchi a discesa; i bisogni
+  (Film, Libri, …) si sommano e restano evidenziati.
+- Il catalogo mostra solo le fonti già utilizzabili: quelle «da scrivere» non
+  compaiono più.
+- Nelle ricerche, accanto a «Scarica» c'è «Copia magnet».
 - Frequenza personale per sorgente visibile nel form (fuori da Avanzate) e
   nell'elenco, con scelte rapide in minuti/ore e il valore effettivo
   («predefinita globale» o «impostata per questa sorgente»).
@@ -107,6 +123,8 @@ Prima release candidata di indexarr 2.
 
 ### Interfaccia
 - Percorso guidato «Aggiungi sorgente», schede per uploader e fonti sperimentali.
+- Nella pagina App le tre modalità di collegamento sono schede con margini e
+  spaziatura corretti, non più testo appiccicato al bordo del pannello.
 - Sette lingue per le parti nuove.
 
 ### Limiti noti

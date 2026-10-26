@@ -18,6 +18,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
+	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/smartfeed"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -123,6 +124,10 @@ type indexersListView struct {
 	Empty        uiEmpty
 	Bulk         bool
 	NoPublicOnly bool
+	// ListReturn is the current list URL and DetailQuery carries it into the
+	// detail page, so an action started there comes back to the same filter.
+	ListReturn  string
+	DetailQuery string
 }
 
 func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
@@ -140,6 +145,10 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 		Text:        s.translate(r, "idx.emptyText"),
 		ActionLabel: s.translate(r, "idx.add"),
 		ActionURL:   "/indexers/new",
+	}
+	data.ListReturn = indexerListPath(data.State, data.Query)
+	if data.ListReturn != "/indexers" {
+		data.DetailQuery = "?from=" + url.QueryEscape(data.ListReturn)
 	}
 	if s.svc == nil {
 		data.Unavailable = true
@@ -611,6 +620,13 @@ type siteFilterGroup struct {
 	Chips []siteFilterChip
 }
 
+// siteFilterSelect is one option of the type and language dropdowns.
+type siteFilterSelect struct {
+	Value    string
+	Label    string
+	Selected bool
+}
+
 type catalogQueryPair struct {
 	Name  string
 	Value string
@@ -679,31 +695,35 @@ type guideView struct {
 }
 
 type sitePickerView struct {
-	Title       string
-	Subtitle    string
-	Action      string
-	Query       string
-	CSRF        string
-	Counter     string
-	Filtered    string
-	Groups      []siteFilterGroup
-	Sites       []siteChoice
-	Types       []siteChoice
-	Pager       pager
-	Coverage    string
-	HasFilters  bool
-	ClearURL    string
-	Hidden      []catalogQueryPair
-	Empty       uiEmpty
-	BridgeURL   string
-	FeedURL     string
-	TorznabURL  string
-	NewznabURL  string
-	BrowseLabel string
-	NotFound    bool
-	Message     string
-	Guide       *guideView
-	ShowAll     bool
+	Title           string
+	Subtitle        string
+	Action          string
+	Query           string
+	CSRF            string
+	Counter         string
+	Filtered        string
+	Groups          []siteFilterGroup
+	TypeFilter      string
+	LanguageFilter  string
+	TypeOptions     []siteFilterSelect
+	LanguageOptions []siteFilterSelect
+	Sites           []siteChoice
+	Types           []siteChoice
+	Pager           pager
+	Coverage        string
+	HasFilters      bool
+	ClearURL        string
+	Hidden          []catalogQueryPair
+	Empty           uiEmpty
+	BridgeURL       string
+	FeedURL         string
+	TorznabURL      string
+	NewznabURL      string
+	BrowseLabel     string
+	NotFound        bool
+	Message         string
+	Guide           *guideView
+	ShowAll         bool
 }
 
 // catalogCategoryOrder is the order the filters and row badges use. It is the
@@ -1010,6 +1030,11 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 			types = append(types, entry)
 			continue
 		}
+		// A site with no native definition and no known software cannot work
+		// yet: hide it instead of offering an entry the user cannot use.
+		if entry.Source != "" && entry.Source != "native" && entry.Family == "" {
+			continue
+		}
 		sites = append(sites, entry)
 	}
 
@@ -1021,18 +1046,15 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 		}
 	}
 	view.Counter = s.translate(r, "idx.catalog.counter", counterTotal, counterVerified)
-	nativeCount, familyCount, pendingCount := 0, 0, 0
+	nativeCount, familyCount := 0, 0
 	for _, entry := range sites {
-		switch {
-		case entry.Source == "" || entry.Source == "native":
+		if entry.Source == "" || entry.Source == "native" {
 			nativeCount++
-		case entry.Family != "":
+		} else if entry.Family != "" {
 			familyCount++
-		default:
-			pendingCount++
 		}
 	}
-	view.Coverage = s.translate(r, "idx.catalog.coverage", nativeCount, familyCount, pendingCount)
+	view.Coverage = s.translate(r, "idx.catalog.coverage", nativeCount, familyCount)
 
 	filtered := make([]catalog.IndexEntry, 0, len(sites))
 	for _, entry := range sites {
@@ -1069,7 +1091,7 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	view.HasFilters = query != "" || q.Type != "" || q.Language != "" || q.Category != "" || q.Protocol != "" || q.State != "" || q.Route != ""
 	view.ShowAll = view.HasFilters || r.URL.Query().Get("all") == "1"
 	if !view.ShowAll {
-		view.Guide = s.buildAddGuide(r, index, added, strings.TrimSpace(r.URL.Query().Get("need")))
+		view.Guide = s.buildAddGuide(r, index, added, q.Needs)
 	}
 
 	limit := 50
@@ -1111,6 +1133,33 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	})
 
 	view.Groups = s.catalogFilterGroups(r, index, q)
+	view.TypeFilter = q.Type
+	view.LanguageFilter = q.Language
+	view.TypeOptions = []siteFilterSelect{
+		{Value: "", Label: s.translate(r, "idx.catalog.allTypes"), Selected: q.Type == ""},
+		{Value: "public", Label: s.translate(r, "idx.badgePublic"), Selected: q.Type == "public"},
+		{Value: "semi-private", Label: s.translate(r, "idx.badgeSemiPrivate"), Selected: q.Type == "semi-private"},
+		{Value: "private", Label: s.translate(r, "idx.badgePrivate"), Selected: q.Type == "private"},
+	}
+	view.LanguageOptions = []siteFilterSelect{
+		{Value: "", Label: s.translate(r, "idx.catalog.allLanguages"), Selected: q.Language == ""},
+	}
+	languages := catalogLanguages(index)
+	languageNames := make(map[string]int, len(languages))
+	for _, language := range languages {
+		languageNames[catalogLanguageName(language, string(requestLanguage(r)))]++
+	}
+	for _, language := range languages {
+		label := catalogLanguageName(language, string(requestLanguage(r)))
+		if languageNames[label] > 1 {
+			label += " (" + catalogLanguageBadge(language) + ")"
+		}
+		view.LanguageOptions = append(view.LanguageOptions, siteFilterSelect{
+			Value:    language,
+			Label:    label,
+			Selected: strings.EqualFold(q.Language, language),
+		})
+	}
 	view.Hidden = catalogHiddenFilters(query, q)
 	return view, nil
 }
@@ -1131,29 +1180,34 @@ var addNeeds = []struct {
 	{"other", "idx.guide.need.other"},
 }
 
-func (s *Server) buildAddGuide(r *http.Request, index []catalog.IndexEntry, added map[string]store.Indexer, active string) *guideView {
+func (s *Server) buildAddGuide(r *http.Request, index []catalog.IndexEntry, added map[string]store.Indexer, needs []string) *guideView {
+	active := make(map[string]bool, len(needs))
+	for _, need := range needs {
+		active[need] = true
+	}
 	guide := &guideView{
-		ActiveNeed:   active,
+		ActiveNeed:   strings.Join(needs, ","),
 		ShowAllURL:   "/indexers/new?all=1",
 		BackURL:      "/indexers/new",
 		SearchAllURL: "/indexers/new?all=1",
 	}
-	validNeed := false
+	var labels []string
 	for _, need := range addNeeds {
 		choice := needChoice{
 			Key:    need.Key,
 			Label:  s.translate(r, need.Label),
 			Tip:    s.translate(r, "tip.addNeed"),
-			URL:    "/indexers/new?need=" + need.Key,
-			Active: need.Key == active,
+			URL:    needToggleURL(r, need.Key, needs),
+			Active: active[need.Key],
 		}
 		if choice.Active {
-			validNeed = true
-			guide.ActiveLabel = choice.Label
+			labels = append(labels, choice.Label)
 		}
 		guide.Needs = append(guide.Needs, choice)
 	}
-	if !validNeed {
+	if len(labels) > 0 {
+		guide.ActiveLabel = strings.Join(labels, " · ")
+	} else {
 		guide.ActiveNeed = ""
 		guide.ActiveLabel = s.translate(r, "idx.guide.all")
 	}
@@ -1164,13 +1218,16 @@ func (s *Server) buildAddGuide(r *http.Request, index []catalog.IndexEntry, adde
 		if entry.ID == "example-html" || entry.ID == "corsaro-account" || entry.State == "morta" || isGenericDefinition(entry.ID) {
 			continue
 		}
-		if !addNeedMatches(entry, guide.ActiveNeed) {
+		if entry.Source != "" && entry.Source != "native" && entry.Family == "" {
+			continue
+		}
+		if !matchesAnyNeed(entry, needs) {
 			continue
 		}
 		candidates = append(candidates, entry)
 	}
 	sort.SliceStable(candidates, func(i, j int) bool {
-		left, right := addNeedScore(candidates[i], lang, guide.ActiveNeed), addNeedScore(candidates[j], lang, guide.ActiveNeed)
+		left, right := guideScore(candidates[i], lang, needs), guideScore(candidates[j], lang, needs)
 		if left != right {
 			return left > right
 		}
@@ -1190,6 +1247,82 @@ func (s *Server) buildAddGuide(r *http.Request, index []catalog.IndexEntry, adde
 		})
 	}
 	return guide
+}
+
+// parseNeeds reads a multi-select need filter. The value may arrive as one
+// comma-separated parameter or as repeated parameters; unknown keys are
+// dropped and the catalogue order is restored.
+func parseNeeds(values url.Values) []string {
+	selected := map[string]bool{}
+	for _, raw := range values["need"] {
+		for _, part := range strings.Split(raw, ",") {
+			selected[strings.ToLower(strings.TrimSpace(part))] = true
+		}
+	}
+	out := make([]string, 0, len(selected))
+	for _, need := range addNeeds {
+		if selected[need.Key] {
+			out = append(out, need.Key)
+		}
+	}
+	return out
+}
+
+// needToggleURL keeps every other filter and adds or removes one need, so
+// "Films" and "Books" can stay active together.
+func needToggleURL(r *http.Request, key string, active []string) string {
+	next := make([]string, 0, len(active)+1)
+	found := false
+	for _, need := range active {
+		if need == key {
+			found = true
+			continue
+		}
+		next = append(next, need)
+	}
+	if !found {
+		next = append(next, key)
+	}
+	values := r.URL.Query()
+	values.Del("page")
+	values.Del("need")
+	if len(next) > 0 {
+		values.Set("need", strings.Join(next, ","))
+	}
+	if len(values) == 0 {
+		return "/indexers/new"
+	}
+	return "/indexers/new?" + values.Encode()
+}
+
+func matchesAnyNeed(entry catalog.IndexEntry, needs []string) bool {
+	if len(needs) == 0 {
+		return true
+	}
+	for _, need := range needs {
+		if addNeedMatches(entry, need) {
+			return true
+		}
+	}
+	return false
+}
+
+// guideScore rewards an entry that matches more of the selected needs.
+func guideScore(entry catalog.IndexEntry, lang string, needs []string) int {
+	base := addNeedScore(entry, lang, "")
+	if len(needs) == 0 {
+		return base
+	}
+	score := base
+	for _, need := range needs {
+		if addNeedMatches(entry, need) {
+			score++
+			if need == "italian" && entry.Italian {
+				score += 20
+			}
+		}
+	}
+	return score
 }
 
 func addNeedMatches(entry catalog.IndexEntry, need string) bool {
@@ -1354,39 +1487,12 @@ func (s *Server) catalogDescription(r *http.Request, entry catalog.IndexEntry, c
 func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry, current catalogQuery) []siteFilterGroup {
 	groups := []siteFilterGroup{
 		{
-			Label: s.translate(r, "common.type"),
-			Chips: []siteFilterChip{
-				{Label: s.translate(r, "idx.badgePublic"), URL: catalogFilterURL(r, "type", "public"), Active: current.Type == "public"},
-				{Label: s.translate(r, "idx.badgeSemiPrivate"), URL: catalogFilterURL(r, "type", "semi-private"), Active: current.Type == "semi-private"},
-				{Label: s.translate(r, "idx.badgePrivate"), URL: catalogFilterURL(r, "type", "private"), Active: current.Type == "private"},
-			},
-		},
-		{
 			Label: s.translate(r, "idx.catalog.quickFilters"),
 			Chips: []siteFilterChip{
 				{Label: s.translate(r, "idx.catalog.italian"), URL: catalogFilterURL(r, "language", "it"), Active: current.Language == "it"},
 				{Label: s.translate(r, "idx.catalog.mostUsed"), URL: catalogFilterURL(r, "sort", "used"), Active: current.Sort == "used"},
 			},
 		},
-	}
-	if languages := catalogLanguages(index); len(languages) > 0 {
-		group := siteFilterGroup{Label: s.translate(r, "idx.catalog.language")}
-		names := map[string]int{}
-		for _, language := range languages {
-			names[catalogLanguageName(language, string(requestLanguage(r)))]++
-		}
-		for _, language := range languages {
-			label := catalogLanguageName(language, string(requestLanguage(r)))
-			if names[label] > 1 {
-				label += " (" + catalogLanguageBadge(language) + ")"
-			}
-			group.Chips = append(group.Chips, siteFilterChip{
-				Label:  label,
-				URL:    catalogFilterURL(r, "language", language),
-				Active: strings.EqualFold(current.Language, language),
-			})
-		}
-		groups = append(groups, group)
 	}
 	categoryGroup := siteFilterGroup{Label: s.translate(r, "idx.catalog.category")}
 	for _, category := range catalogCategoryOrder {
@@ -1417,7 +1523,6 @@ func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry
 			Chips: []siteFilterChip{
 				{Label: s.translate(r, "idx.catalog.routeNative"), URL: catalogFilterURL(r, "route", "native"), Active: current.Route == "native"},
 				{Label: s.translate(r, "idx.catalog.routeFamily"), URL: catalogFilterURL(r, "route", "family"), Active: current.Route == "family"},
-				{Label: s.translate(r, "idx.catalog.routePending"), URL: catalogFilterURL(r, "route", "pending"), Active: current.Route == "pending"},
 			},
 		},
 	)
@@ -1566,6 +1671,7 @@ type catalogQuery struct {
 	Route    string
 	Sort     string
 	Page     int
+	Needs    []string
 }
 
 var catalogFilterValues = map[string]map[string]bool{
@@ -1591,6 +1697,7 @@ func parseCatalogQuery(r *http.Request) catalogQuery {
 		Route:    catalogFilterValue(values.Get("route"), "route"),
 		Sort:     catalogFilterValue(values.Get("sort"), "sort"),
 		Page:     intParam(values.Get("page"), 1),
+		Needs:    parseNeeds(values),
 	}
 	if out.Sort == "" {
 		out.Sort = "used"
@@ -1704,6 +1811,9 @@ func catalogHiddenFilters(query string, q catalogQuery) []catalogQueryPair {
 	}
 	if q.Route != "" {
 		out = append(out, catalogQueryPair{"route", q.Route})
+	}
+	if len(q.Needs) > 0 {
+		out = append(out, catalogQueryPair{"need", strings.Join(q.Needs, ",")})
 	}
 	return out
 }
@@ -1914,6 +2024,9 @@ type compactFormView struct {
 	CategoryHelp              string
 	Help                      string
 	RequiredFields            []indexerSettingField
+	AccessFields              []indexerSettingField
+	IsPrivate                 bool
+	NoAccessFields            bool
 	AdvancedFields            []indexerSettingField
 	Problems                  []string
 	Note                      string
@@ -2155,12 +2268,19 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 			raw = setting.Default
 		}
 		field := s.settingField(r, setting, raw, secretKeys[name], false)
-		if setting.Required {
+		switch {
+		case setting.Required && isAccessSetting(name):
+			// Credentials are the first thing the user must enter: keep them
+			// at the top of the form instead of mixing them with the filters.
+			data.AccessFields = append(data.AccessFields, field)
+		case setting.Required:
 			data.RequiredFields = append(data.RequiredFields, field)
-		} else {
+		default:
 			data.AdvancedFields = append(data.AdvancedFields, field)
 		}
 	}
+	data.IsPrivate = strings.EqualFold(strings.TrimSpace(parsed.Meta.Type), "private")
+	data.NoAccessFields = data.IsPrivate && len(data.AccessFields) == 0
 	if !definitionHasURL {
 		// Definitions that take the address from meta.urls need no URL field,
 		// but when several mirrors exist the user still picks one.
@@ -2258,6 +2378,25 @@ func (s *Server) settingField(r *http.Request, setting definition.Setting, value
 		}
 	}
 	return field
+}
+
+// isAccessSetting marks the required fields that are credentials. They are
+// pulled to the top of the form so nobody has to hunt for the username and
+// password fields in Advanced.
+func isAccessSetting(name string) bool {
+	lower := strings.ToLower(strings.TrimSpace(name))
+	switch lower {
+	case "username", "user", "email", "login", "password", "pass", "apikey",
+		"api_key", "api-key", "token", "passkey", "cookie", "cookievalue",
+		"session", "session_cookie", "rsskey", "auth", "secret":
+		return true
+	}
+	for _, suffix := range []string{"_key", "_token", "_password", "_cookie", "_secret"} {
+		if strings.HasSuffix(lower, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) settingLabel(r *http.Request, name, fallback string) string {
@@ -2482,6 +2621,13 @@ type hostRequestView struct {
 	Breaker     uint64
 }
 
+// indexerAccessRow is one required credential of a source: whether the vault
+// or the public configuration already holds it.
+type indexerAccessRow struct {
+	Label      string
+	Configured bool
+}
+
 type indexerDetailView struct {
 	base
 	Tab               string
@@ -2534,6 +2680,21 @@ type indexerDetailView struct {
 	HostRequests      []hostRequestView
 	ApplicationCount  int
 	NextStep          uiNextStep
+	// Verdict, the address and the source log answer three questions right
+	// on the Overview tab: does it work, what is the address, what happened.
+	Verdict        healthVerdict
+	SiteAddress    string
+	ProblemDetail  string
+	ProblemAt      time.Time
+	HasProblemAt   bool
+	LogRows        []indexerLogRow
+	AppLog         []logbuffer.Entry
+	RunsLink       string
+	AppLogLink     string
+	AccessFields   []indexerAccessRow
+	MissingAccess  []string
+	AccessEditLink string
+	ListReturn     string
 }
 
 func (s *Server) indexerUnifiedDetail(w http.ResponseWriter, r *http.Request) {
@@ -2596,6 +2757,17 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	}
 	data.SearchOnly = !data.Latest
 	config := publicConfigMap(in.ConfigJSON)
+	address := strings.TrimSpace(config["url"])
+	if address == "" {
+		address = strings.TrimSpace(config["site"])
+	}
+	if address == "" {
+		address = strings.TrimSpace(config["base_url"])
+	}
+	if address == "" && def != nil && len(def.Meta.URLs) > 0 {
+		address = def.Meta.URLs[0]
+	}
+	data.SiteAddress = indexerSiteAddress(address)
 	if indexer.LiveExcluded(in) {
 		data.UploaderOnly = true
 		interval := time.Hour
@@ -2693,6 +2865,32 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	if data.Problem != nil {
 		data.Problem.ActionReturn = detailPath
 	}
+	// One verdict, the concrete error and the source log, right on the
+	// Overview tab: the operator must not have to open Data or the advanced
+	// block to learn why a source is red.
+	data.Verdict = s.verdict(r, healthView, data.Status, data.Problems)
+	if data.LastError != "" {
+		data.ProblemDetail = feed.RedactText(data.LastError, nil)
+		if data.HasState && strings.TrimSpace(data.State.LastError) != "" && !data.State.UpdatedAt.IsZero() {
+			data.ProblemAt = data.State.UpdatedAt
+			data.HasProblemAt = true
+		} else if data.LastRun != nil && !data.LastRun.StartedAt.IsZero() {
+			data.ProblemAt = data.LastRun.StartedAt
+			data.HasProblemAt = true
+		}
+	}
+	data.LogRows = indexerLogRows(history, 8)
+	data.AppLog = s.indexerAppLog(in, 10)
+	runsValues := url.Values{}
+	runsValues.Set("tab", "runs")
+	runsValues.Set("indexer", strconv.FormatInt(in.ID, 10))
+	data.RunsLink = "/activity?" + runsValues.Encode()
+	logValues := url.Values{}
+	logValues.Set("tab", "logs")
+	if slug := strings.TrimSpace(in.Slug); slug != "" {
+		logValues.Set("q", slug)
+	}
+	data.AppLogLink = "/activity?" + logValues.Encode()
 	if latency, found, latencyErr := s.store.IndexerLatency(r.Context(), in.ID, 50); latencyErr == nil && found {
 		data.LatencyP50 = formatLatency(latency.P50MS)
 		data.LatencyP95 = formatLatency(latency.P95MS)
@@ -2724,6 +2922,55 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		for _, secret := range secrets {
 			data.SecretKeys = append(data.SecretKeys, secret.Key)
 		}
+	}
+	// Required credentials belong on the Overview tab too: the operator must
+	// see at once whether the source can log in, and where to type them.
+	if def != nil {
+		stored := map[string]bool{}
+		for _, key := range data.SecretKeys {
+			stored[strings.ToLower(strings.TrimSpace(key))] = true
+		}
+		for _, setting := range def.Settings {
+			if !setting.Required || !isAccessSetting(setting.Name) {
+				continue
+			}
+			name := strings.ToLower(strings.TrimSpace(setting.Name))
+			configured := strings.TrimSpace(config[name]) != ""
+			if indexersvc.IsSecretKey(name) {
+				configured = stored[name]
+			}
+			label := s.settingLabel(r, setting.Name, setting.Label)
+			data.AccessFields = append(data.AccessFields, indexerAccessRow{
+				Label: label, Configured: configured,
+			})
+			if !configured {
+				data.MissingAccess = append(data.MissingAccess, label)
+			}
+		}
+	}
+	data.AccessEditLink = detailPath + "/edit"
+	data.ListReturn = sanitizeIndexerReturn(r.URL.Query().Get("from"))
+	if data.ListReturn == "" {
+		if in.Enabled {
+			data.ListReturn = "/indexers"
+		} else {
+			data.ListReturn = "/indexers?state=disabled"
+		}
+	}
+	if len(data.MissingAccess) > 0 {
+		missing := strings.Join(data.MissingAccess, ", ")
+		text := s.translate(r, "idx.access.missingVerdict", missing)
+		data.Verdict = healthVerdict{
+			Label: s.translate(r, "idx.access.missingLabel"),
+			Class: "warn",
+			Text:  text,
+		}
+		data.Problems = append([]uiProblem{{
+			Text:         text,
+			ActionLabel:  s.translate(r, "idx.access.action"),
+			ActionURL:    data.AccessEditLink,
+			ActionReturn: detailPath,
+		}}, data.Problems...)
 	}
 	for key, value := range indexerFilterValues(in) {
 		data.FilterRows = append(data.FilterRows, indexerConfigEntry{
@@ -2876,16 +3123,20 @@ func (s *Server) indexerUnifiedDelete(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusServiceUnavailable, s.translate(r, "indexer.error.serviceUnavailable"))
 		return
 	}
+	returnPath := sanitizeIndexerReturn(r.FormValue("return"))
+	if returnPath == "" {
+		returnPath = "/indexers"
+	}
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.invalidID"))
+		redirect(w, r, returnPath, "", s.translate(r, "indexer.error.invalidID"))
 		return
 	}
 	if err := s.svc.Delete(r.Context(), id); err != nil {
-		redirect(w, r, "/indexers", "", s.indexerFriendlyError(r, err))
+		redirect(w, r, returnPath, "", s.indexerFriendlyError(r, err))
 		return
 	}
-	redirect(w, r, "/indexers", s.translate(r, "indexer.deleted"), "")
+	redirect(w, r, returnPath, s.translate(r, "indexer.deleted"), "")
 }
 
 func (s *Server) indexerToggle(w http.ResponseWriter, r *http.Request) {
@@ -2893,26 +3144,62 @@ func (s *Server) indexerToggle(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.serviceUnavailable"))
 		return
 	}
+	returnPath := sanitizeIndexerReturn(r.FormValue("return"))
+	if returnPath == "" {
+		returnPath = "/indexers"
+	}
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.invalidID"))
+		redirect(w, r, returnPath, "", s.translate(r, "indexer.error.invalidID"))
 		return
 	}
 	current, err := s.store.GetIndexer(r.Context(), id)
 	if err != nil {
-		redirect(w, r, "/indexers", "", s.indexerErrorMessage(r, err))
+		redirect(w, r, returnPath, "", s.indexerErrorMessage(r, err))
 		return
 	}
 	enabled := !current.Enabled
 	if _, err := s.svc.Update(r.Context(), id, indexersvc.Input{Enabled: &enabled}); err != nil {
-		redirect(w, r, "/indexers", "", s.indexerFriendlyError(r, err))
+		redirect(w, r, returnPath, "", s.indexerFriendlyError(r, err))
 		return
 	}
 	if enabled {
-		redirect(w, r, "/indexers", s.translate(r, "idx.enabledMessage", current.Name), "")
+		redirect(w, r, returnPath, s.translate(r, "idx.enabledMessage", current.Name), "")
 		return
 	}
-	redirect(w, r, "/indexers", s.translate(r, "idx.disabledMessage", current.Name), "")
+	redirect(w, r, returnPath, s.translate(r, "idx.disabledMessage", current.Name), "")
+}
+
+// indexerListPath rebuilds the source list URL from the two supported
+// filters, so a return path never carries anything else.
+func indexerListPath(state, query string) string {
+	values := url.Values{}
+	switch strings.ToLower(strings.TrimSpace(state)) {
+	case "problem", "disabled", "ok":
+		values.Set("state", strings.ToLower(strings.TrimSpace(state)))
+	}
+	if trimmed := strings.TrimSpace(query); trimmed != "" {
+		values.Set("q", trimmed)
+	}
+	if encoded := values.Encode(); encoded != "" {
+		return "/indexers?" + encoded
+	}
+	return "/indexers"
+}
+
+// sanitizeIndexerReturn accepts only the source list with its two filters.
+// Anything else falls back to the plain list, so the form cannot redirect
+// somewhere else.
+func sanitizeIndexerReturn(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.IsAbs() || parsed.Host != "" || parsed.Path != "/indexers" {
+		return ""
+	}
+	return indexerListPath(parsed.Query().Get("state"), parsed.Query().Get("q"))
 }
 
 // frequencyReturnPath limits the post-action redirect to the two pages that
@@ -3047,6 +3334,10 @@ func (s *Server) indexersBulk(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.serviceUnavailable"))
 		return
 	}
+	returnPath := sanitizeIndexerReturn(r.FormValue("return"))
+	if returnPath == "" {
+		returnPath = "/indexers"
+	}
 	ids := make([]int64, 0)
 	for _, raw := range r.Form["ids"] {
 		if id, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64); err == nil && id > 0 {
@@ -3055,7 +3346,7 @@ func (s *Server) indexersBulk(w http.ResponseWriter, r *http.Request) {
 	}
 	action := strings.ToLower(strings.TrimSpace(r.FormValue("action")))
 	if len(ids) == 0 {
-		redirect(w, r, "/indexers", "", s.translate(r, "idx.bulkNone"))
+		redirect(w, r, returnPath, "", s.translate(r, "idx.bulkNone"))
 		return
 	}
 	count := 0
@@ -3072,7 +3363,7 @@ func (s *Server) indexersBulk(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	redirect(w, r, "/indexers", s.translate(r, "idx.bulkDone", count), "")
+	redirect(w, r, returnPath, s.translate(r, "idx.bulkDone", count), "")
 }
 
 // ------------------------------------------------------------------- helpers
