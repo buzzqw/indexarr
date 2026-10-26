@@ -434,6 +434,7 @@
   "idx.access.missingLabel": "Da configurare",
   "idx.access.missingVerdict": "Manca l'accesso: %s.",
   "idx.access.title": "Accesso al sito",
+  "idx.access.updated": "ultimo aggiornamento %s",
   "idx.add": "Aggiungi indexer",
   "idx.addAndTest": "Aggiungi e prova",
   "idx.addSubtitle": "Cerca un sito oppure incolla il suo indirizzo.",

@@ -434,6 +434,7 @@
   "idx.access.missingLabel": "需要配置",
   "idx.access.missingVerdict": "缺少访问信息：%s。",
   "idx.access.title": "站点访问",
+  "idx.access.updated": "最后更新 %s",
   "idx.add": "添加索引器",
   "idx.addAndTest": "添加并测试",
   "idx.addSubtitle": "搜索站点或粘贴其地址。",

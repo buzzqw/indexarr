@@ -133,7 +133,7 @@
     <dl class="detail detail-grid">
       {{range .AccessFields}}
       <dt>{{.Label}}</dt>
-      <dd>{{if .Configured}}<span class="chip ok">{{T "idx.access.configured"}}</span>{{else}}<span class="chip warn">{{T "idx.access.missing"}}</span>{{end}}</dd>
+      <dd>{{if .Configured}}<span class="chip ok">{{T "idx.access.configured"}}</span>{{if .HasUpdated}} <span class="muted">{{T "idx.access.updated" (ago .UpdatedAt)}}</span>{{end}}{{else}}<span class="chip warn">{{T "idx.access.missing"}}</span>{{end}}</dd>
       {{end}}
     </dl>
   </div>

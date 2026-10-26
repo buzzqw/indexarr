@@ -2649,6 +2649,8 @@ type hostRequestView struct {
 type indexerAccessRow struct {
 	Label      string
 	Configured bool
+	UpdatedAt  time.Time
+	HasUpdated bool
 }
 
 type indexerDetailView struct {
@@ -2943,9 +2945,11 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		data.HasNext = true
 	}
 	data.Stats.AvgLatency = averageLatency(history)
+	secretUpdated := map[string]time.Time{}
 	if secrets, err := s.store.ListSecrets(r.Context(), in.ID); err == nil {
 		for _, secret := range secrets {
 			data.SecretKeys = append(data.SecretKeys, secret.Key)
+			secretUpdated[strings.ToLower(strings.TrimSpace(secret.Key))] = secret.UpdatedAt
 		}
 	}
 	// A feed or Torznab URL is sealed when it carries an rsskey or an API key.
@@ -2972,23 +2976,23 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	// Required credentials belong on the Overview tab too: the operator must
 	// see at once whether the source can log in, and where to type them.
 	if def != nil {
-		stored := map[string]bool{}
-		for _, key := range data.SecretKeys {
-			stored[strings.ToLower(strings.TrimSpace(key))] = true
-		}
 		for _, setting := range def.Settings {
 			if !setting.Required || !isAccessSetting(setting.Name) {
 				continue
 			}
 			name := strings.ToLower(strings.TrimSpace(setting.Name))
 			configured := strings.TrimSpace(config[name]) != ""
+			row := indexerAccessRow{}
 			if indexersvc.IsSecretKey(name) {
-				configured = stored[name]
+				updated, found := secretUpdated[name]
+				configured = found
+				row.UpdatedAt = updated
+				row.HasUpdated = found && !updated.IsZero()
 			}
 			label := s.settingLabel(r, setting.Name, setting.Label)
-			data.AccessFields = append(data.AccessFields, indexerAccessRow{
-				Label: label, Configured: configured,
-			})
+			row.Label = label
+			row.Configured = configured
+			data.AccessFields = append(data.AccessFields, row)
 			if !configured {
 				data.MissingAccess = append(data.MissingAccess, label)
 			}
