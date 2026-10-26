@@ -890,3 +890,80 @@ fresche del database di produzione, ricerca live disattivata:
   ordine, limite e release nascoste.
 - `go test ./...` e `go vet ./...` passano; `go test -race` sui pacchetti
   toccati passa.
+
+---
+
+## 16. Stato e storico degli indexer in due letture (26 ottobre 2026)
+
+Dopo la cache delle definizioni, `/indexers` a 46 sorgenti restava intorno ai
+33 ms. Il profilo CPU attribuiva circa il **64%** del tempo a
+`ListIndexerHistory`: la pagina eseguiva due query per indexer (stato e
+storico), quindi 92 round trip, e ogni storico riscansionava 50 righe con
+tutte le colonne di visualizzazione e la JOIN delle metriche.
+
+### 16.1 Modifiche
+
+1. **Stati in una lettura** (`store.IndexerStates`): una query restituisce
+   `indexer_id`, `circuit`, `disabled_until`, `last_error`, `updated_at` per
+   tutti gli indexer. Cookies cifrati e ultimo login non vengono letti: nessun
+   chiamante della UI li usa.
+2. **Storico sanitario in una lettura** (`store.ListIndexerHealthHistory`):
+   una sola istruzione preparata viene riusata per ogni indexer e proietta
+   solo `kind`, `status`, `error`, `started_at` e i campi delle metriche che
+   servono al modello di salute. Query, app, latenza e byte restano a zero;
+   la pagina del log continua a usare `ListIndexerHistory`.
+3. **Batch condiviso** (`web.healthBatch`): la lista e la Home leggono stato e
+   storico una volta e passano il risultato a `loadIndexerHealth`. La Home
+   limita il batch ai soli indexer abilitati.
+4. **Fallback invariato**: se una delle due letture batch fallisce, la pagina
+   torna al percorso per-indexer; il dettaglio continua a leggere il singolo
+   indexer.
+
+Il batch con `ROW_NUMBER() OVER (PARTITION BY indexer_id ...)` è stato
+misurato e **scartato**: sulla copia di produzione costava 30–38 ms per pagina
+contro i 20 ms delle query per-indexer con statement preparato, perché SQLite
+crea un B-tree temporaneo per il tie-break `id DESC`.
+
+### 16.2 Misure
+
+Copia del database di produzione, 46 indexer, 19.598 righe di storico, 20
+richieste per pagina:
+
+| Misura | Prima | Dopo |
+|---|---:|---:|
+| `/indexers` p50 | 33,5 · 33,2 · 34,1 ms | **22,9 · 21,5 · 22,5 ms** |
+| `/indexers` p95 | 36,9–37,5 ms | **26,1–31,0 ms** |
+| `/indexers` prima richiesta | 33,6–36,2 ms | **21,9–25,0 ms** |
+| `/` prima richiesta | 62,0–64,9 ms | 62,1–64,8 ms |
+| `/indexers/1` p50 | 1,0 ms | 1,0 ms |
+
+Database sintetico da 50.000 release (10 indexer), stesse 20 richieste:
+
+| Misura | Prima | Dopo |
+|---|---:|---:|
+| `/indexers` p50 | 7,7–8,4 ms | **5,5–6,1 ms** |
+| `/indexers` prima richiesta | 6,9–12,1 ms | **5,8–7,0 ms** |
+| `/indexers/1` p50 | 4,2–4,4 ms | 3,7–3,9 ms |
+
+L'RSS dopo le stesse pagine resta nel rumore: 77,4–77,8 MiB prima e
+76,9–78,7 MiB dopo sulla copia di produzione; 57,5–62,7 MiB prima e
+58,9–67,2 MiB dopo sul dataset sintetico (un campione alto isolato). Il batch
+è per-richiesta e non trattiene memoria.
+
+### 16.3 A/B
+
+`tools/firstpage_ab3.py` contro il commit precedente (`d52a37e`), due giri a
+porte scambiate, copie fresche del database di produzione, ricerca live
+disattivata: **181/181** titoli distinti, **100%** in entrambi i giri;
+`total` identico per tutte le 16 query.
+
+### 16.4 Test
+
+- `TestIndexerStatesReturnsEveryState` verifica la lettura batch degli stati.
+- `TestListIndexerHealthHistoryGroupsByIndexerAndKeepsMetrics` copre
+  raggruppamento, limite, ordine, metriche presenti/assenti e lista vuota.
+- `TestListIndexerHealthHistoryMatchesFullHistoryFields` confronta la
+  proiezione con `ListIndexerHistory` riga per riga.
+- `TestHealthBatchMatchesPerIndexerReads` impone che il percorso batch e
+  quello per-indexer producano lo stesso stato, la stessa valutazione e lo
+  stesso ultimo run.

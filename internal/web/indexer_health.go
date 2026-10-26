@@ -46,7 +46,6 @@ type indexerHealthView struct {
 	Indexer    store.Indexer
 	State      store.IndexerState
 	HasState   bool
-	History    []store.IndexerHistory
 	LastRun    *store.IndexerHistory
 	Assessment health.Assessment
 	// FeedOnly means the definition has no remote query endpoint. Its search
@@ -56,22 +55,66 @@ type indexerHealthView struct {
 	Latest bool
 }
 
-// loadIndexerHealth builds the health view of one source. def is the parsed
-// definition when the caller already has it; passing nil keeps the old
-// behaviour of resolving it from the store or the catalog.
-func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer, def *definition.Definition) indexerHealthView {
-	view := indexerHealthView{Indexer: in}
-	if state, err := s.store.GetIndexerState(ctx, in.ID); err == nil {
-		view.State = state
-		view.HasState = true
+// healthBatch carries the state and the health-relevant history of every
+// indexer in two reads. The indexers page used to run two queries per source
+// (state and history), which at 46 sources cost about 25 ms of SQLite work per
+// render. The batch keeps the per-indexer shape of the model while removing
+// the round trips.
+type healthBatch struct {
+	states  map[int64]store.IndexerState
+	history map[int64][]store.IndexerHistory
+}
+
+// loadHealthBatch reads the state and history of the given indexers. It
+// returns nil when either read fails, so the caller falls back to the
+// per-indexer queries and the page keeps working.
+func (s *Server) loadHealthBatch(ctx context.Context, indexers []store.Indexer) *healthBatch {
+	ids := make([]int64, 0, len(indexers))
+	for _, in := range indexers {
+		if in.ID > 0 {
+			ids = append(ids, in.ID)
+		}
 	}
-	if history, err := s.store.ListIndexerHistory(ctx, in.ID, 50); err == nil {
-		view.History = history
-		for i := range history {
-			if strings.EqualFold(history[i].Kind, "run") {
-				view.LastRun = &history[i]
-				break
-			}
+	states, err := s.store.IndexerStates(ctx)
+	if err != nil {
+		return nil
+	}
+	history, err := s.store.ListIndexerHealthHistory(ctx, ids, 50)
+	if err != nil {
+		return nil
+	}
+	return &healthBatch{states: states, history: history}
+}
+
+// loadIndexerHealth builds the health view of one source. def is the parsed
+// definition when the caller already has it; batch is the value shared by a
+// list page (nil means "read this indexer on its own").
+func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer, def *definition.Definition, batch *healthBatch) indexerHealthView {
+	view := indexerHealthView{Indexer: in}
+	var history []store.IndexerHistory
+	if batch != nil {
+		if state, ok := batch.states[in.ID]; ok {
+			view.State = state
+			view.HasState = true
+		}
+		history = batch.history[in.ID]
+	} else {
+		if state, err := s.store.GetIndexerState(ctx, in.ID); err == nil {
+			view.State = state
+			view.HasState = true
+		}
+		if rows, err := s.store.ListIndexerHealthHistory(ctx, []int64{in.ID}, 50); err == nil {
+			history = rows[in.ID]
+		} else if rows, err := s.store.ListIndexerHistory(ctx, in.ID, 50); err == nil {
+			// The slim projection is an optimisation, not a new requirement:
+			// keep the full rows if it ever fails.
+			history = rows
+		}
+	}
+	for i := range history {
+		if strings.EqualFold(history[i].Kind, "run") {
+			view.LastRun = &history[i]
+			break
 		}
 	}
 	view.Latest = true
@@ -89,7 +132,7 @@ func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer, def *d
 		Enabled:   in.Enabled,
 		Circuit:   view.State.Circuit,
 		LastError: view.State.LastError,
-		History:   view.History,
+		History:   history,
 		FeedOnly:  view.FeedOnly,
 	}, health.DefaultThresholds())
 	return view

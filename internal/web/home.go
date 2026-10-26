@@ -91,6 +91,15 @@ func (s *Server) computeHomeStatus(ctx context.Context) HomeStatus {
 	if err != nil {
 		return HomeStatus{Level: "danger", Err: err.Error()}
 	}
+	// The home status only looks at enabled sources; loading the history of a
+	// disabled one would be wasted work on every cache refresh.
+	enabled := make([]store.Indexer, 0, len(indexers))
+	for _, indexer := range indexers {
+		if indexer.Enabled {
+			enabled = append(enabled, indexer)
+		}
+	}
+	batch := s.loadHealthBatch(ctx, enabled)
 	for _, indexer := range indexers {
 		if indexer.Enabled {
 			status.ActiveIndexers++
@@ -100,7 +109,7 @@ func (s *Server) computeHomeStatus(ctx context.Context) HomeStatus {
 		if !indexer.Enabled {
 			continue
 		}
-		view := s.loadIndexerHealth(ctx, indexer, nil)
+		view := s.loadIndexerHealth(ctx, indexer, nil, batch)
 		if !view.Assessment.NeedsAttention() {
 			continue
 		}

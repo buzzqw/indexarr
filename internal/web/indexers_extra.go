@@ -58,12 +58,13 @@ func (s *Server) indexersTestProblems(w http.ResponseWriter, r *http.Request) {
 	}
 	globalInterval := settings.DefaultInterval()
 	defs := s.indexerDefinitions(r.Context(), indexers)
+	batch := s.loadHealthBatch(r.Context(), indexers)
 	ids := make([]int64, 0, len(indexers))
 	for _, in := range indexers {
 		if !in.Enabled {
 			continue
 		}
-		view := s.indexerRowView(r, in, defs, globalInterval)
+		view := s.indexerRowView(r, in, defs, globalInterval, batch)
 		switch view.Status.State {
 		case "problem", "degraded", "blocked":
 			ids = append(ids, in.ID)

@@ -556,6 +556,32 @@ func (s *Store) GetIndexerState(ctx context.Context, indexerID int64) (IndexerSt
 	return out, nil
 }
 
+// IndexerStates returns the runtime state of every indexer in one read. Only
+// the fields the health model and the UI read are selected: the sealed cookies
+// and the login timestamp are not needed outside a connector run.
+func (s *Store) IndexerStates(ctx context.Context) (map[int64]IndexerState, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT indexer_id, circuit, disabled_until, last_error, updated_at
+		FROM indexer_state`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[int64]IndexerState)
+	for rows.Next() {
+		var state IndexerState
+		var disabledUntil, updated int64
+		if err := rows.Scan(&state.IndexerID, &state.Circuit, &disabledUntil,
+			&state.LastError, &updated); err != nil {
+			return nil, err
+		}
+		state.DisabledUntil = unixTime(disabledUntil)
+		state.UpdatedAt = unixTime(updated)
+		out[state.IndexerID] = state
+	}
+	return out, rows.Err()
+}
+
 // RecordReleaseSource stores provenance, keeping the original first_seen_at on
 // conflict and refreshing last_seen_at and the swarm counters. The parent
 // release keeps the best swarm values ever observed: a source with fewer
@@ -837,6 +863,99 @@ func (s *Store) ListIndexerHistory(ctx context.Context, indexerID int64, limit i
 		out = append(out, item)
 	}
 	return out, rows.Err()
+}
+
+// ListIndexerHealthHistory returns the newest history rows of several indexers
+// in one round trip, carrying only the columns the health model reads:
+// kind, status, error, start time and the metrics it needs for completeness.
+// Query, app, latency and byte count stay zero; callers that display the log
+// still use ListIndexerHistory.
+//
+// One prepared statement is reused for every indexer. With 46 sources the
+// previous one-query-per-indexer shape spent about 20 ms per page preparing the
+// same SQL 46 times; reusing it plus the narrower projection halves that.
+func (s *Store) ListIndexerHealthHistory(ctx context.Context, indexerIDs []int64, limit int) (map[int64][]IndexerHistory, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	out := make(map[int64][]IndexerHistory, len(indexerIDs))
+	if len(indexerIDs) == 0 {
+		return out, nil
+	}
+	stmt, err := s.db.PrepareContext(ctx, `
+		SELECT h.id, h.indexer_id, h.kind, h.status, h.error, h.started_at,
+			m.history_id, COALESCE(m.seen, 0), COALESCE(m.field_total, 0),
+			COALESCE(m.field_size, 0), COALESCE(m.field_seeders, 0),
+			COALESCE(m.field_category, 0), COALESCE(m.field_date, 0),
+			COALESCE(m.field_hash, 0)
+		FROM indexer_history h
+		LEFT JOIN indexer_history_metrics m ON m.history_id = h.id
+		WHERE h.indexer_id = ?
+		ORDER BY h.started_at DESC, h.id DESC LIMIT ?`)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+	for _, indexerID := range indexerIDs {
+		if indexerID <= 0 {
+			continue
+		}
+		rows, err := stmt.QueryContext(ctx, indexerID, limit)
+		if err != nil {
+			return nil, err
+		}
+		var list []IndexerHistory
+		for rows.Next() {
+			var (
+				item      IndexerHistory
+				indexer   sql.NullInt64
+				started   int64
+				metricsID sql.NullInt64
+				seen      int64
+				fieldTot  int64
+				fieldSize int64
+				fieldSeed int64
+				fieldCat  int64
+				fieldDate int64
+				fieldHash int64
+			)
+			if err := rows.Scan(&item.ID, &indexer, &item.Kind, &item.Status,
+				&item.Error, &started, &metricsID, &seen, &fieldTot, &fieldSize,
+				&fieldSeed, &fieldCat, &fieldDate, &fieldHash); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			if indexer.Valid {
+				item.IndexerID = indexer.Int64
+			}
+			item.StartedAt = unixTime(started)
+			if metricsID.Valid {
+				item.Metrics = &RunMetrics{
+					HistoryID:     metricsID.Int64,
+					Seen:          seen,
+					FieldTotal:    fieldTot,
+					FieldSize:     fieldSize,
+					FieldSeeders:  fieldSeed,
+					FieldCategory: fieldCat,
+					FieldDate:     fieldDate,
+					FieldHash:     fieldHash,
+				}
+			}
+			list = append(list, item)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		rows.Close()
+		if len(list) > 0 {
+			out[indexerID] = list
+		}
+	}
+	return out, nil
 }
 
 // CreateApplication inserts a downstream application and returns its id.

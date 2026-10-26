@@ -163,6 +163,7 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defs := s.indexerDefinitions(r.Context(), indexers)
+	batch := s.loadHealthBatch(r.Context(), indexers)
 	apps, _ := s.store.ListApplications(r.Context())
 	_ = apps
 	settings, settingsErr := s.store.LoadSettings(r.Context())
@@ -172,7 +173,7 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 	globalInterval := settings.DefaultInterval()
 
 	for _, in := range indexers {
-		view := s.indexerRowView(r, in, defs, globalInterval)
+		view := s.indexerRowView(r, in, defs, globalInterval, batch)
 		view.setProblemReturn("/indexers")
 		data.Total++
 		attention := view.Status.State == "problem" || view.Status.State == "degraded" || view.Status.State == "blocked"
@@ -302,7 +303,7 @@ func intervalEveryLabel(lang i18n.Language, seconds int) string {
 	}
 }
 
-func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[string]*definition.Definition, globalInterval time.Duration) indexerRowView {
+func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[string]*definition.Definition, globalInterval time.Duration, batch *healthBatch) indexerRowView {
 	def := defs[in.DefinitionID]
 	row := indexerRowView{
 		Indexer: in,
@@ -321,7 +322,7 @@ func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[stri
 			row.FiltersLabel += ": " + detail
 		}
 	}
-	state := s.loadIndexerHealth(r.Context(), in, def)
+	state := s.loadIndexerHealth(r.Context(), in, def, batch)
 	row.SearchOnly = !state.Latest
 	row.FeedOnly = state.FeedOnly
 	if state.LastRun != nil {
@@ -2834,7 +2835,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		}
 	}
 	data.Badges = s.indexerBadges(r, in, def)
-	healthView := s.loadIndexerHealth(r.Context(), in, def)
+	healthView := s.loadIndexerHealth(r.Context(), in, def, nil)
 	data.Health = healthView.Assessment
 	data.State = healthView.State
 	data.HasState = healthView.HasState
