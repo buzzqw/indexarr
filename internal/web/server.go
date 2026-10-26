@@ -489,6 +489,10 @@ type Server struct {
 	statusAt  time.Time
 	statusRev uint64
 	statusOK  bool
+	// definitions caches the parsed YAML of stored definitions by id and
+	// content hash. The zero value is usable, so test servers built with a
+	// struct literal work unchanged.
+	definitions parsedDefinitionCache
 }
 
 // New builds the HTTP server.

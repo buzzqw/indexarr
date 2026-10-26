@@ -757,3 +757,27 @@ func TestJSONSchemaAndDefinitions(t *testing.T) {
 		}
 	}
 }
+
+func TestBuiltinsIsParsedOnce(t *testing.T) {
+	first, err := Builtins()
+	if err != nil {
+		t.Fatalf("Builtins: %v", err)
+	}
+	second, err := Builtins()
+	if err != nil {
+		t.Fatalf("Builtins (second call): %v", err)
+	}
+	if len(first) == 0 {
+		t.Fatal("catalog is empty")
+	}
+	if len(first) != len(second) || &first[0] != &second[0] {
+		t.Fatal("Builtins parsed the catalog again instead of returning the cached slice")
+	}
+	entry, ok := Get(first[0].ID)
+	if !ok {
+		t.Fatalf("Get(%q) not found in the cached catalog", first[0].ID)
+	}
+	if entry.Hash != first[0].Hash {
+		t.Fatalf("Get(%q).Hash = %q, want %q", first[0].ID, entry.Hash, first[0].Hash)
+	}
+}

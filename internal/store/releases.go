@@ -751,6 +751,37 @@ func (s *Store) releasesByIDs(ctx context.Context, ids []int64) ([]Release, erro
 	return out, nil
 }
 
+// ListIndexerReleases returns the newest releases seen from one indexer. It
+// backs the "recent releases" strip of the source detail page: that page shows
+// ten rows and never needs the total, so it skips the COUNT that would scan
+// every visible release and probe the provenance table for each one.
+func (s *Store) ListIndexerReleases(ctx context.Context, indexerID int64, limit int) ([]Release, error) {
+	if indexerID <= 0 {
+		return nil, nil
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 10
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT `+releaseColumns+` FROM releases
+		WHERE hidden = 0
+		  AND EXISTS (SELECT 1 FROM release_sources rs
+		              WHERE rs.release_id = releases.id AND rs.indexer_id = ?)
+		ORDER BY last_seen_at DESC, id DESC LIMIT ?`, indexerID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Release
+	for rows.Next() {
+		rel, err := scanRelease(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rel)
+	}
+	return out, rows.Err()
+}
+
 // ListRecentReleases returns the newest releases for the dashboard.
 func (s *Store) ListRecentReleases(ctx context.Context, limit int) ([]Release, error) {
 	rows, err := s.db.QueryContext(ctx,

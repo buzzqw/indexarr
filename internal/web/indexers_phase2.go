@@ -162,7 +162,7 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	defs := s.definitionCache(r)
+	defs := s.indexerDefinitions(r.Context(), indexers)
 	apps, _ := s.store.ListApplications(r.Context())
 	_ = apps
 	settings, settingsErr := s.store.LoadSettings(r.Context())
@@ -206,29 +206,6 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.render(w, r, "indexers", data, http.StatusOK)
-}
-
-// definitionCache parses every stored definition once per page load. Catalog
-// entries are loaded too, so an indexer created from a built-in definition has
-// its name and metadata before the row is installed.
-func (s *Server) definitionCache(r *http.Request) map[string]*definition.Definition {
-	out := map[string]*definition.Definition{}
-	defs, err := s.store.ListDefinitions(r.Context())
-	if err == nil {
-		for _, def := range defs {
-			if parsed, err := definition.Parse([]byte(def.Body)); err == nil {
-				out[def.ID] = parsed
-			}
-		}
-	}
-	if entries, err := catalog.Builtins(); err == nil {
-		for _, entry := range entries {
-			if _, ok := out[entry.ID]; !ok {
-				out[entry.ID] = entry.Definition
-			}
-		}
-	}
-	return out
 }
 
 func indexerRowMatches(row indexerRowView, query string, def *definition.Definition) bool {
@@ -344,7 +321,7 @@ func (s *Server) indexerRowView(r *http.Request, in store.Indexer, defs map[stri
 			row.FiltersLabel += ": " + detail
 		}
 	}
-	state := s.loadIndexerHealth(r.Context(), in)
+	state := s.loadIndexerHealth(r.Context(), in, def)
 	row.SearchOnly = !state.Latest
 	row.FeedOnly = state.FeedOnly
 	if state.LastRun != nil {
@@ -2781,7 +2758,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		Protocol:       in.Protocol,
 		Public:         publicConfig(in.ConfigJSON),
 	}
-	def := s.definitionCache(r)[in.DefinitionID]
+	def, _ := s.parsedDefinition(r.Context(), in.DefinitionID)
 	data.Latest = true
 	if def != nil {
 		data.DefinitionName = def.Meta.Name
@@ -2852,14 +2829,12 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		data.CatalogState = entry.State
 	}
 	if data.Connector == "" {
-		if stored, err := s.store.GetDefinition(r.Context(), in.DefinitionID); err == nil {
-			if parsed, err := definition.Parse([]byte(stored.Body)); err == nil {
-				data.Connector = parsed.Connector
-			}
+		if parsed, ok := s.parsedDefinition(r.Context(), in.DefinitionID); ok {
+			data.Connector = parsed.Connector
 		}
 	}
 	data.Badges = s.indexerBadges(r, in, def)
-	healthView := s.loadIndexerHealth(r.Context(), in)
+	healthView := s.loadIndexerHealth(r.Context(), in, def)
 	data.Health = healthView.Assessment
 	data.State = healthView.State
 	data.HasState = healthView.HasState
@@ -3054,7 +3029,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		})
 	}
 	sort.Slice(data.FilterRows, func(i, j int) bool { return data.FilterRows[i].Key < data.FilterRows[j].Key })
-	if releases, _, err := s.store.SearchReleases(r.Context(), store.Filter{IndexerID: in.ID, Limit: 10, Sort: "seen"}); err == nil {
+	if releases, err := s.store.ListIndexerReleases(r.Context(), in.ID, 10); err == nil {
 		data.Releases = releases
 	}
 	if s.polite != nil {

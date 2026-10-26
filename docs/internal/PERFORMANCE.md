@@ -798,3 +798,95 @@ rapporti di curazione 0/1/12/59/60. Il risultato è identico.
 - A/B `firstpage_ab3.py` contro `d7837d9`, due giri a porte scambiate:
   **248/248** titoli distinti, **100%**; `total` e pagine invariati. RSS dopo
   i due giri: 63,6 MiB baseline, **59,4 MiB** nuovo.
+
+---
+
+## 15. Definizioni analizzate una volta (26 ottobre 2026)
+
+La pagina degli indexer pagava la stessa YAML molte volte per richiesta. Il
+catalogo incluso nel binario ha 85 definizioni; `catalog.Builtins()` le
+rileggeva e ri-analizzava a ogni chiamata, e la pagina la chiamava più volte.
+A queste si sommavano le 86 definizioni salvate, analizzate per intero a ogni
+caricamento, e una nuova analisi per ogni indexer dentro `loadIndexerHealth`.
+In una copia del database di produzione con 46 indexer una sola richiesta
+toccava circa **1.000 documenti YAML** fra catalogo, definizioni salvate e
+`catalog.Get`.
+
+### 15.1 Modifiche
+
+1. **Catalogo incluso analizzato una volta** (`internal/catalog`): `Builtins`
+   usa `sync.Once` e restituisce una slice condivisa in sola lettura, con una
+   mappa id → indice per `Get`. Il catalogo è immutabile per la vita del
+   processo; il comportamento e la validazione restano identici.
+2. **Cache delle definizioni salvate** (`internal/web/definitions_cache.go`):
+   la chiave è `id` + hash del contenuto, quindi un salvataggio invalida la
+   voce senza codice di invalidazione esplicito. Il limite è 256 voci, con
+   rimozione FIFO; le definizioni che corrispondono ancora al catalogo
+   condividono l'albero già analizzato dal catalogo.
+3. **Solo le definizioni usate**: la pagina degli indexer analizza gli id
+   referenziati dagli indexer installati, non tutte le 86 righe salvate. Le
+   pagine di dettaglio e delle definizioni riusano la stessa cache.
+4. **Nessun doppio lavoro per indexer**: `loadIndexerHealth` riceve la
+   definizione già analizzata dal chiamante.
+5. **Dettaglio indexer senza COUNT** (`store.ListIndexerReleases`): la striscia
+   "ultime release" mostra dieci righe e non ha bisogno del totale; il vecchio
+   `SearchReleases` contava ogni release visibile con una sonda sulla tabella
+   di provenienza. La query usa lo stesso predicato `EXISTS`, lo stesso ordine
+   `last_seen_at DESC, id DESC` e lo stesso filtro `hidden = 0`.
+
+### 15.2 Misure sulle pagine
+
+Database sintetico da 50.000 release (`benchseed`), build di release, 20
+richieste per pagina, p50/p95 in ms.
+
+| Pagina | Prima | Dopo | Δ p50 |
+|---|---:|---:|---:|
+| `/indexers` | 198,8 / 204,9 | **7,5 / 9,4** | **−96%** |
+| `/indexers/1` | 80,1 / 84,9 | **3,9 / 4,9** | **−95%** |
+| `/indexers/10` | 83,2 / 88,9 | **4,2 / 5,1** | **−95%** |
+| `/releases?q=1080p` | 17,6 / 21,0 | 17,1 / 18,9 | ~0 |
+| `/settings` | 1,2 / 1,4 | 1,2 / 1,8 | ~0 |
+
+Copie fresche del database di produzione (46 indexer, 15 definizioni distinte):
+
+| Pagina | Prima p50/p95 | Dopo p50/p95 | Δ p50 |
+|---|---:|---:|---:|
+| `/indexers` | 575,3 / 672,7 | **33,7 / 38,9** | **−94%** |
+| `/settings?section=advanced` | 33,6 / 35,5 | **5,9 / 11,6** | **−82%** |
+| `/indexers/1` | 1,3 / 2,2 | 1,0 / 1,5 | −23% |
+
+Il costo residuo di `/indexers` con 46 indexer è quasi tutto nelle query di
+stato e storico (una per indexer), non più nella YAML.
+
+### 15.3 Memoria
+
+Il profilo heap trattiene circa **1,5 MB** in più rispetto al codice
+precedente: è l'albero analizzato delle definizioni locali (le definizioni
+incluse condividono quello del catalogo). L'RSS misurato dopo le stesse
+pagine, su copie dello stesso database, resta nel rumore: 59,6–63,9 MiB con
+il codice precedente, **56,1–59,0 MiB** con questo nei cinque giri su sei. Un
+campione isolato del nuovo binario ha misurato 73,4 MiB con lo stesso profilo
+heap degli altri (circa 14–16 MB `inuse_space` in entrambi i binari): è un
+ritardo dello scavenger/allocatore, non memoria trattenuta dal codice. Il
+numero va quindi riletto insieme alla serie, non come regressione.
+
+### 15.4 A/B
+
+`tools/firstpage_ab3.py` contro `d7837d9`, due giri a porte scambiate, copie
+fresche del database di produzione, ricerca live disattivata:
+
+- **181/181** titoli distinti in entrambi i giri, **100%**;
+- `total` identico per tutte le 16 query;
+- le 4 query senza risultati restano 0 su entrambi.
+
+### 15.5 Test
+
+- `TestBuiltinsIsParsedOnce` verifica che la seconda chiamata restituisca la
+  stessa slice e che `Get` trovi la voce.
+- `TestParsedDefinitionCacheKeysByHash` e
+  `TestParsedDefinitionCacheIsBounded` coprono invalidazione e limite.
+- `TestParseStoredDefinitionReusesCacheUntilHashChanges` usa uno store reale.
+- `TestListIndexerReleasesUsesProvenanceAndVisibility` copre provenienza,
+  ordine, limite e release nascoste.
+- `go test ./...` e `go vet ./...` passano; `go test -race` sui pacchetti
+  toccati passa.

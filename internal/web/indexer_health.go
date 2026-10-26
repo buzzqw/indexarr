@@ -56,7 +56,10 @@ type indexerHealthView struct {
 	Latest bool
 }
 
-func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer) indexerHealthView {
+// loadIndexerHealth builds the health view of one source. def is the parsed
+// definition when the caller already has it; passing nil keeps the old
+// behaviour of resolving it from the store or the catalog.
+func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer, def *definition.Definition) indexerHealthView {
 	view := indexerHealthView{Indexer: in}
 	if state, err := s.store.GetIndexerState(ctx, in.ID); err == nil {
 		view.State = state
@@ -72,11 +75,12 @@ func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer) indexe
 		}
 	}
 	view.Latest = true
-	if def, err := s.store.GetDefinition(ctx, in.DefinitionID); err == nil {
-		if parsed, parseErr := definition.Parse([]byte(def.Body)); parseErr == nil {
-			view.FeedOnly = strings.EqualFold(strings.TrimSpace(parsed.Connector), "rss")
-			view.Latest = parsed.Meta.HasLatest()
-		}
+	if def == nil {
+		def, _ = s.parsedDefinition(ctx, in.DefinitionID)
+	}
+	if def != nil {
+		view.FeedOnly = strings.EqualFold(strings.TrimSpace(def.Connector), "rss")
+		view.Latest = def.Meta.HasLatest()
 	}
 	if value, ok := indexerConfigLatest(in.ConfigJSON); ok {
 		view.Latest = value

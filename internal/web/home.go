@@ -100,7 +100,7 @@ func (s *Server) computeHomeStatus(ctx context.Context) HomeStatus {
 		if !indexer.Enabled {
 			continue
 		}
-		view := s.loadIndexerHealth(ctx, indexer)
+		view := s.loadIndexerHealth(ctx, indexer, nil)
 		if !view.Assessment.NeedsAttention() {
 			continue
 		}

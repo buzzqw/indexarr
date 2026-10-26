@@ -34,6 +34,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 
@@ -95,10 +96,33 @@ type manifestEntry struct {
 	Note    string `yaml:"note,omitempty"`
 }
 
+// The embedded catalog is immutable for the life of the process: parse and
+// validate it once. Before this cache every call re-read and re-parsed all 85
+// YAML definitions, and the web layer calls Builtins and Get several times per
+// indexers page (about 200 ms of YAML parsing per request).
+var (
+	builtinsOnce  sync.Once
+	builtinsList  []Entry
+	builtinsIndex map[string]int
+	builtinsErr   error
+)
+
 // Builtins parses the embedded manifest and definitions, validates every
-// definition and returns the entries in manifest order.
+// definition and returns the entries in manifest order. The returned slice is
+// shared and must be treated as read-only; it has no spare capacity, so
+// appending to it never alters the cached copy.
 func Builtins() ([]Entry, error) {
-	return load(builtinFS)
+	builtinsOnce.Do(func() {
+		builtinsList, builtinsErr = load(builtinFS)
+		if builtinsErr != nil {
+			return
+		}
+		builtinsIndex = make(map[string]int, len(builtinsList))
+		for i, entry := range builtinsList {
+			builtinsIndex[entry.ID] = i
+		}
+	})
+	return builtinsList, builtinsErr
 }
 
 // Get returns the built-in entry with the given id.
@@ -107,10 +131,8 @@ func Get(id string) (Entry, bool) {
 	if err != nil {
 		return Entry{}, false
 	}
-	for _, entry := range entries {
-		if entry.ID == id {
-			return entry, true
-		}
+	if i, ok := builtinsIndex[id]; ok {
+		return entries[i], true
 	}
 	return Entry{}, false
 }

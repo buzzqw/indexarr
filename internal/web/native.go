@@ -84,7 +84,7 @@ func (s *Server) definitionRows(ctx context.Context, data *base) ([]definitionRo
 	seen := make(map[string]bool, len(defs))
 	for _, def := range defs {
 		seen[def.ID] = true
-		row := definitionRowFromStore(def, counts[def.ID])
+		row := s.definitionRowFromStore(def, counts[def.ID])
 		if def.Origin == catalog.OriginBuiltin {
 			row.Builtin = true
 			catalogRows = append(catalogRows, row)
@@ -117,7 +117,7 @@ func (s *Server) definitionRows(ctx context.Context, data *base) ([]definitionRo
 	return catalogRows, localRows
 }
 
-func definitionRowFromStore(def store.Definition, indexers int) definitionRow {
+func (s *Server) definitionRowFromStore(def store.Definition, indexers int) definitionRow {
 	row := definitionRow{
 		ID:        def.ID,
 		Name:      def.ID,
@@ -129,7 +129,7 @@ func definitionRowFromStore(def store.Definition, indexers int) definitionRow {
 		UpdatedAt: def.UpdatedAt,
 		Indexers:  indexers,
 	}
-	parsed, err := definition.Parse([]byte(def.Body))
+	parsed, err := s.parseStoredDefinition(def)
 	if err != nil {
 		row.ParseError = err.Error()
 		return row
@@ -202,7 +202,7 @@ func (s *Server) definitionPage(w http.ResponseWriter, r *http.Request) {
 		Indexers:   used,
 		Builtin:    builtin,
 	}
-	parsed, err := definition.Parse([]byte(def.Body))
+	parsed, err := s.parseStoredDefinition(def)
 	if err != nil {
 		data.Problems = validationProblems(err, s.translate(r, "definitionForm.invalidShort"))
 	} else {
@@ -511,7 +511,7 @@ func (s *Server) loadDefinitionForForm(r *http.Request, id string) (*definition.
 		return nil, false, errors.New(s.translate(r, "indexerForm.chooseDefinition"))
 	}
 	if def, err := s.store.GetDefinition(r.Context(), id); err == nil {
-		parsed, err := definition.Parse([]byte(def.Body))
+		parsed, err := s.parseStoredDefinition(def)
 		if err != nil {
 			return nil, true, err
 		}

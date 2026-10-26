@@ -57,7 +57,7 @@ func (s *Server) indexersTestProblems(w http.ResponseWriter, r *http.Request) {
 		settings = store.DefaultSettings()
 	}
 	globalInterval := settings.DefaultInterval()
-	defs := s.definitionCache(r)
+	defs := s.indexerDefinitions(r.Context(), indexers)
 	ids := make([]int64, 0, len(indexers))
 	for _, in := range indexers {
 		if !in.Enabled {
