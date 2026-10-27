@@ -56,7 +56,12 @@ fi
 # cache stays on disk: it is what makes a second run fast.
 CI_TMPFS="${CI_TMPFS:-/dev/shm}"
 [[ -d "$CI_TMPFS" && -w "$CI_TMPFS" ]] || CI_TMPFS="${TMPDIR:-/tmp}"
-CI_TMP="$(mktemp -d "$CI_TMPFS/indexarr-ci-$COMMIT.XXXXXX")"
+# The path is fixed on purpose: go test caches results only while the
+# environment its tests read (TMPDIR) stays the same, so a random name would
+# rerun every package each time.
+CI_TMP="$CI_TMPFS/indexarr-ci"
+rm -rf "$CI_TMP"
+mkdir -m 700 "$CI_TMP" || { echo "cannot create $CI_TMP"; exit 1; }
 trap 'rm -rf "$CI_TMP"' EXIT
 export TMPDIR="$CI_TMP" GOTMPDIR="$CI_TMP"
 echo "temporary files in $CI_TMP ($(df --output=fstype "$CI_TMP" 2>/dev/null | tail -n 1))"
