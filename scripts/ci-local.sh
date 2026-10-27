@@ -14,8 +14,18 @@ LOG="$LOG_DIR/$COMMIT.log"
 : >"$LOG"
 exec > >(tee -a "$LOG") 2>&1
 
+BUDGET_PID=""
+BUDGET_LOG=""
+
 finish_fail() {
   local job="$1"
+  # A failure before the budget is collected stops it: budget.sh removes its
+  # temporary server and data on exit.
+  if [[ -n "$BUDGET_PID" ]] && kill -0 "$BUDGET_PID" 2>/dev/null; then
+    kill "$BUDGET_PID" 2>/dev/null || true
+    wait "$BUDGET_PID" 2>/dev/null || true
+  fi
+  [[ -n "$BUDGET_LOG" ]] && rm -f "$BUDGET_LOG"
   echo "CI-LOCAL $COMMIT FAIL $job"
   exit 1
 }
@@ -25,9 +35,11 @@ run_job() {
   shift
   echo
   echo "==> $name"
+  local started=$SECONDS
   if ! "$@"; then
     finish_fail "$name"
   fi
+  echo "<== $name: $((SECONDS - started))s"
 }
 
 echo "CI-LOCAL $COMMIT START $(date -Is)"
@@ -57,13 +69,33 @@ run_job "gofmt and go vet" bash -c '
   go vet ./...
 '
 run_job "def-validate" make def-validate
+
+# The resource budget spends a minute waiting for the idle server to settle
+# before it samples RSS. It runs in the background while the tests run: the
+# RSS of an idle process does not depend on the load of the others, and the
+# binary-size gate is a file size. Its output is appended to the log and its
+# result checked before the end.
+BUDGET_LOG="$(mktemp "$LOG_DIR/.budget-$COMMIT.XXXXXX")"
+BUDGET_STARTED=$SECONDS
+./scripts/budget.sh >"$BUDGET_LOG" 2>&1 &
+BUDGET_PID=$!
 run_job "qa" make qa
 run_job "go test" go test "${TEST_FLAGS[@]}" ./...
 run_job "go test -race" go test "${RACE_FLAGS[@]}" ./...
 run_job "build matrix" ./scripts/build-matrix.sh
 run_job "test compile windows" env GOOS=windows CGO_ENABLED=0 go vet ./...
 run_job "test compile darwin" env GOOS=darwin CGO_ENABLED=0 go vet ./...
-run_job "resource budget" ./scripts/budget.sh
+echo
+echo "==> resource budget (started in the background $((SECONDS - BUDGET_STARTED))s ago)"
+budget_status=0
+wait "$BUDGET_PID" || budget_status=$?
+BUDGET_PID=""
+cat "$BUDGET_LOG"
+rm -f "$BUDGET_LOG"
+BUDGET_LOG=""
+if [[ "$budget_status" -ne 0 ]]; then
+  finish_fail "resource budget"
+fi
 run_job "e2e" make e2e
 
 echo "CI-LOCAL $COMMIT PASS"
