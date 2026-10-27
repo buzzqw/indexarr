@@ -637,6 +637,11 @@
         <p class="help">{{T "settings.apiRateLimitHelp"}}</p>
       </div>
       <div class="field checkbox">
+        <input id="torznab_proxy_magnets" name="torznab_proxy_magnets" type="checkbox"{{if .Settings.TorznabProxyMagnets}} checked{{end}}>
+        <label for="torznab_proxy_magnets" title="{{T "settings.proxyMagnetsTip"}}">{{T "settings.proxyMagnets"}}</label>
+        <p class="help">{{T "settings.proxyMagnetsHelp"}}</p>
+      </div>
+      <div class="field checkbox">
         <input id="torznab_live_search" name="torznab_live_search" type="checkbox"{{if .Settings.TorznabLiveSearch}} checked{{end}}>
         <label for="torznab_live_search">{{T "settings.liveSearch"}}</label>
         <p class="help">{{T "settings.liveSearchHelp"}}</p>

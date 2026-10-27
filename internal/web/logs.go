@@ -13,7 +13,7 @@ import (
 
 type logsPage struct {
 	base
-	Entries      []logbuffer.Entry
+	Entries      []logView
 	Level        string
 	RuntimeLevel string
 	Query        string
@@ -114,7 +114,7 @@ func (s *Server) logsDataFor(r *http.Request, formPath, tabValue string) logsPag
 	}
 	data := logsPage{
 		base:         s.newBaseT(r, "activity.logs", "activity"),
-		Entries:      entries,
+		Entries:      logViews(requestLanguage(r), entries, s.indexerNames(r.Context())),
 		Level:        levelName,
 		RuntimeLevel: runtimeLevel,
 		Query:        query,

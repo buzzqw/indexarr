@@ -1,0 +1,20 @@
+{{define "log_row"}}
+<div class="log-row log-{{.LevelClass}}">
+  <time class="log-time" datetime="{{.Time.Format "2006-01-02T15:04:05Z07:00"}}">{{.Time.Format "2006-01-02 15:04:05"}}</time>
+  <span class="log-level {{.LevelClass}}" title="{{T "logs.levelHelpRow"}}">{{.LevelText}}</span>
+  <div class="log-body">
+    <div class="log-msg"><span class="log-tag" title="{{T "logs.areaHelp"}}">{{.Area}}</span> <span class="log-sentence">{{.Sentence}}</span></div>
+    {{if .Problem}}<div class="log-problem"><strong>{{T "logs.problemLabel"}}:</strong> {{.Problem}}</div>{{end}}
+    {{if .Advice}}<div class="log-advice"><strong>{{T "logs.adviceLabel"}}:</strong> {{.Advice}}</div>{{end}}
+    {{if .ErrorText}}<div class="log-error"><span class="muted">{{T "logs.errorLabel"}}:</span> <code>{{truncate .ErrorText 300}}</code></div>{{end}}
+    <details class="log-details">
+      <summary title="{{T "logs.detailsHelp"}}">{{T "logs.details"}}</summary>
+      <div class="log-attrs">
+        <span class="log-attr"><span class="muted">{{T "logs.rawMessage"}}:</span> <code>{{.Message}}</code></span>
+        {{if .Component}}<span class="log-attr"><span class="muted">component:</span> <code>{{.Component}}</code></span>{{end}}
+        {{range .Details}}<span class="log-attr" title="{{.Key}}"><span class="muted">{{.Label}}:</span> {{.Value}}</span> {{end}}
+      </div>
+    </details>
+  </div>
+</div>
+{{end}}

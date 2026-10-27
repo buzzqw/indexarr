@@ -596,7 +596,13 @@ type AppSearchAppStat struct {
 type AppSearchIndexerStat struct {
 	Name     string
 	Requests int64
+	// Failures counts real errors only. Late is a source that answered after
+	// the app got its response (it kept working in the background) and Skipped
+	// is a source that did not search live by design (feed-only, paused after
+	// errors, queue full): neither is a failure.
 	Failures int64
+	Late     int64
+	Skipped  int64
 	Results  int64
 	AvgMS    int64
 }
@@ -662,7 +668,13 @@ func (s *Store) AppSearchStatsByIndexer(ctx context.Context, since time.Time, li
 		SELECT COALESCE(json_extract(j.value, '$.name'), '') AS name,
 			COUNT(*),
 			SUM(CASE WHEN COALESCE(json_extract(j.value, '$.error'), '') <> ''
-				OR COALESCE(json_extract(j.value, '$.timed_out'), 0) > 0
+				AND COALESCE(json_extract(j.value, '$.timed_out'), 0) = 0
+				AND COALESCE(json_extract(j.value, '$.skipped'), 0) = 0
+				THEN 1 ELSE 0 END),
+			SUM(CASE WHEN COALESCE(json_extract(j.value, '$.timed_out'), 0) > 0
+				THEN 1 ELSE 0 END),
+			SUM(CASE WHEN COALESCE(json_extract(j.value, '$.skipped'), 0) > 0
+				AND COALESCE(json_extract(j.value, '$.timed_out'), 0) = 0
 				THEN 1 ELSE 0 END),
 			COALESCE(SUM(json_extract(j.value, '$.results')), 0),
 			COALESCE(CAST(AVG(json_extract(j.value, '$.duration_ms')) AS INTEGER), 0)
@@ -678,7 +690,7 @@ func (s *Store) AppSearchStatsByIndexer(ctx context.Context, since time.Time, li
 	var out []AppSearchIndexerStat
 	for rows.Next() {
 		var item AppSearchIndexerStat
-		if err := rows.Scan(&item.Name, &item.Requests, &item.Failures, &item.Results, &item.AvgMS); err != nil {
+		if err := rows.Scan(&item.Name, &item.Requests, &item.Failures, &item.Late, &item.Skipped, &item.Results, &item.AvgMS); err != nil {
 			return nil, fmt.Errorf("scan app search stats by indexer: %w", err)
 		}
 		out = append(out, item)

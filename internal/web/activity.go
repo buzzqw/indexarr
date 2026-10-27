@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/engine"
+	"github.com/buzzqw/indexarr/internal/i18n"
+	"github.com/buzzqw/indexarr/internal/logtext"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -53,6 +55,15 @@ type appSearchView struct {
 	Error       string
 	CreatedAt   time.Time
 	HasDuration bool
+	// Summary counts of the live fan-out, shown on the collapsed row. Late,
+	// Queued and Skipped are not failures: only Failed is.
+	InTime  int
+	Late    int
+	Queued  int
+	Skipped int
+	Failed  int
+	// What is the translated search kind (TV, film, free text).
+	What string
 }
 
 // appSearchLiveView is one indexer of the live fan-out: effective mode,
@@ -67,6 +78,10 @@ type appSearchLiveView struct {
 	TimedOut bool
 	Skipped  bool
 	Error    string
+	// State is ok, late, queued, skipped or error; Reason explains a skipped,
+	// queued or failed source in plain words.
+	State  string
+	Reason string
 }
 
 type appSearchResult struct {
@@ -187,15 +202,16 @@ func (s *Server) activitySearches(r *http.Request) (*activitySearchesView, error
 		},
 	}
 	for _, search := range searches {
-		view.Searches = append(view.Searches, s.appSearchView(search))
+		view.Searches = append(view.Searches, s.appSearchView(requestLanguage(r), search))
 	}
 	return view, nil
 }
 
 // appSearchView converts one stored request into the row rendered by the
 // Search table (Activity and the Logs section share it).
-func (s *Server) appSearchView(search store.AppSearch) appSearchView {
+func (s *Server) appSearchView(lang i18n.Language, search store.AppSearch) appSearchView {
 	row := appSearchView{
+		What:       searchModeLabel(lang, search.Mode),
 		App:        search.App,
 		Mode:       search.Mode,
 		Query:      search.Query,
@@ -216,6 +232,19 @@ func (s *Server) appSearchView(search store.AppSearch) appSearchView {
 			TimedOut: entry.TimedOut,
 			Skipped:  entry.Skipped,
 			Error:    entry.Error,
+		}
+		view.State, view.Reason = s.liveState(lang, entry)
+		switch view.State {
+		case "late":
+			row.Late++
+		case "queued":
+			row.Queued++
+		case "skipped":
+			row.Skipped++
+		case "error":
+			row.Failed++
+		default:
+			row.InTime++
 		}
 		if entry.Duration > 0 {
 			if entry.Duration < 1000 {
@@ -247,4 +276,44 @@ func (s *Server) appSearchView(search store.AppSearch) appSearchView {
 		})
 	}
 	return row
+}
+
+// liveState classifies one source of a live fan-out. A source that answered
+// after the app got its response kept working and stored its rows for the
+// next request: that is "late", not a failure.
+func (s *Server) liveState(lang i18n.Language, entry store.AppSearchLive) (string, string) {
+	errText := strings.ToLower(strings.TrimSpace(entry.Error))
+	switch {
+	case entry.Skipped:
+		switch {
+		case strings.Contains(errText, "feed-only"):
+			return "skipped", i18n.T(lang, "logs.live.reason.feedOnly")
+		case strings.Contains(errText, "circuit"):
+			return "skipped", i18n.T(lang, "logs.live.reason.paused")
+		case strings.Contains(errText, "queue"):
+			return "skipped", i18n.T(lang, "logs.live.reason.queue")
+		case strings.Contains(errText, "no request is waiting"):
+			return "skipped", i18n.T(lang, "logs.live.reason.abandoned")
+		}
+		return "skipped", entry.Error
+	case entry.TimedOut && strings.Contains(errText, "waiting for a slot"):
+		return "queued", i18n.T(lang, "logs.live.reason.queued")
+	case entry.TimedOut:
+		return "late", i18n.T(lang, "logs.live.reason.late")
+	case errText != "":
+		if code := logtext.Problem(entry.Error); code != "" {
+			return "error", i18n.T(lang, "logs.problem."+code)
+		}
+		return "error", entry.Error
+	}
+	return "ok", ""
+}
+
+// searchModeLabel names the Torznab search kind in the user's language.
+func searchModeLabel(lang i18n.Language, mode string) string {
+	key := "logs.mode." + strings.ToLower(strings.TrimSpace(mode))
+	if text := i18n.T(lang, key); text != key {
+		return text
+	}
+	return mode
 }

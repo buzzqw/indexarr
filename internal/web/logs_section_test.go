@@ -110,3 +110,62 @@ func TestLogsSectionEmptyAndFilters(t *testing.T) {
 		t.Error("internal filter form lost the query")
 	}
 }
+
+func TestLogsDownloadsTabAndPlainRequests(t *testing.T) {
+	env := newNativeEnv(t)
+	ctx := context.Background()
+	now := time.Now()
+	seedDefinition(t, env.store, "dl-src", "", `schema: 1
+meta:
+  id: dl-src
+  name: dl-src
+  type: public
+  protocol: torrent
+  urls: [https://dl-src.example/]
+search:
+  request:
+    get: /
+  response:
+    type: html
+`)
+	id := seedPhase2Indexer(t, env.store, "dl-src", "dl-src", true, `{}`)
+	for _, via := range []string{"ok", "magnet", "magnet"} {
+		if _, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+			IndexerID: id, Kind: "grab", Status: via, Query: "Grabbed Show S01E01", App: "sonarr", StartedAt: now,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := env.store.RecordAppSearch(ctx, store.AppSearch{
+		App: "sonarr", Mode: "tvsearch", Query: "slow show", TotalResults: 3, DurationMS: 5000, CreatedAt: now,
+		Live: []store.AppSearchLive{
+			{Name: "Fast", Results: 3, Duration: 900},
+			{Name: "Slow", TimedOut: true},
+			{Name: "Feed", Skipped: true, Error: "feed-only indexer: cache only"},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	body := get(t, env.handler, "/logs?tab=downloads").Body.String()
+	for _, want := range []string{"Grabbed Show S01E01", "dl-src", `action="/logs"`, `name="window"`, "Direct magnets are not counted."} {
+		if !strings.Contains(body, want) {
+			t.Errorf("downloads tab missing %q", want)
+		}
+	}
+
+	body = get(t, env.handler, "/logs?tab=requests").Body.String()
+	for _, want := range []string{"1 in time", "1 in background", "1 skipped", "TV series", "Feed-only source"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("requests tab missing %q", want)
+		}
+	}
+	if strings.Contains(body, `chip danger">over timeout`) {
+		t.Error("a late source is still shown as a red timeout")
+	}
+
+	body = get(t, env.handler, "/logs?tab=stats").Body.String()
+	if !strings.Contains(body, "In background") || !strings.Contains(body, "<td><strong>dl-src</strong></td>") || !strings.Contains(body, "<td><strong>3</strong></td>") {
+		t.Errorf("stats tab misses the late column or the downloads count")
+	}
+}

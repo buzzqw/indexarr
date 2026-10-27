@@ -393,7 +393,7 @@ search:
 	ctx := context.Background()
 	for i := 0; i < 3; i++ {
 		if _, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
-			IndexerID: a, Kind: "download", Status: "ok", StartedAt: time.Now(),
+			IndexerID: a, Kind: "grab", Status: "ok", StartedAt: time.Now(),
 		}); err != nil {
 			t.Fatal(err)
 		}

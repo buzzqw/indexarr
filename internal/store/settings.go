@@ -53,6 +53,7 @@ const (
 	KeyBackupKeep           = "backup_keep"
 	KeyTorznabLive          = "torznab_live_search"
 	KeyTorznabLiveTimeout   = "torznab_live_timeout_seconds"
+	KeyTorznabProxyMagnets  = "torznab_proxy_magnets"
 	KeyTorznabLiveCache     = "torznab_live_cache_seconds"
 	KeyTorznabLiveWait      = "torznab_live_wait_seconds"
 	KeyDownloadClient       = "download_client"
@@ -120,6 +121,7 @@ type Settings struct {
 	BackupIntervalHours    int
 	BackupKeep             int
 	TorznabLiveSearch      bool
+	TorznabProxyMagnets    bool // magnet grabs go through /dl and are counted
 	TorznabLiveTimeout     int
 	TorznabLiveCache       int
 	TorznabLiveWait        int
@@ -310,6 +312,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.BackupIntervalHours = intValue(values, KeyBackupInterval, 24, 6, 168)
 	out.BackupKeep = intValue(values, KeyBackupKeep, 7, 1, 60)
 	out.TorznabLiveSearch = boolValue(values, KeyTorznabLive, true)
+	out.TorznabProxyMagnets = boolValue(values, KeyTorznabProxyMagnets, false)
 	out.TorznabLiveTimeout = intValue(values, KeyTorznabLiveTimeout, 20, 5, 120)
 	out.TorznabLiveCache = intValue(values, KeyTorznabLiveCache, 300, 0, 3600)
 	out.TorznabLiveWait = intValue(values, KeyTorznabLiveWait, 5, 1, 120)
@@ -375,6 +378,7 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyBackupInterval:       strconv.Itoa(in.BackupIntervalHours),
 		KeyBackupKeep:           strconv.Itoa(in.BackupKeep),
 		KeyTorznabLive:          boolString(in.TorznabLiveSearch),
+		KeyTorznabProxyMagnets:  boolString(in.TorznabProxyMagnets),
 		KeyTorznabLiveTimeout:   strconv.Itoa(in.TorznabLiveTimeout),
 		KeyTorznabLiveCache:     strconv.Itoa(in.TorznabLiveCache),
 		KeyTorznabLiveWait:      strconv.Itoa(in.TorznabLiveWait),

@@ -1,0 +1,107 @@
+{{define "logs_downloads_body"}}
+<div class="section-head">
+  <p class="muted">{{T "logs.dl.subtitle"}}</p>
+</div>
+
+<form class="filters" method="get" action="/logs">
+  <input type="hidden" name="tab" value="downloads">
+  <div class="field">
+    <label for="downloads_window">{{T "logs.stats.window"}}</label>
+    <select id="downloads_window" name="window">
+      {{range .Windows}}<option value="{{.Key}}"{{if .Active}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <p class="help">{{T "logs.dl.windowHelp"}}</p>
+  </div>
+  <div class="field actions-field">
+    <button class="btn primary" type="submit">{{T "logs.apply"}}</button>
+  </div>
+</form>
+
+<section class="cards" aria-label="{{T "logs.dl.cardsLabel"}}">
+  <article class="card" title="{{T "logs.dl.totalHelp"}}"><span class="label">{{T "logs.dl.total"}}</span><strong>{{.Total}}</strong><span class="hint">{{.WindowLabel}}</span></article>
+  <article class="card" title="{{T "logs.dl.torrentsHelp"}}"><span class="label">{{T "logs.dl.torrents"}}</span><strong>{{.Torrents}}</strong><span class="hint">{{T "logs.dl.torrentsHint"}}</span></article>
+  <article class="card" title="{{T "logs.dl.magnetsHelp"}}"><span class="label">{{T "logs.dl.magnets"}}</span><strong>{{.Magnets}}</strong><span class="hint">{{T "logs.dl.magnetsHint"}}</span></article>
+  {{if .NZBs}}<article class="card" title="{{T "logs.dl.nzbHelp"}}"><span class="label">NZB</span><strong>{{.NZBs}}</strong><span class="hint">{{T "logs.dl.nzbHint"}}</span></article>{{end}}
+  <article class="card" title="{{T "logs.dl.sourcesHelp"}}"><span class="label">{{T "logs.dl.sources"}}</span><strong>{{len .Sources}}</strong><span class="hint">{{T "logs.dl.sourcesHint"}}</span></article>
+</section>
+
+{{if not .ProxyMagnets}}
+<section class="panel notice">
+  <p class="help"><strong>{{T "logs.dl.directTitle"}}</strong> {{T "logs.dl.directText"}} <a href="/settings?section=advanced#torznab_proxy_magnets">{{T "logs.dl.directLink"}}</a></p>
+</section>
+{{end}}
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "logs.dl.bySource"}}</h2><span class="muted">{{.WindowLabel}}</span></div>
+  <p class="help">{{T "logs.dl.bySourceHelp"}}</p>
+  {{if .Sources}}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "logs.req.source"}}</th>
+          <th scope="col" title="{{T "logs.dl.totalHelp"}}">{{T "logs.dl.total"}}</th>
+          <th scope="col" title="{{T "logs.dl.torrentsHelp"}}">{{T "logs.dl.torrents"}}</th>
+          <th scope="col" title="{{T "logs.dl.magnetsHelp"}}">{{T "logs.dl.magnets"}}</th>
+          <th scope="col" title="{{T "logs.dl.shareHelp"}}">{{T "logs.dl.share"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Sources}}
+        <tr>
+          <td><strong>{{.Name}}</strong></td>
+          <td>{{.Total}}</td>
+          <td>{{.Torrents}}{{if .NZBs}} <span class="sub">+ {{.NZBs}} NZB</span>{{end}}</td>
+          <td>{{.Magnets}}</td>
+          <td><div class="useful-track" role="img" aria-label="{{.Name}} {{.Share}}%"><span class="useful-bar" style="width: {{.Share}}%"></span></div> <span class="muted">{{.Share}}%</span></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="empty">{{T "logs.dl.empty"}}</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "logs.dl.latest"}}</h2></div>
+  {{if .Grabs}}
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "activity.searches.when"}}</th>
+          <th scope="col">{{T "activity.searches.app"}}</th>
+          <th scope="col">{{T "logs.dl.release"}}</th>
+          <th scope="col">{{T "logs.req.source"}}</th>
+          <th scope="col" title="{{T "logs.dl.viaHelp"}}">{{T "logs.dl.via"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Grabs}}
+        <tr>
+          <td class="nowrap" title="{{.At.Format "2006-01-02 15:04:05"}}">{{ago .At}}</td>
+          <td>{{textOrDash .App}}</td>
+          <td>{{truncate .Title 120}}</td>
+          <td>{{textOrDash .Source}}</td>
+          <td><span class="chip">{{.Via}}</span></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{template "pager" .Pager}}
+  {{else}}
+  <p class="empty">{{T "logs.dl.empty"}}</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "logs.dl.aboutTitle"}}</h2></div>
+  <div class="prose">
+    <p>{{T "logs.dl.aboutText"}}</p>
+    <p>{{T "logs.dl.aboutDecide"}}</p>
+  </div>
+</section>
+{{end}}

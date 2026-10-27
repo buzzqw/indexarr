@@ -540,15 +540,14 @@ func TestDownloadAndHead(t *testing.T) {
 		t.Errorf("HEAD nzb = %d, body %d", headNZB.Code, headNZB.Body.Len())
 	}
 
+	// A magnet-only release redirects to its magnet: Sonarr, Radarr and other
+	// clients follow the redirect, while a 404 made every such grab fail.
 	magnetDownload := e.get("/dl/" + formatID(magnetOnly.ID) + ".torrent?apikey=" + primaryKey)
-	if magnetDownload.Code != http.StatusNotFound {
-		t.Errorf("magnet-only .torrent = %d, want 404", magnetDownload.Code)
+	if magnetDownload.Code != http.StatusFound {
+		t.Errorf("magnet-only .torrent = %d, want 302", magnetDownload.Code)
 	}
-	if document := parseError(t, magnetDownload); document.Code != 201 {
-		t.Errorf("magnet-only download code = %d, want 201", document.Code)
-	}
-	if !strings.Contains(strings.ToLower(magnetDownload.Body.String()), "magnet") {
-		t.Errorf("magnet-only 404 does not explain the magnet fallback: %s", magnetDownload.Body.String())
+	if location := magnetDownload.Header().Get("Location"); location != magnetOnly.Magnet {
+		t.Errorf("magnet-only Location = %q, want %q", location, magnetOnly.Magnet)
 	}
 }
 

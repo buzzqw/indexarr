@@ -1,51 +1,79 @@
 {{define "app_searches_table"}}
-<div class="table-scroll">
-  <table>
-    <thead>
-      <tr>
-        <th scope="col">{{T "activity.searches.app"}}</th>
-        <th scope="col" title="{{T "activity.searches.statusHelp"}}">{{T "activity.searches.status"}}</th>
-        <th scope="col">{{T "activity.searches.query"}}</th>
-        <th scope="col">{{T "activity.searches.indexers"}}</th>
-        <th scope="col">{{T "activity.searches.live"}}</th>
-        <th scope="col">{{T "activity.searches.results"}}</th>
-        <th scope="col">{{T "activity.searches.total"}}</th>
-        <th scope="col">{{T "activity.searches.duration"}}</th>
-        <th scope="col">{{T "activity.searches.error"}}</th>
-        <th scope="col">{{T "activity.searches.when"}}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {{range .Searches}}
-      <tr>
-        <td><strong>{{textOrDash .App}}</strong><div class="sub">{{.Mode}}</div></td>
-        <td>{{if .Error}}<span class="chip danger" title="{{.Error}}">{{T "activity.searches.failed"}}</span>{{else}}<span class="chip ok" title="{{T "activity.searches.okHelp"}}">{{T "activity.searches.ok"}}</span>{{end}}</td>
-        <td>{{if .Query}}{{truncate .Query 70}}{{else}}<span class="muted">—</span>{{end}}{{if .Params}}<div class="sub"><code>{{truncate .Params 100}}</code></div>{{end}}</td>
-        <td>{{if .Indexers}}{{.Indexers}}{{else}}<span class="muted">—</span>{{end}}</td>
-        <td class="app-live">
-          {{range .Live}}
-          <div class="sub">
-            <strong>{{.Name}}</strong>
-            <span class="chip">{{.Mode}}{{if .Fallback}} · {{T "activity.searches.fallback"}}{{end}}</span>
-            {{if .Query}}<code>{{truncate .Query 40}}</code>{{end}}
-            · {{.Results}} {{T "activity.searches.resultsShort"}}
-            {{if .Duration}}· {{.Duration}}{{end}}
-            {{if .TimedOut}}<span class="chip danger">{{T "activity.searches.timeout"}}</span>{{end}}
-            {{if .Skipped}}<span class="chip">{{T "activity.searches.skipped"}}</span>{{end}}
-          </div>
-          {{else}}<span class="muted">—</span>{{end}}
-        </td>
-        <td class="app-results">
-          {{range .ResultRows}}<span class="chip">{{.Name}} · {{.Count}}</span>{{else}}<span class="muted">—</span>{{end}}
-        </td>
-        <td>{{.Total}}{{if .Duplicates}}<div class="sub">{{T "activity.searches.duplicates" .Duplicates}}</div>{{end}}</td>
-        <td class="nowrap">{{if .HasDuration}}{{.Duration}}{{else}}<span class="muted">—</span>{{end}}</td>
-        <td class="error-cell">{{if .Error}}<span title="{{.Error}}">{{truncate .Error 90}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
-        <td class="nowrap">{{ago .CreatedAt}}</td>
-      </tr>
+<div class="req-list">
+  <div class="req-head" aria-hidden="true">
+    <span>{{T "activity.searches.when"}}</span>
+    <span>{{T "activity.searches.app"}}</span>
+    <span>{{T "activity.searches.query"}}</span>
+    <span title="{{T "activity.searches.statusHelp"}}">{{T "activity.searches.status"}}</span>
+    <span title="{{T "logs.req.totalHelp"}}">{{T "activity.searches.total"}}</span>
+    <span>{{T "activity.searches.duration"}}</span>
+    <span title="{{T "logs.req.sourcesHelp"}}">{{T "logs.req.sources"}}</span>
+  </div>
+  {{range .Searches}}
+  <details class="req">
+    <summary class="req-sum" title="{{T "logs.req.openHelp"}}">
+      <span class="req-when nowrap" title="{{.CreatedAt.Format "2006-01-02 15:04:05"}}">{{ago .CreatedAt}}</span>
+      <span class="req-app"><strong>{{textOrDash .App}}</strong></span>
+      <span class="req-what"><span class="badge soft" title="{{.Mode}}">{{.What}}</span> {{if .Query}}{{truncate .Query 70}}{{else}}<span class="muted">{{T "logs.req.noQuery"}}</span>{{end}}</span>
+      <span class="req-status">{{if .Error}}<span class="chip danger" title="{{.Error}}">{{T "activity.searches.failed"}}</span>{{else}}<span class="chip ok" title="{{T "activity.searches.okHelp"}}">{{T "activity.searches.ok"}}</span>{{end}}</span>
+      <span class="req-total" title="{{T "logs.req.totalHelp"}}">{{.Total}}{{if .Duplicates}} <span class="sub">{{T "activity.searches.duplicates" .Duplicates}}</span>{{end}}</span>
+      <span class="req-time nowrap">{{if .HasDuration}}{{.Duration}}{{else}}<span class="muted">—</span>{{end}}</span>
+      <span class="req-sources">
+        {{if .InTime}}<span class="chip ok" title="{{T "logs.req.inTimeHelp"}}">{{T "logs.req.inTime" .InTime}}</span>{{end}}
+        {{if .Late}}<span class="chip" title="{{T "logs.live.reason.late"}}">{{T "logs.req.late" .Late}}</span>{{end}}
+        {{if .Queued}}<span class="chip" title="{{T "logs.live.reason.queued"}}">{{T "logs.req.queued" .Queued}}</span>{{end}}
+        {{if .Skipped}}<span class="chip" title="{{T "logs.req.skippedHelp"}}">{{T "logs.req.skipped" .Skipped}}</span>{{end}}
+        {{if .Failed}}<span class="chip danger" title="{{T "logs.req.failedHelp"}}">{{T "logs.req.failed" .Failed}}</span>{{end}}
+        {{if not .Live}}<span class="muted" title="{{T "logs.req.cacheOnlyHelp"}}">{{T "logs.req.cacheOnly"}}</span>{{end}}
+      </span>
+    </summary>
+    <div class="req-body">
+      {{if .Error}}<p class="req-error"><strong>{{T "activity.searches.error"}}:</strong> <span title="{{.Error}}">{{truncate .Error 300}}</span></p>{{end}}
+      {{if .Params}}<p class="sub"><span class="muted">{{T "logs.req.params"}}:</span> <code>{{truncate .Params 300}}</code></p>{{end}}
+      {{if .Indexers}}<p class="sub"><span class="muted">{{T "activity.searches.indexers"}}:</span> {{.Indexers}}</p>{{end}}
+      {{if .Live}}
+      <h4 class="req-sub">{{T "activity.searches.live"}}</h4>
+      <div class="table-scroll">
+        <table class="compact">
+          <thead>
+            <tr>
+              <th scope="col">{{T "logs.req.source"}}</th>
+              <th scope="col" title="{{T "logs.req.stateHelp"}}">{{T "activity.searches.status"}}</th>
+              <th scope="col" title="{{T "logs.req.modeHelp"}}">{{T "logs.req.mode"}}</th>
+              <th scope="col" title="{{T "logs.req.sentHelp"}}">{{T "logs.req.sent"}}</th>
+              <th scope="col">{{T "activity.searches.resultsShort"}}</th>
+              <th scope="col">{{T "activity.searches.duration"}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Live}}
+            <tr>
+              <td><strong>{{.Name}}</strong></td>
+              <td>
+                {{if eq .State "error"}}<span class="chip danger">{{T "logs.req.state.error"}}</span>
+                {{else if eq .State "late"}}<span class="chip" title="{{T "logs.live.reason.late"}}">{{T "activity.searches.timeout"}}</span>
+                {{else if eq .State "queued"}}<span class="chip" title="{{T "logs.live.reason.queued"}}">{{T "logs.req.state.queued"}}</span>
+                {{else if eq .State "skipped"}}<span class="chip" title="{{T "logs.req.skippedHelp"}}">{{T "activity.searches.skipped"}}</span>
+                {{else}}<span class="chip ok">{{T "logs.req.state.ok"}}</span>{{end}}
+                {{if .Reason}}<div class="sub">{{truncate .Reason 160}}</div>{{end}}
+              </td>
+              <td><span class="chip">{{.Mode}}{{if .Fallback}} · {{T "activity.searches.fallback"}}{{end}}</span></td>
+              <td>{{if .Query}}<code>{{truncate .Query 60}}</code>{{else}}<span class="muted">—</span>{{end}}</td>
+              <td>{{.Results}}</td>
+              <td class="nowrap">{{if .Duration}}{{.Duration}}{{else}}<span class="muted">—</span>{{end}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
       {{end}}
-    </tbody>
-  </table>
+      {{if .ResultRows}}
+      <h4 class="req-sub" title="{{T "logs.req.resultsHelp"}}">{{T "activity.searches.results"}}</h4>
+      <p class="app-results">{{range .ResultRows}}<span class="chip">{{.Name}} · {{.Count}}</span> {{end}}</p>
+      {{end}}
+    </div>
+  </details>
+  {{end}}
 </div>
 {{end}}
 

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/engine"
+	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -153,14 +154,40 @@ func (m *Manager) CheckGrab(ctx context.Context, indexerID int64) error {
 	return nil
 }
 
+// Grab delivery kinds, stored in the status column of a grab row.
+const (
+	GrabViaTorrent = "ok"
+	GrabViaMagnet  = "magnet"
+	GrabViaNZB     = "nzb"
+)
+
+type grabViaKey struct{}
+
+// WithGrabVia tells RecordGrab how the grab was delivered.
+func WithGrabVia(ctx context.Context, via string) context.Context {
+	return context.WithValue(ctx, grabViaKey{}, via)
+}
+
+// GrabViaFromContext returns the delivery kind set by WithGrabVia.
+func GrabViaFromContext(ctx context.Context) (string, bool) {
+	via, ok := ctx.Value(grabViaKey{}).(string)
+	return via, ok && via != ""
+}
+
 // RecordGrab appends a grab history row. Callers invoke it only after a
-// download was served successfully.
+// download was served successfully. The app comes from notify.WithApp and the
+// delivery kind from WithGrabVia; a plain torrent is the default.
 func (m *Manager) RecordGrab(ctx context.Context, indexerID int64, releaseID int64, title string) error {
+	status := GrabViaTorrent
+	if via, ok := GrabViaFromContext(ctx); ok {
+		status = via
+	}
 	_, err := m.store.RecordIndexerHistory(ctx, store.IndexerHistory{
 		IndexerID: indexerID,
 		Kind:      "grab",
 		Query:     truncate(title, 300),
-		Status:    "ok",
+		Status:    status,
+		App:       notify.AppFrom(ctx),
 		StartedAt: time.Now(),
 	})
 	if err != nil {

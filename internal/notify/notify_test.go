@@ -66,7 +66,7 @@ func TestTelegram(t *testing.T) {
 	if !strings.Contains(text, "Feed") || !strings.Contains(text, "HTTP 403") {
 		t.Errorf("text = %q", text)
 	}
-	if !strings.Contains(text, "Giro fallito") {
+	if !strings.Contains(text, "L'aggiornamento di Feed non è riuscito") || !strings.Contains(text, "Cosa non va:") {
 		t.Errorf("the Telegram message is not in the interface language: %q", text)
 	}
 	if !strings.Contains(text, "https://idx.example/indexers") {
@@ -102,8 +102,8 @@ func TestEveryEventHasAMessageAndALink(t *testing.T) {
 		want  []string
 	}{
 		{Event{Kind: KindNewReleases, Count: 3, Source: "Site"}, []string{"3", "Site"}},
-		{Event{Kind: KindIndexerState, Source: "Site", Previous: StateOK, Current: StateDegraded}, []string{"Site", "healthy", "degraded"}},
-		{Event{Kind: KindIndexerState, Source: "Site", Previous: StateError, Current: StateOK}, []string{"Site", "error", "healthy"}},
+		{Event{Kind: KindIndexerState, Source: "Site", Previous: StateOK, Current: StateDegraded}, []string{"Site", "only in part", "healthy"}},
+		{Event{Kind: KindIndexerState, Source: "Site", Previous: StateError, Current: StateOK}, []string{"Site", "works again", "error"}},
 		{Event{Kind: KindGrabFailed, Title: "Dune 2021", App: "radarr", Error: "link quarantined"}, []string{"Dune 2021", "radarr", "quarantined"}},
 		{Event{Kind: KindCatalogUpdated, Count: 2}, []string{"2", "Catalog"}},
 		{Event{Kind: KindBackupFailed, Error: "disk full"}, []string{"backup", "disk full"}},

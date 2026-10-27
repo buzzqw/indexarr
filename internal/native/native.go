@@ -20,6 +20,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/backup"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/logtext"
 	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -368,14 +369,17 @@ func (r *Runner) logSummary(outcomes []RunOutcome) {
 		return
 	}
 	var ran, skipped, failed, seen, newCount, updated int
+	var sources, failedSources []string
 	for _, outcome := range outcomes {
 		switch {
 		case outcome.Err != nil:
 			failed++
+			failedSources = append(failedSources, outcomeName(outcome))
 		case outcome.Skipped:
 			skipped++
 		default:
 			ran++
+			sources = append(sources, outcomeName(outcome))
 		}
 		if outcome.Stats != nil {
 			seen += outcome.Stats.Seen
@@ -390,7 +394,25 @@ func (r *Runner) logSummary(outcomes []RunOutcome) {
 		"failed", failed,
 		"seen", seen,
 		"new", newCount,
-		"updated", updated)
+		"updated", updated,
+		"sources", joinNames(sources),
+		"failed_sources", joinNames(failedSources))
+}
+
+func outcomeName(outcome RunOutcome) string {
+	if name := strings.TrimSpace(outcome.Name); name != "" {
+		return name
+	}
+	return outcome.Slug
+}
+
+// joinNames lists at most six names so a large pass keeps a readable line.
+func joinNames(names []string) string {
+	const max = 6
+	if len(names) > max {
+		return strings.Join(names[:max], ", ") + ", …"
+	}
+	return strings.Join(names, ", ")
 }
 
 // RunOnce runs every enabled indexer once, with at most Workers runs in
@@ -915,7 +937,8 @@ func (r *Runner) logOutcome(outcome RunOutcome) {
 		r.logger.Warn("native: indexer run failed",
 			"indexer", outcome.Slug,
 			"indexer_id", outcome.IndexerID,
-			"duration_ms", outcome.Duration.Milliseconds())
+			"duration_ms", outcome.Duration.Milliseconds(),
+			"problem", logtext.ProblemOf(outcome.Err))
 	case outcome.Skipped:
 		r.logger.Debug("native: indexer skipped",
 			"indexer", outcome.Slug,

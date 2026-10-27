@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -15,15 +16,18 @@ import (
 // received from the downstream apps, and the aggregated request statistics.
 type logsSectionPage struct {
 	base
-	Tab      string
-	Internal logsPage
-	Requests *logsRequestsView
-	Stats    *logsStatsView
+	Tab       string
+	Internal  logsPage
+	Requests  *logsRequestsView
+	Stats     *logsStatsView
+	Downloads *logsDownloadsView
 	// TotalRequests and ErrorRequests feed the tab chips; LogLines is the
 	// number of lines currently held by the log buffer.
 	TotalRequests int64
 	ErrorRequests int64
 	LogLines      int
+	// GrabsToday feeds the Download tab chip.
+	GrabsToday int64
 }
 
 // logsRequestsView is the "Richieste" tab: the request counters of a window
@@ -72,11 +76,48 @@ type logsAppRow struct {
 
 // logsIndexerRow is one indexer in the statistics table.
 type logsIndexerRow struct {
+	Name      string
+	Requests  int64
+	InTime    int64
+	Late      int64
+	Skipped   int64
+	Failures  int64
+	Results   int64
+	Avg       string
+	Downloads int64
+}
+
+// logsDownloadsView is the "Download" tab: what the apps actually grabbed,
+// per source and one row per grab.
+type logsDownloadsView struct {
+	Window       string
+	WindowLabel  string
+	Windows      []logsWindowOption
+	Total        int64
+	Torrents     int64
+	Magnets      int64
+	NZBs         int64
+	Sources      []logsGrabSourceRow
+	Grabs        []logsGrabRow
+	Pager        pager
+	ProxyMagnets bool
+}
+
+type logsGrabSourceRow struct {
 	Name     string
-	Requests int64
-	Failures int64
-	Results  int64
-	Avg      string
+	Total    int64
+	Torrents int64
+	Magnets  int64
+	NZBs     int64
+	Share    int
+}
+
+type logsGrabRow struct {
+	At     time.Time
+	App    string
+	Title  string
+	Source string
+	Via    string
 }
 
 // logsWindowOption is one selectable time window in the request views.
@@ -183,7 +224,7 @@ func humanMillis(ms int64) string {
 func (s *Server) logsSection(w http.ResponseWriter, r *http.Request) {
 	tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab")))
 	switch tab {
-	case "requests", "stats":
+	case "requests", "stats", "downloads":
 	default:
 		tab = "internal"
 	}
@@ -194,6 +235,7 @@ func (s *Server) logsSection(w http.ResponseWriter, r *http.Request) {
 	data.TotalRequests, _ = s.store.CountAppSearches(r.Context())
 	data.ErrorRequests, _ = s.store.CountAppSearchesFiltered(r.Context(), true)
 	data.LogLines = s.logs.Len()
+	data.GrabsToday, _ = s.store.CountGrabs(r.Context(), time.Now().Add(-24*time.Hour))
 
 	switch tab {
 	case "requests":
@@ -211,6 +253,13 @@ func (s *Server) logsSection(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data.Stats = view
+	case "downloads":
+		view, err := s.logsDownloads(r)
+		if err != nil {
+			s.renderError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+		data.Downloads = view
 	default:
 		logs := s.logsDataFor(r, "/logs", "internal")
 		logs.base = data.base
@@ -262,7 +311,7 @@ func (s *Server) logsRequests(r *http.Request) (*logsRequestsView, error) {
 	reset.Set("tab", "requests")
 	view.ResetURL = "/logs?" + reset.Encode()
 	for _, search := range searches {
-		view.Searches = append(view.Searches, s.appSearchView(search))
+		view.Searches = append(view.Searches, s.appSearchView(requestLanguage(r), search))
 	}
 	return view, nil
 }
@@ -283,6 +332,14 @@ func (s *Server) logsStats(r *http.Request) (*logsStatsView, error) {
 	if err != nil {
 		return nil, err
 	}
+	grabs, err := s.store.GrabStatsByIndexer(r.Context(), since)
+	if err != nil {
+		return nil, err
+	}
+	grabsByName := make(map[string]int64, len(grabs))
+	for _, grab := range grabs {
+		grabsByName[grab.Name] = grab.Total()
+	}
 	windows, selectedLabel := s.statWindows(r, "stats", window, false)
 	sources, sourcesTotal := s.usefulSources(r, logsUsefulDays)
 
@@ -299,13 +356,32 @@ func (s *Server) logsStats(r *http.Request) (*logsStatsView, error) {
 	}
 	indexerRows := make([]logsIndexerRow, 0, len(indexers))
 	for _, item := range indexers {
+		inTime := item.Requests - item.Late - item.Skipped - item.Failures
+		if inTime < 0 {
+			inTime = 0
+		}
 		indexerRows = append(indexerRows, logsIndexerRow{
-			Name:     item.Name,
-			Requests: item.Requests,
-			Failures: item.Failures,
-			Results:  item.Results,
-			Avg:      humanMillis(item.AvgMS),
+			Name:      item.Name,
+			Requests:  item.Requests,
+			InTime:    inTime,
+			Late:      item.Late,
+			Skipped:   item.Skipped,
+			Failures:  item.Failures,
+			Results:   item.Results,
+			Avg:       humanMillis(item.AvgMS),
+			Downloads: grabsByName[item.Name],
 		})
+	}
+	// A feed-only source never answers a live search but can still feed many
+	// downloads: list it too, it is exactly the one worth keeping.
+	listed := make(map[string]bool, len(indexerRows))
+	for _, row := range indexerRows {
+		listed[row.Name] = true
+	}
+	for _, grab := range grabs {
+		if !listed[grab.Name] {
+			indexerRows = append(indexerRows, logsIndexerRow{Name: grab.Name, Avg: "—", Downloads: grab.Total()})
+		}
 	}
 	return &logsStatsView{
 		Window:        window,
@@ -321,4 +397,79 @@ func (s *Server) logsStats(r *http.Request) (*logsStatsView, error) {
 		UsefulTotal:   sourcesTotal,
 		UsefulDays:    logsUsefulDays,
 	}, nil
+}
+
+const logsGrabPageSize = 50
+
+func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
+	window := normalizeStatWindow(r.URL.Query().Get("window"))
+	since := statSince(window, time.Now())
+	page := intParam(r.URL.Query().Get("page"), 1)
+	if page < 1 {
+		page = 1
+	}
+	offset := (page - 1) * logsGrabPageSize
+
+	stats, err := s.store.GrabStatsByIndexer(r.Context(), since)
+	if err != nil {
+		return nil, err
+	}
+	total, err := s.store.CountGrabs(r.Context(), since)
+	if err != nil {
+		return nil, err
+	}
+	grabs, err := s.store.ListGrabs(r.Context(), since, logsGrabPageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+	settings, err := s.store.LoadSettings(r.Context())
+	if err != nil {
+		return nil, err
+	}
+	windows, selectedLabel := s.statWindows(r, "downloads", window, false)
+	view := &logsDownloadsView{
+		Window:       window,
+		WindowLabel:  selectedLabel,
+		Windows:      windows,
+		Total:        total,
+		Pager:        newPager(r, "/logs", total, logsGrabPageSize, offset),
+		ProxyMagnets: settings.TorznabProxyMagnets,
+	}
+	for _, stat := range stats {
+		view.Torrents += stat.Torrents
+		view.Magnets += stat.Magnets
+		view.NZBs += stat.NZBs
+	}
+	for _, stat := range stats {
+		share := 0
+		if total > 0 {
+			share = int(stat.Total() * 100 / total)
+		}
+		view.Sources = append(view.Sources, logsGrabSourceRow{
+			Name: stat.Name, Total: stat.Total(), Torrents: stat.Torrents,
+			Magnets: stat.Magnets, NZBs: stat.NZBs, Share: share,
+		})
+	}
+	lang := requestLanguage(r)
+	for _, grab := range grabs {
+		view.Grabs = append(view.Grabs, logsGrabRow{
+			At:     grab.At,
+			App:    grab.App,
+			Title:  grab.Title,
+			Source: grab.IndexerName,
+			Via:    grabViaLabel(lang, grab.Via),
+		})
+	}
+	return view, nil
+}
+
+func grabViaLabel(lang i18n.Language, via string) string {
+	switch via {
+	case "magnet":
+		return i18n.T(lang, "logs.dl.viaMagnet")
+	case "nzb":
+		return i18n.T(lang, "logs.dl.viaNZB")
+	default:
+		return i18n.T(lang, "logs.dl.viaTorrent")
+	}
 }

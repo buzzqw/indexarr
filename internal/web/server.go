@@ -278,7 +278,8 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 			// The Logs section embeds the internal log, the requests table and
 			// the statistics panels.
 			files = append(files, "templates/logs.html", "templates/activity_searches.html",
-				"templates/logs_requests.html", "templates/logs_stats.html")
+				"templates/logs_requests.html", "templates/logs_stats.html",
+				"templates/logs_downloads.html")
 		case "indexer":
 			// The detail page embeds the Data tab and the Sonarr/Radarr try form.
 			files = append(files, "templates/indexer_data.html", "templates/indexer_try.html")
@@ -286,6 +287,9 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 			// Settings → Advanced keeps the Definitions table.
 			files = append(files, "templates/settings_definitions.html")
 		}
+		// Every page can show log lines (Logs, Activity, the source detail),
+		// so the shared row template is always parsed.
+		files = append(files, "templates/log_row.html")
 		tmpl := template.New("layout.html").Funcs(funcs)
 		tmpl = template.Must(tmpl.ParseFS(templateFiles, files...))
 		set.pages[name] = tmpl

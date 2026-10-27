@@ -63,6 +63,7 @@
 <section class="panel">
   <div class="panel-head"><h2>{{T "logs.stats.byIndexer"}}</h2><span class="muted">{{.WindowLabel}}</span></div>
   <p class="help">{{T "logs.stats.byIndexerHelp" .IndexerCap}}</p>
+  <p class="help">{{T "logs.stats.columnsHelp"}}</p>
   {{if .Indexers}}
   <div class="table-scroll">
     <table>
@@ -70,8 +71,12 @@
         <tr>
           <th scope="col">{{T "logs.stats.indexer"}}</th>
           <th scope="col" title="{{T "logs.stats.callsHelp"}}">{{T "logs.stats.calls"}}</th>
+          <th scope="col" title="{{T "logs.req.inTimeHelp"}}">{{T "logs.stats.inTime"}}</th>
+          <th scope="col" title="{{T "logs.live.reason.late"}}">{{T "logs.stats.late"}}</th>
+          <th scope="col" title="{{T "logs.req.skippedHelp"}}">{{T "logs.stats.skipped"}}</th>
           <th scope="col" title="{{T "logs.stats.failuresHelp"}}">{{T "logs.stats.failures"}}</th>
           <th scope="col" title="{{T "logs.stats.resultsHelp"}}">{{T "logs.stats.results"}}</th>
+          <th scope="col" title="{{T "logs.stats.downloadsHelp"}}">{{T "logs.stats.downloads"}}</th>
           <th scope="col" title="{{T "logs.requests.avgHelp"}}">{{T "logs.requests.avg"}}</th>
         </tr>
       </thead>
@@ -80,8 +85,12 @@
         <tr>
           <td><strong>{{.Name}}</strong></td>
           <td>{{.Requests}}</td>
+          <td>{{.InTime}}</td>
+          <td class="muted">{{.Late}}</td>
+          <td class="muted">{{.Skipped}}</td>
           <td>{{if .Failures}}<span class="chip danger">{{.Failures}}</span>{{else}}0{{end}}</td>
           <td>{{.Results}}</td>
+          <td>{{if .Downloads}}<strong>{{.Downloads}}</strong>{{else}}<span class="muted">0</span>{{end}}</td>
           <td class="nowrap">{{.Avg}}</td>
         </tr>
         {{end}}

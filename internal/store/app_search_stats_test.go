@@ -84,7 +84,8 @@ func TestAppSearchStatsAndFilters(t *testing.T) {
 	if got := byName["1337x"]; got.Requests != 2 || got.Failures != 0 || got.Results != 11 {
 		t.Errorf("1337x = %+v", got)
 	}
-	if got := byName["TorrentLeech"]; got.Requests != 2 || got.Failures != 2 {
+	// One real error and one late answer: the late one is not a failure.
+	if got := byName["TorrentLeech"]; got.Requests != 2 || got.Failures != 1 || got.Late != 1 {
 		t.Errorf("TorrentLeech = %+v", got)
 	}
 

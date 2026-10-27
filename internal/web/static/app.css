@@ -826,6 +826,16 @@ input[readonly] { background: var(--surface-2); }
 }
 .log-attrs { margin-top: 0.15rem; color: var(--muted); font-size: 0.75rem; }
 .log-attr { margin-right: 0.75rem; overflow-wrap: anywhere; }
+.log-sentence { color: var(--text); }
+.log-problem, .log-advice, .log-error { margin-top: 0.2rem; font-size: 0.78rem; overflow-wrap: anywhere; }
+.log-row.log-warn .log-problem strong { color: var(--warn); }
+.log-row.log-error .log-problem strong { color: var(--danger); }
+.log-advice { color: var(--muted); }
+.log-error code { font-size: 0.72rem; }
+.log-details { margin-top: 0.2rem; }
+.log-details summary { cursor: pointer; color: var(--muted); font-size: 0.72rem; }
+.log-details .log-attrs { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; }
+.log-details .log-attr { margin-right: 0; }
 
 @media (max-width: 700px) {
   .log-row { grid-template-columns: 1fr auto; gap: 0.15rem 0.6rem; }
@@ -1922,3 +1932,30 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 .useful-count { color: var(--muted); font-size: 0.82rem; }
 .useful-track { height: 0.55rem; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .useful-bar { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+
+/* Requests list: one compact line per request, the detail opens on click. */
+.req-list { display: flex; flex-direction: column; }
+.req-head, .req-sum {
+  display: grid;
+  grid-template-columns: 6.5rem 6rem minmax(0, 2.4fr) 5rem 5.5rem 4.5rem minmax(0, 2fr);
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.45rem 0.9rem;
+}
+.req-head { color: var(--muted); font-size: 0.72rem; font-weight: 700; border-bottom: 1px solid var(--border); }
+.req { border-bottom: 1px solid var(--border); }
+.req:last-child { border-bottom: 0; }
+.req-sum { cursor: pointer; list-style: none; font-size: 0.84rem; }
+.req-sum::-webkit-details-marker { display: none; }
+.req[open] > .req-sum { background: var(--surface-2); }
+.req-what { overflow-wrap: anywhere; }
+.req-sources { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.req-body { padding: 0.4rem 0.9rem 0.8rem; font-size: 0.82rem; }
+.req-sub { margin: 0.6rem 0 0.3rem; font-size: 0.78rem; }
+.req-error { color: var(--danger); overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .req-head { display: none; }
+  .req-sum { grid-template-columns: 1fr 1fr; }
+  .req-what, .req-sources { grid-column: 1 / -1; }
+}
+table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; }

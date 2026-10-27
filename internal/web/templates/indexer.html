@@ -106,14 +106,7 @@
     {{if .AppLog}}
     <div class="health-applog">
       {{range .AppLog}}
-      <div class="log-row">
-        <time class="log-time" datetime="{{.Time.Format "2006-01-02T15:04:05Z07:00"}}">{{.Time.Format "2006-01-02 15:04:05"}}</time>
-        <span class="log-level {{.LevelClass}}">{{.LevelName}}</span>
-        <div class="log-body">
-          <div class="log-msg">{{if .Component}}<span class="log-tag">{{.Component}}</span>{{end}}{{if .Source}}<span class="log-tag">{{.Source}}</span>{{end}}{{.Message}}</div>
-          {{if .Attrs}}<div class="log-attrs">{{range .Attrs}}<span class="log-attr"><code>{{.Key}}</code>={{.Value}}</span>{{end}}</div>{{end}}
-        </div>
-      </div>
+      {{template "log_row" .}}
       {{end}}
     </div>
     {{else}}

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/i18n"
+	"github.com/buzzqw/indexarr/internal/logtext"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -221,22 +222,25 @@ func Message(event Event) string {
 }
 
 // MessageFor builds the short, localized message of one event. baseURL is the
-// public address of indexarr; when it is empty no link is appended.
+// public address of indexarr; when it is empty no link is appended. The first
+// line says what happened in plain words; an error adds what went wrong and
+// what to do, and keeps the technical text short at the end.
 func MessageFor(event Event, lang i18n.Language, baseURL string) string {
 	var b strings.Builder
 	switch event.Kind {
 	case KindNewReleases:
 		if event.Source != "" {
-			b.WriteString(i18n.T(lang, "notify.newReleasesFrom", event.Count, event.Source))
+			b.WriteString(i18n.T(lang, "notify.msg.newReleasesFrom", event.Source, event.Count))
 		} else {
-			b.WriteString(i18n.T(lang, "notify.newReleases", event.Count))
+			b.WriteString(i18n.T(lang, "notify.msg.newReleases", event.Count))
 		}
 	case KindIndexerState:
 		from := stateLabel(lang, event.Previous)
-		to := stateLabel(lang, event.Current)
-		b.WriteString(i18n.T(lang, "notify.indexerState", event.Source, from, to))
-		if event.Error != "" {
-			b.WriteString("\n" + event.Error)
+		switch strings.ToLower(strings.TrimSpace(event.Current)) {
+		case StateOK, StateError, StateBlocked, StateDegraded, StateDisabled:
+			b.WriteString(i18n.T(lang, "notify.msg.state."+strings.ToLower(strings.TrimSpace(event.Current)), event.Source, from))
+		default:
+			b.WriteString(i18n.T(lang, "notify.msg.state.other", event.Source, from, stateLabel(lang, event.Current)))
 		}
 	case KindGrabFailed:
 		title := event.Title
@@ -244,45 +248,50 @@ func MessageFor(event Event, lang i18n.Language, baseURL string) string {
 			title = event.Source
 		}
 		if event.App != "" {
-			b.WriteString(i18n.T(lang, "notify.grabFailedApp", title, event.App))
+			b.WriteString(i18n.T(lang, "notify.msg.grabFailedApp", event.App, title))
 		} else {
-			b.WriteString(i18n.T(lang, "notify.grabFailed", title))
-		}
-		if event.Error != "" {
-			b.WriteString("\n" + event.Error)
+			b.WriteString(i18n.T(lang, "notify.msg.grabFailed", title))
 		}
 	case KindCatalogUpdated:
-		b.WriteString(i18n.T(lang, "notify.catalogUpdated", event.Count))
+		b.WriteString(i18n.T(lang, "notify.msg.catalogUpdated", event.Count))
 	case KindBackupFailed:
-		b.WriteString(i18n.T(lang, "notify.backupFailed"))
-		if event.Error != "" {
-			b.WriteString("\n" + event.Error)
-		}
+		b.WriteString(i18n.T(lang, "notify.msg.backupFailed"))
 	case KindTest:
-		b.WriteString(i18n.T(lang, "notify.test"))
+		b.WriteString(i18n.T(lang, "notify.msg.test"))
 	case KindIndexerDisabled:
-		b.WriteString(i18n.T(lang, "notify.indexerDisabled", event.Source))
-		if event.Error != "" {
-			b.WriteString("\n" + event.Error)
-		}
+		b.WriteString(i18n.T(lang, "notify.msg.indexerDisabled", event.Source))
 	case KindRunFailed:
-		b.WriteString(i18n.T(lang, "notify.runFailed", event.Source))
-		if event.Error != "" {
-			b.WriteString("\n" + event.Error)
-		}
+		b.WriteString(i18n.T(lang, "notify.msg.runFailed", event.Source))
 	default:
 		b.WriteString("indexarr: " + event.Kind)
+	}
+	if event.Error != "" && event.Kind != KindTest {
+		writeProblem(&b, lang, event.Error)
 	}
 	for _, title := range event.Titles {
 		if strings.TrimSpace(title) == "" {
 			continue
 		}
-		b.WriteString("\n- " + title)
+		b.WriteString("\n• " + title)
 	}
 	if link := eventLink(baseURL, event.Path); link != "" {
-		b.WriteString("\n" + link)
+		b.WriteString("\n" + i18n.T(lang, "notify.open", link))
 	}
 	return b.String()
+}
+
+// writeProblem explains a raw error: a known problem gets a sentence and a
+// suggested action, and the original text follows, shortened, for reference.
+func writeProblem(b *strings.Builder, lang i18n.Language, raw string) {
+	if code := logtext.Problem(raw); code != "" {
+		b.WriteString("\n" + i18n.T(lang, "notify.problem", i18n.T(lang, "logs.problem."+code)))
+		b.WriteString("\n" + i18n.T(lang, "notify.advice", i18n.T(lang, "logs.advice."+code)))
+	}
+	detail := strings.TrimSpace(raw)
+	if runes := []rune(detail); len(runes) > 200 {
+		detail = string(runes[:200]) + "…"
+	}
+	b.WriteString("\n" + i18n.T(lang, "notify.detail", detail))
 }
 
 func stateLabel(lang i18n.Language, state string) string {

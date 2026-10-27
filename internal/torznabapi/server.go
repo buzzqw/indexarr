@@ -1017,13 +1017,31 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 	case ".torrent":
 		usenet = false
 	}
-	body, contentType, filename, payloadErr := s.releasePayload(notify.WithApp(r.Context(), appFromRequest(r)), release, usenet)
+	ctx := notify.WithApp(r.Context(), appFromRequest(r))
+	body, contentType, filename, payloadErr := s.releasePayload(ctx, release, usenet)
 	if payloadErr != nil {
 		s.writeDownloadError(w, payloadErr)
 		return
 	}
-	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(string(body))), "magnet:") {
-		http.Redirect(w, r, strings.TrimSpace(string(body)), http.StatusFound)
+	magnet := ""
+	if trimmed := strings.TrimSpace(string(body)); strings.HasPrefix(strings.ToLower(trimmed), "magnet:") {
+		magnet = trimmed
+	} else if len(body) == 0 && !usenet && strings.HasPrefix(strings.ToLower(release.Magnet), "magnet:") {
+		// A magnet-only release: the client asked the download link instead of
+		// the magneturl attribute. Answering 404 "use the magnet link" made
+		// every such grab fail; the redirect is what Sonarr, Radarr and other
+		// clients follow.
+		magnet = release.Magnet
+	}
+	if magnet != "" {
+		grabIndexerID, ok := s.admitGrab(w, r, release)
+		if !ok {
+			return
+		}
+		http.Redirect(w, r, magnet, http.StatusFound)
+		if r.Method != http.MethodHead {
+			s.finishGrab(ctx, grabIndexerID, release, indexer.GrabViaMagnet)
+		}
 		return
 	}
 	if len(body) == 0 {
@@ -1035,24 +1053,9 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		return
 	}
 
-	// A grab is a payload delivery: resolve the indexer that supplied the
-	// release and apply its daily grab budget before writing anything.
-	var grabIndexerID int64
-	if s.grabCheck != nil || s.grabRecord != nil {
-		indexer, found, err := s.store.IndexerForRelease(r.Context(), release.ID)
-		if err != nil {
-			s.log.Warn("torznab: resolve grab indexer", "component", "indexarr",
-				"subsystem", "torznab", "release_id", release.ID)
-		} else if found {
-			grabIndexerID = indexer.ID
-			if s.grabCheck != nil {
-				if err := s.grabCheck(r.Context(), indexer.ID); err != nil {
-					w.Header().Set("Retry-After", "3600")
-					s.writeError(w, http.StatusTooManyRequests, "grab limit reached")
-					return
-				}
-			}
-		}
+	grabIndexerID, ok := s.admitGrab(w, r, release)
+	if !ok {
+		return
 	}
 
 	if strings.TrimSpace(contentType) == "" {
@@ -1080,17 +1083,53 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		s.log.Debug("torznab: write payload", "error", err)
 		return
 	}
-	// A served payload is a download: stored-source retention protects it.
-	markCtx := context.WithoutCancel(r.Context())
-	if err := s.store.MarkReleaseDownloaded(markCtx, release.ID); err != nil {
+	via := indexer.GrabViaTorrent
+	if usenet {
+		via = indexer.GrabViaNZB
+	}
+	s.finishGrab(ctx, grabIndexerID, release, via)
+}
+
+// admitGrab resolves the indexer that supplied the release and applies its
+// daily grab budget before anything is written. A grab is a payload delivery
+// or a magnet redirect. It returns false when the response was already
+// written (limit reached).
+func (s *Server) admitGrab(w http.ResponseWriter, r *http.Request, release store.Release) (int64, bool) {
+	if s.grabCheck == nil && s.grabRecord == nil {
+		return 0, true
+	}
+	found, ok, err := s.store.IndexerForRelease(r.Context(), release.ID)
+	if err != nil {
+		s.log.Warn("torznab: resolve grab indexer", "component", "indexarr",
+			"subsystem", "torznab", "release_id", release.ID)
+		return 0, true
+	}
+	if !ok {
+		return 0, true
+	}
+	if s.grabCheck != nil {
+		if err := s.grabCheck(r.Context(), found.ID); err != nil {
+			w.Header().Set("Retry-After", "3600")
+			s.writeError(w, http.StatusTooManyRequests, "grab limit reached")
+			return 0, false
+		}
+	}
+	return found.ID, true
+}
+
+// finishGrab marks the release as downloaded (stored-source retention keeps
+// it) and records the grab with the app and the delivery kind, so the Logs
+// section can say which source actually fed a download.
+func (s *Server) finishGrab(ctx context.Context, indexerID int64, release store.Release, via string) {
+	ctx = context.WithoutCancel(ctx)
+	if err := s.store.MarkReleaseDownloaded(ctx, release.ID); err != nil {
 		s.log.Warn("torznab: mark downloaded", "component", "indexarr",
 			"subsystem", "torznab", "release_id", release.ID, "error", err)
 	}
-	if grabIndexerID > 0 && s.grabRecord != nil {
-		recordCtx := context.WithoutCancel(r.Context())
-		if err := s.grabRecord(recordCtx, grabIndexerID, release.ID, release.Title); err != nil {
+	if indexerID > 0 && s.grabRecord != nil {
+		if err := s.grabRecord(indexer.WithGrabVia(ctx, via), indexerID, release.ID, release.Title); err != nil {
 			s.log.Warn("torznab: record grab", "component", "indexarr",
-				"subsystem", "torznab", "indexer_id", grabIndexerID,
+				"subsystem", "torznab", "indexer_id", indexerID,
 				"release_id", release.ID)
 		}
 	}
@@ -1522,6 +1561,10 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 		// Newznab clients grab through the same proxy; the resolver fetches an
 		// opaque reference on first use.
 		link = base + "/dl/" + id + ".nzb?apikey=" + key
+	case release.Magnet != "" && settings != nil && settings.TorznabProxyMagnets:
+		// The grab goes through /dl, which redirects to the magnet and records
+		// the download.
+		link = base + "/dl/" + id + ".torrent?apikey=" + key
 	case release.Magnet != "":
 		link = release.Magnet
 	case provenance.HasDownloadRef:
@@ -1610,7 +1653,7 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 	if release.InfoHash != "" {
 		writeAttr(b, "infohash", release.InfoHash)
 	}
-	if !usenet && release.Magnet != "" {
+	if !usenet && release.Magnet != "" && (settings == nil || !settings.TorznabProxyMagnets) {
 		writeAttr(b, "magneturl", release.Magnet)
 	}
 	if usenet {

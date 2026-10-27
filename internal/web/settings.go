@@ -476,6 +476,7 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			return false
 		}
 		in.TorznabLiveSearch = r.FormValue("torznab_live_search") != ""
+		in.TorznabProxyMagnets = r.FormValue("torznab_proxy_magnets") != ""
 		if in.TorznabLiveTimeout, parseErr = s.formInt(r, "torznab_live_timeout_seconds", 20, 5, 120); parseErr != nil {
 			renderInvalid(parseErr.Error())
 			return false

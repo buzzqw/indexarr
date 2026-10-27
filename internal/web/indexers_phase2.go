@@ -19,7 +19,6 @@ import (
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
-	"github.com/buzzqw/indexarr/internal/logbuffer"
 	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/smartfeed"
 	"github.com/buzzqw/indexarr/internal/store"
@@ -2713,7 +2712,7 @@ type indexerDetailView struct {
 	ProblemAt      time.Time
 	HasProblemAt   bool
 	LogRows        []indexerLogRow
-	AppLog         []logbuffer.Entry
+	AppLog         []logView
 	RunsLink       string
 	AppLogLink     string
 	AccessFields   []indexerAccessRow
@@ -2903,7 +2902,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		}
 	}
 	data.LogRows = indexerLogRows(history, 8)
-	data.AppLog = s.indexerAppLog(in, 10)
+	data.AppLog = logViews(requestLanguage(r), s.indexerAppLog(in, 10), map[string]string{strings.ToLower(in.Slug): in.Name})
 	runsValues := url.Values{}
 	runsValues.Set("tab", "runs")
 	runsValues.Set("indexer", strconv.FormatInt(in.ID, 10))
