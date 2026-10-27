@@ -517,6 +517,20 @@ func (c *DefinitionConnector) fetchDetailsDownload(ctx context.Context, target *
 // fetchDetailsPage issues the GET for a details page and applies the same
 // redirect and status rules as every other download request.
 func (c *DefinitionConnector) fetchDetailsPage(ctx context.Context, target *url.URL) (*Response, error) {
+	stamp := c.session.loginStamp()
+	response, err := c.fetchDetailsPageOnce(ctx, target)
+	if err != nil || !c.sessionLost(response) {
+		return response, err
+	}
+	// The site dropped the session (auth.logged_in is missing): log in again
+	// once and read the page again instead of returning a page without links.
+	if err := c.reLoginAfter(ctx, stamp); err != nil {
+		return nil, err
+	}
+	return c.fetchDetailsPageOnce(ctx, target)
+}
+
+func (c *DefinitionConnector) fetchDetailsPageOnce(ctx context.Context, target *url.URL) (*Response, error) {
 	request, err := c.newRequest(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return nil, errors.New("download: build details request failed")

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/buzzqw/indexarr/internal/engine"
@@ -133,5 +134,68 @@ func TestDDUnlimitedTorrentFallback(t *testing.T) {
 	}
 	if strings.Contains(items[0].DownloadURL, ".torrent") {
 		t.Errorf("the .torrent should not win over the magnet: %+v", items[0])
+	}
+}
+
+// The forum keeps one session per account: a login from another browser drops
+// ours, and a topic then answers 200 as a guest page without links. The
+// logout marker (auth.logged_in) is missing, so the engine logs in once more
+// and reads the topic again instead of losing every result.
+func TestDDUnlimitedLogsInAgainWhenTheForumDropsTheSession(t *testing.T) {
+	var logins, guestPages atomic.Int32
+	dropped := atomic.Bool{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ucp.php":
+			if r.Method == http.MethodPost {
+				if logins.Add(1) == 1 {
+					// Another browser logs in with the same account right after.
+					dropped.Store(true)
+				} else {
+					dropped.Store(false)
+				}
+				serveFile(t, w, "ddunlimited/login-ok.html")
+				return
+			}
+			serveFile(t, w, "ddunlimited/login.html")
+		case "/viewtopic.php":
+			switch r.URL.Query().Get("t") {
+			case "61463", "3941485":
+				serveFile(t, w, "ddunlimited/index.html")
+			default:
+				if dropped.Load() {
+					guestPages.Add(1)
+					_, _ = w.Write([]byte(`<html><body><p>Devi essere registrato per vedere i link.</p></body></html>`))
+					return
+				}
+				serveFile(t, w, "ddunlimited/topic.html")
+			}
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	def := parseDefinition(t, "ddunlimited")
+	def.Session = nil
+	def.Meta.URLs[0] = server.URL + "/"
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"username": "synthetic-user", "password": "synthetic-password"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	items, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch, Query: "bones", Limit: 1})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 3 || items[0].Ed2k == "" {
+		t.Fatalf("items = %d (%+v), want the three eD2k files after a new login", len(items), items)
+	}
+	if logins.Load() != 2 || guestPages.Load() != 1 {
+		t.Errorf("logins = %d, guest pages = %d; want 2 and 1", logins.Load(), guestPages.Load())
 	}
 }

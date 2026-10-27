@@ -268,6 +268,12 @@ func validateAuth(auth *Auth, add func(string, ...any)) {
 		}
 	}
 
+	if auth.LoggedIn != nil && auth.LoggedIn.Selector == "" {
+		// A status alone cannot tell a logged-out page: the forum answers 200
+		// either way.
+		add("auth.logged_in: needs a selector")
+	}
+
 	if auth.RefreshAfter < 0 {
 		add("auth.refresh_after: must not be negative")
 	}

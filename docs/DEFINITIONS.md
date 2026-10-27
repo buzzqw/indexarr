@@ -216,6 +216,20 @@ auth:
 riusa la sessione per 6 ore. Con `form`/`cookie` il login avviene in modo lazy e
 viene ripetuto su `401`/`403` una volta per ricerca.
 
+`logged_in` (facoltativo, vuole un `selector`) è un segno presente in ogni pagina
+di un utente autenticato, di solito il link di logout. Serve ai forum che tengono
+una sola sessione per account: se lo stesso account entra da un altro browser,
+la sessione di indexarr cade e la pagina di dettaglio risponde `200` come ospite,
+senza link. Quando una pagina di dettaglio non contiene il segno, il motore rifà
+il login una volta e rilegge la pagina; due pagine lette in parallelo che trovano
+la sessione caduta costano un solo login.
+
+```yaml
+auth:
+  success: { selector: 'a[href*="mode=logout"]' }
+  logged_in: { selector: 'a[href*="mode=logout"]' }
+```
+
 ### `steps`
 
 Ogni passo ha **`get` oppure `post`** (mai entrambi) e può avere:

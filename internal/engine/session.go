@@ -177,6 +177,13 @@ func (s *Session) markLoggedIn(now time.Time) {
 	s.mu.Unlock()
 }
 
+// loginStamp is the time of the current login, zero when logged out.
+func (s *Session) loginStamp() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.loginAt
+}
+
 func (s *Session) invalidate() {
 	s.mu.Lock()
 	s.loggedIn = false

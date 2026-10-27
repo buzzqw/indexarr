@@ -183,6 +183,14 @@ func TestAuthValidation(t *testing.T) {
 `,
 			fragment: "auth.failure[0]:",
 		},
+		{
+			name: "logged_in without selector",
+			extra: `auth:
+  strategy: form
+  logged_in: { status: 200 }
+`,
+			fragment: "auth.logged_in: needs a selector",
+		},
 	}
 
 	for _, tc := range cases {

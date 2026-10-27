@@ -1200,6 +1200,32 @@ func (c *DefinitionConnector) forceReLogin(ctx context.Context) error {
 	return c.loginLocked(ctx)
 }
 
+// reLoginAfter logs in again unless another request already did it after
+// stamp (the login time seen before the failed page). Two topic pages read in
+// parallel that both find the session gone cost one login, not two.
+func (c *DefinitionConnector) reLoginAfter(ctx context.Context, stamp time.Time) error {
+	if !c.needsLogin() {
+		return nil
+	}
+	c.authMu.Lock()
+	defer c.authMu.Unlock()
+	if current := c.session.loginStamp(); !current.IsZero() && current.After(stamp) {
+		return nil
+	}
+	c.session.invalidate()
+	return c.loginLocked(ctx)
+}
+
+// sessionLost reports whether an authenticated page came back without the
+// definition's auth.logged_in marker.
+func (c *DefinitionConnector) sessionLost(response *Response) bool {
+	if c.def.Auth == nil || c.def.Auth.LoggedIn == nil || !c.needsLogin() || response == nil {
+		return false
+	}
+	present, err := conditionMatches(*c.def.Auth.LoggedIn, response)
+	return err == nil && !present
+}
+
 func (c *DefinitionConnector) loginLocked(ctx context.Context) error {
 	auth := c.def.Auth
 	if auth == nil || len(auth.Steps) == 0 {

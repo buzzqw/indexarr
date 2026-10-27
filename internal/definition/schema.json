@@ -272,6 +272,10 @@
         "success": {
           "$ref": "#/$defs/condition"
         },
+        "logged_in": {
+          "$ref": "#/$defs/condition",
+          "description": "Marker present on every authenticated page (for example the logout link). A details page without it means the site dropped the session: the engine logs in again once and reads the page again."
+        },
         "failure": {
           "type": "array",
           "items": {

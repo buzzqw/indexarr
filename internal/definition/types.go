@@ -206,6 +206,13 @@ type Auth struct {
 	Success      *Condition  `yaml:"success,omitempty" json:"success,omitempty"`
 	Failure      []Condition `yaml:"failure,omitempty" json:"failure,omitempty"`
 	RefreshAfter Duration    `yaml:"refresh_after,omitempty" json:"refresh_after,omitempty"`
+	// LoggedIn is a marker every authenticated page carries (a logout link).
+	// When a details page lacks it, the site dropped the session — a forum
+	// that keeps one session per account does it when the same account logs
+	// in elsewhere — and the engine logs in again once and reads the page
+	// again. Without it such a page answers 200 with no links and every
+	// result is lost until refresh_after.
+	LoggedIn *Condition `yaml:"logged_in,omitempty" json:"logged_in,omitempty"`
 }
 
 // Session selects a persistent browser session for every request of an

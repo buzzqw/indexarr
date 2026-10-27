@@ -104,6 +104,11 @@ auth:
   # The index page is public and looks the same when logged in; ucp.php is
   # protected, so the logout link is the proof that the login worked.
   success: { selector: 'a[href*="mode=logout"]' }
+  # The forum keeps one session per account: a login from another browser
+  # drops this one, and a topic then answers 200 without links. Every page of
+  # a logged-in user carries the logout link, so a topic without it triggers
+  # one new login and a second read.
+  logged_in: { selector: 'a[href*="mode=logout"]' }
   failure:
     - { selector: "div.error", message: text }
   refresh_after: 6h
