@@ -1,6 +1,6 @@
 package catalog_test
 
-// Offline checks for the three anime definitions added after WP18 group 1.
+// Offline checks for three Chinese anime definitions (Mikan, Bangumi Moe, ACGNX).
 // They run the real engine against the cleaned fixtures.
 
 import (

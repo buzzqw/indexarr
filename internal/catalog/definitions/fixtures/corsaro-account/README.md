@@ -22,5 +22,5 @@ Synthetic fixtures, built from the observed listing markup:
 - `login-failed.html` — login page with a `div.error` message.
 
 The live login page asks for a reCAPTCHA. No automated login was attempted and
-no credentials are stored here. The definition stays "in prova" until the
-coordinator verifies it with a real account.
+no credentials are stored here. The definition stays "in prova" until it is
+verified with a real account.

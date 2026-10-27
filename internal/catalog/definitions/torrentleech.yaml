@@ -11,7 +11,7 @@
 #   href="/download/<fid>/<filename>.torrent".
 # Search results and the release page fixtures are synthetic and keep the
 # observed shape; see fixtures/torrentleech/README.md. State is "bozza" until
-# the coordinator verifies login, search and a grab with an account.
+# login, search and a grab are verified with an account.
 schema: 1
 
 meta:

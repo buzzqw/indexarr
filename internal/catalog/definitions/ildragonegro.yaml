@@ -8,8 +8,8 @@
 # supported login path is a pasted session cookie (auth.strategy cookie): the
 # phpBB form_token/sid flow is fragile and cannot be verified without an
 # account. A desktop browser User-Agent is sent explicitly: the site redirects
-# the default client to the index page. State stays "bozza" until the
-# coordinator verifies it with an account.
+# the default client to the index page. State stays "bozza" until it is
+# verified with an account.
 schema: 1
 
 meta:

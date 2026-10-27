@@ -1,6 +1,6 @@
 package catalog_test
 
-// Offline checks for the definitions added in WP18 phase 2, group 1. They run
+// Offline checks for the definitions for anime and general public trackers. They run
 // the real engine (or the native RSS family) against the cleaned fixtures, so
 // a selector or parser change that no longer matches the captured pages fails
 // here instead of in production.

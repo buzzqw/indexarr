@@ -1098,7 +1098,7 @@ pre.yaml {
   * { transition: none !important; animation: none !important; }
 }
 
-/* WP14 fase 1b — V1: the skip link is only visible when focused. */
+/* The skip link is only visible when focused. */
 .skip {
   position: fixed;
   top: -4rem;
@@ -1120,7 +1120,7 @@ pre.yaml {
   outline-offset: 2px;
 }
 
-/* WP14 fase 1b — V6: keep the release table inside its container. */
+/* Keep the release table inside its container. */
 .releases-table { width: 100%; table-layout: fixed; }
 .releases-table th,
 .releases-table td { white-space: nowrap; }
@@ -1149,7 +1149,7 @@ pre.yaml {
 .releases-table .release-title-link { white-space: normal; overflow-wrap: anywhere; }
 .releases-table .release-meta { color: var(--muted); font-size: 0.75rem; }
 
-/* WP14 fase 1b — V8: masked secrets with explicit reveal/copy. */
+/* Masked secrets with explicit reveal/copy. */
 .secret-field { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 .secret-field input { flex: 1 1 18rem; min-width: 10rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .secret-field .btn { flex: 0 0 auto; }
@@ -1157,7 +1157,7 @@ pre.yaml {
 .secret-ready { margin: 0.35rem 0 0; color: var(--accent); font-weight: 600; }
 button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progress; }
 
-/* WP14 fase 1b — compact language selector in the sidebar footer. */
+/* Compact language selector in the sidebar footer. */
 .lang-menu { position: relative; margin-top: 0.15rem; }
 .lang-menu > summary {
   cursor: pointer;
@@ -1198,7 +1198,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
   .releases-table th, .releases-table td { white-space: normal; }
 }
 
-/* WP14 fase 2 — shared status, problem, advanced, empty and next-step
+/* Shared status, problem, advanced, empty and next-step
    components (UI-GUIDE §5). */
 .status-dot {
   display: inline-flex;
@@ -1583,7 +1583,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
   white-space: nowrap;
 }
 
-/* WP17: run chart, completeness, sample and try panels. */
+/* Run chart, completeness, sample and try panels. */
 .chart-wrap {
   padding: 0.5rem 1.1rem 0.2rem;
   overflow: hidden;
@@ -1718,7 +1718,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 }
 .chart-tick { fill: var(--border); }
 
-/* WP14 fase 3 — six-item shell, Home, Settings sections and setup wizard. */
+/* Sidebar shell, Home, Settings sections and setup wizard. */
 .nav-badge {
   display: inline-flex;
   align-items: center;

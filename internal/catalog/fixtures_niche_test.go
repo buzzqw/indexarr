@@ -1,6 +1,6 @@
 package catalog_test
 
-// Offline checks for the definitions added in WP18 phase 2, group 3. They run
+// Offline checks for the definitions for niche sites (anime, audiobooks, archives, software). They run
 // the real engine against the cleaned fixtures, so a selector change that no
 // longer matches the captured pages fails here instead of in production.
 

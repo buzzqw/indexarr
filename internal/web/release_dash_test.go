@@ -14,7 +14,7 @@ import (
 func TestReleaseUnknownValuesUseDash(t *testing.T) {
 	env := newTestEnv(t)
 	release := store.Release{
-		DedupKey:    "wp1b-unknown",
+		DedupKey:    "dash-unknown",
 		Title:       "Unknown Metadata Release",
 		SearchTitle: store.NormalizeSearch("Unknown Metadata Release"),
 		Size:        0,

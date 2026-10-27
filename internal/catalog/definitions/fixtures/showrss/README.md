@@ -12,5 +12,5 @@ Cleaning applied before saving:
 
 The personal showRSS feed (`https://showrss.info/user/<id>.rss`) embeds the
 user's id and is therefore not stored here. The definition's `url` setting
-lets the coordinator paste the personal feed; the fixture and the default
+lets the user paste the personal feed; the fixture and the default
 setting use the public per-show feed.

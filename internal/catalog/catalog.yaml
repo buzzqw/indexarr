@@ -87,7 +87,7 @@ definitions:
     state: verificata
     author: indexarr
     usage: 1
-    note: "Enabled in the coordinator production instance on 2026-10-23."
+    note: "Enabled in the production instance on 2026-10-23."
 
   - id: knaben-search
     file: definitions/knaben-search.yaml
@@ -99,35 +99,35 @@ definitions:
     state: bozza
     author: indexarr
     usage: 1
-    note: "Enabled in the coordinator production instance on 2026-10-23."
+    note: "Enabled in the production instance on 2026-10-23."
 
   - id: torrentleech-rss
     file: definitions/torrentleech-rss.yaml
     state: bozza
     author: indexarr
     usage: 1
-    note: "Enabled in the coordinator production instance on 2026-10-23."
+    note: "Enabled in the production instance on 2026-10-23."
 
   - id: torrentgalaxyclone
     file: definitions/torrentgalaxyclone.yaml
     state: verificata
     author: indexarr
     usage: 1
-    note: "Enabled in the coordinator production instance on 2026-10-23."
+    note: "Enabled in the production instance on 2026-10-23."
 
   - id: limetorrents
     file: definitions/limetorrents.yaml
     state: verificata
     author: indexarr
     usage: 1
-    note: "Enabled in the coordinator production instance on 2026-10-23."
+    note: "Enabled in the production instance on 2026-10-23."
 
   - id: thepiratebay
     file: definitions/thepiratebay.yaml
     state: verificata
     author: indexarr
     usage: 1
-    note: "Enabled in the coordinator production instance on 2026-10-23."
+    note: "Enabled in the production instance on 2026-10-23."
 
   - id: torrentscsv
     file: definitions/torrentscsv.yaml
@@ -139,7 +139,7 @@ definitions:
     state: verificata
     author: indexarr
     usage: 1
-    note: "Enabled in the coordinator production instance on 2026-10-23."
+    note: "Enabled in the production instance on 2026-10-23."
 
   - id: corsaro-account
     file: definitions/corsaro-account.yaml
@@ -172,7 +172,7 @@ definitions:
     state: verificata
     author: indexarr
     usage: 1
-    note: "Enabled in the coordinator production instance on 2026-10-23."
+    note: "Enabled in the production instance on 2026-10-23."
 
   - id: animetosho
     file: definitions/animetosho.yaml

@@ -187,7 +187,7 @@ func (s *Store) migrate() error {
 		return err
 	}
 	// Migration 3 removes the legacy sources path from databases created before
-	// WP16. Fresh databases already have the final schema.
+	// the native-only schema. Fresh databases already have the final schema.
 	if err := s.applyMigration(context.Background(), indexarr2DropLegacyVersion,
 		"drop legacy sources", s.dropLegacySources); err != nil {
 		return err
@@ -570,7 +570,7 @@ func (s *Store) analyzeNewIndexes(names ...string) error {
 	return nil
 }
 
-// dropLegacySources migrates a pre-WP16 database to the native-only schema.
+// dropLegacySources migrates an older database to the native-only schema.
 // The production database is disposable, so cached releases and run history
 // that depend on the legacy model are dropped rather than converted. A fresh
 // database has none of these objects and the migration is a no-op.

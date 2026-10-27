@@ -173,7 +173,7 @@ func TestActivityMigrationFromPreviousSchema(t *testing.T) {
 		t.Fatalf("Close first: %v", err)
 	}
 
-	// Rewind to the schema before WP17: keep a history row to prove the
+	// Rewind to the schema before the history metrics: keep a history row to prove the
 	// migration is additive, then remove the new tables and its version row.
 	raw, err := sql.Open("sqlite", "file:"+dsnPath(path))
 	if err != nil {

@@ -251,7 +251,7 @@ func TestTorrentGalaxyUploaderResolvesMagnet(t *testing.T) {
 	}
 }
 
-// TestTorrentGalaxyNativeFields verifies the fields the UI needs from the WP7
+// TestTorrentGalaxyNativeFields verifies the fields the UI needs from the native
 // fixture. The listing has size and seeders/leechers cells; it has no category
 // column, so the definition cannot map one without inventing data. That absence
 // is documented in torrentgalaxy.yaml and the fixture README.
@@ -536,7 +536,7 @@ func TestCatalogVerifiedDefinitionsExist(t *testing.T) {
 	}
 	for _, id := range []string{"torrentleech", "torrentleech-rss", "corsaro-account", "ildragonegro"} {
 		if states[id] != "bozza" {
-			t.Errorf("%s: state = %q, want bozza (needs the coordinator's credentials)", id, states[id])
+			t.Errorf("%s: state = %q, want bozza (needs an account to verify)", id, states[id])
 		}
 	}
 }

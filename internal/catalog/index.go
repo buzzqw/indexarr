@@ -54,7 +54,7 @@ type IndexEntry struct {
 	// torrenttrader, xbtit, torznab, custom). It is empty when the metadata
 	// does not support a claim.
 	Family string `json:"family,omitempty"`
-	// Italian marks the coordinator's Italian priority list, independently of
+	// Italian marks the Italian priority list, independently of
 	// the site language. It drives the quick "Italiani" filter.
 	Italian bool `json:"italian,omitempty"`
 	// Usage is the observed manager-configuration count. The UI can sort by it

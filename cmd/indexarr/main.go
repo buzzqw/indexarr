@@ -356,7 +356,7 @@ func main() {
 	}
 
 	// The catalog health job checks the configured sites every six hours and
-	// keeps the definition states in sync with the WP17 history.
+	// keeps the definition states in sync with the indexer history.
 	var healthChecker *health.Checker
 	if indexerManager != nil {
 		healthChecker, err = health.New(health.Config{

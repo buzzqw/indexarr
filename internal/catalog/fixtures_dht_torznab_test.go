@@ -1,6 +1,6 @@
 package catalog_test
 
-// Offline checks for the definitions added in WP18 phase 2, group 2. They run
+// Offline checks for the definitions for DHT search engines and Torznab sites. They run
 // the real engine (definition interpreter or family connector) against the
 // cleaned fixtures, so a selector or regex change that no longer matches the
 // captured pages fails here instead of in production.

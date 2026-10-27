@@ -30,7 +30,7 @@ func networkForm(t *testing.T, body string) string {
 
 var submitButton = regexp.MustCompile(`(?s)<button\b[^>]*type="submit"[^>]*>(.*?)</button>`)
 
-// TestNetworkFormSavesBeforeItTests guards the coordinator's report: pressing
+// TestNetworkFormSavesBeforeItTests guards a reported bug: pressing
 // Enter in the FlareSolverr URL must run the normal Save, never the test.
 func TestNetworkFormSavesBeforeItTests(t *testing.T) {
 	env := newTestEnv(t)

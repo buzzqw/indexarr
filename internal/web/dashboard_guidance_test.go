@@ -197,7 +197,7 @@ var templateKeyAction = regexp.MustCompile(`\bT\s+"([^"]+)"`)
 var templateToken = regexp.MustCompile(`\p{L}+`)
 var handlerKeyPattern = regexp.MustCompile(`(?:translate|newBaseT)\(r, "([^"]+)"`)
 
-// TestOwnedTemplatesUseCatalog guards U9 for the pages owned by WP14 phase 1:
+// TestOwnedTemplatesUseCatalog guards U9 for the dashboard, indexer and settings pages:
 // every T key exists in the English catalog and no user-visible literal text is
 // left in the template outside it. Technical identifiers are explicitly allowed.
 func TestOwnedTemplatesUseCatalog(t *testing.T) {

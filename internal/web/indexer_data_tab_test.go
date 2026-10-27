@@ -15,19 +15,19 @@ import (
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
-func seedWP17Indexer(t *testing.T, env *testEnv, slug, name string) int64 {
+func seedDataIndexer(t *testing.T, env *testEnv, slug, name string) int64 {
 	t.Helper()
 	ctx := context.Background()
 	if err := env.store.UpsertDefinition(ctx, store.Definition{
-		ID: "wp17-def", SchemaVersion: 1, Family: "torznab", State: "verificata",
+		ID: "data-tab-def", SchemaVersion: 1, Family: "torznab", State: "verificata",
 		Origin: "local", Author: "test",
-		Body: "schema: 1\nconnector: torznab\nmeta:\n  id: wp17-def\n  name: WP17\n  protocol: torrent\n",
+		Body: "schema: 1\nconnector: torznab\nmeta:\n  id: data-tab-def\n  name: Data tab\n  protocol: torrent\n",
 		Hash: strings.Repeat("a", 64),
 	}); err != nil {
 		t.Fatalf("UpsertDefinition: %v", err)
 	}
 	id, err := env.store.CreateIndexer(ctx, store.Indexer{
-		DefinitionID: "wp17-def",
+		DefinitionID: "data-tab-def",
 		Protocol:     "torrent",
 		Slug:         slug,
 		Name:         name,
@@ -41,7 +41,7 @@ func seedWP17Indexer(t *testing.T, env *testEnv, slug, name string) int64 {
 	return id
 }
 
-func seedWP17Release(t *testing.T, env *testEnv, indexerID int64, key, title string, seen time.Time, seeders int64) store.Release {
+func seedDataRelease(t *testing.T, env *testEnv, indexerID int64, key, title string, seen time.Time, seeders int64) store.Release {
 	t.Helper()
 	release := store.Release{
 		DedupKey:    key,
@@ -70,7 +70,7 @@ func seedWP17Release(t *testing.T, env *testEnv, indexerID int64, key, title str
 
 func TestIndexerDataTabShowsMetricsCompletenessAndRedactedSample(t *testing.T) {
 	env := newTestEnv(t)
-	indexerID := seedWP17Indexer(t, env, "data-indexer", "Data Indexer")
+	indexerID := seedDataIndexer(t, env, "data-indexer", "Data Indexer")
 	ctx := context.Background()
 	now := time.Now()
 
@@ -153,8 +153,8 @@ func TestIndexerDataTabShowsMetricsCompletenessAndRedactedSample(t *testing.T) {
 
 func TestTryAsAppRendersTheSameXMLAsAPI(t *testing.T) {
 	env := newTestEnv(t)
-	indexerID := seedWP17Indexer(t, env, "try-web", "Try Web")
-	seedWP17Release(t, env, indexerID, "try-web-release", "Try Show S01E01 1080p", time.Now().Add(-time.Hour), 30)
+	indexerID := seedDataIndexer(t, env, "try-web", "Try Web")
+	seedDataRelease(t, env, indexerID, "try-web-release", "Try Show S01E01 1080p", time.Now().Add(-time.Hour), 30)
 
 	query := url.Values{
 		"try": {"1"}, "mode": {"tvsearch"}, "q": {"Try Show"},
@@ -196,12 +196,12 @@ func TestTryAsAppRendersTheSameXMLAsAPI(t *testing.T) {
 
 func TestActivityFeedAndSearchesPages(t *testing.T) {
 	env := newTestEnv(t)
-	indexerID := seedWP17Indexer(t, env, "feed-one", "Feed One")
+	indexerID := seedDataIndexer(t, env, "feed-one", "Feed One")
 	ctx := context.Background()
 	base := time.Now().Add(-2 * time.Hour)
 
 	for i := 0; i < 51; i++ {
-		seedWP17Release(t, env, indexerID,
+		seedDataRelease(t, env, indexerID,
 			"feed-"+strconv.Itoa(i),
 			"Feed Release "+strconv.Itoa(i),
 			base.Add(time.Duration(i)*time.Minute), int64(i))
@@ -341,7 +341,7 @@ func TestDataAndActivityTabsAreTranslatedInEveryLanguage(t *testing.T) {
 	}
 
 	env := newTestEnv(t)
-	indexerID := seedWP17Indexer(t, env, "translated", "Translated")
+	indexerID := seedDataIndexer(t, env, "translated", "Translated")
 	path := "/indexers/" + strconv.FormatInt(indexerID, 10) + "?tab=data&lang=it"
 	page := get(t, env.handler, path).Body.String()
 	for _, want := range []string{"Dati", "Completezza dei campi", "Ultimo campione"} {

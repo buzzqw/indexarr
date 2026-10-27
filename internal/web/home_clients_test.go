@@ -13,7 +13,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
-func seedBlockCDefinition(t *testing.T, env *testEnv, id string) {
+func seedHomeDefinition(t *testing.T, env *testEnv, id string) {
 	t.Helper()
 	if err := env.store.UpsertDefinition(context.Background(), store.Definition{
 		ID: id, SchemaVersion: 1, Family: "torznab", State: "verificata",
@@ -27,7 +27,7 @@ func seedBlockCDefinition(t *testing.T, env *testEnv, id string) {
 func seedBrokenIndexer(t *testing.T, env *testEnv, slug, message string) int64 {
 	t.Helper()
 	ctx := context.Background()
-	seedBlockCDefinition(t, env, slug+"-def")
+	seedHomeDefinition(t, env, slug+"-def")
 	id, err := env.store.CreateIndexer(ctx, store.Indexer{
 		DefinitionID: slug + "-def", Protocol: "torrent", Slug: slug,
 		Name: slug, Enabled: true, ConfigJSON: `{}`,

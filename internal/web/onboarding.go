@@ -10,7 +10,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
-// setupSite is one quick-add row of the first-run wizard. It reuses the WP19
+// setupSite is one quick-add row of the first-run wizard. It reuses the
 // catalog index and the existing /indexers/catalog/add handler.
 type setupSite struct {
 	ID       string

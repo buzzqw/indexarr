@@ -12,7 +12,7 @@ import (
 
 // TestProductionCopyHasNoFalseAlarms is the §1.1 acceptance check. It runs
 // against a read-only copy of the real production database when it is present
-// (developer machine and the coordinator's checkout); CI skips it.
+// (the developer machine); CI skips it.
 func TestProductionCopyHasNoFalseAlarms(t *testing.T) {
 	source := filepath.Join("..", "..", "data", "indexarr.db")
 	if _, err := os.Stat(source); err != nil {

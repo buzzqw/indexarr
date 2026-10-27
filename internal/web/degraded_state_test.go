@@ -12,7 +12,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
-func newWP9Env(t *testing.T) *testEnv {
+func newHealthEnv(t *testing.T) *testEnv {
 	t.Helper()
 	env := newTestEnv(t)
 	svc, err := indexersvc.New(indexersvc.Config{Store: env.store})
@@ -23,7 +23,7 @@ func newWP9Env(t *testing.T) *testEnv {
 	return env
 }
 
-func recordWP9Run(t *testing.T, env *testEnv, indexerID int64, started time.Time, metrics *store.RunMetrics) {
+func recordHealthRun(t *testing.T, env *testEnv, indexerID int64, started time.Time, metrics *store.RunMetrics) {
 	t.Helper()
 	if _, err := env.store.RecordIndexerHistory(context.Background(), store.IndexerHistory{
 		IndexerID: indexerID, Kind: "run", Status: "ok",
@@ -34,10 +34,10 @@ func recordWP9Run(t *testing.T, env *testEnv, indexerID int64, started time.Time
 }
 
 func TestDegradedStateComesFromTheSameModelEverywhere(t *testing.T) {
-	env := newWP9Env(t)
-	indexerID := seedWP17Indexer(t, env, "wp9-low", "WP9 Low")
+	env := newHealthEnv(t)
+	indexerID := seedDataIndexer(t, env, "health-low", "Health Low")
 	now := time.Now()
-	recordWP9Run(t, env, indexerID, now.Add(-time.Hour), &store.RunMetrics{
+	recordHealthRun(t, env, indexerID, now.Add(-time.Hour), &store.RunMetrics{
 		Seen: 10, ItemsNew: 10,
 		FieldTotal: 10, FieldSize: 10, FieldSeeders: 1,
 		FieldCategory: 10, FieldDate: 10, FieldHash: 10,
@@ -70,11 +70,11 @@ func TestDegradedStateComesFromTheSameModelEverywhere(t *testing.T) {
 }
 
 func TestRepeatedZeroResultsDegradeTheSite(t *testing.T) {
-	env := newWP9Env(t)
-	indexerID := seedWP17Indexer(t, env, "wp9-empty", "WP9 Empty")
+	env := newHealthEnv(t)
+	indexerID := seedDataIndexer(t, env, "health-empty", "Health Empty")
 	now := time.Now()
 	for i := 0; i < 3; i++ {
-		recordWP9Run(t, env, indexerID, now.Add(-time.Duration(i+1)*time.Hour), &store.RunMetrics{
+		recordHealthRun(t, env, indexerID, now.Add(-time.Duration(i+1)*time.Hour), &store.RunMetrics{
 			Seen: 0, FieldTotal: 0,
 		})
 	}
@@ -89,8 +89,8 @@ func TestRepeatedZeroResultsDegradeTheSite(t *testing.T) {
 }
 
 func TestRepeatedFailuresDegradeTheSite(t *testing.T) {
-	env := newWP9Env(t)
-	indexerID := seedWP17Indexer(t, env, "wp9-errors", "WP9 Errors")
+	env := newHealthEnv(t)
+	indexerID := seedDataIndexer(t, env, "health-errors", "Health Errors")
 	now := time.Now()
 	for i := 0; i < 3; i++ {
 		if _, err := env.store.RecordIndexerHistory(context.Background(), store.IndexerHistory{
@@ -119,8 +119,8 @@ func TestRepeatedFailuresDegradeTheSite(t *testing.T) {
 }
 
 func TestDisabledIndexerIsNotAProblem(t *testing.T) {
-	env := newWP9Env(t)
-	indexerID := seedWP17Indexer(t, env, "wp9-disabled", "WP9 Disabled")
+	env := newHealthEnv(t)
+	indexerID := seedDataIndexer(t, env, "health-disabled", "Health Disabled")
 	in, err := env.store.GetIndexer(context.Background(), indexerID)
 	if err != nil {
 		t.Fatal(err)
@@ -145,9 +145,9 @@ func TestDisabledIndexerIsNotAProblem(t *testing.T) {
 }
 
 func TestDegradedPageUsesTheRequestedLanguage(t *testing.T) {
-	env := newWP9Env(t)
-	indexerID := seedWP17Indexer(t, env, "wp9-it", "WP9 IT")
-	recordWP9Run(t, env, indexerID, time.Now().Add(-time.Hour), &store.RunMetrics{
+	env := newHealthEnv(t)
+	indexerID := seedDataIndexer(t, env, "health-it", "Health IT")
+	recordHealthRun(t, env, indexerID, time.Now().Add(-time.Hour), &store.RunMetrics{
 		Seen: 10, FieldTotal: 10, FieldSize: 10, FieldSeeders: 1,
 		FieldCategory: 10, FieldDate: 10, FieldHash: 10,
 	})

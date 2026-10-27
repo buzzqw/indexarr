@@ -22,4 +22,4 @@ Synthetic fixtures, built from standard phpBB markup:
 Guest search is refused by the live site, so no real search page could be
 captured without an account. The site redirects the default client to the
 index page; the definition sends a desktop browser User-Agent. The state stays
-"in prova" until the coordinator verifies it with credentials.
+"in prova" until it is verified with credentials.

@@ -47,7 +47,7 @@ type ChallengeSolver interface {
 }
 
 // ChallengeDetected reports whether resp is a Cloudflare browser check. Only
-// 403 and 503 are considered, as documented by the work package; a 200 page
+// 403 and 503 are considered (Cloudflare's challenge statuses); a 200 page
 // that merely mentions Cloudflare is not a challenge.
 func ChallengeDetected(resp *Response) bool {
 	if resp == nil {

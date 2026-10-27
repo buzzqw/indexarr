@@ -1,6 +1,6 @@
 package catalog_test
 
-// Offline checks for the definitions added in WP18 phase 1. They run the real
+// Offline checks for the definitions for the classic public trackers. They run the real
 // engine against the cleaned fixtures, so a selector change that no longer
 // matches the captured pages fails here instead of in production.
 

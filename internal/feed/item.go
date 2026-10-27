@@ -426,8 +426,8 @@ func RedactURLForDisplay(raw string) string {
 }
 
 // RedactURL returns a URL that is safe to show in logs or the UI: embedded
-// userinfo, the query and long secret-like path segments are removed. WP14 can
-// use it for the source list without exposing rsskeys.
+// userinfo, the query and long secret-like path segments are removed. The
+// source list uses it without exposing rsskeys.
 func RedactURL(raw string) string {
 	parsed, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil {

@@ -1,8 +1,8 @@
 // Package health implements the catalog health model and the periodic
 // self-check job.
 //
-// The model is deliberately pure: Assess turns the recent history that WP17
-// already records into one state, and NextState applies the catalog
+// The model is deliberately pure: Assess turns the recent indexer history that is
+// already recorded into one state, and NextState applies the catalog
 // transitions. The Home page, the sidebar badge, the indexer list and the
 // indexer detail all call the same functions, so a site cannot look healthy in
 // one place and degraded in another.
@@ -55,7 +55,7 @@ const (
 	defaultHealthRun = 6 * time.Hour
 )
 
-// Thresholds configures when a site is degraded. The defaults follow WP9:
+// Thresholds configures when a site is degraded. The defaults are:
 // three failures or three empty answers in a row, and any required field
 // missing from more than half of the items.
 type Thresholds struct {
@@ -199,7 +199,7 @@ func healthKind(kind string) bool {
 	}
 }
 
-// Assess computes the state from the WP17 history. The result is the single
+// Assess computes the state from the indexer history. The result is the single
 // status source of the UI and of the catalog transition job.
 func Assess(in Input, thresholds Thresholds) Assessment {
 	thresholds = thresholds.normalized()

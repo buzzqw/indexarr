@@ -19,8 +19,8 @@ type HealthResult struct {
 }
 
 // Health runs the definition's health.query through the cached connector and
-// records a history row of kind "health". It is the query used by the WP9
-// periodic job, not a scheduled run: it does not write releases.
+// records a history row of kind "health". It is the query used by the
+// periodic health job, not a scheduled run: it does not write releases.
 func (m *Manager) Health(ctx context.Context, indexerID int64) (HealthResult, error) {
 	started := time.Now()
 	stats := &RunStats{}

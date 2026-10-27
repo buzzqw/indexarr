@@ -6,7 +6,7 @@ Public capture on 2026-10-23:
 
 - `login.html` — `https://www.torrentleech.org/`
 
-Capture on 2026-10-26 with the coordinator's account (values then replaced with
+Capture on 2026-10-26 with a real account (values then replaced with
 placeholders, keeping the observed shape):
 
 - the browse endpoint answers **JSON** and not the HTML table used by the
@@ -33,4 +33,4 @@ The RSS fixtures are unchanged:
 phase: a logout link and a `div.alert-danger` respectively.
 
 Both the login+search definition and the RSS definition stay "in prova" until
-the coordinator verifies login, search and a grab with an account.
+login, search and a grab are verified with an account.
