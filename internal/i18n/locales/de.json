@@ -2393,5 +2393,11 @@
   "notify.problem": "Was ist passiert: %s",
   "notify.advice": "Was tun: %s",
   "notify.detail": "Technisches Detail: %s",
-  "notify.open": "In indexarr öffnen: %s"
+  "notify.open": "In indexarr öffnen: %s",
+  "settings.cleanup.resetStats": "Statistiken zurücksetzen",
+  "settings.cleanup.resetStatsTitle": "Löscht die Anfragen der Apps, die Suchzählungen pro Quelle und die Downloads, damit die Statistiken wieder bei null beginnen",
+  "settings.resetStatsConfirm": "Alle Statistiken zurücksetzen? Die Registerkarten Anfragen und Downloads sowie die Zählungen pro Quelle beginnen wieder bei null. Quellen, Releases und Einstellungen bleiben unverändert.",
+  "maintenance.help.resetStats": "Verwende es, wenn die Zahlen verzerrt sind, zum Beispiel nachdem eine App viel mehr Anfragen als üblich gesendet hat. Es löscht die App-Anfragen, die Suchen pro Quelle und die Downloads; geplante Läufe, Zustandsverlauf, Quellen und Releases bleiben.",
+  "maintenance.statsReset": "Statistiken zurückgesetzt: %d App-Anfragen und %d Quelleneinträge entfernt",
+  "logs.stats.resetHelp": "Wenn diese Zahlen verzerrt sind (eine App, die viel mehr Anfragen als üblich gesendet hat, irrtümlich gezählte Downloads), kannst du sie unter Wartung zurücksetzen und neu zählen."
 }

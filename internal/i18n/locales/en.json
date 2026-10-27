@@ -2393,5 +2393,11 @@
   "notify.problem": "What went wrong: %s",
   "notify.advice": "What to do: %s",
   "notify.detail": "Technical detail: %s",
-  "notify.open": "Open in indexarr: %s"
+  "notify.open": "Open in indexarr: %s",
+  "settings.cleanup.resetStats": "Reset statistics",
+  "settings.cleanup.resetStatsTitle": "Clears the requests from the apps, the per-source search counts and the downloads, so the statistics start again from zero",
+  "settings.resetStatsConfirm": "Reset all statistics? The Requests and Downloads tabs and the per-source counts start again from zero. Sources, releases and settings are not touched.",
+  "maintenance.help.resetStats": "Use it when the numbers are skewed, for example after an app sent far more requests than usual. It clears the app requests, the per-source searches and the downloads; scheduled runs, health history, sources and releases stay.",
+  "maintenance.statsReset": "Statistics reset: %d app requests and %d source records removed",
+  "logs.stats.resetHelp": "If these numbers are skewed (an app that sent far more requests than usual, downloads counted by mistake), you can reset them from Maintenance and start counting again."
 }

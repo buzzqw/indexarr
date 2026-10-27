@@ -2393,5 +2393,11 @@
   "notify.problem": "Ce qui ne va pas : %s",
   "notify.advice": "Que faire : %s",
   "notify.detail": "Détail technique : %s",
-  "notify.open": "Ouvrir dans indexarr : %s"
+  "notify.open": "Ouvrir dans indexarr : %s",
+  "settings.cleanup.resetStats": "Réinitialiser les statistiques",
+  "settings.cleanup.resetStatsTitle": "Efface les requêtes des applications, les comptages de recherches par source et les téléchargements, pour que les statistiques repartent de zéro",
+  "settings.resetStatsConfirm": "Réinitialiser toutes les statistiques ? Les onglets Requêtes et Téléchargements et les comptages par source repartent de zéro. Les sources, releases et réglages ne sont pas touchés.",
+  "maintenance.help.resetStats": "Utilisez-le quand les chiffres sont faussés, par exemple après qu'une application a envoyé beaucoup plus de requêtes que d'habitude. Il efface les requêtes des applications, les recherches par source et les téléchargements ; les mises à jour planifiées, l'historique d'état, les sources et les releases restent.",
+  "maintenance.statsReset": "Statistiques réinitialisées : %d requêtes d'applications et %d enregistrements de sources supprimés",
+  "logs.stats.resetHelp": "Si ces chiffres sont faussés (une application qui a envoyé beaucoup plus de requêtes que d'habitude, des téléchargements comptés par erreur), vous pouvez les réinitialiser depuis Maintenance et recommencer à compter."
 }

@@ -2393,5 +2393,11 @@
   "notify.problem": "问题所在：%s",
   "notify.advice": "怎么办：%s",
   "notify.detail": "技术细节：%s",
-  "notify.open": "在 indexarr 中打开：%s"
+  "notify.open": "在 indexarr 中打开：%s",
+  "settings.cleanup.resetStats": "重置统计",
+  "settings.cleanup.resetStatsTitle": "清除应用的请求、各来源的搜索计数和下载记录，让统计从零重新开始",
+  "settings.resetStatsConfirm": "要重置所有统计吗？“请求”和“下载”页以及各来源的计数将从零开始。来源、发布和设置不受影响。",
+  "maintenance.help.resetStats": "当数字失真时使用，例如某个应用发送的请求远多于平时。它会清除应用请求、各来源的搜索和下载记录；计划更新、状态历史、来源和发布都会保留。",
+  "maintenance.statsReset": "统计已重置：删除了 %d 条应用请求和 %d 条来源记录",
+  "logs.stats.resetHelp": "如果这些数字失真（某个应用发送的请求远多于平时，或下载被误计），可以在“维护”中重置并重新开始计数。"
 }

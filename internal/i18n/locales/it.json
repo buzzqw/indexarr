@@ -2393,5 +2393,11 @@
   "notify.problem": "Cosa non va: %s",
   "notify.advice": "Cosa fare: %s",
   "notify.detail": "Dettaglio tecnico: %s",
-  "notify.open": "Apri in indexarr: %s"
+  "notify.open": "Apri in indexarr: %s",
+  "settings.cleanup.resetStats": "Azzera statistiche",
+  "settings.cleanup.resetStatsTitle": "Cancella le richieste delle app, i conteggi delle ricerche per fonte e i download, così le statistiche ripartono da zero",
+  "settings.resetStatsConfirm": "Azzerare tutte le statistiche? Le schede Richieste e Download e i conteggi per fonte ripartono da zero. Fonti, release e impostazioni non vengono toccate.",
+  "maintenance.help.resetStats": "Usalo quando i numeri sono falsati, per esempio dopo che un'app ha mandato molte più richieste del solito. Cancella le richieste delle app, le ricerche per fonte e i download; restano gli aggiornamenti automatici, la cronologia dello stato, le fonti e le release.",
+  "maintenance.statsReset": "Statistiche azzerate: rimosse %d richieste delle app e %d registrazioni delle fonti",
+  "logs.stats.resetHelp": "Se questi numeri sono falsati (un'app che ha mandato molte più richieste del solito, download contati per errore), puoi azzerarli da Manutenzione e ricominciare a contare."
 }

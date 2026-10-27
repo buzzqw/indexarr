@@ -2393,5 +2393,11 @@
   "notify.problem": "Co poszło nie tak: %s",
   "notify.advice": "Co zrobić: %s",
   "notify.detail": "Szczegół techniczny: %s",
-  "notify.open": "Otwórz w indexarr: %s"
+  "notify.open": "Otwórz w indexarr: %s",
+  "settings.cleanup.resetStats": "Wyzeruj statystyki",
+  "settings.cleanup.resetStatsTitle": "Usuwa żądania aplikacji, liczniki wyszukiwań dla każdego źródła i pobrania, aby statystyki zaczęły się od zera",
+  "settings.resetStatsConfirm": "Wyzerować wszystkie statystyki? Karty Żądania i Pobrania oraz liczniki źródeł zaczną się od zera. Źródła, wydania i ustawienia pozostają bez zmian.",
+  "maintenance.help.resetStats": "Użyj, gdy liczby są zafałszowane, na przykład gdy aplikacja wysłała znacznie więcej żądań niż zwykle. Usuwa żądania aplikacji, wyszukiwania dla źródeł i pobrania; zaplanowane aktualizacje, historia stanu, źródła i wydania pozostają.",
+  "maintenance.statsReset": "Statystyki wyzerowane: usunięto żądania aplikacji (%d) i wpisy źródeł (%d)",
+  "logs.stats.resetHelp": "Jeśli te liczby są zafałszowane (aplikacja wysłała znacznie więcej żądań niż zwykle, pobrania policzone przez pomyłkę), możesz je wyzerować w Konserwacji i zacząć liczyć od nowa."
 }

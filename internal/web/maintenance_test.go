@@ -191,3 +191,47 @@ func TestMaintenanceRejectsInvalidCleanupInput(t *testing.T) {
 		}
 	}
 }
+
+// Reset statistics clears the app requests and the search, download and grab
+// rows of the source history; runs, health and tests stay.
+func TestMaintenanceResetStatsKeepsRunsAndHealth(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	db := env.store.DB()
+	if _, err := db.ExecContext(ctx, `INSERT INTO app_searches(app, mode, query, created_at) VALUES ('gextto', 'search', 'Show', 1), ('sonarr', 'tvsearch', 'Other', 2)`); err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"search", "grab", "download", "run", "health", "test"} {
+		if _, err := db.ExecContext(ctx, `INSERT INTO indexer_history(kind, status, started_at) VALUES (?, 'ok', 1)`, kind); err != nil {
+			t.Fatal(err)
+		}
+	}
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=maintenance")
+	recorder := postForm(t, env.handler, "/maintenance", url.Values{"csrf": {token}, "action": {"reset_stats"}}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var searches int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM app_searches`).Scan(&searches); err != nil {
+		t.Fatal(err)
+	}
+	if searches != 0 {
+		t.Errorf("app requests after reset = %d", searches)
+	}
+	rows, err := db.QueryContext(ctx, `SELECT kind FROM indexer_history ORDER BY kind`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var kept []string
+	for rows.Next() {
+		var kind string
+		if err := rows.Scan(&kind); err != nil {
+			t.Fatal(err)
+		}
+		kept = append(kept, kind)
+	}
+	if strings.Join(kept, ",") != "health,run,test" {
+		t.Errorf("history kept = %v, want health, run, test", kept)
+	}
+}

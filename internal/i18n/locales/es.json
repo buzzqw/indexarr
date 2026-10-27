@@ -2393,5 +2393,11 @@
   "notify.problem": "Qué falló: %s",
   "notify.advice": "Qué hacer: %s",
   "notify.detail": "Detalle técnico: %s",
-  "notify.open": "Abrir en indexarr: %s"
+  "notify.open": "Abrir en indexarr: %s",
+  "settings.cleanup.resetStats": "Restablecer estadísticas",
+  "settings.cleanup.resetStatsTitle": "Borra las peticiones de las aplicaciones, los recuentos de búsquedas por fuente y las descargas, para que las estadísticas vuelvan a empezar desde cero",
+  "settings.resetStatsConfirm": "¿Restablecer todas las estadísticas? Las pestañas Peticiones y Descargas y los recuentos por fuente vuelven a empezar desde cero. Las fuentes, releases y ajustes no se tocan.",
+  "maintenance.help.resetStats": "Úsalo cuando los números estén distorsionados, por ejemplo después de que una aplicación haya enviado muchas más peticiones de lo normal. Borra las peticiones de las aplicaciones, las búsquedas por fuente y las descargas; se conservan las actualizaciones programadas, el historial de estado, las fuentes y las releases.",
+  "maintenance.statsReset": "Estadísticas restablecidas: se eliminaron %d peticiones de aplicaciones y %d registros de fuentes",
+  "logs.stats.resetHelp": "Si estos números están distorsionados (una aplicación que envió muchas más peticiones de lo normal, descargas contadas por error), puedes restablecerlos desde Mantenimiento y empezar a contar de nuevo."
 }

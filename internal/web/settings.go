@@ -1063,6 +1063,14 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 		}
 		redirect(w, r, "/settings?section=maintenance",
 			s.translate(r, "maintenance.clearedRunsDays", removed, days), "")
+	case "reset_stats":
+		reset, err := s.store.ResetUsageStats(ctx)
+		if err != nil {
+			redirect(w, r, "/settings?section=maintenance", "", err.Error())
+			return
+		}
+		redirect(w, r, "/settings?section=maintenance",
+			s.translate(r, "maintenance.statsReset", reset.Searches, reset.History), "")
 	case "reset_api_usage":
 		removed, err := s.store.ResetAPIUsage(ctx)
 		if err != nil {

@@ -59,7 +59,7 @@ func TestLegacyPagesRenderAllLanguages(t *testing.T) {
 
 func TestMaintenanceFormsHaveHelp(t *testing.T) {
 	env := newTestEnv(t)
-	actions := []string{"integrity", "quick_check", "foreign_keys", "vacuum", "optimize", "checkpoint", "analyze", "reindex", "reset_errors", "dedupe", "clear_torrents", "prune", "purge_days", "purge_indexer", "purge_no_links", "purge_hidden", "clear_runs", "clear_runs_days", "reset_api_usage", "delete_all"}
+	actions := []string{"integrity", "quick_check", "foreign_keys", "vacuum", "optimize", "checkpoint", "analyze", "reindex", "reset_errors", "dedupe", "clear_torrents", "prune", "purge_days", "purge_indexer", "purge_no_links", "purge_hidden", "clear_runs", "clear_runs_days", "reset_stats", "reset_api_usage", "delete_all"}
 	for _, lang := range []string{"en", "it", "de", "fr", "es", "pl", "zh"} {
 		body := get(t, env.handler, "/settings?section=maintenance&lang="+lang).Body.String()
 		for _, action := range actions {

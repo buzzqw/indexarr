@@ -228,6 +228,43 @@ func (s *Store) DeleteHiddenReleases(ctx context.Context) (int64, error) {
 	return removed, nil
 }
 
+// StatsReset counts what ResetUsageStats removed.
+type StatsReset struct {
+	Searches int64 // app requests (Requests tab, per-app statistics)
+	History  int64 // source searches, downloads and .torrent fetches
+}
+
+// ResetUsageStats clears the usage statistics: the app requests and the
+// search, download and grab rows of the source history, with their metrics.
+// Scheduled runs, health history, tests, sources, releases and settings stay.
+func (s *Store) ResetUsageStats(ctx context.Context) (StatsReset, error) {
+	var out StatsReset
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return out, fmt.Errorf("reset statistics: %w", err)
+	}
+	defer tx.Rollback()
+	const kinds = `kind IN ('search', 'grab', 'download')`
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM indexer_history_metrics WHERE history_id IN (SELECT id FROM indexer_history WHERE `+kinds+`)`); err != nil {
+		return out, fmt.Errorf("reset statistics: %w", err)
+	}
+	res, err := tx.ExecContext(ctx, `DELETE FROM indexer_history WHERE `+kinds)
+	if err != nil {
+		return out, fmt.Errorf("reset statistics: %w", err)
+	}
+	out.History, _ = res.RowsAffected()
+	res, err = tx.ExecContext(ctx, `DELETE FROM app_searches`)
+	if err != nil {
+		return out, fmt.Errorf("reset statistics: %w", err)
+	}
+	out.Searches, _ = res.RowsAffected()
+	if err := tx.Commit(); err != nil {
+		return out, fmt.Errorf("reset statistics: %w", err)
+	}
+	return out, nil
+}
+
 // ResetAPIUsage clears the per-key request counters and last-used timestamps.
 func (s *Store) ResetAPIUsage(ctx context.Context) (int64, error) {
 	res, err := s.db.ExecContext(ctx,
