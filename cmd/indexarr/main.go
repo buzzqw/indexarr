@@ -288,6 +288,11 @@ func main() {
 		logger.Error("native indexer runtime disabled", "error", err)
 		indexerManager = nil
 	}
+	if indexerManager != nil {
+		// Close browser sessions nobody uses: a Cloudflare-protected indexer
+		// queried once would otherwise keep a Chromium alive for hours.
+		go indexerManager.StartSessionSweeper(ctx)
+	}
 
 	indexerService, err := indexersvc.New(indexersvc.Config{
 		Store: st, Vault: secretVault, Manager: indexerManager,
@@ -444,6 +449,13 @@ func main() {
 	}
 	if healthChecker != nil {
 		healthChecker.Wait()
+	}
+	// Close the FlareSolverr browsers owned by the cached connectors. A
+	// stopped indexarr must not leave Chromium running behind it.
+	if indexerManager != nil {
+		sessionCtx, sessionCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		indexerManager.CloseAll(sessionCtx)
+		sessionCancel()
 	}
 	logger.Info("stopped")
 }

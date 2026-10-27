@@ -140,15 +140,21 @@ func newFakeFlareSolverr(t *testing.T) *fakeFlareSolverr {
 
 func newSessionConnector(t *testing.T, fake *fakeFlareSolverr, clock Clock) *DefinitionConnector {
 	t.Helper()
+	return newSessionConnectorWithRegistry(t, fake, clock, NewSessionRegistry())
+}
+
+func newSessionConnectorWithRegistry(t *testing.T, fake *fakeFlareSolverr, clock Clock, registry *SessionRegistry) *DefinitionConnector {
+	t.Helper()
 	def, err := definition.Parse([]byte(sessionDefinitionYAML))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
 	def.Session = &definition.Session{
-		Mode:       "flaresolverr",
-		Endpoint:   fake.server.URL,
-		NamePrefix: "mircrew-idx",
-		MaxAge:     definition.Duration(12 * time.Hour),
+		Mode:        "flaresolverr",
+		Endpoint:    fake.server.URL,
+		NamePrefix:  "mircrew-idx",
+		MaxAge:      definition.Duration(12 * time.Hour),
+		IdleTimeout: definition.Duration(30 * time.Minute),
 	}
 	transport := NewTransport(TransportConfig{AllowPrivate: true, Clock: clock})
 	connector, err := NewDefinitionConnector(DefinitionConfig{
@@ -156,6 +162,7 @@ func newSessionConnector(t *testing.T, fake *fakeFlareSolverr, clock Clock) *Def
 		Definition: def,
 		Settings:   map[string]string{"username": "synthetic", "password": "synthetic-password"},
 		Transport:  transport,
+		Sessions:   registry,
 	})
 	if err != nil {
 		t.Fatalf("NewDefinitionConnector: %v", err)

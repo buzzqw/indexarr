@@ -242,6 +242,7 @@ session:
   endpoint: "{{ settings.flaresolverr }}"
   name_prefix: mircrew-idx
   max_age: 12h
+  idle_timeout: 30m
   timeout: 60s
 ```
 
@@ -251,6 +252,7 @@ session:
 | `endpoint` | no | URL `http`/`https` di FlareSolverr oppure template; vuoto usa l'URL globale delle impostazioni di rete |
 | `name_prefix` | no | slug usato per il possesso delle sessioni; vuoto = `indexarr-<id>` |
 | `max_age` | no | durata Go; oltre questo tempo la sessione viene chiusa e ricreata. Default 12h |
+| `idle_timeout` | no | durata Go; dopo questo tempo senza richieste il browser viene chiuso e ricreato alla richiesta successiva. Default 30m |
 | `timeout` | no | durata Go per un comando FlareSolverr. Default 60s |
 
 Comportamento:
@@ -263,9 +265,18 @@ Comportamento:
   ripetuta **una volta**. Il browser nuovo non ha i cookie: il login lazy
   successivo li ricrea.
 - Dopo `max_age` la sessione viene riciclata allo stesso modo.
+- Dopo `idle_timeout` senza richieste il browser viene chiuso: un indexer che
+  nessuno interroga non tiene in vita un Chromium intero. Alla richiesta
+  successiva il connettore ricrea la sessione e rifà il login. Lo stesso
+  controllo gira in background ogni due minuti e alla chiusura del processo,
+  così fermare indexarr non lascia browser appesi.
+- Quando un connettore viene scartato (indexer salvato, impostazioni cambiate,
+  definizione aggiornata) la sua sessione viene chiusa subito, non alla
+  richiesta successiva.
 - Alla prima richiesta vengono chiuse le sessioni orfane che iniziano con
-  `name_prefix + "-"`; quelle di altri programmi non vengono toccate. La pulizia
-  è quindi limitata al prefisso dichiarato.
+  `name_prefix + "-"`; quelle di altri programmi e quelle ancora vive di un
+  altro connettore dello stesso processo non vengono toccate. La pulizia è
+  quindi limitata al prefisso dichiarato.
 - Le richieste usano `disableMedia: true`, come il servizio Python: le pagine
   del forum contengono immagini e media lenti che farebbero scadere il timeout.
 

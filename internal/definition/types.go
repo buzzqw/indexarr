@@ -226,6 +226,10 @@ type Session struct {
 	// MaxAge recycles the browser session after this duration. Zero means the
 	// engine default of 12 hours.
 	MaxAge Duration `yaml:"max_age,omitempty" json:"max_age,omitempty"`
+	// IdleTimeout closes the browser session when it has not served a request
+	// for this long, so an indexer nobody queries does not keep a Chromium
+	// alive. Zero means the engine default of 30 minutes.
+	IdleTimeout Duration `yaml:"idle_timeout,omitempty" json:"idle_timeout,omitempty"`
 	// Timeout bounds one FlareSolverr command. Zero means 60 seconds.
 	Timeout Duration `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 }

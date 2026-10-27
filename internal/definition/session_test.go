@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 )
 
 func sessionDefinitionYAML(extra string) string {
@@ -23,6 +24,7 @@ func TestSessionSectionParse(t *testing.T) {
   endpoint: "{{ settings.flaresolverr_url }}"
   name_prefix: mircrew-idx
   max_age: 12h
+  idle_timeout: 30m
   timeout: 60s
 `)
 	def, err := Parse([]byte(body))
@@ -37,6 +39,9 @@ func TestSessionSectionParse(t *testing.T) {
 	}
 	if def.Session.MaxAge.Duration().Hours() != 12 {
 		t.Errorf("max_age = %v", def.Session.MaxAge.Duration())
+	}
+	if def.Session.IdleTimeout.Duration() != 30*time.Minute {
+		t.Errorf("idle_timeout = %v", def.Session.IdleTimeout.Duration())
 	}
 	if def.Session.Timeout.Duration().Seconds() != 60 {
 		t.Errorf("timeout = %v", def.Session.Timeout.Duration())
@@ -76,6 +81,13 @@ func TestSessionSectionValidation(t *testing.T) {
   max_age: -1h
 `,
 			expect: "session.max_age:",
+		},
+		{
+			name: "negative idle timeout",
+			extra: `session:
+  idle_timeout: -5m
+`,
+			expect: "session.idle_timeout:",
 		},
 	}
 	for _, tc := range cases {

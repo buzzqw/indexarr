@@ -33,6 +33,15 @@ const DefaultMaxTorrentsPerRun = 30
 // maxRunItems bounds the engine items kept in RunStats for the admin UI.
 const maxRunItems = 100
 
+const (
+	// sessionSweepInterval is how often idle browser sessions are checked. It
+	// matches the gextto sweeper: often enough that a browser does not survive
+	// long after the last request, cheap when there is nothing to close.
+	sessionSweepInterval = 2 * time.Minute
+	sessionSweepTimeout  = 45 * time.Second
+	sessionCloseTimeout  = 20 * time.Second
+)
+
 var (
 	// ErrVaultRequired is returned when an indexer has sealed secrets but the
 	// Manager was built without a vault.
@@ -72,6 +81,10 @@ type Manager struct {
 
 	mu    sync.Mutex
 	cache map[int64]cachedConnector
+
+	// sessions tracks the FlareSolverr browser sessions owned by the cached
+	// connectors, so orphan cleanup never closes a session still in use.
+	sessions *engine.SessionRegistry
 
 	// liveCache keeps recent fan-out results so Sonarr/Radarr repetitions and
 	// pagination do not hit every site again. It is bounded and expires.
@@ -213,6 +226,7 @@ func New(cfg Config) (*Manager, error) {
 		logger:       logger,
 		maxTorrents:  maxTorrents,
 		cache:        make(map[int64]cachedConnector),
+		sessions:     engine.NewSessionRegistry(),
 		liveCache:    make(map[string]liveCacheEntry),
 		liveFlights:  make(map[string]*liveFlight),
 		liveWorkers:  make(map[string]*liveWorker),
@@ -248,8 +262,15 @@ func (m *Manager) Connector(ctx context.Context, indexerID int64) (engine.Connec
 // Invalidate drops the cached connector of one indexer.
 func (m *Manager) Invalidate(indexerID int64) {
 	m.mu.Lock()
+	entry, ok := m.cache[indexerID]
 	delete(m.cache, indexerID)
 	m.mu.Unlock()
+	if ok {
+		// Closing the browser is a network call to FlareSolverr: keep it off
+		// the handler that saved the indexer. Without it the session would
+		// stay alive until the next request of the same definition.
+		m.closeConnectorAsync(entry.connector)
+	}
 	m.liveCacheMu.Lock()
 	m.liveCache = make(map[string]liveCacheEntry)
 	m.liveCacheMu.Unlock()
@@ -258,11 +279,107 @@ func (m *Manager) Invalidate(indexerID int64) {
 // InvalidateAll drops every cached connector.
 func (m *Manager) InvalidateAll() {
 	m.mu.Lock()
+	entries := make([]cachedConnector, 0, len(m.cache))
+	for _, entry := range m.cache {
+		entries = append(entries, entry)
+	}
 	m.cache = make(map[int64]cachedConnector)
 	m.mu.Unlock()
+	for _, entry := range entries {
+		m.closeConnectorAsync(entry.connector)
+	}
 	m.liveCacheMu.Lock()
 	m.liveCache = make(map[string]liveCacheEntry)
 	m.liveCacheMu.Unlock()
+}
+
+// CloseAll closes the browser sessions of every cached connector and empties
+// the cache. It runs at shutdown, so stopping indexarr does not leave Chromium
+// running for days.
+func (m *Manager) CloseAll(ctx context.Context) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	entries := make([]cachedConnector, 0, len(m.cache))
+	for _, entry := range m.cache {
+		entries = append(entries, entry)
+	}
+	m.cache = make(map[int64]cachedConnector)
+	m.mu.Unlock()
+	for _, entry := range entries {
+		m.closeConnector(ctx, entry.connector)
+	}
+}
+
+// SweepSessions closes the browser sessions that have been idle longer than
+// the definition's idle timeout and returns how many browsers were closed.
+func (m *Manager) SweepSessions(ctx context.Context) int {
+	if m == nil {
+		return 0
+	}
+	m.mu.Lock()
+	connectors := make([]engine.Connector, 0, len(m.cache))
+	for _, entry := range m.cache {
+		connectors = append(connectors, entry.connector)
+	}
+	m.mu.Unlock()
+	closed := 0
+	for _, connector := range connectors {
+		holder, ok := connector.(engine.SessionConnector)
+		if !ok {
+			continue
+		}
+		if holder.SweepSession(ctx) {
+			closed++
+		}
+	}
+	return closed
+}
+
+// StartSessionSweeper closes idle browser sessions in the background until ctx
+// is cancelled. A Cloudflare-protected indexer queried once would otherwise
+// keep a whole Chromium (hundreds of MB) alive for the rest of the process.
+func (m *Manager) StartSessionSweeper(ctx context.Context) {
+	if m == nil {
+		return
+	}
+	ticker := time.NewTicker(sessionSweepInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			sweepCtx, cancel := context.WithTimeout(ctx, sessionSweepTimeout)
+			closed := m.SweepSessions(sweepCtx)
+			cancel()
+			if closed > 0 && m.logger != nil {
+				m.logger.Info("closed idle FlareSolverr sessions", "browsers", closed)
+			}
+		}
+	}
+}
+
+func (m *Manager) closeConnector(ctx context.Context, connector engine.Connector) {
+	holder, ok := connector.(engine.SessionConnector)
+	if !ok {
+		return
+	}
+	if err := holder.CloseSession(ctx); err != nil && m.logger != nil {
+		m.logger.Debug("closing a FlareSolverr session failed", "error", err)
+	}
+}
+
+func (m *Manager) closeConnectorAsync(connector engine.Connector) {
+	if _, ok := connector.(engine.SessionConnector); !ok {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), sessionCloseTimeout)
+		defer cancel()
+		m.closeConnector(ctx, connector)
+	}()
 }
 
 // connectorFor loads the definition, builds the settings map and returns the
@@ -357,6 +474,7 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 			Transport:       transport,
 			SessionEndpoint: network.FlareSolverrURL,
 			SessionTimeout:  time.Duration(network.FlareSolverrTimeoutSeconds) * time.Second,
+			Sessions:        m.sessions,
 		})
 		if err != nil {
 			return nil, redactError(fmt.Errorf("indexer %s: build definition connector: %w", indexer.Slug, err), secretValues)
@@ -385,8 +503,15 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 		m.mu.Unlock()
 		return existing.connector, nil
 	}
+	replaced, had := m.cache[indexer.ID]
 	m.cache[indexer.ID] = entry
 	m.mu.Unlock()
+	if had {
+		// The connector was rebuilt because the definition or the settings
+		// changed: drop its browser too, otherwise the old session stays alive
+		// until the next request of the definition.
+		m.closeConnectorAsync(replaced.connector)
+	}
 	return connector, nil
 }
 

@@ -280,6 +280,9 @@ func validateSession(session *Session, add func(string, ...any)) {
 	if session.MaxAge < 0 {
 		add("session.max_age: must not be negative")
 	}
+	if session.IdleTimeout < 0 {
+		add("session.idle_timeout: must not be negative")
+	}
 	if session.Timeout < 0 {
 		add("session.timeout: must not be negative")
 	}

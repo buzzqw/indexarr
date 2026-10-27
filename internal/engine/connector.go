@@ -220,6 +220,19 @@ type Connector interface {
 	Test(ctx context.Context) (TestResult, error)
 }
 
+// SessionConnector is implemented by connectors that own a persistent
+// FlareSolverr browser session. The manager closes the browser when it drops
+// the connector and when the session stays idle, so a stopped or idle indexer
+// does not keep a whole Chromium alive.
+type SessionConnector interface {
+	// CloseSession destroys the browser session. The connector stays usable:
+	// the next request creates a new browser and logs in again.
+	CloseSession(ctx context.Context) error
+	// SweepSession closes the browser when it has been idle for longer than
+	// the definition's idle timeout. It reports whether a browser was closed.
+	SweepSession(ctx context.Context) bool
+}
+
 // Config carries what a connector factory needs to build one indexer.
 type Config struct {
 	Indexer   IndexerRef

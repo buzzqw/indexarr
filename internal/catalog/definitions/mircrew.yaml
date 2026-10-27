@@ -57,12 +57,15 @@ capabilities:
 
 session:
   # Every request of this indexer, login included, runs through one browser
-  # session. The session is recycled after 12 hours; orphaned sessions with
-  # the mircrew-idx prefix are closed before the first request.
+  # session. The session is recycled after 12 hours and closed after 30 minutes
+  # without requests, so an idle indexer does not keep a Chromium alive; the
+  # next request logs in again. Orphaned sessions with the mircrew-idx prefix
+  # are closed before the first request.
   mode: flaresolverr
   endpoint: "{{ settings.flaresolverr }}"
   name_prefix: mircrew-idx
   max_age: 12h
+  idle_timeout: 30m
   timeout: 60s
 
 auth:

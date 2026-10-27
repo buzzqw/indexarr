@@ -35,9 +35,16 @@ type DefinitionConfig struct {
 	// SessionTimeout is the global FlareSolverr timeout. Zero keeps the
 	// definition/default value.
 	SessionTimeout time.Duration
+	// Sessions is the process-wide registry of live browser sessions. It lets
+	// orphan cleanup leave the sessions of other connectors alone. Nil is
+	// allowed: the connector then owns its session without cross-checks.
+	Sessions *SessionRegistry
 }
 
-var _ Connector = (*DefinitionConnector)(nil)
+var (
+	_ Connector        = (*DefinitionConnector)(nil)
+	_ SessionConnector = (*DefinitionConnector)(nil)
+)
 
 // DefinitionConnector executes one native definition. It owns an in-memory
 // session (cookies plus login-extracted values) and is safe for concurrent use.

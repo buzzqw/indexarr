@@ -136,8 +136,11 @@ account reale.
 | Un topic con molti magnet (episodi, pack, risoluzioni) | `download.extract` con `all: true` + `download.select: season_episode` |
 | Ricerca phpBB HTML | `search.request` su `/search.php` con `sf=titleonly&sr=topics` e paginazione `start=0,25,…` |
 
-La sessione viene riciclata dopo 12 ore e le sessioni orfane con prefisso
-`mircrew-idx-` vengono chiuse alla prima richiesta. La modalità è documentata in
+La sessione viene chiusa dopo 30 minuti senza richieste, riciclata dopo 12 ore,
+e le sessioni orfane con prefisso `mircrew-idx-` vengono chiuse alla prima
+richiesta. Chiudere il browser quando è inattivo evita che un Chromium resti
+acceso per ore dopo una sola ricerca; la richiesta successiva rifà il login
+da sola. La modalità è documentata in
 [`DEFINITIONS.md`](DEFINITIONS.md#session). L'azione prima del download e la
 scelta del magnet sono documentate in
 [`DEFINITIONS.md`](DEFINITIONS.md#downloadbefore) e
