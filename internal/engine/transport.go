@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -68,6 +69,12 @@ type TransportConfig struct {
 	// nil the transport builds a private one from RatePerSecond, Burst,
 	// FailureThreshold, Cooldown and Clock.
 	Politeness *Politeness
+	// InsecureTLS skips certificate verification for the requests of one
+	// indexer whose public site serves an incomplete chain. It is opt-in per
+	// definition, never global, and the SSRF guard still applies. A nil
+	// verifier also disables the hostname check, so the setting is reserved for
+	// a public source with no credentials.
+	InsecureTLS bool
 }
 
 // Response is a fully read HTTP response. Body is always closed by the
@@ -129,10 +136,18 @@ func NewTransport(cfg TransportConfig) *Transport {
 		proxyFunc = nil
 	}
 
+	tlsConfig := func() *tls.Config {
+		if !cfg.InsecureTLS {
+			return nil
+		}
+		return &tls.Config{InsecureSkipVerify: true} //nolint:gosec // opt-in per definition, public source only
+	}
+
 	httpTransport := &http.Transport{
 		// A per-indexer proxy is trusted configuration; the SSRF guard still
 		// validates the final request target before every hop.
 		Proxy:                 proxyFunc,
+		TLSClientConfig:       tlsConfig(),
 		DialContext:           guard.DialContext(dialer),
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          100,
@@ -157,7 +172,8 @@ func NewTransport(cfg TransportConfig) *Transport {
 	dialer4 := &net.Dialer{Timeout: cfg.Timeout, KeepAlive: 30 * time.Second}
 	guardDial4 := guard.DialContext(dialer4)
 	httpTransport4 := &http.Transport{
-		Proxy: proxyFunc,
+		Proxy:           proxyFunc,
+		TLSClientConfig: tlsConfig(),
 		DialContext: func(ctx context.Context, _, address string) (net.Conn, error) {
 			return guardDial4(ctx, "tcp4", address)
 		},

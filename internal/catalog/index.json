@@ -13481,27 +13481,6 @@
     "latest": false
   },
   {
-    "id": "jk-torrentby",
-    "name": "torrent.by",
-    "description": "torrent.by is a BELARUSIAN Public Torrent Tracker",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "torrent.by"
-    ],
-    "url": "https://torrent.by/",
-    "source": "jackett",
-    "evidence": "GET https://torrent.by/ -\u003e HTTP 200, 262144 bytes, title \"Торрент трекер - torrent.by\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-torrentbytes",
     "name": "TorrentBytes",
     "description": "TorrentBytes is a Private site. A decade of TorrentBytes",
@@ -16559,6 +16538,22 @@
       "www7.torrent9.to"
     ],
     "url": "https://www7.torrent9.to/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "torrentby",
+    "name": "torrent.by",
+    "description": "Belarusian public tracker with magnet, size and health in the result row; the site serves an incomplete TLS chain.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "torrent.by"
+    ],
+    "url": "https://torrent.by/",
     "source": "native",
     "proposable": true,
     "latest": false

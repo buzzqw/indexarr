@@ -123,6 +123,20 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 	if transport == nil {
 		transport = NewTransport(TransportConfig{})
 	}
+	// A definition may ask to skip certificate verification when its public
+	// site serves an incomplete chain. The flag is per definition: the shared
+	// transport keeps its policy and this connector gets a derivative that only
+	// changes the TLS check, reusing the same politeness and SSRF guard.
+	if def.Meta.InsecureTLS {
+		if !strings.EqualFold(strings.TrimSpace(def.Meta.Type), "public") {
+			return nil, fmt.Errorf("definition %q: meta.insecure_tls is only allowed for a public definition", def.Meta.ID)
+		}
+		if !transport.Config().InsecureTLS {
+			derived := transport.Config()
+			derived.InsecureTLS = true
+			transport = NewTransport(derived)
+		}
+	}
 
 	indexer := cfg.Indexer
 	if indexer.Slug == "" {

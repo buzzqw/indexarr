@@ -20,14 +20,14 @@ Valori contati su `index.json` dopo `go generate ./internal/catalog`.
 | Misura | Valore |
 | --- | ---: |
 | Totale voci nel catalogo (definizioni + voci leggere) | **626** |
-| Definizioni native | 108 (8 aiutanti generici inclusi) |
-| Voci leggere | **518** (513 dall'istantanea Jackett, 5 manuali) |
-| Verificate | **84** |
+| Definizioni native | 109 (8 aiutanti generici inclusi) |
+| Voci leggere | **517** (512 dall'istantanea Jackett, 5 manuali) |
+| Verificate | **85** |
 | Bozze | **24** |
-| Da provare (`da-provvi`) | **499** |
+| Da provare (`da-provvi`) | **498** |
 | Bloccate (`bloccata`) | **12** |
 | Morte (`morta`) | **7** |
-| Pubbliche verificate (host unici) | **93** |
+| Pubbliche verificate (host unici) | **94** |
 | Voci italiane | **14** |
 
 Le pubbliche verificate sono conteggiate per host unico, quindi una
@@ -71,15 +71,15 @@ compaiono: la classe `.site-note` è resa solo nella coda.
 
 | Via | Fonti | Note |
 | --- | ---: | --- |
-| Definizione nativa (id o host) | **125** | fonti dell'istantanea il cui host coincide con una definizione nativa |
+| Definizione nativa (id o host) | **126** | fonti dell'istantanea il cui host coincide con una definizione nativa |
 | Software noto (connettore di famiglia) | **154** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **341** | 282 private, 58 semiprivate, 1 pubblica |
+| Da scrivere | **340** | 282 private, 58 semiprivate |
 | Fuori coda (bloccate o morte) | **18** | 11 bloccate, 7 morte |
 | **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 
 Il conteggio è per `source_id` dell'istantanea: una fonte il cui host coincide
 con una definizione nativa non ha una riga in `sites.yaml` e conta come nativa.
-Le 125 fonti coperte sono più delle definizioni perché una definizione può
+Le 126 fonti coperte sono più delle definizioni perché una definizione può
 coprire più id della stessa istantanea. La somma non include le 6 fonti già
 configurate in Jackett quando coincidono con una definizione nativa.
 
@@ -122,14 +122,15 @@ coda e sono `bloccata` (52BT è `morta`); la prova è in
 ### Secondo giro sulla coda: esito del 27/10
 
 Lo stesso giorno le undici fonti pubbliche rimaste sono state riprese una per
-una, con una GET reale e, dove la pagina risponde, il grab. Tre hanno ora una
-definizione nativa:
+una, con una GET reale e, dove la pagina risponde, il grab. Quattro hanno ora
+una definizione nativa:
 
 | Fonte | Ricerca | Grab |
 | --- | --- | --- |
 | E-Hentai | GET `/?f_search=` | `.torrent` da `gallerytorrents.php`: 200 `application/x-bittorrent`, 18212 byte |
 | XXXTor | GET `/b.php?search=` attraverso FlareSolverr | magnet nella riga |
 | U3C3 | GET `/?search2=<token fisso>&search=` | magnet e `.torrent` nella riga |
+| torrent.by | GET `/search/?search=`, con `meta.insecure_tls` | magnet nella riga (100 magnet su 100 righe) |
 
 Cinque sono uscite dalla coda come `bloccata` e due come `morta`, con la prova
 misurata in `metadata/blocked.yaml`:
@@ -144,12 +145,14 @@ misurata in `metadata/blocked.yaml`:
 | OpenSharing | `morta` | timeout su IPv4 e IPv6, il solver risponde `500` |
 | AniSource | `morta` | nessun record A, connessione rifiutata su 443 e 80 |
 
-Resta in coda **torrent.by**: il contenuto è un tracker vero (home 200 con 220
-magnet, ricerca `/search/`), ma il server invia una catena TLS incompleta
-(manca l'intermedio Let's Encrypt `YE1`) e sia Go sia `openssl` rifiutano il
-certificato (`x509: certificate signed by unknown authority`). Non è una riga
-di codice mancante nella definizione: serve una decisione esplicita su
-un'eccezione TLS per singola definizione, quindi la fonte resta `da-provvi`.
+**torrent.by** merita una nota a parte: il server invia una catena TLS
+incompleta (manca l'intermedio Let's Encrypt `YE1`) e sia
+Go sia `openssl` rifiutano il certificato, quindi la definizione usa
+`meta.insecure_tls: true`. L'eccezione vale solo per quella fonte pubblica, il
+trasporto condiviso non viene toccato, e la UI mostra il badge «TLS non
+verificato» con l'avviso nel form. La ricerca è stata provata dal vivo
+(`/search/?search=1080p`, 100 righe con magnet, dimensione, data e semi) e il
+grab restituisce il magnet della riga.
 
 
 | Bloccata | Motivo misurato |

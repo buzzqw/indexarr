@@ -1,0 +1,853 @@
+<!doctype html><html><head><title>Поиск - torrent.by - torrent.by</title>
+<meta name="robots" content="noindex" />
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta name="keywords" content="поиск торрента" />
+<meta name="description" content="поиск торрента" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/gif" href="/favicon.gif" />
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="stylesheet" type="text/css" href="/main.css" />
+<script type="text/javascript">
+window.addEventListener('click', e => {
+	document.getElementById("livesearch").innerHTML="";
+//	document.getElementById("livesearch").style.border="0px";
+})
+function showResult(str){
+	var http;
+	var response;
+	var browser = navigator.appName;
+	if(browser == "Microsoft Internet Explorer") http = new ActiveXObject("Microsoft.XMLHTTP"); else http = new XMLHttpRequest();
+	if (str.length<3)
+	{
+		document.getElementById("livesearch").innerHTML="";
+		document.getElementById("livesearch").style.border="0px";
+		return;
+	} else if (str.length>2 && str.length<40) {
+	http.open('POST', '/ajax.php', true);
+	http.setRequestHeader("Content-Type","application/x-www-form-urlencoded");
+	http.send('search='+str);
+	}
+	http.onload = function() {
+	  if (http.status != 200) {
+	   // Ошибка
+	  } else {
+		document.getElementById("livesearch").innerHTML=http.responseText;
+		document.getElementById("livesearch").style.border="1px";
+	  }
+	};
+}
+</script>
+</head><body>
+<table border="0" width="100%">
+ <tr><td style="white-space:nowrap;"><a href="/" style="font-size:30px;text-decoration:none;font-weight:bold;color:#7FB6FF;" target="_self"><img src="/fire.gif" style="float:left;" alt="↑↓" width="40px" height="40px" />torrent.by</a></td>
+ <td align="center">
+ <form style="margin:0;padding:0;" method="get" action="/search/"  onsubmit="if(this.search.value == 'Название торрента' || this.search.value == '') { alert('Пожалуйста, введите условия поиска'); return false; } ">
+ 	<table style="overflow:hidden;border-radius:10px;background-color:#EFF4FD;">
+ 	<tr>
+ 		<td align="center" style="white-space:nowrap;padding:7px;font:13px tahoma;color:#fff;">
+ 		<a href="/search/">Поиск</a> <input autocomplete="off" style="margin-right:0;border-radius:10px 0 0 10px;height:28px;outline:none;font-size:14px;color:silver;border-color:#BFDBFF;box-sizing:border-box;padding-left:8px;" type="text" maxlength="256" size="40" name="search" id="find" value="Название торрента" onkeyup="showResult(this.value)" onfocus="if(this.value=='Название торрента') {this.value='';}this.style.color='black';" onblur="if(this.value=='')this.value='Название торрента'"><button style="padding:0 10px;height:28px;border-radius:0 10px 10px 0;border:none;background:#BFDBFF;cursor:pointer;" type="submit">Найти</button>
+		<div style="float:left;position:fixed;color:black;background-color:white;margin-left:40px;text-align:left;" id="livesearch"></div></td></tr>
+ 	</table></form></td>
+ <td align="left">
+ <table style="overflow:hidden;border-radius:10px;background-color:#EFF4FD;">
+ <tbody><tr><td style="padding:8px 15px;"><a href="/upload/"><span class="circle">+</span> Загрузить торрент</a></td></tr></tbody></table>
+ </td>
+ <td align="right">
+<table style="overflow:hidden;border-radius:10px;background-color:#EFF4FD;">
+ <tr><td style="padding:15px 15px;"><a href="/login/">Войти на трекер</a></td></tr></table></td></tr></table>
+<div class="navigation" style="overflow:hidden;border-radius:10px;text-align:center;">
+ <span class="main_link">
+<a href="/instruction/">Как тут качать</a>
+<a href="/">Главная</a>
+<a href="/today/">Торренты за сегодня</a>
+<a href="/top/">Топ</a>
+<a href="/comments/">Комментарии</a>
+<a href="/belarus/">Торренты на беларусском языке</a>
+<a href="/peering/">Пиринг</a>
+<a style="float:right;" href="http://torrent.by/rss.xml"><img src="/rss.gif" width="14px" height="14px" border="0" alt="rss"></a>
+</span></div>
+<table cellspacing="0" cellpadding="5" width="100%" border="0">
+ 		<tr><td valign="top" style="margin:0 3px;padding:0 3px;"><form method="get" action="/search/" style="text-align:center;background-color:#EFF4FD;padding:10px;">
+ <b>Поиск по названию раздачи</b>: <input type="text" name="search" size="40" id="text-to-find" value="1080p" />
+ <select name="category">	<option value="0">Все категории</option>	<option value="1">Зарубежные фильмы</option>	<option value="2">Наши фильмы</option>	<option value="3">Зарубежные сериалы</option>	<option value="14">Наши сериалы</option>	<option value="4">Телевизор</option>	<option value="5">Мультфильмы</option>	<option value="6">Аниме</option>	<option value="7">Музыка</option>	<option value="8">Игры</option>	<option value="9">Софт</option>	<option value="10">Книги</option>	<option value="11">Другое</option>	<option value="12">Юмор</option>	<option value="13">Спорт</option></select>
+<input type="submit" value="Искать" /></form><br/><table class="ttable_headinner" style="overflow:hidden;border-radius:10px;" id="torrents_table" border="0">
+ 		<thead><tr><th>&nbsp;Добавлен</th><th colspan="3"><span style="float:right;">Комментарии &nbsp;&nbsp;</span> </th><th>Размер</th><th>Пиры</th></tr></thead>
+<tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220152"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:1e52b49be871de124c1da30895ed1c8d81157d7d&dn=Cikl-zverya-The-Cycle-2026-WEB-DL-1080p-D-R-HDRezka-Studio&xl=5517388121&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220152/Cikl-zverya-The-Cycle-2026-WEB-DL-1080p-D-R-HDRezka-Studio"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220152/Cikl-zverya-The-Cycle-2026-WEB-DL-1080p-D-R-HDRezka-Studio">Цикл зверя / The Cycle (2026) WEB-DL 1080p | D, Р | HDRezka Studio</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">5.14 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 62</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220149"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:6eb1c516b3020db00276ae70d3483d9fb04a7346&dn=Voyna-War-01x01-04-iz-08-2026-WEB-DL-1080p-P-Red-Head-Sound&xl=15414506286&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220149/Voyna-War-01x01-04-iz-08-2026-WEB-DL-1080p-P-Red-Head-Sound"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220149/Voyna-War-01x01-04-iz-08-2026-WEB-DL-1080p-P-Red-Head-Sound">Война / War [01x01-04 из 08] (2026) WEB-DL 1080p | P | Red Head Sound</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">14.36 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 9</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220143"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:a65e5d491aa022a01f135837efcf28278c144d40&dn=Moy-papa-mer-01x01-07-iz-08-2026-WEBRip-1080p-ot-ExKinoRay&xl=8072221770&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220143/Moy-papa-mer-01x01-07-iz-08-2026-WEBRip-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220143/Moy-papa-mer-01x01-07-iz-08-2026-WEBRip-1080p-ot-ExKinoRay">Мой папа - мэр [01x01-07 из 08] (2026) WEBRip 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">7.52 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 18</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220132"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:4ec8238a8b1fea3b984ef9abd2c25ec8424d73fb&dn=Papiny-dochki-Novye-06x01-10-iz-20-2026-WEBRip-1080p-ot-ExKinoRay&xl=7970272900&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220132/Papiny-dochki-Novye-06x01-10-iz-20-2026-WEBRip-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220132/Papiny-dochki-Novye-06x01-10-iz-20-2026-WEBRip-1080p-ot-ExKinoRay">Папины дочки. Новые [06x01-10 из 20] (2026) WEBRip 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">7.42 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 7</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220119"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:53817ef25b3ed34fa74d7b626f93ea66c4f8ea07&dn=100-dney-lzhi-100ilui-geojitmal-100-Days-of-Deception-01x01-06-iz-16-2026-WEB-DL-1080p-L-DubLikTV&xl=16381661324&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220119/100-dney-lzhi-100ilui-geojitmal-100-Days-of-Deception-01x01-06-iz-16-2026-WEB-DL-1080p-L-DubLikTV"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220119/100-dney-lzhi-100ilui-geojitmal-100-Days-of-Deception-01x01-06-iz-16-2026-WEB-DL-1080p-L-DubLikTV">100 дней лжи / 100ilui geojitmal / 100 Days of Deception [01x01-06 из 16] (2026) WEB-DL 1080p | L | DubLikTV</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">15.26 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220123"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:14d6e5e30deb150860383de3ca8b8f913e3f8b61&dn=Bezzhalostnaya-ledi-Nia-Liston-Kyouran-Reijou-Nia-Liston-01x01-03-iz-25-2026-WEBRip-HEVC-1080p-by-ZaLmanVsk-P-L-Dream-Cast-Studio-Band&xl=1400315193&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220123/Bezzhalostnaya-ledi-Nia-Liston-Kyouran-Reijou-Nia-Liston-01x01-03-iz-25-2026-WEBRip-HEVC-1080p-by-ZaLmanVsk-P-L-Dream-Cast-Studio-Band"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220123/Bezzhalostnaya-ledi-Nia-Liston-Kyouran-Reijou-Nia-Liston-01x01-03-iz-25-2026-WEBRip-HEVC-1080p-by-ZaLmanVsk-P-L-Dream-Cast-Studio-Band">Безжалостная леди Ниа Листон / Kyouran Reijou Nia Liston [01x01-03 из 25] (2026) WEBRip-HEVC 1080p by ZaLmanVsk | P, L | Dream Cast, Studio Band</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">1.30 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220105"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:7924889c8aa54d4f37e960fb142d535dd949e625&dn=Voskreshenie-Kuang-ye-shi-dai-Resurrection-2025-BDRip-1080p-ot-MegaPeer-P-WinMedia&xl=15752766031&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220105/Voskreshenie-Kuang-ye-shi-dai-Resurrection-2025-BDRip-1080p-ot-MegaPeer-P-WinMedia"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220105/Voskreshenie-Kuang-ye-shi-dai-Resurrection-2025-BDRip-1080p-ot-MegaPeer-P-WinMedia">Воскрешение / Kuang ye shi dai / Resurrection (2025) BDRip 1080p от MegaPeer | P | WinMedia</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">14.67 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 4</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220106"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:c95cef5c351ca029d6f58e25dc3870c0b15b5b0d&dn=ZHizn-zanovo-01x01-04-iz-13-2026-WEB-DL-1080p-ot-Files-h&xl=3329266846&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220106/ZHizn-zanovo-01x01-04-iz-13-2026-WEB-DL-1080p-ot-Files-h"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220106/ZHizn-zanovo-01x01-04-iz-13-2026-WEB-DL-1080p-ot-Files-h">Жизнь заново [01x01-04 из 13] (2026) WEB-DL 1080p от Files-х</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">3.10 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220108"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:f6b6ac25ba960b54a5f900ca50d01482056af22d&dn=Tverskaya-Zdes-i-seychas-03x01-12-iz-20-2026-WEB-DL-1080p-ot-ExKinoRay&xl=16033602756&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220108/Tverskaya-Zdes-i-seychas-03x01-12-iz-20-2026-WEB-DL-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220108/Tverskaya-Zdes-i-seychas-03x01-12-iz-20-2026-WEB-DL-1080p-ot-ExKinoRay">Тверская: Здесь и сейчас [03x01-12 из 20] (2026) WEB-DL 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">14.93 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 2</font> <font color="red">&darr; 3</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220110"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:5e190cfcec2aea899018b95462e96a4eb37bc5ad&dn=Dvoynoe-ubiystvo-Double-Kill-2026-WEBRip-1080p-L-Sinema-US&xl=1545666967&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220110/Dvoynoe-ubiystvo-Double-Kill-2026-WEBRip-1080p-L-Sinema-US"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220110/Dvoynoe-ubiystvo-Double-Kill-2026-WEBRip-1080p-L-Sinema-US">Двойное убийство / Double Kill (2026) WEBRip 1080p | L | Синема УС</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">1.44 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220113"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:2f4d16be335209a4b9c8e26f40bd9b303303337a&dn=Sobachi-zvezdy-The-Dog-Stars-2026-WEB-DL-1080p-R&xl=7991423762&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220113/Sobachi-zvezdy-The-Dog-Stars-2026-WEB-DL-1080p-R"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220113/Sobachi-zvezdy-The-Dog-Stars-2026-WEB-DL-1080p-R">Собачьи звёзды / The Dog Stars (2026) WEB-DL 1080p | Р</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">7.44 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 90</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220096"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:c92ec9eb60265b2e87a8730f42f6cf4a4a62015a&dn=Korol-Talsy-Tulsa-King-04x01-02-iz-10-2026-WEBRip-1080p-NewComers&xl=3826177723&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220096/Korol-Talsy-Tulsa-King-04x01-02-iz-10-2026-WEBRip-1080p-NewComers"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220096/Korol-Talsy-Tulsa-King-04x01-02-iz-10-2026-WEBRip-1080p-NewComers">Король Талсы / Tulsa King [04x01-02 из 10] (2026) WEBRip 1080p | NewComers</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">3.56 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220099"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:57bdff359fecaaa89dddef692656fed8248aa8ce&dn=Poluton-The-Undertone-2025-BDRip-1080p-ot-MegaPeer-D-NDA-Studio&xl=10273167525&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220099/Poluton-The-Undertone-2025-BDRip-1080p-ot-MegaPeer-D-NDA-Studio"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220099/Poluton-The-Undertone-2025-BDRip-1080p-ot-MegaPeer-D-NDA-Studio">Полутон / The Undertone (2025) BDRip 1080p от MegaPeer | D | NDA Studio</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">9.57 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220101"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:a98ed6011fc529965f931f5373bea7effc794e4a&dn=Ohotniki-iz-raya-The-Hunted-2024-BDRip-1080p-ot-MegaPeer-D-Kirillica&xl=8842150529&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220101/Ohotniki-iz-raya-The-Hunted-2024-BDRip-1080p-ot-MegaPeer-D-Kirillica"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220101/Ohotniki-iz-raya-The-Hunted-2024-BDRip-1080p-ot-MegaPeer-D-Kirillica">Охотники из рая / The Hunted (2024) BDRip 1080p от MegaPeer | D | Кириллица</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">8.23 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220093"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:1c9c0806ebd6d6d67ff156e0ba7f5577c4f3972a&dn=V-plenu-zapretnyh-chuvstv-01-04-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay&xl=5639552257&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220093/V-plenu-zapretnyh-chuvstv-01-04-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220093/V-plenu-zapretnyh-chuvstv-01-04-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay">В плену запретных чувств [01-04 из 08] (2026) WEB-DL 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">5.25 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220094"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:d168fb781b30684e7f8f81ebd2d35949dbf90e8d&dn=Cyganochka-01x01-04-iz-12-2026-WEB-DL-1080p-ot-ExKinoRay&xl=8060321561&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220094/Cyganochka-01x01-04-iz-12-2026-WEB-DL-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220094/Cyganochka-01x01-04-iz-12-2026-WEB-DL-1080p-ot-ExKinoRay">Цыганочка [01x01-04 из 12] (2026) WEB-DL 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">7.51 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220095"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:2e369b9ea02ca91b09c03d6b973e88601f497de8&dn=Rybka-Unyvaka-Podvodnoe-priklyuchenie-The-Pout-Pout-Fish-2026-BDRip-1080p-ot-MegaPeer-D-Paragraph-Media&xl=7926053603&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220095/Rybka-Unyvaka-Podvodnoe-priklyuchenie-The-Pout-Pout-Fish-2026-BDRip-1080p-ot-MegaPeer-D-Paragraph-Media"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220095/Rybka-Unyvaka-Podvodnoe-priklyuchenie-The-Pout-Pout-Fish-2026-BDRip-1080p-ot-MegaPeer-D-Paragraph-Media">Рыбка Унывака. Подводное приключение / The Pout-Pout Fish (2026) BDRip 1080p от MegaPeer | D | Paragraph Media</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">7.38 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 3</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220085"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:6f9e9846764f00743f941270ebbe201e181690b9&dn=Naveki-vashi-Eternally-Yours-01x01-iz-20-2026-WEB-DLRip-1080p-Dablin&xl=1490328766&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220085/Naveki-vashi-Eternally-Yours-01x01-iz-20-2026-WEB-DLRip-1080p-Dablin"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220085/Naveki-vashi-Eternally-Yours-01x01-iz-20-2026-WEB-DLRip-1080p-Dablin">Навеки ваши / Eternally Yours [01x01 из 20] (2026) WEB-DLRip 1080p | Даблин</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">1.39 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Сегодня</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220081"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:f7fcfd038bca0de4bb49be5f4a13a0be741da981&dn=ZHivaya-mertvechina-Braindead-1992-BDRemux-1080p-Austrian-Transfer-Uncut-P2-A-L1&xl=21297379940&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220081/ZHivaya-mertvechina-Braindead-1992-BDRemux-1080p-Austrian-Transfer-Uncut-P2-A-L1"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220081/ZHivaya-mertvechina-Braindead-1992-BDRemux-1080p-Austrian-Transfer-Uncut-P2-A-L1">Живая мертвечина / Braindead (1992) BDRemux 1080p | Austrian Transfer | Uncut | P2, A, L1</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">19.83 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 2</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220072"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:6abd5e8b5cfe948514f1e471fafdec808bb480d4&dn=Mrachnye-Die-Dusteren-S01-2026-WEBRip-1080p-RuDub&xl=10432240320&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220072/Mrachnye-Die-Dusteren-S01-2026-WEBRip-1080p-RuDub"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220072/Mrachnye-Die-Dusteren-S01-2026-WEBRip-1080p-RuDub">Мрачные / Die Dusteren [S01] (2026) WEBRip 1080p | RuDub</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">9.72 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 11</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220058"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:1d76d484ff38554be323f95732f5906c6e0062bc&dn=Temnaya-materiya-Dark-Matter-02x01-09-iz-10-2026-WEB-DL-1080p-P-P2-L&xl=49797425995&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220058/Temnaya-materiya-Dark-Matter-02x01-09-iz-10-2026-WEB-DL-1080p-P-P2-L"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220058/Temnaya-materiya-Dark-Matter-02x01-09-iz-10-2026-WEB-DL-1080p-P-P2-L">Тёмная материя / Dark Matter [02x01-09 из 10] (2026) WEB-DL 1080p | P, P2, L</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">46.38 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 14</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220054"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:35ca064d963920375c79a118de5225521d4b8946&dn=Izgnannyy-reinkarnirovannyy-tyazhelyy-rycar-ne-imeet-sebe-ravnyh-v-znaniyah-igry-Tsuihou-Sareta-Tensei-Juu-Kishi-wa-Game-Chishiki-de-Musou-Suru-01x01-17-iz-26-2026-WEBRip-1080p-D-Deep&xl=27127218502&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220054/Izgnannyy-reinkarnirovannyy-tyazhelyy-rycar-ne-imeet-sebe-ravnyh-v-znaniyah-igry-Tsuihou-Sareta-Tensei-Juu-Kishi-wa-Game-Chishiki-de-Musou-Suru-01x01-17-iz-26-2026-WEBRip-1080p-D-Deep"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220054/Izgnannyy-reinkarnirovannyy-tyazhelyy-rycar-ne-imeet-sebe-ravnyh-v-znaniyah-igry-Tsuihou-Sareta-Tensei-Juu-Kishi-wa-Game-Chishiki-de-Musou-Suru-01x01-17-iz-26-2026-WEBRip-1080p-D-Deep">Изгнанный реинкарнированный тяжёлый рыцарь не имеет себе равных в знаниях игры / Tsuihou Sareta Tensei Juu Kishi wa Game Chishiki de Musou Suru [01x01-17 из 26] (2026) WEBRip 1080p | D | Deep</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">25.26 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 3</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220055"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:995d6d8f12252adb0d24ac28b74e43288be3fe31&dn=Ostrov-sokrovisch-Treasure-Island-01x01-03-iz-06-2026-WEBRip-1080p-Novamedia&xl=6525452744&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220055/Ostrov-sokrovisch-Treasure-Island-01x01-03-iz-06-2026-WEBRip-1080p-Novamedia"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220055/Ostrov-sokrovisch-Treasure-Island-01x01-03-iz-06-2026-WEBRip-1080p-Novamedia">Остров сокровищ / Treasure Island [01x01-03 из 06] (2026) WEBRip 1080p  | Novamedia</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">6.08 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 13</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220040"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:97dc29e6785a616233d37d5742eb2550ca7ad7ce&dn=Goluboy-grom-Blue-Thunder-1983-BDRip-HEVC-1080p-ot-RIPS-CLUB-P-P2-A-JPN-Transfer&xl=12354490699&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220040/Goluboy-grom-Blue-Thunder-1983-BDRip-HEVC-1080p-ot-RIPS-CLUB-P-P2-A-JPN-Transfer"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220040/Goluboy-grom-Blue-Thunder-1983-BDRip-HEVC-1080p-ot-RIPS-CLUB-P-P2-A-JPN-Transfer">Голубой гром / Blue Thunder (1983) BDRip-HEVC 1080p от RIPS CLUB | P, P2, A | JPN Transfer</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">11.51 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220044"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:fde6be458e43dcdddbdc240498fa1d9accbadbe6&dn=Betmen-Dusha-drakona-Batman-Soul-of-the-Dragon-2021-BDRip-1080p-ot-selezen-iTunes&xl=8975025075&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220044/Betmen-Dusha-drakona-Batman-Soul-of-the-Dragon-2021-BDRip-1080p-ot-selezen-iTunes"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220044/Betmen-Dusha-drakona-Batman-Soul-of-the-Dragon-2021-BDRip-1080p-ot-selezen-iTunes">Бэтмен: Душа дракона / Batman: Soul of the Dragon (2021) BDRip 1080p от селезень | iTunes</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">8.36 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220035"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:7abac6bf642eee0936c50905ef9d1ab3a85b8dca&dn=Magicheskiy-issledovatel-Pererodivshis-v-druga-glavnogo&xl=4142168443&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220035/Magicheskiy-issledovatel-Pererodivshis-v-druga-glavnogo"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220035/Magicheskiy-issledovatel-Pererodivshis-v-druga-glavnogo">Магический исследователь: Переродившись в друга главного героя эроге, я буду жить свободно, используя мои знания эроге / Magical Explorer [01x01-04 из 12] (2026) WEBRip 1080p | L | DreamCast, Flowers Media</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">3.86 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220036"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:d1101807f49a2c35bc62762db6e93d0a4a6db8fe&dn=Ya-vstrechayus-s-temnym-prizyvatelem-Dark-Summoner-to-Dekiteiru-01x01-03-iz-12-2026-WEBRip-HEVC-1080p-by-VLDeshka-L-DreamCast-Kazoku&xl=662092413&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220036/Ya-vstrechayus-s-temnym-prizyvatelem-Dark-Summoner-to-Dekiteiru-01x01-03-iz-12-2026-WEBRip-HEVC-1080p-by-VLDeshka-L-DreamCast-Kazoku"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220036/Ya-vstrechayus-s-temnym-prizyvatelem-Dark-Summoner-to-Dekiteiru-01x01-03-iz-12-2026-WEBRip-HEVC-1080p-by-VLDeshka-L-DreamCast-Kazoku">Я встречаюсь с тёмным призывателем / Dark Summoner to Dekiteiru [01x01-03 из 12] (2026) WEBRip-HEVC 1080p by VLDeshka | L | DreamCast, Kazoku</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">631.42 MB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220037"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:dd50184baf547c657a38f72d5a33704dcefe4a6a&dn=Bezzhalostnaya-ledi-Niya-Liston-Edinstvennaya-v-svoem-rode&xl=3162521907&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220037/Bezzhalostnaya-ledi-Niya-Liston-Edinstvennaya-v-svoem-rode"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220037/Bezzhalostnaya-ledi-Niya-Liston-Edinstvennaya-v-svoem-rode">Безжалостная леди Ния Листон: Единственная в своём роде история воительницы-богоубийцы, перевоплотившейся в болезненную аристократку / Kyouran Reijou Nia Liston [01x01-03 из 12] (2026) WEBRip 1080p | D, L | StudioBand, DreamCast</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">2.95 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220038"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:3bb649d07fd47d4d084cc9fd8b6dcab08a2b65c8&dn=100-dney-lzhi-100ilui-geojitmal-100-Days-of-Deception-01x01-05-iz-16-2026-WEB-DL-1080p-L-DubLikTV&xl=13820004560&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220038/100-dney-lzhi-100ilui-geojitmal-100-Days-of-Deception-01x01-05-iz-16-2026-WEB-DL-1080p-L-DubLikTV"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220038/100-dney-lzhi-100ilui-geojitmal-100-Days-of-Deception-01x01-05-iz-16-2026-WEB-DL-1080p-L-DubLikTV">100 дней лжи / 100ilui geojitmal / 100 Days of Deception [01x01-05 из 16] (2026) WEB-DL 1080p | L | DubLikTV</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">12.87 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220027"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:52da4f231bbfedbddd4e5e25e44652f553ff0ae3&dn=Moy-papa-mer-01x01-06-iz-08-2026-WEBRip-1080p-ot-ExKinoRay&xl=6895841625&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220027/Moy-papa-mer-01x01-06-iz-08-2026-WEBRip-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220027/Moy-papa-mer-01x01-06-iz-08-2026-WEBRip-1080p-ot-ExKinoRay">Мой папа - мэр [01x01-06 из 08] (2026) WEBRip 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">6.42 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220020"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:8a869cb78c360cea13e36b50d051cb18648a2227&dn=Ubit-Zoi-Killing-Zoe-1993-BDRip-HEVC-1080p-ot-RIPS-CLUB-P-P2-A-Director039s-Cut&xl=8551459087&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220020/Ubit-Zoi-Killing-Zoe-1993-BDRip-HEVC-1080p-ot-RIPS-CLUB-P-P2-A-Director039s-Cut"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220020/Ubit-Zoi-Killing-Zoe-1993-BDRip-HEVC-1080p-ot-RIPS-CLUB-P-P2-A-Director039s-Cut">Убить Зои / Killing Zoe (1993) BDRip-HEVC 1080p от RIPS CLUB | P, P2, A | Director&#039;s Cut</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">7.96 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220015"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:e0ccf129d2a0f38e7580ed3c1e7f729e45941ec9&dn=Zastav-menya-drozhat-Naega-tteollil-su-ittge-Make-Me-Tingle-01x01-06-iz-10-2026-WEB-DL-1080p-L-DubLikTV&xl=5947573902&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220015/Zastav-menya-drozhat-Naega-tteollil-su-ittge-Make-Me-Tingle-01x01-06-iz-10-2026-WEB-DL-1080p-L-DubLikTV"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220015/Zastav-menya-drozhat-Naega-tteollil-su-ittge-Make-Me-Tingle-01x01-06-iz-10-2026-WEB-DL-1080p-L-DubLikTV">Заставь меня дрожать / Naega tteollil su ittge / Make Me Tingle [01x01-06 из 10] (2026) WEB-DL 1080p | L | DubLikTV</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">5.54 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220001"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:de00f72c18e61c4bf58c5f1919da6bce7e6bd60c&dn=Izgnannyy-chiter-charodey-naslazhdaetsya-bezzabotnoy-vtoroy-zhiznyu-Tsuihou-sareta-Cheat-Fuyo-Majutsushi-wa-Kimama-na-Second-Life-wo-Ouka-suru-01x01-03-iz-12-2026-WEBRip-1080p-D-Deep&xl=2862889936&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220001/Izgnannyy-chiter-charodey-naslazhdaetsya-bezzabotnoy-vtoroy-zhiznyu-Tsuihou-sareta-Cheat-Fuyo-Majutsushi-wa-Kimama-na-Second-Life-wo-Ouka-suru-01x01-03-iz-12-2026-WEBRip-1080p-D-Deep"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220001/Izgnannyy-chiter-charodey-naslazhdaetsya-bezzabotnoy-vtoroy-zhiznyu-Tsuihou-sareta-Cheat-Fuyo-Majutsushi-wa-Kimama-na-Second-Life-wo-Ouka-suru-01x01-03-iz-12-2026-WEBRip-1080p-D-Deep">Изгнанный читер-чародей наслаждается беззаботной второй жизнью / Tsuihou sareta Cheat Fuyo Majutsushi wa Kimama na Second Life wo Ouka suru [01x01-03 из 12] (2026) WEBRip 1080p | D | Deep</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">2.67 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220002"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:682bf3822565450ed5279538fc53d5b5513b23d0&dn=Dazhe-kopiya-sposobna-vlyubitsya-Replica-datte-Koi-wo-Suru-S01-2026-WEB-DL-1080p-D&xl=19523534827&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220002/Dazhe-kopiya-sposobna-vlyubitsya-Replica-datte-Koi-wo-Suru-S01-2026-WEB-DL-1080p-D"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220002/Dazhe-kopiya-sposobna-vlyubitsya-Replica-datte-Koi-wo-Suru-S01-2026-WEB-DL-1080p-D">Даже копия способна влюбиться / Replica datte, Koi wo Suru [S01] (2026) WEB-DL 1080p | D</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">18.18 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=220005"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:7b329a618aa77e49a5157b570bb2c393d85dd5c0&dn=Doktor-Iks-Dakteo-X-hayan-mapiaui-sidae-Doctor-X-Mafia-in-White-01x01-06-iz-12-2026-WEB-DL-1080p-L-DubLikTV&xl=15141303704&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/220005/Doktor-Iks-Dakteo-X-hayan-mapiaui-sidae-Doctor-X-Mafia-in-White-01x01-06-iz-12-2026-WEB-DL-1080p-L-DubLikTV"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/220005/Doktor-Iks-Dakteo-X-hayan-mapiaui-sidae-Doctor-X-Mafia-in-White-01x01-06-iz-12-2026-WEB-DL-1080p-L-DubLikTV">Доктор Икс / Dakteo X: hayan mapiaui sidae / Doctor X: Mafia in White [01x01-06 из 12] (2026) WEB-DL 1080p | L | DubLikTV</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">14.10 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219989"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:d3901c97b236aa3324cc8707988f7e5888246e70&dn=Na-krayu-Ouk-strit-The-End-of-Oak-Street-2026-BDRip-1080p-ot-selezen-D-Movie-Dubbing&xl=8445954082&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219989/Na-krayu-Ouk-strit-The-End-of-Oak-Street-2026-BDRip-1080p-ot-selezen-D-Movie-Dubbing"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219989/Na-krayu-Ouk-strit-The-End-of-Oak-Street-2026-BDRip-1080p-ot-selezen-D-Movie-Dubbing">На краю Оук-стрит / The End of Oak Street (2026) BDRip 1080p от селезень | D | Movie Dubbing</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">7.87 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 17</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219990"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:d3733762c1f2ee0a7b99218c45144c8f62e2deaa&dn=Kovboy-ubiyca-The-Cowboy-Killer-2026-WEBRip-1080p-Sub&xl=1679333300&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219990/Kovboy-ubiyca-The-Cowboy-Killer-2026-WEBRip-1080p-Sub"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219990/Kovboy-ubiyca-The-Cowboy-Killer-2026-WEBRip-1080p-Sub">Ковбой-убийца / The Cowboy Killer (2026) WEBRip 1080p | Sub</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">1.56 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 6</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219991"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:d686c6e33d24e789023fd48226243d1ce9829987&dn=Hrustalnoe-ozero-Crystal-Lake-S01-2026-WEB-DL-1080p-D-P&xl=33623076763&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219991/Hrustalnoe-ozero-Crystal-Lake-S01-2026-WEB-DL-1080p-D-P"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219991/Hrustalnoe-ozero-Crystal-Lake-S01-2026-WEB-DL-1080p-D-P">Хрустальное озеро / Crystal Lake [S01] (2026) WEB-DL 1080p | D, P</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">31.31 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 59</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219984"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:ca2a00a4a63e9837a063458fd354a6dc8f8fe401&dn=Vlasteliny-vselennoy-Masters-of-the-Universe-2026-BDRip-1080p-ot-MegaPeer-D-Movie-Dubbing&xl=13290308513&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219984/Vlasteliny-vselennoy-Masters-of-the-Universe-2026-BDRip-1080p-ot-MegaPeer-D-Movie-Dubbing"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219984/Vlasteliny-vselennoy-Masters-of-the-Universe-2026-BDRip-1080p-ot-MegaPeer-D-Movie-Dubbing">Властелины вселенной / Masters of the Universe (2026) BDRip 1080p от MegaPeer | D | Movie Dubbing</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">12.38 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 8</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219985"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:4cfe9d732555408e226e834f1eda1880075cf77a&dn=Mudrye-parni-The-Alto-Knights-2025-BDRip-1080p-D-Produblyazh&xl=12842083605&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219985/Mudrye-parni-The-Alto-Knights-2025-BDRip-1080p-D-Produblyazh"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219985/Mudrye-parni-The-Alto-Knights-2025-BDRip-1080p-D-Produblyazh">Мудрые парни / The Alto Knights (2025) BDRip 1080p | D | Продубляж</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">11.96 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 6</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219986"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:6517c095d3096ad171dea6c1ea89d21b2bfd1224&dn=Specy-S01-2026-WEBRip-1080p-ot-ExKinoRay&xl=22273733141&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219986/Specy-S01-2026-WEBRip-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219986/Specy-S01-2026-WEBRip-1080p-ot-ExKinoRay">Спецы [S01] (2026) WEBRip 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">20.74 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 216</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219977"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:1873f99bcb32e2f1171dc08e547a5d3ccd3bc908&dn=Lyuboy-cenoy-Hell-or-High-Water-2016-BDRip-1080p-D-A&xl=10579355487&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219977/Lyuboy-cenoy-Hell-or-High-Water-2016-BDRip-1080p-D-A"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219977/Lyuboy-cenoy-Hell-or-High-Water-2016-BDRip-1080p-D-A">Любой ценой / Hell or High Water (2016) BDRip 1080p | D, A</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">9.85 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219979"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:1ddd0e40d0c6bd19b9ab3ee2f0149e5817798a1c&dn=Mnogoe-poluchaetsya-01x01-04-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay&xl=3560730781&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219979/Mnogoe-poluchaetsya-01x01-04-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219979/Mnogoe-poluchaetsya-01x01-04-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay">Многое получается [01x01-04 из 08] (2026) WEB-DL 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">3.32 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219980"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:0a3e802370f377bfb2ea1318dbe25bd562ac1a09&dn=Okolotochnyy-01x01-05-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay&xl=7241064913&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219980/Okolotochnyy-01x01-05-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219980/Okolotochnyy-01x01-05-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay">Околоточный [01x01-05 из 08] (2026) WEB-DL 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">6.74 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 37</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219975"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:3bb32bae880324430a6e7a9824656417d0ecd533&dn=Futbol-Chempionat-Ispanii-2026-2027-10-y-tur-Barselona-Real-Madrid-2510-2026-IPTV-1080p&xl=5887498307&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219975/Futbol-Chempionat-Ispanii-2026-2027-10-y-tur-Barselona-Real-Madrid-2510-2026-IPTV-1080p"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219975/Futbol-Chempionat-Ispanii-2026-2027-10-y-tur-Barselona-Real-Madrid-2510-2026-IPTV-1080p">Футбол. Чемпионат Испании 2026-2027. 10-й тур. Барселона - Реал Мадрид [25.10] (2026) IPTV 1080p</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">5.48 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219970"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:11eb66f78eb74c6fea546a5dac6446b7a028905b&dn=Myatezh-Mutiny-2026-BDRip-1080p-ot-selezen-D-Pifagor&xl=7899447438&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219970/Myatezh-Mutiny-2026-BDRip-1080p-ot-selezen-D-Pifagor"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219970/Myatezh-Mutiny-2026-BDRip-1080p-ot-selezen-D-Pifagor">Мятеж / Mutiny (2026) BDRip 1080p от селезень | D | Пифагор</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">7.36 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 15</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219964"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:7c2e9d9d4a0fe922458205d920c7cbdd8051bbf8&dn=Monolog-farmacevta-Zapiski-aptekarya-Kusuriya-no-Hitorigoto-03x01-04-iz-24-2026-WEBRip-1080p-by-ZaLmanVsk-L-D-AniLibria-Dream-Cast-DEEP-AniStar&xl=4230078047&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219964/Monolog-farmacevta-Zapiski-aptekarya-Kusuriya-no-Hitorigoto-03x01-04-iz-24-2026-WEBRip-1080p-by-ZaLmanVsk-L-D-AniLibria-Dream-Cast-DEEP-AniStar"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219964/Monolog-farmacevta-Zapiski-aptekarya-Kusuriya-no-Hitorigoto-03x01-04-iz-24-2026-WEBRip-1080p-by-ZaLmanVsk-L-D-AniLibria-Dream-Cast-DEEP-AniStar">Монолог фармацевта / Записки аптекаря / Kusuriya no Hitorigoto [03x01-04 из 24] (2026) WEBRip 1080p by ZaLmanVsk | L, D | AniLibria, Dream Cast, DEEP, AniStar</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">3.94 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219966"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:edec55eb85fbd6fc4034f8ba856938ee18adc040&dn=Vospominaniya-ob-ubiystve-Memories-of-Murder-Salinui-chueok-2003-BDRip-1080p-Licenziya&xl=10326985197&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219966/Vospominaniya-ob-ubiystve-Memories-of-Murder-Salinui-chueok-2003-BDRip-1080p-Licenziya"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219966/Vospominaniya-ob-ubiystve-Memories-of-Murder-Salinui-chueok-2003-BDRip-1080p-Licenziya">Воспоминания об убийстве / Memories of Murder / Salinui chueok (2003) BDRip 1080p | Лицензия</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">9.62 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219958"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:11d72f7747d8fadebc6fc08bb1dc1cead1fe807f&dn=Vetrenaya-reka-Wind-River-2017-BDRip-1080p-D-A-CZE-Transfer&xl=17046484790&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219958/Vetrenaya-reka-Wind-River-2017-BDRip-1080p-D-A-CZE-Transfer"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219958/Vetrenaya-reka-Wind-River-2017-BDRip-1080p-D-A-CZE-Transfer">Ветреная река / Wind River (2017) BDRip 1080p | D, A | CZE Transfer</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">15.88 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">Вчера</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219959"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:c57905708174de01180dd6688d016f25eefe48b5&dn=Gordost-i-predubezhdenie-Pride-amp-Prejudice-2005-BDRemux-1080p-D&xl=33979529725&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219959/Gordost-i-predubezhdenie-Pride-amp-Prejudice-2005-BDRemux-1080p-D"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219959/Gordost-i-predubezhdenie-Pride-amp-Prejudice-2005-BDRemux-1080p-D">Гордость и предубеждение / Pride &amp; Prejudice (2005) BDRemux 1080p | D</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">31.65 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219950"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:5e14b98b988b5d39bd56b6d4b11c80d66fea6b08&dn=Voennaya-priemka-Gazoturbinnye-dvigateli-01-02-2026-HDTV-1080p-ot-MAGNAT&xl=3170059008&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219950/Voennaya-priemka-Gazoturbinnye-dvigateli-01-02-2026-HDTV-1080p-ot-MAGNAT"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219950/Voennaya-priemka-Gazoturbinnye-dvigateli-01-02-2026-HDTV-1080p-ot-MAGNAT">Военная приёмка. Газотурбинные двигатели [01-02] (2026) HDTV 1080p от MAGNAT</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">2.95 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219947"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:d3e33fe28c9ca851ae2f5582243d8e047469a68a&dn=Devushka-i-delfin-01-04-iz-04-2026-WEB-DL-1080p-ot-ExKinoRay&xl=3933020248&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219947/Devushka-i-delfin-01-04-iz-04-2026-WEB-DL-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219947/Devushka-i-delfin-01-04-iz-04-2026-WEB-DL-1080p-ot-ExKinoRay">Девушка и дельфин [01-04 из 04] (2026) WEB-DL 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">3.66 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219949"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:1fa60dde68bbfac2bd03f4efc07336be5ffcd9ba&dn=Smeshannye-edinoborstva-UFC-333-Volkanovski-vs-Evloev-Full-Event-1010-2026-IPTV-1080p&xl=18601027163&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219949/Smeshannye-edinoborstva-UFC-333-Volkanovski-vs-Evloev-Full-Event-1010-2026-IPTV-1080p"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219949/Smeshannye-edinoborstva-UFC-333-Volkanovski-vs-Evloev-Full-Event-1010-2026-IPTV-1080p">Смешанные единоборства. UFC 333: Volkanovski vs. Evloev (Full Event) [10.10] (2026) IPTV 1080p</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">17.32 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219940"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:58e41c45456169539c312cd917b7b683a07f287e&dn=Natisk-Onslaught-2026-WEB-DL-1080p-D-P-A&xl=8716050546&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219940/Natisk-Onslaught-2026-WEB-DL-1080p-D-P-A"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219940/Natisk-Onslaught-2026-WEB-DL-1080p-D-P-A">Натиск / Onslaught (2026) WEB-DL 1080p | D, P, A</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">8.12 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219929"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:63d0ccac069acf752f9758435ae455e2d0360a86&dn=Dom-Ginnessa-House-of-Guinness-S01-2025-WEB-DL-1080p-HDrezka-Studio-LostFilm-Red-Head-Sound-LE-Production&xl=24792353722&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219929/Dom-Ginnessa-House-of-Guinness-S01-2025-WEB-DL-1080p-HDrezka-Studio-LostFilm-Red-Head-Sound-LE-Production"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219929/Dom-Ginnessa-House-of-Guinness-S01-2025-WEB-DL-1080p-HDrezka-Studio-LostFilm-Red-Head-Sound-LE-Production">Дом Гиннесса / House of Guinness [S01] (2025) WEB-DL 1080p | HDrezka Studio, LostFilm, Red Head Sound, LE-Production</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">23.09 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219931"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:8191fe0597a6b7df17aa35127e62e255d8294814&dn=Vremya-pervyh-2017-BDRip-1080p-ot-New-Team&xl=7029810698&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219931/Vremya-pervyh-2017-BDRip-1080p-ot-New-Team"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219931/Vremya-pervyh-2017-BDRip-1080p-ot-New-Team">Время первых (2017) BDRip 1080p от New-Team</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">6.55 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219936"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:6ad30426ce3b2b2d1316eb9b06e1c35a1b24a970&dn=Monolog-farmacevta-Kusuriya-no-Hitorigoto-03x01-04-iz-24-2026-WEBRip-HEVC-1080p-by-VLDeshka-D-DEEP&xl=1766153523&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219936/Monolog-farmacevta-Kusuriya-no-Hitorigoto-03x01-04-iz-24-2026-WEBRip-HEVC-1080p-by-VLDeshka-D-DEEP"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219936/Monolog-farmacevta-Kusuriya-no-Hitorigoto-03x01-04-iz-24-2026-WEBRip-HEVC-1080p-by-VLDeshka-D-DEEP">Монолог фармацевта / Kusuriya no Hitorigoto [03x01-04 из 24] (2026) WEBRip-HEVC 1080p by VLDeshka | D | DEEP</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">1.64 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219920"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:5d2b6f510608c305cecf689f34148de4b398a843&dn=Temnaya-materiya-Dark-Matter-02x01-09-iz-10-2026-WEBRip-1080p-NewComers&xl=23102262698&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219920/Temnaya-materiya-Dark-Matter-02x01-09-iz-10-2026-WEBRip-1080p-NewComers"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219920/Temnaya-materiya-Dark-Matter-02x01-09-iz-10-2026-WEBRip-1080p-NewComers">Тёмная материя / Dark Matter [02x01-09 из 10] (2026) WEBRip 1080p | NewComers</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">21.52 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219912"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:e3c9e60c54b670caab6c189b73e1b33ac56c8c62&dn=Klinika-Scrubs-02x01-05-iz-10-2026-WEB-DL-1080p-WinMedia-TVShows-Red-Head-Sound&xl=9183408638&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219912/Klinika-Scrubs-02x01-05-iz-10-2026-WEB-DL-1080p-WinMedia-TVShows-Red-Head-Sound"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219912/Klinika-Scrubs-02x01-05-iz-10-2026-WEB-DL-1080p-WinMedia-TVShows-Red-Head-Sound">Клиника / Scrubs [02x01-05 из 10] (2026) WEB-DL 1080p | WinMedia, TVShows, Red Head Sound</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">8.55 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219908"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:6e8260b2a627b2faebea8a73a889df75cab7c1da&dn=Kak-Ivan-v-skazku-popal-2026-WEB-DL-1080p-ot-ExKinoRay&xl=5797210779&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219908/Kak-Ivan-v-skazku-popal-2026-WEB-DL-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219908/Kak-Ivan-v-skazku-popal-2026-WEB-DL-1080p-ot-ExKinoRay">Как Иван в сказку попал (2026) WEB-DL 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">5.40 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 23</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219904"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:e6503a31fcc5afb1bd5ca6fdabe6065dcc0c6eeb&dn=Smeshannye-edinoborstva-MMA-UFC-333-Volkanovski-vs-Evloev-Full-Event-2410-2026-WEBRip-1080p-50fps&xl=29611564102&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219904/Smeshannye-edinoborstva-MMA-UFC-333-Volkanovski-vs-Evloev-Full-Event-2410-2026-WEBRip-1080p-50fps"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219904/Smeshannye-edinoborstva-MMA-UFC-333-Volkanovski-vs-Evloev-Full-Event-2410-2026-WEBRip-1080p-50fps">Смешанные единоборства ММА. UFC 333: Volkanovski vs. Evloev. Full Event [24.10] (2026) WEBRip 1080p | 50fps</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">27.58 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219902"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:d782072b21324e0863a4d8ce23274cbd6e16a07b&dn=Vtoraya-mirovaya-Bigfut-World-War-Bigfoot-2026-WEBRip-1080p-Sub&xl=1322143101&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219902/Vtoraya-mirovaya-Bigfut-World-War-Bigfoot-2026-WEBRip-1080p-Sub"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219902/Vtoraya-mirovaya-Bigfut-World-War-Bigfoot-2026-WEBRip-1080p-Sub">Вторая мировая: Бигфут / World War Bigfoot (2026) WEBRip 1080p | Sub</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">1.23 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219885"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:cc5a855beecc15e3976d5da425ffb61ffe34292d&dn=Kerri-Carrie-S01-2026-WEB-DL-1080p-D-P-L&xl=37075386387&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219885/Kerri-Carrie-S01-2026-WEB-DL-1080p-D-P-L"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219885/Kerri-Carrie-S01-2026-WEB-DL-1080p-D-P-L">Кэрри / Carrie [S01] (2026) WEB-DL 1080p | D, P, L</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">34.53 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 39</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219876"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:7304e64a4979cb2d2956f66eebac8150c523bea0&dn=Devushki-v-avtobuse-The-Girls-on-the-Bus-S01-2024-WEB-DL-1080p-P&xl=24146712737&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219876/Devushki-v-avtobuse-The-Girls-on-the-Bus-S01-2024-WEB-DL-1080p-P"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219876/Devushki-v-avtobuse-The-Girls-on-the-Bus-S01-2024-WEB-DL-1080p-P">Девушки в автобусе / The Girls on the Bus [S01] (2024) WEB-DL 1080p | P</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">22.49 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219873"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:81ad757bc5498caa5c306d81add64c6a4cacf299&dn=Karolina-Kerolayn-Carolina-Caroline-2025-BDRemux-1080p-D-P-A-HDRezka-Studio-Yarockiy&xl=21943137622&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219873/Karolina-Kerolayn-Carolina-Caroline-2025-BDRemux-1080p-D-P-A-HDRezka-Studio-Yarockiy"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219873/Karolina-Kerolayn-Carolina-Caroline-2025-BDRemux-1080p-D-P-A-HDRezka-Studio-Yarockiy">Каролина Кэролайн / Carolina Caroline (2025) BDRemux 1080p | D, P, A | HDRezka Studio, Яроцкий</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">20.44 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219864"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:70fe5bb84290b1485604eb1c56a0a2247be1ad7c&dn=Tverskaya-Zdes-i-seychas-03x01-10-iz-20-2026-WEB-DL-1080p-ot-Files-h&xl=13171120989&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219864/Tverskaya-Zdes-i-seychas-03x01-10-iz-20-2026-WEB-DL-1080p-ot-Files-h"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219864/Tverskaya-Zdes-i-seychas-03x01-10-iz-20-2026-WEB-DL-1080p-ot-Files-h">Тверская. Здесь и сейчас  [03x01-10 из 20] (2026) WEB-DL 1080p от Files-х</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">12.27 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219861"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:390f7c3013b3f65cae6866899f6b1300dbb5898e&dn=Arahnid-Crawlers-2026-BDRip-1080p-Sub&xl=7027315191&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219861/Arahnid-Crawlers-2026-BDRip-1080p-Sub"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219861/Arahnid-Crawlers-2026-BDRip-1080p-Sub">Арахнид / Crawlers (2026) BDRip 1080p | Sub</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">6.54 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 4</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219863"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:aeb9c93fd1e5add636d521f8030114d54df55f12&dn=Medlennye-loshadi-Hromye-loshadi-Slow-Horses-S06-2026-WEB-DL-1080p-P-A&xl=28058174112&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219863/Medlennye-loshadi-Hromye-loshadi-Slow-Horses-S06-2026-WEB-DL-1080p-P-A"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219863/Medlennye-loshadi-Hromye-loshadi-Slow-Horses-S06-2026-WEB-DL-1080p-P-A">Медленные лошади / Хромые лошади / Slow Horses [S06] (2026) WEB-DL 1080p | P, A</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">26.13 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 22</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219866"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:366603bed70e639a52cb51e91243a2942cfd9304&dn=Devushka-i-delfin-01-04-iz-04-2026-WEBRip-1080p-ot-ExKinoRay&xl=4089597836&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219866/Devushka-i-delfin-01-04-iz-04-2026-WEBRip-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219866/Devushka-i-delfin-01-04-iz-04-2026-WEBRip-1080p-ot-ExKinoRay">Девушка и дельфин [01-04 из 04] (2026) WEBRip 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">3.81 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219855"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:8270a006b5b2261ea07a952cd4b5e54b6f774dd1&dn=Korol-Talsy-Tulsa-King-04x01-iz-10-2026-WEB-DL-1080p-P&xl=3132214747&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219855/Korol-Talsy-Tulsa-King-04x01-iz-10-2026-WEB-DL-1080p-P"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219855/Korol-Talsy-Tulsa-King-04x01-iz-10-2026-WEB-DL-1080p-P">Король Талсы / Tulsa King [04x01 из 10] (2026) WEB-DL 1080p | P</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">2.92 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219859"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:30f4824448f5eaf6a8fe00d16e1b963ac45593f2&dn=Na-derevnyu-k-dedushke-Supermissiya-Duivinder-2026-WEB-DL-1080p-D-OKKO&xl=2994107892&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219859/Na-derevnyu-k-dedushke-Supermissiya-Duivinder-2026-WEB-DL-1080p-D-OKKO"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219859/Na-derevnyu-k-dedushke-Supermissiya-Duivinder-2026-WEB-DL-1080p-D-OKKO">На деревню к дедушке. Супермиссия / Duivinder (2026) WEB-DL 1080p | D | OKKO</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">2.79 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219850"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:5b055dbe5834479c74e647b82718465466aec516&dn=Monolog-farmacevta-Zapiski-aptekarya-Kusuriya-no-Hitorigoto-03x01-04-iz-24-2026-WEBRip-1080p-by-ZaLmanVsk-L-D-AniLibria-Dream-Cast-DEEP-AniStar&xl=4206890298&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219850/Monolog-farmacevta-Zapiski-aptekarya-Kusuriya-no-Hitorigoto-03x01-04-iz-24-2026-WEBRip-1080p-by-ZaLmanVsk-L-D-AniLibria-Dream-Cast-DEEP-AniStar"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219850/Monolog-farmacevta-Zapiski-aptekarya-Kusuriya-no-Hitorigoto-03x01-04-iz-24-2026-WEBRip-1080p-by-ZaLmanVsk-L-D-AniLibria-Dream-Cast-DEEP-AniStar">Монолог фармацевта / Записки аптекаря / Kusuriya no Hitorigoto [03x01-04 из 24] (2026) WEBRip 1080p by ZaLmanVsk | L, D | AniLibria, Dream Cast, DEEP, AniStar</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">3.92 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219843"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:96f63759f696ed0892c4cb5cc671e1d3c4760e9f&dn=Nochnoy-administrator-The-Night-Manager-S02-2026-WEB-DL-1080p-P-L-A&xl=35585869997&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219843/Nochnoy-administrator-The-Night-Manager-S02-2026-WEB-DL-1080p-P-L-A"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219843/Nochnoy-administrator-The-Night-Manager-S02-2026-WEB-DL-1080p-P-L-A">Ночной администратор / The Night Manager [S02] (2026) WEB-DL 1080p | P, L, A</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">33.14 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219841"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:78dcdcaf3eca4d3feae8153f53e80313446ddbad&dn=Gangsterlend-MobLand-02x01-06-iz-10-2026-WEB-DL-1080p-P-D-P2&xl=25529912394&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219841/Gangsterlend-MobLand-02x01-06-iz-10-2026-WEB-DL-1080p-P-D-P2"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219841/Gangsterlend-MobLand-02x01-06-iz-10-2026-WEB-DL-1080p-P-D-P2">Гангстерленд / MobLand [02x01-06 из 10] (2026) WEB-DL 1080p | P, D, P2</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">23.78 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 68</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-25</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219836"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:912d5f057f9fbf1a34d72adbba769c739825d551&dn=Luchshiy-otryad-3-The-Inspector-Wears-Skirts-III-Huang-jia-du-chuan-1990-BDRip-HEVC-1080p-ot-RIPS-CLUB-L1&xl=17817149020&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219836/Luchshiy-otryad-3-The-Inspector-Wears-Skirts-III-Huang-jia-du-chuan-1990-BDRip-HEVC-1080p-ot-RIPS-CLUB-L1"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219836/Luchshiy-otryad-3-The-Inspector-Wears-Skirts-III-Huang-jia-du-chuan-1990-BDRip-HEVC-1080p-ot-RIPS-CLUB-L1">Лучший отряд 3 / The Inspector Wears Skirts III / Huang jia du chuan (1990) BDRip-HEVC 1080p от RIPS CLUB | L1</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">16.59 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219823"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:9729318295e8ce2d2934eef67d3902435326ffc5&dn=Maskarad-Mascarade-2022-BDRip-1080p-ot-DoMiNo-amp-selezen-P-Jaskier-TVShows&xl=11987008782&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219823/Maskarad-Mascarade-2022-BDRip-1080p-ot-DoMiNo-amp-selezen-P-Jaskier-TVShows"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219823/Maskarad-Mascarade-2022-BDRip-1080p-ot-DoMiNo-amp-selezen-P-Jaskier-TVShows">Маскарад / Mascarade (2022) BDRip 1080p от DoMiNo &amp; селезень | P | Jaskier, TVShows</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">11.16 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219826"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:45c610e85423581ca21557aaef2e58bd491a9ec0&dn=Doroga-k-serdcu-S01-2026-WEBRip-1080p-ot-ExKinoRay&xl=7084398369&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219826/Doroga-k-serdcu-S01-2026-WEBRip-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219826/Doroga-k-serdcu-S01-2026-WEBRip-1080p-ot-ExKinoRay">Дорога к сердцу [S01] (2026) WEBRip 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">6.60 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219828"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:ab5e8e42c71fd703fa5152a7c8ed23ad00e618c7&dn=Na-krayu-Ouk-strit-The-End-of-Oak-Street-2026-BDRip-1080p-ot-MegaPeer-D-P-P2-Movie-Dubbing-WinMedia-TVShows-HDRezka-Studio-ViruseProject&xl=12942153294&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219828/Na-krayu-Ouk-strit-The-End-of-Oak-Street-2026-BDRip-1080p-ot-MegaPeer-D-P-P2-Movie-Dubbing-WinMedia-TVShows-HDRezka-Studio-ViruseProject"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219828/Na-krayu-Ouk-strit-The-End-of-Oak-Street-2026-BDRip-1080p-ot-MegaPeer-D-P-P2-Movie-Dubbing-WinMedia-TVShows-HDRezka-Studio-ViruseProject">На краю Оук-стрит / The End of Oak Street (2026) BDRip 1080p от MegaPeer | D, P, P2 | Movie Dubbing, WinMedia, TVShows, HDRezka Studio, ViruseProject</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">12.05 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219814"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:e6ecfdd3a84a053effda66369efac8f2fd7e58be&dn=Novyy-Comedy-Club-22x01-17-2026-WEBRip-1080p-ot-Files-x&xl=25260743117&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219814/Novyy-Comedy-Club-22x01-17-2026-WEBRip-1080p-ot-Files-x"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219814/Novyy-Comedy-Club-22x01-17-2026-WEBRip-1080p-ot-Files-x">Новый Comedy Club [22x01-17] (2026) WEBRip 1080p от Files-x</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">23.53 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219810"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:92b5e7cf8dd9e93494990abf1add8c31299e0bbf&dn=Dyavol-vo-ploti-2-Sposobnaya-uchenica-Devil-in-the-Flesh-2-Teacher039s-Pet-2000-WEB-DL-1080p-P&xl=5182847907&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219810/Dyavol-vo-ploti-2-Sposobnaya-uchenica-Devil-in-the-Flesh-2-Teacher039s-Pet-2000-WEB-DL-1080p-P"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219810/Dyavol-vo-ploti-2-Sposobnaya-uchenica-Devil-in-the-Flesh-2-Teacher039s-Pet-2000-WEB-DL-1080p-P">Дьявол во плоти 2 / Способная ученица / Devil in the Flesh 2 / Teacher&#039;s Pet (2000) WEB-DL  1080p | P</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">4.83 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219804"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:1d900af77f153f1e7874948dfbfc79d7a2885b55&dn=Luchshiy-otryad-2-The-Inspector-Wears-Skirts-II-Shen-yong-fei-hu-ba-wang-hua-1989-BDRip-HEVC-1080p-ot-RIPS-CLUB-L1&xl=12457712495&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219804/Luchshiy-otryad-2-The-Inspector-Wears-Skirts-II-Shen-yong-fei-hu-ba-wang-hua-1989-BDRip-HEVC-1080p-ot-RIPS-CLUB-L1"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219804/Luchshiy-otryad-2-The-Inspector-Wears-Skirts-II-Shen-yong-fei-hu-ba-wang-hua-1989-BDRip-HEVC-1080p-ot-RIPS-CLUB-L1">Лучший отряд 2 / The Inspector Wears Skirts II / Shen yong fei hu ba wang hua (1989) BDRip-HEVC 1080p от RIPS CLUB | L1</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">11.60 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219806"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:4cebc2e604bcef01fa1e2295e763c7cd4e7dd0cc&dn=Dyavol-mozhet-plakat-Devil-May-Cry-S02-2026-WEB-DLRip-1080p-D-Lokalizovannaya-versiya-Flarrow-Films&xl=11283435758&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219806/Dyavol-mozhet-plakat-Devil-May-Cry-S02-2026-WEB-DLRip-1080p-D-Lokalizovannaya-versiya-Flarrow-Films"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219806/Dyavol-mozhet-plakat-Devil-May-Cry-S02-2026-WEB-DLRip-1080p-D-Lokalizovannaya-versiya-Flarrow-Films">Дьявол может плакать / Devil May Cry [S02] (2026) WEB-DLRip 1080p | D | Локализованная версия | Flarrow Films</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">10.51 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 1</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219791"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:1ad0666e7f32917350c6a741816e642ca35d893b&dn=Amerikanskaya-istoriya-uzhasov-American-Horror-Story-13h01-12-iz-13-2026-WEBRip-1080p-P2-ViruseProject&xl=11988648383&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219791/Amerikanskaya-istoriya-uzhasov-American-Horror-Story-13h01-12-iz-13-2026-WEBRip-1080p-P2-ViruseProject"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219791/Amerikanskaya-istoriya-uzhasov-American-Horror-Story-13h01-12-iz-13-2026-WEBRip-1080p-P2-ViruseProject">Американская история ужасов / American Horror Story [13х01-12 из 13] (2026) WEBRip 1080p | P2 | ViruseProject</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">11.17 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 4</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219792"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:52e66b9abb279dd143f15d49c95c5678fb7effe0&dn=Ya-perevoplotilsya-v-goblina-voprosy-est-Tensei-Goblin-dakedo-Shitsumon-aru-01-04-iz-12-2026-WEBRip-1080p-by-ZaLmanVsk-L-AniLiberty-Dream-Cast-Flowers-Media&xl=4122043478&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219792/Ya-perevoplotilsya-v-goblina-voprosy-est-Tensei-Goblin-dakedo-Shitsumon-aru-01-04-iz-12-2026-WEBRip-1080p-by-ZaLmanVsk-L-AniLiberty-Dream-Cast-Flowers-Media"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219792/Ya-perevoplotilsya-v-goblina-voprosy-est-Tensei-Goblin-dakedo-Shitsumon-aru-01-04-iz-12-2026-WEBRip-1080p-by-ZaLmanVsk-L-AniLiberty-Dream-Cast-Flowers-Media">Я перевоплотился в гоблина, вопросы есть? / Tensei Goblin dakedo Shitsumon aru? [01-04 из 12] (2026) WEBRip 1080p by ZaLmanVsk | L | AniLiberty, Dream Cast, Flowers Media</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">3.84 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219793"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:7df62e59d1d6a5661b09b0ddb5b49df5f0844810&dn=Istoriya-ego-sluzhanki-02x01-08-iz-30-2026-WEB-DL-1080p&xl=21410943211&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219793/Istoriya-ego-sluzhanki-02x01-08-iz-30-2026-WEB-DL-1080p"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219793/Istoriya-ego-sluzhanki-02x01-08-iz-30-2026-WEB-DL-1080p">История его служанки [02x01-08 из 30] (2026) WEB-DL 1080p</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">19.94 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 4</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219795"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:f79825790f1bf0da5db98e9ac727aa4af5ce8e04&dn=Luchshiy-otryad-4-The-Inspector-Wears-Skirts-IV-92-Ba-wang-hua-yu-Ba-wang-hua-1992-BDRip-HEVC-1080p-ot-RIPS-CLUB-L1&xl=10134854383&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219795/Luchshiy-otryad-4-The-Inspector-Wears-Skirts-IV-92-Ba-wang-hua-yu-Ba-wang-hua-1992-BDRip-HEVC-1080p-ot-RIPS-CLUB-L1"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219795/Luchshiy-otryad-4-The-Inspector-Wears-Skirts-IV-92-Ba-wang-hua-yu-Ba-wang-hua-1992-BDRip-HEVC-1080p-ot-RIPS-CLUB-L1">Лучший отряд 4 / The Inspector Wears Skirts IV / 92 Ba wang hua yu Ba wang hua (1992) BDRip-HEVC 1080p от RIPS CLUB | L1</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">9.44 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219796"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:ba9cdd7b06388ed114b103203d6107d97376aedb&dn=Prostaya-sluchaynost-Yek-tasadof-e-sadeh-2025-BDRip-1080p-ot-Scarabey-P-VPODPOLE&xl=14074700840&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219796/Prostaya-sluchaynost-Yek-tasadof-e-sadeh-2025-BDRip-1080p-ot-Scarabey-P-VPODPOLE"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219796/Prostaya-sluchaynost-Yek-tasadof-e-sadeh-2025-BDRip-1080p-ot-Scarabey-P-VPODPOLE">Простая случайность / Yek tasadof-e sadeh (2025) BDRip 1080p от Scarabey | P | ВПОДПОЛЬЕ</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">13.11 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 3</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219785"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:a642bc8e1863c3fdb5bead929177c8dd2073a56e&dn=Cikl-zverya-The-Cycle-2026-WEB-DL-1080p-Sub&xl=5032031035&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219785/Cikl-zverya-The-Cycle-2026-WEB-DL-1080p-Sub"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219785/Cikl-zverya-The-Cycle-2026-WEB-DL-1080p-Sub">Цикл зверя / The Cycle (2026) WEB-DL 1080p | Sub</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">4.69 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 13</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219771"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:1cb18e44aa69c4e11589a9bdcecacb5567647e6d&dn=Temnaya-materiya-Dark-Matter-02h01-09-iz-10-2026-WEBRip-1080p-P2-ViruseProject&xl=18439105494&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219771/Temnaya-materiya-Dark-Matter-02h01-09-iz-10-2026-WEBRip-1080p-P2-ViruseProject"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219771/Temnaya-materiya-Dark-Matter-02h01-09-iz-10-2026-WEBRip-1080p-P2-ViruseProject">Тёмная материя / Dark Matter [02х01-09 из 10] (2026) WEBRip 1080p | P2 | ViruseProject</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">17.17 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219773"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:5cab0fe70c258c0e1295b0a651a6201770827ae3&dn=Chetvertyy-etazh-The-4th-floor-1999-WEB-DL-1080p-P2&xl=6974342424&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219773/Chetvertyy-etazh-The-4th-floor-1999-WEB-DL-1080p-P2"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219773/Chetvertyy-etazh-The-4th-floor-1999-WEB-DL-1080p-P2">Четвертый этаж / The 4th floor (1999) WEB-DL 1080p | P2</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">6.50 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219774"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:ac12f09e8793e339a9770133e389ce1de7022fce&dn=Srok-Time-S03-2026-WEB-DL-1080p-P-L2&xl=10031997489&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219774/Srok-Time-S03-2026-WEB-DL-1080p-P-L2"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219774/Srok-Time-S03-2026-WEB-DL-1080p-P-L2">Срок / Time [S03] (2026) WEB-DL 1080p | P, L2</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">9.34 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 3</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219765"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:eb1f77d9abcaa4a75838b85b2f8b32cc749fdca6&dn=Istorii-bolshoy-strany-03x01-11-2026-WEBRip-1080p&xl=20973543691&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219765/Istorii-bolshoy-strany-03x01-11-2026-WEBRip-1080p"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219765/Istorii-bolshoy-strany-03x01-11-2026-WEBRip-1080p">Истории большой страны [03x01-11] (2026) WEBRip 1080p</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">19.53 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219768"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:aecd73417e20cab8fc3d3bc5bf613ff34b0157b6&dn=Glubokoe-pogruzhenie-The-Rift-1990-BDRip-1080p-A-L1&xl=6546692824&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219768/Glubokoe-pogruzhenie-The-Rift-1990-BDRip-1080p-A-L1"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219768/Glubokoe-pogruzhenie-The-Rift-1990-BDRip-1080p-A-L1">Глубокое погружение / The Rift (1990) BDRip 1080p | A, L1</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">6.10 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219760"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:432f008be8fcc7bf3d53306df46b83d2ca952363&dn=Viasat-History-Udivitelnaya-istoriya-rimlyan-L039histoire-tonnante-des-Romains-01-04-iz-04-2025-HDTV-1080p-P1&xl=16006821854&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219760/Viasat-History-Udivitelnaya-istoriya-rimlyan-L039histoire-tonnante-des-Romains-01-04-iz-04-2025-HDTV-1080p-P1"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219760/Viasat-History-Udivitelnaya-istoriya-rimlyan-L039histoire-tonnante-des-Romains-01-04-iz-04-2025-HDTV-1080p-P1">Viasat History: Удивительная история римлян / L&#039;histoire étonnante des Romains [01-04 из 04] (2025) HDTV 1080p | P1</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">14.91 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219755"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:e7e59182b8b4cf5b46079d7cfda852cf3d97378e&dn=Odnazhdy-v-Rossii-13x01-21-iz-30-2026-WEB-DL-1080p&xl=33569486529&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219755/Odnazhdy-v-Rossii-13x01-21-iz-30-2026-WEB-DL-1080p"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219755/Odnazhdy-v-Rossii-13x01-21-iz-30-2026-WEB-DL-1080p">Однажды в России [13x01-21 из 30] (2026) WEB-DL 1080p</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">31.26 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219749"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:e33325a0e0e1555cb04e2739b3dccacb25203e81&dn=Spisok-smertnikov-The-Terminal-List-S02-2026-WEB-DL-1080p-L&xl=22718766488&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219749/Spisok-smertnikov-The-Terminal-List-S02-2026-WEB-DL-1080p-L"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219749/Spisok-smertnikov-The-Terminal-List-S02-2026-WEB-DL-1080p-L">Список смертников / The Terminal List [S02] (2026) WEB-DL 1080p | L</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">21.16 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 27</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219744"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:5c924d2c53ee0cc2a748360cdc5c8dfa5059a328&dn=Myatezh-Mutiny-2026-BDRip-1080p-ot-MegaPeer-D-P-P2-A-Pifagor-HDRezka-Studio-ViruseProject-Chadov&xl=10622841077&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219744/Myatezh-Mutiny-2026-BDRip-1080p-ot-MegaPeer-D-P-P2-A-Pifagor-HDRezka-Studio-ViruseProject-Chadov"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219744/Myatezh-Mutiny-2026-BDRip-1080p-ot-MegaPeer-D-P-P2-A-Pifagor-HDRezka-Studio-ViruseProject-Chadov">Мятеж / Mutiny (2026) BDRip 1080p от MegaPeer | D, P, P2, A | Пифагор, HDRezka Studio, ViruseProject, Чадов</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">9.89 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 0</font> <font color="red">&darr; 2</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219746"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:8369cb804c4b5ecbf443f1170194e4c6e1beb471&dn=Baltiyskoe-more-01-06-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay&xl=5514843981&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219746/Baltiyskoe-more-01-06-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219746/Baltiyskoe-more-01-06-iz-08-2026-WEB-DL-1080p-ot-ExKinoRay">Балтийское море [01-06 из 08] (2026) WEB-DL 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">5.14 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 20</font></td>
+</tr><tr class="ttable_col1">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219747"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:61278960a20490681a52d5010583fbccf6f1844a&dn=Tverskaya-Zdes-i-seychas-03x01-10-iz-20-2026-WEB-DL-1080p-ot-ExKinoRay&xl=13417026207&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219747/Tverskaya-Zdes-i-seychas-03x01-10-iz-20-2026-WEB-DL-1080p-ot-ExKinoRay"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219747/Tverskaya-Zdes-i-seychas-03x01-10-iz-20-2026-WEB-DL-1080p-ot-ExKinoRay">Тверская: Здесь и сейчас [03x01-10 из 20] (2026) WEB-DL 1080p от ExKinoRay</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">12.50 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 0</font></td>
+</tr><tr class="ttable_col2">
+ <td style="white-space:nowrap;text-align:center;">2026-10-24</td>
+ <td style="white-space:nowrap;"><a class="dwnld" rel="nofollow" href="/d/?id=219739"><img src="/download.jpg" width="16px" height="16px" /></a>
+<a class="magnet" href="magnet:?xt=urn:btih:cab0609b9a1ea751124370dcaadca6f35d6fea41&dn=ZHivaya-yarost-Fo-ze-ngaan-The-Furious-2025-BDRip-1080p-ot-MegaPeer-D-P-A-Nevafilm-HDRezka-Studio-Serbin&xl=10662960367&tr=http://retracker.local/announce&tr=udp://torrent.by:2710&tr=udp://tracker.torrent.eu.org:451&tr=udp://opentor.net:6969&comment=https://torrent.by/219739/ZHivaya-yarost-Fo-ze-ngaan-The-Furious-2025-BDRip-1080p-ot-MegaPeer-D-P-A-Nevafilm-HDRezka-Studio-Serbin"><img width="14px" src="/magnet.svg" alt="magnet"></a>
+</td><td style="width:100%;word-wrap:break-word;"><a name="search_select" style="float:left;font-size:12px;text-decoration:none;" href="/219739/ZHivaya-yarost-Fo-ze-ngaan-The-Furious-2025-BDRip-1080p-ot-MegaPeer-D-P-A-Nevafilm-HDRezka-Studio-Serbin">Живая ярость / Fo ze ngaan / The Furious (2025) BDRip 1080p от MegaPeer | D, P, A | Невафильм, HDRezka Studio, Сербин</a></td>
+<td style="white-space:nowrap;"></td><td style="white-space:nowrap;">9.93 GB</td>
+<td style="white-space:nowrap;"><font color="green">&uarr; 1</font> <font color="red">&darr; 3</font></td>
+</tr></table>
+<script type="text/javascript">
+function getElementsByName_iefix(tag, name) {
+	var elem = document.getElementsByTagName(tag);
+	var arr = new Array();
+	for(i = 0,iarr = 0; i < elem.length; i++) {
+	  att = elem[i].getAttribute("name");
+	  if(att == name) {
+		   arr[iarr] = elem[i];
+		   iarr++;
+	  }
+	}
+	return arr;
+}
+function TrimStr(s)
+{
+	s = s.replace( /^\s+/g, '');
+	return s.replace( /\s+$/g, '');
+}
+
+function FindOnPage(inputId){
+  var obj = window.document.getElementById(inputId);
+  var textToFind;
+
+  if (obj) {
+	textToFind = TrimStr(obj.value); //обрезаем пробелы
+  }
+
+	var text_array = textToFind.split(' ');
+
+	var all_torrents = getElementsByName_iefix('a', 'search_select');
+
+	for(t = 0; t < all_torrents.length; t++){ // бежим по всем торрентам
+
+		for (i = 0; i < text_array.length; i++){ // бежим по всем словам
+
+			all_torrents[t].innerHTML = all_torrents[t].innerHTML.replace(eval("/"+text_array[i]+"/gi"),"<b style='background:yellow;'>"+text_array[i]+"</b>");
+		}
+	}
+
+}
+FindOnPage('text-to-find');
+</script>
+<br/><center style="background-color:#EFF4FD;">Искать по <img src="/fire.gif" width="16px" /> <b>torrent.by</b> в <span style="color:red;">Я</span>ндексе <a target="_blank" href="http://yandex.by/yandsearch?text=1080p site:torrent.by">1080p</a> 			или <span style="color:blue;">G</span><span style="color:red;">o</span><span style="color:gold;">o</span><span style="color:blue;">g</span><span style="color:green;">l</span><span style="color:red;">e</span> <a target="_blank" href="https://www.google.by/search?q=1080p site:torrent.by">1080p</a></center></td>			<td valign="top" style="width:200px;padding:3px 5px 0 0;">
+<div class="myBlock">
+ <div class="myBlock-caption">Торрент клиент</div>
+ <center><img src="/fire.gif" width="16px" height="16px" /> <a href="/download/">byTorrent</a> - программа для загрузки торрент-файлов.</br></br>
+ <a rel="nofollow" href="/byTorrent.exe">Скачать byTorrent.exe</a> <small>(1,5 МБ)</small></br></br>
+ <a rel="nofollow" href="/byTorrent.zip">Скачать byTorrent.zip</a> <small>(0,6 МБ)</small></center>
+ </div>
+<div class="myBlock">
+ <div class="myBlock-caption">Категории</div>
+ <ul class="bMenu">
+ 	<li><a href="/new/">Обзор торрентов</a></li>
+ 	<li><a href="/films/">Зарубежные фильмы</a></li>
+ 	<li><a href="/movies/">Наши фильмы</a></li>
+ 	<li><a href="/serials/">Зарубежные сериалы</a></li>
+ 	<li><a href="/series/">Наши сериалы</a></li>
+ 	<li><a href="/tv/">Телевизор</a></li>
+ 	<li><a href="/cartoons/">Мультфильмы</a></li>
+ 	<li><a href="/humor/">Юмор</a></li>
+ 	<li><a href="/anime/">Аниме</a></li>
+ 	<li><a href="/music/">Музыка</a></li>
+ 	<li><a href="/games/">Игры</a></li>
+ 	<li><a href="/software/">Софт</a></li>
+ 	<li><a href="/books/">Книги</a></li>
+ 	<li><a href="/sport/">Спорт</a></li>
+ 	<li><a href="/other/">Другое</a></li>
+ </ul>
+ </div>
+<div class="myBlock">
+ <div class="myBlock-caption">Поддержи torrent.by</div>
+ <center>Получи &#9733; <a href="/vip/">VIP-статус</a></br>перевод с помощь ЕРИП, ЮMoney, WebMoney <a href="/donate/">подробнее</a><br/>
+<hr align="center" width="90%">Пожалуйста, проголосуйте и добавьте отзыв на странице <a target="blank" href="https://freesoft.ru/windows/bytorrent">https://freesoft.ru</a></center>
+</div>
+<a href="/feedback/">Обратная связь</a> <a target="_blank" rel="nofollow" style="float:right;" href="https://toptracker.ru/details.php?id=5763" title="Рейтинг трекеров"><img src="/vote.gif" border="0"></a>
+</td></tr></table>
+<br/><span class="footer">End game &#169;</span>
+ </body></html>

@@ -467,3 +467,4 @@ definitions:
   - {id: e-hentai, file: definitions/e-hentai.yaml, state: verificata, author: indexarr, note: 'Public E-Hentai gallery search; .torrent from the gallery torrent page, real fixtures.'}
   - {id: xxxtor, file: definitions/xxxtor.yaml, state: verificata, author: indexarr, note: 'Public adult XXXTor search through Cloudflare; magnet, size and health in the row, real fixture.'}
   - {id: u3c3, file: definitions/u3c3.yaml, state: verificata, author: indexarr, note: 'Public U3C3 tracker search; magnet, .torrent, size, date and category in the row, real fixture.'}
+  - {id: torrentby, file: definitions/torrentby.yaml, state: verificata, author: indexarr, note: 'Public torrent.by search; magnet, size and health in the row; the site serves an incomplete TLS chain so the definition opts into meta.insecure_tls, real fixture.'}

@@ -502,6 +502,9 @@ func (s *Server) indexerBadges(r *http.Request, in store.Indexer, def *definitio
 		if strings.EqualFold(strings.TrimSpace(def.Meta.Mirror), "unofficial") {
 			out = append(out, uiBadge{Kind: "mirror", Label: s.translate(r, "idx.badgeMirror")})
 		}
+		if def.Meta.InsecureTLS {
+			out = append(out, uiBadge{Kind: "tls", Label: s.translate(r, "idx.badgeInsecureTLS")})
+		}
 	}
 	rawURL := ""
 	if config := publicConfigMap(in.ConfigJSON); config != nil {
@@ -2068,6 +2071,7 @@ type compactFormView struct {
 	Note                      string
 	StateWarning              string
 	MirrorWarning             string
+	TLSWarning                string
 	ChangeSiteURL             string
 }
 
@@ -2172,6 +2176,9 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	}
 	if strings.EqualFold(strings.TrimSpace(parsed.Meta.Mirror), "unofficial") {
 		data.MirrorWarning = s.translate(r, "indexerForm.mirrorWarning")
+	}
+	if parsed.Meta.InsecureTLS {
+		data.TLSWarning = s.translate(r, "indexerForm.tlsWarning")
 	}
 	if current == nil && in == nil && strings.TrimSpace(data.Name) == "" {
 		data.Name = parsed.Meta.Name

@@ -54,6 +54,29 @@ deve contenere un solo documento YAML.
 | `mirror` | no | `official` oppure `unofficial`. `unofficial` segnala che la definizione funziona solo attraverso un mirror non ufficiale: la UI mostra sempre il badge "Mirror non ufficiale" e un avviso nel form, anche quando lo stato è `verificata`. Additivo: le definizioni senza il campo restano valide |
 | `interval` | no | durata Go, per esempio `15m`; è un suggerimento per l'intervallo di aggiornamento dell'indexer. Vuoto = nessun suggerimento, vale il valore globale. Il minimo è 60s |
 | `latest` | no | `true` (predefinito) se il sito pubblica un elenco o un feed delle novità; `false` se sa solo rispondere a una ricerca |
+| `insecure_tls` | no | `true` solo per una definizione `public`: il sito serve una catena TLS incompleta, quindi il motore salta la verifica del certificato **per questo indexer**. La UI mostra un badge "TLS non verificato" e un avviso nel form. Su `semi-private` e `private` è rifiutato |
+
+### Eccezione TLS per singola definizione
+
+Un sito pubblico può servire una catena TLS incompleta (manca il certificato
+intermedio del firmatario) e diventare inaccessibile a Go, che rifiuta la
+connessione con `x509: certificate signed by unknown authority`. Non è un
+selettore da correggere: è il server.
+
+`meta.insecure_tls: true` autorizza il motore a saltare la verifica del
+certificato **solo per le richieste di quell'indexer**, e solo quando
+`meta.type` è `public`. Il trasporto condiviso non viene modificato: il
+connettore ne deriva uno con la stessa politeness, la stessa guardia SSRF e la
+stessa configurazione, cambiando soltanto il controllo TLS. Un `private` o un
+`semi-private` che chiede l'eccezione viene rifiutato all'apertura del
+connettore, perché le credenziali non devono mai viaggiare verso un certificato
+non verificato.
+
+La UI mostra il badge «TLS non verificato» sull'indexer e un avviso nel form
+(tradotti nelle 7 lingue), così l'utente sa che per quella fonte l'identità del
+server non è provata e che conviene controllare l'hash del magnet. Nel catalogo
+la definizione resta `verificata` se ricerca e grab sono stati provati; la prova
+della catena rotta sta nel commento del file YAML.
 
 ### Bozze derivate
 

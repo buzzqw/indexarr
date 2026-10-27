@@ -62,6 +62,12 @@ type Meta struct {
 	// official domain. The value "unofficial" shows a permanent badge and a
 	// warning in the form, even when the definition itself is verified.
 	Mirror string `yaml:"mirror,omitempty" json:"mirror,omitempty"`
+	// InsecureTLS lets the engine skip certificate verification for this
+	// indexer. It exists for a public site that serves an incomplete chain and
+	// cannot be fetched any other way: the flag is per definition, never
+	// global, and only public definitions may set it. The UI shows a permanent
+	// badge and a warning in the form.
+	InsecureTLS bool `yaml:"insecure_tls,omitempty" json:"insecure_tls,omitempty"`
 }
 
 // HasLatest reports whether the indexer publishes a list of new releases. The

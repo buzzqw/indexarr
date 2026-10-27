@@ -1,0 +1,65 @@
+# VERIFICATA (verified). torrent.by, Belarusian public tracker.
+#
+# The site sends an incomplete TLS chain: it does not include the intermediate
+# that signs its Let's Encrypt certificate, so Go and openssl both reject it
+# ("x509: certificate signed by unknown authority", openssl verify code 21).
+# The content itself is a normal public tracker, so the definition opts into
+# `meta.insecure_tls` — a per-definition exception, only allowed for a public
+# source — and the UI shows the badge and the warning that come with it.
+#
+# The search is GET /search/?search=... and the page was captured on 2026-10-27
+# with curl -k in fixtures/torrentby/search.html (100 rows, 100 magnets). Rows
+# alternate ttable_col1/ttable_col2 under #torrents_table. Each row carries the
+# date (sometimes "Сегодня"/"Вчера", left unparsed), a /d/?id= download link, a
+# direct magnet, the release link and title, the size in MB/GB and the peers as
+# "↑ n ↓ n" inside a green and a red font.
+#
+# The row does not show its category, so the definition declares no category
+# map and items keep the generic "Other" bucket instead of inventing a guess.
+# The search answers a single page: the page carries no pager.
+schema: 1
+
+meta:
+  id: torrentby
+  name: torrent.by
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Belarusian public tracker with magnet, size and health in the result row; the site serves an incomplete TLS chain.
+  urls:
+    - https://torrent.by/
+  updated: "2026-10-27"
+  latest: false
+  insecure_tls: true
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search/
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "#torrents_table tr" }
+    fields:
+      title:    { selector: 'a[name="search_select"]', filters: [trim] }
+      details:  { selector: 'a[name="search_select"]', attr: href, type: url }
+      magnet:   { selector: "a.magnet", attr: href }
+      size:     { selector: "td:nth-of-type(5)", type: size }
+      date:     { selector: "td:nth-of-type(1)", type: date, layouts: ["2006-01-02"] }
+      seeders:  { selector: "font[color=green]", type: int, filters: [{ regex: "([0-9]+)" }] }
+      leechers: { selector: "font[color=red]", type: int, filters: [{ regex: "([0-9]+)" }] }
+    required: [title, details, magnet, size]
+
+health:
+  query: 1080p
+  min_rows: 20
+
+tests:
+  - name: search
+    fixture: fixtures/torrentby/search.html
+    expect: { min_rows: 20, required: [title, details, magnet, size] }

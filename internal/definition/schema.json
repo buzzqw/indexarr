@@ -140,6 +140,10 @@
             "unofficial"
           ],
           "description": "Optional. \"unofficial\" marks a definition that currently works only through a non-official mirror; the UI shows a permanent badge and a warning even when the definition is verified."
+        },
+        "insecure_tls": {
+          "type": "boolean",
+          "description": "Optional, false by default. Valid only for a public definition: the site serves an incomplete TLS chain, so the engine skips certificate verification for this indexer only. The UI shows a permanent badge and a warning in the form."
         }
       }
     },
@@ -312,7 +316,8 @@
         }
       }
     },
-    "authStep": {      "type": "object",
+    "authStep": {
+      "type": "object",
       "additionalProperties": false,
       "properties": {
         "get": {

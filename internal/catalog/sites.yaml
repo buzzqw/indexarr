@@ -9973,21 +9973,6 @@ sites:
       source_id: torrentbd
       checked: "2026-10-25"
       evidence: GET https://www.torrentbd.net/ -> HTTP 403, 5482 bytes, title "Just a moment...", checked 2026-10-25
-    - id: jk-torrentby
-      name: torrent.by
-      description: torrent.by is a BELARUSIAN Public Torrent Tracker
-      url: https://torrent.by/
-      urls:
-        - https://torrent.by/
-      type: public
-      language: ru-RU
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: torrentby
-      checked: "2026-10-25"
-      evidence: GET https://torrent.by/ -> HTTP 200, 262144 bytes, title "Торрент трекер - torrent.by", checked 2026-10-25
     - id: jk-torrentbytes
       name: TorrentBytes
       description: TorrentBytes is a Private site. A decade of TorrentBytes

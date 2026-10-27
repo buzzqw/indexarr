@@ -154,6 +154,9 @@ func (d *Definition) Validate() error {
 	default:
 		add("meta.mirror: must be empty, official or unofficial")
 	}
+	if d.Meta.InsecureTLS && !strings.EqualFold(strings.TrimSpace(d.Meta.Type), "public") {
+		add("meta.insecure_tls: is only allowed for a public definition")
+	}
 	if interval := d.Meta.Interval.Duration(); interval != 0 && interval < time.Minute {
 		add("meta.interval: must be empty or at least 60s")
 	}

@@ -55,7 +55,7 @@
       <div class="indexer-main">
         <a class="indexer-name" href="/indexers/{{.Indexer.ID}}{{$.DetailQuery}}">{{.Indexer.Name}}</a>
         <div class="badges">
-          {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "mirror"}}{{T "tip.addReliability"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
+          {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "mirror"}}{{T "tip.addReliability"}}{{else if eq .Kind "tls"}}{{T "tip.insecureTLS"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
           {{if .FiltersLabel}}<span class="badge soft" title="{{T "tip.indexerTags"}}">{{.FiltersLabel}}</span>{{end}}
         </div>
         {{if .Problem}}{{template "problem" .Problem}}{{end}}

@@ -19,6 +19,7 @@
 {{if .Note}}<p class="flash warn" role="alert">{{.Note}}</p>{{end}}
 {{if .Derived}}<p class="flash warn" role="alert">{{T "indexerForm.derivedWarning"}}</p>{{end}}
 {{if .MirrorWarning}}<p class="flash warn" role="alert">{{.MirrorWarning}}</p>{{end}}
+{{if .TLSWarning}}<p class="flash warn" role="alert">{{.TLSWarning}}</p>{{end}}
 {{if .StateWarning}}<p class="flash warn" role="alert">{{.StateWarning}}</p>{{end}}
 
 <form class="panel form compact-form" method="post" action="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">

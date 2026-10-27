@@ -6,7 +6,7 @@
     <div class="detail-status">
       {{template "status-dot" .Status}}
       <span>{{.Status.Label}}</span>
-      {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
+      {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "tls"}}{{T "tip.insecureTLS"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
     </div>
     {{if .SiteAddress}}
     <p class="site-address" title="{{T "idx.detail.addressTip"}}"><span class="muted">{{T "idx.detail.address"}}:</span> <a class="link" href="{{.SiteAddress}}" target="_blank" rel="noopener noreferrer">{{.SiteAddress}}</a></p>
