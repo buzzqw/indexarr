@@ -84,3 +84,13 @@ sources:
     reason: "The address is gone."
     evidence: "asnet.pw has no A record (only AAAA 2001:470:1f1d:2e7::ffff); GET https://asnet.pw/ and http://asnet.pw/ -> connection refused on 443 and 80, checked 2026-10-27"
     checked: "2026-10-27"
+  - id: comicat
+    state: bloccata
+    reason: "The search is behind a JavaScript visitor test (captcha/addon.php) that a definition cannot pass."
+    evidence: "GET https://www.comicat.org/search.php?keyword=matrix -> 200, 1132 bytes, no result rows: the body is the visitor-test form posting to /addon.php?r=document/view&page=visitor-test and loading captcha/captcha.js, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: miobt
+    state: bloccata
+    reason: "The search is behind a JavaScript visitor test (captcha/addon.php) that a definition cannot pass."
+    evidence: "GET https://miobt.com/search.php?keyword=matrix -> 200, 1132 bytes, no result rows: the same visitor-test form (captcha/captcha.js) as comicat.org, checked 2026-10-27"
+    checked: "2026-10-27"

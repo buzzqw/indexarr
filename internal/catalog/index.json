@@ -3446,15 +3446,15 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "comicat.org"
     ],
     "url": "https://www.comicat.org/",
     "source": "jackett",
-    "evidence": "GET https://www.comicat.org/public/html/start/ -\u003e HTTP 200, 1132 bytes, title \"(no title)\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
+    "evidence": "GET https://www.comicat.org/search.php?keyword=matrix -\u003e 200, 1132 bytes, no result rows: the body is the visitor-test form posting to /addon.php?r=document/view\u0026page=visitor-test and loading captcha/captcha.js, checked 2026-10-27",
+    "note": "The search is behind a JavaScript visitor test (captcha/addon.php) that a definition cannot pass.",
+    "proposable": false,
     "latest": false
   },
   {
@@ -8372,15 +8372,15 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "miobt.com"
     ],
     "url": "https://miobt.com/",
     "source": "jackett",
-    "evidence": "GET https://miobt.com/public/html/start/ -\u003e HTTP 200, 1132 bytes, title \"(no title)\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
+    "evidence": "GET https://miobt.com/search.php?keyword=matrix -\u003e 200, 1132 bytes, no result rows: the same visitor-test form (captcha/captcha.js) as comicat.org, checked 2026-10-27",
+    "note": "The search is behind a JavaScript visitor test (captcha/addon.php) that a definition cannot pass.",
+    "proposable": false,
     "latest": false
   },
   {

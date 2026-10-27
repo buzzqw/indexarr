@@ -2083,13 +2083,14 @@ sites:
         - anime
         - music
         - books
-      state: verificata
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: comicat
-      checked: "2026-10-25"
-      evidence: GET https://www.comicat.org/public/html/start/ -> HTTP 200, 1132 bytes, title "(no title)", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: 'GET https://www.comicat.org/search.php?keyword=matrix -> 200, 1132 bytes, no result rows: the body is the visitor-test form posting to /addon.php?r=document/view&page=visitor-test and loading captcha/captcha.js, checked 2026-10-27'
+      note: The search is behind a JavaScript visitor test (captcha/addon.php) that a definition cannot pass.
     - id: jk-concertos
       name: Concertos (API)
       description: Concertos is a Private Torrent Tracker for Live Concerts with Strict Quality Control
@@ -5958,13 +5959,14 @@ sites:
         - anime
         - music
         - books
-      state: verificata
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: miobt
-      checked: "2026-10-25"
-      evidence: GET https://miobt.com/public/html/start/ -> HTTP 200, 1132 bytes, title "(no title)", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: 'GET https://miobt.com/search.php?keyword=matrix -> 200, 1132 bytes, no result rows: the same visitor-test form (captcha/captcha.js) as comicat.org, checked 2026-10-27'
+      note: The search is behind a JavaScript visitor test (captcha/addon.php) that a definition cannot pass.
     - id: jk-mma-torrents
       name: MMA-torrents
       description: MMA-Torrents is a Private Torrent Tracker for MMA (Mixed Martial Arts)

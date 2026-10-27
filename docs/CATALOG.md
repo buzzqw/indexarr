@@ -24,8 +24,8 @@ Valori contati su `index.json` dopo `go generate ./internal/catalog`.
 | Voci leggere | **517** (512 dall'istantanea Jackett, 5 manuali) |
 | Verificate | **85** |
 | Bozze | **24** |
-| Da provare (`da-provvi`) | **498** |
-| Bloccate (`bloccata`) | **12** |
+| Da provare (`da-provvi`) | **496** |
+| Bloccate (`bloccata`) | **14** |
 | Morte (`morta`) | **7** |
 | Pubbliche verificate (host unici) | **94** |
 | Voci italiane | **14** |
@@ -73,8 +73,8 @@ compaiono: la classe `.site-note` è resa solo nella coda.
 | --- | ---: | --- |
 | Definizione nativa (id o host) | **126** | fonti dell'istantanea il cui host coincide con una definizione nativa |
 | Software noto (connettore di famiglia) | **154** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **340** | 282 private, 58 semiprivate |
-| Fuori coda (bloccate o morte) | **18** | 11 bloccate, 7 morte |
+| Da scrivere | **338** | 282 private, 56 semiprivate |
+| Fuori coda (bloccate o morte) | **20** | 13 bloccate, 7 morte |
 | **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 
 Il conteggio è per `source_id` dell'istantanea: una fonte il cui host coincide
@@ -169,6 +169,8 @@ grab restituisce il magnet della riga.
 | EpubLibre | non è un indexer BitTorrent: il catalogo serve EPUB |
 | torrent-pirat | portale phpBB senza magnet; `/tracker/` dietro challenge Cloudflare |
 | Anidex | DDoS-Guard `403` e origin `502` attraverso il solver |
+| comicat | ricerca dietro un visitor test JavaScript (`captcha/addon.php`), 1132 byte senza righe |
+| miobt | come comicat: stesso visitor test, stesso corpo da 1132 byte |
 | OpenSharing (`morta`) | timeout IPv4/IPv6, solver `500` |
 | AniSource (`morta`) | nessun record A, connessione rifiutata |
 | 52BT (`morta`) | HTTP 410 «The address is dead.» |
@@ -207,6 +209,26 @@ Restano tre, ora `bloccata` e fuori coda, per motivi misurati il 27/10:
 - **Torrent[CORE]**: `/search` risponde un corpo vuoto di 40 byte e le pagine
   usano handle base64 opachi senza magnet. Non c'è una ricerca HTML da
   descrivere.
+
+### Semi-private: censimento del 27/10
+
+Le 57 fonti semi-private rimaste in coda sono state passate una per una con una
+richiesta reale, leggendo la definizione storica di Jackett **solo come aiuto
+di scrittura** per conoscere il percorso di ricerca (nessuna definizione
+Cardigann viene importata o distribuita). L'esito è netto e non dipende dal
+codice:
+
+| Esito | Fonti | Dettaglio |
+| --- | ---: | --- |
+| Serve un account | **52** | la definizione storica dichiara `username`/`password` (o cookie): senza credenziali non c'è nulla da provare |
+| Pagina di login | **4** | AniDUB, Erai-Raws, RuTracker.org, UniOtaku: `type="password"` sulla pagina, ricerca non disponibile da ospite |
+| Visitor test JavaScript | **2** | comicat e miobt: corpo da 1132 byte che carica `captcha/captcha.js` e posta su `/addon.php`; ora `bloccata` |
+| Serie TV senza torrent da ospite | **1** | LostFilm: `/search/?q=` risponde 200 ma elenca serie, i torrent richiedono l'accesso |
+
+Nessuna di queste può essere verificata senza un account, quindi restano
+`da-provvi`: è lo stato giusto per una fonte raggiungibile ma non dimostrabile.
+Non vanno marcate `bloccata`, perché il motivo non è il sito ma l'assenza delle
+credenziali.
 
 ## Stati onesti
 
