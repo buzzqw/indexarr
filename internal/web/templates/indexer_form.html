@@ -95,6 +95,7 @@
         <select id="protocol" name="protocol">
           <option value="torrent"{{if eq .Protocol "torrent"}} selected{{end}}>{{T "idx.protocolTorrentMagnet"}}</option>
           <option value="usenet"{{if eq .Protocol "usenet"}} selected{{end}}>{{T "idx.protocolUsenet"}}</option>
+          <option value="ed2k"{{if eq .Protocol "ed2k"}} selected{{end}}>{{T "idx.protocolEd2k"}}</option>
         </select>
         {{end}}
         <p class="help">{{T "idx.protocolHelp"}}</p>

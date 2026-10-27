@@ -253,7 +253,9 @@ func (c *DefinitionConnector) latestList(ctx context.Context, req LatestRequest)
 		items = items[:req.Limit]
 	}
 	if !req.SkipDetails {
-		if err := c.resolveSearchDetails(ctx, items); err != nil {
+		var err error
+		items, err = c.resolveSearchDetails(ctx, items)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -505,6 +507,11 @@ func (c *DefinitionConnector) Download(ctx context.Context, item Item) (Payload,
 	if strings.TrimSpace(item.Magnet) != "" {
 		return Payload{Magnet: item.Magnet}, nil
 	}
+	// An expanded eD2k row already carries the exact file the client chose;
+	// resolving the topic again would return the first link instead.
+	if link := strings.TrimSpace(item.Ed2k); link != "" {
+		return Payload{Ed2k: link}, nil
+	}
 	// A definition that resolves the download at grab time declares where the
 	// link must be read. The item can still carry a DownloadURL that came from
 	// somewhere else (an import from another manager, a stale cache, a bridge
@@ -735,7 +742,9 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 		items = items[:req.Limit]
 	}
 	if !req.SkipDetails {
-		if err := c.resolveSearchDetails(ctx, items); err != nil {
+		var err error
+		items, err = c.resolveSearchDetails(ctx, items)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -1462,10 +1471,14 @@ func (c *DefinitionConnector) now() time.Time {
 }
 
 func protocolFromDefinition(def *definition.Definition) Protocol {
-	if strings.EqualFold(strings.TrimSpace(def.Meta.Protocol), "usenet") {
+	switch strings.ToLower(strings.TrimSpace(def.Meta.Protocol)) {
+	case "usenet":
 		return ProtocolUsenet
+	case "ed2k":
+		return ProtocolEd2k
+	default:
+		return ProtocolTorrent
 	}
-	return ProtocolTorrent
 }
 
 func authStrategy(def *definition.Definition) string {

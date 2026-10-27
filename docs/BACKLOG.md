@@ -47,6 +47,14 @@ quello giusto e non va forzato a `bloccata`.
 Con un account il percorso è: sessione (vault), osservazione di ricerca,
 dettaglio e grab, fixture reali, definizione `verificata`.
 
+## 4-bis. eD2k
+
+| Voce | Cosa è aperto | Prova / verifica |
+| --- | --- | --- |
+| `ddunlimited` | il forum risponde `200` con la pagina «Informazione» quando il flood control blocca la ricerca: il connettore la legge come zero righe, senza distinguerla da «nessun risultato». L'archivio periodico usa le liste dei forum e non la ricerca | due `search.php` ravvicinate: la seconda contiene «Non ti è permesso di utilizzare il sistema di ricerca» e 0 `a.topictitle`; la pagina `viewforum.php?f=440` produce 25 topic e 49 link eD2k in 69 s |
+| `gextto` | il parser Torznab legge magnet e `.torrent`, non il `<link ed2k://>` né l'attributo `ed2k`: le release eD2k arrivano a indexarr ma il client non le mostra ancora come rete eD2k | `POST /api/v2/indexers/{id}/search` restituisce `ed2k` e `ed2k_hash`; il client deve mapparli su `models.Release.Ed2kLink` |
+| aMule | client HTTP aggiunto (`kind: amule`, `POST /api/v1/downloads`); il test unitario usa un server finto, la prova dal vivo con l'aMule dell'utente è da fare | `POST /api/v2/indexers/{id}/test` e un grab verso il client configurato |
+
 ## 5. Da monitorare
 
 | Voce | Cosa guardare |

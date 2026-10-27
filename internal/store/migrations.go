@@ -40,6 +40,14 @@ const (
 	// indexarr2ReleaseFilesVersion adds the file list of every stored torrent
 	// and a trigram index for searching inside file names.
 	indexarr2ReleaseFilesVersion = 17
+	// indexarr2Ed2kProtocolVersion widens the indexer protocol CHECK to the
+	// eD2k network. SQLite cannot alter a CHECK constraint in place, so the
+	// table is rebuilt; see applyEd2kProtocolMigration.
+	indexarr2Ed2kProtocolVersion = 18
+	// indexarr2Ed2kClientVersion widens the download client protocol CHECK to
+	// eD2k, so an aMule client can be stored next to the torrent and usenet
+	// ones.
+	indexarr2Ed2kClientVersion = 19
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -78,7 +86,7 @@ var indexarr2FoundationSchema = []string{
 		id               INTEGER PRIMARY KEY AUTOINCREMENT,
 		definition_id    TEXT    NOT NULL REFERENCES definitions(id) ON DELETE RESTRICT,
 		protocol         TEXT    NOT NULL DEFAULT 'torrent'
-			CHECK (protocol IN ('torrent', 'usenet')),
+			CHECK (protocol IN ('torrent', 'usenet', 'ed2k')),
 		slug             TEXT    NOT NULL UNIQUE,
 		name             TEXT    NOT NULL,
 		enabled          INTEGER NOT NULL DEFAULT 1,
@@ -383,6 +391,92 @@ func cycle6Migration(tx *sql.Tx) error {
 			string(encoded), time.Now().Unix(), item.id); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// applyEd2kProtocolMigration rebuilds the indexers table so its protocol CHECK
+// accepts 'ed2k'. SQLite cannot widen a CHECK constraint in place. The
+// migration runs on one dedicated connection with foreign keys disabled: the
+// child tables keep referencing "indexers", so after the rename they point at
+// the new table and no row is lost. Foreign keys are switched back on before
+// the connection returns to the pool.
+func (s *Store) applyEd2kProtocolMigration(ctx context.Context) error {
+	applied, err := s.migrationApplied(ctx, indexarr2Ed2kProtocolVersion)
+	if err != nil {
+		return err
+	}
+	if applied {
+		return nil
+	}
+	conn, err := s.db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("begin migration %d: %w", indexarr2Ed2kProtocolVersion, err)
+	}
+	defer conn.Close()
+	if _, err := conn.ExecContext(ctx, `PRAGMA foreign_keys=OFF`); err != nil {
+		return fmt.Errorf("disable foreign keys: %w", err)
+	}
+	defer func() {
+		_, _ = conn.ExecContext(context.WithoutCancel(ctx), `PRAGMA foreign_keys=ON`)
+	}()
+
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin migration %d: %w", indexarr2Ed2kProtocolVersion, err)
+	}
+	defer tx.Rollback()
+
+	statements := []string{
+		`CREATE TABLE indexers_new (
+			id               INTEGER PRIMARY KEY AUTOINCREMENT,
+			definition_id    TEXT    NOT NULL REFERENCES definitions(id) ON DELETE RESTRICT,
+			protocol         TEXT    NOT NULL DEFAULT 'torrent'
+				CHECK (protocol IN ('torrent', 'usenet', 'ed2k')),
+			slug             TEXT    NOT NULL UNIQUE,
+			name             TEXT    NOT NULL,
+			enabled          INTEGER NOT NULL DEFAULT 1,
+			priority         INTEGER NOT NULL DEFAULT 25,
+			config_json      TEXT    NOT NULL DEFAULT '{}',
+			proxy_id         INTEGER REFERENCES proxies(id) ON DELETE SET NULL,
+			tags             TEXT    NOT NULL DEFAULT '',
+			query_limit      INTEGER NOT NULL DEFAULT 0,
+			grab_limit       INTEGER NOT NULL DEFAULT 0,
+			created_at       INTEGER NOT NULL DEFAULT 0,
+			updated_at       INTEGER NOT NULL DEFAULT 0,
+			interval_seconds INTEGER NOT NULL DEFAULT 0,
+			min_seeders      INTEGER NOT NULL DEFAULT 0,
+			seed_ratio       REAL    NOT NULL DEFAULT 0,
+			seed_time_minutes INTEGER NOT NULL DEFAULT 0,
+			season_pack_seed_time_minutes INTEGER NOT NULL DEFAULT 0
+		)`,
+		`INSERT INTO indexers_new(id, definition_id, protocol, slug, name, enabled,
+			priority, config_json, proxy_id, tags, query_limit, grab_limit,
+			created_at, updated_at, interval_seconds, min_seeders, seed_ratio,
+			seed_time_minutes, season_pack_seed_time_minutes)
+		 SELECT id, definition_id, protocol, slug, name, enabled, priority,
+			config_json, proxy_id, tags, query_limit, grab_limit, created_at, updated_at,
+			interval_seconds, min_seeders, seed_ratio, seed_time_minutes,
+			season_pack_seed_time_minutes
+		 FROM indexers`,
+		`DROP TABLE indexers`,
+		`ALTER TABLE indexers_new RENAME TO indexers`,
+		`CREATE INDEX IF NOT EXISTS indexers_definition ON indexers(definition_id)`,
+		`CREATE INDEX IF NOT EXISTS indexers_proxy ON indexers(proxy_id)`,
+		`CREATE INDEX IF NOT EXISTS indexers_enabled ON indexers(enabled)`,
+	}
+	for _, statement := range statements {
+		if _, err := tx.ExecContext(ctx, statement); err != nil {
+			return fmt.Errorf("migration %d (%s): %w", indexarr2Ed2kProtocolVersion, "ed2k protocol", err)
+		}
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO schema_migrations(version, name, applied_at) VALUES(?, ?, ?)`,
+		indexarr2Ed2kProtocolVersion, "ed2k protocol", time.Now().Unix()); err != nil {
+		return fmt.Errorf("record migration %d: %w", indexarr2Ed2kProtocolVersion, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit migration %d: %w", indexarr2Ed2kProtocolVersion, err)
 	}
 	return nil
 }

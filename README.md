@@ -69,6 +69,7 @@ il quadro reale, non un elenco di intenti:
 | TorrentGalaxy | completo (listing HTML) | parser dedicato delle pagine `post-detail`, con cache dei magnet |
 | Corsaro | completo (listing HTML) | parser dedicato di titoli `/torrent/` e magnet diretti, con cache dei dettagli |
 | Newznab / Usenet | completo | ricerca, payload `.nzb` e invio ai client SABnzbd/NZBGet |
+| eD2k / aMule | completo | definizioni `protocol: ed2k`: link `ed2k://` archiviati, espansi per file, inviati ad aMule (Web API) |
 | RSS / Atom | completo | feed normali, enclosure `.torrent` o magnet |
 | Indexer privati con Basic | completo | campi *HTTP username/password* della sorgente |
 | API key in query, header o URL | completo | `apikey` viene inviata come parametro e come `X-Api-Key` |
@@ -343,10 +344,12 @@ non attiva la ricerca live.
 
 ### Invio ai client torrent
 
-In **Settings → Download client** si sceglie **qBittorrent** o **Transmission**,
-si inseriscono URL e credenziali e, per qBittorrent, categoria e percorso. Sul
-dettaglio di ogni release compare **Send to qBittorrent/Transmission**: viene
-inviato il `.torrent` salvato, oppure il magnet se il file non è in cache.
+In **Settings → Download client** si sceglie **qBittorrent**, **Transmission**,
+**aMule** o uno degli altri client supportati, si inseriscono URL e credenziali
+e, per qBittorrent, categoria e percorso. Sul dettaglio di ogni release compare
+**Invia**: viene inviato il `.torrent` salvato, oppure il magnet se il file non
+è in cache. Per aMule viene inviato il link `ed2k://` alla Web API
+(`/api/v1/downloads`); il protocollo della release sceglie il client.
 qBittorrent usa la Web API v2; Transmission il RPC con negoziazione della sessione.
 L'operazione è registrata nei log.
 
@@ -696,7 +699,7 @@ La UI include le pagine **Definizioni** e **Indexer** (form generato dai
 `settings`, test per fase, run manuale). Il sync verso le \*arr si configura da
 `/api/v2/applications`; il proxy serve `.torrent` e `.nzb` senza esporre URL o
 passkey. I client di download supportano qBittorrent, Transmission, Deluge,
-rTorrent, SABnzbd e NZBGet.
+rTorrent, SABnzbd, NZBGet e aMule.
 
 Il CLI delle definizioni è `indexarr-def`:
 

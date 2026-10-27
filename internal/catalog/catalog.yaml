@@ -167,6 +167,16 @@ definitions:
     italian: true
     note: "MirCrew latest channel; the personal Smartfeed URL is pasted from /smartfeed/ui."
 
+  # eD2k source: the archive keeps the ed2k:// link of every file. The
+  # scheduled run reads two forum listings (no search flood control), while a
+  # live search resolves the topic and expands a season pack into its episodes.
+  - id: ddunlimited
+    file: definitions/ddunlimited.yaml
+    state: verificata
+    author: indexarr
+    italian: true
+    note: "Italian phpBB forum of eD2k links (and some magnet/.torrent). Login, search, forum listing, topic extraction and grab were tested live on 2026-10-27; fixtures are sanitized."
+
   - id: 1337x
     file: definitions/1337x.yaml
     state: verificata

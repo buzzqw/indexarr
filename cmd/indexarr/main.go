@@ -344,6 +344,9 @@ func main() {
 					if magnet := strings.TrimSpace(payload.Magnet); magnet != "" {
 						return []byte(magnet), "application/x-magnet", "", nil
 					}
+					if link := strings.TrimSpace(payload.Ed2k); link != "" {
+						return []byte(link), "application/x-ed2k", "", nil
+					}
 					return nil, "", "", errors.New("payload unavailable")
 				}
 				return payload.Body, payload.ContentType, payload.Filename, nil

@@ -96,7 +96,8 @@
         "protocol": {
           "enum": [
             "torrent",
-            "usenet"
+            "usenet",
+            "ed2k"
           ]
         },
         "author": {
@@ -572,6 +573,14 @@
         "size": {
           "$ref": "#/$defs/field",
           "description": "Optional file size extracted from the details page."
+        },
+        "expand": {
+          "type": "string",
+          "enum": [
+            "",
+            "file"
+          ],
+          "description": "With resolve_on: search, create one release per extracted eD2k file (a season pack becomes its episodes)."
         }
       }
     },
@@ -612,6 +621,9 @@
         "all": {
           "type": "boolean",
           "description": "Collect every match of this target instead of only the first."
+        },
+        "ed2k": {
+          "$ref": "#/$defs/field"
         }
       },
       "oneOf": [
@@ -620,8 +632,17 @@
             "magnet"
           ],
           "not": {
-            "required": [
-              "torrent"
+            "anyOf": [
+              {
+                "required": [
+                  "torrent"
+                ]
+              },
+              {
+                "required": [
+                  "ed2k"
+                ]
+              }
             ]
           }
         },
@@ -630,8 +651,36 @@
             "torrent"
           ],
           "not": {
-            "required": [
-              "magnet"
+            "anyOf": [
+              {
+                "required": [
+                  "magnet"
+                ]
+              },
+              {
+                "required": [
+                  "ed2k"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "ed2k"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "magnet"
+                ]
+              },
+              {
+                "required": [
+                  "torrent"
+                ]
+              }
             ]
           }
         }
@@ -819,6 +868,10 @@
             "type": "string"
           },
           "description": "Go time layouts for date fields."
+        },
+        "body": {
+          "type": "boolean",
+          "description": "Read the whole details response and scan the text (for pages that build links in JavaScript)."
         }
       }
     },

@@ -34,6 +34,7 @@ var (
 	allowedProtocols = map[string]bool{
 		"torrent": true,
 		"usenet":  true,
+		"ed2k":    true,
 	}
 	allowedTypes = map[string]bool{
 		"public":       true,
@@ -74,6 +75,10 @@ var (
 	allowedDownloadSelect = map[string]bool{
 		"":               true,
 		"season_episode": true,
+	}
+	allowedDownloadExpand = map[string]bool{
+		"":     true,
+		"file": true,
 	}
 	allowedSessionModes = map[string]bool{
 		"":             true,
@@ -141,7 +146,7 @@ func (d *Definition) Validate() error {
 		}
 	}
 	if !allowedProtocols[d.Meta.Protocol] {
-		add("meta.protocol: must be one of torrent, usenet")
+		add("meta.protocol: must be one of torrent, usenet, ed2k")
 	}
 	if !allowedTypes[d.Meta.Type] {
 		add("meta.type: must be one of public, semi-private, private")
@@ -419,6 +424,13 @@ func validateDownload(download *Download, d *Definition, add func(string, ...any
 	if !allowedDownloadSelect[strings.TrimSpace(download.Select)] {
 		add("download.select: must be empty or season_episode")
 	}
+	expand := strings.TrimSpace(download.Expand)
+	if !allowedDownloadExpand[expand] {
+		add("download.expand: must be empty or file")
+	}
+	if expand != "" && resolveOn != "search" {
+		add("download.expand: requires resolve_on search")
+	}
 	if download.Before != nil && resolveOn != "grab" {
 		add("download.before: requires resolve_on grab (a thank must never run during a search)")
 	}
@@ -442,15 +454,27 @@ func validateDownload(download *Download, d *Definition, add func(string, ...any
 		add("download.extract: at least one target is required")
 	}
 	for i, target := range download.Extract {
+		set := 0
+		if target.Magnet != nil {
+			set++
+		}
+		if target.Torrent != nil {
+			set++
+		}
+		if target.Ed2k != nil {
+			set++
+		}
 		switch {
-		case target.Magnet != nil && target.Torrent != nil:
-			add("download.extract[%d]: magnet and torrent are mutually exclusive", i)
-		case target.Magnet == nil && target.Torrent == nil:
-			add("download.extract[%d]: must set magnet or torrent", i)
+		case set == 0:
+			add("download.extract[%d]: must set magnet, torrent or ed2k", i)
+		case set > 1:
+			add("download.extract[%d]: magnet, torrent and ed2k are mutually exclusive", i)
 		case target.Magnet != nil:
 			validateDownloadField(fmt.Sprintf("download.extract[%d].magnet", i), *target.Magnet, add)
-		default:
+		case target.Torrent != nil:
 			validateDownloadField(fmt.Sprintf("download.extract[%d].torrent", i), *target.Torrent, add)
+		default:
+			validateDownloadField(fmt.Sprintf("download.extract[%d].ed2k", i), *target.Ed2k, add)
 		}
 	}
 	if download.Before != nil {
@@ -489,8 +513,8 @@ func validateDownloadBefore(before *DownloadBefore, add func(string, ...any)) {
 }
 
 func validateDownloadField(prefix string, field Field, add func(string, ...any)) {
-	if len(field.Selector) == 0 && strings.TrimSpace(field.Path) == "" {
-		add("%s: needs selector or path", prefix)
+	if !field.Body && len(field.Selector) == 0 && strings.TrimSpace(field.Path) == "" {
+		add("%s: needs selector, path or body", prefix)
 	}
 	for i, selector := range field.Selector {
 		if strings.TrimSpace(selector) == "" {

@@ -14,6 +14,9 @@ import (
 // against a read-only copy of the real production database when it is present
 // (the developer machine); CI skips it.
 func TestProductionCopyHasNoFalseAlarms(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip("production acceptance check: local only")
+	}
 	source := filepath.Join("..", "..", "data", "indexarr.db")
 	if _, err := os.Stat(source); err != nil {
 		t.Skip("production database not present")

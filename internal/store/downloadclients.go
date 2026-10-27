@@ -37,6 +37,8 @@ type DownloadClient struct {
 const (
 	ProtocolTorrent = "torrent"
 	ProtocolUsenet  = "usenet"
+	// ProtocolEd2k routes eD2k releases to an aMule client.
+	ProtocolEd2k = "ed2k"
 )
 
 // DefaultDownloadClientProtocol derives the protocol from the client kind.
@@ -44,6 +46,8 @@ func DefaultDownloadClientProtocol(kind string) string {
 	switch strings.ToLower(strings.TrimSpace(kind)) {
 	case "sabnzbd", "nzbget":
 		return ProtocolUsenet
+	case "amule":
+		return ProtocolEd2k
 	default:
 		return ProtocolTorrent
 	}
@@ -56,7 +60,7 @@ func normalizeDownloadClient(in DownloadClient) DownloadClient {
 		in.Kind = "qbittorrent"
 	}
 	in.Protocol = strings.ToLower(strings.TrimSpace(in.Protocol))
-	if in.Protocol != ProtocolUsenet {
+	if in.Protocol != ProtocolUsenet && in.Protocol != ProtocolEd2k {
 		in.Protocol = ProtocolTorrent
 	}
 	in.URL = strings.TrimRight(strings.TrimSpace(in.URL), "/")
@@ -262,7 +266,7 @@ func (s *Store) DeleteDownloadClient(ctx context.Context, id int64) error {
 // oldest enabled client of that protocol is the fallback.
 func (s *Store) DownloadClientForProtocol(ctx context.Context, protocol string) (DownloadClient, error) {
 	protocol = strings.ToLower(strings.TrimSpace(protocol))
-	if protocol != ProtocolUsenet {
+	if protocol != ProtocolUsenet && protocol != ProtocolEd2k {
 		protocol = ProtocolTorrent
 	}
 	var c DownloadClient

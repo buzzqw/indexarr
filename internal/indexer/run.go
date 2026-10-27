@@ -138,7 +138,9 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	}
 	matcher := store.NewBlocklistMatcher(rules)
 
-	usenet := engine.Protocol(strings.ToLower(strings.TrimSpace(indexer.Protocol))) == engine.ProtocolUsenet
+	indexerProtocol := engine.Protocol(strings.ToLower(strings.TrimSpace(indexer.Protocol)))
+	usenet := indexerProtocol == engine.ProtocolUsenet
+	ed2k := indexerProtocol == engine.ProtocolEd2k
 	usenetItems, torrentItems := 0, 0
 	seen := make(map[string]struct{}, len(items))
 	for _, raw := range items {
@@ -157,6 +159,12 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		if itemUsenet {
 			usenetItems++
 			if err := m.runUsenetItem(ctx, indexer, item, stats, seen, matcher, runRules, &payloadBytes); err != nil {
+				return stats, err
+			}
+			continue
+		}
+		if item.Protocol == engine.ProtocolEd2k || (ed2k && item.Protocol == "") {
+			if err := m.runEd2kItem(ctx, indexer, item, stats, seen, matcher, runRules); err != nil {
 				return stats, err
 			}
 			continue
@@ -536,6 +544,107 @@ func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item
 	return nil
 }
 
+// runEd2kItem stores one eD2k file. The transfer identity is the ed2k://
+// link and its MD4 hash: there is no torrent to download and no swarm
+// counters. When the search did not resolve the topic, the details page stays
+// behind a sealed reference and the grab path opens it later, exactly like a
+// Usenet release without an .nzb.
+func (m *Manager) runEd2kItem(ctx context.Context, indexer store.Indexer, item engine.Item, stats *RunStats,
+	seen map[string]struct{}, matcher *store.BlocklistMatcher, rules runFilter) error {
+	item.Protocol = engine.ProtocolEd2k
+	link := strings.TrimSpace(item.Ed2k)
+	guid := strings.TrimSpace(item.GUID)
+	// The scheduled archive keeps only files with a real eD2k link. A row
+	// without one is an announcement, a FAQ or a topic whose links are not
+	// public; storing it would fill the archive with empty releases.
+	if link == "" {
+		stats.discardNoLink()
+		return nil
+	}
+	if key := itemIdentity(item); key != "" {
+		if _, duplicate := seen[key]; duplicate {
+			stats.duplicate()
+			return nil
+		}
+		seen[key] = struct{}{}
+	}
+
+	if tooOld, excluded, tooSmall := rules.reject(item); tooOld || excluded || tooSmall {
+		switch {
+		case tooOld:
+			stats.discardTooOld()
+		case tooSmall:
+			stats.discardOther()
+		default:
+			stats.discardCategory()
+		}
+		return nil
+	}
+
+	category := itemCategory(item)
+	hash := strings.ToLower(strings.TrimSpace(item.Ed2kHash))
+	if _, match := matcher.Match(hash, item.Title, indexer.Name, category); match {
+		stats.Blocked++
+		return nil
+	}
+
+	dedupKey := releaseKey("", item, indexer.Slug)
+	if dedupKey == "" {
+		stats.discardOther()
+		return nil
+	}
+
+	now := time.Now()
+	release := &store.Release{
+		DedupKey:    dedupKey,
+		IMDbID:      item.IMDbID,
+		TMDbID:      item.TMDbID,
+		TVDbID:      item.TVDbID,
+		Title:       item.Title,
+		SearchTitle: textutil.NormalizeTitle(item.Title),
+		Size:        item.Size,
+		Seeders:     item.Seeders,
+		Leechers:    item.Leechers,
+		Category:    category,
+		PublishedAt: item.Published,
+		GUID:        guid,
+		Ed2k:        link,
+		Ed2kHash:    hash,
+		Protocol:    "ed2k",
+		FirstSeenAt: now,
+		LastSeenAt:  now,
+	}
+
+	isNew, storeErr := m.store.UpsertRelease(ctx, release)
+	if storeErr != nil {
+		return fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr)
+	}
+	if isNew {
+		stats.New++
+	} else {
+		stats.Updated++
+	}
+
+	if provenanceErr := m.store.RecordReleaseSource(ctx, store.ReleaseSource{
+		ReleaseID:   release.ID,
+		IndexerID:   indexer.ID,
+		FirstSeenAt: release.FirstSeenAt,
+		LastSeenAt:  release.LastSeenAt,
+		Seeders:     item.Seeders,
+		Leechers:    item.Leechers,
+	}); provenanceErr != nil {
+		m.logger.Warn("indexer: record release source",
+			"indexer", indexer.Slug,
+			"release_id", release.ID,
+			"error", m.redact(indexer.ID, provenanceErr.Error()))
+	}
+
+	if len(stats.Items) < maxRunItems {
+		stats.Items = append(stats.Items, item)
+	}
+	return nil
+}
+
 // smartfeedNativePair finds the MirCrew search indexer that belongs to the
 // same site. It runs once per poll and only when a pending topic needs a
 // sealed grab reference, so a missing native indexer never blocks the feed.
@@ -616,6 +725,9 @@ func itemIdentity(item engine.Item) string {
 	if hash := itemHash(item); hash != "" {
 		return "hash:" + hash
 	}
+	if strings.TrimSpace(item.Ed2kHash) != "" {
+		return "ed2k:" + strings.ToLower(strings.TrimSpace(item.Ed2kHash))
+	}
 	if guid := strings.TrimSpace(item.GUID); guid != "" {
 		return "guid:" + guid
 	}
@@ -634,6 +746,8 @@ func releaseKey(hash string, item engine.Item, slug string) string {
 	switch {
 	case hash != "":
 		return hash
+	case strings.TrimSpace(item.Ed2kHash) != "":
+		return "ed2k:" + strings.ToLower(strings.TrimSpace(item.Ed2kHash))
 	case strings.TrimSpace(item.GUID) != "":
 		sum := sha256.Sum256([]byte(slug + item.GUID))
 		return "guid:" + hex.EncodeToString(sum[:])

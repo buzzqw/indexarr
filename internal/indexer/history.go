@@ -159,6 +159,8 @@ const (
 	GrabViaTorrent = "ok"
 	GrabViaMagnet  = "magnet"
 	GrabViaNZB     = "nzb"
+	// GrabViaEd2k marks a release delivered as an ed2k:// link.
+	GrabViaEd2k = "ed2k"
 )
 
 type grabViaKey struct{}

@@ -51,6 +51,7 @@ type Config struct {
 type Item struct {
 	Title   string
 	Magnet  string
+	Ed2k    string
 	Torrent []byte
 	NZB     []byte
 	URL     string
@@ -92,6 +93,8 @@ func New(cfg Config) (Client, error) {
 		return newSABnzbd(cfg)
 	case KindNZBGet:
 		return newNZBGet(cfg)
+	case KindAmule:
+		return newAmule(cfg)
 	case "", KindNone:
 		return nil, fmt.Errorf("no download client configured")
 	default:
@@ -130,6 +133,7 @@ func Add(ctx context.Context, cfg Config, release store.Release) error {
 	item := Item{
 		Title:   release.Title,
 		Magnet:  release.Magnet,
+		Ed2k:    release.Ed2k,
 		Torrent: release.Torrent,
 	}
 	if len(release.Payload) > 0 {
@@ -167,12 +171,14 @@ var (
 	_ Client = (*rtorrentClient)(nil)
 	_ Client = (*sabnzbdClient)(nil)
 	_ Client = (*nzbgetClient)(nil)
+	_ Client = (*amuleClient)(nil)
 
 	_ Tester = (*clientFuncs)(nil)
 	_ Tester = (*delugeClient)(nil)
 	_ Tester = (*rtorrentClient)(nil)
 	_ Tester = (*sabnzbdClient)(nil)
 	_ Tester = (*nzbgetClient)(nil)
+	_ Tester = (*amuleClient)(nil)
 )
 
 func (c *clientFuncs) Send(ctx context.Context, item Item) error {

@@ -185,6 +185,7 @@ func parseDate(raw string, layouts []string) time.Time {
 	if raw == "" {
 		return time.Time{}
 	}
+	raw = normalizeMonthNames(raw)
 	for _, layout := range append(append([]string(nil), layouts...), commonDateLayouts...) {
 		if parsed, err := time.ParseInLocation(layout, raw, time.UTC); err == nil {
 			return parsed
@@ -384,6 +385,16 @@ func (c *DefinitionConnector) normalizeRowWith(raw map[string]string, responseUR
 		item.Magnet = magnet
 	}
 
+	if rawLink := strings.TrimSpace(raw["ed2k"]); rawLink != "" {
+		if link, ok := parseEd2kFileLink(rawLink); ok {
+			item.Ed2k = canonicalEd2kLink(link)
+			item.Ed2kHash = link.Hash
+			if item.Size <= 0 {
+				item.Size = link.Size
+			}
+		}
+	}
+
 	item.InfoHash = normalizeInfoHash(raw["infohash"])
 	if item.InfoHash == "" && item.Magnet != "" {
 		item.InfoHash = infoHashFromMagnet(item.Magnet)
@@ -414,7 +425,7 @@ func (c *DefinitionConnector) normalizeRowWith(raw map[string]string, responseUR
 		item.Categories = mapCategories(c.def, categoryRaw)
 	}
 
-	if item.Magnet == "" && item.DownloadURL == "" && item.DetailsURL == "" {
+	if item.Magnet == "" && item.DownloadURL == "" && item.Ed2k == "" && item.DetailsURL == "" {
 		return Item{}, false, nil
 	}
 	return item, true, nil
@@ -451,6 +462,8 @@ func dedupeItems(items []Item) []Item {
 		switch {
 		case item.InfoHash != "":
 			key = "hash:" + strings.ToLower(item.InfoHash)
+		case item.Ed2kHash != "":
+			key = "ed2k:" + strings.ToLower(item.Ed2kHash)
 		case item.GUID != "":
 			key = "guid:" + item.GUID
 		case item.DownloadURL != "":
@@ -465,4 +478,24 @@ func dedupeItems(items []Item) []Item {
 		out = append(out, item)
 	}
 	return out
+}
+
+// italianMonths maps the abbreviations phpBB uses on the Italian forum pages
+// to the English names time.Parse understands. It is additive: an already
+// English date is unchanged.
+var italianMonths = map[string]string{
+	"gen": "Jan", "feb": "Feb", "mar": "Mar", "apr": "Apr",
+	"mag": "May", "giu": "Jun", "lug": "Jul", "ago": "Aug",
+	"set": "Sep", "ott": "Oct", "nov": "Nov", "dic": "Dec",
+}
+
+var monthToken = regexp.MustCompile(`(?i)\b(gen|feb|mar|apr|mag|giu|lug|ago|set|ott|nov|dic)\b`)
+
+func normalizeMonthNames(raw string) string {
+	return monthToken.ReplaceAllStringFunc(raw, func(token string) string {
+		if month, ok := italianMonths[strings.ToLower(token)]; ok {
+			return month
+		}
+		return token
+	})
 }

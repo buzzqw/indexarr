@@ -26,6 +26,7 @@
       <select id="client_protocol" name="protocol">
         <option value="torrent"{{if eq .Client.Protocol "torrent"}} selected{{end}}>{{T "client.protocol.torrent"}}</option>
         <option value="usenet"{{if eq .Client.Protocol "usenet"}} selected{{end}}>{{T "client.protocol.usenet"}}</option>
+        <option value="ed2k"{{if eq .Client.Protocol "ed2k"}} selected{{end}}>{{T "client.protocol.ed2k"}}</option>
       </select>
     </div>
   </div>

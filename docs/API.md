@@ -62,6 +62,7 @@ tipi con filtri propri, ma le categorie 3000 e 7000 sono disponibili.
 | `tmdbid` | vuoto | |
 | `tvdbid` | vuoto | |
 | `year` | 0 | Solo `movie`, usato anche nel ripiego testuale |
+| `live_wait` | vuoto | Secondi di attesa della ricerca live per questa richiesta, 1–60; estensione usata da gextto per dare tempo alle fonti eD2k. Non cambia il default di Sonarr/Radarr |
 
 `q` e gli id esterni sono combinati in OR: una release che corrisponde all'id viene
 restituita anche se il titolo è diverso.
@@ -79,6 +80,10 @@ complessiva è `torznab_live_timeout_seconds` (default 20). I risultati che
 arrivano in tempo si uniscono alla cache con la provenance esistente; chi è in
 ritardo continua in background (fino a 3 minuti) e il suo risultato entra in
 cache per la richiesta successiva.
+
+Con `live_wait` un client può allungare la sola attesa della propria richiesta
+(fino a 60 s); gextto lo usa per gli indexer eD2k, che devono aprire le pagine
+dei topic. Gli altri client non mandano il parametro e restano sui 5 s.
 
 Ripiego: `tvsearch` senza supporto diventa `search` con `SxxEyy` (o `Sxx`);
 `movie` aggiunge l'anno; una richiesta con soli id non supportati e senza `q`

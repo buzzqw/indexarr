@@ -769,6 +769,16 @@ func planLiveSearch(caps engine.Capabilities, req LiveQuery) (livePlan, bool, st
 	if plan.request.Limit <= 0 {
 		plan.request.Limit = 50
 	}
+	if caps.Protocol == engine.ProtocolEd2k {
+		// An eD2k listing has no magnet or .torrent: the link lives on the
+		// topic page. Resolve a bounded number of topics so a live client
+		// search returns the real ed2k:// links instead of a proxy link the
+		// client cannot recognise. The archive run already stores the rest.
+		plan.request.SkipDetails = false
+		if plan.request.Limit > 10 {
+			plan.request.Limit = 10
+		}
+	}
 
 	supportsMode := caps.Supports(mode)
 	switch mode {
@@ -914,6 +924,54 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			continue
 		}
 
+		// An eD2k item is complete when the search already resolved its link.
+		// Without a link (a live search never opens details) it still belongs
+		// to the eD2k protocol and keeps a sealed details reference for the
+		// grab.
+		if link := strings.TrimSpace(item.Ed2k); link != "" {
+			now := time.Now()
+			release := &store.Release{
+				DedupKey:    releaseKey("", item, indexer.Slug),
+				Title:       item.Title,
+				SearchTitle: textutil.NormalizeTitle(item.Title),
+				Size:        item.Size,
+				Seeders:     item.Seeders,
+				Leechers:    item.Leechers,
+				Category:    category,
+				PublishedAt: item.Published,
+				GUID:        item.GUID,
+				Ed2k:        link,
+				Ed2kHash:    strings.ToLower(strings.TrimSpace(item.Ed2kHash)),
+				Protocol:    "ed2k",
+				FirstSeenAt: now,
+				LastSeenAt:  now,
+			}
+			if _, err := m.store.UpsertRelease(ctx, release); err != nil {
+				return stored, err
+			}
+			if err := m.store.RecordReleaseSource(ctx, store.ReleaseSource{
+				ReleaseID:   release.ID,
+				IndexerID:   indexer.ID,
+				FirstSeenAt: release.FirstSeenAt,
+				LastSeenAt:  release.LastSeenAt,
+				Seeders:     item.Seeders,
+				Leechers:    item.Leechers,
+			}); err != nil {
+				if errors.Is(err, store.ErrIndexerGone) {
+					m.logger.Debug("live search: indexer deleted during search; provenance discarded",
+						"indexer", indexer.Slug)
+					break
+				}
+				m.logger.Warn("live search: provenance", "indexer", indexer.Slug, "error", err)
+			}
+			stored++
+			continue
+		}
+		ed2kIndexer := strings.EqualFold(strings.TrimSpace(indexer.Protocol), "ed2k")
+		if ed2kIndexer && magnet == "" && strings.TrimSpace(item.DownloadURL) == "" && strings.TrimSpace(item.DetailsURL) == "" {
+			continue
+		}
+
 		downloadRef := ""
 		if magnet == "" && (hash == "" || feed.LooksLikeTorrentURL(item.DownloadURL, item.Attributes["enclosure_type"])) {
 			if m.vault == nil {
@@ -936,6 +994,10 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			continue
 		}
 		now := time.Now()
+		protocol := "torrent"
+		if ed2kIndexer {
+			protocol = "ed2k"
+		}
 		release := &store.Release{
 			DedupKey:    dedupKey,
 			InfoHash:    hash,
@@ -951,7 +1013,9 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			PublishedAt: item.Published,
 			GUID:        item.GUID,
 			Magnet:      magnet,
-			Protocol:    "torrent",
+			Ed2k:        strings.TrimSpace(item.Ed2k),
+			Ed2kHash:    strings.ToLower(strings.TrimSpace(item.Ed2kHash)),
+			Protocol:    protocol,
 			FirstSeenAt: now,
 			LastSeenAt:  now,
 		}

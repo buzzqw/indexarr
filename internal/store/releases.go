@@ -18,21 +18,26 @@ import (
 // Release is one cached item: the metadata always, the magnet and/or the
 // .torrent file when the source exposed them.
 type Release struct {
-	ID               int64
-	DedupKey         string
-	InfoHash         string
-	IMDbID           string
-	TMDbID           string
-	TVDbID           string
-	Title            string
-	SearchTitle      string
-	Size             int64
-	Seeders          int64
-	Leechers         int64
-	Category         string
-	PublishedAt      time.Time
-	GUID             string
-	Magnet           string
+	ID          int64
+	DedupKey    string
+	InfoHash    string
+	IMDbID      string
+	TMDbID      string
+	TVDbID      string
+	Title       string
+	SearchTitle string
+	Size        int64
+	Seeders     int64
+	Leechers    int64
+	Category    string
+	PublishedAt time.Time
+	GUID        string
+	Magnet      string
+	// Ed2k is an `ed2k://|file|...|/` link and Ed2kHash its lowercase MD4.
+	// They are the transfer identity of an eD2k release, next to Magnet and
+	// Torrent; a row has at most one of the three.
+	Ed2k             string
+	Ed2kHash         string
 	Torrent          []byte
 	TorrentSize      int64
 	TorrentFetchedAt time.Time
@@ -99,7 +104,7 @@ type Filter struct {
 
 const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
 	search_title, size, seeders, leechers, category, published_at,
-	guid, magnet, torrent, torrent_size, torrent_fetched_at,
+	guid, magnet, ed2k_link, ed2k_hash, torrent, torrent_size, torrent_fetched_at,
 	first_seen_at, last_seen_at, times_seen, favorite, hidden,
 	protocol, payload, payload_type, downloaded_at`
 
@@ -108,7 +113,7 @@ const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, titl
 // record header, so a result page never reads the blob overflow pages.
 const releaseListColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
 	search_title, size, seeders, leechers, category, published_at,
-	guid, magnet, length(torrent) > 0, torrent_size, torrent_fetched_at,
+	guid, magnet, ed2k_link, ed2k_hash, length(torrent) > 0, torrent_size, torrent_fetched_at,
 	first_seen_at, last_seen_at, times_seen, favorite, hidden,
 	protocol, length(payload) > 0, payload_type, downloaded_at`
 
@@ -122,6 +127,8 @@ func normalizeReleaseProtocol(protocol string) (string, error) {
 		return "torrent", nil
 	case "usenet":
 		return "usenet", nil
+	case "ed2k":
+		return "ed2k", nil
 	default:
 		return "", fmt.Errorf("store: invalid release protocol %q", protocol)
 	}
@@ -157,11 +164,25 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 	// every identifying feature equal). Reusing the keeper's key turns the
 	// insert into an update and records the new indexer in release_sources,
 	// so a live search cannot grow a second copy between cleanup passes.
-	if strings.TrimSpace(rel.InfoHash) == "" {
+	rel.Ed2kHash = strings.ToLower(strings.TrimSpace(rel.Ed2kHash))
+	if strings.TrimSpace(rel.InfoHash) == "" && rel.Ed2kHash == "" {
 		if keeper, found, sameErr := s.FindSameRelease(ctx, rel); sameErr != nil {
 			return false, sameErr
 		} else if found {
 			rel.DedupKey = keeper.DedupKey
+		}
+	}
+	// An eD2k file is identified by its MD4 hash: reuse the key already
+	// stored for that file instead of creating a second row.
+	if rel.Ed2kHash != "" {
+		var existingKey string
+		err := s.db.QueryRowContext(ctx,
+			`SELECT dedup_key FROM releases WHERE ed2k_hash = ? ORDER BY id LIMIT 1`, rel.Ed2kHash).Scan(&existingKey)
+		switch {
+		case err == nil:
+			rel.DedupKey = existingKey
+		case !errors.Is(err, sql.ErrNoRows):
+			return false, err
 		}
 	}
 	// A torrent fetched after the first sighting gives the release its real
@@ -191,9 +212,9 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 	err = s.db.QueryRowContext(ctx, `
 		INSERT INTO releases(dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
 			search_title, size, seeders, leechers, category, published_at,
-			guid, magnet, torrent, torrent_size, torrent_fetched_at,
+			guid, magnet, ed2k_link, ed2k_hash, torrent, torrent_size, torrent_fetched_at,
 			first_seen_at, last_seen_at, protocol, payload, payload_type, times_seen)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
 		ON CONFLICT(dedup_key) DO UPDATE SET
 			infohash = CASE WHEN excluded.infohash <> '' THEN excluded.infohash ELSE releases.infohash END,
 			imdb_id = CASE WHEN excluded.imdb_id <> '' THEN excluded.imdb_id ELSE releases.imdb_id END,
@@ -208,6 +229,8 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 			published_at = CASE WHEN excluded.published_at > 0 THEN excluded.published_at ELSE releases.published_at END,
 			guid = CASE WHEN excluded.guid <> '' THEN excluded.guid ELSE releases.guid END,
 			magnet = CASE WHEN excluded.magnet <> '' THEN excluded.magnet ELSE releases.magnet END,
+			ed2k_link = CASE WHEN excluded.ed2k_link <> '' THEN excluded.ed2k_link ELSE releases.ed2k_link END,
+			ed2k_hash = CASE WHEN excluded.ed2k_hash <> '' THEN excluded.ed2k_hash ELSE releases.ed2k_hash END,
 			torrent = COALESCE(excluded.torrent, releases.torrent),
 			torrent_size = CASE WHEN excluded.torrent IS NOT NULL THEN excluded.torrent_size ELSE releases.torrent_size END,
 			torrent_fetched_at = CASE WHEN excluded.torrent IS NOT NULL THEN excluded.torrent_fetched_at ELSE releases.torrent_fetched_at END,
@@ -220,7 +243,7 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 		rel.DedupKey, rel.InfoHash, rel.IMDbID, rel.TMDbID, rel.TVDbID,
 		rel.Title, rel.SearchTitle, rel.Size, rel.Seeders, rel.Leechers,
 		rel.Category, rel.PublishedAt.Unix(),
-		rel.GUID, rel.Magnet, torrent, rel.TorrentSize,
+		rel.GUID, rel.Magnet, rel.Ed2k, rel.Ed2kHash, torrent, rel.TorrentSize,
 		rel.TorrentFetchedAt.Unix(), rel.FirstSeenAt.Unix(), rel.LastSeenAt.Unix(),
 		rel.Protocol, payload, rel.PayloadType, boolInt(protocolProvided)).Scan(&id, &timesSeen)
 	if err != nil {
@@ -235,6 +258,21 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 func (s *Store) ReleaseByInfoHash(ctx context.Context, hash string) (Release, bool, error) {
 	row := s.db.QueryRowContext(ctx,
 		`SELECT `+releaseColumns+` FROM releases WHERE infohash = ? ORDER BY id LIMIT 1`, hash)
+	rel, err := scanRelease(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Release{}, false, nil
+	}
+	return rel, err == nil, err
+}
+
+// ReleaseByEd2kHash returns the eD2k release with that MD4 hash.
+func (s *Store) ReleaseByEd2kHash(ctx context.Context, hash string) (Release, bool, error) {
+	hash = strings.ToLower(strings.TrimSpace(hash))
+	if hash == "" {
+		return Release{}, false, nil
+	}
+	row := s.db.QueryRowContext(ctx,
+		`SELECT `+releaseColumns+` FROM releases WHERE ed2k_hash = ? ORDER BY id LIMIT 1`, hash)
 	rel, err := scanRelease(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Release{}, false, nil
@@ -1475,7 +1513,7 @@ func scanReleaseExtra(scanner interface{ Scan(...any) error }, list bool, extra 
 	dest := []any{&out.ID, &out.DedupKey, &out.InfoHash, &out.IMDbID, &out.TMDbID,
 		&out.TVDbID, &out.Title, &out.SearchTitle, &out.Size, &out.Seeders,
 		&out.Leechers, &out.Category, &published,
-		&out.GUID, &out.Magnet, torrentDest, &out.TorrentSize, &torrentFetched,
+		&out.GUID, &out.Magnet, &out.Ed2k, &out.Ed2kHash, torrentDest, &out.TorrentSize, &torrentFetched,
 		&firstSeen, &lastSeen, &out.TimesSeen, &favorite, &hidden,
 		&out.Protocol, payloadDest, &out.PayloadType, &downloadedAt}
 	dest = append(dest, extra...)

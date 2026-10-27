@@ -94,7 +94,7 @@ func TestDownloadSectionValidation(t *testing.T) {
     - magnet: { selector: "a.magnet", attr: href }
       torrent: { selector: "a.torrent", attr: href }
 `,
-			fragment: "download.extract[0]: magnet and torrent are mutually exclusive",
+			fragment: "download.extract[0]: magnet, torrent and ed2k are mutually exclusive",
 		},
 		{
 			name: "neither magnet nor torrent",
@@ -102,7 +102,7 @@ func TestDownloadSectionValidation(t *testing.T) {
   extract:
     - {}
 `,
-			fragment: "download.extract[0]: must set magnet or torrent",
+			fragment: "download.extract[0]: must set magnet, torrent or ed2k",
 		},
 		{
 			name: "negative max_concurrent",
@@ -137,7 +137,7 @@ func TestDownloadSectionValidation(t *testing.T) {
   extract:
     - magnet: { attr: href }
 `,
-			fragment: "download.extract[0].magnet: needs selector or path",
+			fragment: "download.extract[0].magnet: needs selector, path or body",
 		},
 		{
 			name: "unknown target type",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/downloadclient"
@@ -19,6 +20,15 @@ func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		redirect(w, r, "/releases", "", "release not found")
 		return
+	}
+	if strings.EqualFold(strings.TrimSpace(release.Protocol), "ed2k") && strings.TrimSpace(release.Ed2k) == "" && s.downloadResolver != nil {
+		// A live search stores the eD2k release behind a sealed details
+		// reference. Open it now, so the client receives the real link.
+		if body, _, _, resolveErr := s.downloadResolver(r.Context(), release.ID); resolveErr == nil {
+			if link := strings.TrimSpace(string(body)); strings.HasPrefix(strings.ToLower(link), "ed2k://") {
+				release.Ed2k = link
+			}
+		}
 	}
 	cfg, clientName, err := s.resolveDownloadClient(r.Context(), release.Protocol)
 	if err != nil {

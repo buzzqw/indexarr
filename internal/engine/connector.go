@@ -11,11 +11,15 @@ type Protocol string
 const (
 	ProtocolTorrent Protocol = "torrent"
 	ProtocolUsenet  Protocol = "usenet"
+	// ProtocolEd2k is the eD2k/eMule network. A release carries an ed2k://
+	// link instead of a magnet or a .torrent: there is no swarm to seed and no
+	// .torrent file to store.
+	ProtocolEd2k Protocol = "ed2k"
 )
 
 // Valid reports whether p is a supported protocol.
 func (p Protocol) Valid() bool {
-	return p == ProtocolTorrent || p == ProtocolUsenet
+	return p == ProtocolTorrent || p == ProtocolUsenet || p == ProtocolEd2k
 }
 
 // Mode is a Torznab/Newznab search mode.
@@ -98,16 +102,20 @@ type Item struct {
 	DetailsURL  string
 	DownloadURL string // may contain a passkey: never exposed by the APIs
 	Magnet      string
-	InfoHash    string
-	Size        int64
-	Seeders     int64
-	Leechers    int64
-	Categories  []int
-	Published   time.Time
-	IMDbID      string
-	TMDbID      string
-	TVDbID      string
-	Attributes  map[string]string
+	// Ed2k is an `ed2k://|file|...|/` link. It is a third transfer identity
+	// next to Magnet and DownloadURL; Ed2kHash is its lowercase MD4.
+	Ed2k       string
+	Ed2kHash   string
+	InfoHash   string
+	Size       int64
+	Seeders    int64
+	Leechers   int64
+	Categories []int
+	Published  time.Time
+	IMDbID     string
+	TMDbID     string
+	TVDbID     string
+	Attributes map[string]string
 }
 
 // Capabilities describes what an indexer can search.
@@ -188,12 +196,14 @@ type LatestRequest struct {
 }
 
 // Payload is the bytes a download produces: a .torrent or .nzb, or a magnet
-// when the tracker answered with a redirect to one.
+// when the tracker answered with a redirect to one. An eD2k source produces
+// an Ed2k link and no body.
 type Payload struct {
 	Body        []byte
 	ContentType string
 	Filename    string
 	Magnet      string
+	Ed2k        string
 }
 
 // TestPhase is one step of an indexer test (login, search, download).

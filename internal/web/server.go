@@ -168,7 +168,7 @@ var templateFuncMap = template.FuncMap{
 	// are otherwise replaced with #ZgotmplZ by html/template.
 	"safeURL": func(raw string) template.URL {
 		lower := strings.ToLower(strings.TrimSpace(raw))
-		for _, prefix := range []string{"http://", "https://", "magnet:?"} {
+		for _, prefix := range []string{"http://", "https://", "magnet:?", "ed2k://"} {
 			if strings.HasPrefix(lower, prefix) {
 				return template.URL(raw)
 			}
@@ -484,11 +484,15 @@ type Server struct {
 	svc         *indexersvc.Service
 	vault       *vault.Vault
 	vaultKey    vault.Info
-	logFile     string
-	logMaxMB    int
-	logMaxFiles int
-	sync        *syncjob.Service
-	polite      *engine.Politeness
+	// downloadResolver opens a sealed details reference. It is shared with
+	// the Torznab server and used by the release page when an eD2k release
+	// still needs its link.
+	downloadResolver func(context.Context, int64) ([]byte, string, string, error)
+	logFile          string
+	logMaxMB         int
+	logMaxFiles      int
+	sync             *syncjob.Service
+	polite           *engine.Politeness
 	// notifier applies the notification switches, the anti-spam window and
 	// the test button. It shares the store with the rest of the server.
 	notifier *notify.Dispatcher
@@ -548,31 +552,32 @@ func New(cfg Config) *Server {
 		cfg.VaultKey.Kind = "config"
 	}
 	srv := &Server{
-		store:          cfg.Store,
-		log:            logger,
-		version:        cfg.Version,
-		started:        cfg.Started,
-		torznab:        torznabapi.New(cfg.Store, logger, cfg.Version),
-		static:         http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
-		staticETags:    staticFileETags(sub),
-		logs:           logs,
-		level:          level,
-		restart:        cfg.Restart,
-		admin:          cfg.Admin,
-		native:         cfg.Native,
-		sched:          cfg.Scheduler,
-		svc:            cfg.Indexers,
-		vault:          cfg.Vault,
-		vaultKey:       cfg.VaultKey,
-		logFile:        cfg.LogFile,
-		logMaxMB:       cfg.LogMaxMB,
-		logMaxFiles:    cfg.LogMaxFiles,
-		sync:           cfg.Sync,
-		polite:         cfg.Politeness,
-		notifier:       notify.NewDispatcher(cfg.Store, logger),
-		smartfeedPlans: newSmartfeedPlanStore(),
-		pendingStores:  newPendingStoreSet(),
-		catalogIndex:   catalog.Index,
+		store:            cfg.Store,
+		log:              logger,
+		version:          cfg.Version,
+		started:          cfg.Started,
+		torznab:          torznabapi.New(cfg.Store, logger, cfg.Version),
+		static:           http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
+		staticETags:      staticFileETags(sub),
+		logs:             logs,
+		level:            level,
+		restart:          cfg.Restart,
+		admin:            cfg.Admin,
+		native:           cfg.Native,
+		sched:            cfg.Scheduler,
+		svc:              cfg.Indexers,
+		vault:            cfg.Vault,
+		vaultKey:         cfg.VaultKey,
+		logFile:          cfg.LogFile,
+		logMaxMB:         cfg.LogMaxMB,
+		logMaxFiles:      cfg.LogMaxFiles,
+		sync:             cfg.Sync,
+		polite:           cfg.Politeness,
+		notifier:         notify.NewDispatcher(cfg.Store, logger),
+		smartfeedPlans:   newSmartfeedPlanStore(),
+		pendingStores:    newPendingStoreSet(),
+		catalogIndex:     catalog.Index,
+		downloadResolver: cfg.DownloadResolver,
 	}
 	if cfg.Native != nil {
 		srv.torznab.SetLiveSearch(cfg.Native.SearchLive)

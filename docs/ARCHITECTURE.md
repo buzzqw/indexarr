@@ -83,7 +83,7 @@ esterni obbligatori: l'unica dipendenza è il driver SQLite puro Go
 | `internal/logbuffer` | Ring buffer in memoria e handler slog con redazione dei segreti |
 | `internal/notify` | Notifiche webhook JSON e Telegram, con redazione del token |
 | `internal/backup` | Backup consistenti, elenco/rotazione, validazione e ripristino al riavvio |
-| `internal/downloadclient` | Invio di magnet/.torrent a qBittorrent, Transmission, Deluge, rTorrent, SABnzbd e NZBGet |
+| `internal/downloadclient` | Invio di magnet/.torrent/eD2k a qBittorrent, Transmission, Deluge, rTorrent, SABnzbd, NZBGet e aMule |
 | `internal/simmock`, `cmd/simmock`, `sim/` | Simulazione end-to-end deterministica: finti Torznab/Newznab, Prowlarr, Sonarr, client di download e tracker HTML |
 | `internal/i18n` | Cataloghi UI incorporati (en/it/fr/de/es/zh/pl), negoziazione lingua, fallback inglese |
 | `internal/perf` | Generatore dataset e test di leak per benchmark; non linkato dal binario di produzione |

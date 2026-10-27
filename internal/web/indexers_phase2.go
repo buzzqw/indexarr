@@ -1534,6 +1534,7 @@ func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry
 			Chips: []siteFilterChip{
 				{Label: "torrent", URL: catalogFilterURL(r, "proto", "torrent"), Active: current.Protocol == "torrent"},
 				{Label: "usenet", URL: catalogFilterURL(r, "proto", "usenet"), Active: current.Protocol == "usenet"},
+				{Label: "ed2k", URL: catalogFilterURL(r, "proto", "ed2k"), Active: current.Protocol == "ed2k"},
 			},
 		},
 	)
@@ -1985,10 +1986,14 @@ func (s *Server) defaultCategoryGroups(r *http.Request, selected string) []categ
 }
 
 func (s *Server) protocolLabel(r *http.Request, protocol string) string {
-	if strings.EqualFold(strings.TrimSpace(protocol), "usenet") {
+	switch strings.ToLower(strings.TrimSpace(protocol)) {
+	case "usenet":
 		return s.translate(r, "idx.protocolUsenet")
+	case "ed2k":
+		return s.translate(r, "idx.protocolEd2k")
+	default:
+		return s.translate(r, "idx.protocolTorrentMagnet")
 	}
-	return s.translate(r, "idx.protocolTorrentMagnet")
 }
 
 func (s *Server) categoryLabel(r *http.Request, id int) string {

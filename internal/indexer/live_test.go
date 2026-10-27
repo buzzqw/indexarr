@@ -487,3 +487,28 @@ func TestPlanLiveSearchUsesModeCategory(t *testing.T) {
 		t.Errorf("generic search categories = %v, want none", plan.request.Categories)
 	}
 }
+
+func TestPlanLiveSearchResolvesEd2kTopics(t *testing.T) {
+	caps := engine.Capabilities{
+		Protocol: engine.ProtocolEd2k,
+		Modes:    []engine.Mode{engine.ModeSearch},
+		Params:   map[engine.Mode][]string{engine.ModeSearch: {engine.ParamQuery}},
+	}
+	plan, ok, reason := planLiveSearch(caps, LiveQuery{Mode: "search", Query: "Scary Movie 6", Limit: 50})
+	if !ok {
+		t.Fatalf("plan rejected: %s", reason)
+	}
+	if plan.request.SkipDetails {
+		t.Error("eD2k live search skips the topic pages, so it cannot return the link")
+	}
+	if plan.request.Limit != 10 {
+		t.Errorf("limit = %d, want 10", plan.request.Limit)
+	}
+
+	torrent := caps
+	torrent.Protocol = engine.ProtocolTorrent
+	plan, ok, reason = planLiveSearch(torrent, LiveQuery{Mode: "search", Query: "Scary Movie 6", Limit: 50})
+	if !ok || !plan.request.SkipDetails || plan.request.Limit != 50 {
+		t.Errorf("torrent plan = %+v ok=%v reason=%s", plan.request, ok, reason)
+	}
+}

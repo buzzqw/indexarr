@@ -210,6 +210,9 @@ func (c *DefinitionConnector) payloadFromCandidates(ctx context.Context, item It
 	if chosen.Magnet != "" {
 		return Payload{Magnet: chosen.Magnet}, true, nil
 	}
+	if chosen.Ed2k != "" {
+		return Payload{Ed2k: chosen.Ed2k}, true, nil
+	}
 	if chosen.DownloadURL != "" {
 		payload, err := c.downloadURL(ctx, chosen.DownloadURL, item.Title, resolveURL(item.DetailsURL, c.baseURL))
 		return payload, true, err
@@ -344,6 +347,11 @@ func (c *DefinitionConnector) chooseCandidate(title string, candidates []resolve
 }
 
 func candidateName(candidate resolvedDownload, fallback string) string {
+	if candidate.Ed2k != "" {
+		if link, ok := parseEd2kFileLink(candidate.Ed2k); ok {
+			return link.Name
+		}
+	}
 	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(candidate.Magnet)), "magnet:") {
 		if parsed, err := url.Parse(candidate.Magnet); err == nil {
 			if name := strings.TrimSpace(parsed.Query().Get("dn")); name != "" {

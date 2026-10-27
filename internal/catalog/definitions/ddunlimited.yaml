@@ -1,0 +1,203 @@
+# VERIFICATA (verified). DDUnlimited native definition.
+#
+# DDUnlimited is an Italian phpBB forum behind Cloudflare. Most releases are
+# published as `ed2k://|file|...|/` links inside the topic; a minority of
+# topics (mostly old games) also carry a magnet or a .torrent on
+# torrents.ddunlimited.net. The forum requires a login to browse and search.
+#
+# Why the definition is built this way:
+#   - a persistent FlareSolverr session: a plain POST to ucp.php is answered
+#     with 403 from this network, while the browser session logs in;
+#   - download.resolve_on: search + expand: file: a season pack contains one
+#     eD2k link per episode, and every file must reach the archive as its own
+#     release;
+#   - download.extract tries eD2k first (the site's main network), then a
+#     magnet, then the DDUnlimited .torrent for topics that have no eD2k link;
+#   - the search endpoint has a flood control ("wait a few minutes"), so the
+#     scheduled archive reads forum listings instead of running a query.
+#
+# Fixtures were captured from https://ddunlimited.net on 2026-10-27 and then
+# sanitized: session ids, usernames and hashes are synthetic.
+schema: 1
+
+meta:
+  id: ddunlimited
+  name: DDUnlimited
+  language: it-IT
+  type: private
+  protocol: ed2k
+  author: indexarr
+  description: Italian forum (phpBB, Cloudflare) of eD2k links, with some magnet and .torrent releases.
+  urls:
+    - https://ddunlimited.net/
+  updated: "2026-10-27"
+  interval: 12h
+
+settings:
+  - name: username
+    type: text
+    label: "Username"
+    required: true
+  - name: password
+    type: password
+    label: "Password"
+    required: true
+  - name: flaresolverr
+    type: text
+    label: "FlareSolverr URL"
+    help: "Optional. Empty uses the global FlareSolverr URL from the network settings; set it to override, for example http://127.0.0.1:8191."
+
+categories:
+  - { site: "440", standard: 2040, desc: "Movies · High Definition" }
+  - { site: "1942", standard: 2045, desc: "Movies · Ultra High Definition" }
+  - { site: "99", standard: 2000, desc: "Movies · Standard Definition" }
+  - { site: "475", standard: 2000, desc: "Movies" }
+  - { site: "647", standard: 2000, desc: "Movies · International" }
+  - { site: "614", standard: 5040, desc: "SerieTV · High Definition ITA" }
+  - { site: "1945", standard: 5045, desc: "SerieTV · Ultra High Definition" }
+  - { site: "843", standard: 5040, desc: "SerieTV · High Definition SUB" }
+  - { site: "324", standard: 5030, desc: "SerieTV · Standard Definition ITA" }
+  - { site: "323", standard: 5030, desc: "SerieTV · Standard Definition SUB" }
+  - { site: "588", standard: 5000, desc: "SerieTV" }
+  - { site: "474", standard: 5070, desc: "Animazione" }
+  - { site: "1920", standard: 2000, desc: "Documentari" }
+  - { site: "564", standard: 3000, desc: "Music" }
+  - { site: "482", standard: 1000, desc: "Games" }
+  - { site: "1913", standard: 1000, desc: "Games · Old Gen" }
+  - { site: "1615", standard: 4000, desc: "Software" }
+  - { site: "1978", standard: 4000, desc: "Mobile" }
+  - { site: "1625", standard: 5000, desc: "Sport" }
+  - { site: "111", standard: 7000, desc: "Biblioteca" }
+  - { site: "2005", standard: 7030, desc: "Fumetti" }
+  - { site: "481", standard: 8000, desc: "P2P" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+  book-search: [q]
+
+session:
+  # ucp.php rejects a plain POST with 403 from this network; the persistent
+  # browser session also keeps the phpBB cookies for the topic pages.
+  mode: flaresolverr
+  endpoint: "{{ settings.flaresolverr }}"
+  name_prefix: ddunlimited-idx
+  max_age: 12h
+  idle_timeout: 30m
+  timeout: 60s
+
+auth:
+  strategy: form
+  steps:
+    - get: /ucp.php?mode=login
+      extract:
+        sid: { selector: 'input[name="sid"]', attr: value }
+        redirect: { selector: 'input[name="redirect"]', attr: value }
+    - post: /ucp.php?mode=login
+      form:
+        username: "{{ settings.username }}"
+        password: "{{ settings.password }}"
+        login: Login
+        redirect: "{{ redirect }}"
+        sid: "{{ sid }}"
+  # The index page is public and looks the same when logged in; ucp.php is
+  # protected, so the logout link is the proof that the login worked.
+  success: { selector: 'a[href*="mode=logout"]' }
+  failure:
+    - { selector: "div.error", message: text }
+  refresh_after: 6h
+
+search:
+  request:
+    get: /search.php
+    params:
+      keywords: "{{ query.keywords_raw }}"
+      terms: all
+      sf: titleonly
+      sr: topics
+      sk: t
+      sd: d
+      st: "0"
+      ch: "300"
+      t: "0"
+      submit: Cerca
+  # phpBB paginates search results with start=25, 50, ...
+  # Two pages per forum: the newest 50 topics. Four forums, about 7 minutes
+  # per run; the first page alone missed too many season packs.
+  pagination: { type: offset, start: 0, step: 25, max_pages: 2, param: start }
+  keywords_format: separate
+  response:
+    type: html
+    rows: { selector: "ul.topiclist.topics > li.row" }
+    fields:
+      title:    { selector: "a.topictitle", filters: [trim] }
+      details:  { selector: "a.topictitle", attr: href, type: url }
+      category: { selector: 'a[href*="viewforum.php?f="]', attr: href, filters: [{ query_param: f }], type: category }
+      # The last-post date is in the topic list; phpBB writes Italian month
+      # abbreviations ("ott"), which the engine normalizes.
+      date:     { selector: "dd.lastpost span", filters: [{ regex: '([0-9]{1,2} [a-z]{3} [0-9]{4} [0-9]{1,2}:[0-9]{2} (?:am|pm))' }], type: date, layouts: ["02 Jan 2006 03:04 pm"] }
+    required: [title, details]
+
+# The scheduled archive reads the release forums, including both Ultra High
+# Definition sections (movies and TV). A forum listing has no flood control, so
+# this is the reliable way to keep the archive fresh; a keyword search is used
+# only by a live client request.
+latest:
+  categories:
+    # Distinct standard ids: latest.categories rejects two forums mapped to
+    # the same standard. 2045/5045 are the UHD subcategories; the run
+    # intersects them with the 2000/5000 roots anyway.
+    - { standard: 2040, site: "440" }
+    - { standard: 2045, site: "1942" }
+    - { standard: 5040, site: "614" }
+    - { standard: 5045, site: "1945" }
+  request:
+    get: /viewforum.php
+    params:
+      f: "{{ category }}"
+      start: "{{ offset }}"
+  # Two pages per forum: the newest 50 topics. Four forums, about 7 minutes
+  # per run; the first page alone missed too many season packs.
+  pagination: { type: offset, start: 0, step: 25, max_pages: 2, param: start }
+
+download:
+  resolve_on: search
+  # One release per eD2k file: a season pack becomes its episodes and a comic
+  # bundle becomes its issues instead of a single row with only the first link.
+  expand: file
+  from: details
+  max_concurrent: 2
+  extract:
+    # The whole page: season packs put the episode links in a JavaScript
+    # `filearray[...]`, not in <a href>. The eD2k extractor scans the text and
+    # deduplicates by MD4, so a static anchor and the array yield one row.
+    - ed2k: { body: true }
+      all: true
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+      all: true
+    - torrent: { selector: 'a[href*="torrents.ddunlimited.net/torrent/"], a[href$=".torrent"]', attr: href, type: url }
+      all: true
+
+health:
+  # A broad query would resolve and expand dozens of topics during the test;
+  # a single recent title keeps the reach/auth/search check cheap.
+  query: Amarga Navidad
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/ddunlimited/search.html
+    expect: { min_rows: 2, required: [title, details, category, date] }
+  - name: login-ok
+    fixture: fixtures/ddunlimited/login-ok.html
+    expect: { authenticated: true }
+  - name: login-failed
+    fixture: fixtures/ddunlimited/login.html
+    expect: { authenticated: false }
+  - name: topic-ed2k
+    fixture: fixtures/ddunlimited/topic.html
+    expect: { min_rows: 2 }
+  - name: topic-torrent
+    fixture: fixtures/ddunlimited/topic-torrent.html
+    expect: { min_rows: 1 }

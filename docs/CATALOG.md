@@ -19,20 +19,37 @@ Valori contati su `index.json` dopo `go generate ./internal/catalog`.
 
 | Misura | Valore |
 | --- | ---: |
-| Totale voci nel catalogo (definizioni + voci leggere) | **626** |
-| Definizioni native | 109 (8 aiutanti generici inclusi) |
+| Totale voci nel catalogo (definizioni + voci leggere) | **627** |
+| Definizioni native | 110 (8 aiutanti generici inclusi) |
 | Voci leggere | **517** (512 dall'istantanea Jackett, 5 manuali) |
-| Verificate | **85** |
+| Verificate | **84** |
 | Bozze | **24** |
 | Da provare (`da-provvi`) | **496** |
 | Bloccate (`bloccata`) | **14** |
 | Morte (`morta`) | **7** |
-| Pubbliche verificate (host unici) | **94** |
+| Pubbliche verificate (host unici) | **92** |
 | Voci italiane | **14** |
 
 Le pubbliche verificate sono conteggiate per host unico, quindi una
 definizione nativa con un mirror conta due host. Le voci leggere private
 restano tutte `da-provvi`: senza un account non si può verificare la ricerca.
+
+### eD2k: DDUnlimited
+
+`ddunlimited` è la prima definizione `protocol: ed2k`: il forum phpBB italiano
+pubblica `ed2k://|file|...|/` e solo una minoranza di topic ha anche magnet o
+`.torrent`. Il 27/10 sono stati provati dal vivo login (FlareSolverr), ricerca,
+lettura di una pagina di forum e grab; una pagina di «Movies · High Definition»
+ha prodotto 53 release in 69 s, 49 con link eD2k, e un topic di stagione è
+stato espanso in un file per episodio. I pack di stagione nascondono i link in
+un array JavaScript (`filearray[...]`): l'estrattore `body: true` li legge tutti
+e li deduplica per MD4; verificato sul topic di «The Last of Us» stagione 1
+(10 episodi, S01E01 da 15.928.363.670 byte). La ricerca del forum ha un flood control
+(«attendi qualche minuto»): l'archivio periodico legge quattro liste (Movies
+HD, Movies UHD, SerieTV HD ITA, SerieTV UHD), due pagine da 25 topic ciascuna,
+e non la ricerca. Il protocollo eD2k è escluso dalla sincronizzazione con Sonarr,
+Radarr e gli altri programmi Servarr; il client aMule (`kind: amule`) riceve i
+link dalla Web API.
 
 Il catalogo ora contiene **tutte** le fonti dell'istantanea, comprese le
 private senza una famiglia riconosciuta. Una fonte senza via nativa resta

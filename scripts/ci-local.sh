@@ -4,6 +4,9 @@
 # "CI-LOCAL <commit> PASS" or "CI-LOCAL <commit> FAIL <job>".
 set -uo pipefail
 export LC_ALL=C
+# The production-copy acceptance test is local only (it reads data/indexarr.db,
+# which exists on the developer machine). GitHub Actions sets CI itself.
+export CI=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"

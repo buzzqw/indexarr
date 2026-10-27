@@ -185,8 +185,11 @@ Torznab. Se scegli «Altro», usa l'endpoint completo `/api`.
 ### Client di download
 
 **App → Client di download**: qBittorrent, Transmission, Deluge, SABnzbd,
-NZBGet e gli altri supportati. Il client predefinito riceve i grab; il pulsante
-**Invia** nella scheda release usa quello scelto.
+NZBGet, aMule e gli altri supportati. Il client predefinito riceve i grab; il
+pulsante **Invia** nella scheda release usa quello scelto. Per aMule il
+protocollo della release deve essere `ed2k` e il client si configura con
+l'URL della Web API (di solito `http://127.0.0.1:4711`) e la password
+dell'interfaccia web.
 
 ---
 

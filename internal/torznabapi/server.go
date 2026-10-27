@@ -370,7 +370,14 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		if wait <= 0 {
 			wait = 5 * time.Second
 		}
-		if timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second; timeout > 0 && wait > timeout {
+		timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
+		if custom := liveWaitOverride(query.Get("live_wait")); custom > 0 {
+			wait = custom
+			if timeout < custom {
+				timeout = custom
+			}
+		}
+		if timeout > 0 && wait > timeout {
 			wait = timeout
 		}
 		waitCtx, cancel := context.WithTimeout(ctx, wait)
@@ -403,6 +410,12 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		wait := time.Duration(settings.TorznabLiveWait) * time.Second
 		if wait <= 0 {
 			wait = 5 * time.Second
+		}
+		if custom := liveWaitOverride(query.Get("live_wait")); custom > 0 {
+			wait = custom
+			if timeout < custom {
+				timeout = custom
+			}
 		}
 		if wait > timeout {
 			wait = timeout
@@ -734,6 +747,21 @@ func compactReleases(releases []store.Release) []store.Release {
 // RSS request. The *arr RSS calls t=search or t=tvsearch without q: they read
 // the cache of the indexers that publish a latest list, and the fan-out must
 // never invent a query for them.
+// liveWaitOverride reads the optional live_wait query parameter (seconds).
+// It is a Torznab extension used by gextto: an eD2k source needs to open the
+// topic pages, so the client asks for a longer first-response window without
+// slowing Sonarr and Radarr. The value is capped at 60 seconds.
+func liveWaitOverride(raw string) time.Duration {
+	seconds, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || seconds <= 0 {
+		return 0
+	}
+	if seconds > 60 {
+		seconds = 60
+	}
+	return time.Duration(seconds) * time.Second
+}
+
 func liveQueryEligible(mode string, filter store.Filter) bool {
 	switch mode {
 	case "search", "tvsearch":
@@ -1018,6 +1046,17 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		usenet = false
 	}
 	ctx := notify.WithApp(r.Context(), appFromRequest(r))
+	if link := strings.TrimSpace(release.Ed2k); link != "" {
+		grabIndexerID, ok := s.admitGrab(w, r, release)
+		if !ok {
+			return
+		}
+		http.Redirect(w, r, link, http.StatusFound)
+		if r.Method != http.MethodHead {
+			s.finishGrab(ctx, grabIndexerID, release, indexer.GrabViaEd2k)
+		}
+		return
+	}
 	body, contentType, filename, payloadErr := s.releasePayload(ctx, release, usenet)
 	if payloadErr != nil {
 		s.writeDownloadError(w, payloadErr)
@@ -1041,6 +1080,17 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		http.Redirect(w, r, magnet, http.StatusFound)
 		if r.Method != http.MethodHead {
 			s.finishGrab(ctx, grabIndexerID, release, indexer.GrabViaMagnet)
+		}
+		return
+	}
+	if link := strings.TrimSpace(string(body)); strings.HasPrefix(strings.ToLower(link), "ed2k://") {
+		grabIndexerID, ok := s.admitGrab(w, r, release)
+		if !ok {
+			return
+		}
+		http.Redirect(w, r, link, http.StatusFound)
+		if r.Method != http.MethodHead {
+			s.finishGrab(ctx, grabIndexerID, release, indexer.GrabViaEd2k)
 		}
 		return
 	}
@@ -1550,9 +1600,15 @@ func (s *Server) searchXML(base string, settings store.Settings, apiKey string, 
 
 func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Settings, key string, release store.Release, provenance store.ReleaseProvenance) {
 	usenet := isUsenetRelease(release)
+	ed2k := strings.TrimSpace(release.Ed2k)
 	id := strconv.FormatInt(release.ID, 10)
 	link := ""
 	switch {
+	case ed2k != "":
+		// An eD2k release has no .torrent to proxy: the link is the transfer,
+		// like a magnet. A client that understands ed2k:// queues it; the
+		// attribute below also carries it explicitly.
+		link = ed2k
 	case release.HasTorrent():
 		link = base + "/dl/" + id + ".torrent?apikey=" + key
 	case release.HasPayload() && !usenet:
@@ -1580,6 +1636,9 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 	if usenet {
 		enclosureType = "application/x-nzb"
 	}
+	if ed2k != "" {
+		enclosureType = "application/x-ed2k"
+	}
 	size := release.Size
 	if size <= 0 {
 		size = release.TorrentSize
@@ -1593,6 +1652,9 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 		published = release.FirstSeenAt
 	}
 	guid := release.InfoHash
+	if guid == "" && strings.TrimSpace(release.Ed2kHash) != "" {
+		guid = strings.ToLower(strings.TrimSpace(release.Ed2kHash))
+	}
 	if guid == "" {
 		guid = "indexarr-" + release.DedupKey
 	}
@@ -1659,6 +1721,12 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 	}
 	if release.InfoHash != "" {
 		writeAttr(b, "infohash", release.InfoHash)
+	}
+	if ed2k != "" {
+		writeAttr(b, "ed2k", ed2k)
+		if hash := strings.TrimSpace(release.Ed2kHash); hash != "" {
+			writeAttr(b, "ed2khash", hash)
+		}
 	}
 	if !usenet && release.Magnet != "" && (settings == nil || !settings.TorznabProxyMagnets) {
 		writeAttr(b, "magneturl", release.Magnet)

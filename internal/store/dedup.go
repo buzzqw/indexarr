@@ -47,6 +47,11 @@ func (s *Store) FindSameRelease(ctx context.Context, rel *Release) (Release, boo
 	if hash := strings.TrimSpace(rel.InfoHash); hash != "" {
 		return s.ReleaseByInfoHash(ctx, strings.ToLower(hash))
 	}
+	// An eD2k file has its own identity: never fold it into a torrent or
+	// usenet row that happens to share title and size.
+	if strings.TrimSpace(rel.Ed2kHash) != "" || strings.EqualFold(strings.TrimSpace(rel.Protocol), "ed2k") {
+		return Release{}, false, nil
+	}
 	title := rel.SearchTitle
 	if title == "" {
 		title = NormalizeSearch(rel.Title)
@@ -193,6 +198,12 @@ func mergeReleasePair(ctx context.Context, tx *sql.Tx, keeperID, dupID int64) er
 			magnet = CASE WHEN magnet = '' THEN COALESCE((
 				SELECT magnet FROM releases WHERE id = ? AND magnet <> ''), '')
 				ELSE magnet END,
+			ed2k_link = CASE WHEN ed2k_link = '' THEN COALESCE((
+				SELECT ed2k_link FROM releases WHERE id = ? AND ed2k_link <> ''), '')
+				ELSE ed2k_link END,
+			ed2k_hash = CASE WHEN ed2k_hash = '' THEN COALESCE((
+				SELECT ed2k_hash FROM releases WHERE id = ? AND ed2k_hash <> ''), '')
+				ELSE ed2k_hash END,
 			torrent = COALESCE(torrent, (
 				SELECT torrent FROM releases WHERE id = ? AND torrent IS NOT NULL)),
 			torrent_size = MAX(torrent_size, COALESCE((
@@ -225,7 +236,7 @@ func mergeReleasePair(ctx context.Context, tx *sql.Tx, keeperID, dupID int64) er
 		WHERE releases.id = ?`,
 		dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID,
 		dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID,
-		dupID, dupID, keeperID)
+		dupID, dupID, dupID, keeperID)
 	if err != nil {
 		return fmt.Errorf("merge release metadata: %w", err)
 	}

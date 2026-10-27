@@ -14,6 +14,8 @@
     <dt>{{T "releases.category"}}</dt><dd>{{if .Release.Category}}{{catName .Release.Category}} <span class="muted">({{.Release.Category}})</span>{{else}}—{{end}}</dd>
     <dt>{{T "release.seedersLeechers"}}</dt><dd>{{numOrDash .Release.Seeders}} / {{numOrDash .Release.Leechers}}</dd>
     <dt>{{T "release.infohash"}}</dt><dd>{{if .Release.InfoHash}}<code>{{.Release.InfoHash}}</code>{{else}}<span class="muted">{{T "release.unknown"}}</span>{{end}}</dd>
+    <dt>{{T "release.ed2k"}}</dt><dd>{{if .Release.Ed2k}}<code>{{.Release.Ed2k}}</code>{{else}}<span class="muted">{{T "common.none"}}</span>{{end}}</dd>
+    <dt>{{T "release.ed2kHash"}}</dt><dd>{{if .Release.Ed2kHash}}<code>{{.Release.Ed2kHash}}</code>{{else}}<span class="muted">{{T "common.none"}}</span>{{end}}</dd>
     <dt>{{T "release.externalIDs"}}</dt><dd>{{if .Release.IMDbID}}{{T "release.imdb"}} {{.Release.IMDbID}} {{end}}{{if .Release.TMDbID}}{{T "release.tmdb"}} {{.Release.TMDbID}} {{end}}{{if .Release.TVDbID}}{{T "release.tvdb"}} {{.Release.TVDbID}}{{end}}{{if not (or .Release.IMDbID .Release.TMDbID .Release.TVDbID)}}<span class="muted">{{T "common.none"}}</span>{{end}}</dd>
     <dt>{{T "release.firstSeen"}}</dt><dd>{{date .Release.FirstSeenAt}} <span class="muted">({{ago .Release.FirstSeenAt}})</span></dd>
     <dt>{{T "release.lastSeen"}}</dt><dd>{{date .Release.LastSeenAt}} <span class="muted">({{ago .Release.LastSeenAt}})</span></dd>
@@ -23,6 +25,8 @@
     <dd>
       {{if .Release.Torrent}}
         {{bytes .Release.TorrentSize}} {{T "release.stored"}} · <a class="link" href="{{.TorrentURL}}">{{T "release.downloadTorrent"}}</a>
+      {{else if .Release.Ed2k}}
+        <span class="muted">{{T "release.notApplicable"}}</span>
       {{else}}
         <span class="muted">{{T "release.notStored"}}</span>
       {{end}}
@@ -67,21 +71,39 @@
 </section>
 {{end}}
 
+{{if .Release.Ed2k}}
+<section class="panel">
+  <div class="panel-head"><h2>{{T "release.ed2kTitle"}}</h2></div>
+  <p class="help">{{T "release.ed2kHelp"}}</p>
+  <div class="field">
+    <label for="ed2k">{{T "release.ed2k"}}</label>
+    <textarea id="ed2k" rows="3" readonly>{{.Release.Ed2k}}</textarea>
+  </div>
+  <div class="actions">
+    <button class="btn" type="button" data-copy="{{.Release.Ed2k}}">{{T "release.copyEd2k"}}</button>
+    <a class="btn" href="{{safeURL .Release.Ed2k}}">{{T "release.openInClient"}}</a>
+  </div>
+</section>
+{{end}}
+
+{{if .Release.Magnet}}
 <section class="panel">
   <div class="panel-head"><h2>{{T "release.magnetTitle"}}</h2></div>
-  {{if .Release.Magnet}}
-    <div class="field">
-      <label for="magnet">{{T "releases.magnetLink"}}</label>
-      <textarea id="magnet" rows="3" readonly>{{.Release.Magnet}}</textarea>
-    </div>
-    <div class="actions">
-      <button class="btn" type="button" data-copy="{{.Release.Magnet}}">{{T "release.copyMagnet"}}</button>
-      <a class="btn" href="{{safeURL .Release.Magnet}}">{{T "release.openInClient"}}</a>
-    </div>
-  {{else}}
-    <p class="muted">{{T "release.noMagnet"}}</p>
-  {{end}}
+  <div class="field">
+    <label for="magnet">{{T "releases.magnetLink"}}</label>
+    <textarea id="magnet" rows="3" readonly>{{.Release.Magnet}}</textarea>
+  </div>
+  <div class="actions">
+    <button class="btn" type="button" data-copy="{{.Release.Magnet}}">{{T "release.copyMagnet"}}</button>
+    <a class="btn" href="{{safeURL .Release.Magnet}}">{{T "release.openInClient"}}</a>
+  </div>
 </section>
+{{else if not .Release.Ed2k}}
+<section class="panel">
+  <div class="panel-head"><h2>{{T "release.magnetTitle"}}</h2></div>
+  <p class="muted">{{T "release.noMagnet"}}</p>
+</section>
+{{end}}
 
 {{if .DownloadClient}}
 <section class="panel">

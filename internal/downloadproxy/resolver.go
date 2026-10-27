@@ -174,6 +174,7 @@ type Payload struct {
 	ContentType string
 	Filename    string
 	Magnet      string
+	Ed2k        string
 }
 
 // Resolve returns the payload of one release. Stored bytes are served locally;
@@ -250,6 +251,10 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 			if magnet := strings.TrimSpace(fetched.Magnet); magnet != "" {
 				r.clearSourceFailure(ctx, releaseID, source.IndexerID)
 				return Payload{Magnet: magnet}, nil
+			}
+			if link := strings.TrimSpace(fetched.Ed2k); link != "" {
+				r.clearSourceFailure(ctx, releaseID, source.IndexerID)
+				return Payload{Ed2k: link}, nil
 			}
 			continue
 		}

@@ -550,9 +550,9 @@ if ("serviceWorker" in navigator) {
   if (!kind || !protocol) {
     return;
   }
-  const usenet = new Set(["sabnzbd", "nzbget"]);
+  const protocolFor = { sabnzbd: "usenet", nzbget: "usenet", amule: "ed2k" };
   kind.addEventListener("change", () => {
-    protocol.value = usenet.has(kind.value) ? "usenet" : "torrent";
+    protocol.value = protocolFor[kind.value] || "torrent";
   });
 })();
 

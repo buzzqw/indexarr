@@ -501,10 +501,68 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// The indexer protocol CHECK must accept ed2k before any eD2k indexer can
+	// be created. It is a table rebuild, so it runs after every additive
+	// migration and before the indexes.
+	if err := s.applyEd2kProtocolMigration(context.Background()); err != nil {
+		return err
+	}
+	// The download clients table has its own protocol CHECK; it is rebuilt
+	// here so aMule can be stored as an eD2k client.
+	if err := s.applyMigration(context.Background(), indexarr2Ed2kClientVersion,
+		"ed2k download client", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`CREATE TABLE download_clients_new (
+					id           INTEGER PRIMARY KEY AUTOINCREMENT,
+					name         TEXT    NOT NULL DEFAULT '',
+					kind         TEXT    NOT NULL DEFAULT 'qbittorrent',
+					protocol     TEXT    NOT NULL DEFAULT 'torrent'
+						CHECK (protocol IN ('torrent', 'usenet', 'ed2k')),
+					url          TEXT    NOT NULL DEFAULT '',
+					username     TEXT    NOT NULL DEFAULT '',
+					password_enc TEXT,
+					apikey_enc   TEXT,
+					category     TEXT    NOT NULL DEFAULT '',
+					save_path    TEXT    NOT NULL DEFAULT '',
+					paused       INTEGER NOT NULL DEFAULT 0,
+					enabled      INTEGER NOT NULL DEFAULT 1,
+					is_default   INTEGER NOT NULL DEFAULT 0,
+					created_at   INTEGER NOT NULL DEFAULT 0,
+					updated_at   INTEGER NOT NULL DEFAULT 0
+				)`,
+				`INSERT INTO download_clients_new(id, name, kind, protocol, url, username,
+					password_enc, apikey_enc, category, save_path, paused, enabled,
+					is_default, created_at, updated_at)
+				 SELECT id, name, kind, protocol, url, username, password_enc,
+					apikey_enc, category, save_path, paused, enabled, is_default,
+					created_at, updated_at
+				 FROM download_clients`,
+				`DROP TABLE download_clients`,
+				`ALTER TABLE download_clients_new RENAME TO download_clients`,
+				`CREATE INDEX IF NOT EXISTS download_clients_protocol
+					ON download_clients(protocol, enabled)`,
+				`CREATE INDEX IF NOT EXISTS download_clients_default
+					ON download_clients(is_default)`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
+	// The release table may have been rebuilt by migration 3, which predates
+	// the eD2k columns. Re-apply the idempotent column pass so both a fresh
+	// database and an upgraded one carry them.
+	if err := s.ensureReleaseColumns(); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.
 	for _, statement := range []string{
+		`CREATE INDEX IF NOT EXISTS releases_ed2k ON releases(ed2k_hash)`,
 		`CREATE INDEX IF NOT EXISTS releases_hidden ON releases(hidden)`,
 		`CREATE INDEX IF NOT EXISTS releases_favorite ON releases(favorite)`,
 		`CREATE INDEX IF NOT EXISTS releases_visible_published_id
@@ -792,6 +850,8 @@ func (s *Store) ensureReleaseColumns() error {
 		{"favorite", "INTEGER NOT NULL DEFAULT 0"},
 		{"hidden", "INTEGER NOT NULL DEFAULT 0"},
 		{"downloaded_at", "INTEGER NOT NULL DEFAULT 0"},
+		{"ed2k_link", "TEXT NOT NULL DEFAULT ''"},
+		{"ed2k_hash", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		exists, err := s.columnExists("releases", column.name)
 		if err != nil {

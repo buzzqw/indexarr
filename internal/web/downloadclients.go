@@ -20,6 +20,7 @@ var downloadClientKindLabels = map[string]string{
 	"rtorrent":     "rTorrent",
 	"sabnzbd":      "SABnzbd",
 	"nzbget":       "NZBGet",
+	"amule":        "aMule",
 }
 
 func downloadClientKindLabel(kind string) string {
@@ -58,7 +59,7 @@ func (s *Server) downloadClientForm(r *http.Request, title string, client store.
 		base:            s.newBaseT(r, title, "applications"),
 		IsNew:           isNew,
 		Client:          client,
-		Kinds:           []string{"qbittorrent", "transmission", "deluge", "rtorrent", "sabnzbd", "nzbget"},
+		Kinds:           []string{"qbittorrent", "transmission", "deluge", "rtorrent", "sabnzbd", "nzbget", "amule"},
 		KindName:        downloadClientKindLabel(client.Kind),
 		HasPassword:     client.PasswordEnc != "",
 		HasAPIKey:       client.APIKeyEnc != "",
@@ -113,7 +114,7 @@ func (s *Server) downloadClientInput(r *http.Request, current store.DownloadClie
 	if !validDownloadClientKind(in.Kind) {
 		problems = append(problems, s.translate(r, "client.error.kind"))
 	}
-	if in.Protocol != store.ProtocolTorrent && in.Protocol != store.ProtocolUsenet {
+	if in.Protocol != store.ProtocolTorrent && in.Protocol != store.ProtocolUsenet && in.Protocol != store.ProtocolEd2k {
 		problems = append(problems, s.translate(r, "client.error.protocol"))
 	}
 	parsed, err := url.Parse(in.URL)
@@ -144,6 +145,11 @@ func (s *Server) downloadClientInput(r *http.Request, current store.DownloadClie
 	if r.FormValue("api_key_remove") != "" {
 		in.APIKeyEnc = ""
 		in.ClearAPIKey = true
+	}
+	// aMule authenticates with the Web UI password only; without one the
+	// client cannot even log in.
+	if in.Kind == "amule" && in.PasswordEnc == "" && strings.TrimSpace(r.FormValue("password")) == "" {
+		problems = append(problems, s.translate(r, "client.error.amulePassword"))
 	}
 	return in, problems
 }
@@ -295,7 +301,7 @@ func (s *Server) resolveDownloadClient(ctx context.Context, protocol string) (do
 	}
 	if len(clients) > 0 {
 		protocol = strings.ToLower(strings.TrimSpace(protocol))
-		if protocol != store.ProtocolUsenet {
+		if protocol != store.ProtocolUsenet && protocol != store.ProtocolEd2k {
 			protocol = store.ProtocolTorrent
 		}
 		pick := store.DownloadClient{}
@@ -311,6 +317,12 @@ func (s *Server) resolveDownloadClient(ctx context.Context, protocol string) (do
 					break
 				}
 			}
+		}
+		// An eD2k release must never fall back to a torrent or Usenet client:
+		// the client would receive an ed2k:// link it cannot use. Without an
+		// aMule row the release page simply hides the send button.
+		if protocol == store.ProtocolEd2k && pick.ID == 0 {
+			return downloadclient.Config{}, "", fmt.Errorf("no eD2k download client configured")
 		}
 		if pick.ID == 0 {
 			for _, client := range clients {
@@ -340,6 +352,9 @@ func (s *Server) resolveDownloadClient(ctx context.Context, protocol string) (do
 			name = downloadClientKindLabel(pick.Kind)
 		}
 		return cfg, name, nil
+	}
+	if strings.EqualFold(strings.TrimSpace(protocol), store.ProtocolEd2k) {
+		return downloadclient.Config{}, "", fmt.Errorf("no eD2k download client configured")
 	}
 	// Legacy fallback: the single client in the settings table.
 	settings, err := s.store.LoadSettings(ctx)

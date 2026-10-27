@@ -130,6 +130,7 @@ dettaglio release, configurata in **Settings → Download client**.
 | --- | --- |
 | qBittorrent | Web API v2: login, `torrents/add` con magnet o file `.torrent`, categoria, percorso, pausa. |
 | Transmission | RPC `/transmission/rpc`: `torrent-add`, `metainfo` base64 per i `.torrent`, `filename` per i magnet, sessione `409` gestita. |
+| aMule | Web API `amuleapi` (`/api/v1`): login con password, `POST /downloads` con il link `ed2k://`. Protocollo `ed2k`. |
 
 Sonarr/Radarr/Lidarr continuano a gestire il download per conto loro; questa
 funzione serve per inviare una release scelta a mano dalla UI.

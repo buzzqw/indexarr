@@ -654,6 +654,13 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind 
 	specs := make([]appsync.IndexerSpec, 0, len(selected))
 	ids := make([]int64, 0, len(selected))
 	for _, indexer := range selected {
+		// Sonarr, Radarr and the other Servarr apps speak only torrent and
+		// usenet. An eD2k indexer is still available to indexarr's own clients
+		// and to gextto through the Torznab endpoint, but it is never pushed
+		// into an application that would send its link to a torrent client.
+		if strings.EqualFold(strings.TrimSpace(indexer.Protocol), "ed2k") {
+			continue
+		}
 		slug := strings.TrimSpace(indexer.Slug)
 		if slug == "" {
 			return nil, nil, fmt.Errorf("syncjob: indexer %d has no slug", indexer.ID)

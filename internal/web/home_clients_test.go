@@ -394,3 +394,53 @@ func TestHomeStatusTurnsRedOnDatabaseFailure(t *testing.T) {
 		t.Fatalf("level with a closed database = %q, want danger", status.Level)
 	}
 }
+
+// TestAmuleEd2kClient covers the third protocol: aMule is offered as a client,
+// it requires the Web UI password, and an eD2k release resolves to it.
+func TestAmuleEd2kClient(t *testing.T) {
+	env := newTestEnv(t)
+	token, cookie := csrfFrom(t, env.handler, "/download-clients/new")
+	missing := postForm(t, env.handler, "/download-clients", url.Values{
+		"csrf":     {token},
+		"name":     {"aMule"},
+		"kind":     {"amule"},
+		"protocol": {"ed2k"},
+		"url":      {"http://127.0.0.1:4711"},
+		"enabled":  {"on"},
+	}, cookie)
+	if missing.Code != http.StatusBadRequest || !strings.Contains(missing.Body.String(), "aMule") {
+		t.Fatalf("missing password = %d: %s", missing.Code, missing.Body.String())
+	}
+	created := postForm(t, env.handler, "/download-clients", url.Values{
+		"csrf":     {token},
+		"name":     {"aMule"},
+		"kind":     {"amule"},
+		"protocol": {"ed2k"},
+		"url":      {"http://127.0.0.1:4711"},
+		"password": {"synthetic-amule-password"},
+		"enabled":  {"on"},
+	}, cookie)
+	if created.Code != http.StatusSeeOther {
+		t.Fatalf("create = %d: %s", created.Code, created.Body.String())
+	}
+	cfg, name, err := env.server.resolveDownloadClient(context.Background(), "ed2k")
+	if err != nil || name != "aMule" || cfg.Kind != "amule" {
+		t.Errorf("resolved eD2k client = %q %q, %v", name, cfg.Kind, err)
+	}
+}
+
+// An eD2k release never falls back to a torrent client: the ed2k:// link is
+// not something qBittorrent or Transmission can add.
+func TestEd2kReleaseDoesNotFallBackToTorrentClient(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	if _, err := env.store.CreateDownloadClient(ctx, store.DownloadClient{
+		Name: "qBittorrent", Kind: "qbittorrent", Protocol: "torrent",
+		URL: "http://127.0.0.1:8080", Enabled: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := env.server.resolveDownloadClient(ctx, "ed2k"); err == nil {
+		t.Fatal("eD2k release resolved to a torrent client")
+	}
+}

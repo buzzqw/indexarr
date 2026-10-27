@@ -85,6 +85,10 @@ type searchItem struct {
 	Published  time.Time `json:"published"`
 	InfoHash   string    `json:"infohash"`
 	Magnet     string    `json:"magnet"`
+	// Ed2k and Ed2kHash carry an eD2k file link; they are empty for torrent
+	// and Usenet results.
+	Ed2k     string `json:"ed2k"`
+	Ed2kHash string `json:"ed2k_hash"`
 }
 
 type testPhase struct {
@@ -193,7 +197,7 @@ func (s *Server) handleIndexerCreate(w http.ResponseWriter, r *http.Request) {
 		protocol = strings.ToLower(strings.TrimSpace(parsed.Meta.Protocol))
 	}
 	if !validProtocol(protocol) {
-		writeError(w, http.StatusBadRequest, "protocol must be torrent or usenet")
+		writeError(w, http.StatusBadRequest, "protocol must be torrent, usenet or ed2k")
 		return
 	}
 
@@ -379,7 +383,7 @@ func (s *Server) handleIndexerUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if protocol := strings.ToLower(strings.TrimSpace(req.Protocol)); protocol != "" {
 		if !validProtocol(protocol) {
-			writeError(w, http.StatusBadRequest, "protocol must be torrent or usenet")
+			writeError(w, http.StatusBadRequest, "protocol must be torrent, usenet or ed2k")
 			return
 		}
 		in.Protocol = protocol
@@ -656,6 +660,8 @@ func (s *Server) handleIndexerSearch(w http.ResponseWriter, r *http.Request) {
 			Published:  item.Published,
 			InfoHash:   item.InfoHash,
 			Magnet:     item.Magnet,
+			Ed2k:       item.Ed2k,
+			Ed2kHash:   item.Ed2kHash,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
@@ -970,7 +976,7 @@ func joinTags(tags []string) string {
 }
 
 func validProtocol(protocol string) bool {
-	return protocol == "torrent" || protocol == "usenet"
+	return protocol == "torrent" || protocol == "usenet" || protocol == "ed2k"
 }
 
 func isUniqueError(err error) bool {

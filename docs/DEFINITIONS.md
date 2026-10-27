@@ -44,7 +44,7 @@ deve contenere un solo documento YAML.
 | `id` | sì | slug `^[a-z0-9][a-z0-9-]*$`, stabile e univoco |
 | `name` | sì | nome leggibile, non vuoto |
 | `type` | sì | `public`, `semi-private`, `private` |
-| `protocol` | sì | `torrent` oppure `usenet` |
+| `protocol` | sì | `torrent`, `usenet` oppure `ed2k` |
 | `urls` | sì | almeno un URL assoluto `http`/`https`; il primo è il principale, gli altri sono mirror |
 | `language` | no | tag BCP 47, per esempio `it-IT` |
 | `author` | no | autore o manutentore |
@@ -551,10 +551,31 @@ category:
   type: category
 ```
 
+### eD2k
+
+`protocol: ed2k` descrive una fonte che pubblica link
+`ed2k://|file|nome|dimensione|hash|/` invece di magnet o `.torrent`. La
+release conserva il link e il suo hash MD4; non esiste uno swarm da contare e
+non viene salvato alcun file. Il server Torznab espone il link nel `<link>` e
+nell'attributo `ed2k`, con `<guid>` uguale all'hash: un client che conosce
+eD2k (per esempio gextto) lo usa direttamente, mentre Sonarr, Radarr e gli
+altri programmi Servarr non ricevono questi indexer, perché saprebbero solo
+passare il link a un client torrent.
+
+Il grab di una release eD2k restituisce un redirect al link `ed2k://`; la UI
+lo mostra anche come testo da copiare. Un client aMule configurato con
+`kind: amule` riceve il link via `POST /api/v1/downloads` della sua Web API.
+
+Una ricerca **live** di un indexer eD2k apre al massimo 10 pagine di dettaglio
+(e non le salta come per i torrent): senza quel passaggio la riga avrebbe solo
+un riferimento cifrato, che un client non riconoscerebbe come eD2k. Il limite
+tiene la ricerca legata a poche pagine; l'archivio completo lo costruisce il
+run periodico sulle liste dei forum.
+
 ## `download`
 
-Risolve il magnet o il link `.torrent` da una pagina di dettaglio quando il
-listing non li espone. La sezione è **opzionale** e retro-compatibile: le
+Risolve il magnet, il link `.torrent` o il link `ed2k://` da una pagina di
+dettaglio quando il listing non li espone. La sezione è **opzionale** e retro-compatibile: le
 definizioni che hanno già `magnet` o `download` nella riga di ricerca non
 cambiano e `schema` resta 1.
 
@@ -565,6 +586,8 @@ download:
   max_concurrent: 2           # 1..8, default 2
   size: { selector: "table.torrentInfoTable tr:nth-child(1) td", filters: [{ regex: "([0-9][0-9.,]*\\s*(?:B|KB|MB|GB|TB))" }] }
   extract:
+    - ed2k:    { selector: 'a[href^="ed2k://"]', attr: href }
+      all: true
     - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
     - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
 ```
@@ -577,24 +600,42 @@ download:
 | `size` | no | campo letto dalla pagina di dettaglio; il valore viene interpretato come dimensione e applicato alla release |
 | `select` | no | vuoto oppure `season_episode`: sceglie fra più estrattori quello della stagione/episodio richiesti |
 | `before` | no | azione generale prima del download (per esempio il «grazie» di un forum); richiede `resolve_on: grab` |
-| `extract` | sì | almeno un estrattore; ogni voce ha **solo** `magnet` o **solo** `torrent` |
+| `expand` | no | vuoto oppure `file`: con `resolve_on: search` crea una release per ogni file estratto (un pack di stagione diventa i suoi episodi) |
+| `extract` | sì | almeno un estrattore; ogni voce ha **solo** `magnet`, **solo** `torrent` o **solo** `ed2k` |
 
 Ogni estrattore è un `Field` con le stesse regole dei campi di ricerca:
 `selector` (lista = fallback) oppure `path` per una risposta JSON, `attr`,
 `type` (`text`, `int`, `size`, `date`, `url`, `category`) e `filters`. Per
 `torrent` il valore viene risolto come URL relativo alla pagina di dettaglio;
-per `magnet` deve essere un URI `magnet:`.
+per `magnet` deve essere un URI `magnet:`; per `ed2k` deve essere un link
+`ed2k://|file|...|/` valido, dal quale si leggono nome, dimensione e hash MD4.
+
+Un campo eD2k può usare `body: true` invece di `selector`: il motore legge
+l'intera risposta e cerca **tutti** gli URI `ed2k://|file|...|/` nel testo,
+anche quelli dentro un array JavaScript (`filearray[0]='ed2k://…'`) che il
+forum usa per il pulsante «aggiungi tutti i link a eMule». I duplicati sono
+scartati per hash MD4, quindi un link presente sia in un `<a href>` sia
+nell'array conta una volta sola.
 
 Un estrattore può aggiungere `all: true` (additivo): raccoglie **tutti** i
 valori che il primo selettore trova invece del solo primo. Serve quando un
-topic contiene molti magnet. In quel caso `select: season_episode` confronta il
-nome di ogni magnet (parametro `dn`) con stagione ed episodio della richiesta:
+topic contiene molti magnet o molti file eD2k. In quel caso
+`select: season_episode` confronta il nome di ogni candidato (il parametro
+`dn` di un magnet, il nome file di un link eD2k) con stagione ed episodio
+della richiesta:
 
 - stagione + episodio: sceglie la release che contiene quell'episodio; a parità
   preferisce l'intervallo più stretto (episodio singolo prima del pack);
 - solo stagione: preferisce il pack della stagione, poi una release qualsiasi
   della stessa stagione;
 - nessuna stagione/episodio: resta valido il primo valore, come prima.
+
+Con `expand: file` la scelta non si applica: ogni file del topic diventa una
+release separata. Il titolo unisce il titolo del topic e il nome del file, la
+dimensione viene dal link e l'hash MD4 diventa l'identità della riga. È il
+percorso giusto per un archivio: un topic con 46 episodi non deve perdere 45
+link. `expand` richiede `resolve_on: search`, perché i link devono essere letti
+prima che i risultati vengano salvati.
 
 La stagione e l'episodio vengono conservati nell'item della ricerca e viaggiano
 nel riferimento di download cifrato; una definizione può anche ripeterli come
@@ -689,7 +730,7 @@ sono disponibili nell'azione.
   `regex` valido;
 - `extract` non può essere vuoto;
 - `size`, quando presente, è un `Field` con `selector` o `path`;
-- ogni voce deve avere esattamente uno tra `magnet` e `torrent`;
+- ogni voce deve avere esattamente uno tra `magnet`, `torrent` e `ed2k`;
 - ogni campo deve avere `selector` o `path` non vuoti, un `type` ammesso e
   filtri validi (`replace: old:new`, `query_param` con nome, `regex`
   compilabile, nomi noti);

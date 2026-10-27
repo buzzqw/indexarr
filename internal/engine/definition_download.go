@@ -21,18 +21,20 @@ const (
 	defaultDownloadCacheTTL      = 10 * time.Minute
 )
 
-// resolvedDownload is one value found on a details page: either a magnet link
-// or a torrent URL. The two are mutually exclusive.
+// resolvedDownload is one value found on a details page: a magnet link, a
+// torrent URL or an eD2k file link. The three are mutually exclusive.
 type resolvedDownload struct {
 	Magnet      string
 	DownloadURL string
+	Ed2k        string
+	Ed2kHash    string
 	InfoHash    string
 	Title       string
 	Size        int64
 }
 
 func (r resolvedDownload) empty() bool {
-	return r.Magnet == "" && r.DownloadURL == ""
+	return r.Magnet == "" && r.DownloadURL == "" && r.Ed2k == ""
 }
 
 type downloadCacheEntry struct {
@@ -157,28 +159,33 @@ func (c *DefinitionConnector) maxConcurrentDownloads() int {
 	return value
 }
 
-// resolveSearchDetails opens the details pages of the items that have neither
-// a magnet nor a direct download URL. The caller passes only the rows that
-// survived deduplication and the requested limit. Items are resolved
-// concurrently, at most max_concurrent at a time, and a failing page never
-// aborts the whole result: the item is left as it was and the failure is
-// counted.
-func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []Item) error {
+// resolveSearchDetails opens the details pages of the items that have no
+// direct link yet. The caller passes only the rows that survived deduplication
+// and the requested limit. Items are resolved concurrently, at most
+// max_concurrent at a time, and a failing page never aborts the whole result:
+// the item is left as it was and the failure is counted.
+//
+// With download.expand: file a details page that carries many eD2k links (a
+// season pack, a discography) becomes one item per file, so the archive keeps
+// every link instead of only the first.
+func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []Item) ([]Item, error) {
 	if !c.resolvesOnSearch() {
-		return nil
+		return items, nil
 	}
 	// A pre-download engagement action must never run while searching. The
 	// validator already rejects before + resolve_on: search; this guard keeps
 	// a hand-built Definition safe too.
 	if c.def.Download != nil && c.def.Download.Before != nil {
-		return nil
+		return items, nil
 	}
 
 	// Group items by details URL so repeated rows cost one request.
 	groups := make(map[string][]int)
 	var order []string
 	for i := range items {
-		if strings.TrimSpace(items[i].Magnet) != "" || strings.TrimSpace(items[i].DownloadURL) != "" {
+		if strings.TrimSpace(items[i].Magnet) != "" ||
+			strings.TrimSpace(items[i].DownloadURL) != "" ||
+			strings.TrimSpace(items[i].Ed2k) != "" {
 			continue
 		}
 		rawURL := strings.TrimSpace(items[i].DetailsURL)
@@ -196,9 +203,12 @@ func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []
 		groups[resolved] = append(groups[resolved], i)
 	}
 	if len(groups) == 0 {
-		return nil
+		return items, nil
 	}
 
+	expand := strings.EqualFold(strings.TrimSpace(c.def.Download.Expand), "file")
+	replaced := make(map[int][]Item)
+	var replacedMu sync.Mutex
 	limit := c.maxConcurrentDownloads()
 	semaphore := make(chan struct{}, limit)
 	var wait sync.WaitGroup
@@ -216,18 +226,153 @@ func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []
 			case <-ctx.Done():
 				return
 			}
-			result, err := c.resolveDetailsCached(ctx, rawURL, 0, 0)
-			if err != nil || result.empty() {
+			var candidates []resolvedDownload
+			var err error
+			if expand {
+				candidates, err = c.fetchDetailsDownloads(ctx, rawURL, 0, 0)
+			} else {
+				var result resolvedDownload
+				result, err = c.resolveDetailsCached(ctx, rawURL, 0, 0)
+				if err == nil && !result.empty() {
+					candidates = []resolvedDownload{result}
+				}
+			}
+			if err != nil || len(candidates) == 0 {
 				c.resolveFailures.Add(1)
 				return
 			}
 			for _, index := range indexes {
-				applyResolvedDownload(&items[index], result)
+				base := items[index]
+				if !expand || len(candidates) == 1 {
+					applied := base
+					applyResolvedDownload(&applied, candidates[0])
+					replacedMu.Lock()
+					replaced[index] = []Item{applied}
+					replacedMu.Unlock()
+					continue
+				}
+				expanded := make([]Item, 0, len(candidates))
+				for _, candidate := range candidates {
+					expanded = append(expanded, expandItem(base, candidate))
+				}
+				replacedMu.Lock()
+				replaced[index] = expanded
+				replacedMu.Unlock()
 			}
 		}(rawURL, indexes)
 	}
 	wait.Wait()
-	return ctx.Err()
+
+	out := make([]Item, 0, len(items))
+	for i, item := range items {
+		if expanded, ok := replaced[i]; ok {
+			out = append(out, expanded...)
+			continue
+		}
+		out = append(out, item)
+	}
+	return out, ctx.Err()
+}
+
+// expandItem turns one file of a details page into its own release. The topic
+// title stays in front of the file name so a season pack is still readable,
+// while the eD2k hash gives the row its stable identity.
+func expandItem(base Item, candidate resolvedDownload) Item {
+	item := base
+	item.Magnet = ""
+	item.InfoHash = ""
+	item.DownloadURL = ""
+	item.Ed2k = ""
+	item.Ed2kHash = ""
+	name := candidateName(candidate, "")
+	applyResolvedDownload(&item, candidate)
+	if name == "" {
+		return item
+	}
+	// applyResolvedDownload may have copied the file name into Title; the
+	// expanded row keeps the topic title in front of it for readability.
+	lowerBase := strings.ToLower(strings.TrimSpace(base.Title))
+	if !strings.Contains(lowerBase, strings.ToLower(name)) {
+		item.Title = strings.TrimSpace(base.Title + " - " + name)
+	} else {
+		item.Title = name
+	}
+	item.Size = candidate.Size
+	if item.Size <= 0 {
+		item.Size = base.Size
+	}
+	if candidate.Ed2k != "" {
+		item.GUID = "ed2k:" + candidate.Ed2kHash
+	}
+	return item
+}
+
+// fetchDetailsDownloads reads every candidate of one details page. It is the
+// expansion path: no cache, because a group already guarantees one request per
+// details URL in a search.
+func (c *DefinitionConnector) fetchDetailsDownloads(ctx context.Context, rawURL string, season, episode int) ([]resolvedDownload, error) {
+	target, err := c.detailsURL(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	response, err := c.fetchDetailsPage(ctx, target)
+	if err != nil {
+		return nil, err
+	}
+	title, size := c.detailsTitleSize(response)
+	candidates, err := c.extractDownloadCandidates(response)
+	if err != nil {
+		return nil, err
+	}
+	if len(candidates) == 0 {
+		return nil, errors.New("download: no download target on details page")
+	}
+	for i := range candidates {
+		if candidates[i].Title == "" {
+			candidates[i].Title = title
+		}
+		if candidates[i].Size == 0 {
+			candidates[i].Size = size
+		}
+	}
+	return candidates, nil
+}
+
+func (c *DefinitionConnector) detailsURL(rawURL string) (*url.URL, error) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return nil, errors.New("download: invalid details URL")
+	}
+	target, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, errors.New("download: invalid details URL")
+	}
+	if !target.IsAbs() {
+		target, err = c.buildURL(rawURL)
+		if err != nil {
+			return nil, errors.New("download: invalid details URL")
+		}
+	}
+	if target.Scheme != "http" && target.Scheme != "https" {
+		return nil, errors.New("download: invalid details URL")
+	}
+	return target, nil
+}
+
+func (c *DefinitionConnector) detailsTitleSize(response *Response) (string, int64) {
+	title := ""
+	if c.def.Download.Title != nil {
+		if value, err := c.extractDetailField(response, *c.def.Download.Title); err == nil {
+			title = strings.TrimSpace(value)
+		}
+	}
+	size := int64(0)
+	if c.def.Download.Size != nil {
+		if value, err := c.extractDetailField(response, *c.def.Download.Size); err == nil {
+			size = parseSize(value)
+		}
+	}
+	return title, size
 }
 
 func applyResolvedDownload(item *Item, result resolvedDownload) {
@@ -246,6 +391,14 @@ func applyResolvedDownload(item *Item, result resolvedDownload) {
 			item.InfoHash = result.InfoHash
 		} else {
 			item.InfoHash = normalizeInfoHash(result.Magnet)
+		}
+		return
+	}
+	if result.Ed2k != "" {
+		item.Ed2k = result.Ed2k
+		item.Ed2kHash = result.Ed2kHash
+		if result.Size > 0 {
+			item.Size = result.Size
 		}
 		return
 	}
@@ -326,8 +479,12 @@ func (c *DefinitionConnector) fetchDetailsDownload(ctx context.Context, target *
 	if !ok {
 		return resolvedDownload{}, errors.New("download: no magnet matches the requested season and episode")
 	}
-	result.Title = title
-	result.Size = size
+	if result.Title == "" {
+		result.Title = title
+	}
+	if result.Size == 0 {
+		result.Size = size
+	}
 	return result, nil
 }
 
@@ -435,6 +592,36 @@ func (c *DefinitionConnector) extractDownloadTargets(response *Response, target 
 		}
 		return out, len(out) > 0, nil
 	}
+	if target.Ed2k != nil {
+		values, err := c.extractDetailFields(response, *target.Ed2k, target.All)
+		if err != nil {
+			return nil, false, err
+		}
+		var out []resolvedDownload
+		seen := make(map[string]struct{})
+		for _, value := range values {
+			// A selected node can be one link; a body or a script can hold a
+			// JavaScript array of them. Scan every ed2k:// URI found in the
+			// value instead of parsing the whole text as a single link.
+			for _, raw := range ed2kLinksInText(value) {
+				link, ok := parseEd2kFileLink(raw)
+				if !ok {
+					continue
+				}
+				if _, duplicate := seen[link.Hash]; duplicate {
+					continue
+				}
+				seen[link.Hash] = struct{}{}
+				out = append(out, resolvedDownload{
+					Ed2k:     canonicalEd2kLink(link),
+					Ed2kHash: link.Hash,
+					Title:    link.Name,
+					Size:     link.Size,
+				})
+			}
+		}
+		return out, len(out) > 0, nil
+	}
 	return nil, false, nil
 }
 
@@ -442,6 +629,21 @@ func (c *DefinitionConnector) extractDownloadTargets(response *Response, target 
 // returns every value when all is true, otherwise only the first non-empty
 // one. Each selector is a fallback; path reads a JSON document.
 func (c *DefinitionConnector) extractDetailFields(response *Response, field definition.Field, all bool) ([]string, error) {
+	if field.Body {
+		// The whole response: a page that builds its links in JavaScript has
+		// no node to select, and the eD2k extractor scans the text for every
+		// ed2k:// URI.
+		value := string(response.Body)
+		var err error
+		value, err = applyFilters(value, field.Filters)
+		if err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(value) == "" {
+			return nil, nil
+		}
+		return []string{value}, nil
+	}
 	if strings.TrimSpace(field.Path) != "" {
 		root, err := decodeJSON(response.Body)
 		if err != nil {
@@ -523,6 +725,9 @@ func (c *DefinitionConnector) downloadFromSection(ctx context.Context, item Item
 	}
 	if result.Magnet != "" {
 		return Payload{Magnet: result.Magnet}, nil
+	}
+	if result.Ed2k != "" {
+		return Payload{Ed2k: result.Ed2k}, nil
 	}
 	if result.DownloadURL != "" {
 		return c.downloadURL(ctx, result.DownloadURL, item.Title, rawURL)

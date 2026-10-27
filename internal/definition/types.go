@@ -347,6 +347,12 @@ type Download struct {
 	// "season_episode" matches the requested season/episode carried by the
 	// search item against each target's display name (a magnet's dn).
 	Select string `yaml:"select,omitempty" json:"select,omitempty"`
+	// Expand turns a details page with many files into many releases.
+	// "file" creates one item per extracted eD2k link (a season pack becomes
+	// its episodes); empty keeps one release per details page. Expansion runs
+	// only with resolve_on: search, because the links must be read before the
+	// results are stored.
+	Expand string `yaml:"expand,omitempty" json:"expand,omitempty"`
 	// Before is a general pre-download action. It runs only on grab: it opens
 	// the topic, and when no magnet is visible it performs the declared action
 	// (typically a thank POST), reopens the page and extracts the magnet.
@@ -371,13 +377,15 @@ type DownloadBefore struct {
 	Action Request `yaml:"action" json:"action"`
 }
 
-// DownloadTarget is one extractor on a details page. Exactly one of Magnet
-// and Torrent must be set: Magnet yields a magnet: URI, Torrent yields a URL
-// to a .torrent file. All collects every match of the first target instead of
-// only the first one; it is used together with Download.Select.
+// DownloadTarget is one extractor on a details page. Exactly one of Magnet,
+// Torrent and Ed2k must be set: Magnet yields a magnet: URI, Torrent yields a
+// URL to a .torrent file, Ed2k yields an `ed2k://|file|...|/` link. All
+// collects every match of the first target instead of only the first one; it
+// is used together with Download.Select and Download.Expand.
 type DownloadTarget struct {
 	Magnet  *Field `yaml:"magnet,omitempty" json:"magnet,omitempty"`
 	Torrent *Field `yaml:"torrent,omitempty" json:"torrent,omitempty"`
+	Ed2k    *Field `yaml:"ed2k,omitempty" json:"ed2k,omitempty"`
 	All     bool   `yaml:"all,omitempty" json:"all,omitempty"`
 }
 
@@ -387,8 +395,12 @@ type Field struct {
 	Attr     string   `yaml:"attr,omitempty" json:"attr,omitempty"`
 	Type     string   `yaml:"type,omitempty" json:"type,omitempty"`
 	Path     string   `yaml:"path,omitempty" json:"path,omitempty"`
-	Filters  []Filter `yaml:"filters,omitempty" json:"filters,omitempty"`
-	Layouts  []string `yaml:"layouts,omitempty" json:"layouts,omitempty"`
+	// Body reads the whole details response instead of one node. It is meant
+	// for pages that build their links in JavaScript (a `filearray[...]` of
+	// ed2k:// URIs): the extractor scans the text and keeps every link.
+	Body    bool     `yaml:"body,omitempty" json:"body,omitempty"`
+	Filters []Filter `yaml:"filters,omitempty" json:"filters,omitempty"`
+	Layouts []string `yaml:"layouts,omitempty" json:"layouts,omitempty"`
 }
 
 // Health is the definition's own self-check query.

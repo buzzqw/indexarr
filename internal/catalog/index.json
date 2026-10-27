@@ -519,6 +519,38 @@
     "latest": false
   },
   {
+    "id": "ddunlimited",
+    "name": "DDUnlimited",
+    "description": "Italian forum (phpBB, Cloudflare) of eD2k links, with some magnet and .torrent releases.",
+    "language": "it-IT",
+    "type": "private",
+    "protocol": "ed2k",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "ddunlimited.net"
+    ],
+    "url": "https://ddunlimited.net/",
+    "italian": true,
+    "source": "native",
+    "proposable": true,
+    "latest": true,
+    "latest_list": true,
+    "scheduled": true
+  },
+  {
     "id": "divxtotal",
     "name": "DivxTotal",
     "description": "Public Spanish movie and series tracker with a torrent link on each detail page.",
