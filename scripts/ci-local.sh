@@ -26,6 +26,7 @@ finish_fail() {
     wait "$BUDGET_PID" 2>/dev/null || true
   fi
   [[ -n "$BUDGET_LOG" ]] && rm -f "$BUDGET_LOG"
+  [[ -n "${MATRIX_OUT:-}" ]] && rm -rf "$MATRIX_OUT"
   echo "CI-LOCAL $COMMIT FAIL $job"
   exit 1
 }
@@ -82,7 +83,11 @@ BUDGET_PID=$!
 run_job "qa" make qa
 run_job "go test" go test "${TEST_FLAGS[@]}" ./...
 run_job "go test -race" go test "${RACE_FLAGS[@]}" ./...
-run_job "build matrix" ./scripts/build-matrix.sh
+# The matrix only has to compile: its 12 binaries (about 360 MB) go to a
+# temporary directory removed right after, instead of piling up in bin/matrix.
+MATRIX_OUT="$(mktemp -d "$LOG_DIR/.matrix-$COMMIT.XXXXXX")"
+run_job "build matrix" env INDEXARR_MATRIX_OUT="$MATRIX_OUT" ./scripts/build-matrix.sh
+rm -rf "$MATRIX_OUT"
 run_job "test compile windows" env GOOS=windows CGO_ENABLED=0 go vet ./...
 run_job "test compile darwin" env GOOS=darwin CGO_ENABLED=0 go vet ./...
 echo
