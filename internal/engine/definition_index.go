@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -278,8 +279,17 @@ func matchIndexEntries(entries []indexEntry, req SearchRequest) []indexEntry {
 		if score < needed {
 			continue
 		}
-		if req.Season > 0 && indexTitleSeason(title, req.Season) {
-			score += 2
+		if req.Season > 0 {
+			// A topic that names another season holds none of the wanted
+			// episodes: opening it costs a page and expands dozens of files
+			// that can never match. A title without a season (a miniseries,
+			// "Stagione Unica") stays a candidate.
+			if season, ok := indexTitleSeasonNumber(title); ok && season != req.Season {
+				continue
+			}
+			if indexTitleSeason(title, req.Season) {
+				score += 2
+			}
 		}
 		if req.Episode > 0 && indexTitleEpisode(title, req.Season, req.Episode) {
 			score++
@@ -365,6 +375,25 @@ func normalizeIndexText(value string) string {
 		}
 	}
 	return strings.TrimSpace(builder.String())
+}
+
+var indexSeasonNumber = regexp.MustCompile(`\b(?:stagione|season)\s+(\d{1,2})\b|\bs(\d{1,2})(?:e\d{1,3})?\b`)
+
+// indexTitleSeasonNumber reads the season a list title names, if any.
+func indexTitleSeasonNumber(title string) (int, bool) {
+	match := indexSeasonNumber.FindStringSubmatch(title)
+	if match == nil {
+		return 0, false
+	}
+	value := match[1]
+	if value == "" {
+		value = match[2]
+	}
+	season, err := strconv.Atoi(value)
+	if err != nil || season <= 0 {
+		return 0, false
+	}
+	return season, true
 }
 
 func indexTitleSeason(title string, season int) bool {

@@ -222,3 +222,24 @@ func TestIndexIsSkippedForBookAndMusic(t *testing.T) {
 		t.Error("a movie search must read only the movie letters")
 	}
 }
+
+func TestIndexSkipsTopicsOfAnotherSeason(t *testing.T) {
+	entries := []indexEntry{
+		{Title: "DARK MATTER - Stagione 2", Details: "/viewtopic.php?t=1"},
+		{Title: "DARK MATTER - Stagione 1", Details: "/viewtopic.php?t=2"},
+		{Title: "DARK MATTER - Stagione 3", Details: "/viewtopic.php?t=3"},
+		{Title: "HEROES REBORN - DARK MATTER - Miniserie", Details: "/viewtopic.php?t=4"},
+	}
+	var got []string
+	for _, match := range matchIndexEntries(entries, SearchRequest{Query: "Dark Matter", Mode: ModeTV, Season: 2, Episode: 9}) {
+		got = append(got, match.Title)
+	}
+	want := "DARK MATTER - Stagione 2|HEROES REBORN - DARK MATTER - Miniserie"
+	if strings.Join(got, "|") != want {
+		t.Errorf("matches = %v, want %s", got, want)
+	}
+	all := matchIndexEntries(entries, SearchRequest{Query: "Dark Matter", Mode: ModeTV})
+	if len(all) != 4 {
+		t.Errorf("without a season every topic stays a candidate, got %d", len(all))
+	}
+}
