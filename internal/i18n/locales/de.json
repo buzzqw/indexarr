@@ -2399,5 +2399,8 @@
   "settings.resetStatsConfirm": "Alle Statistiken zurücksetzen? Die Registerkarten Anfragen und Downloads sowie die Zählungen pro Quelle beginnen wieder bei null. Quellen, Releases und Einstellungen bleiben unverändert.",
   "maintenance.help.resetStats": "Verwende es, wenn die Zahlen verzerrt sind, zum Beispiel nachdem eine App viel mehr Anfragen als üblich gesendet hat. Es löscht die App-Anfragen, die Suchen pro Quelle und die Downloads; geplante Läufe, Zustandsverlauf, Quellen und Releases bleiben.",
   "maintenance.statsReset": "Statistiken zurückgesetzt: %d App-Anfragen und %d Quelleneinträge entfernt",
-  "logs.stats.resetHelp": "Wenn diese Zahlen verzerrt sind (eine App, die viel mehr Anfragen als üblich gesendet hat, irrtümlich gezählte Downloads), kannst du sie unter Wartung zurücksetzen und neu zählen."
+  "logs.stats.resetHelp": "Wenn diese Zahlen verzerrt sind (eine App, die viel mehr Anfragen als üblich gesendet hat, irrtümlich gezählte Downloads), kannst du sie unter Wartung zurücksetzen und neu zählen.",
+  "logs.whereFile": "Das vollständige Log wird auch auf die Festplatte geschrieben und bleibt nach Neustarts erhalten: %d Dateien mit je höchstens %d MB; ist die aktuelle voll, erhält sie die Endung .1, die älteren rücken nach und die älteste wird gelöscht. Aktuelle Datei:",
+  "logs.whereFileTitle": "Pfad der Logdatei auf dem Server; zum Ändern log_file, log_max_mb und log_max_files in indexarr.json setzen",
+  "logs.whereFileOff": "Die Logdatei auf der Festplatte ist aus (log_file ist \"off\" in indexarr.json): nach einem Neustart bleiben die älteren Zeilen nur im Journal."
 }

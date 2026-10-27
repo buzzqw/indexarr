@@ -2399,5 +2399,8 @@
   "settings.resetStatsConfirm": "Réinitialiser toutes les statistiques ? Les onglets Requêtes et Téléchargements et les comptages par source repartent de zéro. Les sources, releases et réglages ne sont pas touchés.",
   "maintenance.help.resetStats": "Utilisez-le quand les chiffres sont faussés, par exemple après qu'une application a envoyé beaucoup plus de requêtes que d'habitude. Il efface les requêtes des applications, les recherches par source et les téléchargements ; les mises à jour planifiées, l'historique d'état, les sources et les releases restent.",
   "maintenance.statsReset": "Statistiques réinitialisées : %d requêtes d'applications et %d enregistrements de sources supprimés",
-  "logs.stats.resetHelp": "Si ces chiffres sont faussés (une application qui a envoyé beaucoup plus de requêtes que d'habitude, des téléchargements comptés par erreur), vous pouvez les réinitialiser depuis Maintenance et recommencer à compter."
+  "logs.stats.resetHelp": "Si ces chiffres sont faussés (une application qui a envoyé beaucoup plus de requêtes que d'habitude, des téléchargements comptés par erreur), vous pouvez les réinitialiser depuis Maintenance et recommencer à compter.",
+  "logs.whereFile": "Le journal complet est aussi écrit sur le disque et conservé après les redémarrages : %d fichiers de %d Mo au maximum chacun ; quand le fichier actuel est plein il prend le suffixe .1, les plus anciens se décalent et le plus ancien est supprimé. Fichier actuel :",
+  "logs.whereFileTitle": "Chemin du fichier journal sur le serveur ; pour le modifier, réglez log_file, log_max_mb et log_max_files dans indexarr.json",
+  "logs.whereFileOff": "Le fichier journal sur le disque est désactivé (log_file vaut \"off\" dans indexarr.json) : après un redémarrage, seules les lignes du journal système restent."
 }

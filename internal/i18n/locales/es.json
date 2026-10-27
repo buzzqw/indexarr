@@ -2399,5 +2399,8 @@
   "settings.resetStatsConfirm": "¿Restablecer todas las estadísticas? Las pestañas Peticiones y Descargas y los recuentos por fuente vuelven a empezar desde cero. Las fuentes, releases y ajustes no se tocan.",
   "maintenance.help.resetStats": "Úsalo cuando los números estén distorsionados, por ejemplo después de que una aplicación haya enviado muchas más peticiones de lo normal. Borra las peticiones de las aplicaciones, las búsquedas por fuente y las descargas; se conservan las actualizaciones programadas, el historial de estado, las fuentes y las releases.",
   "maintenance.statsReset": "Estadísticas restablecidas: se eliminaron %d peticiones de aplicaciones y %d registros de fuentes",
-  "logs.stats.resetHelp": "Si estos números están distorsionados (una aplicación que envió muchas más peticiones de lo normal, descargas contadas por error), puedes restablecerlos desde Mantenimiento y empezar a contar de nuevo."
+  "logs.stats.resetHelp": "Si estos números están distorsionados (una aplicación que envió muchas más peticiones de lo normal, descargas contadas por error), puedes restablecerlos desde Mantenimiento y empezar a contar de nuevo.",
+  "logs.whereFile": "El registro completo también se escribe en disco y se conserva tras los reinicios: %d archivos de %d MB como máximo cada uno; cuando el actual se llena recibe el sufijo .1, los más antiguos se desplazan y el más antiguo se borra. Archivo actual:",
+  "logs.whereFileTitle": "Ruta del archivo de registro en el servidor; para cambiarla ajusta log_file, log_max_mb y log_max_files en indexarr.json",
+  "logs.whereFileOff": "El archivo de registro en disco está desactivado (log_file vale \"off\" en indexarr.json): tras un reinicio las líneas antiguas solo quedan en el journal."
 }

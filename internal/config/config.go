@@ -21,7 +21,15 @@ type Config struct {
 	LogLevel      string `json:"log_level"`
 	VaultKeyPath  string `json:"vault_key_path"`
 	MemoryLimitMB int    `json:"memory_limit_mb"`
+	// LogFile is the rotating log file, relative to the configuration
+	// directory; "off" writes the log to stdout only.
+	LogFile     string `json:"log_file"`
+	LogMaxMB    int    `json:"log_max_mb"`
+	LogMaxFiles int    `json:"log_max_files"`
 }
+
+// LogFileOff is the LogFile value that disables the log file.
+const LogFileOff = "off"
 
 // Default returns the configuration used on a first start.
 func Default() Config {
@@ -30,6 +38,9 @@ func Default() Config {
 		DBPath:        "indexarr.db",
 		LogLevel:      "info",
 		MemoryLimitMB: 64,
+		LogFile:       "logs/indexarr.log",
+		LogMaxMB:      10,
+		LogMaxFiles:   5,
 	}
 }
 
@@ -75,6 +86,22 @@ func Load(path string) (Config, error) {
 	cfg.VaultKeyPath = strings.TrimSpace(cfg.VaultKeyPath)
 	if cfg.VaultKeyPath != "" && !filepath.IsAbs(cfg.VaultKeyPath) {
 		cfg.VaultKeyPath = filepath.Join(filepath.Dir(abs), cfg.VaultKeyPath)
+	}
+	cfg.LogFile = strings.TrimSpace(cfg.LogFile)
+	switch {
+	case cfg.LogFile == "":
+		cfg.LogFile = Default().LogFile
+		fallthrough
+	case !strings.EqualFold(cfg.LogFile, LogFileOff) && !filepath.IsAbs(cfg.LogFile):
+		cfg.LogFile = filepath.Join(filepath.Dir(abs), cfg.LogFile)
+	case strings.EqualFold(cfg.LogFile, LogFileOff):
+		cfg.LogFile = LogFileOff
+	}
+	if cfg.LogMaxMB <= 0 {
+		cfg.LogMaxMB = Default().LogMaxMB
+	}
+	if cfg.LogMaxFiles <= 0 {
+		cfg.LogMaxFiles = Default().LogMaxFiles
 	}
 	cfg.LogLevel = strings.ToLower(strings.TrimSpace(cfg.LogLevel))
 	switch cfg.LogLevel {

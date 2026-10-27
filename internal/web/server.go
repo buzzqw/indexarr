@@ -446,6 +446,11 @@ type Config struct {
 	// optional: without it the application pages still list the configured
 	// entries but cannot store a new key.
 	Vault *vault.Vault
+	// LogFile is the rotating log file ("" when it is off), with the size of
+	// one file in MiB and the number of files kept. Shown on the Logs page.
+	LogFile     string
+	LogMaxMB    int
+	LogMaxFiles int
 	// VaultKey describes where the master key lives, without key material.
 	// It is shown in Settings → Security.
 	VaultKey vault.Info
@@ -479,6 +484,9 @@ type Server struct {
 	svc         *indexersvc.Service
 	vault       *vault.Vault
 	vaultKey    vault.Info
+	logFile     string
+	logMaxMB    int
+	logMaxFiles int
 	sync        *syncjob.Service
 	polite      *engine.Politeness
 	// notifier applies the notification switches, the anti-spam window and
@@ -556,6 +564,9 @@ func New(cfg Config) *Server {
 		svc:            cfg.Indexers,
 		vault:          cfg.Vault,
 		vaultKey:       cfg.VaultKey,
+		logFile:        cfg.LogFile,
+		logMaxMB:       cfg.LogMaxMB,
+		logMaxFiles:    cfg.LogMaxFiles,
 		sync:           cfg.Sync,
 		polite:         cfg.Politeness,
 		notifier:       notify.NewDispatcher(cfg.Store, logger),

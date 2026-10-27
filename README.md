@@ -120,7 +120,10 @@ Flag disponibili:
   "db_path": "indexarr.db",
   "log_level": "info",
   "vault_key_path": "",
-  "memory_limit_mb": 64
+  "memory_limit_mb": 64,
+  "log_file": "logs/indexarr.log",
+  "log_max_mb": 10,
+  "log_max_files": 5
 }
 ```
 
@@ -130,6 +133,11 @@ Un `db_path` relativo è risolto rispetto alla directory del file di configurazi
 poi `os.UserConfigDir()/indexarr/master.key`. Un percorso relativo è risolto
 rispetto alla directory di `indexarr.json`. Dettagli, comandi `vault export-key` /
 `vault move-key`, backup e Docker secrets in [docs/VAULT.md](docs/VAULT.md).
+`log_file` è il file di log a rotazione (relativo come `db_path`; `"off"` lo
+spegne): quando supera `log_max_mb` diventa `indexarr.log.1`, i più vecchi
+scorrono e si tengono `log_max_files` file in tutto (50 MB al massimo con i
+valori predefiniti). Un file di configurazione vecchio senza questi campi usa i
+predefiniti.
 Tutto il resto (API key, intervalli, retention, credenziali UI) è nel database e si
 modifica dalla pagina **Settings**, senza riavviare.
 
@@ -162,6 +170,7 @@ modifica dalla pagina **Settings**, senza riavviare.
 | `backup_keep` | 7 | Numero di backup automatici conservati (1–60) |
 | `log_level` | config | Livello di log runtime (`debug`, `info`, `warn`, `error`) |
 | `memory_limit_mb` | config | Limite morbido di memoria Go in MiB (default 64; 0 lo disattiva) |
+| `log_file` / `log_max_mb` / `log_max_files` | config | File di log a rotazione (default `logs/indexarr.log`, 10 MB, 5 file; `"off"` lo spegne) |
 
 ## Sorgenti
 
@@ -450,11 +459,14 @@ problemi parziali (singolo item scartato, download `.torrent` fallito, live
 search) sono a livello `warning`. Gli errori interni usano `component=indexarr`,
 quelli degli indexer `component=indexer` e quelli dei feed `component=rss`.
 
-Il buffer è in memoria e si svuota al riavvio. Le stesse righe vanno su stdout e,
-con il servizio systemd, nel journal:
+Il buffer è in memoria e si svuota al riavvio. Le stesse righe vanno su stdout
+(con il servizio systemd nel journal) e nel **file di log a rotazione**
+`logs/indexarr.log` accanto al database: 5 file da 10 MB al massimo, quindi
+restano anche dopo settimane senza riavvii. La pagina Log mostra il percorso.
 
 ```bash
-journalctl --user -u indexarr -f
+tail -f data/logs/indexarr.log          # file a rotazione
+journalctl --user -u indexarr -f        # journal di systemd
 ```
 
 La verbosità si cambia da **Logs → Runtime verbosity** (`debug`, `info`, `warn`,

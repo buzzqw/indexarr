@@ -2399,5 +2399,8 @@
   "settings.resetStatsConfirm": "Wyzerować wszystkie statystyki? Karty Żądania i Pobrania oraz liczniki źródeł zaczną się od zera. Źródła, wydania i ustawienia pozostają bez zmian.",
   "maintenance.help.resetStats": "Użyj, gdy liczby są zafałszowane, na przykład gdy aplikacja wysłała znacznie więcej żądań niż zwykle. Usuwa żądania aplikacji, wyszukiwania dla źródeł i pobrania; zaplanowane aktualizacje, historia stanu, źródła i wydania pozostają.",
   "maintenance.statsReset": "Statystyki wyzerowane: usunięto żądania aplikacji (%d) i wpisy źródeł (%d)",
-  "logs.stats.resetHelp": "Jeśli te liczby są zafałszowane (aplikacja wysłała znacznie więcej żądań niż zwykle, pobrania policzone przez pomyłkę), możesz je wyzerować w Konserwacji i zacząć liczyć od nowa."
+  "logs.stats.resetHelp": "Jeśli te liczby są zafałszowane (aplikacja wysłała znacznie więcej żądań niż zwykle, pobrania policzone przez pomyłkę), możesz je wyzerować w Konserwacji i zacząć liczyć od nowa.",
+  "logs.whereFile": "Pełny log jest też zapisywany na dysku i przetrwa restart: liczba plików %d, każdy do %d MB; gdy bieżący się zapełni, dostaje końcówkę .1, starsze się przesuwają, a najstarszy jest usuwany. Bieżący plik:",
+  "logs.whereFileTitle": "Ścieżka pliku logu na serwerze; aby ją zmienić, ustaw log_file, log_max_mb i log_max_files w indexarr.json",
+  "logs.whereFileOff": "Plik logu na dysku jest wyłączony (log_file ma wartość \"off\" w indexarr.json): po restarcie starsze wiersze zostają tylko w journalu."
 }

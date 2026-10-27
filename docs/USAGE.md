@@ -259,7 +259,8 @@ curl -s 'http://127.0.0.1:8788/api?t=caps'
 # elenco indexer dall'API JSON
 curl -s -H "X-Api-Key: $KEY" http://127.0.0.1:8788/api/v2/indexers
 
-# log in tempo reale
+# log in tempo reale (file a rotazione accanto al database, oppure il journal)
+tail -f data/logs/indexarr.log
 journalctl --user -u indexarr.service -f
 ```
 

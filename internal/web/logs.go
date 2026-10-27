@@ -25,6 +25,10 @@ type logsPage struct {
 	MaxEntries   int
 	DownloadURL  string
 	ProblemsURL  string
+	// LogFile is the rotating log file on disk ("" when it is off).
+	LogFile     string
+	LogMaxMB    int
+	LogMaxFiles int
 	// FormPath and TabValue keep the filter form on the page that renders it:
 	// the same body is used by Activity (tab=logs) and by the Logs section
 	// (tab=internal).
@@ -126,6 +130,9 @@ func (s *Server) logsDataFor(r *http.Request, formPath, tabValue string) logsPag
 		MaxEntries:   s.logs.Cap(),
 		DownloadURL:  "/logs/download?" + values.Encode(),
 		ProblemsURL:  problemsURL,
+		LogFile:      s.logFile,
+		LogMaxMB:     s.logMaxMB,
+		LogMaxFiles:  s.logMaxFiles,
 		FormPath:     formPath,
 		TabValue:     tabValue,
 	}

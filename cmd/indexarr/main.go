@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -32,6 +33,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
+	"github.com/buzzqw/indexarr/internal/logfile"
 	"github.com/buzzqw/indexarr/internal/logsafe"
 	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/notify"
@@ -120,7 +122,14 @@ func main() {
 	logBuffer := logbuffer.New(logbuffer.DefaultMaxEntries)
 	levelVar := new(slog.LevelVar)
 	levelVar.Set(parseLevel(cfg.LogLevel))
-	logger := newLogger(levelVar, logBuffer)
+	logOut, logFile, logFileErr := openLogOutput(cfg)
+	if logFile != nil {
+		defer logFile.Close()
+	}
+	logger := newLogger(levelVar, logBuffer, logOut)
+	if logFileErr != nil {
+		logger.Warn("log file unavailable; logging to stdout only", "path", cfg.LogFile, "error", logFileErr)
+	}
 	if cfg.MemoryLimitMB > 0 {
 		debug.SetMemoryLimit(int64(cfg.MemoryLimitMB) << 20)
 		logger.Info("memory limit", "mb", cfg.MemoryLimitMB)
@@ -398,7 +407,8 @@ func main() {
 			Native: indexerManager, Indexers: indexerService, Scheduler: nativeRunner,
 			DownloadResolver: downloadResolver,
 			Vault:            secretVault, Sync: syncService,
-			VaultKey:  keySource.Info(),
+			VaultKey: keySource.Info(),
+			LogFile:  logFilePath(logFile), LogMaxMB: cfg.LogMaxMB, LogMaxFiles: cfg.LogMaxFiles,
 			GrabGuard: grabGuard, GrabRecord: grabRecord,
 			Politeness: politeness,
 			Restart: func() {
@@ -572,11 +582,35 @@ func parseLevel(raw string) slog.Level {
 	}
 }
 
-// newLogger writes the normal text log to stdout and keeps the same records in
-// the in-memory buffer used by the Logs page. The level variable is shared with
-// the web interface, so the Logs page can change verbosity without a restart.
-func newLogger(levelVar *slog.LevelVar, buffer *logbuffer.Buffer) *slog.Logger {
-	base := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: levelVar})
+// openLogOutput returns where the text log goes: stdout, plus the rotating log
+// file unless the configuration turns it off. A file that cannot be opened
+// leaves stdout alone; the caller logs why.
+func openLogOutput(cfg config.Config) (io.Writer, *logfile.Rotator, error) {
+	if cfg.LogFile == config.LogFileOff {
+		return os.Stdout, nil, nil
+	}
+	file, err := logfile.Open(cfg.LogFile, int64(cfg.LogMaxMB)<<20, cfg.LogMaxFiles)
+	if err != nil {
+		return os.Stdout, nil, err
+	}
+	return io.MultiWriter(os.Stdout, file), file, nil
+}
+
+// logFilePath is the path shown on the Logs page, "" when there is no file.
+func logFilePath(file *logfile.Rotator) string {
+	if file == nil {
+		return ""
+	}
+	return file.Path()
+}
+
+// newLogger writes the normal text log to out (stdout and the rotating file)
+// and keeps the same records in the in-memory buffer used by the Logs page.
+// The secret filter runs first, so neither the file nor the journal ever see a
+// key. The level variable is shared with the web interface, so the Logs page
+// can change verbosity without a restart.
+func newLogger(levelVar *slog.LevelVar, buffer *logbuffer.Buffer, out io.Writer) *slog.Logger {
+	base := slog.NewTextHandler(out, &slog.HandlerOptions{Level: levelVar})
 	return slog.New(logsafe.NewHandler(logbuffer.NewHandler(base, buffer)))
 }
 

@@ -99,6 +99,7 @@
   <div class="panel-head"><h2>{{T "logs.whereTitle"}}</h2></div>
   <div class="prose">
     <p>{{T "logs.whereText" .MaxEntries}}</p>
+    {{if .LogFile}}<p>{{T "logs.whereFile" .LogMaxFiles .LogMaxMB}} <code title="{{T "logs.whereFileTitle"}}">{{.LogFile}}</code></p>{{else}}<p>{{T "logs.whereFileOff"}}</p>{{end}}
     <p>{{T "logs.whereJournal"}}</p>
     <p>{{T "logs.whereDebug"}}</p>
   </div>

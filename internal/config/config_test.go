@@ -71,3 +71,28 @@ func TestLoadNormalisesUnknownLevel(t *testing.T) {
 		t.Errorf("level = %q", cfg.LogLevel)
 	}
 }
+
+func TestLoadLogFileDefaultsAndOff(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "indexarr.json")
+	if err := os.WriteFile(path, []byte(`{"listen":":8788"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.LogFile != filepath.Join(dir, "logs", "indexarr.log") || cfg.LogMaxMB != 10 || cfg.LogMaxFiles != 5 {
+		t.Errorf("an old config without log fields got %q, %d MB, %d files", cfg.LogFile, cfg.LogMaxMB, cfg.LogMaxFiles)
+	}
+	if err := os.WriteFile(path, []byte(`{"log_file":"OFF","log_max_mb":-1,"log_max_files":0}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err = Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.LogFile != LogFileOff || cfg.LogMaxMB != 10 || cfg.LogMaxFiles != 5 {
+		t.Errorf("off config = %q, %d MB, %d files", cfg.LogFile, cfg.LogMaxMB, cfg.LogMaxFiles)
+	}
+}

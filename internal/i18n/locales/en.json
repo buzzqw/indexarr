@@ -2399,5 +2399,8 @@
   "settings.resetStatsConfirm": "Reset all statistics? The Requests and Downloads tabs and the per-source counts start again from zero. Sources, releases and settings are not touched.",
   "maintenance.help.resetStats": "Use it when the numbers are skewed, for example after an app sent far more requests than usual. It clears the app requests, the per-source searches and the downloads; scheduled runs, health history, sources and releases stay.",
   "maintenance.statsReset": "Statistics reset: %d app requests and %d source records removed",
-  "logs.stats.resetHelp": "If these numbers are skewed (an app that sent far more requests than usual, downloads counted by mistake), you can reset them from Maintenance and start counting again."
+  "logs.stats.resetHelp": "If these numbers are skewed (an app that sent far more requests than usual, downloads counted by mistake), you can reset them from Maintenance and start counting again.",
+  "logs.whereFile": "The full log is also written to disk and kept across restarts: %d files of at most %d MB each; when the current one is full it is renamed with .1, the older ones shift and the oldest is deleted. Current file:",
+  "logs.whereFileTitle": "Path of the log file on the server; set log_file, log_max_mb and log_max_files in indexarr.json to change it",
+  "logs.whereFileOff": "The log file on disk is off (log_file is \"off\" in indexarr.json): after a restart only the journal keeps the older lines."
 }

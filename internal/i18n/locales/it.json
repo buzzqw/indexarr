@@ -2399,5 +2399,8 @@
   "settings.resetStatsConfirm": "Azzerare tutte le statistiche? Le schede Richieste e Download e i conteggi per fonte ripartono da zero. Fonti, release e impostazioni non vengono toccate.",
   "maintenance.help.resetStats": "Usalo quando i numeri sono falsati, per esempio dopo che un'app ha mandato molte più richieste del solito. Cancella le richieste delle app, le ricerche per fonte e i download; restano gli aggiornamenti automatici, la cronologia dello stato, le fonti e le release.",
   "maintenance.statsReset": "Statistiche azzerate: rimosse %d richieste delle app e %d registrazioni delle fonti",
-  "logs.stats.resetHelp": "Se questi numeri sono falsati (un'app che ha mandato molte più richieste del solito, download contati per errore), puoi azzerarli da Manutenzione e ricominciare a contare."
+  "logs.stats.resetHelp": "Se questi numeri sono falsati (un'app che ha mandato molte più richieste del solito, download contati per errore), puoi azzerarli da Manutenzione e ricominciare a contare.",
+  "logs.whereFile": "Il log completo è scritto anche su disco e resta dopo i riavvii: %d file da massimo %d MB ciascuno; quando quello attuale è pieno prende il suffisso .1, i più vecchi scorrono e il più vecchio viene cancellato. File attuale:",
+  "logs.whereFileTitle": "Percorso del file di log sul server; per cambiarlo imposta log_file, log_max_mb e log_max_files in indexarr.json",
+  "logs.whereFileOff": "Il file di log su disco è spento (log_file vale \"off\" in indexarr.json): dopo un riavvio le righe vecchie restano solo nel journal."
 }
