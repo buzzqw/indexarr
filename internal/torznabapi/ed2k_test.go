@@ -53,7 +53,9 @@ func TestEd2kItemAndGrab(t *testing.T) {
 			t.Errorf("body missing %q\n%s", want, body)
 		}
 	}
-	for _, unwanted := range []string{"magnet:", "application/x-bittorrent", "application/x-nzb"} {
+	// The swarm of an eD2k file is unknown: 0/0 would read as a dead swarm.
+	for _, unwanted := range []string{"magnet:", "application/x-bittorrent", "application/x-nzb",
+		`name="seeders"`, `name="leechers"`, `name="peers"`} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("eD2k item contains %q\n%s", unwanted, body)
 		}

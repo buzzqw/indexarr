@@ -1696,6 +1696,13 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 			leechers = provenance.Leechers
 		}
 	}
+	if ed2k != "" {
+		// An indexer cannot count the sources of an eD2k file: the release
+		// carries 0/0 only because the columns are not nullable. Writing them
+		// would tell a client the swarm is empty (gextto refused every eD2k
+		// release as dead), so the counts are left out as unknown.
+		seeders, leechers = -1, -1
+	}
 	if seeders >= 0 {
 		writeAttrInt(b, "seeders", seeders)
 	}

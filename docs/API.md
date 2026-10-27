@@ -85,6 +85,11 @@ Con `live_wait` un client può allungare la sola attesa della propria richiesta
 (fino a 60 s); gextto lo usa per gli indexer eD2k, che devono aprire le pagine
 dei topic. Gli altri client non mandano il parametro e restano sui 5 s.
 
+Un item eD2k porta il link in `<link>`, nell'enclosure (`application/x-ed2k`) e
+negli attributi `ed2k` ed `ed2khash`. Non porta `seeders`, `leechers` né
+`peers`: un indexer non può contare le fonti eD2k, e uno 0/0 farebbe credere al
+client che nessuno condivide il file.
+
 Ripiego: `tvsearch` senza supporto diventa `search` con `SxxEyy` (o `Sxx`);
 `movie` aggiunge l'anno; una richiesta con soli id non supportati e senza `q`
 salta quell'indexer. Le richieste RSS (`t=search`/`tvsearch` senza `q`)
