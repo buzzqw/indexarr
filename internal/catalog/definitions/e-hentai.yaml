@@ -1,0 +1,62 @@
+# VERIFICATA (verified). E-Hentai public gallery search.
+#
+# The search is a plain GET on the home page (f_search=...), captured on
+# 2026-10-27 in fixtures/e-hentai/search.html
+# (https://e-hentai.org/?f_search=matrix). Every gallery row carries the title
+# in div.glink and a link to gallerytorrents.php, where the tracker exposes the
+# .torrent. That page was captured in fixtures/e-hentai/torrents.html and the
+# grab was checked live: the ehtracker URL answers 200
+# application/x-bittorrent with a valid bencoded file.
+#
+# The listing shows pages, posted date and rating but no torrent size and no
+# seeders, so rows carry neither and the size stays zero. Pagination is a
+# cursor (?next=<gid>), not a page number: the definition reads the first page.
+schema: 1
+
+meta:
+  id: e-hentai
+  name: E-Hentai
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public E-Hentai gallery search; the .torrent is on the gallery torrent page.
+  urls:
+    - https://e-hentai.org/
+  updated: "2026-10-27"
+  latest: false
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /
+    params:
+      f_search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.itg tr" }
+    fields:
+      title:   { selector: "td.gl3c div.glink", filters: [trim] }
+      details: { selector: 'a[href*="gallerytorrents.php"]', attr: href, type: url }
+    required: [title, details]
+
+download:
+  resolve_on: grab
+  from: details
+  extract:
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
+
+health:
+  query: matrix
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/e-hentai/search.html
+    expect: { min_rows: 10, required: [title, details] }
+  - name: detail
+    fixture: fixtures/e-hentai/torrents.html
+    expect: { min_rows: 0 }

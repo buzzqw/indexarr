@@ -20,15 +20,15 @@ Valori contati su `index.json` dopo `go generate ./internal/catalog`.
 | Misura | Valore |
 | --- | ---: |
 | Totale voci nel catalogo (definizioni + voci leggere) | **626** |
-| Definizioni native | 105 (8 aiutanti generici inclusi) |
-| Voci leggere | **521** (516 dall'istantanea Jackett, 5 manuali) |
-| Verificate | **81** |
+| Definizioni native | 108 (8 aiutanti generici inclusi) |
+| Voci leggere | **518** (513 dall'istantanea Jackett, 5 manuali) |
+| Verificate | **84** |
 | Bozze | **24** |
-| Da provare (`da-provvi`) | **509** |
-| Bloccate (`bloccata`) | **7** |
-| Morte (`morta`) | **5** |
-| Pubbliche verificate (host unici) | **90** |
-| Voci italiane | **13** |
+| Da provare (`da-provvi`) | **499** |
+| Bloccate (`bloccata`) | **12** |
+| Morte (`morta`) | **7** |
+| Pubbliche verificate (host unici) | **93** |
+| Voci italiane | **14** |
 
 Le pubbliche verificate sono conteggiate per host unico, quindi una
 definizione nativa con un mirror conta due host. Le voci leggere private
@@ -64,14 +64,17 @@ UI, che mostra anche i badge «Da scrivere», «In prova», «Problemi» e
 
 | Via | Fonti | Note |
 | --- | ---: | --- |
-| Definizione nativa (id o host) | **56** | definizioni verificate o in prova |
-| Software noto (connettore di famiglia) | **155** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **415** | 326 private, 27 pubbliche, 62 semiprivate |
-| Fuori coda (bloccate o morte) | **12** | 7 bloccate, 5 morte |
+| Definizione nativa (id o host) | **125** | fonti dell'istantanea il cui host coincide con una definizione nativa |
+| Software noto (connettore di famiglia) | **154** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
+| Da scrivere | **341** | 282 private, 58 semiprivate, 1 pubblica |
+| Fuori coda (bloccate o morte) | **18** | 11 bloccate, 7 morte |
 | **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 
-La somma non include le 6 fonti già configurate in Jackett quando coincidono
-con una definizione nativa.
+Il conteggio è per `source_id` dell'istantanea: una fonte il cui host coincide
+con una definizione nativa non ha una riga in `sites.yaml` e conta come nativa.
+Le 125 fonti coperte sono più delle definizioni perché una definizione può
+coprire più id della stessa istantanea. La somma non include le 6 fonti già
+configurate in Jackett quando coincidono con una definizione nativa.
 
 ### Fonti dei manager assenti dall'istantanea
 
@@ -107,16 +110,40 @@ DaMagNet) e il mirror `kickass.ws` sono descritti nella sezione
 
 Le sette fonti non gestibili per un motivo che non è codice sono uscite dalla
 coda e sono `bloccata` (52BT è `morta`); la prova è in
-`metadata/blocked.yaml`. Restano da provare o da scrivere:
+`metadata/blocked.yaml`.
 
-| Motivo | Fonti |
-| --- | --- |
-| Risultati disegnati da JavaScript: da riprovare con il browser del solver | FileMood, U3C3 |
-| Magnet visibili solo con account | EpubLibre, torrent-pirat |
-| Certificato TLS non verificabile dal probe: il solver apre la home | torrent.by |
-| DDoS-Guard o 403 sulla home: xxxtor si risolve con il solver, gli altri da riprovare | Anidex, xxxtor, VSTHouse |
-| Timeout o rete IPv6 irraggiungibile | OpenSharing, AniSource |
-| Galleria con torrent personali per account | E-Hentai |
+### Secondo giro sulla coda: esito del 27/10
+
+Lo stesso giorno le undici fonti pubbliche rimaste sono state riprese una per
+una, con una GET reale e, dove la pagina risponde, il grab. Tre hanno ora una
+definizione nativa:
+
+| Fonte | Ricerca | Grab |
+| --- | --- | --- |
+| E-Hentai | GET `/?f_search=` | `.torrent` da `gallerytorrents.php`: 200 `application/x-bittorrent`, 18212 byte |
+| XXXTor | GET `/b.php?search=` attraverso FlareSolverr | magnet nella riga |
+| U3C3 | GET `/?search2=<token fisso>&search=` | magnet e `.torrent` nella riga |
+
+Cinque sono uscite dalla coda come `bloccata` e due come `morta`, con la prova
+misurata in `metadata/blocked.yaml`:
+
+| Fonte | Stato | Motivo misurato |
+| --- | --- | --- |
+| FileMood | `bloccata` | la challenge Cloudflare non si apre sulla pagina di ricerca: tre tentativi via solver restituiscono `One moment...` (3620 byte) |
+| VSTHouse | `bloccata` | non è un indexer BitTorrent: le pagine offrono un download diretto uCoz, 0 magnet e 0 `.torrent` |
+| EpubLibre | `bloccata` | non è un indexer BitTorrent: il catalogo serve EPUB, 0 magnet e 0 `.torrent` |
+| torrent-pirat | `bloccata` | portale phpBB senza magnet; `/tracker/` resta una challenge Cloudflare vuota (718 byte) |
+| Anidex | `bloccata` | DDoS-Guard `403` al client, `Error 502` del origin attraverso il solver |
+| OpenSharing | `morta` | timeout su IPv4 e IPv6, il solver risponde `500` |
+| AniSource | `morta` | nessun record A, connessione rifiutata su 443 e 80 |
+
+Resta in coda **torrent.by**: il contenuto è un tracker vero (home 200 con 220
+magnet, ricerca `/search/`), ma il server invia una catena TLS incompleta
+(manca l'intermedio Let's Encrypt `YE1`) e sia Go sia `openssl` rifiutano il
+certificato (`x509: certificate signed by unknown authority`). Non è una riga
+di codice mancante nella definizione: serve una decisione esplicita su
+un'eccezione TLS per singola definizione, quindi la fonte resta `da-provvi`.
+
 
 | Bloccata | Motivo misurato |
 | --- | --- |
@@ -127,6 +154,13 @@ coda e sono `bloccata` (52BT è `morta`); la prova è in
 | Byrutor | `.torrent` dietro captcha; il link non restituisce il file nemmeno via solver |
 | HDRTorrent | la pagina non espone magnet né `.torrent`, rimanda a archive.org |
 | World-torrent | il dominio serve un altro portale (Darkfox) |
+| FileMood | la challenge Cloudflare non si apre sulla ricerca (3 tentativi via solver) |
+| VSTHouse | non è un indexer BitTorrent: download diretto uCoz, nessun magnet né `.torrent` |
+| EpubLibre | non è un indexer BitTorrent: il catalogo serve EPUB |
+| torrent-pirat | portale phpBB senza magnet; `/tracker/` dietro challenge Cloudflare |
+| Anidex | DDoS-Guard `403` e origin `502` attraverso il solver |
+| OpenSharing (`morta`) | timeout IPv4/IPv6, solver `500` |
+| AniSource (`morta`) | nessun record A, connessione rifiutata |
 | 52BT (`morta`) | HTTP 410 «The address is dead.» |
 
 ### Cloudflare: esito del 27/10

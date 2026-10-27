@@ -49,3 +49,38 @@ sources:
     reason: "The address is gone."
     evidence: "GET https://edoqsc3t.529075.xyz/ -> HTTP 410, 27706 bytes, title 'The address is dead.', checked 2026-10-25"
     checked: "2026-10-25"
+  - id: filemood
+    state: bloccata
+    reason: "Cloudflare does not clear the search page: the solver keeps returning the 'One moment...' interstitial, so there are no rows to parse."
+    evidence: "GET https://filemood.com/result?q=matrix+in%3Atitle -> 200, 3620 bytes, title 'One moment...' through FlareSolverr on three attempts; direct GET https://filemood.com/ -> 429, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: vsthouse
+    state: bloccata
+    reason: "Not a BitTorrent indexer: the item pages offer a direct file download (uCoz /load/) and expose no magnet and no .torrent."
+    evidence: "GET https://vsthouse.ru/search/?q=serum&m=load&t=0 -> 200, 209881 bytes, 0 magnet, 0 .torrent; GET /load/semply_presety/presety/mercurial_tones_verge_xfer_serum_2_techno_presets_synth_preset_presety_dlja_serum_2/17-1-0-41437 -> 200 text/html, 0 magnet, 0 .torrent, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: epublibre
+    state: bloccata
+    reason: "Not a BitTorrent indexer: the catalogue serves EPUB downloads and the pages carry no magnet and no .torrent."
+    evidence: "GET https://www.epublibre.org/ -> 200, 75546 bytes, 0 magnet, 0 .torrent; GET /catalogo/index/0/nuevo/disponibles/sin/1 -> 200, 56671 bytes, 0 magnet, 0 .torrent, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: torrent-pirat
+    state: bloccata
+    reason: "The public page is a phpBB portal with no magnet and the tracker is behind a Cloudflare challenge the solver does not clear."
+    evidence: "GET https://www.torrent-pirat.com/ through FlareSolverr -> 200, 77629 bytes, title '• Портал', 0 magnet; GET /tracker/ and /tracker/?search=matrix -> 200, 718 bytes, empty challenge page; direct GET -> timeout on IPv4 and IPv6, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: mg-anidex
+    state: bloccata
+    reason: "DDoS-Guard answers 403 to the client and the origin answers 502 through the solver, so no page is served."
+    evidence: "GET https://anidex.info/ -> 403, 902 bytes, title 'DDoS-Guard'; through FlareSolverr GET https://anidex.info/?q=matrix&s=1&p=1 -> 200, 613 bytes, title 'Error 502', checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: opensharing
+    state: morta
+    reason: "The address no longer answers."
+    evidence: "GET https://opensharing.org/ and http://opensharing.org/ -> timeout over IPv4 and IPv6 (104.21.27.114, 172.67.169.37, 2a06:98c1:3120::4); through FlareSolverr -> HTTP 500, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: anisource
+    state: morta
+    reason: "The address is gone."
+    evidence: "asnet.pw has no A record (only AAAA 2001:470:1f1d:2e7::ffff); GET https://asnet.pw/ and http://asnet.pw/ -> connection refused on 443 and 80, checked 2026-10-27"
+    checked: "2026-10-27"

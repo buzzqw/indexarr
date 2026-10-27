@@ -1,0 +1,57 @@
+# VERIFICATA (verified). XXXTor public adult tracker.
+#
+# The site answers 403 "Just a moment..." to a plain GET and the search page was
+# captured on 2026-10-27 through the local FlareSolverr in
+# fixtures/xxxtor/search.html (https://xxxtor.com/b.php?search=anal, HTTP 200
+# after the Cloudflare check). The page is Russian and alternates two row
+# classes (gai/tum); every row carries a direct magnet, the detail link, the
+# size in MB/GB and the seeders/leechers pair. The date column uses Russian
+# month abbreviations ("25 Окт 26"), which Go cannot parse without a custom
+# translation table, so the definition does not extract a date.
+#
+# The rows show no category: XXXTor is adult-only, so the definition declares
+# no category map and rows fall back to the generic "Other" bucket.
+schema: 1
+
+meta:
+  id: xxxtor
+  name: XXXTor
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public adult tracker behind Cloudflare, with magnet, size and health in the result row.
+  urls:
+    - https://xxxtor.com/
+  updated: "2026-10-27"
+  latest: false
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /b.php
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "#index tr" }
+    fields:
+      title:    { selector: 'a[href^="/torrent/"]', filters: [trim] }
+      details:  { selector: 'a[href^="/torrent/"]', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      size:     { selector: "td:nth-of-type(3)", type: size }
+      seeders:  { selector: "span.green", type: int }
+      leechers: { selector: "span.red", type: int }
+    required: [title, details, magnet, size]
+
+health:
+  query: anal
+  min_rows: 20
+
+tests:
+  - name: search
+    fixture: fixtures/xxxtor/search.html
+    expect: { min_rows: 20, required: [title, details, magnet, size, seeders] }

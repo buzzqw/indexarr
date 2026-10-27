@@ -464,3 +464,6 @@ definitions:
   - {id: magnetcat, file: definitions/magnetcat.yaml, state: verificata, author: indexarr, note: 'Public Magnet Cat DHT search through Cloudflare; magnet from the infohash in the row, real fixture.'}
   - {id: btetree, file: definitions/btetree.yaml, state: verificata, author: indexarr, note: 'Public BT.etree search through Cloudflare; .torrent linked from the row, real fixture.'}
   - {id: damagnet, file: definitions/damagnet.yaml, state: verificata, author: indexarr, note: 'Public DaMagNet DHT search through Cloudflare; magnet on the release page, real fixtures.'}
+  - {id: e-hentai, file: definitions/e-hentai.yaml, state: verificata, author: indexarr, note: 'Public E-Hentai gallery search; .torrent from the gallery torrent page, real fixtures.'}
+  - {id: xxxtor, file: definitions/xxxtor.yaml, state: verificata, author: indexarr, note: 'Public adult XXXTor search through Cloudflare; magnet, size and health in the row, real fixture.'}
+  - {id: u3c3, file: definitions/u3c3.yaml, state: verificata, author: indexarr, note: 'Public U3C3 tracker search; magnet, .torrent, size, date and category in the row, real fixture.'}

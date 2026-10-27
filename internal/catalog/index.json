@@ -563,6 +563,22 @@
     "scheduled": true
   },
   {
+    "id": "e-hentai",
+    "name": "E-Hentai",
+    "description": "Public E-Hentai gallery search; the .torrent is on the gallery torrent page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "e-hentai.org"
+    ],
+    "url": "https://e-hentai.org/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "ebookbay",
     "name": "EBookBay",
     "description": "Public ebook tracker with a .torrent link on each detail page.",
@@ -1583,14 +1599,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "morta",
     "hosts": [
       "asnet.pw"
     ],
     "url": "https://asnet.pw/",
     "source": "jackett",
-    "evidence": "GET https://asnet.pw/ -\u003e dial tcp [2001:470:1f1d:2e7::ffff]:443: connect: network is unreachable, checked 2026-10-25; probe inconclusive",
-    "proposable": true,
+    "evidence": "asnet.pw has no A record (only AAAA 2001:470:1f1d:2e7::ffff); GET https://asnet.pw/ and http://asnet.pw/ -\u003e connection refused on 443 and 80, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -4400,31 +4416,6 @@
     "latest": false
   },
   {
-    "id": "jk-ehentai",
-    "name": "E-Hentai",
-    "description": "E-Hentai is a Public site for Hentai doujinshi, manga.",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "tv",
-      "anime"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "e-hentai.org"
-    ],
-    "url": "https://e-hentai.org/",
-    "source": "jackett",
-    "evidence": "GET https://e-hentai.org/ -\u003e HTTP 200, 55875 bytes, title \"E-Hentai Galleries - The Free Hentai Doujinshi, Manga and Image Gallery System\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-electro-torrent",
     "name": "Electro-Torrent",
     "description": "Electro-Torrent is a POLISH Semi-Private Torrent Tracker for MOVIES / TV / GENERAL",
@@ -4520,15 +4511,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "epublibre.org"
     ],
     "url": "https://www.epublibre.org/",
     "source": "jackett",
-    "evidence": "GET https://www.epublibre.org/ -\u003e HTTP 200, 75963 bytes, title \"epublibre - inicio\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
+    "evidence": "GET https://www.epublibre.org/ -\u003e 200, 75546 bytes, 0 magnet, 0 .torrent; GET /catalogo/index/0/nuevo/disponibles/sin/1 -\u003e 200, 56671 bytes, 0 magnet, 0 .torrent, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -4999,15 +4989,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "filemood.com"
     ],
     "url": "https://filemood.com/",
     "source": "jackett",
-    "evidence": "GET https://filemood.com/ -\u003e HTTP 200, 6175 bytes, title \"FileMood: your gateway to explore discover and download files\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
+    "evidence": "GET https://filemood.com/result?q=matrix+in%3Atitle -\u003e 200, 3620 bytes, title 'One moment...' through FlareSolverr on three attempts; direct GET https://filemood.com/ -\u003e 429, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -9434,14 +9423,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "morta",
     "hosts": [
       "opensharing.org"
     ],
     "url": "https://opensharing.org/",
     "source": "jackett",
-    "evidence": "GET https://opensharing.org/ -\u003e context deadline exceeded (Client.Timeout exceeded while awaiting headers), checked 2026-10-25; probe inconclusive",
-    "proposable": true,
+    "evidence": "GET https://opensharing.org/ and http://opensharing.org/ -\u003e timeout over IPv4 and IPv6 (104.21.27.114, 172.67.169.37, 2a06:98c1:3120::4); through FlareSolverr -\u003e HTTP 500, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -13411,14 +13400,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "torrent-pirat.com"
     ],
     "url": "http://www.torrent-pirat.com/",
     "source": "jackett",
-    "evidence": "GET http://www.torrent-pirat.com/ -\u003e context deadline exceeded (Client.Timeout exceeded while awaiting headers), checked 2026-10-25; probe inconclusive",
-    "proposable": true,
+    "evidence": "GET https://www.torrent-pirat.com/ through FlareSolverr -\u003e 200, 77629 bytes, title '• Портал', 0 magnet; GET /tracker/ and /tracker/?search=matrix -\u003e 200, 718 bytes, empty challenge page; direct GET -\u003e timeout on IPv4 and IPv6, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -14286,33 +14275,6 @@
     "scheduled": true
   },
   {
-    "id": "jk-u3c3",
-    "name": "U3C3",
-    "description": "U3C3 is a CHINESE Public tracker focused on 3X Eastern Asian media",
-    "language": "zh-CN",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "u3c3.com"
-    ],
-    "url": "https://u3c3.com/",
-    "source": "jackett",
-    "evidence": "GET https://u3c3.com/ -\u003e HTTP 200, 139217 bytes, title \"U3C3\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-ubits",
     "name": "UBits",
     "description": "UBits is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL",
@@ -14754,15 +14716,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "vsthouse.ru"
     ],
     "url": "https://vsthouse.ru/",
     "source": "jackett",
-    "evidence": "GET https://vsthouse.ru/ -\u003e HTTP 200, 160217 bytes, title \"VSTi инструменты, VST плагины, программы - Все для создания музыки\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
+    "evidence": "GET https://vsthouse.ru/search/?q=serum\u0026m=load\u0026t=0 -\u003e 200, 209881 bytes, 0 magnet, 0 .torrent; GET /load/semply_presety/presety/mercurial_tones_verge_xfer_serum_2_techno_presets_synth_preset_presety_dlja_serum_2/17-1-0-41437 -\u003e 200 text/html, 0 magnet, 0 .torrent, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -15204,29 +15165,6 @@
     "url": "https://xtremewrestlingtorrents.net/",
     "source": "jackett",
     "evidence": "GET https://xtremewrestlingtorrents.net/login.php -\u003e HTTP 200, 12774 bytes, title \"XWT :: Login\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-xxxtor",
-    "name": "xxxtor",
-    "description": "xxxtor is a RUSSIAN Public Torrent Tracker for 3X",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "xxxtor.com"
-    ],
-    "url": "https://xxxtor.com/",
-    "source": "jackett",
-    "evidence": "GET https://xxxtor.com/ -\u003e context deadline exceeded (Client.Timeout exceeded while awaiting headers), checked 2026-10-25; probe inconclusive",
     "proposable": true,
     "latest": false
   },
@@ -15720,14 +15658,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "anidex.info"
     ],
     "url": "https://anidex.info/",
     "source": "manual",
-    "evidence": "GET https://anidex.info/ -\u003e HTTP 403, DDoS-Guard page, checked 2026-10-27",
-    "proposable": true,
+    "evidence": "GET https://anidex.info/ -\u003e 403, 902 bytes, title 'DDoS-Guard'; through FlareSolverr GET https://anidex.info/?q=matrix\u0026s=1\u0026p=1 -\u003e 200, 613 bytes, title 'Error 502', checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -16997,6 +16935,28 @@
     "scheduled": true
   },
   {
+    "id": "u3c3",
+    "name": "U3C3",
+    "description": "Public tracker for Eastern Asian 3X media, with magnet, .torrent, size and date in the row.",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "u3c3.com"
+    ],
+    "url": "https://u3c3.com/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "uindex",
     "name": "UIndex",
     "description": "Public DHT index protected by Cloudflare, with magnets and size in the result row.",
@@ -17140,6 +17100,22 @@
       "xxxclub.to"
     ],
     "url": "https://xxxclub.to/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "xxxtor",
+    "name": "XXXTor",
+    "description": "Public adult tracker behind Cloudflare, with magnet, size and health in the result row.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "xxxtor.com"
+    ],
+    "url": "https://xxxtor.com/",
     "source": "native",
     "proposable": true,
     "latest": false

@@ -630,13 +630,14 @@ sites:
       categories:
         - tv
         - anime
-      state: da-provvi
+      state: morta
       required:
         - url
       source: jackett
       source_id: anisource
-      checked: "2026-10-25"
-      evidence: 'GET https://asnet.pw/ -> dial tcp [2001:470:1f1d:2e7::ffff]:443: connect: network is unreachable, checked 2026-10-25; probe inconclusive'
+      checked: "2026-10-27"
+      evidence: asnet.pw has no A record (only AAAA 2001:470:1f1d:2e7::ffff); GET https://asnet.pw/ and http://asnet.pw/ -> connection refused on 443 and 80, checked 2026-10-27
+      note: The address is gone.
     - id: jk-anthelion-api
       name: Anthelion (API)
       description: Anthelion (ANT) is a Private Torrent Tracker for MOVIES
@@ -2845,24 +2846,6 @@ sites:
       source_id: dxp
       checked: "2026-10-25"
       evidence: GET https://dxp.ru/login.php -> HTTP 200, 8752 bytes, title "Галактика ДХП", checked 2026-10-25; login or anti-bot page
-    - id: jk-ehentai
-      name: E-Hentai
-      description: E-Hentai is a Public site for Hentai doujinshi, manga.
-      url: https://e-hentai.org/
-      urls:
-        - https://e-hentai.org/
-      type: public
-      language: en-US
-      categories:
-        - tv
-        - anime
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: ehentai
-      checked: "2026-10-25"
-      evidence: GET https://e-hentai.org/ -> HTTP 200, 55875 bytes, title "E-Hentai Galleries - The Free Hentai Doujinshi, Manga and Image Gallery System", checked 2026-10-25
     - id: jk-electro-torrent
       name: Electro-Torrent
       description: Electro-Torrent is a POLISH Semi-Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -2937,13 +2920,14 @@ sites:
       language: es-ES
       categories:
         - books
-      state: verificata
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: epublibre
-      checked: "2026-10-25"
-      evidence: GET https://www.epublibre.org/ -> HTTP 200, 75963 bytes, title "epublibre - inicio", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: GET https://www.epublibre.org/ -> 200, 75546 bytes, 0 magnet, 0 .torrent; GET /catalogo/index/0/nuevo/disponibles/sin/1 -> 200, 56671 bytes, 0 magnet, 0 .torrent, checked 2026-10-27
+      note: 'Not a BitTorrent indexer: the catalogue serves EPUB downloads and the pages carry no magnet and no .torrent.'
     - id: jk-erai-raws
       name: Erai-Raws
       description: Erai-Raws is a Semi-Private team release site for Anime subtitles.
@@ -3310,13 +3294,14 @@ sites:
         - https://filemood.com/
       type: public
       language: en-US
-      state: verificata
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: filemood
-      checked: "2026-10-25"
-      evidence: 'GET https://filemood.com/ -> HTTP 200, 6175 bytes, title "FileMood: your gateway to explore discover and download files", checked 2026-10-25'
+      checked: "2026-10-27"
+      evidence: GET https://filemood.com/result?q=matrix+in%3Atitle -> 200, 3620 bytes, title 'One moment...' through FlareSolverr on three attempts; direct GET https://filemood.com/ -> 429, checked 2026-10-27
+      note: 'Cloudflare does not clear the search page: the solver keeps returning the ''One moment...'' interstitial, so there are no rows to parse.'
     - id: jk-finelite
       name: FinElite
       description: FinElite (FE) is a FINNISH Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -6805,13 +6790,14 @@ sites:
       language: ru-RU
       categories:
         - xxx
-      state: da-provvi
+      state: morta
       required:
         - url
       source: jackett
       source_id: opensharing
-      checked: "2026-10-25"
-      evidence: GET https://opensharing.org/ -> context deadline exceeded (Client.Timeout exceeded while awaiting headers), checked 2026-10-25; probe inconclusive
+      checked: "2026-10-27"
+      evidence: GET https://opensharing.org/ and http://opensharing.org/ -> timeout over IPv4 and IPv6 (104.21.27.114, 172.67.169.37, 2a06:98c1:3120::4); through FlareSolverr -> HTTP 500, checked 2026-10-27
+      note: The address no longer answers.
     - id: jk-order66
       name: Order66
       description: Order66 is a Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -9932,13 +9918,14 @@ sites:
       language: ru-RU
       categories:
         - xxx
-      state: da-provvi
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: torrent-pirat
-      checked: "2026-10-25"
-      evidence: GET http://www.torrent-pirat.com/ -> context deadline exceeded (Client.Timeout exceeded while awaiting headers), checked 2026-10-25; probe inconclusive
+      checked: "2026-10-27"
+      evidence: GET https://www.torrent-pirat.com/ through FlareSolverr -> 200, 77629 bytes, title '• Портал', 0 magnet; GET /tracker/ and /tracker/?search=matrix -> 200, 718 bytes, empty challenge page; direct GET -> timeout on IPv4 and IPv6, checked 2026-10-27
+      note: The public page is a phpBB portal with no magnet and the tracker is behind a Cloudflare challenge the solver does not clear.
     - id: jk-torrent-turk
       name: TOrrent-tuRK
       description: TOrrent-tuRK (TORK) is a TURKISH Private Torrent Tracker for HD MOVIES / TV / GENERAL
@@ -10622,26 +10609,6 @@ sites:
       checked: "2026-10-25"
       evidence: 'GET https://u2.dmhy.org/portal.php -> HTTP 200, 30055 bytes, title "Access Point :: U2", checked 2026-10-25; private, no account used'
       note: 'family nexusphp (confirmed): GET https://u2.dmhy.org/portal.php -> 200, NexusPHP portal'
-    - id: jk-u3c3
-      name: U3C3
-      description: U3C3 is a CHINESE Public tracker focused on 3X Eastern Asian media
-      url: https://u3c3.com/
-      urls:
-        - https://u3c3.com/
-      type: public
-      language: zh-CN
-      categories:
-        - books
-        - games
-        - software
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: u3c3
-      checked: "2026-10-25"
-      evidence: GET https://u3c3.com/ -> HTTP 200, 139217 bytes, title "U3C3", checked 2026-10-25
     - id: jk-ubits
       name: UBits
       description: UBits is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -10988,13 +10955,14 @@ sites:
       categories:
         - games
         - software
-      state: verificata
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: vsthouse
-      checked: "2026-10-25"
-      evidence: GET https://vsthouse.ru/ -> HTTP 200, 160217 bytes, title "VSTi инструменты, VST плагины, программы - Все для создания музыки", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: GET https://vsthouse.ru/search/?q=serum&m=load&t=0 -> 200, 209881 bytes, 0 magnet, 0 .torrent; GET /load/semply_presety/presety/mercurial_tones_verge_xfer_serum_2_techno_presets_synth_preset_presety_dlja_serum_2/17-1-0-41437 -> 200 text/html, 0 magnet, 0 .torrent, checked 2026-10-27
+      note: 'Not a BitTorrent indexer: the item pages offer a direct file download (uCoz /load/) and expose no magnet and no .torrent.'
     - id: jk-whiteangel
       name: White Angel
       description: White Angel is a HUNGARIAN Private Tracker for MOVIES / TV
@@ -11348,23 +11316,6 @@ sites:
       source_id: xwtorrents2fa
       checked: "2026-10-25"
       evidence: 'GET https://xtremewrestlingtorrents.net/login.php -> HTTP 200, 12774 bytes, title "XWT :: Login", checked 2026-10-25; private, no account used'
-    - id: jk-xxxtor
-      name: xxxtor
-      description: xxxtor is a RUSSIAN Public Torrent Tracker for 3X
-      url: https://xxxtor.com/
-      urls:
-        - https://xxxtor.com/
-      type: public
-      language: ru-RU
-      categories:
-        - xxx
-      state: da-provvi
-      required:
-        - url
-      source: jackett
-      source_id: xxxtor
-      checked: "2026-10-25"
-      evidence: GET https://xxxtor.com/ -> context deadline exceeded (Client.Timeout exceeded while awaiting headers), checked 2026-10-25; probe inconclusive
     - id: jk-yggreborn-api
       name: YggReborn (API)
       description: YggReborn is a FRENCH Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -11534,12 +11485,13 @@ sites:
         - software
         - books
         - xxx
-      state: da-provvi
+      state: bloccata
       required:
         - url
       source: manual
-      evidence: GET https://anidex.info/ -> HTTP 403, DDoS-Guard page, checked 2026-10-27
-      note: Prowlarr native indexer; the site answers with a DDoS-Guard check.
+      checked: "2026-10-27"
+      evidence: GET https://anidex.info/ -> 403, 902 bytes, title 'DDoS-Guard'; through FlareSolverr GET https://anidex.info/?q=matrix&s=1&p=1 -> 200, 613 bytes, title 'Error 502', checked 2026-10-27
+      note: DDoS-Guard answers 403 to the client and the origin answers 502 through the solver, so no page is served.
     - id: mg-binarybay
       name: BinaryBay
       description: Private torrent tracker for movies, TV and general content.

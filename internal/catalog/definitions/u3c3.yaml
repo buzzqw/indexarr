@@ -1,0 +1,72 @@
+# VERIFICATA (verified). U3C3 public tracker (Eastern Asian 3X media).
+#
+# The search is a GET on the home page with two parameters: `search2` is the
+# site's own fixed token and `search` is the query. The layout was captured on
+# 2026-10-27 in fixtures/u3c3/search.html
+# (https://u3c3.com/?search2=eelja3lfe1a1&search=matrix, 61 rows, 200) and the
+# second page was checked live with the p parameter.
+#
+# The token is not a credential and it is not generated per visit: the site's
+# own JavaScript sends the same value the historical Jackett definition used,
+# and both pages answer only when it is present. A change of that constant is a
+# site change, not a bug: the definition has to be re-read, exactly like a
+# renamed path.
+#
+# Every row carries the category icon link, the title/detail link, a direct
+# .torrent link, a direct magnet, the size in GB/MB and the upload date. The
+# trailing cells are ad links and are ignored.
+schema: 1
+
+meta:
+  id: u3c3
+  name: U3C3
+  language: zh-CN
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public tracker for Eastern Asian 3X media, with magnet, .torrent, size and date in the row.
+  urls:
+    - https://u3c3.com/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "Video", standard: 6000, desc: "Video" }
+  - { site: "Photo", standard: 6060, desc: "Photo" }
+  - { site: "Book", standard: 7000, desc: "Books" }
+  - { site: "Game", standard: 4050, desc: "Games" }
+  - { site: "Software", standard: 4000, desc: "Applications" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+  - { site: "國產原创", standard: 6000, desc: "Domestic original" }
+  - { site: "U3C3", standard: 6000, desc: "U3C3" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /
+    params:
+      search2: "eelja3lfe1a1"
+      search: "{{ query.keywords }}"
+  pagination: { type: page, start: 1, step: 1, max_pages: 2, param: p, stop_when: empty_rows }
+  response:
+    type: html
+    rows: { selector: "table.torrent-list tbody tr" }
+    fields:
+      title:    { selector: 'a[href^="/view?id="]', filters: [trim] }
+      details:  { selector: 'a[href^="/view?id="]', attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:?"]', attr: href }
+      category: { selector: 'a[href^="/?type="]', attr: title, type: category }
+      size:     { selector: "td:nth-of-type(4)", type: size }
+      date:     { selector: "td:nth-of-type(5)", type: date, layouts: ["2006-01-02 15:04:05"] }
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 10
+
+tests:
+  - name: search
+    fixture: fixtures/u3c3/search.html
+    expect: { min_rows: 20, required: [title, details, magnet, size] }
