@@ -1019,14 +1019,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "morta",
     "hosts": [
       "edoqsc3t.529075.xyz"
     ],
     "url": "https://edoqsc3t.529075.xyz/",
     "source": "jackett",
-    "evidence": "GET https://edoqsc3t.529075.xyz/ -\u003e HTTP 410, 27706 bytes, title \"The address is dead.\", checked 2026-10-25",
-    "proposable": true,
+    "evidence": "GET https://edoqsc3t.529075.xyz/ -\u003e HTTP 410, 27706 bytes, title 'The address is dead.', checked 2026-10-25",
+    "proposable": false,
     "latest": false
   },
   {
@@ -3007,15 +3007,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "byrutgame.org"
     ],
     "url": "https://byrutgame.org/",
     "source": "jackett",
-    "evidence": "GET https://byrutgame.org/ -\u003e HTTP 200, 262144 bytes, title \"Скачать игры на ПК \u0026#91;последние версии 2026\u0026#93; через торрент бесплатно\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
+    "evidence": "GET https://byrutgame.org/28165-matrix-hearts.html -\u003e hCaptcha and index.php?do=download\u0026id=...; the same URL through FlareSolverr -\u003e 200 'New Tab', no .torrent, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -4192,15 +4191,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "dontorrent.channel"
     ],
     "url": "https://dontorrent.channel/",
     "source": "jackett",
-    "evidence": "GET https://dontorrent.diy/ -\u003e HTTP 200, 39083 bytes, title \"Descargar Películas y Series Torrent Gratis en Español - DonTorrent\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
+    "evidence": "GET https://dontorrent.channel/pelicula/10059/Matrix -\u003e .protected-download; /assets/js/don_download.js?v=1.40 contains a Proof of Work with SHA-256, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -6059,15 +6057,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "hdrtorrents.net"
     ],
     "url": "https://hdrtorrents.net/",
     "source": "jackett",
-    "evidence": "GET https://hdrtorrents.net/ -\u003e HTTP 200, 66589 bytes, title \"HDR Torrents - Filmes e Séries Torrent em Alta Definição 2026\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
+    "evidence": "GET https://hdrtorrents.net/arquivo-matrix-tri-audio-torrent-download/ -\u003e 0 magnet, 0 .torrent, archive.org download links, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -8149,14 +8146,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "www47.mejortorrent.eu"
     ],
     "url": "https://www47.mejortorrent.eu/",
     "source": "jackett",
-    "evidence": "GET https://www47.mejortorrent.eu/ -\u003e HTTP 403, 5614 bytes, title \"Just a moment...\", checked 2026-10-25",
-    "proposable": true,
+    "evidence": "GET https://www47.mejortorrent.eu/torrents/peliculas/169787-Matrix-Resurrections--4KUHDremux.torrent -\u003e 403 text/html; replay of the solver cf_clearance cookies with its User-Agent -\u003e 403, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -9362,14 +9359,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "onejav.com"
     ],
     "url": "https://onejav.com/",
     "source": "jackett",
-    "evidence": "GET https://onejav.com/ -\u003e HTTP 403, 5568 bytes, title \"Just a moment...\", checked 2026-10-25",
-    "proposable": true,
+    "evidence": "GET https://onejav.com/torrent/sdjs026/download/03011883/onejav.com_sdjs026.torrent -\u003e 403 text/html; replay of the solver cf_clearance cookies with its User-Agent -\u003e 403, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -13610,14 +13607,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "torrentcore.xyz"
     ],
     "url": "https://torrentcore.xyz/",
     "source": "jackett",
-    "evidence": "GET https://torrentcore.xyz/ -\u003e HTTP 403, 5480 bytes, title \"Just a moment...\", checked 2026-10-25",
-    "proposable": true,
+    "evidence": "GET https://torrentcore.xyz/search?q=matrix -\u003e 200, 40 bytes, empty body; /torrent?hash=... has no magnet, checked 2026-10-27",
+    "proposable": false,
     "latest": false
   },
   {
@@ -14911,15 +14908,14 @@
     "required": [
       "url"
     ],
-    "state": "da-provvi",
+    "state": "bloccata",
     "hosts": [
       "ww2-darkfox.officiel.cc"
     ],
     "url": "https://ww2-darkfox.officiel.cc/",
     "source": "jackett",
-    "evidence": "GET https://www-darkfox.officiel.cc -\u003e HTTP 200, 10448 bytes, title \"Darkfox: Plateforme de Téléchargement Francophone\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
+    "evidence": "GET https://ww2-darkfox.officiel.cc/ -\u003e HTTP 200, title 'Darkfox: Plateforme de Téléchargement Francophone', checked 2026-10-25",
+    "proposable": false,
     "latest": false
   },
   {

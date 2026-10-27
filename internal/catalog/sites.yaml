@@ -2,9 +2,10 @@
 #
 # Lightweight site rows built from manager metadata, never from a Cardigann
 # definition. States: verificata = live GET evidence; da-provvi = not proven
-# or private without an account; morta = unreachable and not proposed.
+# or private without an account; bloccata = cannot be implemented for a
+# non-code reason; morta = unreachable and not proposed.
 schema: 1
-updated: "2026-10-25"
+updated: "2026-10-27"
 source: jackett+prowlarr
 sites:
     - id: jk-0dayfiles-api
@@ -187,13 +188,14 @@ sites:
         - books
         - games
         - software
-      state: da-provvi
+      state: morta
       required:
         - url
       source: jackett
       source_id: 52bt
       checked: "2026-10-25"
-      evidence: GET https://edoqsc3t.529075.xyz/ -> HTTP 410, 27706 bytes, title "The address is dead.", checked 2026-10-25
+      evidence: GET https://edoqsc3t.529075.xyz/ -> HTTP 410, 27706 bytes, title 'The address is dead.', checked 2026-10-25
+      note: The address is gone.
     - id: jk-52pt
       name: 52PT
       description: 52PT is a CHINESE Private Torrent Tracker for HD MOVIES / TV
@@ -1749,13 +1751,14 @@ sites:
       categories:
         - games
         - software
-      state: verificata
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: byrutor
-      checked: "2026-10-25"
-      evidence: GET https://byrutgame.org/ -> HTTP 200, 262144 bytes, title "Скачать игры на ПК &#91;последние версии 2026&#93; через торрент бесплатно", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: GET https://byrutgame.org/28165-matrix-hearts.html -> hCaptcha and index.php?do=download&id=...; the same URL through FlareSolverr -> 200 'New Tab', no .torrent, checked 2026-10-27
+      note: The .torrent link is behind a captcha and the download URL does not return the file even through FlareSolverr.
     - id: jk-c411
       name: C411
       description: C411 (Community 411) is a FRENCH Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -2679,13 +2682,14 @@ sites:
       categories:
         - movies
         - tv
-      state: verificata
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: dontorrent
-      checked: "2026-10-25"
-      evidence: GET https://dontorrent.diy/ -> HTTP 200, 39083 bytes, title "Descargar Películas y Series Torrent Gratis en Español - DonTorrent", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: GET https://dontorrent.channel/pelicula/10059/Matrix -> .protected-download; /assets/js/don_download.js?v=1.40 contains a Proof of Work with SHA-256, checked 2026-10-27
+      note: The download needs a JavaScript proof-of-work (don_download.js); a definition cannot compute it.
     - id: jk-draupnirr
       name: Draupnirr
       description: Draupnirr (Yggrasil) is a FRENCH Semi-Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -4139,13 +4143,14 @@ sites:
       categories:
         - movies
         - tv
-      state: verificata
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: hdrtorrent
-      checked: "2026-10-25"
-      evidence: GET https://hdrtorrents.net/ -> HTTP 200, 66589 bytes, title "HDR Torrents - Filmes e Séries Torrent em Alta Definição 2026", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: GET https://hdrtorrents.net/arquivo-matrix-tri-audio-torrent-download/ -> 0 magnet, 0 .torrent, archive.org download links, checked 2026-10-27
+      note: 'The release page carries no magnet or .torrent: it links to archive.org files, so it is not a BitTorrent indexer.'
     - id: jk-hdsky
       name: HDSky
       description: HDSky is a CHINESE Private Torrent Tracker for HD MOVIES / TV
@@ -5787,13 +5792,14 @@ sites:
         - movies
         - tv
         - music
-      state: da-provvi
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: mejortorrent
-      checked: "2026-10-25"
-      evidence: GET https://www47.mejortorrent.eu/ -> HTTP 403, 5614 bytes, title "Just a moment...", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: GET https://www47.mejortorrent.eu/torrents/peliculas/169787-Matrix-Resurrections--4KUHDremux.torrent -> 403 text/html; replay of the solver cf_clearance cookies with its User-Agent -> 403, checked 2026-10-27
+      note: The .torrent is behind Cloudflare and FlareSolverr only returns text; the search works, the grab cannot.
     - id: jk-memphis
       name: Memphis
       description: Memphis is a FRENCH Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -6741,13 +6747,14 @@ sites:
       language: en-US
       categories:
         - xxx
-      state: da-provvi
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: onejav
-      checked: "2026-10-25"
-      evidence: GET https://onejav.com/ -> HTTP 403, 5568 bytes, title "Just a moment...", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: GET https://onejav.com/torrent/sdjs026/download/03011883/onejav.com_sdjs026.torrent -> 403 text/html; replay of the solver cf_clearance cookies with its User-Agent -> 403, checked 2026-10-27
+      note: The .torrent is behind Cloudflare and FlareSolverr only returns text; the search works, the grab cannot.
     - id: jk-onlyencodes-api
       name: OnlyEncodes+ (API)
       description: OnlyEncodes+ is a Private Tracker for MOVIES / TV
@@ -10079,13 +10086,14 @@ sites:
         - games
         - software
         - xxx
-      state: da-provvi
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: torrentcore
-      checked: "2026-10-25"
-      evidence: GET https://torrentcore.xyz/ -> HTTP 403, 5480 bytes, title "Just a moment...", checked 2026-10-25
+      checked: "2026-10-27"
+      evidence: GET https://torrentcore.xyz/search?q=matrix -> 200, 40 bytes, empty body; /torrent?hash=... has no magnet, checked 2026-10-27
+      note: 'No usable HTML search: /search returns an empty body and the release handles are opaque; no magnet is exposed.'
     - id: jk-torrentday
       name: TorrentDay
       description: TorrentDay (TD) is a Private site for TV / MOVIES / GENERAL
@@ -11103,13 +11111,14 @@ sites:
         - games
         - software
         - xxx
-      state: verificata
+      state: bloccata
       required:
         - url
       source: jackett
       source_id: world-torrent
       checked: "2026-10-25"
-      evidence: 'GET https://www-darkfox.officiel.cc -> HTTP 200, 10448 bytes, title "Darkfox: Plateforme de Téléchargement Francophone", checked 2026-10-25'
+      evidence: 'GET https://ww2-darkfox.officiel.cc/ -> HTTP 200, title ''Darkfox: Plateforme de Téléchargement Francophone'', checked 2026-10-25'
+      note: The domain now serves a different portal (Darkfox); the original source is no longer identifiable.
     - id: jk-xdy-api
       name: XDY (修道院) (API)
       description: XDY (修道院) is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL

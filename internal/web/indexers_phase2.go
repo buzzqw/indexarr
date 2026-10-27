@@ -1022,8 +1022,16 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 			continue
 		}
 		// A site with no native definition and no known software cannot work
-		// yet: hide it instead of offering an entry the user cannot use.
-		if entry.Source != "" && entry.Source != "native" && entry.Family == "" {
+		// yet: hide it from the user instead of offering an entry that cannot
+		// be used. The maintenance view keeps it so the queue stays visible to
+		// the people who write definitions.
+		if !q.Queue && entry.Source != "" && entry.Source != "native" && entry.Family == "" {
+			continue
+		}
+		// The user-facing catalog only lists sources that already work. The
+		// full inventory (drafts, to-try, blocked) stays in the index and is
+		// reachable with ?queue=1 for maintenance.
+		if !q.Queue && !isUsableSiteState(entry.State) {
 			continue
 		}
 		sites = append(sites, entry)
@@ -1037,15 +1045,17 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 		}
 	}
 	view.Counter = s.translate(r, "idx.catalog.counter", counterTotal, counterVerified)
-	nativeCount, familyCount := 0, 0
-	for _, entry := range sites {
-		if entry.Source == "" || entry.Source == "native" {
-			nativeCount++
-		} else if entry.Family != "" {
-			familyCount++
+	if q.Queue {
+		nativeCount, familyCount := 0, 0
+		for _, entry := range sites {
+			if entry.Source == "" || entry.Source == "native" {
+				nativeCount++
+			} else if entry.Family != "" {
+				familyCount++
+			}
 		}
+		view.Coverage = s.translate(r, "idx.catalog.coverage", nativeCount, familyCount)
 	}
-	view.Coverage = s.translate(r, "idx.catalog.coverage", nativeCount, familyCount)
 
 	filtered := make([]catalog.IndexEntry, 0, len(sites))
 	for _, entry := range sites {
@@ -1080,7 +1090,7 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 	})
 	view.Filtered = s.translate(r, "idx.catalog.filtered", len(filtered), len(sites))
 	view.HasFilters = query != "" || q.Type != "" || q.Language != "" || q.Category != "" || q.Protocol != "" || q.State != "" || q.Route != ""
-	view.ShowAll = view.HasFilters || r.URL.Query().Get("all") == "1"
+	view.ShowAll = view.HasFilters || q.Queue || r.URL.Query().Get("all") == "1"
 	if !view.ShowAll {
 		view.Guide = s.buildAddGuide(r, index, added, q.Needs)
 	}
@@ -1435,7 +1445,7 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		QuickAdd:      catalogQuickAdd(entry),
 		Configurable:  entry.Source == "" || entry.Source == "native" || entry.Family != "",
 		Probe:         entry.Source != "" && entry.Source != "native",
-		ToWrite:       entry.Source != "" && entry.Source != "native" && entry.Family == "",
+		ToWrite:       entry.Source != "" && entry.Source != "native" && entry.Family == "" && entry.State != catalog.SiteStateBlocked,
 		Reachable:     entry.Reachable,
 		Italian:       entry.Italian || strings.HasPrefix(strings.ToLower(entry.Language), "it"),
 		Usage:         entry.Usage,
@@ -1502,12 +1512,19 @@ func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry
 				{Label: "usenet", URL: catalogFilterURL(r, "proto", "usenet"), Active: current.Protocol == "usenet"},
 			},
 		},
+	)
+	if !current.Queue {
+		return groups
+	}
+	statusChips := []siteFilterChip{
+		{Label: s.translate(r, "idx.siteState.verified"), URL: catalogFilterURL(r, "state", "verified"), Active: current.State == "verified"},
+		{Label: s.translate(r, "idx.siteState.draft"), URL: catalogFilterURL(r, "state", "testing"), Active: current.State == "testing"},
+		{Label: s.translate(r, "idx.siteState.blocked"), URL: catalogFilterURL(r, "state", "blocked"), Active: current.State == "blocked"},
+	}
+	return append(groups,
 		siteFilterGroup{
 			Label: s.translate(r, "common.status"),
-			Chips: []siteFilterChip{
-				{Label: s.translate(r, "idx.siteState.verified"), URL: catalogFilterURL(r, "state", "verified"), Active: current.State == "verified"},
-				{Label: s.translate(r, "idx.siteState.draft"), URL: catalogFilterURL(r, "state", "testing"), Active: current.State == "testing"},
-			},
+			Chips: statusChips,
 		},
 		siteFilterGroup{
 			Label: s.translate(r, "idx.catalog.route"),
@@ -1517,7 +1534,6 @@ func (s *Server) catalogFilterGroups(r *http.Request, index []catalog.IndexEntry
 			},
 		},
 	)
-	return groups
 }
 
 func (s *Server) catalogTypeLabel(r *http.Request, raw string) string {
@@ -1663,12 +1679,13 @@ type catalogQuery struct {
 	Sort     string
 	Page     int
 	Needs    []string
+	Queue    bool
 }
 
 var catalogFilterValues = map[string]map[string]bool{
 	"type":  {"public": true, "semi-private": true, "private": true},
 	"proto": {"torrent": true, "usenet": true},
-	"state": {"verified": true, "testing": true},
+	"state": {"verified": true, "testing": true, "blocked": true},
 	"route": {"native": true, "family": true, "pending": true},
 	"sort":  {"used": true, "name": true},
 	"cat": {
@@ -1689,6 +1706,7 @@ func parseCatalogQuery(r *http.Request) catalogQuery {
 		Sort:     catalogFilterValue(values.Get("sort"), "sort"),
 		Page:     intParam(values.Get("page"), 1),
 		Needs:    parseNeeds(values),
+		Queue:    values.Get("queue") == "1",
 	}
 	if out.Sort == "" {
 		out.Sort = "used"
@@ -1740,7 +1758,11 @@ func catalogEntryMatches(entry catalog.IndexEntry, q catalogQuery, query string)
 			return false
 		}
 	case "testing":
-		if isUsableSiteState(entry.State) {
+		if isUsableSiteState(entry.State) || entry.State == catalog.SiteStateBlocked {
+			return false
+		}
+	case "blocked":
+		if entry.State != catalog.SiteStateBlocked {
 			return false
 		}
 	}
@@ -1867,6 +1889,8 @@ func (s *Server) siteStateLabel(r *http.Request, state string) string {
 		return s.translate(r, "idx.siteState.stable")
 	case "degradata":
 		return s.translate(r, "idx.siteState.problems")
+	case catalog.SiteStateBlocked:
+		return s.translate(r, "idx.siteState.blocked")
 	default:
 		return s.translate(r, "idx.siteState.draft")
 	}

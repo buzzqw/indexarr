@@ -22,7 +22,7 @@ Prowlarr.
 | **HTTP Basic** | completo | Campi dedicati per sorgente, usati per ricerche e download. |
 | **API key** | completo | Inviata come `apikey` e come header `X-Api-Key`; può essere vuota. |
 | **Cloudflare / challenge** | con FlareSolverr | Retry automatico per RSS e Torznab diretto; indirizzi LAN esclusi. |
-| **API proprietarie** | non gestite in automatico | La fonte resta in coda «da scrivere» finché non esiste una definizione nativa. Nessun proxy automatico verso Jackett/Prowlarr. |
+| **API proprietarie** | non gestite in automatico | La fonte resta in coda «da scrivere» finché non esiste una definizione nativa; non compare nell'elenco utente. Nessun proxy automatico verso Jackett/Prowlarr. |
 
 ## MirCrew
 
@@ -84,8 +84,9 @@ Gextto:
 Limiti: prima pagina, massimo 50 release per sorgente; se il layout cambia o il
 sito richiede il login, il test riporta l'errore. **Quick add** riconosce l'host;
 **Default category** assegna una categoria Torznab quando la pagina non la
-fornisce. Gli altri siti senza RSS restano nella coda nativa: il catalogo li
-mostra come «da scrivere» e non crea un endpoint Torznab verso il manager.
+fornisce. Gli altri siti senza RSS restano nella coda nativa: l'indice li
+classifica come «da scrivere» (vista di manutenzione `/indexers/new?queue=1`) e
+non crea un endpoint Torznab verso il manager.
 
 ## Cloudflare
 

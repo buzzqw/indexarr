@@ -76,7 +76,8 @@ il quadro reale, non un elenco di intenti:
 | API proprietarie non Torznab | non gestite in automatico | la fonte resta in coda finché non esiste una definizione nativa |
 
 Jackett e Prowlarr **non sono un ripiego**: indexarr li sostituisce. Una fonte
-senza via nativa resta nel catalogo come «da scrivere» e non viene creata.
+senza via nativa resta nell'indice come «da scrivere» e non viene creata;
+l'elenco utente mostra solo le fonti pronte.
 
 Dettagli, casi limite e diagnostica: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 

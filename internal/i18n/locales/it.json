@@ -812,6 +812,7 @@
   "idx.selectAll": "Seleziona tutti",
   "idx.selected": "selezionati",
   "idx.siteAddress": "Indirizzo del sito",
+  "idx.siteState.blocked": "Bloccato",
   "idx.siteState.draft": "In prova",
   "idx.siteState.problems": "Problemi",
   "idx.siteState.stable": "Stabile",

@@ -1,0 +1,51 @@
+# Sources that cannot be implemented for a reason that is not a missing line
+# of code. gensites applies this table after the live probe: a blocked row
+# stays in the catalog with its evidence but leaves the "to write" queue, is
+# never proposed and is hidden from the user-facing site picker. A dead row is
+# the same, with the state that says the address is gone.
+#
+# Use the source id of the manager snapshot (source_id) or the manual row id.
+# The reason is shown in the catalog; the evidence is the test that proves it.
+schema: 1
+updated: "2026-10-27"
+sources:
+  - id: mejortorrent
+    state: bloccata
+    reason: "The .torrent is behind Cloudflare and FlareSolverr only returns text; the search works, the grab cannot."
+    evidence: "GET https://www47.mejortorrent.eu/torrents/peliculas/169787-Matrix-Resurrections--4KUHDremux.torrent -> 403 text/html; replay of the solver cf_clearance cookies with its User-Agent -> 403, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: onejav
+    state: bloccata
+    reason: "The .torrent is behind Cloudflare and FlareSolverr only returns text; the search works, the grab cannot."
+    evidence: "GET https://onejav.com/torrent/sdjs026/download/03011883/onejav.com_sdjs026.torrent -> 403 text/html; replay of the solver cf_clearance cookies with its User-Agent -> 403, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: torrentcore
+    state: bloccata
+    reason: "No usable HTML search: /search returns an empty body and the release handles are opaque; no magnet is exposed."
+    evidence: "GET https://torrentcore.xyz/search?q=matrix -> 200, 40 bytes, empty body; /torrent?hash=... has no magnet, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: dontorrent
+    state: bloccata
+    reason: "The download needs a JavaScript proof-of-work (don_download.js); a definition cannot compute it."
+    evidence: "GET https://dontorrent.channel/pelicula/10059/Matrix -> .protected-download; /assets/js/don_download.js?v=1.40 contains a Proof of Work with SHA-256, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: byrutor
+    state: bloccata
+    reason: "The .torrent link is behind a captcha and the download URL does not return the file even through FlareSolverr."
+    evidence: "GET https://byrutgame.org/28165-matrix-hearts.html -> hCaptcha and index.php?do=download&id=...; the same URL through FlareSolverr -> 200 'New Tab', no .torrent, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: hdrtorrent
+    state: bloccata
+    reason: "The release page carries no magnet or .torrent: it links to archive.org files, so it is not a BitTorrent indexer."
+    evidence: "GET https://hdrtorrents.net/arquivo-matrix-tri-audio-torrent-download/ -> 0 magnet, 0 .torrent, archive.org download links, checked 2026-10-27"
+    checked: "2026-10-27"
+  - id: world-torrent
+    state: bloccata
+    reason: "The domain now serves a different portal (Darkfox); the original source is no longer identifiable."
+    evidence: "GET https://ww2-darkfox.officiel.cc/ -> HTTP 200, title 'Darkfox: Plateforme de Téléchargement Francophone', checked 2026-10-25"
+    checked: "2026-10-25"
+  - id: 52bt
+    state: morta
+    reason: "The address is gone."
+    evidence: "GET https://edoqsc3t.529075.xyz/ -> HTTP 410, 27706 bytes, title 'The address is dead.', checked 2026-10-25"
+    checked: "2026-10-25"

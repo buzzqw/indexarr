@@ -42,31 +42,46 @@ func TestCatalogCoverageAndRouteFilter(t *testing.T) {
 	env := newNativeEnv(t)
 	env.server.catalogIndex = func() ([]catalog.IndexEntry, error) { return adoptionCatalog(), nil }
 
+	// The user catalogue only lists what already works. The full inventory is
+	// still in the index and is served by the maintenance view (?queue=1).
 	body := get(t, env.handler, "/indexers/new?all=1").Body.String()
-	if !strings.Contains(body, "Coverage: 1 ready sources, 1 with known software.") {
-		t.Errorf("coverage line missing: %s", body)
+	if !strings.Contains(body, "AlphaNative") {
+		t.Error("the ready source is missing from the catalogue")
 	}
-	// Sources with no route at all are not offered: the user only chooses
-	// what can already work.
-	for _, hidden := range []string{"CharlieQueue", "DeltaQueue"} {
+	for _, hidden := range []string{"BravoFamily", "CharlieQueue", "DeltaQueue"} {
 		if strings.Contains(body, hidden) {
-			t.Errorf("unusable source %q is shown in the catalogue", hidden)
+			t.Errorf("unfinished source %q is shown in the user catalogue", hidden)
 		}
 	}
 
-	body = get(t, env.handler, "/indexers/new?all=1&route=pending").Body.String()
-	for _, hidden := range []string{"AlphaNative", "BravoFamily", "CharlieQueue", "DeltaQueue"} {
+	body = get(t, env.handler, "/indexers/new?all=1&queue=1").Body.String()
+	if !strings.Contains(body, "Coverage: 1 ready sources, 1 with known software.") {
+		t.Errorf("coverage line missing from the queue view: %s", body)
+	}
+	for _, want := range []string{"AlphaNative", "BravoFamily", "CharlieQueue", "DeltaQueue"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("queue view is missing %q", want)
+		}
+	}
+
+	body = get(t, env.handler, "/indexers/new?all=1&queue=1&route=pending").Body.String()
+	for _, hidden := range []string{"AlphaNative", "BravoFamily"} {
 		if strings.Contains(body, hidden) {
 			t.Errorf("route=pending returned %q", hidden)
 		}
 	}
+	for _, want := range []string{"CharlieQueue", "DeltaQueue"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("route=pending is missing %q", want)
+		}
+	}
 
-	body = get(t, env.handler, "/indexers/new?all=1&route=family").Body.String()
+	body = get(t, env.handler, "/indexers/new?all=1&queue=1&route=family").Body.String()
 	if !strings.Contains(body, "BravoFamily") || strings.Contains(body, "CharlieQueue") {
 		t.Error("the known-software filter is wrong")
 	}
 
-	body = get(t, env.handler, "/indexers/new?all=1&route=native").Body.String()
+	body = get(t, env.handler, "/indexers/new?all=1&queue=1&route=native").Body.String()
 	if !strings.Contains(body, "AlphaNative") || strings.Contains(body, "BravoFamily") {
 		t.Error("the ready filter is wrong")
 	}

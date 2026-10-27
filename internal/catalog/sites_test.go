@@ -267,7 +267,7 @@ func TestSiteStatsAddsNativeAndLightweightRows(t *testing.T) {
 	if stats.Total != len(entries)+len(sites) {
 		t.Errorf("total = %d", stats.Total)
 	}
-	if stats.Verified+stats.ToTry+stats.Dead != stats.Total {
+	if stats.Verified+stats.ToTry+stats.Blocked+stats.Dead != stats.Total {
 		t.Errorf("states do not add up: %+v", stats)
 	}
 	if stats.PublicVerified < 70 {
@@ -275,6 +275,34 @@ func TestSiteStatsAddsNativeAndLightweightRows(t *testing.T) {
 	}
 	if stats.Italian == 0 || stats.Families[FamilyNexusPHP] == 0 {
 		t.Errorf("stats = %+v", stats)
+	}
+}
+
+func TestBlockedSiteNeedsEvidenceAndIsNotProposable(t *testing.T) {
+	blocked := `schema: 1
+sites:
+  - id: blocked
+    name: Blocked
+    url: https://example.test/
+    type: public
+    state: bloccata
+    evidence: "GET https://example.test/ -> 403 with a captcha, checked 2026-10-27"
+`
+	sites, err := parseSites([]byte(blocked))
+	if err != nil {
+		t.Fatalf("blocked manifest: %v", err)
+	}
+	index := BuildFullIndex(nil, sites)
+	if len(index) != 1 || index[0].State != SiteStateBlocked || index[0].Proposable {
+		t.Fatalf("index = %+v", index)
+	}
+	if _, err := DefinitionForSite(sites[0]); err == nil {
+		t.Fatal("DefinitionForSite accepted a blocked site")
+	}
+
+	withoutEvidence := strings.Replace(blocked, `    evidence: "GET https://example.test/ -> 403 with a captcha, checked 2026-10-27"`+"\n", "", 1)
+	if _, err := parseSites([]byte(withoutEvidence)); err == nil {
+		t.Fatal("accepted a blocked row without evidence")
 	}
 }
 

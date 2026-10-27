@@ -74,6 +74,52 @@ func TestCatalogIndexPageHandlesThousandEntries(t *testing.T) {
 	}
 }
 
+func TestCatalogVisibilitySplitsUsersAndQueue(t *testing.T) {
+	env := newNativeEnv(t)
+	env.server.catalogIndex = func() ([]catalog.IndexEntry, error) {
+		return []catalog.IndexEntry{
+			{ID: "ready", Name: "ReadyNative", Source: "native", Type: "public", Protocol: "torrent", State: "verificata", Hosts: []string{"ready.example"}},
+			{ID: "draft", Name: "DraftNative", Source: "native", Type: "public", Protocol: "torrent", State: "bozza", Hosts: []string{"draft.example"}},
+			{ID: "family", Name: "FamilyPending", Source: "jackett", Type: "private", Protocol: "torrent", State: "da-provvi", Family: "unit3d", Hosts: []string{"family.example"}},
+			{ID: "blocked", Name: "BlockedSource", Source: "jackett", Type: "public", Protocol: "torrent", State: "bloccata", Hosts: []string{"blocked.example"}},
+			{ID: "todo", Name: "WriteSource", Source: "jackett", Type: "private", Protocol: "torrent", State: "da-provvi", Hosts: []string{"todo.example"}},
+		}, nil
+	}
+
+	body := get(t, env.handler, "/indexers/new?all=1").Body.String()
+	if !strings.Contains(body, "ReadyNative") {
+		t.Error("the verified source is missing from the user catalogue")
+	}
+	for _, hidden := range []string{"DraftNative", "FamilyPending", "BlockedSource", "WriteSource"} {
+		if strings.Contains(body, hidden) {
+			t.Errorf("unfinished source %q is visible in the user catalogue", hidden)
+		}
+	}
+	if strings.Contains(body, "To write") {
+		t.Error("the to-write badge leaked into the user catalogue")
+	}
+
+	body = get(t, env.handler, "/indexers/new?all=1&queue=1").Body.String()
+	for _, want := range []string{"ReadyNative", "DraftNative", "FamilyPending", "BlockedSource", "WriteSource"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("queue view is missing %q", want)
+		}
+	}
+	if !strings.Contains(body, "To write") {
+		t.Error("the queue view does not mark the source that still needs a definition")
+	}
+
+	body = get(t, env.handler, "/indexers/new?all=1&queue=1&state=blocked").Body.String()
+	if !strings.Contains(body, "BlockedSource") {
+		t.Error("the blocked filter is missing the blocked source")
+	}
+	for _, hidden := range []string{"ReadyNative", "DraftNative", "FamilyPending", "WriteSource"} {
+		if strings.Contains(body, hidden) {
+			t.Errorf("the blocked filter returned %q", hidden)
+		}
+	}
+}
+
 func TestCatalogFiltersCombine(t *testing.T) {
 	env := newNativeEnv(t)
 

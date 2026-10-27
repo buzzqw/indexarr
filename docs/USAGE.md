@@ -34,11 +34,13 @@ app e per indexer.
    bisogni: **Serie TV, Film, Anime, Musica, Libri, Italiano, Altro**.
 3. Le schede sono **cumulative**: puoi attivare Film e Libri insieme e vedrai
    l'unione dei risultati. Una scheda attiva ha sfondo pieno e segno di spunta.
-4. **Mostra tutti i siti** apre il catalogo completo, con due elenchi a discesa
-   per **tipo** (pubblico / semi-privato / privato) e **lingua**, più i filtri
-   per categoria, protocollo, stato e percorso.
-5. Il catalogo mostra solo le fonti già utilizzabili: le voci «da scrivere»
-   non compaiono.
+4. **Mostra tutti i siti** apre l'elenco completo delle fonti già utilizzabili,
+   con due elenchi a discesa per **tipo** (pubblico / semi-privato / privato) e
+   **lingua**, più i filtri per categoria e protocollo.
+5. Il catalogo mostra solo le fonti che funzionano: le voci «da scrivere», le
+   bozze, le bloccate e le morte restano nell'indice per la manutenzione ma non
+   compaiono. La vista di manutenzione `/indexers/new?queue=1` le elenca tutte,
+   con i filtri per stato e percorso.
 
 ### Tipi di sorgente
 

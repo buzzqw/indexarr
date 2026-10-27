@@ -24,8 +24,9 @@ Valori contati su `index.json` dopo `go generate ./internal/catalog`.
 | Voci leggere | **521** (516 dall'istantanea Jackett, 5 manuali) |
 | Verificate | **81** |
 | Bozze | **24** |
-| Da provare (`da-provvi`) | **517** |
-| Morte (`morta`) | **4** |
+| Da provare (`da-provvi`) | **509** |
+| Bloccate (`bloccata`) | **7** |
+| Morte (`morta`) | **5** |
 | Pubbliche verificate (host unici) | **90** |
 | Voci italiane | **13** |
 
@@ -34,8 +35,30 @@ definizione nativa con un mirror conta due host. Le voci leggere private
 restano tutte `da-provvi`: senza un account non si può verificare la ricerca.
 
 Il catalogo ora contiene **tutte** le fonti dell'istantanea, comprese le
-private senza una famiglia riconosciuta. Una fonte senza via nativa non viene nascosta:
-resta in coda con il filtro **da scrivere** e non produce alcun proxy.
+private senza una famiglia riconosciuta. Una fonte senza via nativa resta
+nell'indice come **da scrivere** e non produce alcun proxy; non compare
+nell'elenco utente.
+
+### Cosa vede l'utente, cosa tiene il sistema
+
+L'elenco «Aggiungi indexer» mostra solo le fonti che già funzionano: le
+definizioni native `verificata`/`stabile` e i connettori generici. Le bozze, le
+voci `da-provvi`, le `bloccata` e le `morta` restano in `index.json` e in
+`sites.yaml`, perché servono alla manutenzione, ma non vengono proposte.
+
+La coda non viene cancellata: viene classificata dallo stato. Per rivederla
+tutta c'è la vista di manutenzione `/indexers/new?queue=1`, non linkata dalla
+UI, che mostra anche i badge «Da scrivere», «In prova», «Problemi» e
+«Bloccato».
+
+| Stato | Significato | Visibile all'utente |
+| --- | --- | --- |
+| `verificata`, `stabile` | pronto e provato dal vivo | sì |
+| `bozza` | definizione da finire o da verificare | no |
+| `degradata` | definizione che funziona con problemi, da migliorare | no |
+| `da-provvi` | fonte da provare o definizione da scrivere | no |
+| `bloccata` | non gestibile per un motivo che non è codice: fuori coda | no |
+| `morta` | indirizzo sparito: fuori coda | no |
 
 ### Copertura nativa dell'istantanea Jackett
 
@@ -43,7 +66,8 @@ resta in coda con il filtro **da scrivere** e non produce alcun proxy.
 | --- | ---: | --- |
 | Definizione nativa (id o host) | **56** | definizioni verificate o in prova |
 | Software noto (connettore di famiglia) | **155** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **427** | 329 private, 35 pubbliche, 63 semiprivate |
+| Da scrivere | **415** | 326 private, 27 pubbliche, 62 semiprivate |
+| Fuori coda (bloccate o morte) | **12** | 7 bloccate, 5 morte |
 | **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 
 La somma non include le 6 fonti già configurate in Jackett quando coincidono
@@ -81,21 +105,29 @@ definizioni (BT.etree, ExtraTorrent.st, kickasstorrents.to, Magnet Cat,
 DaMagNet) e il mirror `kickass.ws` sono descritti nella sezione
 [Cloudflare](#cloudflare-esito-del-2710).
 
-Le altre pubbliche restano in coda per un motivo osservato:
+Le sette fonti non gestibili per un motivo che non è codice sono uscite dalla
+coda e sono `bloccata` (52BT è `morta`); la prova è in
+`metadata/blocked.yaml`. Restano da provare o da scrivere:
 
 | Motivo | Fonti |
 | --- | --- |
-| Challenge Cloudflare e `.torrent` non scaricabile dal solver | MejorTorrent, OneJAV |
-| Ricerca HTML assente o non utilizzabile (handle opachi) | Torrent[CORE] |
-| Download dietro captcha o proof-of-work | DonTorrent |
-| Risultati disegnati da JavaScript offuscato | HDRTorrent, FileMood, U3C3 |
-| Download negato anche con referer (403) | Byrutor |
+| Risultati disegnati da JavaScript: da riprovare con il browser del solver | FileMood, U3C3 |
 | Magnet visibili solo con account | EpubLibre, torrent-pirat |
-| Certificato TLS non verificabile | torrent.by |
-| DDoS-Guard o 403 sulla home | Anidex, xxxtor, VSTHouse |
+| Certificato TLS non verificabile dal probe: il solver apre la home | torrent.by |
+| DDoS-Guard o 403 sulla home: xxxtor si risolve con il solver, gli altri da riprovare | Anidex, xxxtor, VSTHouse |
 | Timeout o rete IPv6 irraggiungibile | OpenSharing, AniSource |
-| Dominio morto o portale di reindirizzamento | 52BT (410), World-torrent |
 | Galleria con torrent personali per account | E-Hentai |
+
+| Bloccata | Motivo misurato |
+| --- | --- |
+| MejorTorrent | `.torrent` dietro Cloudflare; il solver restituisce solo testo, la ricerca funziona e il grab no |
+| OneJAV | come MejorTorrent |
+| Torrent[CORE] | `/search` vuoto (40 byte), handle opachi, nessun magnet |
+| DonTorrent | download con proof-of-work JavaScript |
+| Byrutor | `.torrent` dietro captcha; il link non restituisce il file nemmeno via solver |
+| HDRTorrent | la pagina non espone magnet né `.torrent`, rimanda a archive.org |
+| World-torrent | il dominio serve un altro portale (Darkfox) |
+| 52BT (`morta`) | HTTP 410 «The address is dead.» |
 
 ### Cloudflare: esito del 27/10
 
@@ -121,7 +153,7 @@ basta per la ricerca e lascia il grab dei magnet al transport normale. Dove il
 sito protegge anche il file, il grab non funziona e la definizione non viene
 scritta a metà.
 
-Restano tre, per motivi misurati il 27/10:
+Restano tre, ora `bloccata` e fuori coda, per motivi misurati il 27/10:
 
 - **MejorTorrent e OneJAV**: la challenge copre anche il `.torrent` (`403
   text/html` sia a un client normale sia ripetendo i cookie `cf_clearance` del
@@ -142,6 +174,11 @@ Restano tre, per motivi misurati il 27/10:
 - **`da-provvi`**: nessuna prova, oppure sito privato raggiungibile ma senza
   account, oppure `403`/`5xx`/login/anti-bot. È il badge giusto per un privato
   che non è stato provato dall'interno.
+- **`bloccata`**: il sito non è implementabile per un motivo che non è una riga
+  di codice mancante (captcha, proof-of-work, binario dietro Cloudflare,
+  ricerca inesistente, portale diverso). La riga resta nel catalogo con la
+  prova e il motivo in `metadata/blocked.yaml`, ma è fuori dalla coda
+  `da-provvi`, da `proposable: false` e non viene mostrata all'utente.
 - **`morta`**: il `GET` è fallito perché il nome non risolve o la connessione
   è stata rifiutata. La riga resta nel catalogo con la prova del fallimento,
   ma `proposable: false` e non deve essere proposta. Un timeout, una rotta
@@ -228,6 +265,7 @@ manager.
 | `metadata/prowlarr.json` | istantanea storica | no |
 | `metadata/families.yaml` | curatela con prova GET | sì, aggiungendo la prova |
 | `metadata/verification.yaml` | `genverify` (GET) | no |
+| `metadata/blocked.yaml` | curatela con prova misurata | sì, aggiungendo la prova |
 | `metadata/manual.yaml` | lista prioritaria | sì |
 | `sites.yaml` | `gensites` | no |
 | `index.json` | `genindex` | no |
@@ -255,10 +293,10 @@ costruire la definizione della famiglia scelta.
 - **403 Cloudflare**: 11 siti pubblici dell'istantanea hanno risposto 403
   «Just a moment...» al probe del 25/10. Otto hanno oggi una definizione nativa
   (tre lo erano già, cinque sono stati aggiunti il 27/10 con FlareSolverr);
-  restano `da-provvi` MejorTorrent, OneJAV e Torrent[CORE], con il motivo nella
-  sezione Cloudflare qui sopra. DaMagNet, che aveva la home 200 ma il dettaglio
-  dietro challenge, è ora nativo. Il probe non usa FlareSolverr: per questo
-  registra 403 anche quando la ricerca funziona con il solver.
+  MejorTorrent, OneJAV e Torrent[CORE] sono `bloccata` e fuori coda, con il
+  motivo nella sezione Cloudflare qui sopra. DaMagNet, che aveva la home 200 ma
+  il dettaglio dietro challenge, è ora nativo. Il probe non usa FlareSolverr:
+  per questo registra 403 anche quando la ricerca funziona con il solver.
 - **Timeout**: `NewStudio` non ha risposto entro 45 s; è `morta` con la prova.
   `xxxtor` richiede ~35 s ed è verificato con timeout 45 s.
 - **I2P**: Postman usa un indirizzo `.i2p` non risolvibile qui; è `morta`.

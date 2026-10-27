@@ -812,6 +812,7 @@
   "idx.selectAll": "全选",
   "idx.selected": "已选择",
   "idx.siteAddress": "站点地址",
+  "idx.siteState.blocked": "已阻止",
   "idx.siteState.draft": "测试中",
   "idx.siteState.problems": "问题",
   "idx.siteState.stable": "稳定",

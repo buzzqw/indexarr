@@ -40,6 +40,50 @@ func TestDecideState(t *testing.T) {
 	}
 }
 
+func TestApplyBlockedOverridesProbe(t *testing.T) {
+	site := catalog.Site{
+		ID:       "jk-example",
+		SourceID: "example",
+		State:    catalog.SiteStateVerified,
+		Evidence: "GET -> 200",
+	}
+	applyBlocked(&site, map[string]blockedSource{
+		"example": {ID: "example", State: catalog.SiteStateBlocked, Reason: "captcha", Evidence: "GET -> 403", Checked: "2026-10-27"},
+	})
+	if site.State != catalog.SiteStateBlocked || site.Evidence != "GET -> 403" || site.Note != "captcha" || site.Checked != "2026-10-27" {
+		t.Fatalf("site = %+v", site)
+	}
+
+	applyBlocked(&site, map[string]blockedSource{
+		"jk-example": {ID: "jk-example", State: catalog.SiteStateDead, Reason: "gone", Evidence: "GET -> 410", Checked: "2026-10-27"},
+	})
+	if site.State != catalog.SiteStateDead || site.Note != "gone" {
+		t.Fatalf("manual id fallback failed: %+v", site)
+	}
+
+	applyBlocked(&site, map[string]blockedSource{
+		"other": {ID: "other", State: catalog.SiteStateBlocked, Reason: "x", Evidence: "y", Checked: "z"},
+	})
+	if site.State != catalog.SiteStateDead {
+		t.Fatalf("an unrelated entry changed the site: %+v", site)
+	}
+}
+
+func TestBlockedManifestIsValid(t *testing.T) {
+	blocked := loadBlocked("../metadata/blocked.yaml")
+	if len(blocked) == 0 {
+		t.Fatal("blocked manifest is empty")
+	}
+	for id, entry := range blocked {
+		if entry.Reason == "" || entry.Evidence == "" || entry.Checked == "" {
+			t.Errorf("%s: incomplete entry %+v", id, entry)
+		}
+		if entry.State != catalog.SiteStateBlocked && entry.State != catalog.SiteStateDead {
+			t.Errorf("%s: state = %q", id, entry.State)
+		}
+	}
+}
+
 func TestSingleFamilyRejectsAmbiguousPages(t *testing.T) {
 	for _, test := range []struct {
 		name string

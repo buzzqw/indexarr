@@ -29,6 +29,7 @@ import (
 const (
 	SiteStateVerified = "verificata" // live-tested with GET and usable
 	SiteStateTry      = "da-provvi"  // not proven yet, or a private site without an account
+	SiteStateBlocked  = "bloccata"   // cannot be implemented for a non-code reason; never queued or proposed
 	SiteStateDead     = "morta"      // unreachable; never proposed
 
 	FamilyUnit3D        = "unit3d"
@@ -74,6 +75,7 @@ var (
 	validSiteStates = map[string]bool{
 		SiteStateVerified: true,
 		SiteStateTry:      true,
+		SiteStateBlocked:  true,
 		SiteStateDead:     true,
 	}
 	validFamilies = map[string]bool{
@@ -136,7 +138,7 @@ func parseSites(body []byte) ([]Site, error) {
 			return nil, fmt.Errorf("catalog: sites[%d].name: is required", i)
 		}
 		if !validSiteStates[site.State] {
-			return nil, fmt.Errorf("catalog: sites[%d].state: must be one of verificata, da-provvi, morta", i)
+			return nil, fmt.Errorf("catalog: sites[%d].state: must be one of verificata, da-provvi, bloccata, morta", i)
 		}
 		if !validSiteTypes[site.Type] {
 			return nil, fmt.Errorf("catalog: sites[%d].type: must be public, semi-private or private", i)
@@ -155,6 +157,9 @@ func parseSites(body []byte) ([]Site, error) {
 		}
 		if site.State == SiteStateDead && strings.TrimSpace(site.Evidence) == "" {
 			return nil, fmt.Errorf("catalog: sites[%d]: a dead site needs the failure evidence", i)
+		}
+		if site.State == SiteStateBlocked && strings.TrimSpace(site.Evidence) == "" {
+			return nil, fmt.Errorf("catalog: sites[%d]: a blocked site needs the evidence of the block", i)
 		}
 	}
 	return manifest.Sites, nil
@@ -201,8 +206,11 @@ func siteIndexEntry(site Site) IndexEntry {
 		Categories:  categories,
 		Required:    required,
 		State: func() string {
-			if site.State == SiteStateDead {
+			switch site.State {
+			case SiteStateDead:
 				return SiteStateDead
+			case SiteStateBlocked:
+				return SiteStateBlocked
 			}
 			return SiteStateTry
 		}(),
@@ -214,7 +222,7 @@ func siteIndexEntry(site Site) IndexEntry {
 		Usage:      site.Usage,
 		Source:     site.Source,
 		Evidence:   site.Evidence,
-		Proposable: site.State != SiteStateDead,
+		Proposable: site.State != SiteStateDead && site.State != SiteStateBlocked,
 		// Family connectors implement Latest themselves (browse/API page), so
 		// a known-software row is a scheduled source even without a YAML
 		// latest block. It is not "storable": there is no latest page to
@@ -243,6 +251,9 @@ func DefinitionForSite(site Site) ([]byte, error) {
 	}
 	if site.State == SiteStateDead {
 		return nil, fmt.Errorf("catalog: site %q is dead", site.ID)
+	}
+	if site.State == SiteStateBlocked {
+		return nil, fmt.Errorf("catalog: site %q is blocked", site.ID)
 	}
 	if site.URL == "" {
 		return nil, fmt.Errorf("catalog: site %q has no URL", site.ID)
@@ -339,6 +350,7 @@ type SiteStats struct {
 	Total          int            `json:"total"`
 	Verified       int            `json:"verified"`
 	ToTry          int            `json:"toTry"`
+	Blocked        int            `json:"blocked"`
 	Dead           int            `json:"dead"`
 	Italian        int            `json:"italian"`
 	PublicVerified int            `json:"publicVerified"`
@@ -370,6 +382,8 @@ func Stats(entries []Entry, sites []Site) SiteStats {
 			}
 		case SiteStateDead:
 			stats.Dead++
+		case SiteStateBlocked:
+			stats.Blocked++
 		default:
 			stats.ToTry++
 		}
