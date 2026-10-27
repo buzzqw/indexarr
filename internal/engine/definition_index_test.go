@@ -243,3 +243,19 @@ func TestIndexSkipsTopicsOfAnotherSeason(t *testing.T) {
 		t.Errorf("without a season every topic stays a candidate, got %d", len(all))
 	}
 }
+
+func TestIndexReadsTheSeasonOfAFreeTextQuery(t *testing.T) {
+	for query, want := range map[string][2]int{
+		"Bones S06E05":      {6, 5},
+		"bones s6":          {6, 0},
+		"Bones 6x05":        {6, 5},
+		"Bones":             {0, 0},
+		"Station 19 S07":    {7, 0},
+		"Blade Runner 2049": {0, 0},
+	} {
+		season, episode := indexQuerySeasonEpisode(query)
+		if season != want[0] || episode != want[1] {
+			t.Errorf("%q: season %d episode %d, want %v", query, season, episode, want)
+		}
+	}
+}

@@ -78,6 +78,11 @@ func TestParseEd2kFileLink(t *testing.T) {
 	if !strings.HasPrefix(canonicalEd2kLink(link), "ed2k://|file|Rare%20Movie") {
 		t.Errorf("canonical link = %q", canonicalEd2kLink(link))
 	}
+	// A link copied from a script keeps the page's HTML entities.
+	scripted, ok := parseEd2kFileLink("ed2k://|file|Bones - 6x12 - L&#39;amore &#40;BDMux&#41;.mkv|700|0123456789abcdef0123456789abcdef|/")
+	if !ok || scripted.Name != "Bones - 6x12 - L'amore (BDMux).mkv" {
+		t.Errorf("scripted link = %+v, ok = %v", scripted, ok)
+	}
 	for _, bad := range []string{
 		"",
 		"magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef",

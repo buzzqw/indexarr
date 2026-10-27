@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"html"
 	"net/url"
 	"strconv"
 	"strings"
@@ -34,7 +35,9 @@ func parseEd2kFileLink(raw string) (ed2kLink, bool) {
 	if err != nil {
 		return ed2kLink{}, false
 	}
-	name = strings.TrimSpace(name)
+	// A link read from a script (DDUnlimited's filearray) keeps the page's
+	// HTML entities: "L&#39;amore" is "L'amore".
+	name = strings.TrimSpace(html.UnescapeString(name))
 	if name == "" || strings.ContainsAny(name, "\x00\r\n") {
 		return ed2kLink{}, false
 	}

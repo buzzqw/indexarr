@@ -72,7 +72,15 @@ func (c *DefinitionConnector) searchIndex(ctx context.Context, req SearchRequest
 			entries = append(entries, entry)
 		}
 	}
-	matches := matchIndexEntries(entries, req)
+	matchReq := req
+	if matchReq.Season <= 0 {
+		// A free-text search ("Bones S06E05", as Gextto's manual search sends
+		// it) names the season only in the query: without it every season of
+		// the series is a candidate, the shortest titles win the max_topics
+		// slots and the wanted season may never be opened.
+		matchReq.Season, matchReq.Episode = indexQuerySeasonEpisode(req.Query)
+	}
+	matches := matchIndexEntries(entries, matchReq)
 	maxTopics := index.MaxTopics
 	if maxTopics <= 0 {
 		maxTopics = defaultIndexMaxTopics
@@ -356,6 +364,27 @@ var indexEpisodeToken = regexp.MustCompile(`^(?:s\d{1,2}(?:e\d{1,3})?|\d{1,2}x\d
 
 func isEpisodeToken(token string) bool {
 	return indexEpisodeToken.MatchString(token)
+}
+
+var indexQueryEpisode = regexp.MustCompile(`(?i)\bs(\d{1,2})(?:[ ._-]?e(\d{1,3}))?\b|\b(\d{1,2})x(\d{1,3})\b`)
+
+// indexQuerySeasonEpisode reads the season (and episode, when present) a
+// free-text query names: "S06E05", "S06" or "6x05". Zero means none.
+func indexQuerySeasonEpisode(query string) (int, int) {
+	match := indexQueryEpisode.FindStringSubmatch(query)
+	if match == nil {
+		return 0, 0
+	}
+	seasonText, episodeText := match[1], match[2]
+	if seasonText == "" {
+		seasonText, episodeText = match[3], match[4]
+	}
+	season, err := strconv.Atoi(seasonText)
+	if err != nil || season <= 0 {
+		return 0, 0
+	}
+	episode, _ := strconv.Atoi(episodeText)
+	return season, episode
 }
 
 func normalizeIndexText(value string) string {
