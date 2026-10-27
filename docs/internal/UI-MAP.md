@@ -1,6 +1,5 @@
 # Mappa UI di indexarr 2
 
-> **Documento storico.** La pagina `/import` e l'import da Jackett/Prowlarr sono stati rimossi il 25/10/2026: le voci che li citano descrivono la revisione precedente, non il prodotto attuale.
 
 
 Inventario delle route web e della navigazione dell'area Indexer unificata.
@@ -21,12 +20,13 @@ Una sola voce per azione. La creazione di un indexer vive solo su
 |---|---|---|
 | Home | `/` | Stato da `HomeStatus`, endpoint da copiare, ultime 24 ore, prossimo passo |
 | Cerca | `/releases` | Ricerca e cache release |
-| Indexer | `/indexers` | Elenco unico, dettaglio, aggiunta, import |
+| Indexer | `/indexers` | Elenco unico, dettaglio, aggiunta dal catalogo, import JSON |
 | App | `/applications` | App \*arr e client di download |
-| Attività | `/activity?tab=runs` | Aggiornamenti, ricerche, grab, log |
+| Attività | `/activity?tab=runs` | Aggiornamenti, release nuove, ricerche ricevute |
+| Log | `/logs` | Log interni, richieste delle app, statistiche, download |
 | Impostazioni | `/settings?section=…` | Generale, Sicurezza, Rete, Aggiornamenti, Regole, Backup, Manutenzione, Avanzate |
 
-Le voci di primo livello sono esattamente sei. Definizioni, import e regole
+Le voci di primo livello sono sette. Definizioni, import e regole
 vivono dentro Impostazioni (Avanzate e Regole) e non hanno più una voce
 propria. `/definitions`, `/rules` e `/maintenance` rispondono 302 verso la
 sezione corrispondente; `/definitions/new` e `/definitions/{id}` restano
@@ -70,12 +70,11 @@ Regole di navigazione:
 | `/applications` | App \*arr e client di download | Ancore `#clients` |
 | `/applications/new` | Nuova applicazione | — |
 | `/applications/{id}/edit` | Modifica applicazione | — |
-| `/import` | Import Prowlarr/Jackett | Anteprima, non applica |
 | `/activity?tab=runs` | Storico aggiornamenti da `indexer_history` | — |
 | `/activity?tab=logs` | Log runtime | — |
 | `/runs` | Vecchio ingresso Attività | 302 verso `/activity?tab=runs` |
 | `/runs/{id}` | Dettaglio di un aggiornamento | Resta fuori dalle tab |
-| `/logs` | Vecchio ingresso Attività | 302 verso `/activity?tab=logs` |
+| `/logs` | Pagina Log | Tab interni, richieste, statistiche, download (`?tab=`) |
 | `/logs/download` | Download del log | File, non pagina |
 | `/rules` | Regole/blocklist | Gruppo **Sistema** |
 | `/settings` | Impostazioni a sezioni | `?section=general|security|network|updates|rules|backup|maintenance|advanced` |
@@ -183,9 +182,10 @@ links:    659 checked: 659 ok, 0 failed
    `/releases?query=test` non viene testato due volte; le tab di `/activity`
    sono distinte nella navigazione perché lì la query conta.
 
-## Stato al 23 ottobre 2026
+## Stato attuale
 
-- Indexer: una sola pagina `/indexers`, senza tab.
+- Indexer: una sola pagina `/indexers`, senza tab; le fonti si aggiungono dal
+  catalogo nativo, senza import da Jackett o Prowlarr.
 - Redirect: `/sources*` e `/indexers?tab=legacy` rispondono 302.
-- Attività: run e log nelle due tab, storico da `indexer_history`.
+- Log: `/logs` con le tab interni, richieste, statistiche e download.
 - Skip link: presente in tutte le pagine.

@@ -84,8 +84,15 @@ I test non usano la rete e non toccano il database di produzione:
 
 ## CI
 
-`.github/workflows/qa.yml` esegue `make qa` su ogni push e pull request. La
-workflow usa la versione Go dichiarata in `go.mod`.
+La CI è locale: `make ci` (`scripts/ci-local.sh`) richiede un albero pulito,
+scrive il log in `ci-logs/<commit>.log` e finisce con `CI-LOCAL <commit> PASS`
+o `CI-LOCAL <commit> FAIL <passaggio>`. Esegue in ordine gofmt e `go vet`, la
+validazione delle definizioni, `make qa`, `go test`, `go test -race`, la
+compilazione per tutte le piattaforme, la compilazione dei test per Windows e
+macOS e il test nel browser; il controllo del budget di risorse (dimensione del
+binario e memoria a riposo, errore sopra 256 MiB) gira in background durante i
+test. Ogni passaggio stampa la sua durata. `.github/workflows/qa.yml` resta
+solo come avvio manuale (`workflow_dispatch`) e non parte da sola.
 
 ## Checklist manuale per la UI
 

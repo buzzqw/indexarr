@@ -17,7 +17,7 @@ sono la soglia oltre la quale una modifica viene considerata una regressione.
 | Obiettivo | Soglia |
 |---|---|
 | Binario statico (`CGO_ENABLED=0`, `-trimpath -s -w`) | < 20 MB |
-| RSS a riposo | avviso sopra 64 MiB, errore sopra 256 MiB (decisione del coordinatore, 23/10; limite alzato da 128 MiB il 27/10) |
+| RSS a riposo | avviso sopra 64 MiB, errore sopra 256 MiB (limite alzato da 128 MiB il 27/10) |
 | Latenza Torznab p95 con 50.000 release | < 50 ms |
 | Goroutine e file descriptor dopo ricerche ripetute | nessuna crescita illimitata |
 
@@ -119,7 +119,7 @@ Riepilogo rispetto agli obiettivi:
 | Obiettivo | Misurato | Esito |
 |---|---|---|
 | Binario < 20 MB | **17,3 MiB** (18.112.672 byte) | ✅ |
-| RSS a riposo (avviso 64 MiB, errore 128 MiB) | **32,4–36,5 MiB** (51,0 MiB dopo il carico a 50k) | ✅ (WP3 §9: 26,3 MiB a 60 s e 34,7 MiB a 300 s con 15 indexer) |
+| RSS a riposo (avviso 64 MiB, errore 128 MiB) | **32,4–36,5 MiB** (51,0 MiB dopo il carico a 50k) | ✅ (§9: 26,3 MiB a 60 s e 34,7 MiB a 300 s con 15 indexer) |
 | p95 Torznab < 50 ms a 50k | **20,2 ms** titolo · **17,2 ms** titolo+cat · **10,9 ms** empty · **22,7 ms** stress | ✅ |
 | Nessuna crescita di goroutine/FD | 3 → 3 goroutine, 10 → 10 FD su 1.000 ricerche | ✅ |
 
@@ -379,7 +379,7 @@ poco utile rispetto al guadagno. Sono candidati per una passata futura.
 
 ---
 
-## 9. WP3 — memoria a riposo (23 ottobre 2026)
+## 9. Memoria a riposo (23 ottobre 2026)
 
 Questa sezione misura il ritorno sotto il vecchio budget del manifesto (**RSS <
 40 MiB a riposo**), oggi sostituito dalla soglia con avviso a 64 MiB ed errore a
@@ -416,8 +416,8 @@ precedenti era la seconda voce dopo i template.
 
 Dopo il campione a 75 s (backup + profilo heap) l'RSS dell'istanza ottimizzata
 scende da solo a **33,7–34,3 MiB** in circa un minuto e resta lì; il valore a
-300 s include un nuovo profilo heap. Il campione a 300 s è stato accettato dal
-coordinatore come misura finale; non è stato prolungato a 10/30 minuti.
+300 s include un nuovo profilo heap. Il campione a 300 s è stato accettato
+come misura finale; non è stato prolungato a 10/30 minuti.
 
 ### 9.3 Consumatori dopo la correzione
 

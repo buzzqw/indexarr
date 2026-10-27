@@ -91,8 +91,8 @@ finché non viene osservata meglio.
 ## Lista italiana
 
 `italian: true` è un segnale esplicito per il filtro rapido «Italiani»,
-indipendente dalla lingua dichiarata dal sito. Include la lista prioritaria del
-coordinatore.
+indipendente dalla lingua dichiarata dal sito. Include la lista prioritaria dei
+siti italiani.
 
 | Sito | Famiglia | Stato | Note |
 | --- | --- | --- | --- |

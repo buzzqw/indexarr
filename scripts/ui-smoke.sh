@@ -418,7 +418,7 @@ fi
 say ""
 say "==> routes"
 
-# Six-item map (UI-GUIDE §3): Home, Cerca, Indexer, App, Attività, Impostazioni.
+# Sidebar map (docs/UI-RULES.md §2): Home, Cerca, Indexer, App, Attività, Log, Impostazioni.
 # Old URLs must answer 302 instead of disappearing.
 check_html_route "/"
 check_html_route "/releases"
@@ -458,7 +458,7 @@ check_html_route "/setup?step=4"
 # New information architecture: still pending while the redesign is in progress.
 check_activity_route "/activity?tab=runs"
 check_activity_route "/activity?tab=logs"
-# WP17 tabs: the feed and the requests received from apps.
+# Activity tabs: the feed and the requests received from apps.
 check_html_route "/activity?tab=feed"
 check_html_route "/activity?tab=searches"
 

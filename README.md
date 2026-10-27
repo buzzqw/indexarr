@@ -577,7 +577,7 @@ directory temporanea e stampa il piano, senza fermare il servizio.
 ./scripts/upgrade.sh --rollback --yes      # ripristina l'ultimo backup
 ```
 
-Comando completo per il coordinatore, su una sola riga:
+Comando completo, su una sola riga:
 
 ```bash
 cd /home/andres/indexarr && ./scripts/upgrade.sh --apply --yes

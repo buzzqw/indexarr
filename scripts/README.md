@@ -7,7 +7,7 @@ Lo script di aggiornamento conserva il database e i dati vivi. Di default è un
 temporanea e stampa il piano, senza fermare il servizio e senza installare
 nulla.
 
-Comando esatto per il coordinatore, su una sola riga:
+Comando esatto, su una sola riga:
 
 ```bash
 cd /home/andres/indexarr && ./scripts/upgrade.sh --apply --yes

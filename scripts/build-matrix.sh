@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Cross-compile matrix for indexarr (WP12).
+# Cross-compile matrix for indexarr.
 #
 # Builds the optimised, pure-Go binaries (the SQLite driver is modernc.org,
-# so CGO is never needed) for every target listed in docs/NEXT-STEPS.md §WP12:
+# so CGO is never needed) for every supported target:
 #
 #   linux/amd64 linux/arm64 linux/arm/7 linux/arm/6 linux/386 linux/riscv64
 #   windows/amd64 windows/arm64 darwin/amd64 darwin/arm64

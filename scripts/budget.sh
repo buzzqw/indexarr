@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Resource budget check for indexarr (WP12).
+# Resource budget check for indexarr.
 #
 # Two independent gates:
 #
@@ -14,7 +14,7 @@
 #
 # The RSS policy has two levels: above 64 MiB the script prints a WARNING but
 # succeeds, above 256 MiB it fails. Exactly 64 MiB is still OK. These are the
-# coordinator's thresholds after the memory constraint was relaxed; the project
+# thresholds chosen after the memory constraint was relaxed; the project
 # still avoids unlimited caches and loads data in streams.
 #
 # Usage: scripts/budget.sh [--keep]

@@ -27,7 +27,7 @@ import (
 // ------------------------------------------------------------------ UI models
 
 // statusDot is the shared status picture of an indexer, an app or a client.
-// State is one of ok, problem, disabled and testing (UI-GUIDE §5).
+// State is one of ok, problem, disabled and testing (docs/UI-RULES.md §4).
 type statusDot struct {
 	State string
 	Label string
@@ -718,7 +718,7 @@ type sitePickerView struct {
 }
 
 // catalogCategoryOrder is the order the filters and row badges use. It is the
-// list in UI-GUIDE §4.3, not the order of the definition file.
+// list in docs/UI-RULES.md §3, not the order of the definition file.
 var catalogCategoryOrder = []struct {
 	Key      string
 	LabelKey string

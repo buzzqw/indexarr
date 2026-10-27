@@ -29,7 +29,7 @@ fi
 go test "${TEST_FLAGS[@]}" ./...
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/indexarr-qa.XXXXXX")"
-# Keep the vault key out of the developer's real user config: WP1 resolves
+# Keep the vault key out of the developer's real user config: the vault resolves
 # UserConfigDir()/indexarr/master.key when no old <db>.key file exists.
 export XDG_CONFIG_HOME="$TMP/config"
 mkdir -p "$XDG_CONFIG_HOME"

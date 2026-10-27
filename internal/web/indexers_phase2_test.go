@@ -16,7 +16,7 @@ import (
 
 // visibleMain returns the <main> block with every <details> block removed and
 // all tags stripped. It is the text a sighted user reads without opening
-// "Advanced", which is exactly the perimeter of UI-GUIDE rule 1.
+// "Advanced", which is exactly the perimeter of UI-RULES rule 1.
 func visibleMain(t *testing.T, body string) string {
 	t.Helper()
 	start := strings.Index(body, `<main `)

@@ -157,7 +157,7 @@ func indexerConfigLatest(configJSON string) (bool, bool) {
 	return value, true
 }
 
-// dotState maps the model to the status-dot scale of UI-GUIDE §5. A degraded
+// dotState maps the model to the status-dot scale of docs/UI-RULES.md §4. A degraded
 // site is still a problem the operator has to see, but it keeps its own label
 // and colour.
 func dotState(view indexerHealthView) string {

@@ -10,7 +10,7 @@
 - [MirCrew](MIRCREW.md) — definizione nativa, Smartfeed, sessione FlareSolverr e policy dei ringraziamenti.
 - [Catalogo dei siti](CATALOG.md) — voci leggere da un'istantanea storica, famiglie, italiani, stati e prove live.
 - [Mappa UI](internal/UI-MAP.md) — route dell'interfaccia, redirect e smoke test.
-- [Guida al redesign dell'interfaccia](UI-GUIDE.md) — regole, struttura a 6 voci, specifica pagina per pagina e fasi per gli agenti.
+- [Regole dell'interfaccia](UI-RULES.md) — regole per ogni pagina, struttura del menu, aggiunta di un indexer e componenti.
 - [Prestazioni](internal/PERFORMANCE.md) — benchmark, memoria, latenza e ottimizzazioni.
 - [Compatibilità](COMPATIBILITY.md) — MirCrew, Torznab, RSS e fonti native; Jackett/Prowlarr sono sostituiti.
 - [QA e test](QA.md) — suite `go test`, smoke test end-to-end e checklist mobile.

@@ -23,8 +23,8 @@ Questo documento descrive le due strade disponibili in indexarr:
 > riguardano restano come riferimento storico.
 
 La regola non cambia in nessuna delle due: **una ricerca non ringrazia mai**.
-Il ringraziamento è un'azione visibile sul forum, fatta con l'account del
-coordinatore, e avviene solo quando un client sceglie una release e ne chiede il
+Il ringraziamento è un'azione visibile sul forum, fatta con l'account
+dell'utente, e avviene solo quando un client sceglie una release e ne chiede il
 download.
 
 ---
@@ -188,12 +188,12 @@ FlareSolverr finto.
   I selettori sono stati confrontati con `mircrew-indexer` su pagine reali:
   link «Grazie» = `a[href*="thanks="]` (per-post, `lnk_thanks_post...`), magnet =
   `a[href^="magnet:"]` con `magnetBtn`, titolo/forum/data come nella fixture.
-  Catture reali (prima/dopo il «grazie») in `/tmp/opencode/mircrew-capture/`,
-  fuori dal repository e mai committate perché contengono utenti reali; topic
+  Le catture reali (prima/dopo il «grazie») restano fuori dal repository e
+  non vengono mai committate perché contengono utenti reali; topic
   ringraziati nella prova: 226759 (Silo S03, nuovo) e 226850 (Silo S03, già
   ringraziato, riusato).
 - **Stato: verificata (2026-10-26).** Login, ricerca, grab normale e grab da
-  Smartfeed sono stati provati dal vivo con l'account del coordinatore.
+  Smartfeed sono stati provati dal vivo con l'account dell'utente.
   - Grab normale: *Silo - Stagione 3 (2026) [COMPLETA] 1080p H264 …*, 302 al
     magnet in 2,2 s, con ringraziamento del topic.
   - Grab da Smartfeed: *Inside Man (2006) 1080p H264 …*, topic pending elencato
@@ -207,7 +207,7 @@ FlareSolverr finto.
 - Il login dipende dal tema phpBB `prosilver` (nomi dei campi e link «Grazie»).
   Un cambio di tema richiede di aggiornare i selettori.
 - Il numero di ringraziamenti dal vivo va tenuto al minimo: la prova reale deve
-  usare **al massimo 3 topic scelti apposta**, come da incarico.
+  usare **al massimo 3 topic scelti apposta**.
 
 ### Promozione a «verificata» (fatta il 26/10/2026)
 
