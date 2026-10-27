@@ -242,6 +242,34 @@ Se un account arriva (vault dell'indexer), il percorso è quello solito: si
 osservano ricerca, dettaglio e grab con la sessione, si salvano le fixture e si
 scrive la definizione. Senza, l'unica cosa onesta è lasciarle in coda.
 
+### Salute delle definizioni: prova dal vivo del 27/10
+
+Ogni definizione con una sezione `health` è stata eseguita davvero (reach +
+auth + ricerca) con il FlareSolverr locale. Su **109** definizioni:
+
+| Esito | Definizioni | Dettaglio |
+| --- | ---: | --- |
+| Ricerca riuscita | **69** | contando `rutracker` dopo la correzione |
+| Nessuna sezione `search` | **20** | definizioni feed/latest o solo API: la ricerca non fa parte del contratto, non sono errori |
+| Servono impostazioni | **16** | private o parametriche (`username`, `cookie`, `url`): senza non si aprono |
+| Lente ma funzionanti | **2** | `btdirectory` e `mixtapetorrent` risolvono il dettaglio durante la ricerca e superano i 90 s; le pagine hanno 20 righe e 10 risultati |
+| Non funzionanti | **2** | `torrentbyte` e `torrentsome`, ora `degradata` |
+
+Le due regressioni misurate:
+
+- **torrentbyte**: la home risponde `403` anche attraverso il solver, che
+  restituisce una pagina `403 Forbidden` da 698 byte; la ricerca non produce più
+  righe. La definizione resta nel catalogo come `degradata` finché qualcuno non
+  rilegge il sito.
+- **torrentsome**: il `POST /topic/index` con `_csrf` e `keywords` ora risponde
+  `400` (funzionava il 25/10); il sito è vivo (108 KB sulla home), è cambiata la
+  ricerca. Anche questa è `degradata`.
+
+Corretta invece **rutracker**: il dominio risponde `403` a un client normale ma
+la ricerca è leggibile da un browser (112 KB, 27 magnet). La definizione ora
+dichiara una sessione FlareSolverr (`name_prefix: indexarr-rutracker`) e il test
+dal vivo passa in 4,1 s.
+
 ## Stati onesti
 
 - **`verificata`** (voce leggera): è stato fatto un `GET` reale sulla home page,

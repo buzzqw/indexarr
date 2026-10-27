@@ -123,6 +123,13 @@ func TestBuiltinsValid(t *testing.T) {
 		"btetree":            true,
 		"damagnet":           true,
 	}
+	// A degraded entry keeps its definition and its fixtures: the live sweep
+	// found the site broken, so it is hidden from users until someone re-reads
+	// it. It is neither verified nor a draft.
+	degraded := map[string]bool{
+		"torrentbyte": true,
+		"torrentsome": true,
+	}
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
 		if seen[entry.ID] {
@@ -139,6 +146,9 @@ func TestBuiltinsValid(t *testing.T) {
 		wantState := "bozza"
 		if verified[entry.ID] {
 			wantState = "verificata"
+		}
+		if degraded[entry.ID] {
+			wantState = "degradata"
 		}
 		if entry.State != wantState {
 			t.Errorf("%s: state = %q, want %q", entry.ID, entry.State, wantState)

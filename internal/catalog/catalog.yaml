@@ -426,9 +426,9 @@ definitions:
     note: "Public PandaCD music search; anonymous torrent endpoint and per-format size, real fixture."
   - id: torrentsome
     file: definitions/torrentsome.yaml
-    state: verificata
+    state: degradata
     author: indexarr
-    note: "Public Torrentsome search with CSRF preflight; real fixture."
+    note: "The CSRF search POST now answers 400 (site changed since 2026-10-25): the definition needs a re-read."
   - id: torrenttip
     file: definitions/torrenttip.yaml
     state: verificata
@@ -439,7 +439,7 @@ definitions:
     state: verificata
     author: indexarr
     note: "Public UIndex search via FlareSolverr; real fixture."
-  - {id: torrentbyte, file: definitions/torrentbyte.yaml, state: verificata, author: indexarr, note: 'Public TorrentByte search via FlareSolverr; magnet and size in the result row, real fixture.'}
+  - {id: torrentbyte, file: definitions/torrentbyte.yaml, state: degradata, author: indexarr, note: 'Cloudflare answers the solver with a 698-byte 403 page: the search returns no rows, the definition needs a re-read.'}
   - {id: btdirectory, file: definitions/btdirectory.yaml, state: verificata, author: indexarr, note: 'Public BTdirectory DHT search via FlareSolverr; magnet on the detail page, real fixture.'}
   - {id: ebookbay, file: definitions/ebookbay.yaml, state: verificata, author: indexarr, note: 'Public EBookBay search; .torrent and size from the detail page, real fixture.'}
   - {id: sexypics, file: definitions/sexypics.yaml, state: verificata, author: indexarr, note: 'Public adult Sexy-Pics search via FlareSolverr; magnet and size in the result row, real fixture.'}

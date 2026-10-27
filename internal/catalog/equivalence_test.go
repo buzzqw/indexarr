@@ -975,7 +975,11 @@ func TestRuTrackerNativeFixture(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	connector := nativeConnector(t, "rutracker", server.URL)
+	// The definition runs through a FlareSolverr session in production; this
+	// test only checks the fixture extraction, so the session is dropped.
+	def := parseDefinition(t, "rutracker")
+	def.Session = nil
+	connector := nativeConnectorFromDefinition(t, def, server.URL)
 	items, err := connector.Search(context.Background(), engine.SearchRequest{
 		Mode: engine.ModeSearch, Query: "matrix", Limit: 10,
 	})

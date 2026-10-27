@@ -15,8 +15,15 @@ meta:
   description: Public Russian TorrentPier tracker with magnets in the result row.
   urls:
     - http://rutracker.ru/
-  updated: "2026-10-25"
+  updated: "2026-10-27"
   latest: false
+
+# The host answers 403 to a plain client since 2026-10-27; the search page is
+# readable through a real browser (112 KB, 27 magnets), so every request of this
+# indexer goes through one FlareSolverr session.
+session:
+  mode: flaresolverr
+  name_prefix: indexarr-rutracker
 
 capabilities:
   search: [q]

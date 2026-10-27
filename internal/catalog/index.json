@@ -16574,13 +16574,13 @@
       "software",
       "xxx"
     ],
-    "state": "verificata",
+    "state": "degradata",
     "hosts": [
       "torrentbyte.cc"
     ],
     "url": "https://torrentbyte.cc/",
     "source": "native",
-    "proposable": true,
+    "proposable": false,
     "latest": false
   },
   {
@@ -16862,13 +16862,13 @@
     "language": "ko-KR",
     "type": "public",
     "protocol": "torrent",
-    "state": "verificata",
+    "state": "degradata",
     "hosts": [
       "torrentsome269.com"
     ],
     "url": "https://torrentsome269.com/",
     "source": "native",
-    "proposable": true,
+    "proposable": false,
     "latest": false
   },
   {
