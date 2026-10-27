@@ -57,6 +57,12 @@ func extractHTMLRows(body []byte, schema definition.Response, base *url.URL) ([]
 }
 
 func extractHTMLField(row *html.Node, field definition.Field) (string, error) {
+	if field.Self {
+		if field.Attr == "" || strings.EqualFold(field.Attr, "text") {
+			return nodeText(row), nil
+		}
+		return htmlAttr(row, field.Attr), nil
+	}
 	for _, raw := range field.Selector {
 		selector, err := cascadia.Compile(raw)
 		if err != nil {

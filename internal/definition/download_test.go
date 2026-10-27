@@ -137,7 +137,7 @@ func TestDownloadSectionValidation(t *testing.T) {
   extract:
     - magnet: { attr: href }
 `,
-			fragment: "download.extract[0].magnet: needs selector, path or body",
+			fragment: "download.extract[0].magnet: needs selector, path, body or self",
 		},
 		{
 			name: "unknown target type",

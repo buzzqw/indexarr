@@ -27,7 +27,12 @@ func TestDDUnlimitedFixtures(t *testing.T) {
 		case "/search.php":
 			serveFile(t, w, "ddunlimited/search.html")
 		case "/viewtopic.php":
-			serveFile(t, w, "ddunlimited/topic.html")
+			switch r.URL.Query().Get("t") {
+			case "61463", "3941485":
+				serveFile(t, w, "ddunlimited/index.html")
+			default:
+				serveFile(t, w, "ddunlimited/topic.html")
+			}
 		default:
 			http.NotFound(w, r)
 		}
@@ -92,7 +97,12 @@ func TestDDUnlimitedTorrentFallback(t *testing.T) {
 		case "/search.php":
 			serveFile(t, w, "ddunlimited/search.html")
 		case "/viewtopic.php":
-			serveFile(t, w, "ddunlimited/topic-torrent.html")
+			switch r.URL.Query().Get("t") {
+			case "61463", "3941485":
+				serveFile(t, w, "ddunlimited/index.html")
+			default:
+				serveFile(t, w, "ddunlimited/topic-torrent.html")
+			}
 		default:
 			http.NotFound(w, r)
 		}

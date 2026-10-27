@@ -66,6 +66,8 @@ type DefinitionConnector struct {
 	downloadCache   *downloadCache
 	resolveFailures atomic.Int64
 	flare           *flareSessionState
+	indexMu         sync.Mutex
+	indexCache      map[string]indexCacheEntry
 }
 
 // NewDefinitionConnector validates the definition's settings and prepares the
@@ -164,6 +166,9 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 		appendKey: strategy == "api_key" && !definitionUsesAnySetting(def, "api_key", "apikey"),
 	}
 	connector.caps = connector.buildCapabilities()
+	if def.Search.Index != nil {
+		connector.indexCache = make(map[string]indexCacheEntry)
+	}
 	if def.Download != nil {
 		connector.downloadCache = newDownloadCache(defaultDownloadCacheEntries, defaultDownloadCacheTTL)
 	}
@@ -200,6 +205,9 @@ func (c *DefinitionConnector) Search(ctx context.Context, req SearchRequest) ([]
 	}
 	if !c.caps.Supports(req.Mode) {
 		return nil, fmt.Errorf("definition %q: search mode %q is not declared", c.def.Meta.ID, req.Mode)
+	}
+	if c.def.Search.Index != nil {
+		return c.searchIndex(ctx, req, req.FirstPageOnly)
 	}
 	return c.search(ctx, req, req.FirstPageOnly)
 }
@@ -625,7 +633,13 @@ func (c *DefinitionConnector) testSearch(ctx context.Context) (bool, string) {
 			minRows = c.def.Health.MinRows
 		}
 	}
-	items, err := c.search(ctx, SearchRequest{Mode: ModeSearch, Query: query}, true)
+	var items []Item
+	var err error
+	if c.def.Search.Index != nil {
+		items, err = c.searchIndex(ctx, SearchRequest{Mode: ModeSearch, Query: query}, true)
+	} else {
+		items, err = c.search(ctx, SearchRequest{Mode: ModeSearch, Query: query}, true)
+	}
 	if err != nil {
 		return false, err.Error()
 	}

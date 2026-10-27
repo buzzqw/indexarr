@@ -322,13 +322,23 @@ func validateSearch(search Search, add func(string, ...any)) {
 			}
 		}
 	}
-	if search.Request.Get != "" && search.Request.Post != "" {
-		add("search.request: get and post are mutually exclusive")
-	} else if search.Request.Get == "" && search.Request.Post == "" {
-		add("search.request: must have get or post")
+	if search.Index == nil {
+		if search.Request.Get != "" && search.Request.Post != "" {
+			add("search.request: get and post are mutually exclusive")
+		} else if search.Request.Get == "" && search.Request.Post == "" {
+			add("search.request: must have get or post")
+		}
+		validateResponse(search.Response, "search.response", add)
+	} else {
+		validateSearchIndex(*search.Index, add)
+		// The normal request/response stays as an optional fallback.
+		if search.Request.Get != "" || search.Request.Post != "" || len(search.Response.Fields) > 0 {
+			if search.Request.Get != "" && search.Request.Post != "" {
+				add("search.request: get and post are mutually exclusive")
+			}
+			validateResponse(search.Response, "search.response", add)
+		}
 	}
-
-	validateResponse(search.Response, "search.response", add)
 
 	if search.Pagination.Type != "" && !allowedPaginationTypes[search.Pagination.Type] {
 		add("search.pagination.type: must be one of none, page, offset, cursor")
@@ -339,6 +349,36 @@ func validateSearch(search Search, add func(string, ...any)) {
 	default:
 		add("search.keywords_format: must be one of sxxeyy, 1x05, separate")
 	}
+}
+
+func validateSearchIndex(index SearchIndex, add func(string, ...any)) {
+	if len(index.Pages) == 0 {
+		add("search.index.pages: at least one page is required")
+	}
+	letters := make(map[string]int, len(index.Pages))
+	for i, page := range index.Pages {
+		if strings.TrimSpace(page.Get) == "" {
+			add("search.index.pages[%d].get: is required", i)
+		}
+		letter := strings.ToUpper(strings.TrimSpace(page.Letter))
+		if letter != "" && letter != "#" && (len(letter) != 1 || letter < "A" || letter > "Z") {
+			add("search.index.pages[%d].letter: must be empty, # or A-Z", i)
+		}
+		if letter != "" {
+			if first, ok := letters[letter]; ok {
+				add("search.index.pages[%d].letter: duplicate of pages[%d] (%s)", i, first, letter)
+			} else {
+				letters[letter] = i
+			}
+		}
+		if page.Standard != 0 && (page.Standard < 1000 || page.Standard > 8999) {
+			add("search.index.pages[%d].standard: must be between 1000 and 8999", i)
+		}
+	}
+	if index.MaxTopics < 0 || index.MaxTopics > 20 {
+		add("search.index.max_topics: must be between 1 and 20 (0 uses the default 5)")
+	}
+	validateResponse(index.Response, "search.index.response", add)
 }
 
 // validateResponse checks the row/field description shared by search and the
@@ -444,7 +484,11 @@ func validateDownload(download *Download, d *Definition, add func(string, ...any
 		from = "details"
 	}
 	if _, ok := d.Search.Response.Fields[from]; !ok {
-		add("download.from: field %q is not declared in search.response.fields", from)
+		// An index-only search has no response fields: the index provides the
+		// details URL directly.
+		if !(d.Search.Index != nil && from == "details") {
+			add("download.from: field %q is not declared in search.response.fields", from)
+		}
 	}
 
 	if download.Title != nil {
@@ -513,8 +557,8 @@ func validateDownloadBefore(before *DownloadBefore, add func(string, ...any)) {
 }
 
 func validateDownloadField(prefix string, field Field, add func(string, ...any)) {
-	if !field.Body && len(field.Selector) == 0 && strings.TrimSpace(field.Path) == "" {
-		add("%s: needs selector, path or body", prefix)
+	if !field.Body && !field.Self && len(field.Selector) == 0 && strings.TrimSpace(field.Path) == "" {
+		add("%s: needs selector, path, body or self", prefix)
 	}
 	for i, selector := range field.Selector {
 		if strings.TrimSpace(selector) == "" {

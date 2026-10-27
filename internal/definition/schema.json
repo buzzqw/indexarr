@@ -434,6 +434,9 @@
           ],
           "default": "sxxeyy",
           "description": "How the TV episode marker is appended to query.keywords; separate leaves query.season and query.ep to the template."
+        },
+        "index": {
+          "$ref": "#/$defs/searchIndex"
         }
       }
     },
@@ -872,6 +875,10 @@
         "body": {
           "type": "boolean",
           "description": "Read the whole details response and scan the text (for pages that build links in JavaScript)."
+        },
+        "self": {
+          "type": "boolean",
+          "description": "Read the row node itself (an index page is a list of anchors)."
         }
       }
     },
@@ -962,6 +969,54 @@
         "type": "array",
         "items": {
           "type": "string"
+        }
+      }
+    },
+    "searchIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pages",
+        "response"
+      ],
+      "properties": {
+        "max_topics": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20,
+          "description": "Topics opened for one query; 0 uses 5."
+        },
+        "response": {
+          "$ref": "#/$defs/response"
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/indexPage"
+          }
+        }
+      }
+    },
+    "indexPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "get"
+      ],
+      "properties": {
+        "get": {
+          "type": "string"
+        },
+        "letter": {
+          "type": "string",
+          "pattern": "^$|^[A-Za-z#]$",
+          "description": "Empty for a page that covers every title, otherwise the letter it lists."
+        },
+        "standard": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 8999
         }
       }
     }

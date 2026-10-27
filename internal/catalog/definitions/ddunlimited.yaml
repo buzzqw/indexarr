@@ -109,6 +109,50 @@ auth:
   refresh_after: 6h
 
 search:
+  # The forum search has a flood control. These alphabetical lists are the
+  # local index: the TV "segnalazioni" list (one topic, not every release) and
+  # the movie letter topics of "Lista Titoli Globale" (f=1988). The engine
+  # fetches the page for the query's mode and letter, matches the title
+  # locally and opens only the matching topics. search.php remains the
+  # fallback when the list has no title, which is common for old TV seasons.
+  index:
+    max_topics: 5
+    response:
+      type: html
+      rows: { selector: "a.postlink-local" }
+      fields:
+        title:   { self: true, filters: [trim] }
+        details: { self: true, attr: href, type: url }
+      required: [title, details]
+    pages:
+      - { get: "/viewtopic.php?t=61463", standard: 5000 }
+      - { get: "/viewtopic.php?t=3941487", letter: "#", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941486", letter: "A", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941485", letter: "B", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941484", letter: "C", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941483", letter: "D", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941482", letter: "E", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941481", letter: "F", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941480", letter: "G", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941479", letter: "H", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941478", letter: "I", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941477", letter: "J", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941476", letter: "K", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941475", letter: "L", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941474", letter: "M", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941473", letter: "N", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941472", letter: "O", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941471", letter: "P", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941470", letter: "Q", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941469", letter: "R", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941468", letter: "S", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941467", letter: "T", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941466", letter: "U", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941465", letter: "V", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941464", letter: "W", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941463", letter: "X", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941462", letter: "Y", standard: 2000 }
+      - { get: "/viewtopic.php?t=3941461", letter: "Z", standard: 2000 }
   request:
     get: /search.php
     params:

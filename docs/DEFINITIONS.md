@@ -572,6 +572,40 @@ un riferimento cifrato, che un client non riconoscerebbe come eD2k. Il limite
 tiene la ricerca legata a poche pagine; l'archivio completo lo costruisce il
 run periodico sulle liste dei forum.
 
+### Ricerca su indice locale (`search.index`)
+
+Alcuni forum non hanno una ricerca utilizzabile (flood control) ma pubblicano
+elenchi alfabetici di titoli. `search.index` sostituisce la richiesta di
+ricerca con una lettura locale di quelle pagine:
+
+```yaml
+search:
+  index:
+    max_topics: 5
+    response:
+      type: html
+      rows: { selector: "a.postlink-local" }
+      fields:
+        title:   { self: true }
+        details: { self: true, attr: href, type: url }
+    pages:
+      - { get: /viewtopic.php?t=61463, standard: 5000 }        # TV, una pagina
+      - { get: /viewtopic.php?t=3941486, letter: A, standard: 2000 }
+      - { get: /viewtopic.php?t=3941485, letter: B, standard: 2000 }
+      # ... una pagina per lettera
+```
+
+Il motore legge solo le pagine senza `letter` e quella della prima lettera
+della query (`#` per numeri e simboli), estrae le coppie titolo/URL, confronta
+il titolo in locale (tollerando punteggiatura e parole comuni) e apre soltanto
+i primi `max_topics` topic. Ogni pagina è tenuta in cache per 30 minuti. Se
+nessun titolo corrisponde e la definizione ha anche una `search.request`
+normale, il motore usa quella come ripiego. Le pagine d'indice non diventano
+release: entrano in archivio solo i link trovati aprendo i topic scelti.
+
+`self: true` in un campo HTML legge il nodo della riga stessa invece di un
+discendente: serve quando la riga è già l'elemento `<a>` (elenchi di link).
+
 ## `download`
 
 Risolve il magnet, il link `.torrent` o il link `ed2k://` da una pagina di

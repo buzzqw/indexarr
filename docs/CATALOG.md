@@ -45,9 +45,16 @@ stato espanso in un file per episodio. I pack di stagione nascondono i link in
 un array JavaScript (`filearray[...]`): l'estrattore `body: true` li legge tutti
 e li deduplica per MD4; verificato sul topic di «The Last of Us» stagione 1
 (10 episodi, S01E01 da 15.928.363.670 byte). La ricerca del forum ha un flood control
-(«attendi qualche minuto»): l'archivio periodico legge quattro liste (Movies
-HD, Movies UHD, SerieTV HD ITA, SerieTV UHD), due pagine da 25 topic ciascuna,
-e non la ricerca. Il protocollo eD2k è escluso dalla sincronizzazione con Sonarr,
+(«attendi qualche minuto»): la ricerca live usa un **indice locale** invece di
+`search.php`, l'elenco alfabetico delle serie (`t=61463`, 6.521 link) e le 27
+pagine «Lista Titoli Globale» dei film (`f=1988`, una per lettera). Il motore
+legge la pagina TV e quella della lettera cercata, confronta il titolo in
+locale e apre solo i primi 5 topic; `search.php` resta il ripiego. La lista TV
+è l'elenco delle **segnalazioni**, non comprende tutte le release: per le serie
+vecchie o non segnalate il ripiego è la ricerca del forum (con il suo flood
+control), mentre la lista film `f=1988` è completa per lettera. L'archivio
+periodico legge quattro liste (Movies HD, Movies UHD, SerieTV HD ITA, SerieTV
+UHD), due pagine da 25 topic ciascuna, e non la ricerca. Il protocollo eD2k è escluso dalla sincronizzazione con Sonarr,
 Radarr e gli altri programmi Servarr; il client aMule (`kind: amule`) riceve i
 link dalla Web API.
 

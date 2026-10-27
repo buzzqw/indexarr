@@ -277,6 +277,29 @@ type Search struct {
 	// {{ query.keywords }}: "sxxeyy" (default), "1x05" or "separate". With
 	// "separate" the template can use query.season and query.ep itself.
 	KeywordsFormat string `yaml:"keywords_format,omitempty" json:"keywords_format,omitempty"`
+	// Index turns the search into a local lookup on large alphabetical lists
+	// (a forum topic or a set of letter topics). The lists are cached and only
+	// the matching topics are opened; the site search stays as a fallback.
+	Index *SearchIndex `yaml:"index,omitempty" json:"index,omitempty"`
+}
+
+// SearchIndex describes one or more pages that list titles and their details
+// URLs. The engine fetches the page whose letter matches the query (plus every
+// page without a letter), matches the query locally and opens only the chosen
+// topics.
+type SearchIndex struct {
+	Pages     []IndexPage `yaml:"pages" json:"pages"`
+	Response  Response    `yaml:"response" json:"response"`
+	MaxTopics int         `yaml:"max_topics,omitempty" json:"max_topics,omitempty"`
+}
+
+// IndexPage is one page of a title index. Letter is empty for a page that
+// covers every title (the TV list); otherwise it is "#" or A-Z and the engine
+// fetches it only for a query that starts with that character.
+type IndexPage struct {
+	Get      string `yaml:"get" json:"get"`
+	Letter   string `yaml:"letter,omitempty" json:"letter,omitempty"`
+	Standard int    `yaml:"standard,omitempty" json:"standard,omitempty"`
 }
 
 // Preflight is a small GET/POST request executed once before a search. It
@@ -398,7 +421,10 @@ type Field struct {
 	// Body reads the whole details response instead of one node. It is meant
 	// for pages that build their links in JavaScript (a `filearray[...]` of
 	// ed2k:// URIs): the extractor scans the text and keeps every link.
-	Body    bool     `yaml:"body,omitempty" json:"body,omitempty"`
+	Body bool `yaml:"body,omitempty" json:"body,omitempty"`
+	// Self reads the row node itself instead of a descendant. An index page
+	// is a list of anchors, so title and href belong to the row.
+	Self    bool     `yaml:"self,omitempty" json:"self,omitempty"`
 	Filters []Filter `yaml:"filters,omitempty" json:"filters,omitempty"`
 	Layouts []string `yaml:"layouts,omitempty" json:"layouts,omitempty"`
 }
