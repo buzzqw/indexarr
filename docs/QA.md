@@ -91,7 +91,7 @@ validazione delle definizioni, `make qa`, `go test`, `go test -race`, la
 compilazione per tutte le piattaforme, la compilazione dei test per Windows e
 macOS e il test nel browser; il controllo del budget di risorse (dimensione del
 binario e memoria a riposo, errore sopra 256 MiB) gira in background durante i
-test. Ogni passaggio stampa la sua durata. `.github/workflows/qa.yml` resta
+test. Ogni passaggio stampa la sua durata. Tutti i file temporanei (database dei test, binari di `go test`, compilazioni per le altre piattaforme, server del budget, profilo del browser) stanno in una cartella in RAM sotto `/dev/shm` (`CI_TMPFS` per sceglierne un'altra), cancellata alla fine anche se un passaggio fallisce; la cache di compilazione di Go resta su disco. `.github/workflows/qa.yml` resta
 solo come avvio manuale (`workflow_dispatch`) e non parte da sola.
 
 ## Checklist manuale per la UI

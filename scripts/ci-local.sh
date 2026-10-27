@@ -49,6 +49,18 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   finish_fail dirty
 fi
 
+# Everything temporary lives in RAM: test databases, the binaries go test
+# builds, the cross builds, the budget server and the browser profile. The
+# directory is removed on exit, also after a failure. CI_TMPFS picks another
+# tmpfs; without /dev/shm the system temporary directory is used. The Go build
+# cache stays on disk: it is what makes a second run fast.
+CI_TMPFS="${CI_TMPFS:-/dev/shm}"
+[[ -d "$CI_TMPFS" && -w "$CI_TMPFS" ]] || CI_TMPFS="${TMPDIR:-/tmp}"
+CI_TMP="$(mktemp -d "$CI_TMPFS/indexarr-ci-$COMMIT.XXXXXX")"
+trap 'rm -rf "$CI_TMP"' EXIT
+export TMPDIR="$CI_TMP" GOTMPDIR="$CI_TMP"
+echo "temporary files in $CI_TMP ($(df --output=fstype "$CI_TMP" 2>/dev/null | tail -n 1))"
+
 # The production-copy test is environmental and is skipped only when the
 # caller explicitly opts in. The report and the local log state this.
 SKIP_PRODUCTION_COPY="${CI_SKIP_PRODUCTION_COPY:-0}"
@@ -76,16 +88,16 @@ run_job "def-validate" make def-validate
 # RSS of an idle process does not depend on the load of the others, and the
 # binary-size gate is a file size. Its output is appended to the log and its
 # result checked before the end.
-BUDGET_LOG="$(mktemp "$LOG_DIR/.budget-$COMMIT.XXXXXX")"
+BUDGET_LOG="$(mktemp "$CI_TMP/budget.XXXXXX")"
 BUDGET_STARTED=$SECONDS
 ./scripts/budget.sh >"$BUDGET_LOG" 2>&1 &
 BUDGET_PID=$!
 run_job "qa" make qa
 run_job "go test" go test "${TEST_FLAGS[@]}" ./...
 run_job "go test -race" go test "${RACE_FLAGS[@]}" ./...
-# The matrix only has to compile: its 12 binaries (about 360 MB) go to a
-# temporary directory removed right after, instead of piling up in bin/matrix.
-MATRIX_OUT="$(mktemp -d "$LOG_DIR/.matrix-$COMMIT.XXXXXX")"
+# The matrix only has to compile: its 12 binaries (about 360 MB) go to the
+# RAM directory and are removed right after, instead of piling up in bin/matrix.
+MATRIX_OUT="$(mktemp -d "$CI_TMP/matrix.XXXXXX")"
 run_job "build matrix" env INDEXARR_MATRIX_OUT="$MATRIX_OUT" ./scripts/build-matrix.sh
 rm -rf "$MATRIX_OUT"
 run_job "test compile windows" env GOOS=windows CGO_ENABLED=0 go vet ./...
