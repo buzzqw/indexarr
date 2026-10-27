@@ -19,8 +19,11 @@ type SeedersCandidate struct {
 }
 
 // SeedersCandidates selects copies that are worth refreshing: enabled,
-// non-experimental definitions, releases published or seen in the last two
-// weeks (or grabbed at least once), and a seeders check older than the TTL.
+// non-experimental definitions, torrent releases published or seen in the last
+// two weeks (or grabbed at least once), and a seeders check older than the
+// TTL. An eD2k or Usenet release has no swarm to count: searching its site
+// again by title only costs requests (on DDUnlimited, one browser session per
+// file and its flood control).
 // Feed-only and LiveExcluded sources are filtered by the caller, which knows
 // the connector capabilities.
 func (s *Store) SeedersCandidates(ctx context.Context, now time.Time, ttl time.Duration, limit int) ([]SeedersCandidate, error) {
@@ -34,6 +37,7 @@ func (s *Store) SeedersCandidates(ctx context.Context, now time.Time, ttl time.D
 		JOIN indexers i ON i.id = rs.indexer_id
 		JOIN definitions d ON d.id = i.definition_id
 		WHERE i.enabled = 1
+		  AND r.protocol = 'torrent'
 		  AND d.state NOT IN ('bozza', 'degradata')
 		  AND (rs.seeders_checked_at = 0 OR rs.seeders_checked_at < ?)
 		  AND (r.published_at >= ? OR r.last_seen_at >= ? OR rs.grab_count > 0)

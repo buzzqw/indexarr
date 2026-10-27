@@ -5,7 +5,7 @@ definizioni. Le voci di stato (`da-provvi`, `bloccata`, `morta`, `degradata`)
 vivono in `index.json` e `sites.yaml`; qui c'è solo quello che **non** è già
 classificato, con la prova e il modo di verificarlo.
 
-Ultimo aggiornamento: **2026-10-27**.
+Ultimo aggiornamento: **2026-10-28**.
 
 ## 1. Definizioni da rileggere
 
@@ -53,6 +53,7 @@ dettaglio e grab, fixture reali, definizione `verificata`.
 | --- | --- | --- |
 | `ddunlimited` | il forum risponde `200` con la pagina «Informazione» quando il flood control blocca la ricerca. La ricerca live ora usa l'indice locale (TV `t=61463`, film `f=1988` per lettera) e `search.php` resta solo il ripiego; la lista TV è però l'elenco delle segnalazioni, non tutte le release: le serie vecchie ricadono su `search.php`; resta da misurare quante query restano scoperte. Dal 2026-10-27 il confronto è per inizio di parola (prima era per sottostringa: «It» trovava «Hitman» e saltava il ripiego) e le ricerche libri/musica non leggono l'indice | due `search.php` ravvicinate: la seconda contiene «Non ti è permesso di utilizzare il sistema di ricerca» e 0 `a.topictitle`; la pagina `viewforum.php?f=440` produce 25 topic e 49 link eD2k in 69 s; l'elenco TV contiene 6.521 link `a.postlink-local` |
 | `gextto` | dal 2026-10-28 gextto legge il link (`<link>`, enclosure, attributo `ed2k`) e non riceve più `seeders`/`leechers`/`peers` per le righe eD2k: prima lo 0/0 le faceva rifiutare come swarm vuoto (`dead_swarm_empty`) nella ricerca automatica. Resta da vedere un grab automatico vero verso aMule | test `TestParseFeedBodyEd2kIgnoresSwarmCounters` in gextto e `TestEd2kItemAndGrab` qui; dal vivo: una release DDUnlimited approvata nel log di gextto con `Network=ed2k` |
+| refresh seeders | dal 2026-10-28 `SeedersCandidates` sceglie solo righe `protocol = 'torrent'`: le release eD2k/Usenet non hanno swarm e il refresh rifaceva una ricerca per titolo su DDUnlimited (flood control). Resta da vedere nel log che il refresh non tocchi più la fonte DDUnlimited | `TestSeedersCandidatesSkipReleasesWithoutSwarm`; dal vivo: nessuna richiesta `search.php` di DDUnlimited dal job seeders dopo l'upgrade |
 | aMule | client HTTP aggiunto (`kind: amule`, `POST /api/v1/downloads`); il test unitario usa un server finto, la prova dal vivo con l'aMule dell'utente è da fare | `POST /api/v2/indexers/{id}/test` e un grab verso il client configurato |
 
 ## 5. Da monitorare
