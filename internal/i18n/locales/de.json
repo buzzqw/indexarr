@@ -1861,6 +1861,7 @@
   "notify.state.disabled": "deaktiviert",
   "notify.state.unknown": "unbekannt",
   "idx.catalog.coverage": "Abdeckung: %d fertige Quellen, %d mit bekannter Software.",
+  "idx.catalog.queueLine": "Warteschlange: %d zu schreiben, %d Entwürfe, %d blockiert, %d tot.",
   "idx.catalog.route": "Art",
   "idx.catalog.routeNative": "bereit",
   "idx.catalog.routeFamily": "bekannte Software",

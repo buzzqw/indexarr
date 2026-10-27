@@ -51,6 +51,13 @@ tutta c'è la vista di manutenzione `/indexers/new?queue=1`, non linkata dalla
 UI, che mostra anche i badge «Da scrivere», «In prova», «Problemi» e
 «Bloccato».
 
+La testata della vista di manutenzione riassume la composizione della coda
+(`Queue: N to write, N drafts, N blocked, N dead`, tradotta nelle 7 lingue) e
+ogni riga `bloccata` o `morta` porta la ragione misurata presa da
+`metadata/blocked.yaml` (`note` in `index.json`), così la prova è visibile
+senza aprire il manifest. Nell'elenco utente né il conteggio né la ragione
+compaiono: la classe `.site-note` è resa solo nella coda.
+
 | Stato | Significato | Visibile all'utente |
 | --- | --- | --- |
 | `verificata`, `stabile` | pronto e provato dal vivo | sì |

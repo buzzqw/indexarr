@@ -1861,6 +1861,7 @@
   "notify.state.disabled": "disattivato",
   "notify.state.unknown": "sconosciuto",
   "idx.catalog.coverage": "Copertura: %d fonti pronte, %d con software noto.",
+  "idx.catalog.queueLine": "In coda: %d da scrivere, %d bozze, %d bloccate, %d morte.",
   "idx.catalog.route": "Modo",
   "idx.catalog.routeNative": "pronte",
   "idx.catalog.routeFamily": "software noto",

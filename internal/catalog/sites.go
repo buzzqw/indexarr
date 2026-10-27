@@ -214,7 +214,13 @@ func siteIndexEntry(site Site) IndexEntry {
 			}
 			return SiteStateTry
 		}(),
-		Reachable:  site.State == SiteStateVerified,
+		Reachable: site.State == SiteStateVerified,
+		Note: func() string {
+			if site.State == SiteStateBlocked || site.State == SiteStateDead {
+				return strings.TrimSpace(site.Note)
+			}
+			return ""
+		}(),
 		Hosts:      hosts,
 		URL:        site.URL,
 		Family:     site.Family,

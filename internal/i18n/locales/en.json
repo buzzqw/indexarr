@@ -1861,6 +1861,7 @@
   "notify.state.disabled": "disabled",
   "notify.state.unknown": "unknown",
   "idx.catalog.coverage": "Coverage: %d ready sources, %d with known software.",
+  "idx.catalog.queueLine": "Queue: %d to write, %d drafts, %d blocked, %d dead.",
   "idx.catalog.route": "Mode",
   "idx.catalog.routeNative": "ready",
   "idx.catalog.routeFamily": "known software",

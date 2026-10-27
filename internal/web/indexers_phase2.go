@@ -627,6 +627,7 @@ type siteChoice struct {
 	ID            string
 	Name          string
 	Description   string
+	Note          string
 	Type          string
 	TypeLabel     string
 	Language      string
@@ -702,6 +703,7 @@ type sitePickerView struct {
 	Types           []siteChoice
 	Pager           pager
 	Coverage        string
+	QueueLine       string
 	HasFilters      bool
 	ClearURL        string
 	Hidden          []catalogQueryPair
@@ -1055,6 +1057,24 @@ func (s *Server) sitePickerView(r *http.Request, query string) (*sitePickerView,
 			}
 		}
 		view.Coverage = s.translate(r, "idx.catalog.coverage", nativeCount, familyCount)
+		// The queue is the only place where the maintainer sees the whole
+		// inventory, so the head says how it is composed instead of leaving the
+		// counts to a manual grep of index.json.
+		var toWrite, drafts, blocked, dead int
+		for _, entry := range index {
+			switch entry.State {
+			case catalog.SiteStateBlocked:
+				blocked++
+			case catalog.SiteStateDead:
+				dead++
+			case "bozza":
+				drafts++
+			}
+			if entry.State == catalog.SiteStateTry && entry.Source != "" && entry.Source != "native" && entry.Family == "" {
+				toWrite++
+			}
+		}
+		view.QueueLine = s.translate(r, "idx.catalog.queueLine", toWrite, drafts, blocked, dead)
 	}
 
 	filtered := make([]catalog.IndexEntry, 0, len(sites))
@@ -1433,6 +1453,7 @@ func (s *Server) siteChoice(r *http.Request, entry catalog.IndexEntry, added sto
 		ID:            entry.ID,
 		Name:          entry.Name,
 		Description:   entry.Description,
+		Note:          entry.Note,
 		Type:          entry.Type,
 		TypeLabel:     s.catalogTypeLabel(r, entry.Type),
 		Language:      entry.Language,

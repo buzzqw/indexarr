@@ -1861,6 +1861,7 @@
   "notify.state.disabled": "已禁用",
   "notify.state.unknown": "未知",
   "idx.catalog.coverage": "覆盖：%d 个可用源，%d 个已知软件。",
+  "idx.catalog.queueLine": "队列：%d 个待编写，%d 个草稿，%d 个受阻，%d 个失效。",
   "idx.catalog.route": "模式",
   "idx.catalog.routeNative": "就绪",
   "idx.catalog.routeFamily": "已知软件",

@@ -18,6 +18,7 @@
       <h2>{{.Title}}</h2>
       <p class="muted">{{.Subtitle}}</p>
       {{if .Coverage}}<p class="muted catalog-coverage">{{.Coverage}}</p>{{end}}
+      {{if .QueueLine}}<p class="muted catalog-queue">{{.QueueLine}}</p>{{end}}
     </div>
     <span class="muted catalog-counter">{{.Counter}}</span>
   </div>
@@ -177,6 +178,7 @@
         {{if .URL}}<p class="site-domain"><a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.URL}}</a></p>{{end}}
         {{if .Mirrors}}<p class="site-mirrors sub">{{T "idx.otherAddresses"}}: {{range $i, $m := .Mirrors}}{{if $i}} · {{end}}<a href="{{$m}}" target="_blank" rel="noopener noreferrer">{{$m}}</a>{{end}}</p>{{end}}
         {{if .Description}}<p class="site-description muted">{{.Description}}</p>{{end}}
+        {{if .Note}}<p class="site-note muted">{{.Note}}</p>{{end}}
         {{if .OptionalID}}<p class="sub"><a class="link" href="/indexers/new?definition={{.OptionalID}}">{{T "idx.catalog.optionalLogin"}}</a></p>{{end}}
         <div class="site-meta">
           <span class="badge badge-type-{{.Type}}">{{.TypeLabel}}</span>

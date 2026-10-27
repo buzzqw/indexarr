@@ -1861,6 +1861,7 @@
   "notify.state.disabled": "desactivado",
   "notify.state.unknown": "desconocido",
   "idx.catalog.coverage": "Cobertura: %d fuentes listas, %d con software conocido.",
+  "idx.catalog.queueLine": "Cola: %d por escribir, %d borradores, %d bloqueadas, %d muertas.",
   "idx.catalog.route": "Modo",
   "idx.catalog.routeNative": "listas",
   "idx.catalog.routeFamily": "software conocido",

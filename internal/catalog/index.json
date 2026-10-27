@@ -1042,6 +1042,7 @@
     "url": "https://edoqsc3t.529075.xyz/",
     "source": "jackett",
     "evidence": "GET https://edoqsc3t.529075.xyz/ -\u003e HTTP 410, 27706 bytes, title 'The address is dead.', checked 2026-10-25",
+    "note": "The address is gone.",
     "proposable": false,
     "latest": false
   },
@@ -1606,6 +1607,7 @@
     "url": "https://asnet.pw/",
     "source": "jackett",
     "evidence": "asnet.pw has no A record (only AAAA 2001:470:1f1d:2e7::ffff); GET https://asnet.pw/ and http://asnet.pw/ -\u003e connection refused on 443 and 80, checked 2026-10-27",
+    "note": "The address is gone.",
     "proposable": false,
     "latest": false
   },
@@ -3030,6 +3032,7 @@
     "url": "https://byrutgame.org/",
     "source": "jackett",
     "evidence": "GET https://byrutgame.org/28165-matrix-hearts.html -\u003e hCaptcha and index.php?do=download\u0026id=...; the same URL through FlareSolverr -\u003e 200 'New Tab', no .torrent, checked 2026-10-27",
+    "note": "The .torrent link is behind a captcha and the download URL does not return the file even through FlareSolverr.",
     "proposable": false,
     "latest": false
   },
@@ -4214,6 +4217,7 @@
     "url": "https://dontorrent.channel/",
     "source": "jackett",
     "evidence": "GET https://dontorrent.channel/pelicula/10059/Matrix -\u003e .protected-download; /assets/js/don_download.js?v=1.40 contains a Proof of Work with SHA-256, checked 2026-10-27",
+    "note": "The download needs a JavaScript proof-of-work (don_download.js); a definition cannot compute it.",
     "proposable": false,
     "latest": false
   },
@@ -4518,6 +4522,7 @@
     "url": "https://www.epublibre.org/",
     "source": "jackett",
     "evidence": "GET https://www.epublibre.org/ -\u003e 200, 75546 bytes, 0 magnet, 0 .torrent; GET /catalogo/index/0/nuevo/disponibles/sin/1 -\u003e 200, 56671 bytes, 0 magnet, 0 .torrent, checked 2026-10-27",
+    "note": "Not a BitTorrent indexer: the catalogue serves EPUB downloads and the pages carry no magnet and no .torrent.",
     "proposable": false,
     "latest": false
   },
@@ -4996,6 +5001,7 @@
     "url": "https://filemood.com/",
     "source": "jackett",
     "evidence": "GET https://filemood.com/result?q=matrix+in%3Atitle -\u003e 200, 3620 bytes, title 'One moment...' through FlareSolverr on three attempts; direct GET https://filemood.com/ -\u003e 429, checked 2026-10-27",
+    "note": "Cloudflare does not clear the search page: the solver keeps returning the 'One moment...' interstitial, so there are no rows to parse.",
     "proposable": false,
     "latest": false
   },
@@ -6053,6 +6059,7 @@
     "url": "https://hdrtorrents.net/",
     "source": "jackett",
     "evidence": "GET https://hdrtorrents.net/arquivo-matrix-tri-audio-torrent-download/ -\u003e 0 magnet, 0 .torrent, archive.org download links, checked 2026-10-27",
+    "note": "The release page carries no magnet or .torrent: it links to archive.org files, so it is not a BitTorrent indexer.",
     "proposable": false,
     "latest": false
   },
@@ -8142,6 +8149,7 @@
     "url": "https://www47.mejortorrent.eu/",
     "source": "jackett",
     "evidence": "GET https://www47.mejortorrent.eu/torrents/peliculas/169787-Matrix-Resurrections--4KUHDremux.torrent -\u003e 403 text/html; replay of the solver cf_clearance cookies with its User-Agent -\u003e 403, checked 2026-10-27",
+    "note": "The .torrent is behind Cloudflare and FlareSolverr only returns text; the search works, the grab cannot.",
     "proposable": false,
     "latest": false
   },
@@ -9355,6 +9363,7 @@
     "url": "https://onejav.com/",
     "source": "jackett",
     "evidence": "GET https://onejav.com/torrent/sdjs026/download/03011883/onejav.com_sdjs026.torrent -\u003e 403 text/html; replay of the solver cf_clearance cookies with its User-Agent -\u003e 403, checked 2026-10-27",
+    "note": "The .torrent is behind Cloudflare and FlareSolverr only returns text; the search works, the grab cannot.",
     "proposable": false,
     "latest": false
   },
@@ -9430,6 +9439,7 @@
     "url": "https://opensharing.org/",
     "source": "jackett",
     "evidence": "GET https://opensharing.org/ and http://opensharing.org/ -\u003e timeout over IPv4 and IPv6 (104.21.27.114, 172.67.169.37, 2a06:98c1:3120::4); through FlareSolverr -\u003e HTTP 500, checked 2026-10-27",
+    "note": "The address no longer answers.",
     "proposable": false,
     "latest": false
   },
@@ -13407,6 +13417,7 @@
     "url": "http://www.torrent-pirat.com/",
     "source": "jackett",
     "evidence": "GET https://www.torrent-pirat.com/ through FlareSolverr -\u003e 200, 77629 bytes, title '• Портал', 0 magnet; GET /tracker/ and /tracker/?search=matrix -\u003e 200, 718 bytes, empty challenge page; direct GET -\u003e timeout on IPv4 and IPv6, checked 2026-10-27",
+    "note": "The public page is a phpBB portal with no magnet and the tracker is behind a Cloudflare challenge the solver does not clear.",
     "proposable": false,
     "latest": false
   },
@@ -13603,6 +13614,7 @@
     "url": "https://torrentcore.xyz/",
     "source": "jackett",
     "evidence": "GET https://torrentcore.xyz/search?q=matrix -\u003e 200, 40 bytes, empty body; /torrent?hash=... has no magnet, checked 2026-10-27",
+    "note": "No usable HTML search: /search returns an empty body and the release handles are opaque; no magnet is exposed.",
     "proposable": false,
     "latest": false
   },
@@ -14723,6 +14735,7 @@
     "url": "https://vsthouse.ru/",
     "source": "jackett",
     "evidence": "GET https://vsthouse.ru/search/?q=serum\u0026m=load\u0026t=0 -\u003e 200, 209881 bytes, 0 magnet, 0 .torrent; GET /load/semply_presety/presety/mercurial_tones_verge_xfer_serum_2_techno_presets_synth_preset_presety_dlja_serum_2/17-1-0-41437 -\u003e 200 text/html, 0 magnet, 0 .torrent, checked 2026-10-27",
+    "note": "Not a BitTorrent indexer: the item pages offer a direct file download (uCoz /load/) and expose no magnet and no .torrent.",
     "proposable": false,
     "latest": false
   },
@@ -14876,6 +14889,7 @@
     "url": "https://ww2-darkfox.officiel.cc/",
     "source": "jackett",
     "evidence": "GET https://ww2-darkfox.officiel.cc/ -\u003e HTTP 200, title 'Darkfox: Plateforme de Téléchargement Francophone', checked 2026-10-25",
+    "note": "The domain now serves a different portal (Darkfox); the original source is no longer identifiable.",
     "proposable": false,
     "latest": false
   },
@@ -15665,6 +15679,7 @@
     "url": "https://anidex.info/",
     "source": "manual",
     "evidence": "GET https://anidex.info/ -\u003e 403, 902 bytes, title 'DDoS-Guard'; through FlareSolverr GET https://anidex.info/?q=matrix\u0026s=1\u0026p=1 -\u003e 200, 613 bytes, title 'Error 502', checked 2026-10-27",
+    "note": "DDoS-Guard answers 403 to the client and the origin answers 502 through the solver, so no page is served.",
     "proposable": false,
     "latest": false
   },

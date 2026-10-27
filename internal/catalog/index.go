@@ -64,6 +64,11 @@ type IndexEntry struct {
 	Source string `json:"source,omitempty"`
 	// Evidence is the short live-test result for a lightweight entry.
 	Evidence string `json:"evidence,omitempty"`
+	// Note is the human reason carried by the catalog for a blocked or dead
+	// lightweight entry: it explains the state without asking the maintainer
+	// to open metadata/blocked.yaml. Other states leave it empty, because their
+	// note is the software-family hint already shown as a badge.
+	Note string `json:"note,omitempty"`
 	// Reachable means a lightweight row answered an HTTP probe. It is not a
 	// live search proof and must never paint the row green.
 	Reachable bool `json:"reachable,omitempty"`

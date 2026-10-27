@@ -1381,6 +1381,13 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 .catalog-main { flex: 1 1 auto; min-width: 0; }
 .catalog-main .site-name { text-decoration: none; }
 .site-description { margin: 0.15rem 0 0; font-size: 0.82rem; }
+/* The measured reason of a blocked or dead row. Only the maintenance queue
+   renders it: it is evidence for the maintainer, not copy for the user. */
+.site-note {
+  margin: 0.3rem 0 0; padding: 0.25rem 0.55rem;
+  border-left: 3px solid var(--border); font-size: 0.8rem; line-height: 1.35;
+}
+.catalog-queue { margin: 0.25rem 0 0; font-size: 0.82rem; }
 .catalog-row .site-meta { justify-content: flex-start; margin-top: 0.25rem; }
 .catalog-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 0.4rem; }
 

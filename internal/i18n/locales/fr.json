@@ -1861,6 +1861,7 @@
   "notify.state.disabled": "désactivé",
   "notify.state.unknown": "inconnu",
   "idx.catalog.coverage": "Couverture : %d sources prêtes, %d avec un logiciel connu.",
+  "idx.catalog.queueLine": "File d'attente : %d à écrire, %d brouillons, %d bloquées, %d mortes.",
   "idx.catalog.route": "Mode",
   "idx.catalog.routeNative": "prêtes",
   "idx.catalog.routeFamily": "logiciel connu",

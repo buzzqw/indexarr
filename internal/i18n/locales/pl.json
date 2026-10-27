@@ -1861,6 +1861,7 @@
   "notify.state.disabled": "wyłączony",
   "notify.state.unknown": "nieznany",
   "idx.catalog.coverage": "Pokrycie: %d gotowych źródeł, %d ze znanym oprogramowaniem.",
+  "idx.catalog.queueLine": "Kolejka: %d do napisania, %d szkice, %d zablokowane, %d martwe.",
   "idx.catalog.route": "Tryb",
   "idx.catalog.routeNative": "gotowe",
   "idx.catalog.routeFamily": "znane oprogramowanie",
