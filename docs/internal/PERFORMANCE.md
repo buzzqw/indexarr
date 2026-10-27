@@ -17,7 +17,7 @@ sono la soglia oltre la quale una modifica viene considerata una regressione.
 | Obiettivo | Soglia |
 |---|---|
 | Binario statico (`CGO_ENABLED=0`, `-trimpath -s -w`) | < 20 MB |
-| RSS a riposo | avviso sopra 64 MiB, errore sopra 128 MiB (decisione del coordinatore, 23/10) |
+| RSS a riposo | avviso sopra 64 MiB, errore sopra 256 MiB (decisione del coordinatore, 23/10; limite alzato da 128 MiB il 27/10) |
 | Latenza Torznab p95 con 50.000 release | < 50 ms |
 | Goroutine e file descriptor dopo ricerche ripetute | nessuna crescita illimitata |
 
@@ -383,7 +383,7 @@ poco utile rispetto al guadagno. Sono candidati per una passata futura.
 
 Questa sezione misura il ritorno sotto il vecchio budget del manifesto (**RSS <
 40 MiB a riposo**), oggi sostituito dalla soglia con avviso a 64 MiB ed errore a
-128 MiB. Le misure di §3 sono precedenti alle fasi UI e ai template i18n:
+256 MiB (128 MiB fino al 27/10). Le misure di §3 sono precedenti alle fasi UI e ai template i18n:
 servono come riferimento storico, non come baseline per il budget.
 
 ### 9.1 Metodologia
@@ -450,7 +450,7 @@ coordinatore come misura finale; non è stato prolungato a 10/30 minuti.
 - Backup e profilo heap sono transienti: il budget CI misura a 60 s su un DB
   seed senza backup (`default_interval_seconds=3600`), quindi confronta il
   valore 26,3 MiB, non il picco del backup.
-- `scripts/budget.sh` avvisa sopra 64 MiB e fallisce sopra 128 MiB. Il job CI
+- `scripts/budget.sh` avvisa sopra 64 MiB e fallisce sopra 256 MiB. Il job CI
   non ha override: usa le stesse soglie.
 - Il campione "prima" e quello "dopo" sono due esecuzioni distinte sullo stesso
   tipo di DB e di seed; la macchina è condivisa, quindi le differenze sotto

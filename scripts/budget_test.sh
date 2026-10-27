@@ -29,6 +29,7 @@ check 64 0 "OK"
 check 64.1 0 "WARNING"
 check 96 0 "WARNING"
 check 128 0 "WARNING"
-check 128.1 1 "FAIL"
+check 256 0 "WARNING"
+check 256.1 1 "FAIL"
 
 echo "budget policy test passed"

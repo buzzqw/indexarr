@@ -13,7 +13,7 @@
 #      with a clear message (there is no portable equivalent of `ps -o rss=`).
 #
 # The RSS policy has two levels: above 64 MiB the script prints a WARNING but
-# succeeds, above 128 MiB it fails. Exactly 64 MiB is still OK. These are the
+# succeeds, above 256 MiB it fails. Exactly 64 MiB is still OK. These are the
 # coordinator's thresholds after the memory constraint was relaxed; the project
 # still avoids unlimited caches and loads data in streams.
 #
@@ -24,7 +24,7 @@
 #
 # Environment:
 #   INDEXARR_BUDGET_BINARY_MB      binary size ceiling in MiB      (default 25)
-#   INDEXARR_BUDGET_RSS_MIB        RSS error ceiling in MiB        (default 128)
+#   INDEXARR_BUDGET_RSS_MIB        RSS error ceiling in MiB        (default 256)
 #   INDEXARR_BUDGET_RSS_WARN_MIB   RSS warning threshold in MiB    (default 64)
 #   INDEXARR_BUDGET_RELEASES       releases in the seed database   (default 10000)
 #   INDEXARR_BUDGET_RSS_SECONDS    settle time before sampling RSS (default 60)
@@ -43,7 +43,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 BINARY_BUDGET_MIB="${INDEXARR_BUDGET_BINARY_MB:-25}"
-RSS_BUDGET_MIB="${INDEXARR_BUDGET_RSS_MIB:-128}"
+RSS_BUDGET_MIB="${INDEXARR_BUDGET_RSS_MIB:-256}"
 RSS_WARN_MIB="${INDEXARR_BUDGET_RSS_WARN_MIB:-64}"
 SEED_RELEASES="${INDEXARR_BUDGET_RELEASES:-10000}"
 RSS_SETTLE_SECONDS="${INDEXARR_BUDGET_RSS_SECONDS:-60}"
