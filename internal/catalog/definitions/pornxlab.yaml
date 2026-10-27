@@ -1,0 +1,70 @@
+# VERIFICATA (verified). PornXLab public search.
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/pornxlab/search.html
+# (https://www.pornxlab.com/s.php?search=anal) and from the download page
+# of one release in fixtures/pornxlab/download.html
+# (https://www.pornxlab.com/dl.php?t=727468). Each card links the release
+# page "<slug>-<id>.html"; the site's own download button points to
+# /dl.php?t=<id>, which carries the .torrent link. The size is the span.size
+# of the card; the card's link names the studio site, not a category, so the
+# class of the release link ("overlay") is the per-row marker mapped to Adult. Free JAV Torrent runs the same software.
+schema: 1
+
+meta:
+  id: pornxlab
+  name: PornXLab
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public adult studio video search; the .torrent comes from the site's download page.
+  urls:
+    - https://www.pornxlab.com/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "overlay", standard: 6000, desc: "Adult" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /s.php
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.image-wrapper" }
+    fields:
+      title:    { selector: "a.overlay", filters: [trim] }
+      details:  { selector: "a.overlay", attr: href, type: url }
+      grab:
+        selector: "a.overlay"
+        attr: href
+        filters: [{ regex: '-([0-9]+)\.html$' }, { prefix: "/dl.php?t=" }]
+        type: url
+      category: { selector: "a.overlay", attr: class, type: category }
+      size:     { selector: "span.size", type: size }
+    required: [title, grab, size]
+
+download:
+  resolve_on: grab
+  from: grab
+  extract:
+    - torrent: { selector: "a.download-button", attr: href, type: url }
+
+health:
+  query: anal
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/pornxlab/search.html
+    expect: { min_rows: 20, required: [title, size] }
+  - name: download
+    fixture: fixtures/pornxlab/download.html
+    expect: { min_rows: 0 }

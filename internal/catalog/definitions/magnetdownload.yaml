@@ -1,0 +1,75 @@
+# VERIFICATA (verified). MagnetDownload public DHT search.
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/magnetdownload/search.html
+# (https://www.magnetdownload.com/search/matrix/) and from the JSON the
+# release page calls to fill its magnet, captured in
+# fixtures/magnetdownload/info.json
+# (https://www.magnetdownload.com/api/json_info?hashes=26235924).
+# The release page only shows "Please wait ..." until that call returns, so
+# the definition asks the JSON endpoint directly with the numeric id of the
+# /info/<id> link. The search row carries the full name in the anchor title
+# and the total size in the footer (with a non-breaking space before the
+# unit); the age is relative and not read. The engine uses the JSON URL as
+# the details link of the release, because that is where the magnet lives.
+schema: 1
+
+meta:
+  id: magnetdownload
+  name: MagnetDownload
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public DHT magnet search; the infohash comes from the site's JSON info endpoint.
+  urls:
+    - https://www.magnetdownload.com/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "video", standard: 2000, desc: "Videos" }
+  - { site: "music", standard: 3000, desc: "Music" }
+  - { site: "software", standard: 4000, desc: "Software" }
+  - { site: "document", standard: 7000, desc: "Books" }
+  - { site: "other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: "/search/{{ query.keywords }}/"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "td.x-item" }
+    fields:
+      title:   { selector: "a.title", attr: title, filters: [trim] }
+      details: { selector: "a.title", attr: href, type: url }
+      info:
+        selector: "a.title"
+        attr: href
+        filters: [{ regex: '/info/([0-9]+)' }, { prefix: "/api/json_info?hashes=" }]
+        type: url
+      size:    { selector: "div.tail", filters: [{ regex: 'Total size:\s*([0-9.,]+[\s\x{00a0}]*[KMGT]?B)' }, { replace: " : " }], type: size }
+    required: [title, info, size]
+
+download:
+  resolve_on: search
+  from: info
+  max_concurrent: 4
+  extract:
+    - magnet: { path: result.0.info_hash, filters: [{ prefix: "magnet:?xt=urn:btih:" }] }
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/magnetdownload/search.html
+    expect: { min_rows: 10, required: [title, details, size] }
+  - name: info
+    fixture: fixtures/magnetdownload/info.json
+    expect: { min_rows: 0 }

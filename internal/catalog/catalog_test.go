@@ -32,8 +32,8 @@ func TestBuiltinsValid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Builtins: %v", err)
 	}
-	if len(entries) != 85 {
-		t.Fatalf("len(Builtins()) = %d, want 85", len(entries))
+	if len(entries) != 100 {
+		t.Fatalf("len(Builtins()) = %d, want 100", len(entries))
 	}
 
 	verified := map[string]bool{
@@ -98,6 +98,21 @@ func TestBuiltinsValid(t *testing.T) {
 		"ebookbay":           true,
 		"sexypics":           true,
 		"rintor":             true,
+		"torrentdownload":    true,
+		"magnetdownload":     true,
+		"blueroms":           true,
+		"xxxclub":            true,
+		"freejavtorrent":     true,
+		"pornxlab":           true,
+		"bigfangroup":        true,
+		"catorrent":          true,
+		"skidrowrepack":      true,
+		"pctorrent":          true,
+		"zamundalife":        true,
+		"mypornclub":         true,
+		"pornotorrent":       true,
+		"mixtapetorrent":     true,
+		"sosulki":            true,
 	}
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
@@ -231,8 +246,8 @@ func TestIndexShapeIsStable(t *testing.T) {
 	if index[0].ID != "0magnet" {
 		t.Errorf("first index id = %q, want 0magnet", index[0].ID)
 	}
-	if last := index[len(index)-1].ID; last != "yts" {
-		t.Errorf("last index id = %q, want yts", last)
+	if last := index[len(index)-1].ID; last != "zamundalife" {
+		t.Errorf("last index id = %q, want zamundalife", last)
 	}
 	if !extto.Italian || extto.Family != "custom" {
 		t.Errorf("extto metadata = family %q italian %v", extto.Family, extto.Italian)
@@ -342,6 +357,21 @@ func TestBuiltinsManifestOrder(t *testing.T) {
 		"ebookbay",
 		"sexypics",
 		"rintor",
+		"torrentdownload",
+		"magnetdownload",
+		"blueroms",
+		"xxxclub",
+		"freejavtorrent",
+		"pornxlab",
+		"bigfangroup",
+		"catorrent",
+		"skidrowrepack",
+		"pctorrent",
+		"zamundalife",
+		"mypornclub",
+		"pornotorrent",
+		"mixtapetorrent",
+		"sosulki",
 	}
 	if len(entries) != len(want) {
 		t.Fatalf("len(Builtins()) = %d, want %d", len(entries), len(want))
@@ -362,8 +392,8 @@ func TestManifestIDsMatchFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseManifest: %v", err)
 	}
-	if len(items) != 85 {
-		t.Fatalf("manifest has %d definitions, want 85", len(items))
+	if len(items) != 100 {
+		t.Fatalf("manifest has %d definitions, want 100", len(items))
 	}
 	for _, item := range items {
 		base := strings.TrimSuffix(path.Base(item.File), ".yaml")

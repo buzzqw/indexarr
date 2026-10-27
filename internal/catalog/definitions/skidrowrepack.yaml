@@ -1,0 +1,65 @@
+# VERIFICATA (verified). SkidrowRepack public game search (DataLife Engine).
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/skidrowrepack/search.html (POST https://skidrowrepack.com/ with
+# do=search&subaction=search&story=fallout) and from one game page in
+# fixtures/skidrowrepack/detail.html. The search card has only the title and
+# the game page; the game page has the "Download .torrent" link, served only
+# with the game page as Referer (sent by the engine). The page lists the
+# disk space the game needs, not the torrent size, so no size is read.
+schema: 1
+
+meta:
+  id: skidrowrepack
+  name: SkidrowRepack
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public PC game repack catalogue; the .torrent is on the game page.
+  urls:
+    - https://skidrowrepack.com/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "game", standard: 4050, desc: "PC games" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    post: /
+    form:
+      do: search
+      subaction: search
+      story: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.mov" }
+    fields:
+      title:    { selector: "a.mov-t", filters: [trim] }
+      details:  { selector: "a.mov-t", attr: href, type: url }
+      # Every card is a PC game; the card's own class is the marker.
+      category: { selector: "a.mov-t", attr: class, filters: [{ regex: '^(mov)-t' }, { replace: "mov:game" }], type: category }
+    required: [title, details]
+
+download:
+  resolve_on: grab
+  from: details
+  extract:
+    - torrent: { selector: "a.dwn-load", attr: href, type: url }
+
+health:
+  query: fallout
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/skidrowrepack/search.html
+    expect: { min_rows: 10, required: [title, details] }
+  - name: detail
+    fixture: fixtures/skidrowrepack/detail.html
+    expect: { min_rows: 0 }

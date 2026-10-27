@@ -171,6 +171,7 @@
     ],
     "state": "verificata",
     "hosts": [
+      "animetosho.net",
       "animetosho.org"
     ],
     "url": "https://animetosho.org/",
@@ -241,6 +242,32 @@
     "latest": false
   },
   {
+    "id": "bigfangroup",
+    "name": "BigFANGroup",
+    "description": "Public Russian movie tracker; guests can search and download the .torrent.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "bigfangroup.org"
+    ],
+    "url": "https://bigfangroup.org/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "bitsearch",
     "name": "Bitsearch",
     "description": "Public Bitsearch HTML search (the SolidTorrents successor) with magnets and .torrent links.",
@@ -262,6 +289,25 @@
       "bitsearch.eu"
     ],
     "url": "https://bitsearch.eu/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "blueroms",
+    "name": "BlueRoms",
+    "description": "Public console ROM search; the magnet is decoded from the game's download page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "blueroms.ws"
+    ],
+    "url": "https://www.blueroms.ws/",
     "source": "native",
     "proposable": true,
     "latest": false
@@ -317,6 +363,25 @@
       "btmulu.live"
     ],
     "url": "https://btmulu.live/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "catorrent",
+    "name": "Catorrent",
+    "description": "Public Russian PC game catalogue; the .torrent and size are on the game page.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "catorrent.net"
+    ],
+    "url": "https://catorrent.net/",
     "source": "native",
     "proposable": true,
     "latest": false
@@ -582,6 +647,25 @@
       "fosstorrents.com"
     ],
     "url": "https://fosstorrents.com/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "freejavtorrent",
+    "name": "Free JAV Torrent",
+    "description": "Public Japanese adult video search; the .torrent comes from the site's download page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "freejavtorrent.com"
+    ],
+    "url": "https://www.freejavtorrent.com/",
     "source": "native",
     "proposable": true,
     "latest": false
@@ -1373,31 +1457,6 @@
     "latest": false
   },
   {
-    "id": "jk-animetosho-xyz",
-    "name": "Anime Tosho",
-    "description": "Anime Tosho is a Public Torrent Tracker for ANIME",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "tv",
-      "anime"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "animetosho.net"
-    ],
-    "url": "https://animetosho.net/",
-    "source": "jackett",
-    "evidence": "GET https://animetosho.net/ -\u003e HTTP 200, 219006 bytes, title \"Anime Tosho\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-animeworld-api",
     "name": "AnimeWorld (API)",
     "description": "AnimeWorld (AW) is a GERMAN Private Torrent Tracker for ANIME / MANGA / HENTAI",
@@ -2138,36 +2197,6 @@
     "latest": false
   },
   {
-    "id": "jk-bigfangroup",
-    "name": "BigFANGroup",
-    "description": "BigFANGroup is a RUSSIAN Public Torrent Tracker for MOVIES / TV",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "bigfangroup.org"
-    ],
-    "url": "https://bigfangroup.org/",
-    "source": "jackett",
-    "evidence": "GET https://bigfangroup.org/ -\u003e HTTP 200, 24196 bytes, title \"\\xc3\\xeb\\xe0\\xe2\\xed\\xe0\\xff BigFANGroup.org - \\xf1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc \\xe1\\xe5\\xe7 \\xf0\\xe5\\xe3\\xe8\\xf1\\xf2\\xf0\\xe0\\xf6\\xe8\\xe8\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-bitagent",
     "name": "BitAgent",
     "description": "BitAgent is a Private Torrent Tracker for MOVIES / TV",
@@ -2486,30 +2515,6 @@
     "url": "https://bluebird-hd.org/",
     "source": "jackett",
     "evidence": "GET https://bluebird-hd.org/ -\u003e HTTP 200, 3871 bytes, title \"Under maintenance\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-blueroms",
-    "name": "BlueRoms",
-    "description": "BlueRoms is a Public Torrent Tracker for ROMS",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "games"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "blueroms.ws"
-    ],
-    "url": "https://www.blueroms.ws/",
-    "source": "jackett",
-    "evidence": "GET https://www.blueroms.ws/ -\u003e HTTP 200, 21157 bytes, title \"BlueRoms: Download Game ROMs and ISOs\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -3130,31 +3135,6 @@
     "proposable": true,
     "latest": true,
     "scheduled": true
-  },
-  {
-    "id": "jk-catorrent",
-    "name": "Catorrent",
-    "description": "Catorrent is a RUSSIAN Public Torrent Tracker for GAMES",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "catorrent.net"
-    ],
-    "url": "https://catorrent.net/",
-    "source": "jackett",
-    "evidence": "GET https://catorrent.net/ -\u003e HTTP 200, 44519 bytes, title \"Скачать игры через торрент бесплатно - Крупная база игр от Catorrent.net\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
   },
   {
     "id": "jk-ceskeforum",
@@ -5137,30 +5117,6 @@
     "proposable": true,
     "latest": true,
     "scheduled": true
-  },
-  {
-    "id": "jk-freejavtorrent",
-    "name": "Free JAV Torrent",
-    "description": "Free JAV Torrent is a Public tracker for Asian 3X (JAV)",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "freejavtorrent.com"
-    ],
-    "url": "https://www.freejavtorrent.com/",
-    "source": "jackett",
-    "evidence": "GET https://www.freejavtorrent.com/ -\u003e HTTP 200, 56958 bytes, title \"Free JAV Torrent | Best Free Japanese HD Porn Movies Download\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
   },
   {
     "id": "jk-funfile",
@@ -8056,27 +8012,6 @@
     "latest": false
   },
   {
-    "id": "jk-magnetdownload",
-    "name": "MagnetDownload",
-    "description": "MagnetDownload is a Public DHT Crawler",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "magnetdownload.com"
-    ],
-    "url": "https://www.magnetdownload.com/",
-    "source": "jackett",
-    "evidence": "GET https://www.magnetdownload.com/ -\u003e HTTP 200, 8230 bytes, title \"MagnetDownload.COM - A Torrent \u0026 Magnet Links Search Engine based on DHT\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-magnetz",
     "name": "Magnetz",
     "description": "Magnetz is a Semi-Private torrent meta-search engine",
@@ -8562,30 +8497,6 @@
     "latest": false
   },
   {
-    "id": "jk-mixtapetorrent",
-    "name": "MixtapeTorrent",
-    "description": "MixtapeTorrent is a Public Music site for MixTapes",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "music"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "mixtapetorrent.com"
-    ],
-    "url": "http://www.mixtapetorrent.com/",
-    "source": "jackett",
-    "evidence": "GET http://www.mixtapetorrent.com/ -\u003e HTTP 200, 48632 bytes, title \"MixtapeTorrent.com | The Latest Mixtape Downloads, Mixtape News, \u0026 Independent Music Promotion\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-mma-torrents",
     "name": "MMA-torrents",
     "description": "MMA-Torrents is a Private Torrent Tracker for MMA (Mixed Martial Arts)",
@@ -8910,30 +8821,6 @@
     "url": "https://www.myanonamouse.net/",
     "source": "jackett",
     "evidence": "GET https://www.myanonamouse.net/login.php?returnto=%2F -\u003e HTTP 200, 7583 bytes, title \"Login | My Anonamouse\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-mypornclub",
-    "name": "MyPornClub",
-    "description": "MyPornClub is a Public Torrent Tracker for 3X",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "myporn.club"
-    ],
-    "url": "https://myporn.club/",
-    "source": "jackett",
-    "evidence": "GET https://myporn.club/ -\u003e HTTP 200, 141590 bytes, title \"My Porn Club - Free Sharing Site\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -9931,31 +9818,6 @@
     "latest": false
   },
   {
-    "id": "jk-pctorrent",
-    "name": "PC-torrent",
-    "description": "PC-torrent is a RUSSIAN Public Torrent Tracker for Games",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "pc-torrents.games"
-    ],
-    "url": "https://pc-torrents.games/",
-    "source": "jackett",
-    "evidence": "GET https://pc-torrents.games/ -\u003e HTTP 200, 24833 bytes, title \"\\xd1\\xea\\xe0\\xf7\\xe0\\xf2\\xfc \\xe8\\xe3\\xf0\\xfb \\xf7\\xe5\\xf0\\xe5\\xe7 \\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-peeratiko",
     "name": "Peeratiko",
     "description": "Peeratiko is a GREEK Private Torrent Tracker for MOVIES / TV / GENERAL",
@@ -10367,54 +10229,6 @@
     "url": "https://pornolab.net/",
     "source": "jackett",
     "evidence": "GET https://pornolab.net/ -\u003e HTTP 200, 516 bytes, title \"\\xc1\\xe8\\xf2\\xf2\\xee\\xf0\\xf0\\xe5\\xed\\xf2 \\xf2\\xf0\\xe5\\xea\\xe5\\xf0 PornoLab.Net. \\xc4\\xe5\\xeb\\xe8\\xf2\\xe5\\xf1\\xfc \\xf3\\xe4\\xee\\xe2\\xee\\xeb\\xfc\\xf1\\xf2\\xe2\\xe8\\xff\\xec\\xe8!\", checked 2026-10-25; page too small to trust",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-pornotorrent",
-    "name": "PornoTorrent",
-    "description": "PornoTorrent is a BRAZILIAN Public Torrent Tracker for 3X",
-    "language": "pt-BR",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "pornotorrent.com.br"
-    ],
-    "url": "https://pornotorrent.com.br/",
-    "source": "jackett",
-    "evidence": "GET https://pornotorrent.com.br/ -\u003e HTTP 200, 131302 bytes, title \"Porno Torrent - Download de filmes adultos via torrent\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-pornxlab",
-    "name": "PornXLab",
-    "description": "PornXLab is a Public tracker for 3X",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "pornxlab.com"
-    ],
-    "url": "https://www.pornxlab.com/",
-    "source": "jackett",
-    "evidence": "GET https://www.pornxlab.com/ -\u003e HTTP 200, 55797 bytes, title \"PornXLab - Free Porn Studio Movie Torrents\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -12372,31 +12186,6 @@
     "scheduled": true
   },
   {
-    "id": "jk-skidrowrepack",
-    "name": "SkidrowRepack",
-    "description": "SkidrowRepack is a Public Torrent Tracker for GAMES",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "skidrowrepack.com"
-    ],
-    "url": "https://skidrowrepack.com/",
-    "source": "jackett",
-    "evidence": "GET https://skidrowrepack.com/ -\u003e HTTP 200, 41147 bytes, title \"Games torrent free download - SkidrowRepack.com\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-skipthecommercials-api",
     "name": "SkipTheCommercials (API)",
     "description": "SkipTheCommercials (STC) is a Private Torrent Tracker for TV",
@@ -12504,30 +12293,6 @@
     "url": "https://skyeysnow.com/",
     "source": "jackett",
     "evidence": "GET https://skyeysnow.com/ -\u003e HTTP 200, 37 bytes, title \"(no title)\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-sosulki",
-    "name": "sosulki",
-    "description": "sosulki is a RUSSIAN Public Torrent Tracker for 3X",
-    "language": "ru-RU",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "sosulki.bosk.cc"
-    ],
-    "url": "https://sosulki.bosk.cc/",
-    "source": "jackett",
-    "evidence": "GET https://sosulki.bosk.cc/ -\u003e HTTP 200, 70120 bytes, title \"Порно торрент трекер XXX sosulki.bosk.cc\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -14021,37 +13786,6 @@
     "url": "https://www.torrentdd.com/",
     "source": "jackett",
     "evidence": "GET https://www.torrentdd.com/ -\u003e HTTP 200, 5722 bytes, title \"เว็บบิท โหลดบิท ดาวน์โหลด bit torrent :: TorrentDD.com\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-torrentdownload",
-    "name": "TorrentDownload",
-    "description": "TorrentDownload is a Public torrent meta-search engine",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "torrentdownload.info"
-    ],
-    "url": "https://www.torrentdownload.info/",
-    "source": "jackett",
-    "evidence": "GET https://www.torrentdownload.info/ -\u003e HTTP 200, 40078 bytes, title \"TorrentDownload - Free Torrents Download\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -15585,30 +15319,6 @@
     "latest": false
   },
   {
-    "id": "jk-xxxclub",
-    "name": "XXXClub",
-    "description": "XXXClub is a Public torrent site for 3X",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "xxxclub.to"
-    ],
-    "url": "https://xxxclub.to/",
-    "source": "jackett",
-    "evidence": "GET https://xxxclub.to/ -\u003e HTTP 200, 35439 bytes, title \"XXXClub : Adult , Porn , XXX , Videos , Download , Torrents\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-xxxtor",
     "name": "xxxtor",
     "description": "xxxtor is a RUSSIAN Public Torrent Tracker for 3X",
@@ -15690,37 +15400,6 @@
     "proposable": true,
     "latest": true,
     "scheduled": true
-  },
-  {
-    "id": "jk-zamundalife",
-    "name": "Zamunda LIFE",
-    "description": "Zamunda LIFE is a BULGARIAN Public Torrent Archive for MOVIES / TV / GENERAL",
-    "language": "bg-BG",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "zamunda.life"
-    ],
-    "url": "https://zamunda.life/",
-    "source": "jackett",
-    "evidence": "GET https://zamunda.life/ -\u003e HTTP 200, 6382 bytes, title \"Zamunda.LIFE - Търсачка за магнитни линкове от Zamunda, ArenaBG и Zelka\", checked 2026-10-25",
-    "reachable": true,
-    "proposable": true,
-    "latest": false
   },
   {
     "id": "jk-zappateers",
@@ -16038,6 +15717,29 @@
     "scheduled": true
   },
   {
+    "id": "magnetdownload",
+    "name": "MagnetDownload",
+    "description": "Public DHT magnet search; the infohash comes from the site's JSON info endpoint.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "magnetdownload.com"
+    ],
+    "url": "https://www.magnetdownload.com/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "megapeer",
     "name": "MegaPeer",
     "description": "Public Russian tracker with keyword search and a direct .torrent link per row.",
@@ -16060,6 +15762,147 @@
     "source": "native",
     "proposable": true,
     "latest": false
+  },
+  {
+    "id": "mg-anidex",
+    "name": "Anidex",
+    "description": "Public torrent tracker and indexer, mainly for English anime fansub groups.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "anidex.info"
+    ],
+    "url": "https://anidex.info/",
+    "source": "manual",
+    "evidence": "GET https://anidex.info/ -\u003e HTTP 403, DDoS-Guard page, checked 2026-10-27",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "mg-binarybay",
+    "name": "BinaryBay",
+    "description": "Private torrent tracker for movies, TV and general content.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "xxx"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "binarybay.cc"
+    ],
+    "url": "https://binarybay.cc/",
+    "source": "manual",
+    "evidence": "GET https://binarybay.cc/login -\u003e HTTP 404, checked 2026-10-27; private, no account used",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "mg-pornorip",
+    "name": "Pornorip",
+    "description": "Private torrent tracker for adult DVDs.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "pornorip.si"
+    ],
+    "url": "https://www.pornorip.si/",
+    "source": "manual",
+    "evidence": "GET https://www.pornorip.si/ -\u003e HTTP 302, checked 2026-10-27; private, no account used",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "mg-revolutiontt",
+    "name": "RevolutionTT",
+    "description": "Private general torrent tracker.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "revott.me"
+    ],
+    "url": "https://revott.me/",
+    "source": "manual",
+    "evidence": "GET https://revott.me/ -\u003e HTTP 301, checked 2026-10-27; private, no account used",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "mg-sapibr",
+    "name": "SAPIbr (API)",
+    "description": "Portuguese private tracker for ebooks, audiobooks and courses.",
+    "language": "pt-PT",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "apikey"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "sapibr.com"
+    ],
+    "url": "https://sapibr.com/",
+    "family": "unit3d",
+    "source": "manual",
+    "evidence": "GET https://sapibr.com/login -\u003e HTTP 200, 6171 bytes, title \"Login - SAPIBR | UNIT3D\", checked 2026-10-27; private, no account used",
+    "proposable": true,
+    "latest": true,
+    "scheduled": true
   },
   {
     "id": "mikan",
@@ -16129,6 +15972,44 @@
     "proposable": true,
     "latest": false,
     "scheduled": true
+  },
+  {
+    "id": "mixtapetorrent",
+    "name": "MixtapeTorrent",
+    "description": "Public hip-hop mixtape archive; the .torrent is attached to each story.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "music"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "mixtapetorrent.com"
+    ],
+    "url": "http://www.mixtapetorrent.com/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "mypornclub",
+    "name": "MyPornClub",
+    "description": "Public adult sharing site with size and health in the row and the magnet on the release page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "myporn.club"
+    ],
+    "url": "https://myporn.club/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "nekobt",
@@ -16271,6 +16152,25 @@
     "latest": false
   },
   {
+    "id": "pctorrent",
+    "name": "PC-torrent",
+    "description": "Public Russian PC game catalogue with the size in the result card.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "pc-torrents.games"
+    ],
+    "url": "https://pc-torrents.games/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "plugintorrent",
     "name": "plugintorrent",
     "description": "Public software RSS feed with magnet links.",
@@ -16295,6 +16195,25 @@
     "scheduled": true
   },
   {
+    "id": "pornotorrent",
+    "name": "PornoTorrent",
+    "description": "Public Brazilian adult site; magnet and size on the release page.",
+    "language": "pt-BR",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "pornotorrent.com.br"
+    ],
+    "url": "https://pornotorrent.com.br/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "pornrips",
     "name": "PornRips",
     "description": "Public adult RSS feed with .torrent links.",
@@ -16316,6 +16235,25 @@
     "proposable": true,
     "latest": false,
     "scheduled": true
+  },
+  {
+    "id": "pornxlab",
+    "name": "PornXLab",
+    "description": "Public adult studio video search; the .torrent comes from the site's download page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "pornxlab.com"
+    ],
+    "url": "https://www.pornxlab.com/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "rintor",
@@ -16465,6 +16403,25 @@
     "scheduled": true
   },
   {
+    "id": "skidrowrepack",
+    "name": "SkidrowRepack",
+    "description": "Public PC game repack catalogue; the .torrent is on the game page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "games"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "skidrowrepack.com"
+    ],
+    "url": "https://skidrowrepack.com/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "solidtorrents",
     "name": "SolidTorrents",
     "description": "Public SolidTorrents HTML search with magnets and .torrent links.",
@@ -16486,6 +16443,25 @@
       "solidtorrents.eu"
     ],
     "url": "https://solidtorrents.eu/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "sosulki",
+    "name": "sosulki",
+    "description": "Public Russian adult tracker; the .torrent is on the release page.",
+    "language": "ru-RU",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "sosulki.bosk.cc"
+    ],
+    "url": "https://sosulki.bosk.cc/",
     "source": "native",
     "proposable": true,
     "latest": false
@@ -16716,6 +16692,32 @@
       "torrentbyte.cc"
     ],
     "url": "https://torrentbyte.cc/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "torrentdownload",
+    "name": "TorrentDownload",
+    "description": "Public TorrentDownload HTML search with infohash, size and health in the row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "torrentdownload.info"
+    ],
+    "url": "https://www.torrentdownload.info/",
     "source": "native",
     "proposable": true,
     "latest": false
@@ -17185,6 +17187,25 @@
     "scheduled": true
   },
   {
+    "id": "xxxclub",
+    "name": "XXXClub",
+    "description": "Public adult tracker with infohash, size, date and health in the result row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "xxxclub.to"
+    ],
+    "url": "https://xxxclub.to/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "yts",
     "name": "YTS",
     "description": "Public YTS movie API (JSON) with hash, size and health.",
@@ -17207,5 +17228,31 @@
     "proposable": true,
     "latest": false,
     "scheduled": true
+  },
+  {
+    "id": "zamundalife",
+    "name": "Zamunda LIFE",
+    "description": "Public magnet search over the Bulgarian Zamunda, ArenaBG and Zelka archives.",
+    "language": "bg-BG",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "zamunda.life"
+    ],
+    "url": "https://zamunda.life/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   }
 ]

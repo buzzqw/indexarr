@@ -1,0 +1,72 @@
+# VERIFICATA (verified). sosulki public adult tracker (DataLife Engine).
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/sosulki/search.html
+# (https://sosulki.bosk.cc/?do=search&subaction=search&story=anal) and from
+# one release page in fixtures/sosulki/detail.html. The search table has
+# category, title, date, seeders, leechers and size. The release page links
+# /engine/download.php?id=<n>, served to guests with the release page as
+# Referer (sent by the engine). The magnet on the same page is not used: its
+# btih contains EFBFBD, the UTF-8 replacement character, so the site's own
+# encoding has corrupted the hash.
+schema: 1
+
+meta:
+  id: sosulki
+  name: sosulki
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Russian adult tracker; the .torrent is on the release page.
+  urls:
+    - https://sosulki.bosk.cc/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "lastcat", standard: 6000, desc: "Adult" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /
+    params:
+      do: search
+      subaction: search
+      story: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "tr.fr_viewn_in" }
+    fields:
+      title:    { selector: "td.titlelast a", filters: [trim] }
+      details:  { selector: "td.titlelast a", attr: href, type: url }
+      # The site has many adult sub-sections and new ones appear; the category
+      # cell's own class is the marker mapped to Adult.
+      category: { selector: "td.lastcat", attr: class, filters: [{ regex: '^(lastcat)' }], type: category }
+      date:     { selector: "td.titlelast i", type: date, layouts: ["02-01-2006 15:04:05"] }
+      seeders:  { selector: "td.frsl_s", type: int }
+      leechers: { selector: "td.frsl_p", type: int }
+      size:     { selector: "td.frs", type: size }
+    required: [title, details, size]
+
+download:
+  resolve_on: grab
+  from: details
+  extract:
+    - torrent: { selector: 'a[href*="/engine/download.php"]', attr: href, type: url }
+
+health:
+  query: anal
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/sosulki/search.html
+    expect: { min_rows: 10, required: [title, details, size, date] }
+  - name: detail
+    fixture: fixtures/sosulki/detail.html
+    expect: { min_rows: 0 }

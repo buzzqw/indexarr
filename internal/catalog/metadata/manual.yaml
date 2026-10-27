@@ -1,5 +1,54 @@
 # Sites that are part of the priority list but are not in either manager's
 # inventory. They are small, explicit rows; no Cardigann data is used.
 schema: 1
-updated: "2026-10-23"
+updated: "2026-10-27"
 sites:
+  # Present in the Jackett and Prowlarr inventories on 2026-10-27 (GET of the
+  # Prowlarr schema and of the Jackett indexer list) but missing from the
+  # frozen 2026-10-23 snapshot. Metadata only, no Cardigann data.
+  - id: mg-anidex
+    name: Anidex
+    description: Public torrent tracker and indexer, mainly for English anime fansub groups.
+    url: https://anidex.info/
+    type: public
+    language: en-US
+    categories: [anime, music, games, software, books, xxx]
+    evidence: "GET https://anidex.info/ -> HTTP 403, DDoS-Guard page, checked 2026-10-27"
+    note: "Prowlarr native indexer; the site answers with a DDoS-Guard check."
+  - id: mg-binarybay
+    name: BinaryBay
+    description: Private torrent tracker for movies, TV and general content.
+    url: https://binarybay.cc/
+    type: private
+    language: en-US
+    categories: [movies, music, games, tv, xxx, books]
+    evidence: "GET https://binarybay.cc/login -> HTTP 404, checked 2026-10-27; private, no account used"
+    note: "API key tracker in Jackett and Prowlarr; family not proven."
+  - id: mg-pornorip
+    name: Pornorip
+    description: Private torrent tracker for adult DVDs.
+    url: https://www.pornorip.si/
+    type: private
+    language: en-US
+    categories: [xxx]
+    evidence: "GET https://www.pornorip.si/ -> HTTP 302, checked 2026-10-27; private, no account used"
+    note: "Cookie login in Jackett and Prowlarr."
+  - id: mg-revolutiontt
+    name: RevolutionTT
+    description: Private general torrent tracker.
+    url: https://revott.me/
+    type: private
+    language: en-US
+    categories: [games, movies, music, software, tv, xxx, books]
+    evidence: "GET https://revott.me/ -> HTTP 301, checked 2026-10-27; private, no account used"
+    note: "Prowlarr native indexer with username and password."
+  - id: mg-sapibr
+    name: SAPIbr (API)
+    description: Portuguese private tracker for ebooks, audiobooks and courses.
+    url: https://sapibr.com/
+    type: private
+    language: pt-PT
+    family: unit3d
+    categories: [games, music, software, tv, xxx, books]
+    evidence: "GET https://sapibr.com/login -> HTTP 200, 6171 bytes, title \"Login - SAPIBR | UNIT3D\", checked 2026-10-27; private, no account used"
+    note: "UNIT3D API tracker (title of the login page)."

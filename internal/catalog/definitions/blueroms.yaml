@@ -1,0 +1,90 @@
+# VERIFICATA (verified). BlueRoms public console ROM search.
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/blueroms/search.html
+# (https://www.blueroms.ws/search?g=0&p=0&q=mario) and from the download page
+# of one game in fixtures/blueroms/download.html. Each search card has the
+# game page, the platform link, the size and a /download/<token> link whose
+# token is regenerated on every page view. The download page keeps the magnet
+# base64-encoded in the data-link attribute of the "Magnet Link" button, so the
+# definition opens that page during the search, while the token is fresh, and
+# decodes the attribute. The card date is the game's release date, not the
+# upload date, and is not read.
+schema: 1
+
+meta:
+  id: blueroms
+  name: BlueRoms
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public console ROM search; the magnet is decoded from the game's download page.
+  urls:
+    - https://www.blueroms.ws/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "3ds", standard: 1110, desc: "Nintendo 3DS" }
+  - { site: "nds", standard: 1010, desc: "Nintendo DS" }
+  - { site: "wii", standard: 1030, desc: "Nintendo Wii" }
+  - { site: "wiiu", standard: 1030, desc: "Nintendo Wii U" }
+  - { site: "switch", standard: 1090, desc: "Nintendo Switch" }
+  - { site: "n64", standard: 1090, desc: "Nintendo 64" }
+  - { site: "gamecube", standard: 1090, desc: "Nintendo GameCube" }
+  - { site: "gba", standard: 1090, desc: "Game Boy Advance" }
+  - { site: "snes", standard: 1090, desc: "Super Nintendo" }
+  - { site: "genesis", standard: 1090, desc: "Mega Drive - Genesis" }
+  - { site: "saturn", standard: 1090, desc: "Saturn" }
+  - { site: "dreamcast", standard: 1090, desc: "Dreamcast" }
+  - { site: "neogeo", standard: 1090, desc: "Neo Geo" }
+  - { site: "arcade", standard: 1090, desc: "Arcade" }
+  - { site: "ps1", standard: 1090, desc: "PlayStation" }
+  - { site: "ps2", standard: 1090, desc: "PlayStation 2" }
+  - { site: "ps3", standard: 1080, desc: "PlayStation 3" }
+  - { site: "ps4", standard: 1180, desc: "PlayStation 4" }
+  - { site: "psp", standard: 1020, desc: "PlayStation Portable" }
+  - { site: "psvita", standard: 1120, desc: "PlayStation Vita" }
+  - { site: "xbox", standard: 1040, desc: "Xbox" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search
+    params:
+      g: "0"
+      p: "0"
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.card" }
+    fields:
+      title:    { selector: "h4.card-title a", filters: [trim] }
+      details:  { selector: "h4.card-title a", attr: href, type: url }
+      grab:     { selector: 'div.card-footer a[href^="/download/"]', attr: href, type: url }
+      category: { selector: "p.card-text a", attr: href, filters: [{ regex: '^/([a-z0-9]+)$' }], type: category }
+      size:     { selector: "p.card-text", filters: [{ regex: 'Size:\s*([0-9.,]+\s*[KMGT]i?B)' }], type: size }
+    required: [title, details, grab, size]
+
+download:
+  resolve_on: search
+  from: grab
+  max_concurrent: 4
+  extract:
+    - magnet: { selector: "button#magnet-button", attr: data-link, filters: [base64] }
+
+health:
+  query: mario
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/blueroms/search.html
+    expect: { min_rows: 20, required: [title, details, size, category] }
+  - name: download
+    fixture: fixtures/blueroms/download.html
+    expect: { min_rows: 0 }

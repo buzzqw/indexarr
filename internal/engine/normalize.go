@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/base64"
 	"fmt"
 	"math"
 	"net/url"
@@ -18,6 +19,14 @@ var (
 	sizePattern   = regexp.MustCompile(`(?i)^([0-9][0-9.,\s]*)\s*(B|KB|MB|GB|TB|KIB|MIB|GIB|TIB)$`)
 	digitsPattern = regexp.MustCompile(`-?[0-9]+`)
 )
+
+func decodeBase64(value string) ([]byte, error) {
+	trimmed := strings.TrimRight(value, "=")
+	if decoded, err := base64.RawStdEncoding.DecodeString(trimmed); err == nil {
+		return decoded, nil
+	}
+	return base64.RawURLEncoding.DecodeString(trimmed)
+}
 
 // applyFilters runs the definition's filters in declaration order.
 func applyFilters(value string, filters []definition.Filter) (string, error) {
@@ -42,6 +51,15 @@ func applyFilters(value string, filters []definition.Filter) (string, error) {
 				continue
 			}
 			value = parsed.Query().Get(filter.Arg)
+		case "base64":
+			// Standard or URL alphabet, padded or not. A value that is not
+			// base64 becomes empty, like a regex without a match.
+			decoded, err := decodeBase64(strings.TrimSpace(value))
+			if err != nil {
+				value = ""
+				continue
+			}
+			value = string(decoded)
 		case "prefix":
 			value = filter.Arg + value
 		case "suffix":

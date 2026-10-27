@@ -434,6 +434,16 @@ response:
   required: [title, size]
 ```
 
+#### Charset
+
+Le risposte HTML (ricerca, pagina di dettaglio, messaggi di login) sono
+convertite in UTF-8 prima dell'estrazione. Il charset viene dall'header
+`Content-Type`, poi da un `<meta charset>` nei primi 2 KiB; sono gestiti
+`windows-1251` (molti tracker russi) e `ISO-8859-1`/`windows-1252`. Un corpo
+che è già UTF-8 valido non viene toccato, quindi una pagina restituita da
+FlareSolverr non viene decodificata due volte. Le definizioni non devono
+dichiarare nulla.
+
 #### Righe
 
 - **HTML**: `rows.selector` è un selettore CSS, oppure una lista di fallback;
@@ -491,6 +501,7 @@ I filtri sono applicati nell'ordine dichiarato:
 | `query_param: name` | estrae il parametro dall'URL nel valore |
 | `prefix: "x"` / `suffix: "x"` | aggiunge testo |
 | `regex: "pattern"` | usa il gruppo 1 della prima corrispondenza; nessuna corrispondenza = stringa vuota |
+| `base64` | decodifica base64 (alfabeto standard o URL, con o senza `=`); un valore non valido diventa vuoto. Serve ai siti che nascondono il magnet in un attributo codificato |
 
 Esempio:
 
@@ -613,6 +624,10 @@ sono disponibili nell'azione.
   link è già stato risolto dalla sorgente dichiarata), usa un `DownloadURL`
   diretto e solo dopo la pagina di dettaglio. Un redirect della pagina (o del
   link) verso `magnet:` viene restituito come `Payload.Magnet`.
+- Quando il `.torrent` arriva da una pagina di dettaglio (o la release ha un
+  link ai dettagli), la richiesta porta `Referer: <pagina di dettaglio>`,
+  come un clic nel browser: diversi siti DataLife Engine rispondono con una
+  pagina HTML se manca. Il referer è inviato solo allo stesso host.
 - **`download.before`** viene eseguito solo da `Download`, dopo che il client ha
   scelto la release; una ricerca non apre la pagina di dettaglio e non ringrazia.
 - Con `select: season_episode` la scelta usa la stagione e l'episodio della

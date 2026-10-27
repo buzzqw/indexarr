@@ -1,0 +1,64 @@
+# VERIFICATA (verified). PornoTorrent public adult search (WordPress).
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/pornotorrent/search.html (https://pornotorrent.com.br/?s=blonde)
+# and from one release page in fixtures/pornotorrent/detail.html. The search
+# card has only the title and the release page. The release page carries the
+# size ("Tamanho") and a "/download/?m=<magnet>" button whose m parameter is
+# the URL-encoded magnet; it is read at grab time.
+schema: 1
+
+meta:
+  id: pornotorrent
+  name: PornoTorrent
+  language: pt-BR
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Brazilian adult site; magnet and size on the release page.
+  urls:
+    - https://pornotorrent.com.br/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "cp-card", standard: 6000, desc: "Adult" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /
+    params:
+      s: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "article.cp-card" }
+    fields:
+      title:    { selector: "h3.cp-card__title a", filters: [trim] }
+      details:  { selector: "h3.cp-card__title a", attr: href, type: url }
+      # Every card is adult content; the card's own class is the marker.
+      category: { selector: "a.cp-card__link", attr: class, filters: [{ regex: '^(cp-card)__link' }], type: category }
+    required: [title, details]
+
+download:
+  resolve_on: grab
+  from: details
+  size: { selector: 'div.cp-meta-list__row:contains("Tamanho") span.cp-meta-list__value' }
+  extract:
+    - magnet: { selector: 'a[href^="/download/?m="]', attr: href, filters: [{ query_param: m }] }
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+
+health:
+  query: blonde
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/pornotorrent/search.html
+    expect: { min_rows: 10, required: [title, details] }
+  - name: detail
+    fixture: fixtures/pornotorrent/detail.html
+    expect: { min_rows: 0 }

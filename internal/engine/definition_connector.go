@@ -508,7 +508,7 @@ func (c *DefinitionConnector) Download(ctx context.Context, item Item) (Payload,
 		return c.downloadFromSection(ctx, item)
 	}
 	if strings.TrimSpace(item.DownloadURL) != "" {
-		return c.downloadURL(ctx, item.DownloadURL, item.Title)
+		return c.downloadURL(ctx, item.DownloadURL, item.Title, resolveURL(item.DetailsURL, c.baseURL))
 	}
 	if strings.TrimSpace(item.DetailsURL) != "" {
 		if c.def.Download != nil {
@@ -892,11 +892,15 @@ func (c *DefinitionConnector) extractRowsWith(response *Response, spec definitio
 	case "xml":
 		return extractXMLRows(response.Body, spec, base)
 	default:
-		return extractHTMLRows(response.Body, spec, base)
+		return extractHTMLRows(htmlBody(response), spec, base)
 	}
 }
 
-func (c *DefinitionConnector) downloadURL(ctx context.Context, rawURL, title string) (Payload, error) {
+// downloadURL fetches a .torrent. referer is the release page the link came
+// from: some sites (DLE engines among them) serve the file only when the
+// request carries it, as a browser click would. It is sent only to the same
+// host, so a details URL never leaks to another site.
+func (c *DefinitionConnector) downloadURL(ctx context.Context, rawURL, title, referer string) (Payload, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if strings.HasPrefix(strings.ToLower(rawURL), "magnet:") {
 		return Payload{Magnet: rawURL}, nil
@@ -911,6 +915,9 @@ func (c *DefinitionConnector) downloadURL(ctx context.Context, rawURL, title str
 	request, err := c.newRequest(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return Payload{}, errors.New("download: build request failed")
+	}
+	if ref, err := url.Parse(strings.TrimSpace(referer)); err == nil && referer != "" && strings.EqualFold(ref.Hostname(), target.Hostname()) {
+		request.Header.Set("Referer", ref.String())
 	}
 	response, err := c.do(ctx, request)
 	if err != nil {
@@ -994,7 +1001,7 @@ func (c *DefinitionConnector) downloadFromDetails(ctx context.Context, item Item
 	if resolved == "" {
 		return Payload{}, errors.New("download: invalid download link")
 	}
-	return c.downloadURL(ctx, resolved, item.Title)
+	return c.downloadURL(ctx, resolved, item.Title, item.DetailsURL)
 }
 
 func (c *DefinitionConnector) newRequest(ctx context.Context, method string, target *url.URL, body io.Reader) (*http.Request, error) {
@@ -1288,7 +1295,7 @@ func (c *DefinitionConnector) conditionMessage(condition definition.Condition, r
 		return ""
 	}
 	if strings.EqualFold(message, "text") && condition.Selector != "" {
-		value, err := extractHTMLValue(response.Body, condition.Selector, "text")
+		value, err := extractHTMLValue(htmlBody(response), condition.Selector, "text")
 		if err == nil && strings.TrimSpace(value) != "" {
 			return value
 		}

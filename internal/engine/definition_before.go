@@ -211,7 +211,7 @@ func (c *DefinitionConnector) payloadFromCandidates(ctx context.Context, item It
 		return Payload{Magnet: chosen.Magnet}, true, nil
 	}
 	if chosen.DownloadURL != "" {
-		payload, err := c.downloadURL(ctx, chosen.DownloadURL, item.Title)
+		payload, err := c.downloadURL(ctx, chosen.DownloadURL, item.Title, resolveURL(item.DetailsURL, c.baseURL))
 		return payload, true, err
 	}
 	return Payload{}, true, errors.New("download: no usable download target")

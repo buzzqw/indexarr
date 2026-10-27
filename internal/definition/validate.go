@@ -88,6 +88,7 @@ var (
 		"prefix":      true,
 		"suffix":      true,
 		"regex":       true,
+		"base64":      true,
 	}
 	allowedCapabilityParams = map[string]bool{
 		"q":        true,

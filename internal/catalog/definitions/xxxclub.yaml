@@ -1,0 +1,63 @@
+# VERIFICATA (verified). XXXClub public adult search.
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/xxxclub/search.html (https://xxxclub.to/torrents/search/all/anal).
+# Each row starts with a hidden decoy link (left:-99999px) and then the real
+# /torrents/details/ link, whose id attribute is "#i" followed by the 40-hex
+# infohash; the release page of the same row shows the same hash in its
+# magnet, so no detail page is opened. Category, date, size, seeders and
+# leechers are spans of the row.
+schema: 1
+
+meta:
+  id: xxxclub
+  name: XXXClub
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public adult tracker with infohash, size, date and health in the result row.
+  urls:
+    - https://xxxclub.to/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "0", standard: 6000, desc: "480p/SD" }
+  - { site: "1", standard: 6040, desc: "720p/HD" }
+  - { site: "2", standard: 6040, desc: "1080p/FullHD" }
+  - { site: "4", standard: 6045, desc: "2160p/UHD/4K" }
+  - { site: "3", standard: 6000, desc: "Movies/DVD/WEB" }
+  - { site: "5", standard: 6060, desc: "Imageset" }
+  - { site: "6", standard: 6000, desc: "VR/VirtualReality" }
+  - { site: "7", standard: 6070, desc: "Pack/MegaPack" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: "/torrents/search/all/{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "li" }
+    fields:
+      title:    { selector: 'span.toral a[href*="/torrents/details/"]', filters: [trim] }
+      details:  { selector: 'span.toral a[href*="/torrents/details/"]', attr: href, type: url }
+      infohash: { selector: 'span.toral a[href*="/torrents/details/"]', attr: id, filters: [{ regex: '^#i([0-9a-fA-F]{40})$' }] }
+      category: { selector: "a.catah", attr: href, filters: [{ regex: '/browse/([0-9]+)/' }], type: category }
+      date:     { selector: "span.adde", type: date, layouts: ["02 Jan 2006 15:04:05"] }
+      size:     { selector: "span.siz", type: size }
+      seeders:  { selector: "span.see", type: int }
+      leechers: { selector: "span.lee", type: int }
+    required: [title, details, infohash, size]
+
+health:
+  query: anal
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/xxxclub/search.html
+    expect: { min_rows: 20, required: [title, details, infohash, size, seeders] }

@@ -1,0 +1,84 @@
+# VERIFICATA (verified). Zamunda.LIFE public magnet search (JSON API).
+#
+# Written from the JSON the search page calls, captured on 2026-10-27 in
+# fixtures/zamundalife/search.json
+# (https://zamunda.life/api/torrents?q=matrix&bg_audio=false&bg_movies=false&bg_arena=false&zelka=false&offset=0).
+# The site indexes the Bulgarian trackers Zamunda, ArenaBG and Zelka; every
+# row has the title, the Bulgarian category ("Филми/HD"), the size and a
+# ready magnet. There is no release page on the site. The API returns 20 rows
+# per offset.
+schema: 1
+
+meta:
+  id: zamundalife
+  name: Zamunda LIFE
+  language: bg-BG
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public magnet search over the Bulgarian Zamunda, ArenaBG and Zelka archives.
+  urls:
+    - https://zamunda.life/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "Филми/SD", standard: 2030, desc: "Movies SD" }
+  - { site: "Филми/HD", standard: 2040, desc: "Movies HD" }
+  - { site: "Филми/БГ", standard: 2010, desc: "Bulgarian movies" }
+  - { site: "Филми/Документални", standard: 5080, desc: "Documentaries" }
+  - { site: "Blu-ray", standard: 2050, desc: "Blu-ray" }
+  - { site: "Сериали", standard: 5000, desc: "TV" }
+  - { site: "Сериали/HD", standard: 5040, desc: "TV HD" }
+  - { site: "Анимации", standard: 5070, desc: "Animation" }
+  - { site: "Анимации/Аниме", standard: 5070, desc: "Anime" }
+  - { site: "Спорт/HD", standard: 5060, desc: "Sport HD" }
+  - { site: "Спорт/TV", standard: 5060, desc: "Sport TV" }
+  - { site: "Музика", standard: 3000, desc: "Music" }
+  - { site: "Музика/Lossless", standard: 3040, desc: "Music lossless" }
+  - { site: "Музика/Hi-Res/Vinyl", standard: 3040, desc: "Music Hi-Res/Vinyl" }
+  - { site: "Програми/PC ISO", standard: 4000, desc: "Software ISO" }
+  - { site: "Програми/други", standard: 4000, desc: "Software other" }
+  - { site: "Игри/PC ISO", standard: 4050, desc: "PC games ISO" }
+  - { site: "Игри/PC Rip", standard: 4050, desc: "PC games rip" }
+  - { site: "Игри/Linux", standard: 4050, desc: "Linux games" }
+  - { site: "Андроид/Игри", standard: 4070, desc: "Android games" }
+  - { site: "Книги/Комикси", standard: 7030, desc: "Comics" }
+  - { site: "XXX", standard: 6000, desc: "Adult" }
+  - { site: "Хентай", standard: 6000, desc: "Hentai" }
+  - { site: "Други", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /api/torrents
+    params:
+      q: "{{ query.keywords }}"
+      bg_audio: "false"
+      bg_movies: "false"
+      bg_arena: "false"
+      zelka: "false"
+      offset: "0"
+  pagination: { type: none }
+  response:
+    type: json
+    rows: { path: "" }
+    fields:
+      title:    { path: title, filters: [trim] }
+      magnet:   { path: link }
+      category: { path: category, type: category }
+      size:     { path: size, type: size }
+    required: [title, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/zamundalife/search.json
+    expect: { min_rows: 10, required: [title, magnet, size, category] }

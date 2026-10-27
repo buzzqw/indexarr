@@ -1,0 +1,77 @@
+# VERIFICATA (verified). TorrentDownload public HTML search.
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/torrentdownload/search.html
+# (https://www.torrentdownload.info/search?q=matrix). Each row links
+# /<INFOHASH>/<slug>, so the magnet is built from the 40-hex path segment
+# without opening a detail page. The category is the free text after "»"
+# ("Movies", "Music > FLAC", "Other XXX"); only the part before ">" is mapped.
+# The age column is relative ("11 months ago", "1 Year+") and is not read.
+schema: 1
+
+meta:
+  id: torrentdownload
+  name: TorrentDownload
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public TorrentDownload HTML search with infohash, size and health in the row.
+  urls:
+    - https://www.torrentdownload.info/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "Movies", standard: 2000, desc: "Movies" }
+  - { site: "TV shows", standard: 5000, desc: "TV" }
+  - { site: "Anime", standard: 5070, desc: "Anime" }
+  - { site: "Anime.", standard: 5070, desc: "Anime" }
+  - { site: "Music", standard: 3000, desc: "Audio" }
+  - { site: "Audio Lossless", standard: 3040, desc: "Audio lossless" }
+  - { site: "Audio Books", standard: 3030, desc: "Audiobooks" }
+  - { site: "Books", standard: 7000, desc: "Books" }
+  - { site: "Applications", standard: 4000, desc: "Applications" }
+  - { site: "Games", standard: 4000, desc: "Games" }
+  - { site: "Games PC", standard: 4050, desc: "PC games" }
+  - { site: "Adult", standard: 6000, desc: "Adult" }
+  - { site: "XXX", standard: 6000, desc: "Adult" }
+  - { site: "Other XXX", standard: 6000, desc: "Adult" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /search
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.table2 tr" }
+    fields:
+      title:    { selector: "div.tt-name a", filters: [trim] }
+      details:  { selector: "div.tt-name a", attr: href, type: url }
+      infohash: { selector: "div.tt-name a", attr: href, filters: [{ regex: '^/([0-9A-Fa-f]{40})/' }] }
+      magnet:
+        selector: "div.tt-name a"
+        attr: href
+        filters: [{ regex: '^/([0-9A-Fa-f]{40})/' }, { prefix: "magnet:?xt=urn:btih:" }]
+      category: { selector: "span.smallish", filters: [{ regex: '»\s*([^>]*[^>\s])' }], type: category }
+      size:     { selector: "td:nth-of-type(3)", type: size }
+      seeders:  { selector: "td.tdseed", type: int }
+      leechers: { selector: "td.tdleech", type: int }
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/torrentdownload/search.html
+    expect: { min_rows: 20, required: [title, details, magnet, size, seeders] }

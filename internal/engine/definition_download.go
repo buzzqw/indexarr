@@ -457,10 +457,11 @@ func (c *DefinitionConnector) extractDetailFields(response *Response, field defi
 		return []string{value}, nil
 	}
 
+	body := htmlBody(response)
 	var out []string
 	for _, selector := range field.Selector {
 		if all {
-			values, err := extractHTMLValues(response.Body, selector, field.Attr)
+			values, err := extractHTMLValues(body, selector, field.Attr)
 			if err != nil {
 				return nil, err
 			}
@@ -478,7 +479,7 @@ func (c *DefinitionConnector) extractDetailFields(response *Response, field defi
 			}
 			continue
 		}
-		value, err := extractHTMLValue(response.Body, selector, field.Attr)
+		value, err := extractHTMLValue(body, selector, field.Attr)
 		if err != nil {
 			return nil, err
 		}
@@ -524,7 +525,7 @@ func (c *DefinitionConnector) downloadFromSection(ctx context.Context, item Item
 		return Payload{Magnet: result.Magnet}, nil
 	}
 	if result.DownloadURL != "" {
-		return c.downloadURL(ctx, result.DownloadURL, item.Title)
+		return c.downloadURL(ctx, result.DownloadURL, item.Title, rawURL)
 	}
 	return Payload{}, errors.New("download: no download target on details page")
 }

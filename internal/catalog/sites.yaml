@@ -570,24 +570,6 @@ sites:
       source_id: animetorrentsro
       checked: "2026-10-25"
       evidence: 'GET https://animetorrents.io/login.php?returnto=%2F -> HTTP 200, 2239 bytes, title "ANIME TORRENTS :: Autentificare", checked 2026-10-25; private, no account used'
-    - id: jk-animetosho-xyz
-      name: Anime Tosho
-      description: Anime Tosho is a Public Torrent Tracker for ANIME
-      url: https://animetosho.net/
-      urls:
-        - https://animetosho.net/
-      type: public
-      language: en-US
-      categories:
-        - tv
-        - anime
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: animetosho-xyz
-      checked: "2026-10-25"
-      evidence: GET https://animetosho.net/ -> HTTP 200, 219006 bytes, title "Anime Tosho", checked 2026-10-25
     - id: jk-animeworld-api
       name: AnimeWorld (API)
       description: AnimeWorld (AW) is a GERMAN Private Torrent Tracker for ANIME / MANGA / HENTAI
@@ -1171,29 +1153,6 @@ sites:
       source_id: bigcore
       checked: "2026-10-25"
       evidence: GET https://bigcore.eu/login.php -> HTTP 200, 10304 bytes, title "BigCore - Bejelentkezés", checked 2026-10-25; private, no account used
-    - id: jk-bigfangroup
-      name: BigFANGroup
-      description: BigFANGroup is a RUSSIAN Public Torrent Tracker for MOVIES / TV
-      url: https://bigfangroup.org/
-      urls:
-        - https://bigfangroup.org/
-      type: public
-      language: ru-RU
-      categories:
-        - movies
-        - tv
-        - music
-        - books
-        - games
-        - software
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: bigfangroup
-      checked: "2026-10-25"
-      evidence: GET https://bigfangroup.org/ -> HTTP 200, 24196 bytes, title "\xc3\xeb\xe0\xe2\xed\xe0\xff BigFANGroup.org - \xf1\xea\xe0\xf7\xe0\xf2\xfc \xe1\xe5\xe7 \xf0\xe5\xe3\xe8\xf1\xf2\xf0\xe0\xf6\xe8\xe8", checked 2026-10-25
     - id: jk-bitagent
       name: BitAgent
       description: BitAgent is a Private Torrent Tracker for MOVIES / TV
@@ -1450,23 +1409,6 @@ sites:
       source_id: bluebirdhd
       checked: "2026-10-25"
       evidence: GET https://bluebird-hd.org/ -> HTTP 200, 3871 bytes, title "Under maintenance", checked 2026-10-25; private, no account used
-    - id: jk-blueroms
-      name: BlueRoms
-      description: BlueRoms is a Public Torrent Tracker for ROMS
-      url: https://www.blueroms.ws/
-      urls:
-        - https://www.blueroms.ws/
-      type: public
-      language: en-US
-      categories:
-        - games
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: blueroms
-      checked: "2026-10-25"
-      evidence: 'GET https://www.blueroms.ws/ -> HTTP 200, 21157 bytes, title "BlueRoms: Download Game ROMs and ISOs", checked 2026-10-25'
     - id: jk-bluetorrents
       name: BlueTorrents
       description: BlueTorrents is a Private Torrent Tracker for MOVIES / TV / MUSIC / GENERAL
@@ -1950,24 +1892,6 @@ sites:
       checked: "2026-10-25"
       evidence: 'GET https://carpt.net/login.php -> HTTP 200, 10122 bytes, title "CarPT :: 登录 - Powered by NexusPHP", checked 2026-10-25; private, no account used'
       note: 'family nexusphp (confirmed): GET https://carpt.net/login.php -> 200, title ''Powered by NexusPHP'''
-    - id: jk-catorrent
-      name: Catorrent
-      description: Catorrent is a RUSSIAN Public Torrent Tracker for GAMES
-      url: https://catorrent.net/
-      urls:
-        - https://catorrent.net/
-      type: public
-      language: ru-RU
-      categories:
-        - games
-        - software
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: catorrent
-      checked: "2026-10-25"
-      evidence: GET https://catorrent.net/ -> HTTP 200, 44519 bytes, title "Скачать игры через торрент бесплатно - Крупная база игр от Catorrent.net", checked 2026-10-25
     - id: jk-ceskeforum
       name: CeskeForum
       description: CeskeForum is a CZECH Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -3513,23 +3437,6 @@ sites:
       checked: "2026-10-25"
       evidence: 'GET https://pt.0ff.cc/login.php -> HTTP 200, 13803 bytes, title "Farmm :: 登录 农场|Farmm-我们不是资源的创造者，只是优质资源的桥梁与守护者。 - Powered by NexusPHP", checked 2026-10-25; private, no account used'
       note: 'family nexusphp (possible): live GET markers on https://pt.0ff.cc/'
-    - id: jk-freejavtorrent
-      name: Free JAV Torrent
-      description: Free JAV Torrent is a Public tracker for Asian 3X (JAV)
-      url: https://www.freejavtorrent.com/
-      urls:
-        - https://www.freejavtorrent.com/
-      type: public
-      language: en-US
-      categories:
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: freejavtorrent
-      checked: "2026-10-25"
-      evidence: GET https://www.freejavtorrent.com/ -> HTTP 200, 56958 bytes, title "Free JAV Torrent | Best Free Japanese HD Porn Movies Download", checked 2026-10-25
     - id: jk-funfile
       name: FunFile
       description: FunFile is a Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -5812,21 +5719,6 @@ sites:
       source_id: magnetcat
       checked: "2026-10-25"
       evidence: GET https://magnetcatcat.com/ -> HTTP 403, 5574 bytes, title "Just a moment...", checked 2026-10-25
-    - id: jk-magnetdownload
-      name: MagnetDownload
-      description: MagnetDownload is a Public DHT Crawler
-      url: https://www.magnetdownload.com/
-      urls:
-        - https://www.magnetdownload.com/
-      type: public
-      language: en-US
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: magnetdownload
-      checked: "2026-10-25"
-      evidence: GET https://www.magnetdownload.com/ -> HTTP 200, 8230 bytes, title "MagnetDownload.COM - A Torrent & Magnet Links Search Engine based on DHT", checked 2026-10-25
     - id: jk-magnetz
       name: Magnetz
       description: Magnetz is a Semi-Private torrent meta-search engine
@@ -6207,23 +6099,6 @@ sites:
       source_id: miobt
       checked: "2026-10-25"
       evidence: GET https://miobt.com/public/html/start/ -> HTTP 200, 1132 bytes, title "(no title)", checked 2026-10-25
-    - id: jk-mixtapetorrent
-      name: MixtapeTorrent
-      description: MixtapeTorrent is a Public Music site for MixTapes
-      url: http://www.mixtapetorrent.com/
-      urls:
-        - http://www.mixtapetorrent.com/
-      type: public
-      language: en-US
-      categories:
-        - music
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: mixtapetorrent
-      checked: "2026-10-25"
-      evidence: GET http://www.mixtapetorrent.com/ -> HTTP 200, 48632 bytes, title "MixtapeTorrent.com | The Latest Mixtape Downloads, Mixtape News, & Independent Music Promotion", checked 2026-10-25
     - id: jk-mma-torrents
       name: MMA-torrents
       description: MMA-Torrents is a Private Torrent Tracker for MMA (Mixed Martial Arts)
@@ -6482,23 +6357,6 @@ sites:
       source_id: myanonamouse
       checked: "2026-10-25"
       evidence: GET https://www.myanonamouse.net/login.php?returnto=%2F -> HTTP 200, 7583 bytes, title "Login | My Anonamouse", checked 2026-10-25; private, no account used
-    - id: jk-mypornclub
-      name: MyPornClub
-      description: MyPornClub is a Public Torrent Tracker for 3X
-      url: https://myporn.club/
-      urls:
-        - https://myporn.club/
-      type: public
-      language: en-US
-      categories:
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: mypornclub
-      checked: "2026-10-25"
-      evidence: GET https://myporn.club/ -> HTTP 200, 141590 bytes, title "My Porn Club - Free Sharing Site", checked 2026-10-25
     - id: jk-myspleen
       name: MySpleen
       description: MySpleen is a Private Torrent Tracker for TV / COMEDY / ANIMATION / 80-90’S VHS NOSTALGIA
@@ -7281,24 +7139,6 @@ sites:
       source_id: passthepopcorn
       checked: "2026-10-25"
       evidence: 'GET https://passthepopcorn.me/ -> HTTP 200, 4635 bytes, title "Login :: PassThePopcorn", checked 2026-10-25; private, no account used'
-    - id: jk-pctorrent
-      name: PC-torrent
-      description: PC-torrent is a RUSSIAN Public Torrent Tracker for Games
-      url: https://pc-torrents.games/
-      urls:
-        - https://pc-torrents.games/
-      type: public
-      language: ru-RU
-      categories:
-        - games
-        - software
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: pctorrent
-      checked: "2026-10-25"
-      evidence: GET https://pc-torrents.games/ -> HTTP 200, 24833 bytes, title "\xd1\xea\xe0\xf7\xe0\xf2\xfc \xe8\xe3\xf0\xfb \xf7\xe5\xf0\xe5\xe7 \xf2\xee\xf0\xf0\xe5\xed\xf2", checked 2026-10-25
     - id: jk-peeratiko
       name: Peeratiko
       description: Peeratiko is a GREEK Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -7624,40 +7464,6 @@ sites:
       source_id: pornolab
       checked: "2026-10-25"
       evidence: GET https://pornolab.net/ -> HTTP 200, 516 bytes, title "\xc1\xe8\xf2\xf2\xee\xf0\xf0\xe5\xed\xf2 \xf2\xf0\xe5\xea\xe5\xf0 PornoLab.Net. \xc4\xe5\xeb\xe8\xf2\xe5\xf1\xfc \xf3\xe4\xee\xe2\xee\xeb\xfc\xf1\xf2\xe2\xe8\xff\xec\xe8!", checked 2026-10-25; page too small to trust
-    - id: jk-pornotorrent
-      name: PornoTorrent
-      description: PornoTorrent is a BRAZILIAN Public Torrent Tracker for 3X
-      url: https://pornotorrent.com.br/
-      urls:
-        - https://pornotorrent.com.br/
-      type: public
-      language: pt-BR
-      categories:
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: pornotorrent
-      checked: "2026-10-25"
-      evidence: GET https://pornotorrent.com.br/ -> HTTP 200, 131302 bytes, title "Porno Torrent - Download de filmes adultos via torrent", checked 2026-10-25
-    - id: jk-pornxlab
-      name: PornXLab
-      description: PornXLab is a Public tracker for 3X
-      url: https://www.pornxlab.com/
-      urls:
-        - https://www.pornxlab.com/
-      type: public
-      language: en-US
-      categories:
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: pornxlab
-      checked: "2026-10-25"
-      evidence: GET https://www.pornxlab.com/ -> HTTP 200, 55797 bytes, title "PornXLab - Free Porn Studio Movie Torrents", checked 2026-10-25
     - id: jk-portugas-api
       name: Portugas (API)
       description: Portugas is a PORTUGUESE Private Torrent Tracker for 0DAY / GENERAL
@@ -9190,24 +8996,6 @@ sites:
       checked: "2026-10-25"
       evidence: 'GET https://si-qi.xyz/login.php -> HTTP 200, 9069 bytes, title "思齐 :: 登录 高清图书站 - Powered by NexusPHP", checked 2026-10-25; private, no account used'
       note: 'family nexusphp (possible): live GET markers on https://si-qi.xyz/'
-    - id: jk-skidrowrepack
-      name: SkidrowRepack
-      description: SkidrowRepack is a Public Torrent Tracker for GAMES
-      url: https://skidrowrepack.com/
-      urls:
-        - https://skidrowrepack.com/
-      type: public
-      language: en-US
-      categories:
-        - games
-        - software
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: skidrowrepack
-      checked: "2026-10-25"
-      evidence: GET https://skidrowrepack.com/ -> HTTP 200, 41147 bytes, title "Games torrent free download - SkidrowRepack.com", checked 2026-10-25
     - id: jk-skipthecommercials-api
       name: SkipTheCommercials (API)
       description: SkipTheCommercials (STC) is a Private Torrent Tracker for TV
@@ -9293,23 +9081,6 @@ sites:
       source_id: snowpt
       checked: "2026-10-25"
       evidence: GET https://skyeysnow.com/ -> HTTP 200, 37 bytes, title "(no title)", checked 2026-10-25; private, no account used
-    - id: jk-sosulki
-      name: sosulki
-      description: sosulki is a RUSSIAN Public Torrent Tracker for 3X
-      url: https://sosulki.bosk.cc/
-      urls:
-        - https://sosulki.bosk.cc/
-      type: public
-      language: ru-RU
-      categories:
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: sosulki
-      checked: "2026-10-25"
-      evidence: GET https://sosulki.bosk.cc/ -> HTTP 200, 70120 bytes, title "Порно торрент трекер XXX sosulki.bosk.cc", checked 2026-10-25
     - id: jk-soulvoice
       name: SoulVoice (聆音Club)
       description: SoulVoice (聆音Club) is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -10490,30 +10261,6 @@ sites:
       source_id: torrentdd
       checked: "2026-10-25"
       evidence: 'GET https://www.torrentdd.com/ -> HTTP 200, 5722 bytes, title "เว็บบิท โหลดบิท ดาวน์โหลด bit torrent :: TorrentDD.com", checked 2026-10-25; private, no account used'
-    - id: jk-torrentdownload
-      name: TorrentDownload
-      description: TorrentDownload is a Public torrent meta-search engine
-      url: https://www.torrentdownload.info/
-      urls:
-        - https://www.torrentdownload.info/
-      type: public
-      language: en-US
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-        - games
-        - software
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: torrentdownload
-      checked: "2026-10-25"
-      evidence: GET https://www.torrentdownload.info/ -> HTTP 200, 40078 bytes, title "TorrentDownload - Free Torrents Download", checked 2026-10-25
     - id: jk-torrenteros-api
       name: Torrenteros (API)
       description: Torrenteros (TTR) is a SPANISH Torrent Tracker for MOVIES / TV / MUSIC
@@ -11717,23 +11464,6 @@ sites:
       source_id: xwtorrents2fa
       checked: "2026-10-25"
       evidence: 'GET https://xtremewrestlingtorrents.net/login.php -> HTTP 200, 12774 bytes, title "XWT :: Login", checked 2026-10-25; private, no account used'
-    - id: jk-xxxclub
-      name: XXXClub
-      description: XXXClub is a Public torrent site for 3X
-      url: https://xxxclub.to/
-      urls:
-        - https://xxxclub.to/
-      type: public
-      language: en-US
-      categories:
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: xxxclub
-      checked: "2026-10-25"
-      evidence: 'GET https://xxxclub.to/ -> HTTP 200, 35439 bytes, title "XXXClub : Adult , Porn , XXX , Videos , Download , Torrents", checked 2026-10-25'
     - id: jk-xxxtor
       name: xxxtor
       description: xxxtor is a RUSSIAN Public Torrent Tracker for 3X
@@ -11799,30 +11529,6 @@ sites:
       checked: "2026-10-25"
       evidence: GET https://yu-scene.net/login -> HTTP 200, 6927 bytes, title "Login - YUSCENE", checked 2026-10-25; private, no account used
       note: 'family unit3d (possible): live GET markers on https://yu-scene.net/'
-    - id: jk-zamundalife
-      name: Zamunda LIFE
-      description: Zamunda LIFE is a BULGARIAN Public Torrent Archive for MOVIES / TV / GENERAL
-      url: https://zamunda.life/
-      urls:
-        - https://zamunda.life/
-      type: public
-      language: bg-BG
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-        - games
-        - software
-        - xxx
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: zamundalife
-      checked: "2026-10-25"
-      evidence: GET https://zamunda.life/ -> HTTP 200, 6382 bytes, title "Zamunda.LIFE - Търсачка за магнитни линкове от Zamunda, ArenaBG и Zelka", checked 2026-10-25
     - id: jk-zappateers
       name: Zappateers
       description: Zappateers is a Private Torrent Tracker for Frank Zappa MUSIC
@@ -11931,3 +11637,98 @@ sites:
       source_id: ztracker
       checked: "2026-10-25"
       evidence: 'GET https://ztracker.cc/login.php -> HTTP 200, 21329 bytes, title "Ztracker.cc :: Bejelentkez\xe9s", checked 2026-10-25; login or anti-bot page'
+    - id: mg-anidex
+      name: Anidex
+      description: Public torrent tracker and indexer, mainly for English anime fansub groups.
+      url: https://anidex.info/
+      type: public
+      language: en-US
+      categories:
+        - anime
+        - music
+        - games
+        - software
+        - books
+        - xxx
+      state: da-provvi
+      required:
+        - url
+      source: manual
+      evidence: GET https://anidex.info/ -> HTTP 403, DDoS-Guard page, checked 2026-10-27
+      note: Prowlarr native indexer; the site answers with a DDoS-Guard check.
+    - id: mg-binarybay
+      name: BinaryBay
+      description: Private torrent tracker for movies, TV and general content.
+      url: https://binarybay.cc/
+      type: private
+      language: en-US
+      categories:
+        - movies
+        - music
+        - games
+        - tv
+        - xxx
+        - books
+      state: da-provvi
+      required:
+        - username
+        - password
+      source: manual
+      evidence: GET https://binarybay.cc/login -> HTTP 404, checked 2026-10-27; private, no account used
+      note: API key tracker in Jackett and Prowlarr; family not proven.
+    - id: mg-pornorip
+      name: Pornorip
+      description: Private torrent tracker for adult DVDs.
+      url: https://www.pornorip.si/
+      type: private
+      language: en-US
+      categories:
+        - xxx
+      state: da-provvi
+      required:
+        - username
+        - password
+      source: manual
+      evidence: GET https://www.pornorip.si/ -> HTTP 302, checked 2026-10-27; private, no account used
+      note: Cookie login in Jackett and Prowlarr.
+    - id: mg-revolutiontt
+      name: RevolutionTT
+      description: Private general torrent tracker.
+      url: https://revott.me/
+      type: private
+      language: en-US
+      categories:
+        - games
+        - movies
+        - music
+        - software
+        - tv
+        - xxx
+        - books
+      state: da-provvi
+      required:
+        - username
+        - password
+      source: manual
+      evidence: GET https://revott.me/ -> HTTP 301, checked 2026-10-27; private, no account used
+      note: Prowlarr native indexer with username and password.
+    - id: mg-sapibr
+      name: SAPIbr (API)
+      description: Portuguese private tracker for ebooks, audiobooks and courses.
+      url: https://sapibr.com/
+      type: private
+      language: pt-PT
+      family: unit3d
+      categories:
+        - games
+        - music
+        - software
+        - tv
+        - xxx
+        - books
+      state: da-provvi
+      required:
+        - apikey
+      source: manual
+      evidence: GET https://sapibr.com/login -> HTTP 200, 6171 bytes, title "Login - SAPIBR | UNIT3D", checked 2026-10-27; private, no account used
+      note: UNIT3D API tracker (title of the login page).

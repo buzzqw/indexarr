@@ -1,0 +1,73 @@
+# VERIFICATA (verified). Free JAV Torrent public search.
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/freejavtorrent/search.html
+# (https://www.freejavtorrent.com/s.php?search=ipx) and from the download page
+# of one release in fixtures/freejavtorrent/download.html
+# (https://www.freejavtorrent.com/dl.php?t=70917). Each card links the release
+# page "<slug>-<id>.html"; the site's own download button points to
+# /dl.php?t=<id>, which carries the .torrent link. The size is the "[8.1 GB]"
+# prefix of the title. PornXLab runs the same software.
+schema: 1
+
+meta:
+  id: freejavtorrent
+  name: Free JAV Torrent
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Japanese adult video search; the .torrent comes from the site's download page.
+  urls:
+    - https://www.freejavtorrent.com/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "Japanese Movies", standard: 6000, desc: "Japanese movies" }
+  - { site: "Japanese Movies Packs", standard: 6070, desc: "Japanese movie packs" }
+  - { site: "Chinese Movies", standard: 6000, desc: "Chinese movies" }
+  - { site: "Japanese Movies SiteRip 1991-2014", standard: 6000, desc: "SiteRip 1991-2014" }
+  - { site: "Japanese Movies SiteRip 2015-2024", standard: 6000, desc: "SiteRip 2015-2024" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /s.php
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.image-wrapper" }
+    fields:
+      title:    { selector: "a.overlay", filters: [trim] }
+      details:  { selector: "a.overlay", attr: href, type: url }
+      grab:
+        selector: "a.overlay"
+        attr: href
+        filters: [{ regex: '-([0-9]+)\.html$' }, { prefix: "/dl.php?t=" }]
+        type: url
+      category: { selector: "div.catalog a", filters: [trim], type: category }
+      size:     { selector: "a.overlay", filters: [{ regex: '^\[([0-9.,]+\s*[KMGT]i?B)\]' }], type: size }
+    required: [title, grab, size]
+
+download:
+  resolve_on: grab
+  from: grab
+  extract:
+    - torrent: { selector: "a.download-button", attr: href, type: url }
+
+health:
+  query: ipx
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/freejavtorrent/search.html
+    expect: { min_rows: 20, required: [title, size, category] }
+  - name: download
+    fixture: fixtures/freejavtorrent/download.html
+    expect: { min_rows: 0 }

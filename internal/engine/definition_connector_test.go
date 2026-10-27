@@ -648,6 +648,25 @@ func TestDefinitionConnectorInvalidSelectorAndFilter(t *testing.T) {
 	}
 }
 
+func TestApplyFiltersBase64(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"bWFnbmV0Oj94dD11cm46YnRpaDph", "magnet:?xt=urn:btih:a"},
+		{"bWFnbmV0Oj94dD11cm46YnRpaDphYg==", "magnet:?xt=urn:btih:ab"},
+		{"bWFnbmV0Oj94dD11cm46YnRpaDphYg", "magnet:?xt=urn:btih:ab"},
+		{"Pz8_", "???"},
+		{"not base64!", ""},
+	}
+	for _, tc := range tests {
+		got, err := applyFilters(tc.in, []definition.Filter{{Name: "base64"}})
+		if err != nil {
+			t.Fatalf("applyFilters(%q): %v", tc.in, err)
+		}
+		if got != tc.want {
+			t.Errorf("applyFilters(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
 func TestDefinitionConnectorLatest(t *testing.T) {
 	searchPage := fixture(t, "search.html")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

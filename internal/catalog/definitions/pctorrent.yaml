@@ -1,0 +1,65 @@
+# VERIFICATA (verified). PC-torrent public game search (DataLife Engine).
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/pctorrent/search.html (POST https://pc-torrents.games/ with
+# do=search&subaction=search&story=fallout) and from one game page in
+# fixtures/pctorrent/detail.html. The site is served as windows-1251. The
+# search card has the title, the size and the game page; the game page links
+# /engine/download.php?id=<n>, which returns the .torrent to guests.
+schema: 1
+
+meta:
+  id: pctorrent
+  name: PC-torrent
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Russian PC game catalogue with the size in the result card.
+  urls:
+    - https://pc-torrents.games/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "game", standard: 4050, desc: "PC games" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    post: /
+    form:
+      do: search
+      subaction: search
+      story: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.dshort" }
+    fields:
+      title:    { selector: "div.d3-title", filters: [trim] }
+      details:  { selector: "a", attr: href, type: url }
+      size:     { selector: "div.d3-raz", type: size }
+      # Every card is a PC game; the card's own class is the marker.
+      category: { selector: "div.d3-title", attr: class, filters: [{ regex: '^d3-(title)$' }, { replace: "title:game" }], type: category }
+    required: [title, details, size]
+
+download:
+  resolve_on: grab
+  from: details
+  extract:
+    - torrent: { selector: 'a[href*="/engine/download.php"]', attr: href, type: url }
+
+health:
+  query: fallout
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/pctorrent/search.html
+    expect: { min_rows: 10, required: [title, details, size] }
+  - name: detail
+    fixture: fixtures/pctorrent/detail.html
+    expect: { min_rows: 0 }

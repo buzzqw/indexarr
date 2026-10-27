@@ -1,0 +1,63 @@
+# VERIFICATA (verified). MixtapeTorrent public mixtape archive (Drupal).
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/mixtapetorrent/search.html
+# (http://www.mixtapetorrent.com/search/node/drake) and from one story in
+# fixtures/mixtapetorrent/detail.html. The site is a hip-hop mixtape archive
+# (stories from 2005 to 2019) served over plain HTTP. Each story attaches one
+# or more .torrent files under /system/files/; the first attachment is used.
+# The search also lists forum topics, which have no attachment: they stay
+# without a download link and their grab fails with "no download target".
+schema: 1
+
+meta:
+  id: mixtapetorrent
+  name: MixtapeTorrent
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public hip-hop mixtape archive; the .torrent is attached to each story.
+  urls:
+    - http://www.mixtapetorrent.com/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "title", standard: 3000, desc: "Mixtapes" }
+
+capabilities:
+  search: [q]
+  music-search: [q]
+
+search:
+  request:
+    get: "/search/node/{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "dl.search-results dt.title" }
+    fields:
+      title:    { selector: "a", filters: [trim] }
+      details:  { selector: "a", attr: href, type: url }
+      # Every story is a mixtape; the row's own class is the marker.
+      category: { selector: "a", attr: href, filters: [{ regex: '^(/)' }, { replace: "/:title" }], type: category }
+    required: [title, details]
+
+download:
+  resolve_on: grab
+  from: details
+  extract:
+    - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
+
+health:
+  query: drake
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/mixtapetorrent/search.html
+    expect: { min_rows: 5, required: [title, details] }
+  - name: detail
+    fixture: fixtures/mixtapetorrent/detail.html
+    expect: { min_rows: 0 }

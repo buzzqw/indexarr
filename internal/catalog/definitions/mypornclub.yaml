@@ -1,0 +1,66 @@
+# VERIFICATA (verified). MyPornClub public adult search.
+#
+# Written from the public search page captured on 2026-10-27 in
+# fixtures/mypornclub/search.html (https://myporn.club/s/blonde) and from one
+# release page in fixtures/mypornclub/detail.html. The row text mixes the
+# release name with hashtags, streaming links and literal "\n" sequences; the
+# title keeps the text before the first "#", "->", "\n" or link. Size, seeders and leechers are in the row; the
+# magnet is on the release page and is read at grab time. The age is
+# relative ("21 minutes ago") and is not read.
+schema: 1
+
+meta:
+  id: mypornclub
+  name: MyPornClub
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public adult sharing site with size and health in the row and the magnet on the release page.
+  urls:
+    - https://myporn.club/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "torrent_element_info", standard: 6000, desc: "Adult" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: "/s/{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "div.torrent_element" }
+    fields:
+      title:
+        selector: "span.torrent_element_text_span"
+        filters: [{ regex: '^\s*(.*?)\s*(?:#|->|\\n|https?://|$)' }, { replace: "\\':'" }]
+      details:  { selector: 'div.torrent_element_text_div a[href^="/t/"]', attr: href, type: url }
+      # Every row is adult content; the info block's class is the marker.
+      category: { selector: "div.torrent_element_info", attr: class, type: category }
+      size:     { selector: "div.torrent_element_info", filters: [{ regex: '(?i)\[size\]:\s*([0-9.,]+\s*[KMGT]?B)' }], type: size }
+      seeders:  { selector: "span.teiv_seeders", type: int }
+      leechers: { selector: "span.teiv_leechers", type: int }
+    required: [title, details, size]
+
+download:
+  resolve_on: grab
+  from: details
+  extract:
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+
+health:
+  query: blonde
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/mypornclub/search.html
+    expect: { min_rows: 20, required: [title, details, size, seeders] }
+  - name: detail
+    fixture: fixtures/mypornclub/detail.html
+    expect: { min_rows: 0 }

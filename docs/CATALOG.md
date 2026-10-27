@@ -13,23 +13,25 @@ lo dimostra, la famiglia software. Non sono una connessione: indexarr non
 interroga Jackett o Prowlarr a runtime e non ne importa la configurazione.
 Non vengono mai generate da una definizione Cardigann.
 
-## Numeri al 2026-10-25
+## Numeri al 2026-10-27
+
+Valori contati su `index.json` dopo `go generate ./internal/catalog`.
 
 | Misura | Valore |
 | --- | ---: |
-| Totale voci nel catalogo (definizioni + voci leggere) | **623** |
-| Definizioni native | 85 (8 aiutanti generici inclusi) |
-| Voci leggere | **538** |
-| Verificate | **123** |
-| Da provare (`da-provvi`) | **496** |
+| Totale voci nel catalogo (definizioni + voci leggere) | **627** |
+| Definizioni native | 100 (8 aiutanti generici inclusi) |
+| Voci leggere | **527** (522 dall'istantanea Jackett, 5 manuali) |
+| Verificate | **76** |
+| Bozze | **24** |
+| Da provare (`da-provvi`) | **523** |
 | Morte (`morta`) | **4** |
-| Pubbliche verificate (native + leggere, host unici) | **95** |
+| Pubbliche verificate (host unici) | **84** |
 | Voci italiane | **13** |
 
-Le 92 pubbliche verificate sono conteggiate per host unico, quindi una
-definizione nativa e una voce leggera dello stesso sito non si sommano. Le
-voci leggere private sono 438 e restano tutte `da-provvi`: senza un account
-non si può verificare la ricerca.
+Le pubbliche verificate sono conteggiate per host unico, quindi una
+definizione nativa con un mirror conta due host. Le voci leggere private
+restano tutte `da-provvi`: senza un account non si può verificare la ricerca.
 
 Il catalogo ora contiene **tutte** le fonti dell'istantanea, comprese le
 private senza una famiglia riconosciuta. Una fonte senza via nativa non viene nascosta:
@@ -39,13 +41,55 @@ resta in coda con il filtro **da scrivere** e non produce alcun proxy.
 
 | Via | Fonti | Note |
 | --- | ---: | --- |
-| Definizione nativa (id o host) | **34** | definizioni verificate o in prova |
+| Definizione nativa (id o host) | **50** | definizioni verificate o in prova |
 | Software noto (connettore di famiglia) | **155** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **449** | 329 private, 57 pubbliche, 63 semiprivate |
+| Da scrivere | **433** | 329 private, 41 pubbliche, 63 semiprivate |
 | **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 
 La somma non include le 6 fonti già configurate in Jackett quando coincidono
 con una definizione nativa.
+
+### Fonti dei manager assenti dall'istantanea
+
+Il 27/10 l'elenco attuale di Jackett e lo schema di Prowlarr (solo `GET`) sono
+stati confrontati con il catalogo per nome e host. Mancavano cinque fonti
+torrent, ora voci leggere in `metadata/manual.yaml` con la prova del `GET`:
+
+| Voce | Tipo | Stato | Nota |
+| --- | --- | --- | --- |
+| Anidex (`mg-anidex`) | pubblica | da provvi | indexer nativo di Prowlarr; il sito risponde con un controllo DDoS-Guard |
+| BinaryBay (`mg-binarybay`) | privata | da provvi | API key; famiglia non dimostrata |
+| Pornorip (`mg-pornorip`) | privata | da provvi | login con cookie |
+| RevolutionTT (`mg-revolutiontt`) | privata | da provvi | indexer nativo di Prowlarr |
+| SAPIbr (`mg-sapibr`) | privata | da provvi | UNIT3D dal titolo della pagina di login |
+
+Restano fuori, di proposito, Magnetico e BitMagnet (DHT locali, vedi sotto),
+il Torznab generico, TorrentPotato e il feed RSS generico di Prowlarr, che in
+indexarr sono già tipi di sorgente e non siti.
+
+### Coda pubblica: esito del 27/10
+
+Quindici fonti pubbliche della coda hanno ora una definizione nativa
+verificata dal vivo (ricerca reale e, dove serve, grab del magnet o del
+`.torrent`) con fixture reali: TorrentDownload, MagnetDownload, BlueRoms,
+XXXClub, Free JAV Torrent, PornXLab, BigFANGroup, Catorrent, SkidrowRepack,
+PC-torrent, Zamunda.LIFE, MyPornClub, PornoTorrent, MixtapeTorrent e sosulki.
+`animetosho.net` è un mirror della definizione AnimeTosho.
+
+Le altre pubbliche restano in coda per un motivo osservato:
+
+| Motivo | Fonti |
+| --- | --- |
+| Challenge Cloudflare sulla ricerca o sul dettaglio: non verificabili senza FlareSolverr | BT.etree, ExtraTorrent.st, Magnet Cat, MejorTorrent, OneJAV, Torrent[CORE], kickasstorrents.to/.ws, DaMagNet (dettaglio) |
+| Download dietro captcha o proof-of-work | DonTorrent |
+| Risultati disegnati da JavaScript offuscato | HDRTorrent, FileMood, U3C3 |
+| Download negato anche con referer (403) | Byrutor |
+| Magnet visibili solo con account | EpubLibre, torrent-pirat |
+| Certificato TLS non verificabile | torrent.by |
+| DDoS-Guard o 403 sulla home | Anidex, xxxtor, VSTHouse |
+| Timeout o rete IPv6 irraggiungibile | OpenSharing, AniSource |
+| Dominio morto o portale di reindirizzamento | 52BT (410), World-torrent |
+| Galleria con torrent personali per account | E-Hentai |
 
 ## Stati onesti
 

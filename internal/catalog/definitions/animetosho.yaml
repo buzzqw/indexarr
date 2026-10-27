@@ -18,6 +18,7 @@ meta:
   description: Public AnimeTosho HTML search; anime releases with magnets.
   urls:
     - https://animetosho.org/
+    - https://animetosho.net/
   updated: "2026-10-23"
 
 categories:

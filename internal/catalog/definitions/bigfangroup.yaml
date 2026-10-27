@@ -1,0 +1,105 @@
+# VERIFICATA (verified). BigFANGroup public browse search.
+#
+# Written from the public browse page captured on 2026-10-27 in
+# fixtures/bigfangroup/search.html
+# (https://bigfangroup.org/browse.php?search=matrix), served as windows-1251.
+# The tracker answers searches and serves download.php?id=<id> to guests: the
+# .torrent is built from the id of the details link, with no detail page. The
+# date is a Russian sentence in an image title ("20 февраля 2022 в 12:10:35")
+# and is not read.
+schema: 1
+
+meta:
+  id: bigfangroup
+  name: BigFANGroup
+  language: ru-RU
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Russian movie tracker; guests can search and download the .torrent.
+  urls:
+    - https://bigfangroup.org/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "1", standard: 4000, desc: "Софт" }
+  - { site: "5", standard: 4000, desc: "Игры" }
+  - { site: "9", standard: 8000, desc: "Разное" }
+  - { site: "11", standard: 5000, desc: "Сериалы" }
+  - { site: "12", standard: 5070, desc: "Анимация" }
+  - { site: "13", standard: 2000, desc: "Боевик" }
+  - { site: "14", standard: 2040, desc: "HDTV" }
+  - { site: "15", standard: 2070, desc: "DVD" }
+  - { site: "18", standard: 2000, desc: "Катастрофа" }
+  - { site: "19", standard: 2000, desc: "Мелодрама" }
+  - { site: "20", standard: 2000, desc: "Мультфильм" }
+  - { site: "21", standard: 2000, desc: "Драма" }
+  - { site: "22", standard: 2000, desc: "Триллер" }
+  - { site: "23", standard: 2000, desc: "Фантастика" }
+  - { site: "24", standard: 2000, desc: "Комедия" }
+  - { site: "25", standard: 5000, desc: "ТВ-Шоу" }
+  - { site: "26", standard: 2000, desc: "Ужасы" }
+  - { site: "27", standard: 2000, desc: "Приключения" }
+  - { site: "28", standard: 2000, desc: "Исторический" }
+  - { site: "29", standard: 2000, desc: "Наше старое кино" }
+  - { site: "30", standard: 2000, desc: "Фэнтези" }
+  - { site: "31", standard: 2000, desc: "Мистика" }
+  - { site: "32", standard: 5080, desc: "Документальный" }
+  - { site: "33", standard: 2000, desc: "Военный" }
+  - { site: "35", standard: 3030, desc: "Аудио книги" }
+  - { site: "36", standard: 2000, desc: "Криминал" }
+  - { site: "37", standard: 5060, desc: "Спорт" }
+  - { site: "38", standard: 7000, desc: "Книги" }
+  - { site: "39", standard: 2000, desc: "Детектив" }
+  - { site: "42", standard: 6000, desc: "Эротика" }
+  - { site: "43", standard: 3000, desc: "Русская Музыка" }
+  - { site: "44", standard: 3000, desc: "Зарубежная Музыка" }
+  - { site: "45", standard: 3020, desc: "ВидеоКлипы" }
+  - { site: "46", standard: 3000, desc: "Муз. сборники" }
+  - { site: "47", standard: 2000, desc: "Сказки" }
+  - { site: "48", standard: 2000, desc: "Вестерн" }
+  - { site: "49", standard: 5080, desc: "Научно-популярное" }
+  - { site: "50", standard: 5000, desc: "Новости" }
+  - { site: "51", standard: 2060, desc: "3D" }
+  - { site: "52", standard: 2000, desc: "Биография" }
+  - { site: "53", standard: 2000, desc: "Классика Кино" }
+  - { site: "54", standard: 3000, desc: "Классическая музыка" }
+  - { site: "55", standard: 3000, desc: "Саундтрек" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /browse.php
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: 'tr:has(a[href^="details.php?id="])' }
+    fields:
+      title:    { selector: 'td.indented a[href^="details.php?id="]', filters: [trim] }
+      details:  { selector: 'td.indented a[href^="details.php?id="]', attr: href, type: url }
+      download:
+        selector: 'td.indented a[href^="details.php?id="]'
+        attr: href
+        filters: [{ regex: 'id=([0-9]+)$' }, { prefix: "/download.php?id=" }]
+        type: url
+      category: { selector: 'a[href^="browse.php?cat="]', attr: href, filters: [{ query_param: cat }], type: category }
+      size:     { selector: "td:nth-of-type(6)", type: size }
+      seeders:  { selector: 'a[href*="toseeders=1"]', type: int }
+      leechers: { selector: 'a[href*="todlers=1"]', type: int }
+    required: [title, details, download, size]
+
+health:
+  query: matrix
+  min_rows: 3
+
+tests:
+  - name: search
+    fixture: fixtures/bigfangroup/search.html
+    expect: { min_rows: 10, required: [title, details, download, size] }
