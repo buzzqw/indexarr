@@ -51,6 +51,9 @@ tutta c'è la vista di manutenzione `/indexers/new?queue=1`, non linkata dalla
 UI, che mostra anche i badge «Da scrivere», «In prova», «Problemi» e
 «Bloccato».
 
+L'elenco di ciò che resta aperto, con la prova e il modo di verificarlo, è in
+[BACKLOG.md](BACKLOG.md).
+
 La testata della vista di manutenzione riassume la composizione della coda
 (`Queue: N to write, N drafts, N blocked, N dead`, tradotta nelle 7 lingue) e
 ogni riga `bloccata` o `morta` porta la ragione misurata presa da
