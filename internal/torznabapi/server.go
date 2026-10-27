@@ -743,10 +743,6 @@ func compactReleases(releases []store.Release) []store.Release {
 	return out
 }
 
-// liveQueryEligible decides whether a Torznab function is a real search or an
-// RSS request. The *arr RSS calls t=search or t=tvsearch without q: they read
-// the cache of the indexers that publish a latest list, and the fan-out must
-// never invent a query for them.
 // liveWaitOverride reads the optional live_wait query parameter (seconds).
 // It is a Torznab extension used by gextto: an eD2k source needs to open the
 // topic pages, so the client asks for a longer first-response window without
@@ -762,6 +758,10 @@ func liveWaitOverride(raw string) time.Duration {
 	return time.Duration(seconds) * time.Second
 }
 
+// liveQueryEligible decides whether a Torznab function is a real search or an
+// RSS request. The *arr RSS calls t=search or t=tvsearch without q: they read
+// the cache of the indexers that publish a latest list, and the fan-out must
+// never invent a query for them.
 func liveQueryEligible(mode string, filter store.Filter) bool {
 	switch mode {
 	case "search", "tvsearch":

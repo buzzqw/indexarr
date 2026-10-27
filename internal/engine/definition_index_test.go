@@ -180,3 +180,45 @@ func TestIndexSearchFallsBackToTheSiteSearch(t *testing.T) {
 		t.Fatalf("items = %+v", items)
 	}
 }
+
+func TestIndexMatchesWholeWordsOnly(t *testing.T) {
+	entries := []indexEntry{
+		{Title: "Superman (2025)", Details: "/viewtopic.php?t=1"},
+		{Title: "Hitman", Details: "/viewtopic.php?t=2"},
+		{Title: "Il ritorno", Details: "/viewtopic.php?t=3"},
+		{Title: "Up (2009)", Details: "/viewtopic.php?t=4"},
+	}
+	cases := map[string][]string{
+		"Up":  {"Up (2009)"},
+		"It":  nil,
+		"Man": nil,
+	}
+	for query, want := range cases {
+		var got []string
+		for _, match := range matchIndexEntries(entries, SearchRequest{Query: query}) {
+			got = append(got, match.Title)
+		}
+		if strings.Join(got, "|") != strings.Join(want, "|") {
+			t.Errorf("%q matches %v, want %v", query, got, want)
+		}
+	}
+}
+
+func TestIndexIsSkippedForBookAndMusic(t *testing.T) {
+	tv := definition.IndexPage{Get: "/tv", Standard: 5000}
+	movies := definition.IndexPage{Get: "/a", Letter: "A", Standard: 2000}
+	for _, mode := range []Mode{ModeBook, ModeMusic} {
+		if indexPageForMode(tv, mode) || indexPageForMode(movies, mode) {
+			t.Errorf("%s search reads the film/TV index", mode)
+		}
+	}
+	if !indexPageForMode(tv, ModeSearch) || !indexPageForMode(movies, ModeSearch) {
+		t.Error("a generic search must read every list")
+	}
+	if !indexPageForMode(tv, ModeTV) || indexPageForMode(movies, ModeTV) {
+		t.Error("a TV search must read only the TV list")
+	}
+	if indexPageForMode(tv, ModeMovie) || !indexPageForMode(movies, ModeMovie) {
+		t.Error("a movie search must read only the movie letters")
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/downloadclient"
+	"github.com/buzzqw/indexarr/internal/store"
 )
 
 func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
@@ -21,15 +22,7 @@ func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/releases", "", "release not found")
 		return
 	}
-	if strings.EqualFold(strings.TrimSpace(release.Protocol), "ed2k") && strings.TrimSpace(release.Ed2k) == "" && s.downloadResolver != nil {
-		// A live search stores the eD2k release behind a sealed details
-		// reference. Open it now, so the client receives the real link.
-		if body, _, _, resolveErr := s.downloadResolver(r.Context(), release.ID); resolveErr == nil {
-			if link := strings.TrimSpace(string(body)); strings.HasPrefix(strings.ToLower(link), "ed2k://") {
-				release.Ed2k = link
-			}
-		}
-	}
+	release = s.openEd2kTopic(r.Context(), release)
 	cfg, clientName, err := s.resolveDownloadClient(r.Context(), release.Protocol)
 	if err != nil {
 		redirect(w, r, "/releases/"+fmt.Sprint(id), "", s.translate(r, "release.noClient"))
@@ -44,4 +37,28 @@ func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
 	}
 	s.log.Info("release sent to download client", "release_id", id, "client", cfg.Kind, "title", release.Title)
 	redirect(w, r, "/releases/"+fmt.Sprint(id), s.translate(r, "release.sentTo", clientName), "")
+}
+
+// openEd2kTopic completes an eD2k release stored behind a sealed details
+// reference (an archive row written before the topic was opened). The topic
+// may carry an ed2k:// link, which goes to aMule, or a magnet, which turns the
+// release into a torrent for a torrent client.
+func (s *Server) openEd2kTopic(ctx context.Context, release store.Release) store.Release {
+	if !strings.EqualFold(strings.TrimSpace(release.Protocol), "ed2k") ||
+		strings.TrimSpace(release.Ed2k) != "" || s.downloadResolver == nil {
+		return release
+	}
+	body, _, _, err := s.downloadResolver(ctx, release.ID)
+	if err != nil {
+		return release
+	}
+	link := strings.TrimSpace(string(body))
+	switch lower := strings.ToLower(link); {
+	case strings.HasPrefix(lower, "ed2k://"):
+		release.Ed2k = link
+	case strings.HasPrefix(lower, "magnet:"):
+		release.Magnet = link
+		release.Protocol = "torrent"
+	}
+	return release
 }

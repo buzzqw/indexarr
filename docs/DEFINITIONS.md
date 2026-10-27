@@ -598,7 +598,11 @@ search:
 Il motore legge solo le pagine senza `letter` e quella della prima lettera
 della query (`#` per numeri e simboli), estrae le coppie titolo/URL, confronta
 il titolo in locale (tollerando punteggiatura e parole comuni) e apre soltanto
-i primi `max_topics` topic. Ogni pagina è tenuta in cache per 30 minuti. Se
+i primi `max_topics` topic. Un termine della query vale solo quando è l'inizio
+di una parola del titolo: «part» trova «Parte», ma «It» non trova «Hitman» e
+«Up» non trova «Superman», perché un falso positivo nasconderebbe il ripiego.
+Le ricerche di libri e musica non leggono l'indice: vanno direttamente alla
+`search.request`. Ogni pagina è tenuta in cache per 30 minuti. Se
 nessun titolo corrisponde e la definizione ha anche una `search.request`
 normale, il motore usa quella come ripiego. Le pagine d'indice non diventano
 release: entrano in archivio solo i link trovati aprendo i topic scelti.
@@ -675,6 +679,14 @@ dimensione viene dal link e l'hash MD4 diventa l'identità della riga. È il
 percorso giusto per un archivio: un topic con 46 episodi non deve perdere 45
 link. `expand` richiede `resolve_on: search`, perché i link devono essere letti
 prima che i risultati vengano salvati.
+
+In una fonte `protocol: ed2k` il protocollo è deciso riga per riga: un topic
+che porta un magnet o un `.torrent` invece di un link eD2k diventa una riga
+torrent, entra in archivio come torrent e al grab va a un client torrent, non
+ad aMule. Due `.torrent` dello stesso topic ricevono GUID distinti (GUID del
+topic più un digest dell'URL, che non compare in chiaro). Un topic che non si è
+potuto aprire non entra né in archivio né nei risultati live: il suo grab
+restituirebbe il primo file del topic, non quello scelto.
 
 La stagione e l'episodio vengono conservati nell'item della ricerca e viaggiano
 nel riferimento di download cifrato; una definizione può anche ripeterli come

@@ -176,3 +176,39 @@ filearray[1]='ed2k://|file|Three.mkv|30|22222222222222222222222222222222|/';</sc
 		}
 	}
 }
+
+func TestEd2kSourceTopicWithTorrentIsATorrentRow(t *testing.T) {
+	base := Item{Protocol: ProtocolEd2k, Title: "Old Game", GUID: "topic-1", DetailsURL: "http://site/viewtopic.php?t=1"}
+
+	magnet := expandItem(base, resolvedDownload{Magnet: "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Old+Game"})
+	if magnet.Protocol != ProtocolTorrent || magnet.InfoHash == "" {
+		t.Errorf("magnet row = protocol %q infohash %q, want a torrent row", magnet.Protocol, magnet.InfoHash)
+	}
+
+	first := expandItem(base, resolvedDownload{DownloadURL: "http://torrents.site/torrent/1.torrent"})
+	second := expandItem(base, resolvedDownload{DownloadURL: "http://torrents.site/torrent/2.torrent"})
+	if first.Protocol != ProtocolTorrent || second.Protocol != ProtocolTorrent {
+		t.Errorf("torrent rows = %q / %q, want torrent", first.Protocol, second.Protocol)
+	}
+	if first.GUID == second.GUID || !strings.HasPrefix(first.GUID, "topic-1#") {
+		t.Errorf("two .torrent files of one topic share GUID %q / %q", first.GUID, second.GUID)
+	}
+	if strings.Contains(first.GUID, "torrents.site") {
+		t.Errorf("GUID %q leaks the download URL", first.GUID)
+	}
+
+	ed2k := expandItem(base, resolvedDownload{
+		Ed2k:     "ed2k://|file|Old%20Game.iso|700|0123456789abcdef0123456789abcdef|/",
+		Ed2kHash: "0123456789abcdef0123456789abcdef",
+		Size:     700,
+	})
+	if ed2k.Protocol != ProtocolEd2k || ed2k.GUID != "ed2k:0123456789abcdef0123456789abcdef" {
+		t.Errorf("ed2k row = protocol %q guid %q", ed2k.Protocol, ed2k.GUID)
+	}
+
+	usenet := Item{Protocol: ProtocolUsenet}
+	applyResolvedDownload(&usenet, resolvedDownload{DownloadURL: "http://site/get.nzb"})
+	if usenet.Protocol != ProtocolUsenet {
+		t.Errorf("usenet row became %q", usenet.Protocol)
+	}
+}

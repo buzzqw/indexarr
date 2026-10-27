@@ -3532,8 +3532,14 @@ func indexSourceViews(def *definition.Definition, tvLabel, movieLabel string) []
 		if strings.TrimSpace(page.Letter) != "" {
 			continue
 		}
+		// A list without letters is labelled by what it indexes: the TV
+		// list is the common case, a movie list keeps the movie label.
+		label := tvLabel
+		if page.Standard/1000 == 2 {
+			label = movieLabel
+		}
 		if link := resolve(page.Get); link != "" {
-			out = append(out, indexSourceView{Label: tvLabel, URL: link})
+			out = append(out, indexSourceView{Label: label, URL: link})
 		}
 	}
 	if link := resolve(def.Search.Index.Forum); link != "" {

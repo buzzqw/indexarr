@@ -925,9 +925,6 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 		}
 
 		// An eD2k item is complete when the search already resolved its link.
-		// Without a link (a live search never opens details) it still belongs
-		// to the eD2k protocol and keeps a sealed details reference for the
-		// grab.
 		if link := strings.TrimSpace(item.Ed2k); link != "" {
 			now := time.Now()
 			release := &store.Release{
@@ -967,8 +964,13 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			stored++
 			continue
 		}
-		ed2kIndexer := strings.EqualFold(strings.TrimSpace(indexer.Protocol), "ed2k")
-		if ed2kIndexer && magnet == "" && strings.TrimSpace(item.DownloadURL) == "" && strings.TrimSpace(item.DetailsURL) == "" {
+		// A row of an eD2k source with no link at all is a topic whose page
+		// could not be opened. A sealed reference would grab the topic's first
+		// file, not the one the client chose, so the row is dropped like the
+		// scheduled archive drops it. A topic that carried a magnet or a
+		// .torrent arrives here as a torrent row and is stored as one.
+		if strings.EqualFold(strings.TrimSpace(indexer.Protocol), "ed2k") &&
+			magnet == "" && strings.TrimSpace(item.DownloadURL) == "" {
 			continue
 		}
 
@@ -994,10 +996,6 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			continue
 		}
 		now := time.Now()
-		protocol := "torrent"
-		if ed2kIndexer {
-			protocol = "ed2k"
-		}
 		release := &store.Release{
 			DedupKey:    dedupKey,
 			InfoHash:    hash,
@@ -1013,9 +1011,7 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			PublishedAt: item.Published,
 			GUID:        item.GUID,
 			Magnet:      magnet,
-			Ed2k:        strings.TrimSpace(item.Ed2k),
-			Ed2kHash:    strings.ToLower(strings.TrimSpace(item.Ed2kHash)),
-			Protocol:    protocol,
+			Protocol:    "torrent",
 			FirstSeenAt: now,
 			LastSeenAt:  now,
 		}

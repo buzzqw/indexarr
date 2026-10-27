@@ -593,3 +593,82 @@ func TestNativeTorznabConnector(t *testing.T) {
 		t.Fatalf("connector = %T, want *family.Torznab", connector)
 	}
 }
+
+func TestEd2kSourceStoresTorrentTopicsAsTorrents(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	registry := engine.NewRegistry()
+	const md4 = "0123456789abcdef0123456789abcdef"
+	items := []engine.Item{
+		{Protocol: engine.ProtocolEd2k, Title: "Film.mkv", GUID: "ed2k:" + md4, Size: 700,
+			Ed2k: "ed2k://|file|Film.mkv|700|" + md4 + "|/", Ed2kHash: md4, Categories: []int{2000}},
+		// A topic that carried a magnet: the engine turns the row into a torrent.
+		{Protocol: engine.ProtocolTorrent, Title: "Old Game", GUID: "topic-2", InfoHash: hashA,
+			Magnet: feed.MagnetFromHash(hashA, "Old Game"), Size: 10, Categories: []int{1000},
+			DetailsURL: "https://fake.example/viewtopic.php?t=2"},
+		// A topic whose page could not be opened: no link at all.
+		{Protocol: engine.ProtocolEd2k, Title: "Unopened", GUID: "topic-3", Categories: []int{2000},
+			DetailsURL: "https://fake.example/viewtopic.php?t=3"},
+	}
+	fake := &fakeConnector{items: items}
+	if err := registry.RegisterConnector("fake", func(engine.Config) (engine.Connector, error) {
+		return fake, nil
+	}); err != nil {
+		t.Fatalf("RegisterConnector: %v", err)
+	}
+	manager, err := New(Config{
+		Store:     st,
+		Vault:     v,
+		Registry:  registry,
+		Transport: newTestTransport(),
+		Logger:    slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})),
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	body := `schema: 1
+meta: {id: fake-ed2k, name: Fake eD2k, type: public, protocol: ed2k, urls: ["https://fake.example/"]}
+connector: fake
+`
+	seedDefinition(t, st, "fake-ed2k", "fake", body)
+	indexerID := createIndexer(t, st, "fake-ed2k", "fake-ed2k", "Fake eD2k", "ed2k", `{"query":"anything"}`)
+
+	protocols := func() map[string]string {
+		t.Helper()
+		releases, _, err := st.SearchReleases(context.Background(), store.Filter{Limit: 10})
+		if err != nil {
+			t.Fatalf("SearchReleases: %v", err)
+		}
+		out := make(map[string]string, len(releases))
+		for _, release := range releases {
+			out[release.Title] = release.Protocol
+		}
+		return out
+	}
+
+	if _, err := manager.Run(context.Background(), indexerID); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	got := protocols()
+	if got["Film.mkv"] != "ed2k" || got["Old Game"] != "torrent" || len(got) != 2 {
+		t.Errorf("archive = %v, want Film.mkv=ed2k and Old Game=torrent only", got)
+	}
+
+	indexer, err := st.GetIndexer(context.Background(), indexerID)
+	if err != nil {
+		t.Fatalf("GetIndexer: %v", err)
+	}
+	items[1].Title, items[1].InfoHash = "Old Game Live", hashB
+	items[1].Magnet = feed.MagnetFromHash(hashB, "Old Game Live")
+	items[2].Title = "Unopened Live"
+	if _, err := manager.storeLiveItems(context.Background(), indexer, items[1:], store.NewBlocklistMatcher(nil)); err != nil {
+		t.Fatalf("storeLiveItems: %v", err)
+	}
+	got = protocols()
+	if got["Old Game Live"] != "torrent" {
+		t.Errorf("live magnet topic protocol = %q, want torrent", got["Old Game Live"])
+	}
+	if _, stored := got["Unopened Live"]; stored {
+		t.Error("a live topic without any link was stored: its grab would return the first file")
+	}
+}

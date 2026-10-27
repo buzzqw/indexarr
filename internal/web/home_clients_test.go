@@ -444,3 +444,24 @@ func TestEd2kReleaseDoesNotFallBackToTorrentClient(t *testing.T) {
 		t.Fatal("eD2k release resolved to a torrent client")
 	}
 }
+
+// A stored eD2k topic that resolves to a magnet goes to a torrent client, not
+// to aMule.
+func TestEd2kTopicResolvedToMagnetBecomesTorrent(t *testing.T) {
+	env := newTestEnv(t)
+	const magnet = "magnet:?xt=urn:btih:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	const link = "ed2k://|file|Film.mkv|700|0123456789abcdef0123456789abcdef|/"
+	answer := magnet
+	env.server.downloadResolver = func(context.Context, int64) ([]byte, string, string, error) {
+		return []byte(answer), "", "", nil
+	}
+	release := env.server.openEd2kTopic(context.Background(), store.Release{ID: 1, Protocol: "ed2k"})
+	if release.Protocol != "torrent" || release.Magnet != magnet {
+		t.Errorf("magnet topic = %q %q, want a torrent release", release.Protocol, release.Magnet)
+	}
+	answer = link
+	release = env.server.openEd2kTopic(context.Background(), store.Release{ID: 1, Protocol: "ed2k"})
+	if release.Protocol != "ed2k" || release.Ed2k != link {
+		t.Errorf("eD2k topic = %q %q", release.Protocol, release.Ed2k)
+	}
+}

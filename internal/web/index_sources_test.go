@@ -37,6 +37,9 @@ search:
 	if len(views) != 2 {
 		t.Fatalf("views = %+v", views)
 	}
+	if views[0].Label != "Serie TV" || views[1].Label != "Film" {
+		t.Errorf("labels = %q / %q", views[0].Label, views[1].Label)
+	}
 	if views[0].URL != "https://ddunlimited.net/viewtopic.php?t=61463" || views[1].URL != "https://ddunlimited.net/viewforum.php?f=1988" {
 		t.Errorf("views = %+v", views)
 	}

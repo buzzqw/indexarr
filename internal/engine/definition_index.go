@@ -109,18 +109,19 @@ func (c *DefinitionConnector) searchIndex(ctx context.Context, req SearchRequest
 }
 
 // indexPageForMode keeps the TV list for TV searches and the movie letter
-// pages for movie searches. A generic search reads both.
+// pages for movie searches. A generic search reads both. Book and music
+// searches read none: a title list of films and series cannot answer them, and
+// a spurious match there would skip the site search fallback.
 func indexPageForMode(page definition.IndexPage, mode Mode) bool {
-	if page.Standard == 0 {
-		return true
-	}
 	switch mode {
-	case ModeTV:
-		return page.Standard/1000 == 5
-	case ModeMovie:
-		return page.Standard/1000 == 2
-	default:
+	case ModeSearch:
 		return true
+	case ModeTV:
+		return page.Standard == 0 || page.Standard/1000 == 5
+	case ModeMovie:
+		return page.Standard == 0 || page.Standard/1000 == 2
+	default:
+		return false
 	}
 }
 
@@ -235,9 +236,12 @@ func (c *DefinitionConnector) storeIndexEntries(key string, entries []indexEntry
 	c.indexCache[key] = indexCacheEntry{entries: entries, expires: c.now().Add(indexCacheTTL)}
 }
 
-// matchIndexEntries ranks titles by how many query terms they contain. It is
-// deliberately tolerant of punctuation and stopwords, because the lists use
-// the site's own spelling ("Dune - Parte due" for "Dune Part Two").
+// matchIndexEntries ranks titles by how many query terms start one of their
+// words. It is deliberately tolerant of punctuation and stopwords, because the
+// lists use the site's own spelling ("Dune - Parte due" for "Dune Part Two":
+// "part" starts "parte"). A term never matches inside a word, so "It" does not
+// pick "Hitman" and "Up" does not pick "Superman": a spurious match would hide
+// the site search fallback.
 func matchIndexEntries(entries []indexEntry, req SearchRequest) []indexEntry {
 	tokens := indexQueryTokens(req.Query)
 	if len(tokens) == 0 {
@@ -253,9 +257,10 @@ func matchIndexEntries(entries []indexEntry, req SearchRequest) []indexEntry {
 		if title == "" {
 			continue
 		}
+		words := strings.Fields(title)
 		score := 0
 		for _, token := range tokens {
-			if strings.Contains(title, token) {
+			if indexWordPrefix(words, token) {
 				score++
 			}
 		}
@@ -292,6 +297,15 @@ func matchIndexEntries(entries []indexEntry, req SearchRequest) []indexEntry {
 		out[i] = match.entry
 	}
 	return out
+}
+
+func indexWordPrefix(words []string, token string) bool {
+	for _, word := range words {
+		if strings.HasPrefix(word, token) {
+			return true
+		}
+	}
+	return false
 }
 
 var indexStopwords = map[string]struct{}{

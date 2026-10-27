@@ -2,6 +2,8 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"html"
@@ -301,8 +303,19 @@ func expandItem(base Item, candidate resolvedDownload) Item {
 	if item.Size <= 0 {
 		item.Size = base.Size
 	}
-	if candidate.Ed2k != "" {
+	switch {
+	case candidate.Ed2k != "":
 		item.GUID = "ed2k:" + candidate.Ed2kHash
+	case candidate.DownloadURL != "" && item.InfoHash == "":
+		// Two .torrent files of one topic share the topic GUID; without a
+		// distinct one the archive keeps only the first. The URL may carry a
+		// passkey, so only its digest enters the GUID.
+		topic := base.GUID
+		if topic == "" {
+			topic = base.DetailsURL
+		}
+		sum := sha256.Sum256([]byte(candidate.DownloadURL))
+		item.GUID = topic + "#" + hex.EncodeToString(sum[:8])
 	}
 	return item
 }
@@ -392,11 +405,13 @@ func applyResolvedDownload(item *Item, result resolvedDownload) {
 		} else {
 			item.InfoHash = normalizeInfoHash(result.Magnet)
 		}
+		torrentFromEd2kSource(item)
 		return
 	}
 	if result.Ed2k != "" {
 		item.Ed2k = result.Ed2k
 		item.Ed2kHash = result.Ed2kHash
+		item.Protocol = ProtocolEd2k
 		if result.Size > 0 {
 			item.Size = result.Size
 		}
@@ -404,6 +419,17 @@ func applyResolvedDownload(item *Item, result resolvedDownload) {
 	}
 	if result.DownloadURL != "" && item.Magnet == "" {
 		item.DownloadURL = result.DownloadURL
+		torrentFromEd2kSource(item)
+	}
+}
+
+// torrentFromEd2kSource marks a row of an eD2k source whose topic carried a
+// magnet or a .torrent instead of an ed2k:// link. The row is a torrent: the
+// archive must store it as one and a grab must reach a torrent client, not
+// aMule.
+func torrentFromEd2kSource(item *Item) {
+	if item.Protocol == ProtocolEd2k {
+		item.Protocol = ProtocolTorrent
 	}
 }
 
