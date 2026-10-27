@@ -288,9 +288,13 @@ type Search struct {
 // page without a letter), matches the query locally and opens only the chosen
 // topics.
 type SearchIndex struct {
-	Pages     []IndexPage `yaml:"pages" json:"pages"`
-	Response  Response    `yaml:"response" json:"response"`
-	MaxTopics int         `yaml:"max_topics,omitempty" json:"max_topics,omitempty"`
+	Pages    []IndexPage `yaml:"pages" json:"pages"`
+	Response Response    `yaml:"response" json:"response"`
+	// Forum is optional: the forum that holds the letter topics of a movie
+	// index. It is shown in the indexer form as a documentation link; the
+	// engine reads the pages above.
+	Forum     string `yaml:"forum,omitempty" json:"forum,omitempty"`
+	MaxTopics int    `yaml:"max_topics,omitempty" json:"max_topics,omitempty"`
 }
 
 // IndexPage is one page of a title index. Letter is empty for a page that

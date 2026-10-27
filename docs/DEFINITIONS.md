@@ -606,6 +606,11 @@ release: entrano in archivio solo i link trovati aprendo i topic scelti.
 `self: true` in un campo HTML legge il nodo della riga stessa invece di un
 discendente: serve quando la riga è già l'elemento `<a>` (elenchi di link).
 
+`index.forum` è facoltativo: indica il forum che contiene le pagine per lettera
+(per esempio `f=1988`) e serve solo alla UI, che lo mostra in sola lettura nel
+modulo dell'indexer insieme alla pagina senza lettera. Il motore legge le
+`pages`, non il forum.
+
 ## `download`
 
 Risolve il magnet, il link `.torrent` o il link `ed2k://` da una pagina di

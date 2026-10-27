@@ -84,6 +84,18 @@
     </div>
   </div>
 
+  {{if .IndexSources}}
+  <section class="panel" id="index-sources">
+    <div class="panel-head"><h2>{{T "idx.indexSources.title"}}</h2></div>
+    <p class="help">{{T "idx.indexSources.help"}}</p>
+    <ul class="index-sources">
+      {{range .IndexSources}}
+      <li><span>{{.Label}}</span> <a class="link" href="{{.URL}}" target="_blank" rel="noopener noreferrer" title="{{T "idx.indexSources.open"}}">{{.URL}}</a></li>
+      {{end}}
+    </ul>
+  </section>
+  {{end}}
+
   {{template "advanced-open" (advanced (T "component.advanced"))}}
     <div class="form-grid">
       <div class="field">

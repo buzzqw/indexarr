@@ -995,6 +995,10 @@
           "items": {
             "$ref": "#/$defs/indexPage"
           }
+        },
+        "forum": {
+          "type": "string",
+          "description": "Optional forum URL that holds the letter topics of the index; shown in the form."
         }
       }
     },

@@ -2078,6 +2078,12 @@ type compactFormView struct {
 	MirrorWarning             string
 	TLSWarning                string
 	ChangeSiteURL             string
+	IndexSources              []indexSourceView
+}
+
+type indexSourceView struct {
+	Label string
+	URL   string
 }
 
 func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current *store.Indexer, in *indexersvc.Input, problems []string, prefillURL string) (compactFormView, error) {
@@ -2162,6 +2168,10 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	}
 	data.DefinitionName = parsed.Meta.Name
 	data.Derived = parsed.IsDerived()
+	if parsed.Search.Index != nil {
+		data.IndexSources = indexSourceViews(parsed,
+			s.translate(r, "idx.indexSources.tv"), s.translate(r, "idx.indexSources.movies"))
+	}
 	if current == nil && in == nil && data.IntervalSeconds == 0 {
 		if suggested := parsed.Meta.Interval.Duration(); suggested >= time.Minute {
 			data.IntervalSeconds = int(suggested / time.Second)
@@ -3487,3 +3497,47 @@ func (s *Server) indexersBulk(w http.ResponseWriter, r *http.Request) {
 }
 
 // ------------------------------------------------------------------- helpers
+
+// indexSourceViews lists the read-only index pages of a definition for the
+// indexer form. They are definition data, not user settings: the operator can
+// see where the search reads titles without editing the YAML.
+func indexSourceViews(def *definition.Definition, tvLabel, movieLabel string) []indexSourceView {
+	if def == nil || def.Search.Index == nil {
+		return nil
+	}
+	base := ""
+	if len(def.Meta.URLs) > 0 {
+		base = strings.TrimSpace(def.Meta.URLs[0])
+	}
+	resolve := func(ref string) string {
+		ref = strings.TrimSpace(ref)
+		if ref == "" {
+			return ""
+		}
+		parsedRef, err := url.Parse(ref)
+		if err != nil {
+			return ref
+		}
+		if parsedRef.IsAbs() {
+			return parsedRef.String()
+		}
+		parsedBase, err := url.Parse(base)
+		if err != nil {
+			return ref
+		}
+		return parsedBase.ResolveReference(parsedRef).String()
+	}
+	var out []indexSourceView
+	for _, page := range def.Search.Index.Pages {
+		if strings.TrimSpace(page.Letter) != "" {
+			continue
+		}
+		if link := resolve(page.Get); link != "" {
+			out = append(out, indexSourceView{Label: tvLabel, URL: link})
+		}
+	}
+	if link := resolve(def.Search.Index.Forum); link != "" {
+		out = append(out, indexSourceView{Label: movieLabel, URL: link})
+	}
+	return out
+}

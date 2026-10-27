@@ -116,6 +116,7 @@ search:
   # locally and opens only the matching topics. search.php remains the
   # fallback when the list has no title, which is common for old TV seasons.
   index:
+    forum: /viewforum.php?f=1988
     max_topics: 5
     response:
       type: html
