@@ -1643,6 +1643,13 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 	if seeders >= 0 && leechers >= 0 {
 		writeAttrInt(b, "peers", seeders+leechers)
 	}
+	if name := strings.TrimSpace(provenance.BestIndexerName); name != "" {
+		// Jackett's attribute for the site behind an aggregated result. *arr
+		// clients ignore it; gextto files the result (and any failed download)
+		// under "indexarr:<site>", so a broken login names the site, not
+		// indexarr as a whole.
+		writeAttr(b, "jackettindexer", name)
+	}
 	if provenance.Indexers > 1 {
 		// Additive attributes: *arr clients ignore unknown names, while a
 		// provenance-aware client can prefer a release seen by many indexers.
