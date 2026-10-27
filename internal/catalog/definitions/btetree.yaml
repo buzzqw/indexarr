@@ -1,0 +1,56 @@
+# VERIFICATA (verified). BT.etree public HTML search.
+#
+# The search page is behind a Cloudflare challenge: it was captured on
+# 2026-10-27 through the local FlareSolverr in
+# fixtures/btetree/search.html
+# (https://bt.etree.org/?searchzzzz=matrix&incldead=1). The site spells the
+# query parameter "searchzzzz". Unlike the HTML pages, the .torrent files
+# under download.php answer a plain client with 200 application/x-bittorrent
+# (checked on 2026-10-27), so the row carries the download link directly and
+# no detail page is opened. The first column is an artist id used as a site
+# category; it is not mapped and the row stays "Other".
+schema: 1
+
+meta:
+  id: btetree
+  name: BT.etree
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public BT.etree bootleg music search through Cloudflare; the .torrent is linked from the row.
+  urls:
+    - https://bt.etree.org/
+  updated: "2026-10-27"
+  latest: false
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /
+    params:
+      searchzzzz: "{{ query.keywords }}"
+      incldead: "1"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: 'tr[align="right"]' }
+    fields:
+      title:    { selector: "a.details_link", filters: [trim] }
+      details:  { selector: "a.details_link", attr: href, type: url }
+      download: { selector: 'a[href^="download.php/"]', attr: href, type: url }
+      size:     { selector: "td:nth-of-type(6)", type: size }
+      seeders:  { selector: "td:nth-of-type(8)", type: int }
+      leechers: { selector: "td:nth-of-type(9)", type: int }
+    required: [title, details, download, size]
+
+health:
+  query: matrix
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/btetree/search.html
+    expect: { min_rows: 20, required: [title, details, download, size, seeders] }

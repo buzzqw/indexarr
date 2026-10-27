@@ -1,0 +1,73 @@
+# VERIFICATA (verified). Kickass Torrents (kickasstorrents.to) public search.
+#
+# The canonical host answers 403 "Just a moment..." from a plain client, so the
+# search page was captured on 2026-10-27 through the local FlareSolverr in
+# fixtures/kickasstorrents-to/search.html
+# (https://kickass.torrentbay.st/search/?q=matrix). The magnet is a direct
+# link in the row, unlike the mylink.cloud indirection of the other KAT
+# mirror; the category is the numeric id of the first breadcrumb.
+schema: 1
+
+meta:
+  id: kickasstorrents-to
+  name: Kickass Torrents (kickasstorrents.to)
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Kickass Torrents search through Cloudflare, with direct magnets in the result row.
+  urls:
+    - https://kickass.torrentbay.st/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "9",  standard: 2000, desc: "Movies" }
+  - { site: "19", standard: 2000, desc: "Highres movies" }
+  - { site: "20", standard: 2000, desc: "UltraHD" }
+  - { site: "47", standard: 2000, desc: "Dubbed movies" }
+  - { site: "91", standard: 2000, desc: "Lowres movies" }
+  - { site: "10", standard: 5000, desc: "TV" }
+  - { site: "11", standard: 3000, desc: "Audio" }
+  - { site: "12", standard: 4000, desc: "Games" }
+  - { site: "39", standard: 4050, desc: "PC games" }
+  - { site: "13", standard: 4000, desc: "Applications" }
+  - { site: "14", standard: 7000, desc: "Books" }
+  - { site: "15", standard: 5070, desc: "Anime" }
+  - { site: "16", standard: 8000, desc: "Other" }
+  - { site: "17", standard: 8000, desc: "All" }
+  - { site: "18", standard: 6000, desc: "Adult" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /search/
+    params:
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.data tbody tr" }
+    fields:
+      title:    { selector: "a.cellMainLink", filters: [trim] }
+      details:  { selector: "a.cellMainLink", attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      infohash: { selector: 'a[href^="magnet:"]', attr: href, filters: [{ regex: "btih:([0-9A-Fa-f]+)" }] }
+      category: { selector: "div.markeredBlock span a", attr: href, filters: [{ regex: '^/(\d+)/' }], type: category }
+      size:     { selector: "td.nobr.center", type: size }
+      seeders:  { selector: "td.green.center", type: int }
+      leechers: { selector: "td.red.center", type: int }
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/kickasstorrents-to/search.html
+    expect: { min_rows: 20, required: [title, details, magnet, size, seeders] }

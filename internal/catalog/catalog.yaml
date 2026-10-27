@@ -459,3 +459,8 @@ definitions:
   - {id: pornotorrent, file: definitions/pornotorrent.yaml, state: verificata, author: indexarr, note: 'Public adult PornoTorrent search; magnet and size on the release page, real fixtures.'}
   - {id: mixtapetorrent, file: definitions/mixtapetorrent.yaml, state: verificata, author: indexarr, note: 'Public MixtapeTorrent archive search; .torrent attached to each story, real fixtures.'}
   - {id: sosulki, file: definitions/sosulki.yaml, state: verificata, author: indexarr, note: 'Public adult sosulki search; size, date and health in the row, .torrent on the release page, real fixtures.'}
+  - {id: extratorrent-st, file: definitions/extratorrent-st.yaml, state: verificata, author: indexarr, note: 'Public ExtraTorrent.st search through Cloudflare; magnet, size and health in the row, real fixture.'}
+  - {id: kickasstorrents-to, file: definitions/kickasstorrents-to.yaml, state: verificata, author: indexarr, note: 'Public Kickass Torrents search through Cloudflare; direct magnet in the row, real fixture.'}
+  - {id: magnetcat, file: definitions/magnetcat.yaml, state: verificata, author: indexarr, note: 'Public Magnet Cat DHT search through Cloudflare; magnet from the infohash in the row, real fixture.'}
+  - {id: btetree, file: definitions/btetree.yaml, state: verificata, author: indexarr, note: 'Public BT.etree search through Cloudflare; .torrent linked from the row, real fixture.'}
+  - {id: damagnet, file: definitions/damagnet.yaml, state: verificata, author: indexarr, note: 'Public DaMagNet DHT search through Cloudflare; magnet on the release page, real fixtures.'}

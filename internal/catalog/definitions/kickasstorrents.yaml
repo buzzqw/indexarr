@@ -9,6 +9,12 @@
 # real magnet, from which the infohash is taken. There is no detail page
 # request and no login. Dates are relative ("5 months ago") and are left out
 # rather than invented.
+#
+# On 2026-10-27 the same layout was captured from https://kickass.ws/
+# (/usearch/?q=matrix, fixtures/kickasstorrents/ws-search.html) and added as a
+# mirror: same table, same click-through host, same category anchors. Both
+# hosts answer a Cloudflare challenge to a plain client; the search works
+# through the configured FlareSolverr.
 schema: 1
 
 meta:
@@ -25,7 +31,8 @@ meta:
   mirror: unofficial
   urls:
     - https://thekat.info/
-  updated: "2026-10-23"
+    - https://kickass.ws/
+  updated: "2026-10-27"
   latest: false
 
 categories:
@@ -72,4 +79,7 @@ health:
 tests:
   - name: search
     fixture: fixtures/kickasstorrents/listing.html
+    expect: { min_rows: 5, required: [title, details, magnet, size, category, seeders] }
+  - name: search-ws
+    fixture: fixtures/kickasstorrents/ws-search.html
     expect: { min_rows: 5, required: [title, details, magnet, size, category, seeders] }

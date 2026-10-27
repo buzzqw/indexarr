@@ -1,0 +1,59 @@
+# VERIFICATA (verified). DaMagNet public DHT search.
+#
+# The search is a POST to the home page (q=...); the token field of the form is
+# not required. The page is behind a Cloudflare challenge: the search and the
+# detail page were captured on 2026-10-27 through the local FlareSolverr in
+# fixtures/damagnet/search.html and fixtures/damagnet/detail.html
+# (https://damag.net/ and https://damag.net/0cmUmPJ). The search row carries
+# name, file count and size; the magnet is only on the detail page, so it is
+# resolved at grab time.
+schema: 1
+
+meta:
+  id: damagnet
+  name: DaMagNet
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public DaMagNet DHT search through Cloudflare; the magnet is on the release page.
+  urls:
+    - https://damag.net/
+  updated: "2026-10-27"
+  latest: false
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    post: /
+    form:
+      q: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.table-striped tbody tr" }
+    fields:
+      title:   { selector: 'a[id^="res"]', filters: [trim] }
+      details: { selector: 'a[id^="res"]', attr: href, type: url }
+      size:    { selector: "td:nth-child(3)", type: size }
+    required: [title, details, size]
+
+download:
+  resolve_on: grab
+  from: details
+  extract:
+    - magnet: { selector: 'a[href^="magnet:"]', attr: href }
+
+health:
+  query: matrix
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/damagnet/search.html
+    expect: { min_rows: 10, required: [title, details, size] }
+  - name: detail
+    fixture: fixtures/damagnet/detail.html
+    expect: { min_rows: 0 }

@@ -1,0 +1,69 @@
+# VERIFICATA (verified). ExtraTorrent.st public HTML search.
+#
+# The search page is behind a Cloudflare challenge: it was captured on
+# 2026-10-27 through the local FlareSolverr in
+# fixtures/extratorrent-st/search.html
+# (https://extratorrent.st/search/?search=matrix&new=1). Every result row
+# carries a direct magnet, the size and both swarm counters, so neither the
+# detail page nor the .torrent download is needed. The category is free text
+# ("in Highres Movies") and only the part after "in " is mapped.
+schema: 1
+
+meta:
+  id: extratorrent-st
+  name: ExtraTorrent.st
+  language: en-US
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public ExtraTorrent.st search through Cloudflare, with magnet, size and health in the row.
+  urls:
+    - https://extratorrent.st/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "Dubbed Movies", standard: 2000, desc: "Movies" }
+  - { site: "Highres Movies", standard: 2000, desc: "Movies" }
+  - { site: "Lowres Movies", standard: 2000, desc: "Movies" }
+  - { site: "UltraHD", standard: 2000, desc: "Movies" }
+  - { site: "Ebooks", standard: 7000, desc: "Books" }
+  - { site: "English-translated", standard: 7000, desc: "Books" }
+  - { site: "PC Games", standard: 4050, desc: "PC games" }
+  - { site: "Windows", standard: 4000, desc: "Applications" }
+  - { site: "Other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+
+search:
+  request:
+    get: /search/
+    params:
+      search: "{{ query.keywords }}"
+      new: "1"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "table.tl tbody tr" }
+    fields:
+      title:    { selector: "td.tli a", filters: [trim] }
+      details:  { selector: "td.tli a", attr: href, type: url }
+      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      infohash: { selector: 'a[href^="magnet:"]', attr: href, filters: [{ regex: "btih:([0-9A-Fa-f]+)" }] }
+      category: { selector: "span.c_tor", filters: [{ regex: 'in\s+(.+)' }], type: category }
+      size:     { selector: "td:nth-of-type(4)", type: size }
+      seeders:  { selector: "td.sn", type: int }
+      leechers: { selector: "td.ln", type: int }
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/extratorrent-st/search.html
+    expect: { min_rows: 20, required: [title, details, magnet, size, seeders] }

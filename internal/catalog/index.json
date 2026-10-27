@@ -368,6 +368,22 @@
     "latest": false
   },
   {
+    "id": "btetree",
+    "name": "BT.etree",
+    "description": "Public BT.etree bootleg music search through Cloudflare; the .torrent is linked from the row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "bt.etree.org"
+    ],
+    "url": "https://bt.etree.org/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "catorrent",
     "name": "Catorrent",
     "description": "Public Russian PC game catalogue; the .torrent and size are on the game page.",
@@ -487,6 +503,22 @@
     "scheduled": true
   },
   {
+    "id": "damagnet",
+    "name": "DaMagNet",
+    "description": "Public DaMagNet DHT search through Cloudflare; the magnet is on the release page.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "state": "verificata",
+    "hosts": [
+      "damag.net"
+    ],
+    "url": "https://damag.net/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "divxtotal",
     "name": "DivxTotal",
     "description": "Public Spanish movie and series tracker with a torrent link on each detail page.",
@@ -573,6 +605,28 @@
     "proposable": true,
     "latest": false,
     "scheduled": true
+  },
+  {
+    "id": "extratorrent-st",
+    "name": "ExtraTorrent.st",
+    "description": "Public ExtraTorrent.st search through Cloudflare, with magnet, size and health in the row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "extratorrent.st"
+    ],
+    "url": "https://extratorrent.st/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "extto",
@@ -2818,29 +2872,6 @@
     "latest": false
   },
   {
-    "id": "jk-btetree",
-    "name": "BT.etree",
-    "description": "BT.etree is a Public Tracker dedicated to Bootleg FLAC MUSIC",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "music"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "bt.etree.org"
-    ],
-    "url": "https://bt.etree.org/",
-    "source": "jackett",
-    "evidence": "GET https://bt.etree.org/ -\u003e HTTP 403, 5605 bytes, title \"Just a moment...\", checked 2026-10-25",
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-btnext",
     "name": "BTNext",
     "description": "BTNext (BTNT) is a PORTUGUESE Private Torrent Tracker for 0DAY / GENERAL",
@@ -3660,27 +3691,6 @@
     "url": "https://czteam.me/",
     "source": "jackett",
     "evidence": "GET https://czteam.me/login.php?returnto=%2F -\u003e HTTP 200, 14509 bytes, title \"CZTeam Tracker :: Login\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-damagnet",
-    "name": "DaMagNet",
-    "description": "DaMagNet is a Public DHT Crawler",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "damag.net"
-    ],
-    "url": "https://damag.net/",
-    "source": "jackett",
-    "evidence": "GET https://damag.net/ -\u003e HTTP 200, 8994 bytes, title \"Da MagNet: Home\", checked 2026-10-25",
-    "reachable": true,
     "proposable": true,
     "latest": false
   },
@@ -4720,36 +4730,6 @@
     "url": "https://explosiv-world.biz/",
     "source": "jackett",
     "evidence": "GET https://explosiv-world.biz/login.php -\u003e HTTP 200, 48049 bytes, title \"E-W - Login – Mitglieder\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-extratorrent-st",
-    "name": "ExtraTorrent.st",
-    "description": "ExtraTorrent.st is a Public tracker for MOVIE / TV / GENERAL magnets",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "extratorrent.st"
-    ],
-    "url": "https://extratorrent.st/",
-    "source": "jackett",
-    "evidence": "GET https://extratorrent.st/ -\u003e HTTP 403, 5480 bytes, title \"Just a moment...\", checked 2026-10-25",
     "proposable": true,
     "latest": false
   },
@@ -7129,65 +7109,6 @@
     "scheduled": true
   },
   {
-    "id": "jk-kickasstorrents-to",
-    "name": "kickasstorrents.to",
-    "description": "kickasstorrents.to is a Public KickAssTorrent clone for MOVIES / TV / GENERAL",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "kickass.torrentbay.st"
-    ],
-    "url": "https://kickass.torrentbay.st/",
-    "source": "jackett",
-    "evidence": "GET https://kickass.torrentbay.st/ -\u003e HTTP 403, 5636 bytes, title \"Just a moment...\", checked 2026-10-25",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-kickasstorrents-ws",
-    "name": "kickasstorrents.ws",
-    "description": "kickasstorrents.ws is a Public KickAssTorrent clone for MOVIES / TV / GENERAL",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "kickass.ws"
-    ],
-    "url": "https://kickass.ws/",
-    "source": "jackett",
-    "evidence": "GET https://kickass.ws/ -\u003e HTTP 403, 5475 bytes, title \"Just a moment...\", checked 2026-10-25",
-    "proposable": true,
-    "latest": false
-  },
-  {
     "id": "jk-kinorun",
     "name": "Kinorun",
     "description": "Kinorun is a RUSSIAN Semi-Private Torrent Tracker for 3X",
@@ -7980,34 +7901,6 @@
     "url": "https://mpellas.me/",
     "source": "jackett",
     "evidence": "GET https://mpellas.me/?p=home\u0026pid=1 -\u003e HTTP 200, 12371 bytes, title \"Mpellas\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-magnetcat",
-    "name": "Magnet Cat",
-    "description": "Magnet Cat is a Public Tracker for MOVIES / TV / GENERAL",
-    "language": "en-US",
-    "type": "public",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "music",
-      "books",
-      "games",
-      "software"
-    ],
-    "required": [
-      "url"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "magnetcatcat.com"
-    ],
-    "url": "https://magnetcatcat.com/",
-    "source": "jackett",
-    "evidence": "GET https://magnetcatcat.com/ -\u003e HTTP 403, 5574 bytes, title \"Just a moment...\", checked 2026-10-25",
     "proposable": true,
     "latest": false
   },
@@ -15559,9 +15452,36 @@
     "state": "verificata",
     "mirror": "unofficial",
     "hosts": [
+      "kickass.ws",
       "thekat.info"
     ],
     "url": "https://thekat.info/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
+    "id": "kickasstorrents-to",
+    "name": "Kickass Torrents (kickasstorrents.to)",
+    "description": "Public Kickass Torrents search through Cloudflare, with direct magnets in the result row.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "kickass.torrentbay.st"
+    ],
+    "url": "https://kickass.torrentbay.st/",
     "source": "native",
     "proposable": true,
     "latest": false
@@ -15715,6 +15635,29 @@
     "proposable": true,
     "latest": false,
     "scheduled": true
+  },
+  {
+    "id": "magnetcat",
+    "name": "Magnet Cat",
+    "description": "Public Magnet Cat DHT search through Cloudflare; the magnet comes from the infohash in the row link.",
+    "language": "zh-CN",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "magnetcatcat.com"
+    ],
+    "url": "https://magnetcatcat.com/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
   },
   {
     "id": "magnetdownload",

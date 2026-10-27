@@ -1640,23 +1640,6 @@ sites:
       source_id: btarg
       checked: "2026-10-25"
       evidence: GET https://www.btarg.com.ar/ -> HTTP 200, 3670 bytes, title "BTARG - BitTorrent Argentina", checked 2026-10-25; private, no account used
-    - id: jk-btetree
-      name: BT.etree
-      description: BT.etree is a Public Tracker dedicated to Bootleg FLAC MUSIC
-      url: https://bt.etree.org/
-      urls:
-        - https://bt.etree.org/
-      type: public
-      language: en-US
-      categories:
-        - music
-      state: da-provvi
-      required:
-        - url
-      source: jackett
-      source_id: btetree
-      checked: "2026-10-25"
-      evidence: GET https://bt.etree.org/ -> HTTP 403, 5605 bytes, title "Just a moment...", checked 2026-10-25
     - id: jk-btnext
       name: BTNext
       description: BTNext (BTNT) is a PORTUGUESE Private Torrent Tracker for 0DAY / GENERAL
@@ -2304,21 +2287,6 @@ sites:
       source_id: czteam-api
       checked: "2026-10-25"
       evidence: 'GET https://czteam.me/login.php?returnto=%2F -> HTTP 200, 14509 bytes, title "CZTeam Tracker :: Login", checked 2026-10-25; private, no account used'
-    - id: jk-damagnet
-      name: DaMagNet
-      description: DaMagNet is a Public DHT Crawler
-      url: https://damag.net/
-      urls:
-        - https://damag.net/
-      type: public
-      language: en-US
-      state: verificata
-      required:
-        - url
-      source: jackett
-      source_id: damagnet
-      checked: "2026-10-25"
-      evidence: 'GET https://damag.net/ -> HTTP 200, 8994 bytes, title "Da MagNet: Home", checked 2026-10-25'
     - id: jk-danishbits-api
       name: DanishBits (API)
       description: DanishBits is a Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -3128,30 +3096,6 @@ sites:
       source_id: explosiv-world
       checked: "2026-10-25"
       evidence: GET https://explosiv-world.biz/login.php -> HTTP 200, 48049 bytes, title "E-W - Login – Mitglieder", checked 2026-10-25; private, no account used
-    - id: jk-extratorrent-st
-      name: ExtraTorrent.st
-      description: ExtraTorrent.st is a Public tracker for MOVIE / TV / GENERAL magnets
-      url: https://extratorrent.st/
-      urls:
-        - https://extratorrent.st/
-      type: public
-      language: en-US
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-        - games
-        - software
-        - xxx
-      state: da-provvi
-      required:
-        - url
-      source: jackett
-      source_id: extratorrent-st
-      checked: "2026-10-25"
-      evidence: GET https://extratorrent.st/ -> HTTP 403, 5480 bytes, title "Just a moment...", checked 2026-10-25
     - id: jk-extremebits
       name: ExtremeBits
       description: ExtremeBits is a Private Torrent Tracker for EXTREME SPORTS
@@ -5025,53 +4969,6 @@ sites:
       checked: "2026-10-25"
       evidence: 'GET https://our.kelu.one/login.php -> HTTP 200, 20337 bytes, title "Kelu :: 登录 - Powered by NexusPHP", checked 2026-10-25; private, no account used'
       note: 'family nexusphp (possible): live GET markers on https://our.kelu.one/'
-    - id: jk-kickasstorrents-to
-      name: kickasstorrents.to
-      description: kickasstorrents.to is a Public KickAssTorrent clone for MOVIES / TV / GENERAL
-      url: https://kickass.torrentbay.st/
-      urls:
-        - https://kickass.torrentbay.st/
-      type: public
-      language: en-US
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-        - games
-        - software
-        - xxx
-      state: da-provvi
-      required:
-        - url
-      source: jackett
-      source_id: kickasstorrents-to
-      checked: "2026-10-25"
-      evidence: GET https://kickass.torrentbay.st/ -> HTTP 403, 5636 bytes, title "Just a moment...", checked 2026-10-25
-    - id: jk-kickasstorrents-ws
-      name: kickasstorrents.ws
-      description: kickasstorrents.ws is a Public KickAssTorrent clone for MOVIES / TV / GENERAL
-      url: https://kickass.ws/
-      urls:
-        - https://kickass.ws/
-      type: public
-      language: en-US
-      categories:
-        - movies
-        - tv
-        - music
-        - books
-        - games
-        - software
-        - xxx
-      state: da-provvi
-      required:
-        - url
-      source: jackett
-      source_id: kickasstorrents-ws
-      checked: "2026-10-25"
-      evidence: GET https://kickass.ws/ -> HTTP 403, 5475 bytes, title "Just a moment...", checked 2026-10-25
     - id: jk-kinorun
       name: Kinorun
       description: Kinorun is a RUSSIAN Semi-Private Torrent Tracker for 3X
@@ -5697,28 +5594,6 @@ sites:
       source_id: magico
       checked: "2026-10-25"
       evidence: GET https://mpellas.me/?p=home&pid=1 -> HTTP 200, 12371 bytes, title "Mpellas", checked 2026-10-25; private, no account used
-    - id: jk-magnetcat
-      name: Magnet Cat
-      description: Magnet Cat is a Public Tracker for MOVIES / TV / GENERAL
-      url: https://magnetcatcat.com/
-      urls:
-        - https://magnetcatcat.com/
-      type: public
-      language: en-US
-      categories:
-        - movies
-        - tv
-        - music
-        - books
-        - games
-        - software
-      state: da-provvi
-      required:
-        - url
-      source: jackett
-      source_id: magnetcat
-      checked: "2026-10-25"
-      evidence: GET https://magnetcatcat.com/ -> HTTP 403, 5574 bytes, title "Just a moment...", checked 2026-10-25
     - id: jk-magnetz
       name: Magnetz
       description: Magnetz is a Semi-Private torrent meta-search engine

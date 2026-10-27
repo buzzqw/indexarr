@@ -284,6 +284,21 @@ La modalità sessione non cambia il formato degli altri campi: `auth.steps`,
 `search` e `download` restano gli stessi. Una definizione senza `session` si
 comporta esattamente come prima e `schema` resta `1`.
 
+### Cloudflare senza sessione
+
+Una definizione non deve dichiarare `session` solo perché il sito è dietro
+Cloudflare. Con FlareSolverr configurato, il transport ripete la GET che ha
+ricevuto la challenge e la ricerca funziona; la sessione persistente serve
+solo quando il sito tiene lo stato nel browser (login, cookie) o quando serve
+un POST che il solver a una richiesta non può ripetere.
+
+Limite noto: il solver restituisce testo, non binari. Un `.torrent` protetto
+da Cloudflare non si scarica: la definizione vale solo se la riga espone un
+magnet o se il file è su un percorso non protetto. BT.etree è il caso
+misurato: la ricerca è dietro challenge, `download.php` risponde `200
+application/x-bittorrent` anche senza solver. Una definizione che cerca ma non
+scarica non va scritta a metà.
+
 ## Template
 
 I template sono deliberatamente minimi:

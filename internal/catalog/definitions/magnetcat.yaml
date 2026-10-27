@@ -1,0 +1,68 @@
+# VERIFICATA (verified). Magnet Cat (磁力猫) public DHT search.
+#
+# The search page is behind a Cloudflare challenge: it was captured on
+# 2026-10-27 through the local FlareSolverr in
+# fixtures/magnetcat/search.html
+# (https://magnetcatcat.com/search?search=matrix). Each row links
+# /hash/<INFOHASH>.html, so the magnet is built from the 40-hex path segment
+# without opening a detail page. The title is prefixed with the site category
+# in full-width brackets; the size is the second span of the meta line.
+schema: 1
+
+meta:
+  id: magnetcat
+  name: Magnet Cat
+  language: zh-CN
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Public Magnet Cat DHT search through Cloudflare; the magnet comes from the infohash in the row link.
+  urls:
+    - https://magnetcatcat.com/
+  updated: "2026-10-27"
+  latest: false
+
+categories:
+  - { site: "影视",     standard: 2000, desc: "Movies and TV" }
+  - { site: "音乐",     standard: 3000, desc: "Audio" }
+  - { site: "图像",     standard: 8000, desc: "Images" }
+  - { site: "文档书籍", standard: 7000, desc: "Books" }
+  - { site: "压缩文件", standard: 8000, desc: "Archives" }
+  - { site: "安装包",   standard: 4000, desc: "Applications" }
+  - { site: "其他",     standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+
+search:
+  request:
+    get: /search
+    params:
+      search: "{{ query.keywords }}"
+  pagination: { type: none }
+  response:
+    type: html
+    rows: { selector: "article.zsky-result-row" }
+    fields:
+      title:    { selector: "a.zsky-result-name", filters: [{ regex: '】\s*(.+)$' }, trim] }
+      details:  { selector: "a.zsky-result-name", attr: href, type: url }
+      infohash: { selector: "a.zsky-result-name", attr: href, filters: [{ regex: '/hash/([0-9A-Fa-f]{40})' }] }
+      magnet:
+        selector: "a.zsky-result-name"
+        attr: href
+        filters: [{ regex: '/hash/([0-9A-Fa-f]{40})' }, { prefix: "magnet:?xt=urn:btih:" }]
+      category: { selector: "span.zsky-result-category", filters: [{ regex: '【(.+)】' }], type: category }
+      size:
+        selector: "div.zsky-result-meta span:nth-of-type(2)"
+        filters: [{ regex: '大小：([0-9.,]+\s*[KMGT]?B)' }]
+        type: size
+    required: [title, details, magnet, size]
+
+health:
+  query: matrix
+  min_rows: 5
+
+tests:
+  - name: search
+    fixture: fixtures/magnetcat/search.html
+    expect: { min_rows: 10, required: [title, details, magnet, size] }

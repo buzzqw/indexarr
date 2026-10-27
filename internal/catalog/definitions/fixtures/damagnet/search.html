@@ -1,0 +1,359 @@
+<html lang="en" class="fa-events-icons-ready"><head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" href="favicon.svg">
+    <link rel="mask-icon" href="favicon.svg" color="#000000">
+    <link rel="apple-touch-icon" href="favicon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="referrer" content="same-origin">
+    <meta name="description" content="Indexing the magnet">
+    <meta name="keywords" content="dht,magnet,infohash,torrent,bittorrent,bt,libtorrent,p2p,file,sharing">
+    <title>Da MagNet: matrix</title>
+
+    <link rel="preload" href="https://fonts.gstatic.com/s/opensans/v40/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-mu0SC55I.woff2" as="font" type="font/woff2" crossorigin="">
+    <link rel="preload" href="https://fonts.gstatic.com/s/opensans/v40/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-muw.woff2" as="font" type="font/woff2" crossorigin="">
+    <link rel="preload" href="/static/fonts/fontawesome-webfont.woff2" as="font" type="font/woff2" crossorigin="">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootswatch@3.4.1/yeti/bootstrap.min.css" as="style">
+    <link rel="preload" href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,700italic,400,300,700" type="text/css" as="style">
+    <link rel="preload" href="/static/js/main.js" as="script">
+    <!-- Bootstrap -->
+
+    <link rel="stylesheet" id="default-theme" href="https://cdn.jsdelivr.net/npm/bootswatch@3.4.1/yeti/bootstrap.min.css">
+    <link rel="stylesheet" href="" id="theme">
+
+    <script>
+    (function(){
+        if (!localStorage || !localStorage.getItem('theme')) return;
+        let theme = localStorage.getItem('theme');
+        if (theme != 'yeti') {
+          //document.head.querySelector("#default-theme").disabled = true
+          document.head.querySelector("#theme").href = "https://cdn.jsdelivr.net/npm/bootswatch@3.4.1/" + theme + "/bootstrap.min.css";
+        }
+    })();
+    </script>
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+    <script src="/static/js/ie.js"></script>
+    <![endif]-->
+    <link rel="stylesheet" href="/static/css/main.css" type="text/css">
+    <!-- <base target="_blank"> -->
+</head>
+
+<body>
+<div class="container">
+    <div class="pageheader" id="PageHeader">
+<h2>
+<strong><a href="/">DaMagNet</a></strong>
+<a id="bookmark" href="#" class="btn btn-default btn-xs" title="Bookmark us!">🔖</a> 
+<a id="bookmarklet" href="javascript:(function(){var query=window.getSelection().toString();if(query){window.open('https://damag.net/?q=' + encodeURIComponent(query));}})();" title="Drag this bookmarklelt to your browser's bookmark bar, select any text and click the bookmarklet icon to search the selected text on this site" class="btn btn-default btn-xs">🧲</a>
+<div class="btn-group">
+<a href="#" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-expanded="false" title="Change theme">🌓︎<span class="caret"></span></a>
+<ul class="dropdown-menu btn-xs" id="theme-selector">
+<li><a href="#" class="btn-xs">cerulean</a></li>
+<li><a href="#" class="btn-xs">cosmo</a></li>
+<li><a href="#" class="btn-xs">flatly</a></li>
+<li><a href="#" class="btn-xs">journal</a></li>
+<li><a href="#" class="btn-xs">lumen</a></li>
+<li><a href="#" class="btn-xs">paper</a></li>
+<li><a href="#" class="btn-xs">readable</a></li>
+<li><a href="#" class="btn-xs">sandstone</a></li>
+<li><a href="#" class="btn-xs">simplex</a></li>
+<li><a href="#" class="btn-xs">spacelab</a></li>
+<li><a href="#" class="btn-xs">united</a></li>
+<li><a href="#" class="btn-xs">yeti</a></li>
+<li class="divider" style="font-size: 14px !important;"></li>
+<li><a href="#" class="btn-xs">cyborg</a></li>
+<li><a href="#" class="btn-xs">darkly</a></li>
+<li><a href="#" class="btn-xs">slate</a></li>
+<li><a href="#" class="btn-xs">superhero</a></li>
+</ul>
+</div>
+</h2>
+        <p>Search tens of millions of resources in the <a href="https://en.wikipedia.org/wiki/mainline_DHT">mainline DHT</a> network. Nothing except metadata of the resources is hosted here. You need a bittorrent client that can handle <a href="https://en.wikipedia.org/wiki/Magnet_URI_scheme">magnet URI</a> links to actually access the resources. All modern clients do!</p>
+        <p><button class="btn btn-warning btn-xs">Warning</button> Similar to <a href="https://en.wikipedia.org/wiki/BitTorrent_tracker">public trackers</a>, the mainline DHT network is also public, as opposed to private trackers. To protect your privacy and avoid receiving <strong><a href="https://torrentfreak.com/received-a-piracy-warning-from-your-isp-heres-what-to-do-181007/" target="_blank">ISP 'warnings'</a></strong> or <strong><a href="https://www.reddit.com/r/Comcast/comments/11j0lxr/received_a_dmca_copyright_infringement_email_from/" target="_blank">DMCA emails</a></strong>, be sure to use a P2P-supporting VPN service with high anonymity such as <strong><a href="/linkout?to=windscribe" target="_blank">Windscribe</a></strong> (<strong>free</strong> plan and <strong><a href="/linkout?to=ss-windscribe" target="_blank">discount</a></strong> available). Better yet, set up a personal seedbox at a <a href="/linkout?to=seedbox" target="_blank">third party</a> and download through an anonymous VPN!</p>
+    </div>
+
+    <hr>
+
+    <div class="row" style="text-align: center;"><p style="background-color:palegoldenrod">
+<strong>Internxt Cloud Storage: Lifetime Subscription (2TB)</strong> for only <strong>
+<a href="/linkout?to=ss-internxt-20260329">$84.98!</a></strong>
+with coupon <strong>MARCH15</strong>
+</p>
+</div>
+
+    
+    <div class="row" id="SearchBar" style="text-align: center;">
+        <div class="center-block col-xs-8 col-md-6" style="float:none;">
+            <form action="/" method="post" id="searchForm">
+                <input type="hidden" name="token" value="">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Search for..." value="matrix">
+                    <span class="input-group-btn">
+                        <button id="search" class="btn btn-secondary" type="submit"> Go Get </button>
+                    </span>
+                    <select class="form-control input-group-addon" name="wanted">
+                        <option value="20" selected="selected">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div><!-- /input-group -->
+            </form>
+        </div>
+    </div><!-- SearchBar -->
+    <div class="row" id="LoadingGIF">
+        <br>
+        <img id="loading" loading="lazy" src="/static/img/loading.gif" class="img-responsive center-block hidden" style="display: none;">
+        <br>
+    </div>
+    <div class="row" id="ResultsTable">
+        <div class="center-block col-xs-12 col-md-10" style="float:none;">
+            <table class="table table-striped">
+                                <tbody><tr><th>Name</th><th style="text-align:center;">Files</th><th style="text-align:center;">Size</th></tr>
+                                    <tr>
+                        <td>
+                            <a href="/9c1KVAE" target="_blank" id="res0" title="Click to view details">sharrardandfriends2019-11-20.cmc621.sbd.matrix.flac16</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">135</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size0" class="label label-default">1.52 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/9e1KITA" target="_blank" id="res1" title="Click to view details">ph2023-07-22.ots.mk4v.mk41v.matrix.bean.flac2496</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">214</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size1" class="label label-default">3.56 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/741KDvY" target="_blank" id="res2" title="Click to view details">jackiegreene2013-08-25.paradise_california_botz_16bit_soundboard_matrix_source</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">100</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size2" class="label label-default">710.07 MB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/3e1GLmB" target="_blank" id="res3" title="Click to view details">Matrix &amp; Futurebound - MFXX - 20 Years Of Matrix &amp; Futurebound (2026)</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">22</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size3" class="label label-default">208.52 MB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/131eUHL" target="_blank" id="res4" title="Click to view details">dogs2026-06-10.matrix</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">21</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size4" class="label label-default">3.06 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/5cMTrmW" target="_blank" id="res5" title="Click to view details">jrad2018-01-12.cmc621.cmc641vxt.sbd.matrix.flac24</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">264</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size5" class="label label-default">4.21 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/e6mUkhi" target="_blank" id="res6" title="Click to view details">jrad2018-03-08.cmc621.cmc641vxt.sbd.matrix.flac24</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">292</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size6" class="label label-default">4.03 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/e6M0KXX" target="_blank" id="res7" title="Click to view details">jrad2017-04-29.cmc621.cmc64.sbd.matrix.flac16</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">173</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size7" class="label label-default">1.85 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/1dM4ZPd" target="_blank" id="res8" title="Click to view details">jrad2016-12-31.cmc621.cmc65xt.sbd.matrix.flac16</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">157</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size8" class="label label-default">1.84 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/0cmUmPJ" target="_blank" id="res9" title="Click to view details">jrad2018-03-10.cmc621.cmc641vxt.sbd.matrix.flac16</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">133</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size9" class="label label-default">1.57 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/83MaYut" target="_blank" id="res10" title="Click to view details">jrad2018-03-10.cmc621.cmc641vxt.sbd.matrix.flac16</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">132</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size10" class="label label-default">1.57 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/a1mUW45" target="_blank" id="res11" title="Click to view details">jrad2018-03-08.cmc621.cmc641vxt.sbd.matrix.flac16</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">146</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size11" class="label label-default">1.42 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/45MjH0e" target="_blank" id="res12" title="Click to view details">jrad2015-01-24.cmc621.sbd.matrix.flac16</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">177</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size12" class="label label-default">1.4 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/46M9zlE" target="_blank" id="res13" title="Click to view details">jrad2017-03-10.cmc621.cmc641vxt.sbd.matrix.flac16</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">133</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size13" class="label label-default">1.2 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/131K95n" target="_blank" id="res14" title="Click to view details">[ WebToolTip.com ] Udemy - Dot Matrix LED Display Interface with PIC Microcontroller</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">70</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size14" class="label label-default">1.11 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/d3MP9t8" target="_blank" id="res15" title="Click to view details">jrad2017-11-10.cmc621.cmc64.sbd.matrix.flac24</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">202</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size15" class="label label-default">4.31 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/f9muPnt" target="_blank" id="res16" title="Click to view details">vulfpeck2016-09-10.cmc621xt.sbd.matrix.flac24</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">406</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size16" class="label label-default">4.29 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/f9MAIRw" target="_blank" id="res17" title="Click to view details">jrad2018-02-18.cmc621.cmc64.sbd.matrix.flac24</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">178</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size17" class="label label-default">4.26 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/56mtfSJ" target="_blank" id="res18" title="Click to view details">scottsharrard2016-10-19.cmc621xt.cmc622.sbd.matrix.flac24</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">342</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size18" class="label label-default">4.16 GB</span>
+                        </td>
+                    </tr>
+                                    <tr>
+                        <td>
+                            <a href="/b4MeZZC" target="_blank" id="res19" title="Click to view details">jrad2017-11-11.cmc621.cmc64.sbd.matrix.flac24</a>
+                        </td>
+                        <td style="text-align:right;">
+                            <span class="label label-default">250</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <span id="size19" class="label label-default">4.07 GB</span>
+                        </td>
+                    </tr>
+                                            </tbody></table>
+            <br>
+        </div>
+    </div><!-- ResultsTable-->
+    
+    <div class="row" id="hide">
+    <iframe id="if" title="canskip" sandbox="allow-popups" src="about:blank" class="center-block" height="0px" width="100%" frameborder="0" scrolling="no" allow="none" referrerpolicy="same-origin" loading="lazy"></iframe>
+</div>
+    <hr>
+    <div id="footer" class="row">
+        <div class="center-block col-xs-12 col-md-10" style="float:none; text-align:right;">
+            
+            <p>67753333 resources indexed by 2026-10-27 11:16:10.</p>
+        
+                <p>📧 contact@<span style="display:none">damag.net@example.com,!</span>damag.net</p>
+        </div>
+    </div>
+</div><!-- /container -->
+<script async="" src="/static/js/main.js"></script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5115247e9e1efb7',t:'MTc5MzEwMDEzMA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><iframe height="1" width="1" style="position: absolute; top: 0px; left: 0px; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; visibility: hidden;"></iframe>
+
+</body></html>

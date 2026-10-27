@@ -19,14 +19,14 @@ Valori contati su `index.json` dopo `go generate ./internal/catalog`.
 
 | Misura | Valore |
 | --- | ---: |
-| Totale voci nel catalogo (definizioni + voci leggere) | **627** |
-| Definizioni native | 100 (8 aiutanti generici inclusi) |
-| Voci leggere | **527** (522 dall'istantanea Jackett, 5 manuali) |
-| Verificate | **76** |
+| Totale voci nel catalogo (definizioni + voci leggere) | **626** |
+| Definizioni native | 105 (8 aiutanti generici inclusi) |
+| Voci leggere | **521** (516 dall'istantanea Jackett, 5 manuali) |
+| Verificate | **81** |
 | Bozze | **24** |
-| Da provare (`da-provvi`) | **523** |
+| Da provare (`da-provvi`) | **517** |
 | Morte (`morta`) | **4** |
-| Pubbliche verificate (host unici) | **84** |
+| Pubbliche verificate (host unici) | **90** |
 | Voci italiane | **13** |
 
 Le pubbliche verificate sono conteggiate per host unico, quindi una
@@ -41,9 +41,9 @@ resta in coda con il filtro **da scrivere** e non produce alcun proxy.
 
 | Via | Fonti | Note |
 | --- | ---: | --- |
-| Definizione nativa (id o host) | **50** | definizioni verificate o in prova |
+| Definizione nativa (id o host) | **56** | definizioni verificate o in prova |
 | Software noto (connettore di famiglia) | **155** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **433** | 329 private, 41 pubbliche, 63 semiprivate |
+| Da scrivere | **427** | 329 private, 35 pubbliche, 63 semiprivate |
 | **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 
 La somma non include le 6 fonti già configurate in Jackett quando coincidono
@@ -76,11 +76,17 @@ XXXClub, Free JAV Torrent, PornXLab, BigFANGroup, Catorrent, SkidrowRepack,
 PC-torrent, Zamunda.LIFE, MyPornClub, PornoTorrent, MixtapeTorrent e sosulki.
 `animetosho.net` è un mirror della definizione AnimeTosho.
 
+Nello stesso giorno è stato ripreso il gruppo Cloudflare: cinque nuove
+definizioni (BT.etree, ExtraTorrent.st, kickasstorrents.to, Magnet Cat,
+DaMagNet) e il mirror `kickass.ws` sono descritti nella sezione
+[Cloudflare](#cloudflare-esito-del-2710).
+
 Le altre pubbliche restano in coda per un motivo osservato:
 
 | Motivo | Fonti |
 | --- | --- |
-| Challenge Cloudflare sulla ricerca o sul dettaglio: non verificabili senza FlareSolverr | BT.etree, ExtraTorrent.st, Magnet Cat, MejorTorrent, OneJAV, Torrent[CORE], kickasstorrents.to/.ws, DaMagNet (dettaglio) |
+| Challenge Cloudflare e `.torrent` non scaricabile dal solver | MejorTorrent, OneJAV |
+| Ricerca HTML assente o non utilizzabile (handle opachi) | Torrent[CORE] |
 | Download dietro captcha o proof-of-work | DonTorrent |
 | Risultati disegnati da JavaScript offuscato | HDRTorrent, FileMood, U3C3 |
 | Download negato anche con referer (403) | Byrutor |
@@ -90,6 +96,41 @@ Le altre pubbliche restano in coda per un motivo osservato:
 | Timeout o rete IPv6 irraggiungibile | OpenSharing, AniSource |
 | Dominio morto o portale di reindirizzamento | 52BT (410), World-torrent |
 | Galleria con torrent personali per account | E-Hentai |
+
+### Cloudflare: esito del 27/10
+
+La riga precedente diceva «non verificabili senza FlareSolverr». La prova del
+27/10 dice il contrario: con il FlareSolverr locale attivo gli **undici** siti
+pubblici che il 25/10 avevano risposto `403 "Just a moment..."` si risolvono
+tutti. Cinque hanno ora una definizione nativa nuova (BT.etree, ExtraTorrent.st,
+kickasstorrents.to, kickass.ws, Magnet Cat), tre erano già nativi e restano
+MejorTorrent, OneJAV e Torrent[CORE]. A questi si aggiunge DaMagNet, che aveva
+la home 200 ma il dettaglio dietro challenge e ora è nativo anche lui.
+
+| Fonte | Ricerca | Grab |
+| --- | --- | --- |
+| BT.etree | FlareSolverr | `.torrent` diretto: `download.php` risponde 200 `application/x-bittorrent` anche senza solver |
+| ExtraTorrent.st | FlareSolverr | magnet nella riga |
+| kickasstorrents.to | FlareSolverr | magnet nella riga |
+| kickass.ws | FlareSolverr | magnet nella riga (mirror della definizione Kickass) |
+| Magnet Cat | FlareSolverr | infohash nel link `/hash/<40-hex>.html` |
+| DaMagNet | FlareSolverr | magnet nella pagina di dettaglio |
+
+Le definizioni non usano una sessione persistente: il solver a una richiesta
+basta per la ricerca e lascia il grab dei magnet al transport normale. Dove il
+sito protegge anche il file, il grab non funziona e la definizione non viene
+scritta a metà.
+
+Restano tre, per motivi misurati il 27/10:
+
+- **MejorTorrent e OneJAV**: la challenge copre anche il `.torrent` (`403
+  text/html` sia a un client normale sia ripetendo i cookie `cf_clearance` del
+  solver con lo stesso User-Agent). Cloudflare lega il lasciapassare al
+  fingerprint TLS del browser, che curl/Go non riproducono, e FlareSolverr non
+  restituisce corpi binari: il grab non è possibile.
+- **Torrent[CORE]**: `/search` risponde un corpo vuoto di 40 byte e le pagine
+  usano handle base64 opachi senza magnet. Non c'è una ricerca HTML da
+  descrivere.
 
 ## Stati onesti
 
@@ -211,9 +252,13 @@ costruire la definizione della famiglia scelta.
 
 ## Limiti e blocchi
 
-- **403 Cloudflare**: 14 siti pubblici hanno risposto 403 «Just a moment...».
-  Sono raggiungibili dal browser ma non dal probe; restano `da-provvi`, non
-  `verificata` e non `morta`. Tra questi diversi mirror Kickass/ExtraTorrent.
+- **403 Cloudflare**: 11 siti pubblici dell'istantanea hanno risposto 403
+  «Just a moment...» al probe del 25/10. Otto hanno oggi una definizione nativa
+  (tre lo erano già, cinque sono stati aggiunti il 27/10 con FlareSolverr);
+  restano `da-provvi` MejorTorrent, OneJAV e Torrent[CORE], con il motivo nella
+  sezione Cloudflare qui sopra. DaMagNet, che aveva la home 200 ma il dettaglio
+  dietro challenge, è ora nativo. Il probe non usa FlareSolverr: per questo
+  registra 403 anche quando la ricerca funziona con il solver.
 - **Timeout**: `NewStudio` non ha risposto entro 45 s; è `morta` con la prova.
   `xxxtor` richiede ~35 s ed è verificato con timeout 45 s.
 - **I2P**: Postman usa un indirizzo `.i2p` non risolvibile qui; è `morta`.
