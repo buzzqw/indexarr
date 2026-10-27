@@ -230,6 +230,18 @@ Nessuna di queste può essere verificata senza un account, quindi restano
 Non vanno marcate `bloccata`, perché il motivo non è il sito ma l'assenza delle
 credenziali.
 
+Un secondo giro ha provato comunque la ricerca da ospite su tutte e 57, anche
+dove la definizione storica dichiara credenziali. Sei fonti dietro Cloudflare
+(helltorrents, kinozal, seatracker/Marine Tracker, musebootlegs, MVGroup Forum,
+UzTracker) superano la challenge con FlareSolverr — 41-204 KB di pagina vera —
+ma rispondono con un form di login; le altre restituiscono direttamente la
+pagina di accesso. Nessuna fonte semi-private espone righe con magnet da
+ospite, quindi il blocco non è tecnico: serve un account.
+
+Se un account arriva (vault dell'indexer), il percorso è quello solito: si
+osservano ricerca, dettaglio e grab con la sessione, si salvano le fixture e si
+scrive la definizione. Senza, l'unica cosa onesta è lasciarle in coda.
+
 ## Stati onesti
 
 - **`verificata`** (voce leggera): è stato fatto un `GET` reale sulla home page,
