@@ -587,10 +587,9 @@ lo mostra anche come testo da copiare. Un client aMule configurato con
 `kind: amule` riceve il link via `POST /api/v1/downloads` della sua Web API.
 Il download dall'elenco, il grab dal link di download e l'invio ad aMule
 passano da indexarr e lasciano una riga `grab` con stato `ed2k`, visibile in
-Log → Download con la sua card e la sua colonna per fonte. Restano invisibili
-i grab di un client che usa l'attributo `ed2k` (gextto): apre il link diretto
-senza chiedere nulla a indexarr; per contarli deve prima chiedere il link di
-download.
+Log → Download con la sua card e la sua colonna per fonte. Gextto chiede prima
+il link di download, quindi anche i suoi grab sono contati; un client che apre
+l'attributo `ed2k` senza chiedere nulla a indexarr resta invisibile.
 
 Una ricerca **live** di un indexer eD2k apre al massimo 10 pagine di dettaglio
 (e non le salta come per i torrent): senza quel passaggio la riga avrebbe solo
