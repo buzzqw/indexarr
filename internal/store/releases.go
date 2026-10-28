@@ -1188,12 +1188,18 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 	excludes := f.Exclude
 	if len(includes) == 0 && len(excludes) == 0 && strings.TrimSpace(f.Query) != "" {
 		includes = searchTokens(f.Query)
-		if f.Season <= 0 {
-			// A free-text "Bones S06E12" (Gextto's manual search) becomes the
-			// same season/episode predicate as a tvsearch: the literal token
-			// would drop "Bones 6x12" and "Bones S06 E12", which are the same
-			// episode.
-			includes, f.Season, f.Episode = splitEpisodeToken(includes)
+		// A free-text "Bones S06E12" (Gextto's manual search) becomes the same
+		// season/episode predicate as a tvsearch: the literal token would drop
+		// "Bones 6x12" and "Bones S06 E12", which are the same episode. Gextto's
+		// episode search sends the token in q and season/ep too; the token then
+		// only repeats the predicate and leaves the text.
+		if tokens, season, episode := splitEpisodeToken(includes); season > 0 {
+			switch {
+			case f.Season <= 0:
+				includes, f.Season, f.Episode = tokens, season, episode
+			case season == f.Season && (f.Episode <= 0 || episode == f.Episode):
+				includes, f.Episode = tokens, episode
+			}
 		}
 	}
 	// Several FTS terms are combined into one MATCH expression: FTS evaluates

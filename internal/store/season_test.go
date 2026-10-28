@@ -82,6 +82,14 @@ func TestFreeTextEpisodeTokenMatchesEveryEpisodeSpelling(t *testing.T) {
 			t.Errorf("%q = %d %v, want the three spellings of Bones 6x12", query, total, got)
 		}
 	}
+	// Gextto's episode search sends the token in q and season/ep too.
+	if _, total, err := st.SearchReleases(ctx, Filter{Query: "Bones S06E12", Season: 6, Episode: 12}); err != nil || total != 3 {
+		t.Errorf("Bones S06E12 with season/ep = %d, %v; want 3", total, err)
+	}
+	// A token that disagrees with season/ep stays text: nothing is invented.
+	if _, total, err := st.SearchReleases(ctx, Filter{Query: "Bones S06E12", Season: 6, Episode: 13}); err != nil || total != 0 {
+		t.Errorf("Bones S06E12 with ep 13 = %d, %v; want 0", total, err)
+	}
 	// A bare episode token has no title to scope it: it stays a text search.
 	if _, total, err := st.SearchReleases(ctx, Filter{Query: "S06E12"}); err != nil || total != 2 {
 		t.Errorf("bare S06E12 = %d, %v; want the two literal matches", total, err)
