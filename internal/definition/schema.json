@@ -441,6 +441,15 @@
         },
         "index": {
           "$ref": "#/$defs/searchIndex"
+        },
+        "blocked": {
+          "$ref": "#/$defs/condition",
+          "description": "Page the site answers instead of the results when it refuses the search (a flood control). The search fails with its message instead of reporting no results."
+        },
+        "cache": {
+          "type": "string",
+          "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "How long the result pages of the same search request are reused, for a site whose flood control allows one search every few minutes."
         }
       }
     },

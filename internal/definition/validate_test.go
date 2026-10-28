@@ -191,6 +191,17 @@ func TestAuthValidation(t *testing.T) {
 `,
 			fragment: "auth.logged_in: needs a selector",
 		},
+		{
+			name: "search.blocked without selector",
+			extra: `search:
+  request: { get: /search }
+  response:
+    rows: { selector: tr }
+    fields: { title: { selector: a } }
+  blocked: { status: 200 }
+`,
+			fragment: "search.blocked: needs a selector",
+		},
 	}
 
 	for _, tc := range cases {

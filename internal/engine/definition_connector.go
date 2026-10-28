@@ -68,6 +68,8 @@ type DefinitionConnector struct {
 	flare           *flareSessionState
 	indexMu         sync.Mutex
 	indexCache      map[string]indexCacheEntry
+	searchMu        sync.Mutex
+	searchCache     map[string]searchCacheEntry
 }
 
 // NewDefinitionConnector validates the definition's settings and prepares the
@@ -695,29 +697,18 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 		if err != nil {
 			return nil, err
 		}
-		response, err := c.do(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		if (response.Status == http.StatusUnauthorized || response.Status == http.StatusForbidden) &&
-			c.needsLogin() && !relogged {
-			relogged = true
-			if err := c.forceReLogin(ctx); err != nil {
-				return nil, err
+		cacheKey := c.searchCacheKey(request)
+		response, cached := c.cachedSearchPage(cacheKey)
+		if !cached {
+			response, err = c.fetchSearchPage(ctx, request, build, &relogged)
+			if errors.Is(err, errSearchRefused) && len(items) > 0 {
+				// The first pages already answered: keep them.
+				break
 			}
-			request, err = build()
 			if err != nil {
 				return nil, err
 			}
-			response, err = c.do(ctx, request)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		if response.Status >= 400 {
-			return nil, fmt.Errorf("definition %q: search returned HTTP %d", c.def.Meta.ID, response.Status)
+			c.storeSearchPage(cacheKey, response)
 		}
 
 		rows, err := c.extractRows(response)
@@ -752,6 +743,9 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 	// and the caller's limit: a search for 10 results must never cost 50
 	// details requests.
 	items = dedupeItems(items)
+	if !req.SkipDetails && c.expandsTopicFiles() {
+		items = dropTopicsOfAnotherSeason(items, req)
+	}
 	if req.Limit > 0 && len(items) > req.Limit {
 		items = items[:req.Limit]
 	}
@@ -1618,4 +1612,88 @@ func torrentFilename(title string) string {
 		return name
 	}
 	return name + ".torrent"
+}
+
+// fetchSearchPage reads one search page. It logs in again once when the site
+// answers as a guest or with 401/403, and turns the site's refusal page
+// (search.blocked) into an error instead of an empty result.
+func (c *DefinitionConnector) fetchSearchPage(ctx context.Context, request *http.Request, build func() (*http.Request, error), relogged *bool) (*Response, error) {
+	stamp := c.session.loginStamp()
+	response, err := c.do(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	// A forum that keeps one session per account answers the search as a
+	// guest once the account logged in elsewhere: 200, no rows, and a
+	// "not permitted to search" page instead of the results. The missing
+	// auth.logged_in marker tells it apart from a real empty search.
+	if response.Status < 400 && !*relogged && c.sessionLost(response) {
+		*relogged = true
+		if err := c.reLoginAfter(ctx, stamp); err != nil {
+			return nil, err
+		}
+		if request, err = build(); err != nil {
+			return nil, err
+		}
+		if response, err = c.do(ctx, request); err != nil {
+			return nil, err
+		}
+	}
+
+	if (response.Status == http.StatusUnauthorized || response.Status == http.StatusForbidden) &&
+		c.needsLogin() && !*relogged {
+		*relogged = true
+		if err := c.forceReLogin(ctx); err != nil {
+			return nil, err
+		}
+		if request, err = build(); err != nil {
+			return nil, err
+		}
+		if response, err = c.do(ctx, request); err != nil {
+			return nil, err
+		}
+	}
+
+	if response.Status >= 400 {
+		return nil, fmt.Errorf("definition %q: search returned HTTP %d", c.def.Meta.ID, response.Status)
+	}
+	if blocked := c.def.Search.Blocked; blocked != nil {
+		if present, err := conditionMatches(*blocked, response); err == nil && present {
+			message := c.conditionMessage(*blocked, response)
+			if message == "" {
+				message = "the site refused the search"
+			}
+			return nil, fmt.Errorf("definition %q: %w: %s", c.def.Meta.ID, errSearchRefused, strings.Join(strings.Fields(message), " "))
+		}
+	}
+	return response, nil
+}
+
+// expandsTopicFiles reports whether the search opens every topic and turns its
+// files into releases (download.expand: file).
+func (c *DefinitionConnector) expandsTopicFiles() bool {
+	return c.def.Download != nil && strings.EqualFold(strings.TrimSpace(c.def.Download.Expand), "file")
+}
+
+// dropTopicsOfAnotherSeason keeps, for a search with a season, only the topics
+// that name that season or none. The site search lists every season of a
+// series ("New Tricks - Stagione 7" first): opening the others costs a page
+// each and can never match, and the wanted season could fall past the limit.
+func dropTopicsOfAnotherSeason(items []Item, req SearchRequest) []Item {
+	season := req.Season
+	if season <= 0 {
+		season, _ = indexQuerySeasonEpisode(req.Query)
+	}
+	if season <= 0 {
+		return items
+	}
+	kept := items[:0]
+	for _, item := range items {
+		if named, ok := indexTitleSeasonNumber(strings.ToLower(item.Title)); ok && named != season {
+			continue
+		}
+		kept = append(kept, item)
+	}
+	return kept
 }

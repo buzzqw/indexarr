@@ -177,6 +177,12 @@ search:
   # per run; the first page alone missed too many season packs.
   pagination: { type: offset, start: 0, step: 25, max_pages: 2, param: start }
   keywords_format: separate
+  # The flood control answers one search every few minutes, with 200 and an
+  # "Informazione" box ("Al momento non ti è permesso fare ricerche"). Gextto
+  # and the Arr ask the same series once per episode: the result pages are
+  # reused for six hours, and a refusal is an error, not "no results".
+  cache: 6h
+  blocked: { selector: "#message p", message: text }
   response:
     type: html
     rows: { selector: "ul.topiclist.topics > li.row" }

@@ -355,6 +355,15 @@ func validateSearch(search Search, add func(string, ...any)) {
 	default:
 		add("search.keywords_format: must be one of sxxeyy, 1x05, separate")
 	}
+
+	if search.Blocked != nil && search.Blocked.Selector == "" {
+		// The refusal page answers 200 like the results: only its content
+		// tells it apart.
+		add("search.blocked: needs a selector")
+	}
+	if search.Cache < 0 {
+		add("search.cache: must not be negative")
+	}
 }
 
 func validateSearchIndex(index SearchIndex, add func(string, ...any)) {

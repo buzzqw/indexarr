@@ -288,6 +288,16 @@ type Search struct {
 	// (a forum topic or a set of letter topics). The lists are cached and only
 	// the matching topics are opened; the site search stays as a fallback.
 	Index *SearchIndex `yaml:"index,omitempty" json:"index,omitempty"`
+	// Blocked recognises the page a site answers instead of the results when
+	// it refuses the search, such as a forum flood control (200 with a "wait
+	// a few minutes" box). The search then fails with that message instead
+	// of reporting no results.
+	Blocked *Condition `yaml:"blocked,omitempty" json:"blocked,omitempty"`
+	// Cache keeps the result pages of the same request for this long. A site
+	// with a flood control answers one search every few minutes, while Gextto
+	// and the Arr ask the same series once per episode: without the cache
+	// every request after the first is refused.
+	Cache Duration `yaml:"cache,omitempty" json:"cache,omitempty"`
 }
 
 // SearchIndex describes one or more pages that list titles and their details

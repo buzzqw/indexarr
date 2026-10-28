@@ -629,6 +629,37 @@ discendente: serve quando la riga è già l'elemento `<a>` (elenchi di link).
 modulo dell'indexer insieme alla pagina senza lettera. Il motore legge le
 `pages`, non il forum.
 
+### Flood control (`search.blocked`, `search.cache`)
+
+Un forum con flood control accetta una ricerca ogni qualche minuto e alle
+altre risponde `200` con un riquadro di avviso al posto dei risultati. Per il
+motore quella pagina sembrava «nessun risultato». Due campi facoltativi la
+gestiscono:
+
+```yaml
+search:
+  cache: 6h
+  blocked: { selector: "#message p", message: text }
+```
+
+- `blocked` (vuole un `selector`) riconosce la pagina di rifiuto. La ricerca
+  fallisce con il messaggio del sito («Al momento non ti è permesso fare
+  ricerche…»), che compare nella cronologia dell'indexer, invece di dare zero
+  release. Se le prime pagine hanno già risposto, il motore tiene quelle.
+- `cache` riusa per quel tempo le pagine di risultato della stessa richiesta
+  `GET`. Gextto e gli Arr chiedono la stessa serie una volta per episodio:
+  senza cache ogni richiesta dopo la prima viene rifiutata. Una pagina di
+  rifiuto non entra mai in cache.
+
+Con `auth.logged_in` anche una pagina di ricerca senza il segno del login
+(il forum ha fatto cadere la sessione e risponde da ospite) fa rifare il login
+una volta e rileggere la pagina.
+
+Con `download.expand: file`, una ricerca con stagione (`season`, oppure
+`S02E03`/`2x03` nella query) non apre i topic che nominano un'altra stagione:
+la ricerca del forum elenca tutte le stagioni di una serie, e aprirle costa una
+pagina ciascuna senza poter dare l'episodio cercato.
+
 ## `download`
 
 Risolve il magnet, il link `.torrent` o il link `ed2k://` da una pagina di
