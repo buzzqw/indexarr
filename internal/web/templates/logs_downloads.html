@@ -21,7 +21,7 @@
   <article class="card" title="{{T "logs.dl.totalHelp"}}"><span class="label">{{T "logs.dl.total"}}</span><strong>{{.Total}}</strong><span class="hint">{{.WindowLabel}}</span></article>
   <article class="card" title="{{T "logs.dl.torrentsHelp"}}"><span class="label">{{T "logs.dl.torrents"}}</span><strong>{{.Torrents}}</strong><span class="hint">{{T "logs.dl.torrentsHint"}}</span></article>
   <article class="card" title="{{T "logs.dl.magnetsHelp"}}"><span class="label">{{T "logs.dl.magnets"}}</span><strong>{{.Magnets}}</strong><span class="hint">{{T "logs.dl.magnetsHint"}}</span></article>
-  {{if .HasEd2k}}<article class="card" title="{{T "logs.dl.ed2kHelp"}}"><span class="label">{{T "logs.dl.ed2k"}}</span><strong>{{.Ed2k}}</strong><span class="hint">{{T "logs.dl.ed2kHint"}}</span></article>{{end}}
+  <article class="card" title="{{T "logs.dl.ed2kHelp"}}"><span class="label">{{T "logs.dl.ed2k"}}</span><strong>{{.Ed2k}}</strong><span class="hint">{{T "logs.dl.ed2kHint"}}</span></article>
   {{if .NZBs}}<article class="card" title="{{T "logs.dl.nzbHelp"}}"><span class="label">NZB</span><strong>{{.NZBs}}</strong><span class="hint">{{T "logs.dl.nzbHint"}}</span></article>{{end}}
   <article class="card" title="{{T "logs.dl.sourcesHelp"}}"><span class="label">{{T "logs.dl.sources"}}</span><strong>{{len .Sources}}</strong><span class="hint">{{T "logs.dl.sourcesHint"}}</span></article>
 </section>

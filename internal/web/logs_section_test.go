@@ -169,3 +169,13 @@ search:
 		t.Errorf("stats tab misses the late column or the downloads count")
 	}
 }
+
+// The eD2k tile is always visible: a zero says that no eD2k grab passed through
+// indexarr, which is information too. It used to disappear with no rows.
+func TestLogsDownloadsShowsTheEd2kTileWithoutGrabs(t *testing.T) {
+	env := newNativeEnv(t)
+	body := get(t, env.handler, "/logs?tab=downloads").Body.String()
+	if !strings.Contains(body, `<strong>0</strong><span class="hint">queued in aMule</span>`) {
+		t.Errorf("the eD2k tile is missing or not zero\n%s", body)
+	}
+}
