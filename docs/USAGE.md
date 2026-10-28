@@ -191,6 +191,12 @@ protocollo della release deve essere `ed2k` e il client si configura con
 l'URL della Web API (di solito `http://127.0.0.1:4711`) e la password
 dell'interfaccia web.
 
+In **Impostazioni → Avanzate**, «Fai passare i download eD2k da indexarr» è
+attivo di default: il feed consegna il link di download di indexarr, che
+registra il grab e rimanda all'`ed2k://`; l'attributo `ed2k` resta il link
+diretto per i client che lo leggono. Spegnilo solo se un client non segue il
+rinvio.
+
 ---
 
 ## 6. Notifiche

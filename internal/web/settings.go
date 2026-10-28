@@ -155,7 +155,7 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 		WebhookStored:       strings.TrimSpace(settings.NotifyWebhookURL) != "",
 		TelegramTokenStored: strings.TrimSpace(settings.NotifyTelegramToken) != "",
 		NotifyLanguages:     notifyLanguageOptions(settings),
-		NotifyInterfaceName: i18n.Normalize(settings.UILanguage).Name(),
+		NotifyInterfaceName: interfaceLanguageForNotifications(r, settings).Name(),
 		AdditionalKeys:      views,
 		BackupDir:           backup.Dir(s.store.Path()),
 		VaultKey:            s.vaultKey,
@@ -223,6 +223,23 @@ func notifyLanguageOptions(settings store.Settings) []settingsLanguageOption {
 		})
 	}
 	return options
+}
+
+// interfaceLanguageForNotifications is the language "same as the interface"
+// means for the background jobs: the language this browser chose with the
+// header selector, or the saved one when the browser never chose. Reading the
+// cookie matters on the first page after a mismatch: rememberInterfaceLanguage
+// heals the stored setting during the render, but the page data was calculated
+// from the value loaded before that write.
+func interfaceLanguageForNotifications(r *http.Request, settings store.Settings) i18n.Language {
+	if cookie, err := r.Cookie(languageCookie); err == nil {
+		if raw := strings.TrimSpace(cookie.Value); raw != "" {
+			if lang, ok := i18n.Lookup(raw); ok {
+				return lang
+			}
+		}
+	}
+	return i18n.Normalize(settings.UILanguage)
 }
 
 func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
@@ -363,7 +380,9 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		// An unknown code falls back to "same as the interface" (the stored
 		// values are validated again when the settings are read).
 		in.NotifyLanguage = strings.ToLower(strings.TrimSpace(r.FormValue("notify_language")))
-		if _, ok := i18n.Lookup(in.NotifyLanguage); !ok {
+		if lang, ok := i18n.Lookup(in.NotifyLanguage); ok {
+			in.NotifyLanguage = string(lang)
+		} else {
 			in.NotifyLanguage = ""
 		}
 		var parseErr error

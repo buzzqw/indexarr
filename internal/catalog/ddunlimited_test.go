@@ -492,6 +492,144 @@ func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 // A background send can meet the forum while a burst block is on. The worker
 // retries the refusal after a longer pause, and the page lands in the cache
 // for the next identical request.
+// Dropping a connector (indexer disabled, deleted or definition changed) must
+// stop its background queue: otherwise it can keep searching for hours.
+func TestDDUnlimitedCloseStopsTheDeferredQueue(t *testing.T) {
+	const interval = 200 * time.Millisecond
+	var mu sync.Mutex
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ucp.php":
+			if r.Method == http.MethodPost {
+				serveFile(t, w, "ddunlimited/login-ok.html")
+				return
+			}
+			serveFile(t, w, "ddunlimited/login.html")
+		case "/search.php":
+			mu.Lock()
+			requests++
+			mu.Unlock()
+			serveFile(t, w, "ddunlimited/search.html")
+		case "/viewtopic.php":
+			serveFile(t, w, "ddunlimited/index.html")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	def := parseDefinition(t, "ddunlimited")
+	def.Session = nil
+	def.Meta.URLs[0] = server.URL + "/"
+	def.Search.Interval = definition.Duration(interval)
+	def.Search.Cache = definition.Duration(time.Minute)
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"username": "synthetic-user", "password": "synthetic-password"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	request := engine.SearchRequest{Mode: engine.ModeSearch, Query: "close", Limit: 1, FirstPageOnly: true, SkipDetails: true}
+	if _, err := connector.Search(context.Background(), request); err != nil {
+		t.Fatalf("first search: %v", err)
+	}
+	queued := request
+	queued.Query = "close-queued"
+	short, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	_, err = connector.Search(short, queued)
+	cancel()
+	if !errors.Is(err, engine.ErrSearchDeferred) {
+		t.Fatalf("second search err = %v, want ErrSearchDeferred", err)
+	}
+
+	connector.Close()
+	// Wait past the flood interval: without Close the worker would spend the
+	// turn and send a second search.php request.
+	time.Sleep(500 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if requests != 1 {
+		t.Fatalf("search.php requests after Close = %d, want 1", requests)
+	}
+}
+
+// The daily query limit is checked again for background sends: pages queued
+// before the limit was reached must not bypass it.
+func TestDDUnlimitedDeferredQueueStopsWhenTheQueryBudgetIsGone(t *testing.T) {
+	const interval = 200 * time.Millisecond
+	var mu sync.Mutex
+	requests := 0
+	var checked atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ucp.php":
+			if r.Method == http.MethodPost {
+				serveFile(t, w, "ddunlimited/login-ok.html")
+				return
+			}
+			serveFile(t, w, "ddunlimited/login.html")
+		case "/search.php":
+			mu.Lock()
+			requests++
+			mu.Unlock()
+			serveFile(t, w, "ddunlimited/search.html")
+		case "/viewtopic.php":
+			serveFile(t, w, "ddunlimited/index.html")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	def := parseDefinition(t, "ddunlimited")
+	def.Session = nil
+	def.Meta.URLs[0] = server.URL + "/"
+	def.Search.Interval = definition.Duration(interval)
+	def.Search.Cache = definition.Duration(time.Minute)
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"username": "synthetic-user", "password": "synthetic-password"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+		DeferredSearchAllowed: func(context.Context) error {
+			checked.Add(1)
+			return errors.New("daily query limit reached")
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	request := engine.SearchRequest{Mode: engine.ModeSearch, Query: "budget", Limit: 1, FirstPageOnly: true, SkipDetails: true}
+	if _, err := connector.Search(context.Background(), request); err != nil {
+		t.Fatalf("first search: %v", err)
+	}
+	queued := request
+	queued.Query = "budget-queued"
+	short, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	_, err = connector.Search(short, queued)
+	cancel()
+	if !errors.Is(err, engine.ErrSearchDeferred) {
+		t.Fatalf("second search err = %v, want ErrSearchDeferred", err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for checked.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	time.Sleep(300 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if checked.Load() == 0 {
+		t.Fatal("the background worker did not check the query budget")
+	}
+	if requests != 1 {
+		t.Fatalf("search.php requests = %d, want 1: the budget dropped the queued page", requests)
+	}
+}
+
 func TestDDUnlimitedBackgroundSendRetriesPastABurstBlock(t *testing.T) {
 	const interval = 200 * time.Millisecond
 	var mu sync.Mutex

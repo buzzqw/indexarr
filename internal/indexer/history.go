@@ -111,8 +111,9 @@ func (m *Manager) recordHistory(ctx context.Context, indexerID int64, kind, quer
 }
 
 // queryHistoryKinds are the indexer operations counted against the daily query
-// limit. A rejected attempt is not written for Search/Latest, so the count
-// reflects completed or started work only.
+// limit. A rejected attempt is not written for Search/Latest, and canceled
+// rows are excluded by CountIndexerQueries: the count reflects requests that
+// really left for the site.
 var queryHistoryKinds = []string{"search", "latest", "run"}
 
 // deferredSearchObserver returns the callback the definition connector calls
@@ -143,7 +144,7 @@ func (m *Manager) checkQueryLimit(ctx context.Context, indexerID int64) error {
 	if indexer.QueryLimit <= 0 {
 		return nil
 	}
-	count, err := m.store.CountIndexerHistory(ctx, indexerID, queryHistoryKinds,
+	count, err := m.store.CountIndexerQueries(ctx, indexerID, queryHistoryKinds,
 		time.Now().Add(-24*time.Hour))
 	if err != nil {
 		return fmt.Errorf("indexer %s: count queries: %w", indexer.Slug, err)

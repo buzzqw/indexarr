@@ -45,6 +45,12 @@ type DefinitionConfig struct {
 	// never show: the client only sees ErrSearchDeferred, and the outcome of
 	// the real send (accepted, refused, dropped, latency) stays invisible.
 	DeferredSearch DeferredSearchObserver
+	// DeferredSearchAllowed is checked before the background worker spends a
+	// flood turn. It lets the Manager keep the indexer's daily query limit
+	// valid for pages that were queued when the limit still had room: a nil
+	// callback means no extra check. The queue is dropped when it returns an
+	// error, so a queued page cannot bypass the limit.
+	DeferredSearchAllowed func(ctx context.Context) error
 }
 
 var (
@@ -87,7 +93,12 @@ type DefinitionConnector struct {
 	searchDraining bool
 	// deferredSearch reports the background sends, so a queued search leaves
 	// a row in the history too.
-	deferredSearch DeferredSearchObserver
+	deferredSearch        DeferredSearchObserver
+	deferredSearchAllowed func(context.Context) error
+	// queueCtx stops the background queue when the manager drops the
+	// connector (indexer deleted, disabled or definition changed).
+	queueCtx    context.Context
+	queueCancel context.CancelFunc
 }
 
 // NewDefinitionConnector validates the definition's settings and prepares the
@@ -173,18 +184,22 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 		refresh = def.Auth.RefreshAfter.Duration()
 	}
 
+	queueCtx, queueCancel := context.WithCancel(context.Background())
 	connector := &DefinitionConnector{
-		indexer:        indexer,
-		def:            def,
-		settings:       settings,
-		declared:       declared,
-		transport:      transport,
-		baseURL:        baseURL,
-		protocol:       protocolFromDefinition(def),
-		session:        newSession(),
-		refresh:        refresh,
-		appendKey:      strategy == "api_key" && !definitionUsesAnySetting(def, "api_key", "apikey"),
-		deferredSearch: cfg.DeferredSearch,
+		indexer:               indexer,
+		def:                   def,
+		settings:              settings,
+		declared:              declared,
+		transport:             transport,
+		baseURL:               baseURL,
+		protocol:              protocolFromDefinition(def),
+		session:               newSession(),
+		refresh:               refresh,
+		appendKey:             strategy == "api_key" && !definitionUsesAnySetting(def, "api_key", "apikey"),
+		deferredSearch:        cfg.DeferredSearch,
+		deferredSearchAllowed: cfg.DeferredSearchAllowed,
+		queueCtx:              queueCtx,
+		queueCancel:           queueCancel,
 	}
 	connector.caps = connector.buildCapabilities()
 	if def.Search.Index != nil {

@@ -61,6 +61,25 @@ func TestCountIndexerHistory(t *testing.T) {
 	if got != 3 {
 		t.Fatalf("count with zero since = %d, want 3", got)
 	}
+
+	// A canceled search did not reach the site: the query limit ignores it,
+	// while the raw history count still includes it.
+	if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+		IndexerID: indexerID, Kind: "search", Status: "canceled", StartedAt: base.Add(5 * time.Hour),
+	}); err != nil {
+		t.Fatalf("RecordIndexerHistory(canceled): %v", err)
+	}
+	history, err := st.CountIndexerHistory(ctx, indexerID, []string{"search"}, since)
+	if err != nil {
+		t.Fatalf("CountIndexerHistory: %v", err)
+	}
+	queries, err := st.CountIndexerQueries(ctx, indexerID, []string{"search"}, since)
+	if err != nil {
+		t.Fatalf("CountIndexerQueries: %v", err)
+	}
+	if history != 2 || queries != 1 {
+		t.Fatalf("history/queries = %d/%d, want 2/1", history, queries)
+	}
 }
 
 func TestIndexerForRelease(t *testing.T) {

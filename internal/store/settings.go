@@ -179,6 +179,7 @@ func DefaultSettings() Settings {
 		BackupIntervalHours:        24,
 		BackupKeep:                 7,
 		TorznabLiveSearch:          true,
+		TorznabProxyEd2k:           true,
 		TorznabLiveTimeout:         20,
 		TorznabLiveCache:           300,
 		TorznabLiveWait:            5,

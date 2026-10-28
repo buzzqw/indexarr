@@ -19,6 +19,11 @@ var ErrSearchDeferred = errors.New("search deferred by the flood interval")
 // own, and the first pages are worth more than waiting a whole interval.
 var errSearchLater = errors.New("next search page needs another flood turn")
 
+// errSearchCached says a queued page was filled by another request while the
+// worker waited for its flood turn. It is not sent again and writes no history
+// row of its own: the request that filled the cache already has one.
+var errSearchCached = errors.New("search page already cached")
+
 // searchQueueEntries bounds the deferred searches. A Gextto cycle asks about a
 // hundred titles at once.
 const searchQueueEntries = 256
@@ -175,13 +180,17 @@ func (c *DefinitionConnector) enterSearchLane(ctx context.Context, interval time
 }
 
 // deferSearch queues a search page for the background worker. It reports
-// false when the queue is full; a page already queued is not added twice.
+// false when the queue is full or the connector has been closed; a page
+// already queued is not added twice.
 func (c *DefinitionConnector) deferSearch(key, query string, build searchBuild) bool {
 	if key == "" {
 		return false
 	}
 	c.floodMu.Lock()
 	defer c.floodMu.Unlock()
+	if c.queueCtx == nil || c.queueCtx.Err() != nil {
+		return false
+	}
 	for _, entry := range c.searchQueue {
 		if entry.key == key {
 			return true
@@ -193,26 +202,28 @@ func (c *DefinitionConnector) deferSearch(key, query string, build searchBuild) 
 	c.searchQueue = append(c.searchQueue, deferredSearch{key: key, query: query, build: build})
 	if !c.searchDraining {
 		c.searchDraining = true
-		go c.drainSearchQueue()
+		go c.drainSearchQueue(c.queueCtx)
 	}
 	return true
 }
 
 // drainSearchQueue sends the deferred searches one turn at a time and keeps
-// their pages in the search cache. It ends when the queue is empty.
-func (c *DefinitionConnector) drainSearchQueue() {
+// their pages in the search cache. It ends when the queue is empty or the
+// connector is closed (indexer deleted, disabled or definition changed).
+func (c *DefinitionConnector) drainSearchQueue(ctx context.Context) {
 	defer func() {
 		// A panic must not leave the queue marked as draining forever.
-		if recover() != nil {
-			c.floodMu.Lock()
-			c.searchDraining = false
-			c.floodMu.Unlock()
-		}
+		_ = recover()
+		c.floodMu.Lock()
+		c.searchDraining = false
+		c.floodMu.Unlock()
 	}()
 	for {
+		if ctx.Err() != nil {
+			return
+		}
 		c.floodMu.Lock()
 		if len(c.searchQueue) == 0 {
-			c.searchDraining = false
 			c.floodMu.Unlock()
 			return
 		}
@@ -223,15 +234,31 @@ func (c *DefinitionConnector) drainSearchQueue() {
 		if _, cached := c.cachedSearchPage(entry.key); cached {
 			continue
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 3*c.searchInterval()+2*time.Minute)
-		err := c.sendDeferredSearch(ctx, entry)
+		if c.deferredSearchAllowed != nil {
+			if err := c.deferredSearchAllowed(ctx); err != nil {
+				// The indexer's daily query budget is gone (or the indexer was
+				// deleted): drop the queued pages. The request that queued them
+				// already has its canceled history row.
+				c.floodMu.Lock()
+				c.searchQueue = nil
+				c.floodMu.Unlock()
+				return
+			}
+		}
+		sendCtx, cancel := context.WithTimeout(ctx, 3*c.searchInterval()+2*time.Minute)
+		err := c.sendDeferredSearch(sendCtx, entry)
 		cancel()
+		if ctx.Err() != nil {
+			return
+		}
 		if errors.Is(err, errSearchRefused) && entry.attempts+1 < searchQueueAttempts {
 			entry.attempts++
 			// A refusal is the site asking for more than one interval: wait
 			// before spending another turn. New entries wait with it, which is
 			// correct while the block is on.
-			c.waitRefusalBackoff()
+			if !c.waitRefusalBackoff(ctx) {
+				return
+			}
 			c.floodMu.Lock()
 			c.searchQueue = append(c.searchQueue, entry)
 			c.floodMu.Unlock()
@@ -241,17 +268,48 @@ func (c *DefinitionConnector) drainSearchQueue() {
 
 // waitRefusalBackoff pauses the background queue after a refusal. The flood
 // interval paces normal sends; a refusal needs a longer pause so the worker
-// does not hammer the block with one request every interval.
-func (c *DefinitionConnector) waitRefusalBackoff() {
-	if interval := c.searchInterval(); interval > 0 {
-		time.Sleep(time.Duration(searchRefusalBackoff) * interval)
+// does not hammer the block with one request every interval. It reports false
+// when the connector is closed while waiting.
+func (c *DefinitionConnector) waitRefusalBackoff(ctx context.Context) bool {
+	interval := c.searchInterval()
+	if interval <= 0 {
+		return true
 	}
+	timer := time.NewTimer(time.Duration(searchRefusalBackoff) * interval)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
+}
+
+// Close stops the background queue: queued pages are dropped and an in-flight
+// send is canceled. The Manager calls it when it drops a connector, so a
+// disabled or deleted indexer cannot keep spending flood turns for hours. The
+// connector is not usable for new deferred searches after Close.
+func (c *DefinitionConnector) Close() {
+	if c == nil {
+		return
+	}
+	if c.queueCancel != nil {
+		c.queueCancel()
+	}
+	c.floodMu.Lock()
+	c.searchQueue = nil
+	c.floodMu.Unlock()
 }
 
 func (c *DefinitionConnector) sendDeferredSearch(ctx context.Context, entry deferredSearch) error {
 	started := time.Now()
 	attempt := entry.attempts + 1
 	written, sent, err := c.sendDeferredSearchOnce(ctx, entry)
+	if errors.Is(err, errSearchCached) {
+		// Another request filled the cache while this one waited for its turn:
+		// no request left and nothing to report.
+		return nil
+	}
 	if c.deferredSearch != nil {
 		if sent.IsZero() {
 			// No request left: the time belongs to the login or the lane.
@@ -277,16 +335,25 @@ func (c *DefinitionConnector) sendDeferredSearchOnce(ctx context.Context, entry 
 	if err := c.ensureLogin(ctx); err != nil {
 		return 0, time.Time{}, err
 	}
-	request, err := entry.build(ctx)
-	if err != nil {
-		return 0, time.Time{}, err
-	}
 	// The worker always waits for its turn, however long the lane is.
 	c.floodMu.Lock()
 	c.floodWaiting++
 	c.floodMu.Unlock()
 	release, err := c.enterSearchLane(ctx, c.searchInterval())
 	if err != nil {
+		return 0, time.Time{}, err
+	}
+	// A concurrent foreground search may have filled this page while the
+	// worker waited: sending it again would spend a turn for nothing.
+	if _, cached := c.cachedSearchPage(entry.key); cached {
+		release()
+		return 0, time.Time{}, errSearchCached
+	}
+	// The request is built after the turn: a token read before a long wait
+	// could be stale by the time the request leaves.
+	request, err := entry.build(ctx)
+	if err != nil {
+		release()
 		return 0, time.Time{}, err
 	}
 	relogged := false

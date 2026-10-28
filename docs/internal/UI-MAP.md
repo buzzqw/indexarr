@@ -50,6 +50,7 @@ Regole di navigazione:
 | `/releases/results` | Frammento HTML dei risultati | Non è una pagina completa: niente `<nav>` |
 | `/releases/{id}` | Dettaglio release | Link generati dalle liste |
 | `/releases/{id}/torrent` | Download `.torrent` dalla UI | Non nel route matrix |
+| `/releases/{id}/download` | Download eD2k dalla UI | Registra il grab e rimanda a `ed2k://`; non nel route matrix |
 | `/indexers` | Elenco unico per sito | Badge, stato, menu "⋯", azioni di massa dopo la selezione |
 | `/indexers/new` | Ricerca sito o indirizzo incollato | Form compatto: Nome, Categorie, soli campi obbligatori |
 | `/indexers/{id}` | Pagina di lavoro del sito | Stato, statistiche, release, "Avanzate e diagnostica" |

@@ -77,6 +77,40 @@ func TestSearchAndLatestRespectQueryLimit(t *testing.T) {
 	})
 }
 
+// A search the flood interval queued is recorded as canceled. It never left
+// for the site, so it must not consume the indexer's daily query limit; the
+// background send that follows is the row that counts.
+func TestCanceledSearchDoesNotConsumeQueryLimit(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	server := newSearchServer(t)
+	manager := newTestManager(t, st, v)
+	indexerID := seedNative(t, st, v, server.URL, true)
+	setLimits(t, st, indexerID, 1, 0)
+	ctx := context.Background()
+
+	if _, err := st.RecordIndexerHistory(ctx, store.IndexerHistory{
+		IndexerID: indexerID, Kind: "search", Status: "canceled",
+		Query: "queued", StartedAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("RecordIndexerHistory: %v", err)
+	}
+	req := engine.SearchRequest{Mode: engine.ModeSearch, Query: "ubuntu", Categories: []int{5040}, Limit: 10}
+	if _, err := manager.Search(ctx, indexerID, req); err != nil {
+		t.Fatalf("Search after one canceled row = %v, want the canceled row ignored", err)
+	}
+	if count := historyCount(t, st, indexerID, queryHistoryKinds); count != 2 {
+		t.Fatalf("history rows = %d, want the canceled row plus the real search", count)
+	}
+	queries, err := st.CountIndexerQueries(ctx, indexerID, queryHistoryKinds, time.Now().Add(-24*time.Hour))
+	if err != nil {
+		t.Fatalf("CountIndexerQueries: %v", err)
+	}
+	if queries != 1 {
+		t.Fatalf("query count = %d, want 1: the canceled row must not count", queries)
+	}
+}
+
 func TestRunRespectsQueryLimitAndRecordsError(t *testing.T) {
 	st := newTestStore(t)
 	v := newTestVault(t, 1)

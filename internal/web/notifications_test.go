@@ -223,9 +223,11 @@ func TestNotificationLanguageHealsFromTheBrowserChoice(t *testing.T) {
 	if lang := notify.ConfigFrom(settings).Language; lang != "it" {
 		t.Errorf("notification language = %q, want it", lang)
 	}
-	// The page says aloud which language the messages use.
-	if !strings.Contains(recorder.Body.String(), "Italiano") {
-		t.Error("the notifications page does not show the message language")
+	// The page says aloud which language the messages use. Look inside the
+	// select: "Italiano" also appears in the header language choices.
+	selected := selectedOption(messageLanguageSelect(recorder.Body.String()))
+	if !strings.Contains(selected, "Italiano") || strings.Contains(selected, "中文") {
+		t.Errorf("the selected message language = %q, want Italian", selected)
 	}
 
 	// A bare ?lang= is a preview link, not a choice: it must not move the
@@ -250,11 +252,12 @@ func TestNotificationLanguageIsChosenInTheNotificationsForm(t *testing.T) {
 	ctx := context.Background()
 
 	page := get(t, env.handler, "/settings?section=notifications").Body.String()
-	if !strings.Contains(page, `id="notify_language" name="notify_language"`) {
+	selectHTML := messageLanguageSelect(page)
+	if selectHTML == "" {
 		t.Fatal("the notifications page has no message-language select")
 	}
 	for _, want := range []string{"Italiano", "English", "中文", "same as the interface"} {
-		if !strings.Contains(strings.ToLower(page), strings.ToLower(want)) {
+		if !strings.Contains(strings.ToLower(selectHTML), strings.ToLower(want)) {
 			t.Errorf("the select is missing the choice %q", want)
 		}
 	}
@@ -290,4 +293,28 @@ func TestNotificationLanguageIsChosenInTheNotificationsForm(t *testing.T) {
 	if settings.NotifyLanguage != "" {
 		t.Errorf("automatic message language stored as %q", settings.NotifyLanguage)
 	}
+}
+
+func messageLanguageSelect(body string) string {
+	start := strings.Index(body, `id="notify_language"`)
+	if start < 0 {
+		return ""
+	}
+	end := strings.Index(body[start:], "</select>")
+	if end < 0 {
+		return ""
+	}
+	return body[start : start+end]
+}
+
+func selectedOption(selectHTML string) string {
+	start := strings.Index(selectHTML, "<option")
+	if start < 0 {
+		return ""
+	}
+	end := strings.Index(selectHTML[start:], "</option>")
+	if end < 0 {
+		return ""
+	}
+	return selectHTML[start : start+end]
 }

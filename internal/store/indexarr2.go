@@ -659,8 +659,20 @@ func (s *Store) ListReleaseSources(ctx context.Context, releaseID int64) ([]Rele
 
 // CountIndexerHistory counts history rows of the given kinds for one indexer
 // that started at or after since. An empty kinds slice counts every kind. It is
-// used by the query and grab limits, so the caller decides the time window.
+// used by the grab limit, so the caller decides the time window.
 func (s *Store) CountIndexerHistory(ctx context.Context, indexerID int64, kinds []string, since time.Time) (int, error) {
+	return s.countIndexerHistory(ctx, indexerID, kinds, since, false)
+}
+
+// CountIndexerQueries counts the history rows that really consumed an indexer
+// query. Canceled rows are left out: a request interrupted before it left, or
+// a search queued by the flood interval, did not reach the site. Background
+// sends are recorded as normal search rows and therefore count.
+func (s *Store) CountIndexerQueries(ctx context.Context, indexerID int64, kinds []string, since time.Time) (int, error) {
+	return s.countIndexerHistory(ctx, indexerID, kinds, since, true)
+}
+
+func (s *Store) countIndexerHistory(ctx context.Context, indexerID int64, kinds []string, since time.Time, excludeCanceled bool) (int, error) {
 	query := `SELECT COUNT(*) FROM indexer_history WHERE indexer_id = ?`
 	args := []any{indexerID}
 	if len(kinds) > 0 {
@@ -670,6 +682,9 @@ func (s *Store) CountIndexerHistory(ctx context.Context, indexerID int64, kinds 
 			args = append(args, kind)
 		}
 		query += ` AND kind IN (` + strings.Join(placeholders, ", ") + `)`
+	}
+	if excludeCanceled {
+		query += ` AND status <> 'canceled'`
 	}
 	query += ` AND started_at >= ?`
 	args = append(args, since.Unix())

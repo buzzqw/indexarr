@@ -15,6 +15,7 @@ func TestEpisodeVariantsAndSeasonPacks(t *testing.T) {
 		"Show S04E01E02 1080p",
 		"Show 4x01 1080p",
 		"Show S04 E01 1080p",
+		"Show S04 E02 1080p",
 		"Show Season 4 Complete 1080p",
 		"Show S04 Complete 1080p",
 		"Show S03E01 1080p",
@@ -47,7 +48,7 @@ func TestEpisodeVariantsAndSeasonPacks(t *testing.T) {
 	}
 
 	_, total, err = st.SearchReleases(ctx, Filter{Season: 4})
-	if err != nil || total != 6 {
+	if err != nil || total != 7 {
 		t.Fatalf("season 4 = %d, %v", total, err)
 	}
 }

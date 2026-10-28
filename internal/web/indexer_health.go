@@ -405,6 +405,12 @@ func (s *Server) problemForMessage(r *http.Request, in store.Indexer, message st
 			ActionTitle: s.translate(r, "idx.problem.rateTip"),
 			CSRF:        csrfToken(r.Context()),
 		}
+	case strings.Contains(raw, "flood") || strings.Contains(raw, "search refused by the site"):
+		return uiProblem{
+			Text:        s.translate(r, "idx.problem.flood"),
+			ActionLabel: s.translate(r, "idx.problem.genericAction"),
+			ActionURL:   detail,
+		}
 	case strings.Contains(raw, "403") || strings.Contains(raw, "forbidden") || strings.Contains(raw, "cloudflare"):
 		return uiProblem{
 			Text:        s.translate(r, "idx.problem.forbidden"),

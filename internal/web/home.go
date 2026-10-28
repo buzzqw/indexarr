@@ -160,10 +160,13 @@ func homeProblemCode(view indexerHealthView) (string, int) {
 		case health.ReasonErrors:
 			if raw := strings.TrimSpace(view.Assessment.LastError); raw != "" {
 				code := explainIndexerError(raw, view.State.Circuit)
-				if code == "home.problem.unknown" {
-					return code, 0
+				if code == "home.problem.errors" || code == "home.problem.zero" {
+					return code, reason.Count
 				}
-				return code, reason.Count
+				// The concrete causes (rate limit, flood, DNS, ...) read as one
+				// sentence and have no %d: passing the count would append a
+				// Sprintf "extra argument" marker on the Home page.
+				return code, 0
 			}
 			return "home.problem.errors", reason.Count
 		case health.ReasonZeroResults:
@@ -182,6 +185,8 @@ func explainIndexerError(message, circuit string) string {
 		return "home.problem.circuit"
 	case strings.Contains(text, "429"):
 		return "home.problem.rateLimit"
+	case strings.Contains(text, "flood") || strings.Contains(text, "search refused by the site"):
+		return "home.problem.flood"
 	case strings.Contains(text, "401") || strings.Contains(text, "403") ||
 		strings.Contains(text, "credential") || strings.Contains(text, "unauthor"):
 		return "home.problem.denied"

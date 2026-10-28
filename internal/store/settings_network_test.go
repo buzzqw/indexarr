@@ -31,6 +31,23 @@ func TestNetworkSettingsDefaults(t *testing.T) {
 	}
 }
 
+// The eD2k proxy is on by default both in the fresh struct and in a store
+// without the row. They used to disagree, and a fallback to DefaultSettings
+// silently turned the proxy off.
+func TestTorznabProxyEd2kDefaultIsOn(t *testing.T) {
+	st := newTestStore(t)
+	if !DefaultSettings().TorznabProxyEd2k {
+		t.Error("DefaultSettings().TorznabProxyEd2k = false, want true")
+	}
+	settings, err := st.LoadSettings(context.Background())
+	if err != nil {
+		t.Fatalf("LoadSettings: %v", err)
+	}
+	if !settings.TorznabProxyEd2k {
+		t.Error("stored settings default the eD2k proxy to false")
+	}
+}
+
 func TestNetworkSettingsRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)

@@ -362,6 +362,11 @@ func (m *Manager) StartSessionSweeper(ctx context.Context) {
 }
 
 func (m *Manager) closeConnector(ctx context.Context, connector engine.Connector) {
+	// Stop the background search queue first: a session close is a network
+	// call, and the queued sends must not use the connector while it closes.
+	if closer, ok := connector.(interface{ Close() }); ok {
+		closer.Close()
+	}
 	holder, ok := connector.(engine.SessionConnector)
 	if !ok {
 		return
@@ -372,6 +377,11 @@ func (m *Manager) closeConnector(ctx context.Context, connector engine.Connector
 }
 
 func (m *Manager) closeConnectorAsync(connector engine.Connector) {
+	// Stop the queue now, not when the browser-close goroutine runs: a queued
+	// search must not leave while the manager is dropping the connector.
+	if closer, ok := connector.(interface{ Close() }); ok {
+		closer.Close()
+	}
 	if _, ok := connector.(engine.SessionConnector); !ok {
 		return
 	}
@@ -476,6 +486,9 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 			SessionTimeout:  time.Duration(network.FlareSolverrTimeoutSeconds) * time.Second,
 			Sessions:        m.sessions,
 			DeferredSearch:  m.deferredSearchObserver(indexer),
+			DeferredSearchAllowed: func(ctx context.Context) error {
+				return m.checkQueryLimit(ctx, indexer.ID)
+			},
 		})
 		if err != nil {
 			return nil, redactError(fmt.Errorf("indexer %s: build definition connector: %w", indexer.Slug, err), secretValues)

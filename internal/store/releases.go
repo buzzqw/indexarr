@@ -1396,8 +1396,12 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 				packLike = append(packLike, padded)
 				args = append(args, pattern)
 			}
-			packClause := "(" + strings.Join(packLike, " OR ") + ")" + " AND " + paddedNot + " AND " + paddedNot
-			args = append(args, fmt.Sprintf("%% s%02de%%", f.Season), fmt.Sprintf("%% %dx%%", f.Season))
+			// The spaced spelling ("S04 E02") is an episode too, not a pack:
+			// without the third exclusion it would satisfy every episode of
+			// the season as if it were a complete pack.
+			packClause := "(" + strings.Join(packLike, " OR ") + ")" + " AND " + paddedNot + " AND " + paddedNot + " AND " + paddedNot
+			args = append(args, fmt.Sprintf("%% s%02de%%", f.Season),
+				fmt.Sprintf("%% %dx%%", f.Season), fmt.Sprintf("%% s%02d e%%", f.Season))
 			seasonClauses = append(seasonClauses, "("+packClause+")")
 		} else {
 			for _, pattern := range []string{
