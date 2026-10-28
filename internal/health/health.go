@@ -286,7 +286,7 @@ func NextState(current string, recent []Outcome, thresholds Thresholds) string {
 	degraded := signals.failures >= thresholds.ConsecutiveFailures ||
 		signals.zeroResults >= thresholds.ConsecutiveZeroResults
 	latestClean := len(recent) > 0 && !outcomeFailed(recent[0]) && !outcomeCanceled(recent[0]) &&
-		(!recent[0].HasSeen || recent[0].Seen > 0)
+		!outcomePaused(recent[0]) && (!recent[0].HasSeen || recent[0].Seen > 0)
 
 	switch {
 	case degraded:
@@ -326,7 +326,7 @@ func NextStateGroup(current string, groups [][]Outcome, thresholds Thresholds) s
 			degraded = true
 		}
 		latest := len(outcomes) > 0 && !outcomeFailed(outcomes[0]) && !outcomeCanceled(outcomes[0]) &&
-			(!outcomes[0].HasSeen || outcomes[0].Seen > 0)
+			!outcomePaused(outcomes[0]) && (!outcomes[0].HasSeen || outcomes[0].Seen > 0)
 		if !latest {
 			allClean = false
 		}
@@ -376,7 +376,7 @@ func consecutiveFailures(outcomes []Outcome) int {
 func consecutiveClean(outcomes []Outcome) int {
 	count := 0
 	for _, outcome := range outcomes {
-		if outcomeFailed(outcome) || outcomeCanceled(outcome) {
+		if outcomeFailed(outcome) || outcomeCanceled(outcome) || outcomePaused(outcome) {
 			break
 		}
 		count++
@@ -446,6 +446,12 @@ func outcomeFailed(outcome Outcome) bool {
 
 func outcomeCanceled(outcome Outcome) bool {
 	return strings.EqualFold(strings.TrimSpace(outcome.Status), "canceled")
+}
+
+// outcomePaused is a run the breaker refused: the source was not contacted, so
+// the row says nothing about the site's health and is not a clean success.
+func outcomePaused(outcome Outcome) bool {
+	return strings.EqualFold(strings.TrimSpace(outcome.Status), "paused")
 }
 
 // ---------------------------------------------------------------- Checker

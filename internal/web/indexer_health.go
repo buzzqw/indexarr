@@ -111,6 +111,13 @@ func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer, def *d
 			history = rows
 		}
 	}
+	// The breaker lives in memory and is the only truth while the daemon runs:
+	// the stored circuit value is a snapshot of the last run and can be stale
+	// after a restart. A paused source then gets the "paused after repeated
+	// failures" explanation instead of a generic problem.
+	if s.native != nil {
+		view.State.Circuit = string(s.native.CircuitState(in.ID, in.Slug))
+	}
 	for i := range history {
 		if strings.EqualFold(history[i].Kind, "run") {
 			view.LastRun = &history[i]

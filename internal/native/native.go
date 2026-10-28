@@ -42,6 +42,9 @@ const (
 const (
 	ReasonDisabled   = "disabled"
 	ReasonSearchOnly = "search_only"
+	// ReasonPaused is a run the per-source breaker refused: the source is
+	// cooling down after repeated failures and was not contacted.
+	ReasonPaused = "paused"
 )
 
 var (
@@ -649,10 +652,18 @@ func (r *Runner) runOne(ctx context.Context, indexerRow store.Indexer) (outcome 
 	}
 
 	stats, runErr := r.manager.Run(ctx, indexerRow.ID)
-	if runErr != nil {
-		outcome.Err = runErr
-	} else {
+	switch {
+	case runErr == nil:
 		outcome.Stats = stats
+	case errors.Is(runErr, engine.ErrBreakerOpen):
+		// The breaker refused the request: the source was not contacted, so
+		// this is a pause, not a failure. Counting it as a failure would
+		// lengthen the retry schedule and could auto-disable a source that is
+		// only waiting for its cooldown.
+		outcome.Skipped = true
+		outcome.Reason = ReasonPaused
+	default:
+		outcome.Err = runErr
 	}
 	r.afterRun(ctx, indexerRow, outcome)
 	return outcome

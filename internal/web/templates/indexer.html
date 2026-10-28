@@ -88,7 +88,7 @@
           <tr>
             <td class="nowrap">{{if .Href}}<a href="{{.Href}}">{{date .When}}</a>{{else}}{{date .When}}{{end}}<div class="sub">{{ago .When}}</div></td>
             <td>{{kindLabel .Kind}}</td>
-            <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else if eq .Status "blocked"}}<span class="chip warn">{{T "idx.statusBlocked"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
+            <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else if eq .Status "paused"}}<span class="chip warn">{{T "idx.statusPaused"}}</span>{{else if eq .Status "blocked"}}<span class="chip warn">{{T "idx.statusBlocked"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
             <td class="error-cell">{{if .Message}}{{.Message}}{{else}}<span class="muted">—</span>{{end}}</td>
             <td class="nowrap">{{.Latency}}</td>
           </tr>

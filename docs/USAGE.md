@@ -91,7 +91,9 @@ con rsskey), il modulo lo dice: l'accesso è nell'indirizzo personale.
   oscurate.
 - **Salute della sorgente**: verdetto in una frase («Funziona bene», «Non
   funziona: …», «Da configurare»), ultimo errore con data e ora, registro delle
-  ultime operazioni e righe del log del processo.
+  ultime operazioni e righe del log del processo. Una sorgente fermata dal
+  circuit breaker dopo errori ripetuti è segnata «In pausa»: indexarr non la
+  contatta finché non finisce l'attesa e poi riprova da solo.
 - **Accesso al sito**: quali credenziali sono configurate o mancanti e quando
   sono state salvate.
 - **Stato**: ultimo aggiornamento, prossimo, frequenza, query, latenza,
@@ -127,7 +129,8 @@ segue la scala **1, 2, 3, 6, 12, 24, 48, 96 ore**. Dopo l'ultimo tentativo
 fallito il scheduler si ferma e aspetta l'utente: la scheda mostra «Riprova
 automatica sospesa». Una prova riuscita o una modifica alla sorgente azzerano
 la scala e riprendono la frequenza normale. Un aggiornamento manuale
-(«Aggiorna ora») funziona comunque.
+(«Aggiorna ora») funziona comunque. Una pausa del circuit breaker non è un
+fallimento: non allunga la scala, non disattiva la sorgente e non manda avvisi.
 
 ---
 
@@ -246,6 +249,7 @@ nella chat.
 | «Il sito non risponde» | rete, DNS, proxy, FlareSolverr; poi **Prova** |
 | «Il sito rifiuta le richieste» (403) | Cloudflare/challenge: configura FlareSolverr |
 | «Il sito limita le richieste» (429) | usa **Riduci la frequenza**; non è un guasto |
+| «In pausa dopo errori ripetuti» | il circuit breaker ha fermato la sorgente dopo errori veri: non serve fare nulla, riprova da solo; se torna spesso correggi la causa dell'ultimo errore |
 | «La ricerca configurata non ha restituito risultati» | la query o il filtro del sito sono sbagliati: apri Modifica |
 | Login rifiutato | password aggiornata? controlla **Accesso al sito** e l'ultimo aggiornamento |
 | CAPTCHA al login | FlareSolverr non risolve i CAPTCHA: attendi o fai un login manuale |

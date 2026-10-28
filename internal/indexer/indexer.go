@@ -856,10 +856,9 @@ func dedupeCategories(in []int) []int {
 	return out
 }
 
-// breakerOpen reports whether the existing per-indexer breaker is open for the
-// transport that actually serves this indexer (the shared one, or the private
-// transport built for a local/proxied site).
-func (m *Manager) breakerOpen(indexerID int64, slug string) bool {
+// CircuitState reports the live breaker state of one source: "open",
+// "half-open" or "closed". Unknown sources report "closed".
+func (m *Manager) CircuitState(indexerID int64, slug string) engine.BreakerState {
 	m.mu.Lock()
 	entry, ok := m.cache[indexerID]
 	m.mu.Unlock()
@@ -867,7 +866,17 @@ func (m *Manager) breakerOpen(indexerID int64, slug string) bool {
 	if ok && entry.transport != nil {
 		transport = entry.transport
 	}
-	return transport != nil && transport.BreakerState(slug) == engine.BreakerOpen
+	if transport == nil {
+		return engine.BreakerClosed
+	}
+	return transport.BreakerState(slug)
+}
+
+// breakerOpen reports whether the existing per-indexer breaker is open for the
+// transport that actually serves this indexer (the shared one, or the private
+// transport built for a local/proxied site).
+func (m *Manager) breakerOpen(indexerID int64, slug string) bool {
+	return m.CircuitState(indexerID, slug) == engine.BreakerOpen
 }
 
 // redact removes every known secret value of the indexer and the usual

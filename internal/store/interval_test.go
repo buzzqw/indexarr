@@ -118,3 +118,36 @@ func TestRunRetryStatesCountsFailuresAndResetsOnSuccess(t *testing.T) {
 		t.Fatalf("failures after success = %d, want 0", got)
 	}
 }
+
+// TestRunRetryStatesIgnoresPausedRows keeps the escalating backoff intact: a
+// row the breaker refused is transparent, so the streak of the real failures
+// before it survives and a dead site still reaches the last step.
+func TestRunRetryStatesIgnoresPausedRows(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	if err := st.UpsertDefinition(ctx, testDefinition("paused-site")); err != nil {
+		t.Fatalf("UpsertDefinition: %v", err)
+	}
+	id, err := st.CreateIndexer(ctx, Indexer{
+		DefinitionID: "paused-site", Slug: "paused-site", Name: "Paused", Enabled: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateIndexer: %v", err)
+	}
+	base := time.Now().Add(-3 * time.Hour)
+	for i, status := range []string{"error", "error", "paused"} {
+		if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+			IndexerID: id, Kind: "run", Status: status,
+			StartedAt: base.Add(time.Duration(i) * time.Hour),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	states, err := st.RunRetryStates(ctx)
+	if err != nil {
+		t.Fatalf("RunRetryStates: %v", err)
+	}
+	if got := states[id].Failures; got != 2 {
+		t.Fatalf("failures = %d, want 2 (the pause must be transparent)", got)
+	}
+}

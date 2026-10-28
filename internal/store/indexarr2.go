@@ -733,11 +733,17 @@ func (s *Store) RunRetryStates(ctx context.Context) (map[int64]RunRetryState, er
 			counting[id] = true
 		}
 		if counting[id] {
-			if strings.EqualFold(strings.TrimSpace(status), "error") {
+			switch strings.ToLower(strings.TrimSpace(status)) {
+			case "error":
 				if state.Failures < 9 {
 					state.Failures++
 				}
-			} else {
+			case "paused":
+				// The per-source breaker refused the request: the source was
+				// not contacted, so the row is transparent for the streak. If
+				// it reset the count, a dead site would restart from the first
+				// step after every cooldown and never back off.
+			default:
 				counting[id] = false
 			}
 		}

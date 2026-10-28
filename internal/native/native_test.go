@@ -355,6 +355,114 @@ func TestRunIndexer(t *testing.T) {
 	}
 }
 
+// TestBreakerOpenIsAPauseNotAFailure proves that a request the per-source
+// breaker refuses is reported as a pause: it must not become a new failure,
+// must not lengthen the retry schedule and must not auto-disable the source.
+func TestBreakerOpenIsAPauseNotAFailure(t *testing.T) {
+	st := newTestStore(t)
+	v, err := vault.New(func() []byte {
+		key := make([]byte, 32)
+		key[0] = 1
+		return key
+	}())
+	if err != nil {
+		t.Fatalf("vault.New: %v", err)
+	}
+	manager, err := indexer.New(indexer.Config{
+		Store:     st,
+		Vault:     v,
+		Transport: engine.NewTransport(engine.TransportConfig{AllowPrivate: true, FailureThreshold: 1, Cooldown: time.Hour}),
+		Logger:    discardLogger(),
+	})
+	if err != nil {
+		t.Fatalf("indexer.New: %v", err)
+	}
+	runner, err := New(Config{
+		Store:    st,
+		Manager:  manager,
+		Logger:   discardLogger(),
+		Interval: 10 * time.Millisecond,
+		Workers:  1,
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = io.WriteString(w, "boom")
+	}))
+	t.Cleanup(server.Close)
+	indexerID := seedNative(t, st, "native-broken", "native-broken", "Broken Native", server.URL, true)
+
+	// First run: the site answers 500 and the breaker opens (threshold 1).
+	first := runner.RunOnce(context.Background())
+	if len(first) != 1 || first[0].Err == nil {
+		t.Fatalf("first run = %+v, want one failed outcome", first)
+	}
+
+	// Second run: the breaker refuses the request before it is sent.
+	second := runner.RunOnce(context.Background())
+	if len(second) != 1 {
+		t.Fatalf("second run = %d outcomes, want 1", len(second))
+	}
+	paused := second[0]
+	if !paused.Skipped || paused.Reason != ReasonPaused {
+		t.Fatalf("second run = %+v, want a skipped/paused outcome", paused)
+	}
+	if paused.Err != nil {
+		t.Fatalf("paused outcome carries an error: %v", paused.Err)
+	}
+
+	rows, err := st.ListIndexerHistory(context.Background(), indexerID, 10)
+	if err != nil {
+		t.Fatalf("ListIndexerHistory: %v", err)
+	}
+	if len(rows) < 2 {
+		t.Fatalf("history rows = %d, want at least 2", len(rows))
+	}
+	if rows[0].Status != indexer.StatusPaused {
+		t.Errorf("newest status = %q, want %q", rows[0].Status, indexer.StatusPaused)
+	}
+	if rows[1].Status != "error" {
+		t.Errorf("first status = %q, want error", rows[1].Status)
+	}
+
+	state, err := st.GetIndexerState(context.Background(), indexerID)
+	if err != nil {
+		t.Fatalf("GetIndexerState: %v", err)
+	}
+	if state.Circuit != string(engine.BreakerOpen) {
+		t.Errorf("circuit = %q, want open", state.Circuit)
+	}
+	if strings.Contains(state.LastError, "circuit breaker open") {
+		t.Errorf("last error = %q, it must keep the real failure", state.LastError)
+	}
+
+	// The pause is not a failure: the retry streak stays at the one real error.
+	states, err := st.RunRetryStates(context.Background())
+	if err != nil {
+		t.Fatalf("RunRetryStates: %v", err)
+	}
+	if got := states[indexerID].Failures; got != 1 {
+		t.Errorf("retry failures = %d, want 1", got)
+	}
+
+	// A third run while the breaker is still open keeps the pause and leaves
+	// the source enabled: no auto-disable.
+	third := runner.RunOnce(context.Background())
+	if len(third) != 1 || !third[0].Skipped || third[0].Reason != ReasonPaused {
+		t.Fatalf("third run = %+v, want a skipped/paused outcome", third)
+	}
+	indexerRow, err := st.GetIndexer(context.Background(), indexerID)
+	if err != nil {
+		t.Fatalf("GetIndexer: %v", err)
+	}
+	if !indexerRow.Enabled {
+		t.Fatal("the paused source was disabled")
+	}
+}
+
 func TestStartRunsOnceAndStopsOnCancel(t *testing.T) {
 	results := make(chan RunOutcome, 16)
 	st, runner := newHarness(t, 2, func(outcome RunOutcome) {

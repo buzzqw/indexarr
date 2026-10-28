@@ -300,3 +300,24 @@ func TestNextStateGroupUsesTheWorstFilter(t *testing.T) {
 		t.Errorf("draft promoted = %q", got)
 	}
 }
+
+// TestPausedOutcomeIsNeitherFailureNorSuccess locks the breaker pause: the
+// source was not contacted, so the row must not count as a failure and must
+// not be evidence of a clean run.
+func TestPausedOutcomeIsNeitherFailureNorSuccess(t *testing.T) {
+	paused := Outcome{Kind: "run", Status: "paused", Error: "engine: circuit breaker open"}
+	ok := clean(3)
+
+	if got := consecutiveFailures([]Outcome{paused, ok}); got != 0 {
+		t.Errorf("consecutiveFailures = %d, want 0", got)
+	}
+	if got := consecutiveClean([]Outcome{paused, ok, ok}); got != 0 {
+		t.Errorf("consecutiveClean = %d, want 0", got)
+	}
+	if got := NextState(CatalogVerified, []Outcome{paused, ok, ok}, DefaultThresholds()); got != CatalogVerified {
+		t.Errorf("paused promoted the definition to %q", got)
+	}
+	if got := NextStateGroup(CatalogDegraded, [][]Outcome{{paused, ok}, {ok, ok}}, DefaultThresholds()); got != CatalogDegraded {
+		t.Errorf("paused recovered the definition to %q", got)
+	}
+}

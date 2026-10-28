@@ -54,6 +54,10 @@ func redactError(err error, values []string) error {
 	return &redactedError{message: message, cause: err}
 }
 
+// StatusPaused is the history status of an execution the per-source breaker
+// refused: the source was not contacted, so the row is not a failure.
+const StatusPaused = "paused"
+
 // statusFor classifies an operation. A caller cancellation wins over every
 // other classification because it says why the run actually stopped. A
 // Cloudflare challenge is "blocked": it is not a generic failure and it has
@@ -72,6 +76,13 @@ func statusFor(ctx context.Context, err error) string {
 		// Not sent at all: the site's flood interval had no free slot and the
 		// search waits in the background queue. The site did not fail.
 		return "canceled"
+	}
+	if errors.Is(err, engine.ErrBreakerOpen) {
+		// The per-source breaker refused the request before it was sent: the
+		// source is cooling down after repeated failures and was not
+		// contacted. It is a pause, not a new failure: it must not extend the
+		// retry streak, the auto-disable count or the error notification.
+		return StatusPaused
 	}
 	if err != nil {
 		return "error"

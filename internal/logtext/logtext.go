@@ -20,6 +20,7 @@ const (
 	NotFound  = "notfound"
 	Reset     = "reset"
 	Parse     = "parse"
+	Breaker   = "breaker"
 	DBBusy    = "dbbusy"
 	Database  = "database"
 	Vault     = "vault"
@@ -34,6 +35,9 @@ var rules = []struct {
 	code     string
 	patterns []string
 }{
+	// First: the breaker refuses before sending, and its message can also
+	// carry the text of the failure that opened it ("429", "cloudflare").
+	{Breaker, []string{"circuit breaker open", "breaker open"}},
 	// Before Queue: the flood messages say "queued" and "queue is full".
 	{Flood, []string{"flood interval", "search refused by the site"}},
 	{Queue, []string{"queue full", "waiting for a slot"}},

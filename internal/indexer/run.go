@@ -26,7 +26,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 
 	indexer, loadErr := m.store.GetIndexer(ctx, indexerID)
 	if loadErr != nil {
-		m.finishRun(ctx, indexerID, "", started, 0, loadErr, stats)
+		m.finishRun(ctx, indexerID, "", "", started, 0, loadErr, stats)
 		return stats, fmt.Errorf("indexer %d: %w", indexerID, loadErr)
 	}
 
@@ -42,7 +42,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		if err == nil && capture != nil {
 			m.recordSample(context.WithoutCancel(ctx), indexer.ID, capture, stats)
 		}
-		m.finishRun(ctx, indexer.ID, query, started, payloadBytes, err, stats)
+		m.finishRun(ctx, indexer.ID, indexer.Slug, query, started, payloadBytes, err, stats)
 		m.store.InvalidateCounts()
 	}()
 
@@ -781,7 +781,7 @@ func itemCategory(item engine.Item) string {
 
 // finishRun always records the run and refreshes the indexer state. It uses a
 // context that survives cancellation so a canceled run is still auditable.
-func (m *Manager) finishRun(ctx context.Context, indexerID int64, query string, started time.Time, payloadBytes int64, runErr error, stats *RunStats) {
+func (m *Manager) finishRun(ctx context.Context, indexerID int64, slug, query string, started time.Time, payloadBytes int64, runErr error, stats *RunStats) {
 	base := context.WithoutCancel(ctx)
 	status := statusFor(ctx, runErr)
 	m.recordHistory(base, indexerID, "run", query, status, started, payloadBytes, runErr, stats)
@@ -795,15 +795,35 @@ func (m *Manager) finishRun(ctx context.Context, indexerID int64, query string, 
 		return
 	}
 	state.IndexerID = indexerID
-	if strings.TrimSpace(state.Circuit) == "" {
+	if slug != "" {
+		state.Circuit = string(m.CircuitState(indexerID, slug))
+	} else if strings.TrimSpace(state.Circuit) == "" {
 		state.Circuit = "closed"
 	}
+	previousError := state.LastError
 	state.LastError = ""
-	if runErr != nil {
+	switch {
+	case runErr == nil:
+		// A successful run clears the previous failure.
+	case status == StatusPaused:
+		// The breaker refused the request before it was sent, so the source
+		// keeps the last real failure, which explains why the breaker opened.
+		// A refusal an older version stored as the error is not a cause.
+		if !isBreakerText(previousError) {
+			state.LastError = previousError
+		}
+	default:
 		state.LastError = m.redact(indexerID, errorText(runErr))
 	}
 	state.UpdatedAt = time.Now()
 	if err := m.store.UpsertIndexerState(base, state); err != nil {
 		m.logger.Warn("indexer: update state", "indexer_id", indexerID, "error", err)
 	}
+}
+
+// isBreakerText reports whether a stored error is only the breaker refusal.
+// The pause has its own explanation, so that text is not shown as a cause.
+func isBreakerText(text string) bool {
+	lower := strings.ToLower(text)
+	return strings.Contains(lower, "circuit breaker open") || strings.Contains(lower, "breaker open")
 }
