@@ -73,9 +73,12 @@ misure del 28/10 mostrano però che il forum rifiuta anche a 65 s quando le
 ricerche si susseguono: in una raffica di sei, tre invii in coda sono stati
 accettati (09:53:33, 09:55:18, 09:56:28) e i due successivi rifiutati
 (09:58:02, 09:59:20); con due soli tentativi la pagina veniva scartata mentre
-il blocco era ancora attivo. Ora il worker ritenta fino a sei volte, un turno
-per volta (`TestDDUnlimitedBackgroundSendRetriesPastABurstBlock`), e il
-rifiuto resta visibile in cronologia. Lo stesso riquadro «Informazione» del
+il blocco era ancora attivo. Ora il worker ritenta al massimo due volte dopo
+un rifiuto, con una pausa di quattro intervalli (circa 4m20s) prima di
+spendere un altro turno
+(`TestDDUnlimitedBackgroundSendRetriesPastABurstBlock`), e il rifiuto resta
+visibile in cronologia. Per non rischiare l'account, le prove manuali si
+fermano qui: il resto lo fa la coda dell'applicazione al ritmo consentito. Lo stesso riquadro «Informazione» del
 forum dice anche «Nessun argomento…» e «le seguenti parole sono state
 ignorate»: solo «non ti è permesso» è un rifiuto. Le ricerche libere con un
 episodio («I misteri di Murdoch S13E01») mandano al forum solo il titolo,

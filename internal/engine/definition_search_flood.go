@@ -27,9 +27,14 @@ const searchQueueEntries = 256
 // is dropped: the site can still refuse it when the account searched from
 // somewhere else, or while a burst block is on. Measured on DDUnlimited on
 // 2026-10-28: three queued searches at 65 s were accepted, then the next two
-// were refused, so two attempts alone threw a page away while the block was
-// still on. Six attempts cover a block of about five minutes at the interval.
-const searchQueueAttempts = 6
+// were refused. The retries are deliberately few: each one costs a turn.
+const searchQueueAttempts = 3
+
+// searchRefusalBackoff is how long the worker waits after a refusal before
+// spending another turn. The forum asks to wait "a few minutes" and a refusal
+// means the flood interval alone was not enough; retrying at the normal pace
+// would just hammer the block. Four intervals are about 4m20s on DDUnlimited.
+const searchRefusalBackoff = 4
 
 // searchTurnMargin keeps a waiting search clear of the caller's deadline: the
 // page still has to be read after the turn.
@@ -223,10 +228,23 @@ func (c *DefinitionConnector) drainSearchQueue() {
 		cancel()
 		if errors.Is(err, errSearchRefused) && entry.attempts+1 < searchQueueAttempts {
 			entry.attempts++
+			// A refusal is the site asking for more than one interval: wait
+			// before spending another turn. New entries wait with it, which is
+			// correct while the block is on.
+			c.waitRefusalBackoff()
 			c.floodMu.Lock()
 			c.searchQueue = append(c.searchQueue, entry)
 			c.floodMu.Unlock()
 		}
+	}
+}
+
+// waitRefusalBackoff pauses the background queue after a refusal. The flood
+// interval paces normal sends; a refusal needs a longer pause so the worker
+// does not hammer the block with one request every interval.
+func (c *DefinitionConnector) waitRefusalBackoff() {
+	if interval := c.searchInterval(); interval > 0 {
+		time.Sleep(time.Duration(searchRefusalBackoff) * interval)
 	}
 }
 

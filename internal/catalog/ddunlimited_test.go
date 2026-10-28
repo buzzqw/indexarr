@@ -489,10 +489,9 @@ func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 	}
 }
 
-// A background send can meet the forum while a burst block is on: the earlier
-// two-attempt limit dropped the queued page before the block cleared. The
-// worker now retries the refusal at every flood turn, and the page lands in
-// the cache for the next identical request.
+// A background send can meet the forum while a burst block is on. The worker
+// retries the refusal after a longer pause, and the page lands in the cache
+// for the next identical request.
 func TestDDUnlimitedBackgroundSendRetriesPastABurstBlock(t *testing.T) {
 	const interval = 200 * time.Millisecond
 	var mu sync.Mutex
@@ -510,7 +509,7 @@ func TestDDUnlimitedBackgroundSendRetriesPastABurstBlock(t *testing.T) {
 			requests++
 			n := requests
 			mu.Unlock()
-			if n <= 3 {
+			if n <= 1 {
 				_, _ = w.Write([]byte(`<html><body><a href="./ucp.php?mode=logout&amp;sid=0">Esci</a><div id="message"><div class="inner"><h2>Informazione</h2><p>Al momento non ti è permesso fare ricerche. Attendi qualche minuto.</p></div></div></body></html>`))
 				return
 			}
@@ -550,7 +549,7 @@ func TestDDUnlimitedBackgroundSendRetriesPastABurstBlock(t *testing.T) {
 	deadline := time.Now().Add(10 * time.Second)
 	for {
 		mu.Lock()
-		done := requests >= 4
+		done := requests >= 2
 		mu.Unlock()
 		if done {
 			break
@@ -569,7 +568,7 @@ func TestDDUnlimitedBackgroundSendRetriesPastABurstBlock(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if requests != 4 {
-		t.Errorf("search.php requests = %d, want 4: the cached page must not ask again", requests)
+	if requests != 2 {
+		t.Errorf("search.php requests = %d, want 2: the cached page must not ask again", requests)
 	}
 }
