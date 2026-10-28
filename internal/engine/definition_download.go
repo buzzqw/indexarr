@@ -294,7 +294,13 @@ func expandItem(base Item, candidate resolvedDownload) Item {
 	// applyResolvedDownload may have copied the file name into Title; the
 	// expanded row keeps the topic title in front of it for readability.
 	lowerBase := strings.ToLower(strings.TrimSpace(base.Title))
-	if !strings.Contains(lowerBase, strings.ToLower(name)) {
+	if fileNameIsRelease(base.Title, name) {
+		// "Bones.S06E12.HDTV.avi" is already a release name. With the topic
+		// in front ("BONES - Stagione 6 - Bones.S06E12…") Gextto and the Arr
+		// read the series as "BONES - Stagione 6 - Bones" and never match it
+		// to the monitored show.
+		item.Title = name
+	} else if !strings.Contains(lowerBase, strings.ToLower(name)) {
 		item.Title = strings.TrimSpace(base.Title + " - " + name)
 	} else {
 		item.Title = name
@@ -773,4 +779,28 @@ func (c *DefinitionConnector) downloadFromSection(ctx context.Context, item Item
 		return c.downloadURL(ctx, result.DownloadURL, item.Title, rawURL)
 	}
 	return Payload{}, errors.New("download: no download target on details page")
+}
+
+// fileNameIsRelease reports whether a file of a topic names its episode
+// ("S06E12", "6x12") and shares a word with the topic title, so the file name
+// alone says which series and episode it is.
+func fileNameIsRelease(topic, name string) bool {
+	normalized := normalizeIndexText(name)
+	words := strings.Fields(normalized)
+	episode := false
+	for _, word := range words {
+		if isEpisodeToken(word) && strings.ContainsAny(word, "ex") {
+			episode = true
+			break
+		}
+	}
+	if !episode {
+		return false
+	}
+	for _, token := range indexQueryTokens(topic) {
+		if len(token) >= 3 && !isEpisodeToken(token) && indexWordPrefix(words, token) {
+			return true
+		}
+	}
+	return false
 }

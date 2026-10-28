@@ -106,6 +106,7 @@ func TestSearchExpandsEveryEd2kFile(t *testing.T) {
 			writeBody(t, w, []byte(`<html><body>
 <a href="ed2k://|file|Bones.S06E01.mkv|100|11111111111111111111111111111111|/">Bones S06E01.mkv</a>
 <a href="ed2k://|file|Bones.S06E02.mkv|200|22222222222222222222222222222222|/">Bones S06E02.mkv</a>
+<a href="ed2k://|file|Extra%20Making%20Of.mkv|300|33333333333333333333333333333333|/">Extra Making Of.mkv</a>
 </body></html>`))
 		default:
 			http.NotFound(w, r)
@@ -116,14 +117,20 @@ func TestSearchExpandsEveryEd2kFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
-	if len(items) != 2 {
-		t.Fatalf("items = %d, want 2 (%+v)", len(items), items)
+	if len(items) != 3 {
+		t.Fatalf("items = %d, want 3 (%+v)", len(items), items)
 	}
 	if items[0].Ed2k == "" || items[0].Ed2kHash != "11111111111111111111111111111111" || items[0].Size != 100 {
 		t.Errorf("first item = %+v", items[0])
 	}
-	if !strings.Contains(items[0].Title, "S06E01") || !strings.Contains(items[0].Title, "Bones - Stagione 6") {
-		t.Errorf("first title = %q", items[0].Title)
+	// A file that names its episode is a release name on its own: Gextto and
+	// the Arr parse the series from it. A file without an episode keeps the
+	// topic in front so it stays readable.
+	if items[0].Title != "Bones.S06E01.mkv" {
+		t.Errorf("first title = %q, want the file name", items[0].Title)
+	}
+	if items[2].Title != "Bones - Stagione 6 [COMPLETA] - Extra Making Of.mkv" {
+		t.Errorf("third title = %q, want the topic in front", items[2].Title)
 	}
 	if items[1].Ed2kHash != "22222222222222222222222222222222" {
 		t.Errorf("second item = %+v", items[1])

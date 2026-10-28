@@ -51,3 +51,49 @@ func TestEpisodeVariantsAndSeasonPacks(t *testing.T) {
 		t.Fatalf("season 4 = %d, %v", total, err)
 	}
 }
+
+func TestFreeTextEpisodeTokenMatchesEveryEpisodeSpelling(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	now := time.Now()
+	for i, title := range []string{
+		"Bones S06E12 1080p",
+		"Bones - 6x12 - L'amore ha un cuore solo.mkv",
+		"Bones S06 E12 720p",
+		"Bones S06E13 1080p",
+		"Other Show S06E12 1080p",
+	} {
+		rel := Release{DedupKey: title, Title: title, SearchTitle: NormalizeSearch(title),
+			Category: "5040", FirstSeenAt: now, LastSeenAt: now}
+		if _, err := st.UpsertRelease(ctx, &rel); err != nil {
+			t.Fatalf("upsert %d: %v", i, err)
+		}
+	}
+	for _, query := range []string{"Bones S06E12", "Bones 6x12"} {
+		releases, total, err := st.SearchReleases(ctx, Filter{Query: query})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if total != 3 || len(releases) != 3 {
+			var got []string
+			for _, rel := range releases {
+				got = append(got, rel.Title)
+			}
+			t.Errorf("%q = %d %v, want the three spellings of Bones 6x12", query, total, got)
+		}
+	}
+	// A bare episode token has no title to scope it: it stays a text search.
+	if _, total, err := st.SearchReleases(ctx, Filter{Query: "S06E12"}); err != nil || total != 2 {
+		t.Errorf("bare S06E12 = %d, %v; want the two literal matches", total, err)
+	}
+}
+
+func TestSplitEpisodeToken(t *testing.T) {
+	tokens, season, episode := splitEpisodeToken([]string{"bones", "s06e12"})
+	if len(tokens) != 1 || tokens[0] != "bones" || season != 6 || episode != 12 {
+		t.Errorf("got %v %d %d", tokens, season, episode)
+	}
+	if tokens, season, _ := splitEpisodeToken([]string{"show", "s01e01", "s01e02"}); len(tokens) != 3 || season != 0 {
+		t.Errorf("two episode tokens must stay text: %v %d", tokens, season)
+	}
+}

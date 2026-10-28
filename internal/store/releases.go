@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -1187,6 +1188,13 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 	excludes := f.Exclude
 	if len(includes) == 0 && len(excludes) == 0 && strings.TrimSpace(f.Query) != "" {
 		includes = searchTokens(f.Query)
+		if f.Season <= 0 {
+			// A free-text "Bones S06E12" (Gextto's manual search) becomes the
+			// same season/episode predicate as a tvsearch: the literal token
+			// would drop "Bones 6x12" and "Bones S06 E12", which are the same
+			// episode.
+			includes, f.Season, f.Episode = splitEpisodeToken(includes)
+		}
 	}
 	// Several FTS terms are combined into one MATCH expression: FTS evaluates
 	// them in a single index pass instead of one subquery per term.
@@ -1473,6 +1481,39 @@ func searchTokens(query string) []string {
 		}
 	}
 	return out
+}
+
+var episodeSearchToken = regexp.MustCompile(`^(?:s(\d{1,2})e(\d{1,3})|(\d{1,2})x(\d{1,3}))$`)
+
+// splitEpisodeToken removes the one "s06e12" or "6x12" token of a free-text
+// query and returns it as season and episode. A query with none, or with
+// more than one, is returned unchanged with zero season and episode.
+func splitEpisodeToken(tokens []string) ([]string, int, int) {
+	at, season, episode := -1, 0, 0
+	for i, token := range tokens {
+		match := episodeSearchToken.FindStringSubmatch(token)
+		if match == nil {
+			continue
+		}
+		if at >= 0 {
+			return tokens, 0, 0
+		}
+		seasonText, episodeText := match[1], match[2]
+		if seasonText == "" {
+			seasonText, episodeText = match[3], match[4]
+		}
+		season, _ = strconv.Atoi(seasonText)
+		episode, _ = strconv.Atoi(episodeText)
+		at = i
+	}
+	if at < 0 || season <= 0 || episode <= 0 || len(tokens) == 1 {
+		// A bare "s01e01" stays a text search: without a title the episode
+		// predicate would match every series.
+		return tokens, 0, 0
+	}
+	out := make([]string, 0, len(tokens)-1)
+	out = append(out, tokens[:at]...)
+	return append(out, tokens[at+1:]...), season, episode
 }
 
 // NormalizeSearch turns a title into the lowercase, punctuation-free form
