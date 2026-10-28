@@ -34,8 +34,26 @@ const searchTurnMargin = 15 * time.Second
 
 type searchBuild func(ctx context.Context) (*http.Request, error)
 
+// DeferredSearchEvent is one search page the background worker really sent to
+// the site for a deferred search, or tried to send. Err is nil when the page
+// was read and stored in the search cache. Attempt starts at 1.
+type DeferredSearchEvent struct {
+	Query   string
+	Attempt int
+	Started time.Time
+	Elapsed time.Duration
+	Bytes   int64
+	Err     error
+}
+
+// DeferredSearchObserver receives the outcome of a background search send. It
+// is called from the worker goroutine, never from the caller that queued the
+// search.
+type DeferredSearchObserver func(DeferredSearchEvent)
+
 type deferredSearch struct {
 	key      string
+	query    string
 	build    searchBuild
 	attempts int
 }
@@ -150,7 +168,7 @@ func (c *DefinitionConnector) enterSearchLane(ctx context.Context, interval time
 
 // deferSearch queues a search page for the background worker. It reports
 // false when the queue is full; a page already queued is not added twice.
-func (c *DefinitionConnector) deferSearch(key string, build searchBuild) bool {
+func (c *DefinitionConnector) deferSearch(key, query string, build searchBuild) bool {
 	if key == "" {
 		return false
 	}
@@ -164,7 +182,7 @@ func (c *DefinitionConnector) deferSearch(key string, build searchBuild) bool {
 	if len(c.searchQueue) >= searchQueueEntries {
 		return false
 	}
-	c.searchQueue = append(c.searchQueue, deferredSearch{key: key, build: build})
+	c.searchQueue = append(c.searchQueue, deferredSearch{key: key, query: query, build: build})
 	if !c.searchDraining {
 		c.searchDraining = true
 		go c.drainSearchQueue()
@@ -210,12 +228,37 @@ func (c *DefinitionConnector) drainSearchQueue() {
 }
 
 func (c *DefinitionConnector) sendDeferredSearch(ctx context.Context, entry deferredSearch) error {
+	started := time.Now()
+	attempt := entry.attempts + 1
+	written, sent, err := c.sendDeferredSearchOnce(ctx, entry)
+	if c.deferredSearch != nil {
+		if sent.IsZero() {
+			// No request left: the time belongs to the login or the lane.
+			sent = started
+		}
+		c.deferredSearch(DeferredSearchEvent{
+			Query:   entry.query,
+			Attempt: attempt,
+			Started: sent,
+			Elapsed: time.Since(sent),
+			Bytes:   written,
+			Err:     err,
+		})
+	}
+	return err
+}
+
+// sendDeferredSearchOnce sends one queued page and stores it in the search
+// cache. It returns how many bytes the page carried, when the request left
+// (the login and the queue turn are not request latency), and the error. The
+// send time lets the history row show the real pace the site saw.
+func (c *DefinitionConnector) sendDeferredSearchOnce(ctx context.Context, entry deferredSearch) (int64, time.Time, error) {
 	if err := c.ensureLogin(ctx); err != nil {
-		return err
+		return 0, time.Time{}, err
 	}
 	request, err := entry.build(ctx)
 	if err != nil {
-		return err
+		return 0, time.Time{}, err
 	}
 	// The worker always waits for its turn, however long the lane is.
 	c.floodMu.Lock()
@@ -223,16 +266,17 @@ func (c *DefinitionConnector) sendDeferredSearch(ctx context.Context, entry defe
 	c.floodMu.Unlock()
 	release, err := c.enterSearchLane(ctx, c.searchInterval())
 	if err != nil {
-		return err
+		return 0, time.Time{}, err
 	}
 	relogged := false
+	sent := time.Now()
 	response, err := c.fetchSearchPage(ctx, request, func() (*http.Request, error) { return entry.build(ctx) }, &relogged)
 	release()
 	if err != nil {
-		return err
+		return 0, sent, err
 	}
 	c.storeSearchPage(entry.key, response)
-	return nil
+	return int64(len(response.Body)), sent, nil
 }
 
 func deferredSearchError(id string, interval time.Duration, queued bool) error {

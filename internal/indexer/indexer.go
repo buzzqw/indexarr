@@ -475,6 +475,7 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 			SessionEndpoint: network.FlareSolverrURL,
 			SessionTimeout:  time.Duration(network.FlareSolverrTimeoutSeconds) * time.Second,
 			Sessions:        m.sessions,
+			DeferredSearch:  m.deferredSearchObserver(indexer),
 		})
 		if err != nil {
 			return nil, redactError(fmt.Errorf("indexer %s: build definition connector: %w", indexer.Slug, err), secretValues)

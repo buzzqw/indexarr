@@ -115,6 +115,24 @@ func (m *Manager) recordHistory(ctx context.Context, indexerID int64, kind, quer
 // reflects completed or started work only.
 var queryHistoryKinds = []string{"search", "latest", "run"}
 
+// deferredSearchObserver returns the callback the definition connector calls
+// for every search page the background worker sends. Without these rows a
+// deferred search is visible only as a canceled row with the flood code: the
+// real send, its latency and the site's answer (accepted, refused, dropped
+// after the retries) never reach the history.
+func (m *Manager) deferredSearchObserver(indexer store.Indexer) engine.DeferredSearchObserver {
+	return func(event engine.DeferredSearchEvent) {
+		ctx := context.Background()
+		status := statusFor(ctx, event.Err)
+		err := event.Err
+		if err != nil {
+			err = fmt.Errorf("indexer %s: background search: %w", indexer.Slug, err)
+		}
+		m.recordHistory(ctx, indexer.ID, "search", event.Query, status,
+			event.Started, event.Bytes, err, nil)
+	}
+}
+
 // checkQueryLimit enforces indexer.QueryLimit over a rolling 24-hour window
 // before the connector is touched. A zero limit disables the check.
 func (m *Manager) checkQueryLimit(ctx context.Context, indexerID int64) error {

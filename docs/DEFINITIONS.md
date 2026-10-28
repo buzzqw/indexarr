@@ -671,9 +671,12 @@ search:
   ricerche in coda al ritmo consentito e ne tiene le pagine in cache: la
   richiesta identica successiva le legge da lì. Una pagina successiva alla
   prima prende solo un turno libero subito; altrimenti la ricerca tiene le
-  pagine lette e la pagina va in coda. Su DDUnlimited il 2026-10-28 il forum
-  ha accettato una ricerca ogni 57-58 s (rifiutata a 55 s, accettata a 58 s e
-  a 70 s), e un rifiuto non fa ripartire il conto.
+  pagine lette e la pagina va in coda. Ogni invio del lavoro in background
+  lascia una riga `search` nella cronologia dell'indexer con la query, lo
+  stato, la latenza e l'errore: è così che si vede se il forum accetta la
+  ricerca in coda, la rifiuta o la scarta dopo i due tentativi. Su DDUnlimited
+  il 2026-10-28 il forum ha accettato una ricerca ogni 57-58 s (rifiutata a
+  55 s, accettata a 58 s e a 70 s), e un rifiuto non fa ripartire il conto.
 
 Con `auth.logged_in` anche una pagina di ricerca senza il segno del login
 (il forum ha fatto cadere la sessione e risponde da ospite) fa rifare il login

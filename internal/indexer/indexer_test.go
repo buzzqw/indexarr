@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -670,5 +671,74 @@ connector: fake
 	}
 	if _, stored := got["Unopened Live"]; stored {
 		t.Error("a live topic without any link was stored: its grab would return the first file")
+	}
+}
+
+// A search without a flood turn is queued, and the background send that
+// really reaches the site leaves its own row: the caller's canceled row alone
+// would hide whether the site accepted, refused or dropped the queued search.
+func TestDeferredSearchSendIsRecordedInHistory(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 6)
+	var searches atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/":
+			_, _ = w.Write([]byte("<html><body>ok</body></html>"))
+		case r.URL.Path == "/search":
+			searches.Add(1)
+			_, _ = w.Write([]byte(searchHTML))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	body := strings.ReplaceAll(readTestdata(t, "native_search.yaml"), "http://REPLACE", server.URL)
+	body = strings.Replace(body, "search:\n", "search:\n  interval: 500ms\n  cache: 1m\n", 1)
+	seedDefinition(t, st, "native-flood", "", body)
+	config := fmt.Sprintf(`{"url":%q,"categories":[5040]}`, server.URL)
+	indexerID := createIndexer(t, st, "native-flood", "native-flood", "Native Flood", "torrent", config)
+	putSecret(t, st, v, indexerID, "api_key", secretValue)
+	manager := newTestManager(t, st, v)
+
+	// The flood margin is 15s, so any short deadline has no turn: the search
+	// is queued instead of sent.
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	_, err := manager.Search(ctx, indexerID, engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "queued", Limit: 1, FirstPageOnly: true,
+	})
+	cancel()
+	if !errors.Is(err, engine.ErrSearchDeferred) {
+		t.Fatalf("search err = %v, want ErrSearchDeferred", err)
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	var background *store.RunMetricRow
+	for time.Now().Before(deadline) {
+		rows, listErr := st.ListRunMetrics(context.Background(), indexerID, 20)
+		if listErr != nil {
+			t.Fatalf("ListRunMetrics: %v", listErr)
+		}
+		for i := range rows {
+			row := rows[i]
+			if row.Kind == "search" && row.Query == "queued" && row.Status == "ok" {
+				background = &row
+				break
+			}
+		}
+		if background != nil {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if background == nil {
+		t.Fatalf("no ok history row for the background send; requests to /search = %d", searches.Load())
+	}
+	if background.Error != "" {
+		t.Errorf("background row error = %q, want empty", background.Error)
+	}
+	if searches.Load() == 0 {
+		t.Error("the background send never reached the site")
 	}
 }

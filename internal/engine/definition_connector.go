@@ -39,6 +39,12 @@ type DefinitionConfig struct {
 	// orphan cleanup leave the sessions of other connectors alone. Nil is
 	// allowed: the connector then owns its session without cross-checks.
 	Sessions *SessionRegistry
+	// DeferredSearch, when set, receives one event for every search page the
+	// background worker sends for a deferred search. The Manager uses it to
+	// write the indexer_history row that a queued search would otherwise
+	// never show: the client only sees ErrSearchDeferred, and the outcome of
+	// the real send (accepted, refused, dropped, latency) stays invisible.
+	DeferredSearch DeferredSearchObserver
 }
 
 var (
@@ -79,6 +85,9 @@ type DefinitionConnector struct {
 	searchLast     time.Time
 	searchQueue    []deferredSearch
 	searchDraining bool
+	// deferredSearch reports the background sends, so a queued search leaves
+	// a row in the history too.
+	deferredSearch DeferredSearchObserver
 }
 
 // NewDefinitionConnector validates the definition's settings and prepares the
@@ -165,16 +174,17 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 	}
 
 	connector := &DefinitionConnector{
-		indexer:   indexer,
-		def:       def,
-		settings:  settings,
-		declared:  declared,
-		transport: transport,
-		baseURL:   baseURL,
-		protocol:  protocolFromDefinition(def),
-		session:   newSession(),
-		refresh:   refresh,
-		appendKey: strategy == "api_key" && !definitionUsesAnySetting(def, "api_key", "apikey"),
+		indexer:        indexer,
+		def:            def,
+		settings:       settings,
+		declared:       declared,
+		transport:      transport,
+		baseURL:        baseURL,
+		protocol:       protocolFromDefinition(def),
+		session:        newSession(),
+		refresh:        refresh,
+		appendKey:      strategy == "api_key" && !definitionUsesAnySetting(def, "api_key", "apikey"),
+		deferredSearch: cfg.DeferredSearch,
 	}
 	connector.caps = connector.buildCapabilities()
 	if def.Search.Index != nil {
@@ -717,11 +727,11 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 				if errors.Is(err, errSearchLater) {
 					// The first pages already answered: keep them, and fetch
 					// this one in the background for the next request.
-					c.deferSearch(cacheKey, later)
+					c.deferSearch(cacheKey, req.Query, later)
 					break
 				}
 				if errors.Is(err, ErrSearchDeferred) {
-					queued := c.deferSearch(cacheKey, later)
+					queued := c.deferSearch(cacheKey, req.Query, later)
 					return nil, deferredSearchError(c.def.Meta.ID, c.searchInterval(), queued)
 				}
 				return nil, err

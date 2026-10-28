@@ -326,6 +326,8 @@ func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 	const interval = 300 * time.Millisecond
 	var mu sync.Mutex
 	var sent []time.Time
+	var eventsMu sync.Mutex
+	var events []engine.DeferredSearchEvent
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/ucp.php":
@@ -354,6 +356,11 @@ func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 		Definition: def,
 		Settings:   map[string]string{"username": "synthetic-user", "password": "synthetic-password"},
 		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+		DeferredSearch: func(event engine.DeferredSearchEvent) {
+			eventsMu.Lock()
+			events = append(events, event)
+			eventsMu.Unlock()
+		},
 	})
 	if err != nil {
 		t.Fatalf("NewDefinitionConnector: %v", err)
@@ -455,6 +462,29 @@ func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 	for i := 1; i < len(sent); i++ {
 		if gap := sent[i].Sub(sent[i-1]); gap < interval-20*time.Millisecond {
 			t.Errorf("requests %d and %d are %s apart, want at least %s", i, i+1, gap, interval)
+		}
+	}
+	// Every send the background worker made is reported, so the Manager can
+	// write it in the history: the caller only saw the deferred row.
+	eventsMu.Lock()
+	defer eventsMu.Unlock()
+	seen := map[string]bool{}
+	for _, event := range events {
+		if event.Query != "third" && event.Query != "pages" {
+			continue
+		}
+		if event.Err != nil {
+			t.Errorf("background send of %q failed: %v", event.Query, event.Err)
+			continue
+		}
+		if event.Elapsed <= 0 || event.Attempt < 1 {
+			t.Errorf("background send of %q: elapsed %s, attempt %d", event.Query, event.Elapsed, event.Attempt)
+		}
+		seen[event.Query] = true
+	}
+	for _, query := range []string{"third", "pages"} {
+		if !seen[query] {
+			t.Errorf("no background send event for %q: events %+v", query, events)
 		}
 	}
 }
