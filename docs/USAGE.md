@@ -202,12 +202,12 @@ dell'interfaccia web.
   fallito;
 - cooldown anti-spam.
 
-I messaggi sono scritti nella **lingua dell'interfaccia**: è quella scelta con
-il selettore in alto, e la pagina delle notifiche la mostra («Lingua dei
-messaggi: …»). Cambiando lingua al selettore cambiano anche le notifiche
-successive; scegli la tua lingua prima di **Invia notifica di prova**, che
-verifica subito i canali. Se Telegram non arriva, controlla token, chat id e
-che il bot sia stato avviato nella chat.
+I messaggi sono scritti nella lingua scelta in **Impostazioni → Notifiche →
+Lingua dei messaggi**: «Come l'interfaccia» (predefinito) segue il selettore in
+alto, mentre una lingua fissa resta anche quando navighi in un'altra. Scegli la
+lingua prima di **Invia notifica di prova**, che verifica subito i canali. Se
+Telegram non arriva, controlla token, chat id e che il bot sia stato avviato
+nella chat.
 
 ---
 

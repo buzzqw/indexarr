@@ -118,6 +118,28 @@ func TestSaveSettingsSealsTheNotificationChannels(t *testing.T) {
 	if loaded.UILanguage != "it" {
 		t.Errorf("UI language = %q", loaded.UILanguage)
 	}
+	// The message language is a separate choice: saved as it is, and an
+	// unknown code is dropped so the messages follow the interface again.
+	settings.NotifyLanguage = "it"
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	if loaded, err = st.LoadSettings(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if loaded.NotifyLanguage != "it" {
+		t.Errorf("notification language = %q", loaded.NotifyLanguage)
+	}
+	settings.NotifyLanguage = "klingon"
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	if loaded, err = st.LoadSettings(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if loaded.NotifyLanguage != "" {
+		t.Errorf("unknown notification language kept as %q", loaded.NotifyLanguage)
+	}
 	var plaintext int
 	if err := st.DB().QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM settings WHERE key IN (?, ?)`,

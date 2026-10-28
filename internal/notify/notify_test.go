@@ -94,6 +94,25 @@ func TestConfiguredAndErrors(t *testing.T) {
 	}
 }
 
+// TestConfigFromPrefersTheChosenNotificationLanguage guards the two-level
+// language: an explicit choice wins, otherwise the messages follow the
+// interface language the operator last chose.
+func TestConfigFromPrefersTheChosenNotificationLanguage(t *testing.T) {
+	settings := store.Settings{UILanguage: "zh", NotifyLanguage: "it"}
+	if got := ConfigFrom(settings).Language; got != i18n.IT {
+		t.Errorf("chosen language = %q, want it", got)
+	}
+	settings.NotifyLanguage = ""
+	if got := ConfigFrom(settings).Language; got != i18n.ZH {
+		t.Errorf("fallback language = %q, want zh", got)
+	}
+	message := MessageFor(Event{Kind: KindIndexerState, Source: "ExtTo", Previous: StateError, Current: StateOK},
+		ConfigFrom(store.Settings{UILanguage: "zh", NotifyLanguage: "it"}).Language, "")
+	if !strings.Contains(message, "funziona di nuovo") {
+		t.Errorf("message is not in the chosen language: %q", message)
+	}
+}
+
 // TestEveryEventHasAMessageAndALink is the per-event table: the five settings
 // events plus the test one must each render a localized, short message.
 func TestEveryEventHasAMessageAndALink(t *testing.T) {

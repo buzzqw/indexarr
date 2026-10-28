@@ -38,6 +38,14 @@ type settingsSection struct {
 	Active bool
 }
 
+// settingsLanguageOption is one entry of the message-language select. An
+// empty Code is the "same as the interface" choice.
+type settingsLanguageOption struct {
+	Code     string
+	Name     string
+	Selected bool
+}
+
 type settingsPage struct {
 	base
 	Section       string
@@ -51,14 +59,14 @@ type settingsPage struct {
 	// stored, so the field can show a masked placeholder.
 	WebhookStored       bool
 	TelegramTokenStored bool
-	// NotifyLanguageName is the language the messages are written in: the
-	// saved interface language, shown next to the channels so the operator can
-	// see it before sending a test.
-	NotifyLanguageName string
-	AdditionalKeys     []settingsAPIKey
-	BackupDir          string
-	VaultKey           vault.Info
-	LogLevel           string
+	// NotifyLanguages are the choices of the message language: an empty code
+	// means "same as the interface", whose name is NotifyInterfaceName.
+	NotifyLanguages     []settingsLanguageOption
+	NotifyInterfaceName string
+	AdditionalKeys      []settingsAPIKey
+	BackupDir           string
+	VaultKey            vault.Info
+	LogLevel            string
 	// Rules
 	Rules []store.BlocklistRule
 	// Maintenance and backups
@@ -146,7 +154,8 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 		TorznabMasked:       baseURL + "?apikey=••••••",
 		WebhookStored:       strings.TrimSpace(settings.NotifyWebhookURL) != "",
 		TelegramTokenStored: strings.TrimSpace(settings.NotifyTelegramToken) != "",
-		NotifyLanguageName:  i18n.Normalize(settings.UILanguage).Name(),
+		NotifyLanguages:     notifyLanguageOptions(settings),
+		NotifyInterfaceName: i18n.Normalize(settings.UILanguage).Name(),
 		AdditionalKeys:      views,
 		BackupDir:           backup.Dir(s.store.Path()),
 		VaultKey:            s.vaultKey,
@@ -198,6 +207,22 @@ func (s *Server) levelName() string {
 	default:
 		return "info"
 	}
+}
+
+// notifyLanguageOptions builds the message-language select: the "same as the
+// interface" entry first, then every interface catalog by its endonym.
+func notifyLanguageOptions(settings store.Settings) []settingsLanguageOption {
+	current := strings.ToLower(strings.TrimSpace(settings.NotifyLanguage))
+	options := make([]settingsLanguageOption, 0, len(i18n.Supported())+1)
+	options = append(options, settingsLanguageOption{Code: "", Selected: current == ""})
+	for _, lang := range i18n.Supported() {
+		options = append(options, settingsLanguageOption{
+			Code:     lang.HTML(),
+			Name:     lang.Name(),
+			Selected: string(lang) == current,
+		})
+	}
+	return options
 }
 
 func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
@@ -335,6 +360,12 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		in.NotifyGrabFailed = r.FormValue("notify_grab_failed") != ""
 		in.NotifyCatalogUpdated = r.FormValue("notify_catalog_updated") != ""
 		in.NotifyBackupFailed = r.FormValue("notify_backup_failed") != ""
+		// An unknown code falls back to "same as the interface" (the stored
+		// values are validated again when the settings are read).
+		in.NotifyLanguage = strings.ToLower(strings.TrimSpace(r.FormValue("notify_language")))
+		if _, ok := i18n.Lookup(in.NotifyLanguage); !ok {
+			in.NotifyLanguage = ""
+		}
 		var parseErr error
 		if in.NotifyCooldownMinutes, parseErr = s.formInt(r, "notify_cooldown_minutes",
 			current.NotifyCooldownMinutes, 1, 7*24*60); parseErr != nil {

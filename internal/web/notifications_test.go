@@ -241,3 +241,53 @@ func TestNotificationLanguageHealsFromTheBrowserChoice(t *testing.T) {
 		t.Errorf("a preview link changed the notification language to %q", settings.UILanguage)
 	}
 }
+
+// TestNotificationLanguageIsChosenInTheNotificationsForm guards the explicit
+// choice: the operator picks the message language in Settings → Notifications
+// and the choice survives even when the interface language changes.
+func TestNotificationLanguageIsChosenInTheNotificationsForm(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+
+	page := get(t, env.handler, "/settings?section=notifications").Body.String()
+	if !strings.Contains(page, `id="notify_language" name="notify_language"`) {
+		t.Fatal("the notifications page has no message-language select")
+	}
+	for _, want := range []string{"Italiano", "English", "中文", "same as the interface"} {
+		if !strings.Contains(strings.ToLower(page), strings.ToLower(want)) {
+			t.Errorf("the select is missing the choice %q", want)
+		}
+	}
+
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=notifications")
+	recorder := postForm(t, env.handler, "/settings", url.Values{
+		"csrf": {token}, "section": {"notifications"},
+		"notify_language": {"it"}, "notify_cooldown_minutes": {"30"},
+	}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("save = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	settings, err := env.store.LoadSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.NotifyLanguage != "it" {
+		t.Errorf("stored message language = %q, want it", settings.NotifyLanguage)
+	}
+	if lang := notify.ConfigFrom(settings).Language; lang != "it" {
+		t.Errorf("notification language = %q, want it", lang)
+	}
+
+	// Back to the automatic choice.
+	token, cookie = csrfFrom(t, env.handler, "/settings?section=notifications")
+	postForm(t, env.handler, "/settings", url.Values{
+		"csrf": {token}, "section": {"notifications"},
+		"notify_language": {""}, "notify_cooldown_minutes": {"30"},
+	}, cookie)
+	if settings, err = env.store.LoadSettings(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if settings.NotifyLanguage != "" {
+		t.Errorf("automatic message language stored as %q", settings.NotifyLanguage)
+	}
+}

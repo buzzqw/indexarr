@@ -379,7 +379,12 @@ func Enabled(settings store.Settings, kind string) bool {
 // ConfigFrom builds the delivery config from the (already decrypted)
 // settings.
 func ConfigFrom(settings store.Settings) Config {
-	lang := i18n.Normalize(settings.UILanguage)
+	// An explicit notification language wins; otherwise the messages follow
+	// the interface language the operator last chose.
+	lang := i18n.Normalize(settings.NotifyLanguage)
+	if strings.TrimSpace(settings.NotifyLanguage) == "" {
+		lang = i18n.Normalize(settings.UILanguage)
+	}
 	return Config{
 		WebhookURL:     settings.NotifyWebhookURL,
 		TelegramToken:  settings.NotifyTelegramToken,

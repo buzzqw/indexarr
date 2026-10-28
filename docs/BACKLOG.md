@@ -63,7 +63,7 @@ dettaglio e grab, fixture reali, definizione `verificata`.
 | `torrentby` | usa `meta.insecure_tls: true` perché il server non manda l'intermedio Let's Encrypt `YE1`. Se la catena torna completa, togliere il flag (e il badge) |
 | `u3c3` | la ricerca dipende dal token fisso `search2` del sito: se cambia, la ricerca risponde la home invece dei risultati |
 | `rutracker` | la ricerca passa da una sessione FlareSolverr: se il sito smette di rispondere anche al browser, la definizione va degradata |
-| lingua delle notifiche | i messaggi usano la lingua salvata, che ora segue il selettore del browser in uso (cookie `indexarr_lang`) e viene mostrata in Impostazioni → Notifiche. Un browser che non ha mai scelto la lingua non la tocca: se un messaggio arriva in una lingua diversa, la riga «Lingua dei messaggi: …» dice quale sia e il selettore la corregge |
+| lingua delle notifiche | in Impostazioni → Notifiche → «Lingua dei messaggi» si sceglie «Come l'interfaccia» (segue il selettore in alto, che ora risalva la lingua del browser in uso) oppure una lingua fissa, che resta anche cambiando interfaccia. Un browser che non ha mai scelto la lingua non tocca l'impostazione |
 
 ## 6. Coda
 

@@ -41,7 +41,6 @@
   <section class="panel">
     <div class="panel-head"><h2>{{T "settings.notificationsTitle"}}</h2></div>
     <p class="help" title="{{T "settings.notificationsIntro"}}">{{T "settings.notificationsIntro"}}</p>
-    <p class="help" title="{{T "settings.notificationsLanguageHelp"}}">{{T "settings.notificationsLanguage" .NotifyLanguageName}}</p>
   </section>
   <form class="panel form" method="post" action="/settings">
     <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -75,6 +74,16 @@
         <label for="notify_telegram_chat_id" title="{{T "settings.telegramChatHelp"}}">{{T "settings.telegramChatID"}}</label>
         <input id="notify_telegram_chat_id" name="notify_telegram_chat_id" type="text" value="{{.Settings.NotifyTelegramChatID}}" title="{{T "settings.telegramChatHelp"}}">
         <p class="help">{{T "settings.telegramChatHelp"}}</p>
+      </div>
+    </div>
+    <div class="panel-head"><h2 title="{{T "settings.notifyLanguageHelp"}}">{{T "settings.notifyLanguageTitle"}}</h2></div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="notify_language" title="{{T "settings.notifyLanguageHelp"}}">{{T "settings.notifyLanguage"}}</label>
+        <select id="notify_language" name="notify_language" title="{{T "settings.notifyLanguageHelp"}}">
+          {{range .NotifyLanguages}}<option value="{{.Code}}"{{if .Selected}} selected{{end}}>{{if .Code}}{{.Name}}{{else}}{{T "settings.notifyLanguageAuto" $.NotifyInterfaceName}}{{end}}</option>{{end}}
+        </select>
+        <p class="help">{{T "settings.notifyLanguageHelp"}}</p>
       </div>
     </div>
     <div class="panel-head"><h2 title="{{T "settings.eventsHelp"}}">{{T "settings.eventsTitle"}}</h2></div>

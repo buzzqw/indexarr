@@ -44,6 +44,7 @@ const (
 	KeyNotifyCatalogUpdated = "notify_catalog_updated"
 	KeyNotifyBackupFailed   = "notify_backup_failed"
 	KeyNotifyCooldown       = "notify_cooldown_minutes"
+	KeyNotifyLanguage       = "notify_language"
 	KeyUILanguage           = "ui_language"
 	KeyAutoDisableAfter     = "auto_disable_after"
 	KeyLogLevel             = "log_level"
@@ -112,9 +113,14 @@ type Settings struct {
 	// NotifyCooldownMinutes is the anti-spam window for the same event kind
 	// and source. Zero means the documented default.
 	NotifyCooldownMinutes int
-	// UILanguage is the language the operator uses, also used for the
-	// notification messages, because background jobs have no request.
-	UILanguage             string
+	// UILanguage is the language the operator last chose in the interface.
+	// Background jobs have no request, so it is also the default language of
+	// the notification messages.
+	UILanguage string
+	// NotifyLanguage is the language of the notification messages when the
+	// operator wants one different from the interface. Empty means "same as
+	// the interface": UILanguage is used.
+	NotifyLanguage         string
 	AutoDisableAfter       int
 	LogLevel               string
 	APIRateLimit           int
@@ -285,6 +291,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.NotifyCatalogUpdated = boolValue(values, KeyNotifyCatalogUpdated, true)
 	out.NotifyBackupFailed = boolValue(values, KeyNotifyBackupFailed, true)
 	out.NotifyCooldownMinutes = intValue(values, KeyNotifyCooldown, 30, 1, 7*24*60)
+	out.NotifyLanguage = normalizeLanguage(values[KeyNotifyLanguage])
 	out.UILanguage = strings.ToLower(strings.TrimSpace(values[KeyUILanguage]))
 	switch out.UILanguage {
 	case "en", "it", "de", "fr", "es", "pl", "zh":
@@ -373,6 +380,7 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyNotifyCatalogUpdated: boolString(in.NotifyCatalogUpdated),
 		KeyNotifyBackupFailed:   boolString(in.NotifyBackupFailed),
 		KeyNotifyCooldown:       strconv.Itoa(in.NotifyCooldownMinutes),
+		KeyNotifyLanguage:       normalizeLanguage(in.NotifyLanguage),
 		KeyUILanguage:           strings.ToLower(strings.TrimSpace(in.UILanguage)),
 		KeyAutoDisableAfter:     strconv.Itoa(in.AutoDisableAfter),
 		KeyLogLevel:             strings.ToLower(strings.TrimSpace(in.LogLevel)),
@@ -555,4 +563,17 @@ func boolString(value bool) string {
 		return "1"
 	}
 	return "0"
+}
+
+// normalizeLanguage keeps a stored language code when it is one of the
+// interface catalogs and clears anything else. An empty result means "no
+// explicit choice", which the callers read as "follow the interface".
+func normalizeLanguage(raw string) string {
+	code := strings.ToLower(strings.TrimSpace(raw))
+	switch code {
+	case "en", "it", "de", "fr", "es", "pl", "zh":
+		return code
+	default:
+		return ""
+	}
 }
