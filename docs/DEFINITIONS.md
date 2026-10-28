@@ -574,19 +574,23 @@ category:
 `protocol: ed2k` descrive una fonte che pubblica link
 `ed2k://|file|nome|dimensione|hash|/` invece di magnet o `.torrent`. La
 release conserva il link e il suo hash MD4; non esiste uno swarm da contare e
-non viene salvato alcun file. Il server Torznab espone il link nel `<link>` e
-nell'attributo `ed2k`, con `<guid>` uguale all'hash: un client che conosce
-eD2k (per esempio gextto) lo usa direttamente, mentre Sonarr, Radarr e gli
-altri programmi Servarr non ricevono questi indexer, perché saprebbero solo
-passare il link a un client torrent.
+non viene salvato alcun file. Il server Torznab espone il link nel `<link>`,
+nell'enclosure e nell'attributo `ed2k`, con `<guid>` uguale all'hash. Con
+`torznab_proxy_ed2k` attivo (default) `<link>` ed enclosure passano dal link di
+download di indexarr, che rimanda all'`ed2k://` e registra il grab; l'attributo
+`ed2k` porta sempre il link diretto, che è quello che legge gextto. Sonarr,
+Radarr e gli altri programmi Servarr non ricevono questi indexer, perché
+saprebbero solo passare il link a un client torrent.
 
 Il grab di una release eD2k restituisce un redirect al link `ed2k://`; la UI
 lo mostra anche come testo da copiare. Un client aMule configurato con
 `kind: amule` riceve il link via `POST /api/v1/downloads` della sua Web API.
-Il download dall'elenco e l'invio ad aMule passano da indexarr e lasciano una
-riga `grab` con stato `ed2k`, visibile in Log → Download con la sua card e la
-sua colonna per fonte; un client che apre direttamente il link `ed2k://` del
-feed non passa da indexarr e non è contabile.
+Il download dall'elenco, il grab dal link di download e l'invio ad aMule
+passano da indexarr e lasciano una riga `grab` con stato `ed2k`, visibile in
+Log → Download con la sua card e la sua colonna per fonte. Restano invisibili
+i grab di un client che usa l'attributo `ed2k` (gextto): apre il link diretto
+senza chiedere nulla a indexarr; per contarli deve prima chiedere il link di
+download.
 
 Una ricerca **live** di un indexer eD2k apre al massimo 10 pagine di dettaglio
 (e non le salta come per i torrent): senza quel passaggio la riga avrebbe solo

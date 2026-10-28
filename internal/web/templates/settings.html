@@ -643,6 +643,11 @@
         <p class="help">{{T "settings.proxyMagnetsHelp"}}</p>
       </div>
       <div class="field checkbox">
+        <input id="torznab_proxy_ed2k" name="torznab_proxy_ed2k" type="checkbox"{{if .Settings.TorznabProxyEd2k}} checked{{end}}>
+        <label for="torznab_proxy_ed2k" title="{{T "settings.proxyEd2kTip"}}">{{T "settings.proxyEd2k"}}</label>
+        <p class="help">{{T "settings.proxyEd2kHelp"}}</p>
+      </div>
+      <div class="field checkbox">
         <input id="torznab_live_search" name="torznab_live_search" type="checkbox"{{if .Settings.TorznabLiveSearch}} checked{{end}}>
         <label for="torznab_live_search">{{T "settings.liveSearch"}}</label>
         <p class="help">{{T "settings.liveSearchHelp"}}</p>

@@ -1604,10 +1604,13 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 	id := strconv.FormatInt(release.ID, 10)
 	link := ""
 	switch {
+	case ed2k != "" && (settings == nil || settings.TorznabProxyEd2k):
+		// The link goes through /dl, like a magnet behind the proxy: only that
+		// round trip lets indexarr record the grab. The `ed2k` attribute below
+		// still carries the direct ed2k:// link, which is what gextto reads and
+		// what keeps the item usable without following the redirect.
+		link = base + "/dl/" + id + ".torrent?apikey=" + key
 	case ed2k != "":
-		// An eD2k release has no .torrent to proxy: the link is the transfer,
-		// like a magnet. A client that understands ed2k:// queues it; the
-		// attribute below also carries it explicitly.
 		link = ed2k
 	case release.HasTorrent():
 		link = base + "/dl/" + id + ".torrent?apikey=" + key

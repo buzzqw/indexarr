@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -36,18 +37,24 @@ func TestEd2kItemAndGrab(t *testing.T) {
 	api, st := newAPI(t)
 	const link = "ed2k://|file|Rare%20Movie.mkv|1234|0123456789abcdef0123456789abcdef|/"
 	id := insertEd2kRelease(t, st, "Rare Movie", link, "0123456789abcdef0123456789abcdef")
+	linkReleaseIndexer(t, st, "ed2k", id)
 
 	recorder := do(t, api, "/api?t=search&apikey=secret&q=Rare")
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("search status = %d: %s", recorder.Code, recorder.Body.String())
 	}
 	body := recorder.Body.String()
+	proxied := `http://example.com/dl/` + itoa(id) + `.torrent?apikey=secret`
 	for _, want := range []string{
-		`<link>` + link + `</link>`,
+		// The link goes through /dl so the grab is recorded, while the ed2k
+		// attribute still carries the direct link gextto reads. Jackett and
+		// Prowlarr expose the same shape, so a client that knows eD2k keeps
+		// working with all three.
+		`<link>` + proxied + `</link>`,
+		`<enclosure url="` + proxied + `" length="1234" type="application/x-ed2k"/>`,
 		`<guid isPermaLink="false">0123456789abcdef0123456789abcdef</guid>`,
 		`<torznab:attr name="ed2k" value="` + link + `"/>`,
 		`<torznab:attr name="ed2khash" value="0123456789abcdef0123456789abcdef"/>`,
-		`type="application/x-ed2k"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("body missing %q\n%s", want, body)
@@ -61,12 +68,20 @@ func TestEd2kItemAndGrab(t *testing.T) {
 		}
 	}
 
+	var recordedVia string
+	api.SetGrabGuard(nil, func(ctx context.Context, _ int64, _ int64, _ string) error {
+		recordedVia, _ = indexer.GrabViaFromContext(ctx)
+		return nil
+	})
 	grab := do(t, api, "/dl/"+itoa(id)+".torrent?apikey=secret")
 	if grab.Code != http.StatusFound {
 		t.Fatalf("grab status = %d: %s", grab.Code, grab.Body.String())
 	}
 	if location := grab.Header().Get("Location"); location != link {
 		t.Errorf("Location = %q, want %q", location, link)
+	}
+	if recordedVia != indexer.GrabViaEd2k {
+		t.Errorf("recorded via = %q, want %q", recordedVia, indexer.GrabViaEd2k)
 	}
 }
 
@@ -83,5 +98,39 @@ func TestLiveWaitOverride(t *testing.T) {
 		if got := liveWaitOverride(raw); got != want {
 			t.Errorf("liveWaitOverride(%q) = %v, want %v", raw, got, want)
 		}
+	}
+}
+
+// Turning the proxy off restores the direct ed2k:// link in <link> and the
+// enclosure: the escape hatch for a client that cannot follow the redirect.
+func TestEd2kItemKeepsDirectLinkWhenProxyIsOff(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	settings, err := st.LoadSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !settings.TorznabProxyEd2k {
+		t.Fatal("the eD2k proxy must be on by default")
+	}
+	settings.TorznabProxyEd2k = false
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+
+	const link = "ed2k://|file|Rare%20Movie.mkv|1234|0123456789abcdef0123456789abcdef|/"
+	id := insertEd2kRelease(t, st, "Rare Movie", link, "0123456789abcdef0123456789abcdef")
+	body := do(t, api, "/api?t=search&apikey=secret&q=Rare").Body.String()
+	for _, want := range []string{
+		`<link>` + link + `</link>`,
+		`<enclosure url="` + link + `" length="1234" type="application/x-ed2k"/>`,
+		`<torznab:attr name="ed2k" value="` + link + `"/>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body missing %q\n%s", want, body)
+		}
+	}
+	if strings.Contains(body, "/dl/"+itoa(id)) {
+		t.Errorf("the feed still proxies the eD2k link\n%s", body)
 	}
 }
