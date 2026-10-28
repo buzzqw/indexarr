@@ -36,7 +36,7 @@
               <span class="release-actions">
                 {{if .HasTorrent}}<a class="btn small primary" href="/releases/{{.ID}}/torrent" title="{{T "releases.downloadTorrent"}}">{{T "releases.download"}}</a>
                 {{else if .Magnet}}<a class="btn small primary" href="{{safeURL .Magnet}}" title="{{T "releases.magnetLink"}}">{{T "releases.download"}}</a>
-                {{else if .Ed2k}}<a class="btn small primary" href="{{safeURL .Ed2k}}" title="{{T "release.ed2k"}}">{{T "releases.download"}}</a>
+                {{else if .Ed2k}}<a class="btn small primary" href="/releases/{{.ID}}/download" title="{{T "release.ed2k"}}">{{T "releases.download"}}</a>
                 {{else}}<span class="muted">—</span>{{end}}
                 {{with magnetFor .}}<button class="btn small" type="button" data-copy="{{.}}" title="{{T "releases.copyMagnetTip"}}">{{T "release.copyMagnet"}}</button>{{end}}
                 {{if .Ed2k}}<button class="btn small" type="button" data-copy="{{.Ed2k}}" title="{{T "release.copyEd2kTip"}}">{{T "release.copyEd2k"}}</button>{{end}}

@@ -129,7 +129,7 @@ search:
     type: html
 `)
 	id := seedPhase2Indexer(t, env.store, "dl-src", "dl-src", true, `{}`)
-	for _, via := range []string{"ok", "magnet", "magnet"} {
+	for _, via := range []string{"ok", "magnet", "magnet", "ed2k"} {
 		if _, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
 			IndexerID: id, Kind: "grab", Status: via, Query: "Grabbed Show S01E01", App: "sonarr", StartedAt: now,
 		}); err != nil {
@@ -148,7 +148,7 @@ search:
 	}
 
 	body := get(t, env.handler, "/logs?tab=downloads").Body.String()
-	for _, want := range []string{"Grabbed Show S01E01", "dl-src", `action="/logs"`, `name="window"`, "Direct magnets are not counted."} {
+	for _, want := range []string{"Grabbed Show S01E01", "dl-src", `action="/logs"`, `name="window"`, "Direct magnets are not counted.", "queued in aMule", "eD2k link"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("downloads tab missing %q", want)
 		}
@@ -165,7 +165,7 @@ search:
 	}
 
 	body = get(t, env.handler, "/logs?tab=stats").Body.String()
-	if !strings.Contains(body, "In background") || !strings.Contains(body, "<td><strong>dl-src</strong></td>") || !strings.Contains(body, "<td><strong>3</strong></td>") {
+	if !strings.Contains(body, "In background") || !strings.Contains(body, "<td><strong>dl-src</strong></td>") || !strings.Contains(body, "<td><strong>4</strong></td>") {
 		t.Errorf("stats tab misses the late column or the downloads count")
 	}
 }

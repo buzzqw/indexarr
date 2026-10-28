@@ -97,6 +97,8 @@ type logsDownloadsView struct {
 	Torrents     int64
 	Magnets      int64
 	NZBs         int64
+	Ed2k         int64
+	HasEd2k      bool
 	Sources      []logsGrabSourceRow
 	Grabs        []logsGrabRow
 	Pager        pager
@@ -109,6 +111,7 @@ type logsGrabSourceRow struct {
 	Torrents int64
 	Magnets  int64
 	NZBs     int64
+	Ed2k     int64
 	Share    int
 }
 
@@ -439,7 +442,9 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		view.Torrents += stat.Torrents
 		view.Magnets += stat.Magnets
 		view.NZBs += stat.NZBs
+		view.Ed2k += stat.Ed2k
 	}
+	view.HasEd2k = view.Ed2k > 0
 	for _, stat := range stats {
 		share := 0
 		if total > 0 {
@@ -447,7 +452,7 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		}
 		view.Sources = append(view.Sources, logsGrabSourceRow{
 			Name: stat.Name, Total: stat.Total(), Torrents: stat.Torrents,
-			Magnets: stat.Magnets, NZBs: stat.NZBs, Share: share,
+			Magnets: stat.Magnets, NZBs: stat.NZBs, Ed2k: stat.Ed2k, Share: share,
 		})
 	}
 	lang := requestLanguage(r)
@@ -469,6 +474,8 @@ func grabViaLabel(lang i18n.Language, via string) string {
 		return i18n.T(lang, "logs.dl.viaMagnet")
 	case "nzb":
 		return i18n.T(lang, "logs.dl.viaNZB")
+	case "ed2k":
+		return i18n.T(lang, "logs.dl.viaEd2k")
 	default:
 		return i18n.T(lang, "logs.dl.viaTorrent")
 	}

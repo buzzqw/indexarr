@@ -35,6 +35,11 @@ func TestSourceDownloadStatsCountsGrabs(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+		IndexerID: b, Kind: "grab", Status: "ed2k", StartedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
 	// An internal .torrent fetch (infohash recovery) is not a user download.
 	if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
 		IndexerID: b, Kind: "download", Status: "ok", StartedAt: now,
@@ -51,7 +56,7 @@ func TestSourceDownloadStatsCountsGrabs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SourceDownloadStats: %v", err)
 	}
-	if len(stats) != 2 || stats[0].IndexerID != a || stats[0].Downloads != 3 || stats[1].Downloads != 1 {
+	if len(stats) != 2 || stats[0].IndexerID != a || stats[0].Downloads != 3 || stats[1].Downloads != 2 {
 		t.Fatalf("stats = %+v", stats)
 	}
 
@@ -59,14 +64,14 @@ func TestSourceDownloadStatsCountsGrabs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GrabStatsByIndexer: %v", err)
 	}
-	if len(grabs) != 2 || grabs[0].Torrents != 3 || grabs[1].Magnets != 1 || grabs[1].Total() != 1 {
+	if len(grabs) != 2 || grabs[0].Torrents != 3 || grabs[1].Magnets != 1 || grabs[1].Ed2k != 1 || grabs[1].Total() != 2 {
 		t.Fatalf("grabs = %+v", grabs)
 	}
 	list, err := st.ListGrabs(ctx, now.AddDate(0, 0, -30), 10, 0)
-	if err != nil || len(list) != 4 || list[0].IndexerName == "" {
+	if err != nil || len(list) != 5 || list[0].IndexerName == "" {
 		t.Fatalf("ListGrabs = %+v, %v", list, err)
 	}
-	if count, err := st.CountGrabs(ctx, time.Time{}); err != nil || count != 5 {
+	if count, err := st.CountGrabs(ctx, time.Time{}); err != nil || count != 6 {
 		t.Fatalf("CountGrabs(all) = %d, %v", count, err)
 	}
 }

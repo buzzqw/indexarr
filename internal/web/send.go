@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/downloadclient"
+	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -36,7 +37,66 @@ func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("release sent to download client", "release_id", id, "client", cfg.Kind, "title", release.Title)
+	if strings.TrimSpace(release.Ed2k) != "" {
+		// An eD2k send is a real delivery indexarr made: record it like the
+		// Torznab finishGrab, so the Download tab can show it. Sends of
+		// torrents and magnets keep their historical behaviour.
+		s.recordGrab(r.Context(), release, indexer.GrabViaEd2k)
+	}
 	redirect(w, r, "/releases/"+fmt.Sprint(id), s.translate(r, "release.sentTo", clientName), "")
+}
+
+// releaseDownload hands an eD2k release to the browser through indexarr, so the
+// delivery is recorded like an app's grab. Torrents and magnets keep their
+// direct links: the feed carries those links itself, and only the eD2k path
+// needs this round trip.
+func (s *Server) releaseDownload(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		redirect(w, r, "/releases", "", "invalid release id")
+		return
+	}
+	release, err := s.store.GetRelease(r.Context(), id)
+	if err != nil {
+		redirect(w, r, "/releases", "", "release not found")
+		return
+	}
+	release = s.openEd2kTopic(r.Context(), release)
+	link := strings.TrimSpace(release.Ed2k)
+	if !strings.HasPrefix(strings.ToLower(link), "ed2k://") {
+		redirect(w, r, "/releases/"+fmt.Sprint(id), "", s.translate(r, "release.noEd2k"))
+		return
+	}
+	s.recordGrab(r.Context(), release, indexer.GrabViaEd2k)
+	http.Redirect(w, r, link, http.StatusFound)
+}
+
+// recordGrab writes a web delivery the way the Torznab server does: the
+// release becomes downloaded and the source gets a grab row with the delivery
+// kind. A missing provenance or a failed write is logged, never fatal: the
+// link has already been handed to the user.
+func (s *Server) recordGrab(ctx context.Context, release store.Release, via string) {
+	ctx = context.WithoutCancel(ctx)
+	if err := s.store.MarkReleaseDownloaded(ctx, release.ID); err != nil {
+		s.log.Warn("mark release downloaded", "component", "indexarr", "subsystem", "web",
+			"release_id", release.ID, "error", err)
+	}
+	if s.native == nil {
+		return
+	}
+	found, ok, err := s.store.IndexerForRelease(ctx, release.ID)
+	if err != nil {
+		s.log.Warn("resolve release indexer", "component", "indexarr", "subsystem", "web",
+			"release_id", release.ID)
+		return
+	}
+	if !ok {
+		return
+	}
+	if err := s.native.RecordGrab(indexer.WithGrabVia(ctx, via), found.ID, release.ID, release.Title); err != nil {
+		s.log.Warn("record grab", "component", "indexarr", "subsystem", "web",
+			"indexer_id", found.ID, "release_id", release.ID)
+	}
 }
 
 // openEd2kTopic completes an eD2k release stored behind a sealed details

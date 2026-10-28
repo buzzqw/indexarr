@@ -43,25 +43,30 @@ func (s *Store) SourceDownloadStats(ctx context.Context, since time.Time) ([]Sou
 }
 
 // GrabStat counts the grabs one source served in a window, split by delivery.
+// Ed2k covers the eD2k links indexarr handed over itself (the list download and
+// the send to aMule): a client that opens the ed2k:// link straight from the
+// feed never reaches indexarr.
 type GrabStat struct {
 	IndexerID int64
 	Name      string
 	Torrents  int64
 	Magnets   int64
 	NZBs      int64
+	Ed2k      int64
 }
 
 // Total is every grab of the source.
-func (g GrabStat) Total() int64 { return g.Torrents + g.Magnets + g.NZBs }
+func (g GrabStat) Total() int64 { return g.Torrents + g.Magnets + g.NZBs + g.Ed2k }
 
 // GrabStatsByIndexer returns the grabs served per source since the given
 // instant (zero means all), largest first.
 func (s *Store) GrabStatsByIndexer(ctx context.Context, since time.Time) ([]GrabStat, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT i.id, i.name,
-			SUM(CASE WHEN h.status NOT IN ('magnet', 'nzb') THEN 1 ELSE 0 END),
+			SUM(CASE WHEN h.status NOT IN ('magnet', 'nzb', 'ed2k') THEN 1 ELSE 0 END),
 			SUM(CASE WHEN h.status = 'magnet' THEN 1 ELSE 0 END),
-			SUM(CASE WHEN h.status = 'nzb' THEN 1 ELSE 0 END)
+			SUM(CASE WHEN h.status = 'nzb' THEN 1 ELSE 0 END),
+			SUM(CASE WHEN h.status = 'ed2k' THEN 1 ELSE 0 END)
 		FROM indexer_history h
 		JOIN indexers i ON i.id = h.indexer_id
 		WHERE h.kind = 'grab' AND h.started_at >= ?
@@ -74,7 +79,7 @@ func (s *Store) GrabStatsByIndexer(ctx context.Context, since time.Time) ([]Grab
 	var out []GrabStat
 	for rows.Next() {
 		var item GrabStat
-		if err := rows.Scan(&item.IndexerID, &item.Name, &item.Torrents, &item.Magnets, &item.NZBs); err != nil {
+		if err := rows.Scan(&item.IndexerID, &item.Name, &item.Torrents, &item.Magnets, &item.NZBs, &item.Ed2k); err != nil {
 			return nil, fmt.Errorf("scan grab stats: %w", err)
 		}
 		out = append(out, item)

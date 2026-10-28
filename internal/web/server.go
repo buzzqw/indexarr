@@ -653,6 +653,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /releases/saved/{id}/delete", s.savedSearchDelete)
 	ui.HandleFunc("GET /releases/{id}", s.releasePage)
 	ui.HandleFunc("GET /releases/{id}/torrent", s.releaseTorrent)
+	ui.HandleFunc("GET /releases/{id}/download", s.releaseDownload)
 	ui.HandleFunc("POST /releases/{id}/favorite", s.releaseFavorite)
 	ui.HandleFunc("POST /releases/{id}/hidden", s.releaseHide)
 	ui.HandleFunc("POST /releases/{id}/block", s.releaseBlock)

@@ -81,7 +81,7 @@
   </div>
   <div class="actions">
     <button class="btn" type="button" data-copy="{{.Release.Ed2k}}">{{T "release.copyEd2k"}}</button>
-    <a class="btn" href="{{safeURL .Release.Ed2k}}">{{T "release.openInClient"}}</a>
+    <a class="btn" href="/releases/{{.Release.ID}}/download">{{T "release.openEd2k"}}</a>
   </div>
 </section>
 {{end}}
