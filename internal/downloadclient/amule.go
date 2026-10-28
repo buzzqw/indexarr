@@ -154,7 +154,9 @@ func (a *amuleClient) Send(ctx context.Context, item Item) error {
 			return fmt.Errorf("aMule: add link: %w", err)
 		}
 	}
-	if status != http.StatusOK && status != http.StatusMultiStatus && status != http.StatusCreated {
+	// amuleapi answers 202 Accepted when the link is only queued for the core:
+	// treating it as an error dropped a grab that aMule had actually accepted.
+	if status != http.StatusOK && status != http.StatusMultiStatus && status != http.StatusCreated && status != http.StatusAccepted {
 		return fmt.Errorf("aMule: %s", apiMessage(data, status))
 	}
 	if failed := firstFailedResult(data); failed != "" {

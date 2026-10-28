@@ -64,6 +64,30 @@ func TestAmuleSendsEd2kLink(t *testing.T) {
 	}
 }
 
+// amuleapi answers 202 Accepted when the link is queued: that is a success, not
+// a refused delivery. The live test against the container found this.
+func TestAmuleAcceptsQueuedLink(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/auth/login":
+			_, _ = w.Write([]byte(`{"role":"admin"}`))
+		case "/api/v1/downloads":
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{"results":[{"ok":true}]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	client, err := New(Config{Kind: KindAmule, URL: server.URL, Password: "secret"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if err := client.Send(context.Background(), Item{Ed2k: "ed2k://|file|x.mkv|10|0123456789abcdef0123456789abcdef|/"}); err != nil {
+		t.Fatalf("Send with 202: %v", err)
+	}
+}
+
 func TestAmuleReportsRejectedLink(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
