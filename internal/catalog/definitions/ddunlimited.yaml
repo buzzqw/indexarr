@@ -162,7 +162,10 @@ search:
   request:
     get: /search.php
     params:
-      keywords: "{{ query.keywords_raw }}"
+      # Topic titles name the season as "Stagione 13", never "S13E01": with
+      # terms=all a marker in the keywords left no topic to match. The season
+      # and episode filters still read the full query.
+      keywords: "{{ query.keywords_title }}"
       terms: all
       sf: titleonly
       sr: topics
@@ -180,9 +183,12 @@ search:
   # The flood control answers one search every few minutes, with 200 and an
   # "Informazione" box ("Al momento non ti è permesso fare ricerche"). Gextto
   # and the Arr ask the same series once per episode: the result pages are
-  # reused for six hours, and a refusal is an error, not "no results".
+  # reused for six hours, and a refusal is an error, not "no results". The same
+  # box says "Nessun argomento o messaggio con questo criterio di ricerca" and
+  # "le seguenti parole sono state ignorate": only "non ti è permesso" is a
+  # refusal.
   cache: 6h
-  blocked: { selector: "#message p", message: text }
+  blocked: { selector: "#message p", contains: "non ti è permesso", message: text }
   response:
     type: html
     rows: { selector: "ul.topiclist.topics > li.row" }

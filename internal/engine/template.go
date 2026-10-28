@@ -15,7 +15,7 @@ var templatePattern = regexp.MustCompile(`\{\{\s*(.*?)\s*\}\}`)
 // queryVariableNames lists the normalized query variables available to
 // templates. Optional values render as an empty string when unset.
 var queryVariableNames = []string{
-	"keywords", "keywords_raw", "season", "ep", "imdbid", "tvdbid", "tmdbid",
+	"keywords", "keywords_raw", "keywords_title", "season", "ep", "imdbid", "tvdbid", "tmdbid",
 	"tvmazeid", "rid", "artist", "album", "author", "title", "year",
 }
 
@@ -216,6 +216,7 @@ func queryTemplateMap(req SearchRequest, keywordsFormat string) map[string]strin
 	out := make(map[string]string, len(queryVariableNames))
 	out["keywords"] = effectiveKeywords(req, keywordsFormat)
 	out["keywords_raw"] = req.Query
+	out["keywords_title"] = keywordsTitle(req.Query)
 	out["season"] = optionalInt(req.Season)
 	out["ep"] = optionalInt(req.Episode)
 	out["imdbid"] = req.IMDbID
@@ -229,6 +230,18 @@ func queryTemplateMap(req SearchRequest, keywordsFormat string) map[string]strin
 	out["title"] = req.Title
 	out["year"] = optionalInt(req.Year)
 	return out
+}
+
+// keywordsTitle is the query without its season/episode markers ("Murdoch
+// S13E01" -> "Murdoch"), for a site whose search matches every word against
+// topic titles that never carry the marker. A query made only of a marker
+// stays as it is.
+func keywordsTitle(query string) string {
+	title := strings.Join(strings.Fields(queryEpisodeTag.ReplaceAllString(query, " ")), " ")
+	if title == "" {
+		return strings.TrimSpace(query)
+	}
+	return title
 }
 
 func effectiveKeywords(req SearchRequest, keywordsFormat string) string {

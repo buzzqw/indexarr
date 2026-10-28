@@ -1339,6 +1339,13 @@ func conditionMatches(condition definition.Condition, response *Response) (bool,
 			return false, err
 		}
 		matched = present
+		if present && strings.TrimSpace(condition.Contains) != "" {
+			text, err := extractHTMLValue(htmlBody(response), condition.Selector, "text")
+			if err != nil {
+				return false, err
+			}
+			matched = strings.Contains(strings.ToLower(text), strings.ToLower(strings.TrimSpace(condition.Contains)))
+		}
 	}
 	if condition.Status != 0 {
 		matched = matched && response.Status == condition.Status

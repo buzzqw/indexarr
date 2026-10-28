@@ -361,6 +361,9 @@ func validateSearch(search Search, add func(string, ...any)) {
 		// tells it apart.
 		add("search.blocked: needs a selector")
 	}
+	if search.Blocked != nil && search.Blocked.Contains != "" && search.Blocked.Selector == "" {
+		add("search.blocked.contains: needs a selector")
+	}
 	if search.Cache < 0 {
 		add("search.cache: must not be negative")
 	}

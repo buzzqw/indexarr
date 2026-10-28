@@ -30,3 +30,17 @@ func TestEffectiveKeywords(t *testing.T) {
 		})
 	}
 }
+
+func TestKeywordsTitleDropsTheEpisodeMarker(t *testing.T) {
+	for query, want := range map[string]string{
+		"I misteri di Murdoch S13E01": "I misteri di Murdoch",
+		"FBI: International S03":      "FBI: International",
+		"Bones 6x12":                  "Bones",
+		"Onslaught 2026":              "Onslaught 2026",
+		"S01E01":                      "S01E01",
+	} {
+		if got := queryTemplateMap(SearchRequest{Query: query}, "separate")["keywords_title"]; got != want {
+			t.Errorf("keywords_title(%q) = %q, want %q", query, got, want)
+		}
+	}
+}

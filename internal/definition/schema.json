@@ -399,6 +399,10 @@
           "type": "integer",
           "minimum": 100,
           "maximum": 599
+        },
+        "contains": {
+          "type": "string",
+          "description": "Text the selected element must contain (case-insensitive) for the condition to match. Needs selector."
         }
       },
       "anyOf": [

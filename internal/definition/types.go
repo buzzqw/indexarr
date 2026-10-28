@@ -269,6 +269,10 @@ type Condition struct {
 	Selector string `yaml:"selector,omitempty" json:"selector,omitempty"`
 	Message  string `yaml:"message,omitempty" json:"message,omitempty"`
 	Status   int    `yaml:"status,omitempty" json:"status,omitempty"`
+	// Contains narrows a selector condition to the pages where the selected
+	// text holds this substring (case-insensitive): a forum uses the same box
+	// for a refusal and for "no results".
+	Contains string `yaml:"contains,omitempty" json:"contains,omitempty"`
 }
 
 // Search describes how to issue and interpret a search.

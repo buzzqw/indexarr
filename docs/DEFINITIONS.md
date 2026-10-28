@@ -373,7 +373,11 @@ stagione/episodio, sul modello di Jackett/Prowlarr:
 - `q + " S04"` quando c'è solo la stagione;
 - la query originale se il marcatore è già presente o se la modalità non è TV.
 
-`query.keywords_raw` contiene sempre il testo originale. Il formato si sceglie
+`query.keywords_raw` contiene sempre il testo originale. `query.keywords_title`
+è il testo originale senza i marcatori di stagione/episodio («I misteri di
+Murdoch S13E01» → «I misteri di Murdoch»), per un sito che cerca ogni parola
+nei titoli dei topic, dove il marcatore non compare mai; i filtri di stagione ed
+episodio leggono comunque la query completa. Il formato si sceglie
 con un campo additivo di `search`, default `sxxeyy`:
 
 ```yaml
@@ -639,10 +643,14 @@ gestiscono:
 ```yaml
 search:
   cache: 6h
-  blocked: { selector: "#message p", message: text }
+  blocked: { selector: "#message p", contains: "non ti è permesso", message: text }
 ```
 
-- `blocked` (vuole un `selector`) riconosce la pagina di rifiuto. La ricerca
+- `blocked` (vuole un `selector`) riconosce la pagina di rifiuto. Con
+  `contains` vale solo se il testo del selettore contiene quella frase (senza
+  distinguere maiuscole): DDUnlimited usa lo stesso riquadro anche per
+  «Nessun argomento o messaggio con questo criterio di ricerca» e per «le
+  seguenti parole sono state ignorate», che non sono rifiuti. La ricerca
   fallisce con il messaggio del sito («Al momento non ti è permesso fare
   ricerche…»), che compare nella cronologia dell'indexer, invece di dare zero
   release. Se le prime pagine hanno già risposto, il motore tiene quelle.

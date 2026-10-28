@@ -223,6 +223,11 @@ func TestDDUnlimitedSearchCacheFloodControlAndGuestSearch(t *testing.T) {
 			switch {
 			case guest.Load():
 				_, _ = w.Write([]byte(`<html><body><div id="message"><div class="inner"><h2>Informazione</h2><p>Spiacente ma non ti è permesso di utilizzare il sistema di ricerca.</p></div></div><a href="./ucp.php?mode=login">Login</a></body></html>`))
+			case strings.Contains(r.URL.Query().Get("keywords"), "S13"):
+				// The forum never finds a marker in a topic title.
+				t.Errorf("keywords = %q, want the title without the episode marker", r.URL.Query().Get("keywords"))
+			case r.URL.Query().Get("keywords") == "nothing" || r.URL.Query().Get("keywords") == "nothing marker":
+				_, _ = w.Write([]byte(`<html><body><a href="./ucp.php?mode=logout&amp;sid=0">Esci</a><div id="message"><div class="inner"><h2>Informazione</h2><p>Nessun argomento o messaggio con questo criterio di ricerca.</p></div></div></body></html>`))
 			case r.URL.Query().Get("keywords") == "flood":
 				_, _ = w.Write([]byte(`<html><body><a href="./ucp.php?mode=logout&amp;sid=0">Esci</a><div id="message"><div class="inner"><h2>Informazione</h2><p>Al momento non ti è permesso fare ricerche. Attendi qualche minuto oppure naviga nelle liste presenti in ogni sezione.</p></div></div></body></html>`))
 			default:
@@ -274,9 +279,25 @@ func TestDDUnlimitedSearchCacheFloodControlAndGuestSearch(t *testing.T) {
 		t.Fatalf("flood control err = %v, want the forum message", err)
 	}
 
+	// The same box with "no results" is an empty answer, not a refusal.
+	items, err := connector.Search(ctx, engine.SearchRequest{Mode: engine.ModeSearch, Query: "nothing", Limit: 1, SkipDetails: true})
+	if err != nil || len(items) != 0 {
+		t.Fatalf("no-results page: %d items, err %v; want none and no error", len(items), err)
+	}
+
+	// A free-text episode search sends the title alone: "S13E01" in the
+	// keywords matched no topic at all.
+	asked := searches.Load()
+	if _, err := connector.Search(ctx, engine.SearchRequest{Mode: engine.ModeSearch, Query: "nothing marker S13E01", Limit: 1, SkipDetails: true}); err != nil {
+		t.Fatalf("episode search: %v", err)
+	}
+	if searches.Load() != asked+1 {
+		t.Fatalf("episode search asked the forum %d times, want once", searches.Load()-asked)
+	}
+
 	loginsBefore := logins.Load()
 	guest.Store(true)
-	items, err := connector.Search(ctx, engine.SearchRequest{Mode: engine.ModeSearch, Query: "guest", Limit: 1, SkipDetails: true})
+	items, err = connector.Search(ctx, engine.SearchRequest{Mode: engine.ModeSearch, Query: "guest", Limit: 1, SkipDetails: true})
 	if err != nil || len(items) == 0 {
 		t.Fatalf("guest search: %d items, err %v; want the results after a new login", len(items), err)
 	}
