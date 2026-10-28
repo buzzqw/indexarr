@@ -388,6 +388,9 @@ func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 	if count() != 3 {
 		t.Fatalf("search.php requests = %d, want 3 (the deferred one sent in the background)", count())
 	}
+	// The server counts the request before the worker has read the answer
+	// and stored it.
+	time.Sleep(300 * time.Millisecond)
 	if items, err := search(context.Background(), "third"); err != nil || len(items) == 0 {
 		t.Fatalf("third search again: %d items, err %v; want the page the worker kept", len(items), err)
 	}
@@ -413,6 +416,7 @@ func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 	if count() != 5 {
 		t.Fatalf("search.php requests = %d, want 5 (page two sent in the background)", count())
 	}
+	time.Sleep(300 * time.Millisecond)
 	if _, err := connector.Search(context.Background(), full); err != nil || count() != 5 {
 		t.Fatalf("two-page repeat: err %v, requests %d; want both pages from the cache", err, count())
 	}

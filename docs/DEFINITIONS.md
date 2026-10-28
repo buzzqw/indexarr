@@ -660,7 +660,10 @@ search:
   senza cache ogni richiesta dopo la prima viene rifiutata. Una pagina di
   rifiuto non entra mai in cache.
 - `interval` (vuole `cache`) è il tempo minimo tra due richieste di ricerca
-  mandate al sito, per un flood control che conta per account. La prima pagina
+  mandate al sito, per un flood control che conta per account. Le ricerche
+  passano una alla volta e l'intervallo parte dalla risposta della precedente
+  (compresa una ripetizione dopo un nuovo login), perché il sito conta dalla
+  ricerca che ha elaborato. La prima pagina
   di una ricerca aspetta il suo turno fino a due intervalli, mai oltre la
   scadenza del chiamante meno 15 s; se il turno è più lontano la ricerca non
   parte, finisce in coda e risponde con un errore «deferred» (nella cronologia
