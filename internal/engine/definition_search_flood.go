@@ -24,9 +24,12 @@ var errSearchLater = errors.New("next search page needs another flood turn")
 const searchQueueEntries = 256
 
 // searchQueueAttempts is how many times a deferred search is sent before it
-// is dropped (the site can still refuse it when the account searched from
-// somewhere else).
-const searchQueueAttempts = 2
+// is dropped: the site can still refuse it when the account searched from
+// somewhere else, or while a burst block is on. Measured on DDUnlimited on
+// 2026-10-28: three queued searches at 65 s were accepted, then the next two
+// were refused, so two attempts alone threw a page away while the block was
+// still on. Six attempts cover a block of about five minutes at the interval.
+const searchQueueAttempts = 6
 
 // searchTurnMargin keeps a waiting search clear of the caller's deadline: the
 // page still has to be read after the turn.

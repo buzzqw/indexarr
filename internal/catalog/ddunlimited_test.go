@@ -488,3 +488,88 @@ func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 		}
 	}
 }
+
+// A background send can meet the forum while a burst block is on: the earlier
+// two-attempt limit dropped the queued page before the block cleared. The
+// worker now retries the refusal at every flood turn, and the page lands in
+// the cache for the next identical request.
+func TestDDUnlimitedBackgroundSendRetriesPastABurstBlock(t *testing.T) {
+	const interval = 200 * time.Millisecond
+	var mu sync.Mutex
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ucp.php":
+			if r.Method == http.MethodPost {
+				serveFile(t, w, "ddunlimited/login-ok.html")
+				return
+			}
+			serveFile(t, w, "ddunlimited/login.html")
+		case "/search.php":
+			mu.Lock()
+			requests++
+			n := requests
+			mu.Unlock()
+			if n <= 3 {
+				_, _ = w.Write([]byte(`<html><body><a href="./ucp.php?mode=logout&amp;sid=0">Esci</a><div id="message"><div class="inner"><h2>Informazione</h2><p>Al momento non ti è permesso fare ricerche. Attendi qualche minuto.</p></div></div></body></html>`))
+				return
+			}
+			serveFile(t, w, "ddunlimited/search.html")
+		case "/viewtopic.php":
+			serveFile(t, w, "ddunlimited/index.html")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	def := parseDefinition(t, "ddunlimited")
+	def.Session = nil
+	def.Meta.URLs[0] = server.URL + "/"
+	def.Search.Interval = definition.Duration(interval)
+	def.Search.Cache = definition.Duration(time.Minute)
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"username": "synthetic-user", "password": "synthetic-password"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	request := engine.SearchRequest{Mode: engine.ModeSearch, Query: "retry", Limit: 1, FirstPageOnly: true, SkipDetails: true}
+
+	// A deadline this short leaves no turn: the search goes to the queue.
+	short, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	_, err = connector.Search(short, request)
+	cancel()
+	if !errors.Is(err, engine.ErrSearchDeferred) {
+		t.Fatalf("first search err = %v, want ErrSearchDeferred", err)
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		mu.Lock()
+		done := requests >= 4
+		mu.Unlock()
+		if done {
+			break
+		}
+		if time.Now().After(deadline) {
+			mu.Lock()
+			t.Fatalf("search.php requests = %d, want 4 retries past the block", requests)
+			mu.Unlock()
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	time.Sleep(200 * time.Millisecond)
+	items, err := connector.Search(context.Background(), request)
+	if err != nil || len(items) == 0 {
+		t.Fatalf("cached search after the retries: %d items, err %v", len(items), err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if requests != 4 {
+		t.Errorf("search.php requests = %d, want 4: the cached page must not ask again", requests)
+	}
+}
