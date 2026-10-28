@@ -86,7 +86,9 @@ func (c *DefinitionConnector) takeSearchTurn(ctx context.Context, firstPage bool
 	}
 	c.floodMu.Lock()
 	// Every search already waiting goes first: each takes a whole interval.
-	estimate := time.Until(c.searchLast.Add(interval)) + time.Duration(c.floodWaiting)*interval
+	// Before the first search searchLast is zero and the time left would be
+	// hugely negative, letting every caller in: it never goes below zero.
+	estimate := max(time.Until(c.searchLast.Add(interval)), 0) + time.Duration(c.floodWaiting)*interval
 	if c.floodBusy {
 		estimate += interval
 	}

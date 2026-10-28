@@ -8,6 +8,7 @@ package catalog_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -365,6 +366,34 @@ func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 	search := func(ctx context.Context, query string) ([]engine.Item, error) {
 		return connector.Search(ctx, engine.SearchRequest{Mode: engine.ModeSearch, Query: query, Limit: 1, FirstPageOnly: true, SkipDetails: true})
 	}
+
+	// A fresh connector (no search sent yet) with five searches at once: the
+	// lane takes the ones that fit in two intervals, the others are queued
+	// at once instead of waiting until their deadline.
+	var wg sync.WaitGroup
+	var deferredNow atomic.Int32
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if _, err := search(context.Background(), fmt.Sprintf("burst%d", i)); errors.Is(err, engine.ErrSearchDeferred) {
+				deferredNow.Add(1)
+			}
+		}(i)
+	}
+	wg.Wait()
+	if got := deferredNow.Load(); got != 2 {
+		t.Fatalf("burst of five on a fresh connector: %d deferred, want 2 (three fit in two intervals)", got)
+	}
+	// Let the background worker finish the two queued ones.
+	deadline0 := time.Now().Add(5 * time.Second)
+	for count() < 5 && time.Now().Before(deadline0) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	time.Sleep(interval + 100*time.Millisecond)
+	mu.Lock()
+	sent = sent[:0]
+	mu.Unlock()
 
 	if items, err := search(context.Background(), "first"); err != nil || len(items) == 0 {
 		t.Fatalf("first search: %d items, err %v", len(items), err)
