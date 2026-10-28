@@ -367,6 +367,14 @@ func validateSearch(search Search, add func(string, ...any)) {
 	if search.Cache < 0 {
 		add("search.cache: must not be negative")
 	}
+	if search.Interval < 0 {
+		add("search.interval: must not be negative")
+	}
+	if search.Interval > 0 && search.Cache <= 0 {
+		// A deferred search is sent in the background and read back from the
+		// cache by the next identical request.
+		add("search.interval: needs search.cache")
+	}
 }
 
 func validateSearchIndex(index SearchIndex, add func(string, ...any)) {

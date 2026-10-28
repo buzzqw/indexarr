@@ -454,6 +454,11 @@
           "type": "string",
           "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
           "description": "How long the result pages of the same search request are reused, for a site whose flood control allows one search every few minutes."
+        },
+        "interval": {
+          "type": "string",
+          "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "Minimum time between two search requests sent to the site (a flood control counted per account). A search without a free slot in time is queued and sent in the background; the next identical request reads its page from the cache. Needs cache."
         }
       }
     },

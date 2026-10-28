@@ -105,3 +105,51 @@ func TestSplitEpisodeToken(t *testing.T) {
 		t.Errorf("two episode tokens must stay text: %v %d", tokens, season)
 	}
 }
+
+// A marker matches only at the start of a word: "1x01" is not "11x01" and
+// "Season 1" is not "Season 12".
+func TestSeasonMarkersDoNotMatchInsideALongerNumber(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	now := time.Now()
+	titles := []string{
+		"I misteri di Murdoch 1x01 Quale futuro",
+		"I misteri di Murdoch 11x01 Risorto dalle ceneri",
+		"I misteri di Murdoch 21x01 Altro",
+		"I misteri di Murdoch Season 1 Complete",
+		"I misteri di Murdoch Season 12 Complete",
+		"I misteri di Murdoch S01 Complete",
+	}
+	for i, title := range titles {
+		rel := Release{DedupKey: title, Title: title, SearchTitle: NormalizeSearch(title), Category: "5030", FirstSeenAt: now, LastSeenAt: now}
+		if _, err := st.UpsertRelease(ctx, &rel); err != nil {
+			t.Fatalf("upsert %d: %v", i, err)
+		}
+	}
+	for _, tc := range []struct {
+		filter Filter
+		want   []string
+	}{
+		{Filter{Season: 1, Episode: 1}, []string{"I misteri di Murdoch 1x01 Quale futuro", "I misteri di Murdoch Season 1 Complete", "I misteri di Murdoch S01 Complete"}},
+		{Filter{Season: 1}, []string{"I misteri di Murdoch 1x01 Quale futuro", "I misteri di Murdoch Season 1 Complete", "I misteri di Murdoch S01 Complete"}},
+		{Filter{Season: 11, Episode: 1}, []string{"I misteri di Murdoch 11x01 Risorto dalle ceneri"}},
+	} {
+		releases, _, err := st.SearchReleases(ctx, tc.filter)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]bool{}
+		for _, rel := range releases {
+			got[rel.Title] = true
+		}
+		if len(got) != len(tc.want) {
+			t.Errorf("season %d episode %d = %v, want %v", tc.filter.Season, tc.filter.Episode, got, tc.want)
+			continue
+		}
+		for _, title := range tc.want {
+			if !got[title] {
+				t.Errorf("season %d episode %d misses %q (got %v)", tc.filter.Season, tc.filter.Episode, title, got)
+			}
+		}
+	}
+}

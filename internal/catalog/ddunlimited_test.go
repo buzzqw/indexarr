@@ -7,12 +7,16 @@ package catalog_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/engine"
 )
 
@@ -249,6 +253,9 @@ func TestDDUnlimitedSearchCacheFloodControlAndGuestSearch(t *testing.T) {
 	def := parseDefinition(t, "ddunlimited")
 	def.Session = nil
 	def.Meta.URLs[0] = server.URL + "/"
+	// The flood interval has its own test: here the searches go one after
+	// the other.
+	def.Search.Interval = 0
 	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
 		Indexer:    engine.IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
 		Definition: def,
@@ -303,5 +310,118 @@ func TestDDUnlimitedSearchCacheFloodControlAndGuestSearch(t *testing.T) {
 	}
 	if logins.Load() != loginsBefore+1 {
 		t.Errorf("logins = %d, want one more than %d", logins.Load(), loginsBefore)
+	}
+}
+
+// The forum accepts one search per account every 57-58 s. search.interval
+// keeps the requests apart; a search without a slot before its deadline is not
+// sent, it is queued, the background worker sends it at its turn, and the next
+// identical request reads it from the cache.
+func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
+	def := parseDefinition(t, "ddunlimited")
+	if got := def.Search.Interval.Duration(); got != 65*time.Second {
+		t.Fatalf("ddunlimited search.interval = %s, want 65s", got)
+	}
+	const interval = 300 * time.Millisecond
+	var mu sync.Mutex
+	var sent []time.Time
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ucp.php":
+			if r.Method == http.MethodPost {
+				serveFile(t, w, "ddunlimited/login-ok.html")
+				return
+			}
+			serveFile(t, w, "ddunlimited/login.html")
+		case "/search.php":
+			mu.Lock()
+			sent = append(sent, time.Now())
+			mu.Unlock()
+			serveFile(t, w, "ddunlimited/search.html")
+		case "/viewtopic.php":
+			serveFile(t, w, "ddunlimited/index.html")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+	def.Session = nil
+	def.Meta.URLs[0] = server.URL + "/"
+	def.Search.Interval = definition.Duration(interval)
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"username": "synthetic-user", "password": "synthetic-password"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	count := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(sent)
+	}
+	search := func(ctx context.Context, query string) ([]engine.Item, error) {
+		return connector.Search(ctx, engine.SearchRequest{Mode: engine.ModeSearch, Query: query, Limit: 1, FirstPageOnly: true, SkipDetails: true})
+	}
+
+	if items, err := search(context.Background(), "first"); err != nil || len(items) == 0 {
+		t.Fatalf("first search: %d items, err %v", len(items), err)
+	}
+	// Without a deadline the second search waits for its slot.
+	if items, err := search(context.Background(), "second"); err != nil || len(items) == 0 {
+		t.Fatalf("second search: %d items, err %v", len(items), err)
+	}
+	// A caller that cannot wait (its deadline is closer than the slot plus
+	// the margin to read the page) gets the search deferred, not refused.
+	short, cancel := context.WithTimeout(context.Background(), time.Second)
+	_, err = search(short, "third")
+	cancel()
+	if !errors.Is(err, engine.ErrSearchDeferred) || !strings.Contains(err.Error(), "queued") {
+		t.Fatalf("third search err = %v, want it deferred and queued", err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for count() < 3 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if count() != 3 {
+		t.Fatalf("search.php requests = %d, want 3 (the deferred one sent in the background)", count())
+	}
+	if items, err := search(context.Background(), "third"); err != nil || len(items) == 0 {
+		t.Fatalf("third search again: %d items, err %v; want the page the worker kept", len(items), err)
+	}
+	if count() != 3 {
+		t.Errorf("search.php requests = %d after the repeat, want 3: the repeat reads the cache", count())
+	}
+	// Page two of a search would need a slot of its own: the first page is
+	// returned now and page two is fetched in the background, so the repeat
+	// gets both pages without asking the forum again.
+	time.Sleep(interval)
+	full := engine.SearchRequest{Mode: engine.ModeSearch, Query: "pages", Limit: 100, SkipDetails: true}
+	firstPages, err := connector.Search(context.Background(), full)
+	if err != nil || len(firstPages) == 0 {
+		t.Fatalf("two-page search: %d items, err %v", len(firstPages), err)
+	}
+	if count() != 4 {
+		t.Fatalf("search.php requests = %d after the two-page search, want 4 (page two deferred)", count())
+	}
+	deadline = time.Now().Add(5 * time.Second)
+	for count() < 5 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if count() != 5 {
+		t.Fatalf("search.php requests = %d, want 5 (page two sent in the background)", count())
+	}
+	if _, err := connector.Search(context.Background(), full); err != nil || count() != 5 {
+		t.Fatalf("two-page repeat: err %v, requests %d; want both pages from the cache", err, count())
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	for i := 1; i < len(sent); i++ {
+		if gap := sent[i].Sub(sent[i-1]); gap < interval-20*time.Millisecond {
+			t.Errorf("requests %d and %d are %s apart, want at least %s", i, i+1, gap, interval)
+		}
 	}
 }

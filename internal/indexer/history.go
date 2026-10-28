@@ -68,6 +68,11 @@ func statusFor(ctx context.Context, err error) string {
 	if errors.Is(err, engine.ErrChallenge) {
 		return "blocked"
 	}
+	if errors.Is(err, engine.ErrSearchDeferred) {
+		// Not sent at all: the site's flood interval had no free slot and the
+		// search waits in the background queue. The site did not fail.
+		return "canceled"
+	}
 	if err != nil {
 		return "error"
 	}

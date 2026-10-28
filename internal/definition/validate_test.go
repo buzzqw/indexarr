@@ -202,6 +202,17 @@ func TestAuthValidation(t *testing.T) {
 `,
 			fragment: "search.blocked: needs a selector",
 		},
+		{
+			name: "search.interval without cache",
+			extra: `search:
+  request: { get: /search }
+  response:
+    rows: { selector: tr }
+    fields: { title: { selector: a } }
+  interval: 60s
+`,
+			fragment: "search.interval: needs search.cache",
+		},
 	}
 
 	for _, tc := range cases {

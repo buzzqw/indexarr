@@ -11,8 +11,9 @@ import (
 var errSearchRefused = errors.New("search refused by the site")
 
 // searchCacheEntries bounds the cached search pages: a forum result page is
-// about 100 KB.
-const searchCacheEntries = 64
+// about 100 KB. A Gextto cycle asks about a hundred titles, and the deferred
+// ones must still be there for the next cycle.
+const searchCacheEntries = 256
 
 type searchCacheEntry struct {
 	response *Response

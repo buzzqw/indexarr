@@ -70,6 +70,12 @@ type DefinitionConnector struct {
 	indexCache      map[string]indexCacheEntry
 	searchMu        sync.Mutex
 	searchCache     map[string]searchCacheEntry
+	// Flood interval (search.interval): the next free search slot and the
+	// searches deferred to the background worker.
+	floodMu        sync.Mutex
+	searchNext     time.Time
+	searchQueue    []deferredSearch
+	searchDraining bool
 }
 
 // NewDefinitionConnector validates the definition's settings and prepares the
@@ -700,7 +706,26 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 		cacheKey := c.searchCacheKey(request)
 		response, cached := c.cachedSearchPage(cacheKey)
 		if !cached {
+			if err := c.takeSearchSlot(ctx, pageIndex == 0); err != nil {
+				later := func(ctx context.Context) (*http.Request, error) {
+					return c.buildSearchRequest(ctx, req, pageValue, offsetValue, paramValue)
+				}
+				if errors.Is(err, errSearchLater) {
+					// The first pages already answered: keep them, and fetch
+					// this one in the background for the next request.
+					c.deferSearch(cacheKey, later)
+					break
+				}
+				if errors.Is(err, ErrSearchDeferred) {
+					queued := c.deferSearch(cacheKey, later)
+					return nil, deferredSearchError(c.def.Meta.ID, c.searchInterval(), queued)
+				}
+				return nil, err
+			}
 			response, err = c.fetchSearchPage(ctx, request, build, &relogged)
+			if errors.Is(err, errSearchRefused) {
+				c.searchRefused()
+			}
 			if errors.Is(err, errSearchRefused) && len(items) > 0 {
 				// The first pages already answered: keep them.
 				break

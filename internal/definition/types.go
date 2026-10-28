@@ -302,6 +302,11 @@ type Search struct {
 	// and the Arr ask the same series once per episode: without the cache
 	// every request after the first is refused.
 	Cache Duration `yaml:"cache,omitempty" json:"cache,omitempty"`
+	// Interval is the minimum time between two search requests sent to the
+	// site, for a flood control that counts per account. A search that cannot
+	// get a slot in time is queued and sent in the background; its page waits
+	// in the cache (so Interval needs Cache).
+	Interval Duration `yaml:"interval,omitempty" json:"interval,omitempty"`
 }
 
 // SearchIndex describes one or more pages that list titles and their details

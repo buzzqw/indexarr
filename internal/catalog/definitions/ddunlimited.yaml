@@ -183,11 +183,17 @@ search:
   # The flood control answers one search every few minutes, with 200 and an
   # "Informazione" box ("Al momento non ti è permesso fare ricerche"). Gextto
   # and the Arr ask the same series once per episode: the result pages are
-  # reused for six hours, and a refusal is an error, not "no results". The same
+  # reused for twelve hours, and a refusal is an error, not "no results". The same
   # box says "Nessun argomento o messaggio con questo criterio di ricerca" and
   # "le seguenti parole sono state ignorate": only "non ti è permesso" is a
   # refusal.
-  cache: 6h
+  # Measured on 2026-10-28: one search per account every 57-58 s (refused at
+  # 55 s, accepted at 58 s and 70 s; a refusal does not restart the count).
+  # interval keeps 65 s between two search.php requests; a search without a
+  # slot in time is queued and sent in the background, and its page waits in
+  # the cache for the next Gextto cycle (every 4-6 hours).
+  interval: 65s
+  cache: 12h
   blocked: { selector: "#message p", contains: "non ti è permesso", message: text }
   response:
     type: html

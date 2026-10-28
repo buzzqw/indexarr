@@ -633,7 +633,7 @@ discendente: serve quando la riga è già l'elemento `<a>` (elenchi di link).
 modulo dell'indexer insieme alla pagina senza lettera. Il motore legge le
 `pages`, non il forum.
 
-### Flood control (`search.blocked`, `search.cache`)
+### Flood control (`search.blocked`, `search.cache`, `search.interval`)
 
 Un forum con flood control accetta una ricerca ogni qualche minuto e alle
 altre risponde `200` con un riquadro di avviso al posto dei risultati. Per il
@@ -642,7 +642,8 @@ gestiscono:
 
 ```yaml
 search:
-  cache: 6h
+  interval: 65s
+  cache: 12h
   blocked: { selector: "#message p", contains: "non ti è permesso", message: text }
 ```
 
@@ -658,6 +659,18 @@ search:
   `GET`. Gextto e gli Arr chiedono la stessa serie una volta per episodio:
   senza cache ogni richiesta dopo la prima viene rifiutata. Una pagina di
   rifiuto non entra mai in cache.
+- `interval` (vuole `cache`) è il tempo minimo tra due richieste di ricerca
+  mandate al sito, per un flood control che conta per account. La prima pagina
+  di una ricerca aspetta il suo turno fino a due intervalli, mai oltre la
+  scadenza del chiamante meno 15 s; se il turno è più lontano la ricerca non
+  parte, finisce in coda e risponde con un errore «deferred» (nella cronologia
+  è «annullata», non un guasto del sito). Un lavoro in background manda le
+  ricerche in coda al ritmo consentito e ne tiene le pagine in cache: la
+  richiesta identica successiva le legge da lì. Una pagina successiva alla
+  prima prende solo un turno libero subito; altrimenti la ricerca tiene le
+  pagine lette e la pagina va in coda. Su DDUnlimited il 2026-10-28 il forum
+  ha accettato una ricerca ogni 57-58 s (rifiutata a 55 s, accettata a 58 s e
+  a 70 s), e un rifiuto non fa ripartire il conto.
 
 Con `auth.logged_in` anche una pagina di ricerca senza il segno del login
 (il forum ha fatto cadere la sessione e risponde da ospite) fa rifare il login
