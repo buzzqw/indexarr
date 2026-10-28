@@ -54,7 +54,24 @@ locale e apre solo i primi 5 topic; `search.php` resta il ripiego. La lista TV
 vecchie o non segnalate il ripiego è la ricerca del forum (con il suo flood
 control), mentre la lista film `f=1988` è completa per lettera. L'archivio
 periodico legge quattro liste (Movies HD, Movies UHD, SerieTV HD ITA, SerieTV
-UHD), due pagine da 25 topic ciascuna, e non la ricerca. Il protocollo eD2k è escluso dalla sincronizzazione con Sonarr,
+UHD), due pagine da 25 topic ciascuna, e non la ricerca.
+
+Il flood control di `search.php`, misurato il 28/10: il forum accetta una
+ricerca per account ogni 57-58 s (rifiutata a 55 s, accettata a 58 s e a 70 s),
+un rifiuto non fa ripartire il conto, e una ricerca di sole parole troppo
+comuni o inesistenti non conta. Per questo la definizione ha
+`search.interval: 65s` e `search.cache: 12h`: le ricerche al forum passano una
+alla volta, a 65 s dalla risposta della precedente; una ricerca che non ha un
+turno in tempo non parte, va in coda e la cronologia la mostra «In coda» invece
+che come errore. La coda parte da sola in background (provato il 28/10: 4
+ricerche in coda mandate alle 09:04:33, 09:05:39, 09:06:46 e 09:07:52, tutte
+accettate) e la richiesta identica successiva legge la pagina dalla cache. Lo
+stesso riquadro «Informazione» del forum dice anche «Nessun argomento…» e «le
+seguenti parole sono state ignorate»: solo «non ti è permesso» è un rifiuto. Le
+ricerche libere con un episodio («I misteri di Murdoch S13E01») mandano al
+forum solo il titolo, perché i topic scrivono «Stagione 13» e mai `S13E01`.
+
+Il protocollo eD2k è escluso dalla sincronizzazione con Sonarr,
 Radarr e gli altri programmi Servarr; il client aMule (`kind: amule`) riceve i
 link dalla Web API.
 

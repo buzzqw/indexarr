@@ -24,6 +24,7 @@ const (
 	Database  = "database"
 	Vault     = "vault"
 	Queue     = "queue"
+	Flood     = "flood"
 	Disk      = "disk"
 )
 
@@ -33,6 +34,8 @@ var rules = []struct {
 	code     string
 	patterns []string
 }{
+	// Before Queue: the flood messages say "queued" and "queue is full".
+	{Flood, []string{"flood interval", "search refused by the site"}},
 	{Queue, []string{"queue full", "waiting for a slot"}},
 	{Blocked, []string{"cloudflare", "challenge", "just a moment", "ddos-guard", "captcha", "403", "forbidden", "flaresolverr"}},
 	{RateLimit, []string{"429", "too many requests", "rate limit", "grab limit", "query limit"}},
