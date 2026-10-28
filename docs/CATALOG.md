@@ -65,11 +65,21 @@ alla volta, a 65 s dalla risposta della precedente; una ricerca che non ha un
 turno in tempo non parte, va in coda e la cronologia la mostra «In coda» invece
 che come errore. La coda parte da sola in background (provato il 28/10: 4
 ricerche in coda mandate alle 09:04:33, 09:05:39, 09:06:46 e 09:07:52, tutte
-accettate) e la richiesta identica successiva legge la pagina dalla cache. Lo
-stesso riquadro «Informazione» del forum dice anche «Nessun argomento…» e «le
-seguenti parole sono state ignorate»: solo «non ti è permesso» è un rifiuto. Le
-ricerche libere con un episodio («I misteri di Murdoch S13E01») mandano al
-forum solo il titolo, perché i topic scrivono «Stagione 13» e mai `S13E01`.
+accettate) e la richiesta identica successiva legge la pagina dalla cache. Ogni
+invio del lavoro in background lascia una riga `search` nella cronologia
+dell'indexer, con query, stato, latenza e errore: senza quelle righe un rifiuto
+del forum restava invisibile e la pagina sembrava solo «mai arrivata». Le
+misure del 28/10 mostrano però che il forum rifiuta anche a 65 s quando le
+ricerche si susseguono: in una raffica di sei, tre invii in coda sono stati
+accettati (09:53:33, 09:55:18, 09:56:28) e i due successivi rifiutati
+(09:58:02, 09:59:20); con due soli tentativi la pagina veniva scartata mentre
+il blocco era ancora attivo. Ora il worker ritenta fino a sei volte, un turno
+per volta (`TestDDUnlimitedBackgroundSendRetriesPastABurstBlock`), e il
+rifiuto resta visibile in cronologia. Lo stesso riquadro «Informazione» del
+forum dice anche «Nessun argomento…» e «le seguenti parole sono state
+ignorate»: solo «non ti è permesso» è un rifiuto. Le ricerche libere con un
+episodio («I misteri di Murdoch S13E01») mandano al forum solo il titolo,
+perché i topic scrivono «Stagione 13» e mai `S13E01`.
 
 Il protocollo eD2k è escluso dalla sincronizzazione con Sonarr,
 Radarr e gli altri programmi Servarr; il client aMule (`kind: amule`) riceve i
