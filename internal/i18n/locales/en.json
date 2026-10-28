@@ -1839,6 +1839,8 @@
   "tip.idxTags": "Labels used by each app's tag filter. Comma-separated, for example tv, anime, 4k.",
   "settings.section.notifications": "Notifications",
   "settings.notificationsIntro": "Choose the channels, which events to send and how long to wait before repeating the same event. indexarr sends a short message in the interface language, with a link to the relevant page when the public address is set.",
+  "settings.notificationsLanguage": "Messages are written in %s. Change the language with the selector in the header: notifications follow it.",
+  "settings.notificationsLanguageHelp": "Telegram and the webhook receive the message in the language chosen in the interface, so switch to your language before sending the test.",
   "settings.channelsTitle": "Channels",
   "settings.channelsHelp": "At least one channel must be configured. The webhook receives a JSON POST; Telegram needs both the bot token and the chat ID.",
   "settings.webhookStoredHelp": "The URL is stored encrypted in the vault. Leave the field empty to keep it unchanged; use Show to read it.",

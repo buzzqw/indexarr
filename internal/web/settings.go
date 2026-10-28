@@ -16,6 +16,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/backup"
 	"github.com/buzzqw/indexarr/internal/flaresolverr"
+	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/torznabapi"
 	"github.com/buzzqw/indexarr/internal/vault"
@@ -50,10 +51,14 @@ type settingsPage struct {
 	// stored, so the field can show a masked placeholder.
 	WebhookStored       bool
 	TelegramTokenStored bool
-	AdditionalKeys      []settingsAPIKey
-	BackupDir           string
-	VaultKey            vault.Info
-	LogLevel            string
+	// NotifyLanguageName is the language the messages are written in: the
+	// saved interface language, shown next to the channels so the operator can
+	// see it before sending a test.
+	NotifyLanguageName string
+	AdditionalKeys     []settingsAPIKey
+	BackupDir          string
+	VaultKey           vault.Info
+	LogLevel           string
 	// Rules
 	Rules []store.BlocklistRule
 	// Maintenance and backups
@@ -141,6 +146,7 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 		TorznabMasked:       baseURL + "?apikey=••••••",
 		WebhookStored:       strings.TrimSpace(settings.NotifyWebhookURL) != "",
 		TelegramTokenStored: strings.TrimSpace(settings.NotifyTelegramToken) != "",
+		NotifyLanguageName:  i18n.Normalize(settings.UILanguage).Name(),
 		AdditionalKeys:      views,
 		BackupDir:           backup.Dir(s.store.Path()),
 		VaultKey:            s.vaultKey,

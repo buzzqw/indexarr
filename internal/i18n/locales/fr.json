@@ -1839,6 +1839,8 @@
   "tip.idxTags": "Étiquettes utilisées par le filtre par tag des applications. Séparées par des virgules, par exemple tv, anime, 4k.",
   "settings.section.notifications": "Notifications",
   "settings.notificationsIntro": "Choisissez les canaux, les événements à notifier et le délai avant de répéter le même événement. indexarr envoie un message court dans la langue de l'interface, avec un lien vers la page concernée lorsque l'adresse publique est définie.",
+  "settings.notificationsLanguage": "Les messages sont écrits en %s. Changez de langue avec le sélecteur en haut de page : les notifications suivent ce choix.",
+  "settings.notificationsLanguageHelp": "Telegram et le webhook reçoivent le message dans la langue choisie dans l'interface : passez à votre langue avant d'envoyer le test.",
   "settings.channelsTitle": "Canaux",
   "settings.channelsHelp": "Au moins un canal doit être configuré. Le webhook reçoit un POST JSON ; Telegram exige le jeton du bot et l'ID du chat.",
   "settings.webhookStoredHelp": "L'URL est stockée chiffrée dans le coffre. Laissez le champ vide pour ne pas la modifier ; utilisez Afficher pour la lire.",

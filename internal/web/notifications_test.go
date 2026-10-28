@@ -193,3 +193,51 @@ func TestNotificationLanguageFollowsTheInterface(t *testing.T) {
 		t.Errorf("stored notification language = %q, want it", settings.UILanguage)
 	}
 }
+
+// TestNotificationLanguageHealsFromTheBrowserChoice is the regression for a
+// message arriving in Chinese while the interface was Italian: the saved
+// language had been left behind by another device, and nothing brought it back
+// in line with the language the operator was actually reading.
+func TestNotificationLanguageHealsFromTheBrowserChoice(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	if err := env.store.SetSetting(ctx, store.KeyUILanguage, "zh"); err != nil {
+		t.Fatal(err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/settings?section=notifications", nil)
+	request.AddCookie(&http.Cookie{Name: languageCookie, Value: "it"})
+	recorder := httptest.NewRecorder()
+	env.handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("settings page = %d", recorder.Code)
+	}
+
+	settings, err := env.store.LoadSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.UILanguage != "it" {
+		t.Errorf("stored language = %q, want it", settings.UILanguage)
+	}
+	if lang := notify.ConfigFrom(settings).Language; lang != "it" {
+		t.Errorf("notification language = %q, want it", lang)
+	}
+	// The page says aloud which language the messages use.
+	if !strings.Contains(recorder.Body.String(), "Italiano") {
+		t.Error("the notifications page does not show the message language")
+	}
+
+	// A bare ?lang= is a preview link, not a choice: it must not move the
+	// language the background jobs use.
+	request = httptest.NewRequest(http.MethodGet, "/?lang=fr", nil)
+	request.Header.Set("Accept-Language", "fr-FR")
+	recorder = httptest.NewRecorder()
+	env.handler.ServeHTTP(recorder, request)
+	if settings, err = env.store.LoadSettings(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if settings.UILanguage != "it" {
+		t.Errorf("a preview link changed the notification language to %q", settings.UILanguage)
+	}
+}

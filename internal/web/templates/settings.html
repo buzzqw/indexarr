@@ -41,6 +41,7 @@
   <section class="panel">
     <div class="panel-head"><h2>{{T "settings.notificationsTitle"}}</h2></div>
     <p class="help" title="{{T "settings.notificationsIntro"}}">{{T "settings.notificationsIntro"}}</p>
+    <p class="help" title="{{T "settings.notificationsLanguageHelp"}}">{{T "settings.notificationsLanguage" .NotifyLanguageName}}</p>
   </section>
   <form class="panel form" method="post" action="/settings">
     <input type="hidden" name="csrf" value="{{.CSRF}}">

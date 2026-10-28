@@ -948,6 +948,27 @@ func (s *Server) setLanguage(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }
 
+// rememberInterfaceLanguage keeps the saved language aligned with the one this
+// browser actually shows. The cookie is written only by GET /language/{code},
+// so it is the operator's explicit choice; the saved setting is what the
+// background jobs read to write notifications. Without this, a saved value
+// left behind by another device (or by a write that failed) keeps sending
+// messages in a language the interface no longer uses.
+func (s *Server) rememberInterfaceLanguage(r *http.Request, settings store.Settings) {
+	cookie, err := r.Cookie(languageCookie)
+	if err != nil || strings.TrimSpace(cookie.Value) == "" {
+		return
+	}
+	lang, ok := i18n.Lookup(cookie.Value)
+	if !ok || string(lang) == strings.ToLower(strings.TrimSpace(settings.UILanguage)) {
+		return
+	}
+	if err := s.store.SetSetting(r.Context(), store.KeyUILanguage, string(lang)); err != nil {
+		s.log.Warn("cannot save the interface language for notifications",
+			"language", string(lang), "error", err)
+	}
+}
+
 func (s *Server) newBase(r *http.Request, title, section string) base {
 	lang := requestLanguage(r)
 	out := base{
@@ -967,6 +988,7 @@ func (s *Server) newBase(r *http.Request, title, section string) base {
 	if !loaded {
 		settings, _ = s.store.LoadSettings(r.Context())
 	}
+	s.rememberInterfaceLanguage(r, settings)
 	out.PublicURL = settings.PublicURL
 	out.PublicURLSet = strings.TrimSpace(settings.PublicURL) != ""
 	out.TorznabURL = torznabapi.BaseURL(r, settings) + "/api"

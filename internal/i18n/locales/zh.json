@@ -1839,6 +1839,8 @@
   "tip.idxTags": "供各应用标签筛选使用的标签。用逗号分隔，例如 tv, anime, 4k。",
   "settings.section.notifications": "通知",
   "settings.notificationsIntro": "选择通知渠道、要通知的事件，以及重复同一事件前等待多久。设置了公开地址后，indexarr 会用界面语言发送简短消息，并附上相关页面的链接。",
+  "settings.notificationsLanguage": "消息使用以下语言：%s。可用页面顶部的选择器切换语言，通知会随之改变。",
+  "settings.notificationsLanguageHelp": "Telegram 和 webhook 收到的消息使用界面中选择的语言：发送测试前请先切换到你的语言。",
   "settings.channelsTitle": "渠道",
   "settings.channelsHelp": "至少需要配置一个渠道。Webhook 接收 JSON POST；Telegram 需要机器人令牌和聊天 ID。",
   "settings.webhookStoredHelp": "URL 以加密形式保存在保险库中。留空表示不修改；使用“显示”查看。",
