@@ -412,10 +412,11 @@ h2 { font-size: 1.02rem; margin: 0; letter-spacing: -0.01em; }
    must not add a second one, or they sit indented from the grid. */
 .panel.form > .field,
 .panel.form > .actions,
-.panel.form > p,
+.panel.form > p:not(.flash),
 .panel.form > form { padding: 0; }
 .panel.form > .actions { margin-top: 1rem; }
 .panel.form > p.help { margin: 0.4rem 0 0.8rem; }
+.panel.form > .panel-head + .flash { margin-top: 1rem; }
 /* Section heads span the whole card, like the heads of the other panels. */
 .panel.form > .panel-head { margin-inline: calc(-1 * var(--pad-x)); padding-inline: var(--pad-x); }
 .panel.form > .panel-head:first-of-type { margin-top: calc(-1 * var(--pad-y)); }
