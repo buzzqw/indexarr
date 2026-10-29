@@ -2070,6 +2070,7 @@ type compactFormView struct {
 	RequiredFields            []indexerSettingField
 	AccessFields              []indexerSettingField
 	IsPrivate                 bool
+	CanImportCookie           bool
 	NoAccessFields            bool
 	AdvancedFields            []indexerSettingField
 	Problems                  []string
@@ -2168,6 +2169,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	}
 	data.DefinitionName = parsed.Meta.Name
 	data.Derived = parsed.IsDerived()
+	data.CanImportCookie = definitionHasCookie(parsed)
 	if parsed.Search.Index != nil {
 		data.IndexSources = indexSourceViews(parsed,
 			s.translate(r, "idx.indexSources.tv"), s.translate(r, "idx.indexSources.movies"))
@@ -2551,6 +2553,10 @@ func (s *Server) indexerUnifiedCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderIndexerFormProblems(w, r, defID, nil, &in, []string{s.indexerFriendlyError(r, err)})
 		return
 	}
+	if r.FormValue("import_cookie") != "" {
+		redirect(w, r, "/indexers/"+strconv.FormatInt(created.ID, 10)+"/cookie", s.translate(r, "indexer.created"), "")
+		return
+	}
 	if r.FormValue("test") != "" {
 		data, buildErr := s.buildIndexerDetail(r, created.ID)
 		if buildErr != nil {
@@ -2670,6 +2676,10 @@ func (s *Server) indexerUnifiedUpdate(w http.ResponseWriter, r *http.Request) {
 		s.renderCompactFormProblems(w, r, defID, &current, &in, []string{s.indexerFriendlyError(r, err)})
 		return
 	}
+	if r.FormValue("import_cookie") != "" {
+		redirect(w, r, "/indexers/"+strconv.FormatInt(id, 10)+"/cookie", s.translate(r, "indexer.saved"), "")
+		return
+	}
 	redirect(w, r, "/indexers/"+strconv.FormatInt(id, 10), s.translate(r, "indexer.saved"), "")
 }
 
@@ -2757,6 +2767,7 @@ type indexerDetailView struct {
 	Health              health.Assessment
 	Latest              bool
 	CanImportCookie     bool
+	MissingCookie       bool
 	SearchOnly          bool
 	UploaderOnly        bool
 	UploaderMinutes     int
@@ -3041,6 +3052,16 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 			data.SecretKeys = append(data.SecretKeys, secret.Key)
 			secretUpdated[strings.ToLower(strings.TrimSpace(secret.Key))] = secret.UpdatedAt
 		}
+	}
+	if data.CanImportCookie {
+		hasCookie := false
+		for _, key := range data.SecretKeys {
+			if strings.EqualFold(strings.TrimSpace(key), "cookie") {
+				hasCookie = true
+				break
+			}
+		}
+		data.MissingCookie = !hasCookie
 	}
 	// A feed or Torznab URL is sealed when it carries an rsskey or an API key.
 	// Show the redacted stored address instead of falling back to the

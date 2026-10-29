@@ -13,6 +13,7 @@
     {{else}}
     <p class="site-address muted" title="{{T "idx.detail.addressTip"}}">{{T "idx.detail.address"}}: {{T "idx.detail.addressNone"}}</p>
     {{end}}
+    {{if .MissingCookie}}<p class="flash warn" role="alert">{{T "idx.cookie.missing"}} <a href="/indexers/{{.Indexer.ID}}/cookie">{{T "idx.cookie.menu"}}</a></p>{{end}}
     {{range .Problems}}{{template "problem" .}}{{end}}
     {{if .SlowProblem}}{{template "problem" .SlowProblem}}{{end}}
     {{if .SmartfeedRSS}}<p class="flash warn" role="alert">{{T "idx.smartfeed.rssWrong"}} <a class="btn small" href="{{.SmartfeedConvertURL}}">{{T "idx.smartfeed.rssConvert"}}</a></p>{{end}}

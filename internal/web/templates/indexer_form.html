@@ -268,8 +268,10 @@
     <a class="btn" href="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">{{T "idx.cancel"}}</a>
     {{if .IsNew}}
     <button class="btn" type="submit" name="save" value="1">{{T "idx.addWithoutTest"}}</button>
+    {{if .CanImportCookie}}<button class="btn" type="submit" name="import_cookie" value="1" title="{{T "tip.cookieImport"}}">{{T "idx.cookie.createAndImport"}}</button>{{end}}
     <button class="btn primary" type="submit" name="test" value="1">{{T "idx.addAndTest"}}</button>
     {{else}}
+    {{if .CanImportCookie}}<button class="btn" type="submit" name="import_cookie" value="1" title="{{T "tip.cookieImport"}}">{{T "idx.cookie.createAndImport"}}</button>{{end}}
     <button class="btn primary" type="submit">{{T "indexerForm.save"}}</button>
     {{end}}
   </div>

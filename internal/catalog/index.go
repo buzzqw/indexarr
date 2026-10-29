@@ -225,8 +225,12 @@ func categoryGroups(id int) []string {
 func indexRequired(settings []definition.Setting) []string {
 	out := make([]string, 0, len(settings))
 	for _, setting := range settings {
-		if setting.Required && strings.TrimSpace(setting.Name) != "" {
-			out = append(out, setting.Name)
+		name := strings.TrimSpace(setting.Name)
+		// A session cookie is always a credential the site needs, even when
+		// the form lets the indexer be created without it and the Import
+		// cookie command fills it in afterwards.
+		if (setting.Required || strings.EqualFold(name, "cookie")) && name != "" {
+			out = append(out, name)
 		}
 	}
 	sort.Strings(out)

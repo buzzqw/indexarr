@@ -19,7 +19,7 @@ meta:
   protocol: torrent
   urls: [https://iptorrents.example/]
 settings:
-  - {name: cookie, type: password, label: Session cookie, required: true}
+  - {name: cookie, type: password, label: Session cookie}
 capabilities:
   search: [q]
 search:
@@ -131,5 +131,36 @@ func TestBrowserCookiePageAndCommand(t *testing.T) {
 	}
 	if !strings.Contains(script.Body.String(), "X-Indexarr-Pairing") {
 		t.Error("the helper is not the cookie importer")
+	}
+}
+
+func TestCookieIndexerCanBeCreatedWithoutCookieAndTheFormOffersImport(t *testing.T) {
+	cookiepair.Reset()
+	env := newNativeEnv(t)
+	seedDefinition(t, env.store, "cookie-src", "", cookieDefinition)
+
+	form := get(t, env.handler, "/indexers/new?definition=cookie-src").Body.String()
+	if !strings.Contains(form, "Create and import cookie") {
+		t.Error("the add form has no create-and-import button")
+	}
+	csrf, cookie := csrfFrom(t, env.handler, "/indexers/new?definition=cookie-src")
+	recorder := postForm(t, env.handler, "/indexers", url.Values{
+		"csrf":          {csrf},
+		"definition_id": {"cookie-src"},
+		"name":          {"Cookie import"},
+		"slug":          {"cookie-import"},
+		"enabled":       {"on"},
+		"import_cookie": {"1"},
+	}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("create status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	location := recorder.Header().Get("Location")
+	if !strings.Contains(location, "/cookie") {
+		t.Fatalf("redirect = %q, want the cookie page", location)
+	}
+	page := get(t, env.handler, location)
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "Generate command") {
+		t.Errorf("cookie page after create = %d: %s", page.Code, page.Body.String())
 	}
 }

@@ -43,8 +43,8 @@ settings:
   - name: cookie
     type: password
     label: "Session cookie"
-    help: "Log in with a browser, open DevTools > Network, reload a page, select a request to iptorrents.com and copy its Cookie request header. The login form is protected by Cloudflare Turnstile, so this is the supported path."
-    required: true
+    help: "Log in with a browser, open DevTools > Network, reload a page, select a request to iptorrents.com and copy its Cookie request header. Or leave it empty and use Import cookie. The login form is protected by Cloudflare Turnstile."
+    required: false
   - name: freeleech
     type: checkbox
     label: "Freeleech only"
