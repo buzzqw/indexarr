@@ -47,8 +47,20 @@ func TestProxyCRUD(t *testing.T) {
 
 func TestProxyRejectsBadScheme(t *testing.T) {
 	e := newEnv(t, true, true)
-	res := e.do(http.MethodPost, "/api/v2/proxies", `{"url":"socks4://127.0.0.1:1080"}`)
+	res := e.do(http.MethodPost, "/api/v2/proxies", `{"url":"ftp://127.0.0.1:1080"}`)
 	requireStatus(t, res, http.StatusBadRequest)
+}
+
+func TestProxyAcceptsSOCKS4(t *testing.T) {
+	e := newEnv(t, true, true)
+	for _, scheme := range []string{"socks4", "socks4a"} {
+		res := e.do(http.MethodPost, "/api/v2/proxies", `{"url":"`+scheme+`://127.0.0.1:1080"}`)
+		requireStatus(t, res, http.StatusCreated)
+		proxy := decodeJSON[proxyResponse](t, res.body)
+		if proxy.Kind != scheme {
+			t.Fatalf("%s: kind = %q", scheme, proxy.Kind)
+		}
+	}
 }
 
 func itoa64(value int64) string {
