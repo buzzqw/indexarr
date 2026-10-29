@@ -27,6 +27,10 @@ const (
 	Queue     = "queue"
 	Flood     = "flood"
 	Disk      = "disk"
+	// Other is the fallback for a cause no rule recognises. It is never
+	// returned by Problem: the caller chooses it when it must not leave the
+	// problem field empty.
+	Other = "other"
 )
 
 // rules are checked in order: the first match wins, so the more specific

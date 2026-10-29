@@ -234,6 +234,7 @@ redirect.
   script, each with its own secrets encrypted in the vault;
 - events: new releases, errors, failed grabs, successful grab, catalog
   updated, failed backup;
+- grab bursts from the same application are grouped into one message;
 - anti-spam cooldown.
 
 The messages are written in the language chosen in **Settings → Notifications →

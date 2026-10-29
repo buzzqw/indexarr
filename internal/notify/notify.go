@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/logtext"
@@ -111,6 +112,11 @@ type Config struct {
 
 // DefaultTimeout bounds one delivery attempt, including the custom script.
 const DefaultTimeout = 15 * time.Second
+
+// grabBatchWindow groups the grabs of one application into a single message.
+// A client that sends a season in one go hands over every episode in a few
+// seconds; without the window that became one notification per episode.
+const grabBatchWindow = 8 * time.Second
 
 // Configured reports whether at least one channel is usable.
 func Configured(cfg Config) bool {
@@ -263,51 +269,69 @@ func Message(event Event) string {
 }
 
 func grabTitle(event Event) string {
-	if title := strings.TrimSpace(event.Title); title != "" {
+	if title := singleLine(event.Title, 160); title != "" {
 		return title
 	}
-	return strings.TrimSpace(event.Source)
+	return singleLine(event.Source, 160)
 }
 
 // TitleFor is the short subject every channel can use as its own title: the
 // Apprise and Gotify title, the email subject and the ntfy title. It uses the
 // same event words as MessageFor, so a notification never says two things.
+// The leading marker is the same one the message opens with, so a title seen
+// on its own (an email subject, a notification header) still says how serious
+// the event is.
 func TitleFor(event Event, lang i18n.Language) string {
 	if lang == "" {
 		lang = i18n.EN
 	}
+	source := singleLine(event.Source, 160)
+	app := singleLine(event.App, 80)
+	var title string
 	switch event.Kind {
 	case KindNewReleases:
-		if event.Source != "" {
-			return i18n.T(lang, "notify.newReleasesFrom", event.Count, event.Source)
+		if source != "" {
+			title = i18n.T(lang, "notify.newReleasesFrom", event.Count, source)
+		} else {
+			title = i18n.T(lang, "notify.newReleases", event.Count)
 		}
-		return i18n.T(lang, "notify.newReleases", event.Count)
 	case KindIndexerState:
-		return i18n.T(lang, "notify.indexerState", event.Source,
+		title = i18n.T(lang, "notify.indexerState", source,
 			stateLabel(lang, event.Previous), stateLabel(lang, event.Current))
 	case KindGrabFailed:
-		if event.App != "" {
-			return i18n.T(lang, "notify.grabFailedApp", event.App, grabTitle(event))
+		if app != "" {
+			title = i18n.T(lang, "notify.grabFailedApp", app, grabTitle(event))
+		} else {
+			title = i18n.T(lang, "notify.grabFailed", grabTitle(event))
 		}
-		return i18n.T(lang, "notify.grabFailed", grabTitle(event))
 	case KindGrabSuccess:
-		if event.App != "" {
-			return i18n.T(lang, "notify.grabSuccessApp", event.App, grabTitle(event))
+		switch {
+		case event.Count > 1 && app != "":
+			title = i18n.T(lang, "notify.grabSuccessAppMany", event.Count, app)
+		case event.Count > 1:
+			title = i18n.T(lang, "notify.grabSuccessMany", event.Count)
+		case app != "":
+			title = i18n.T(lang, "notify.grabSuccessApp", app, grabTitle(event))
+		default:
+			title = i18n.T(lang, "notify.grabSuccess", grabTitle(event))
 		}
-		return i18n.T(lang, "notify.grabSuccess", grabTitle(event))
 	case KindCatalogUpdated:
-		return i18n.T(lang, "notify.catalogUpdated", event.Count)
+		title = i18n.T(lang, "notify.catalogUpdated", event.Count)
 	case KindBackupFailed:
-		return i18n.T(lang, "notify.backupFailed")
+		title = i18n.T(lang, "notify.backupFailed")
 	case KindTest:
-		return i18n.T(lang, "notify.test")
+		title = i18n.T(lang, "notify.test")
 	case KindIndexerDisabled:
-		return i18n.T(lang, "notify.indexerDisabled", event.Source)
+		title = i18n.T(lang, "notify.indexerDisabled", source)
 	case KindRunFailed:
-		return i18n.T(lang, "notify.runFailed", event.Source)
+		title = i18n.T(lang, "notify.runFailed", source)
 	default:
-		return "indexarr: " + event.Kind
+		title = singleLine("indexarr: "+event.Kind, 160)
 	}
+	if icon := titleIcon(event); icon != "" {
+		return icon + " " + title
+	}
+	return title
 }
 
 // MessageFor builds the short, localized message of one event. baseURL is the
@@ -315,11 +339,13 @@ func TitleFor(event Event, lang i18n.Language) string {
 // line says what happened in plain words; an error adds what went wrong and
 // what to do, and keeps the technical text short at the end.
 func MessageFor(event Event, lang i18n.Language, baseURL string) string {
+	source := singleLine(event.Source, 160)
+	app := singleLine(event.App, 80)
 	var b strings.Builder
 	switch event.Kind {
 	case KindNewReleases:
-		if event.Source != "" {
-			b.WriteString(i18n.T(lang, "notify.msg.newReleasesFrom", event.Source, event.Count))
+		if source != "" {
+			b.WriteString(i18n.T(lang, "notify.msg.newReleasesFrom", source, event.Count))
 		} else {
 			b.WriteString(i18n.T(lang, "notify.msg.newReleases", event.Count))
 		}
@@ -327,22 +353,27 @@ func MessageFor(event Event, lang i18n.Language, baseURL string) string {
 		from := stateLabel(lang, event.Previous)
 		switch strings.ToLower(strings.TrimSpace(event.Current)) {
 		case StateOK, StateError, StateBlocked, StateDegraded, StateDisabled:
-			b.WriteString(i18n.T(lang, "notify.msg.state."+strings.ToLower(strings.TrimSpace(event.Current)), event.Source, from))
+			b.WriteString(i18n.T(lang, "notify.msg.state."+strings.ToLower(strings.TrimSpace(event.Current)), source, from))
 		default:
-			b.WriteString(i18n.T(lang, "notify.msg.state.other", event.Source, from, stateLabel(lang, event.Current)))
+			b.WriteString(i18n.T(lang, "notify.msg.state.other", source, from, stateLabel(lang, event.Current)))
 		}
 	case KindGrabFailed:
 		title := grabTitle(event)
-		if event.App != "" {
-			b.WriteString(i18n.T(lang, "notify.msg.grabFailedApp", event.App, title))
+		if app != "" {
+			b.WriteString(i18n.T(lang, "notify.msg.grabFailedApp", app, title))
 		} else {
 			b.WriteString(i18n.T(lang, "notify.msg.grabFailed", title))
 		}
 	case KindGrabSuccess:
 		title := grabTitle(event)
-		if event.App != "" {
-			b.WriteString(i18n.T(lang, "notify.msg.grabSuccessApp", event.App, title))
-		} else {
+		switch {
+		case event.Count > 1 && app != "":
+			b.WriteString(i18n.T(lang, "notify.msg.grabSuccessAppMany", app, event.Count))
+		case event.Count > 1:
+			b.WriteString(i18n.T(lang, "notify.msg.grabSuccessMany", event.Count))
+		case app != "":
+			b.WriteString(i18n.T(lang, "notify.msg.grabSuccessApp", app, title))
+		default:
 			b.WriteString(i18n.T(lang, "notify.msg.grabSuccess", title))
 		}
 	case KindCatalogUpdated:
@@ -352,17 +383,24 @@ func MessageFor(event Event, lang i18n.Language, baseURL string) string {
 	case KindTest:
 		b.WriteString(i18n.T(lang, "notify.msg.test"))
 	case KindIndexerDisabled:
-		b.WriteString(i18n.T(lang, "notify.msg.indexerDisabled", event.Source))
+		b.WriteString(i18n.T(lang, "notify.msg.indexerDisabled", source))
 	case KindRunFailed:
-		b.WriteString(i18n.T(lang, "notify.msg.runFailed", event.Source))
+		b.WriteString(i18n.T(lang, "notify.msg.runFailed", source))
 	default:
-		b.WriteString("indexarr: " + event.Kind)
+		b.WriteString(singleLine("indexarr: "+event.Kind, 160))
 	}
 	if event.Error != "" && event.Kind != KindTest {
 		writeProblem(&b, lang, event.Error)
+	} else if event.Kind == KindIndexerState {
+		// Without a technical cause the message still has to say what to do:
+		// a state notification is only useful if it suggests a next step.
+		if advice := stateAdvice(lang, event.Current); advice != "" {
+			b.WriteString("\n" + i18n.T(lang, "notify.advice", advice))
+		}
 	}
 	for _, title := range event.Titles {
-		if strings.TrimSpace(title) == "" {
+		title = singleLine(title, 160)
+		if title == "" {
 			continue
 		}
 		b.WriteString("\n• " + title)
@@ -373,18 +411,91 @@ func MessageFor(event Event, lang i18n.Language, baseURL string) string {
 	return b.String()
 }
 
+// stateAdvice is the next step for a state change that carries no error text.
+// A healthy source needs no action, and a disabled one already says how to
+// turn it back on in its own sentence.
+func stateAdvice(lang i18n.Language, state string) string {
+	switch strings.ToLower(strings.TrimSpace(state)) {
+	case StateError:
+		return i18n.T(lang, "notify.advice.state.error")
+	case StateBlocked:
+		return i18n.T(lang, "notify.advice.state.blocked")
+	case StateDegraded:
+		return i18n.T(lang, "notify.advice.state.degraded")
+	case StateOK, StateDisabled:
+		return ""
+	default:
+		return i18n.T(lang, "notify.advice.state.other")
+	}
+}
+
 // writeProblem explains a raw error: a known problem gets a sentence and a
 // suggested action, and the original text follows, shortened, for reference.
 func writeProblem(b *strings.Builder, lang i18n.Language, raw string) {
-	if code := logtext.Problem(raw); code != "" {
-		b.WriteString("\n" + i18n.T(lang, "notify.problem", i18n.T(lang, "logs.problem."+code)))
-		b.WriteString("\n" + i18n.T(lang, "notify.advice", i18n.T(lang, "logs.advice."+code)))
+	code := logtext.Problem(raw)
+	if code == "" {
+		code = logtext.Other
 	}
-	detail := strings.TrimSpace(raw)
-	if runes := []rune(detail); len(runes) > 200 {
-		detail = string(runes[:200]) + "…"
-	}
+	b.WriteString("\n" + i18n.T(lang, "notify.problem", i18n.T(lang, "logs.problem."+code)))
+	b.WriteString("\n" + i18n.T(lang, "notify.advice", i18n.T(lang, "logs.advice."+code)))
+	detail := singleLine(raw, 200)
 	b.WriteString("\n" + i18n.T(lang, "notify.detail", detail))
+}
+
+// singleLine keeps a user-supplied title on one line and within a readable
+// length. Release names can carry tabs, newlines and control characters; left
+// as they are, they would break the bullet list and the header of an email or
+// a push notification.
+func singleLine(value string, limit int) string {
+	text := strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, value)
+	text = strings.Join(strings.Fields(text), " ")
+	runes := []rune(text)
+	if limit > 0 && len(runes) > limit {
+		text = string(runes[:limit]) + "…"
+	}
+	return text
+}
+
+// titleIcon is the marker shown at the start of the title, chosen to match
+// the first line of the message. It makes an email subject or a push header
+// readable before opening it.
+func titleIcon(event Event) string {
+	switch event.Kind {
+	case KindNewReleases:
+		return "📥"
+	case KindIndexerState:
+		switch strings.ToLower(strings.TrimSpace(event.Current)) {
+		case StateOK:
+			return "✅"
+		case StateError:
+			return "⚠️"
+		case StateBlocked:
+			return "⛔"
+		case StateDegraded:
+			return "🟡"
+		case StateDisabled:
+			return "⏸"
+		default:
+			return "ℹ️"
+		}
+	case KindGrabFailed, KindBackupFailed:
+		return "❌"
+	case KindRunFailed:
+		return "⚠️"
+	case KindGrabSuccess, KindTest:
+		return "✅"
+	case KindCatalogUpdated:
+		return "📚"
+	case KindIndexerDisabled:
+		return "⏸"
+	default:
+		return ""
+	}
 }
 
 func stateLabel(lang i18n.Language, state string) string {
@@ -416,6 +527,13 @@ func eventLink(baseURL, path string) string {
 	return baseURL + path
 }
 
+// grabBatch collects the successful grabs of one application for a short
+// window, so a season handed over in one go arrives as one notification.
+type grabBatch struct {
+	settings store.Settings
+	events   []Event
+}
+
 // Dispatcher applies the settings policy around Send.
 type Dispatcher struct {
 	Store *store.Store
@@ -424,6 +542,12 @@ type Dispatcher struct {
 	Now func() time.Time
 	// Deliver is replaced in tests; it defaults to Send.
 	Deliver func(context.Context, Config, Event) error
+	// BatchWindow overrides the grab grouping window; zero uses
+	// grabBatchWindow.
+	BatchWindow time.Duration
+
+	grabMu      sync.Mutex
+	grabBatches map[string]*grabBatch
 }
 
 // NewDispatcher builds a dispatcher; the store may be nil, in which case the
@@ -432,7 +556,11 @@ func NewDispatcher(st *store.Store, logger *slog.Logger) *Dispatcher {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Dispatcher{Store: st, Log: logger.With("component", "notify")}
+	return &Dispatcher{
+		Store:       st,
+		Log:         logger.With("component", "notify"),
+		grabBatches: map[string]*grabBatch{},
+	}
 }
 
 func (d *Dispatcher) now() time.Time {
@@ -533,8 +661,11 @@ func (d *Dispatcher) Dispatch(ctx context.Context, settings store.Settings, even
 		dedupeSource += "|" + strings.ToLower(strings.TrimSpace(event.Current))
 	case KindGrabSuccess, KindGrabFailed:
 		// The source of a grab is the indexer; different releases from the
-		// same indexer are different events, so the title is the key.
-		if title := strings.TrimSpace(event.Title); title != "" {
+		// same indexer are different events, so the title is the key. A
+		// merged grab burst is one event for the whole application.
+		if event.Kind == KindGrabSuccess && event.Count > 1 {
+			dedupeSource = "batch|" + strings.ToLower(strings.TrimSpace(event.App)) + "|" + strings.TrimSpace(event.Title)
+		} else if title := strings.TrimSpace(event.Title); title != "" {
 			dedupeSource = title
 		}
 	}
@@ -547,7 +678,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, settings store.Settings, even
 	if err := d.deliver(ctx, cfg, event); err != nil {
 		if d.Log != nil {
 			// The error is already scrubbed by Send/scrub.
-			d.Log.Warn("notification failed", "kind", event.Kind, "error", err)
+			d.Log.Warn("notification failed", "kind", event.Kind, "source", singleLine(event.Source, 160), "error", err)
 		}
 		return false
 	}
@@ -565,11 +696,96 @@ func (d *Dispatcher) DispatchAsync(ctx context.Context, settings store.Settings,
 	if d == nil {
 		return
 	}
+	if event.Kind == KindGrabSuccess {
+		d.enqueueGrab(settings, event)
+		return
+	}
 	go func() {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Second)
 		defer cancel()
 		d.Dispatch(ctx, settings, event)
 	}()
+}
+
+// enqueueGrab adds one successful grab to the batch of its application. The
+// first event starts the timer; the batch is delivered when the timer fires.
+func (d *Dispatcher) enqueueGrab(settings store.Settings, event Event) {
+	key := strings.ToLower(strings.TrimSpace(event.App))
+	if key == "" {
+		key = "unknown"
+	}
+	d.grabMu.Lock()
+	if d.grabBatches == nil {
+		d.grabBatches = map[string]*grabBatch{}
+	}
+	batch := d.grabBatches[key]
+	if batch == nil {
+		batch = &grabBatch{}
+		d.grabBatches[key] = batch
+		time.AfterFunc(d.batchWindow(), func() { d.flushGrab(key) })
+	}
+	batch.settings = settings
+	batch.events = append(batch.events, event)
+	d.grabMu.Unlock()
+}
+
+func (d *Dispatcher) batchWindow() time.Duration {
+	if d != nil && d.BatchWindow > 0 {
+		return d.BatchWindow
+	}
+	return grabBatchWindow
+}
+
+// flushGrab delivers the batch collected for one application. A batch with a
+// single event is delivered unchanged; two or more become one message whose
+// bullet list names every release.
+func (d *Dispatcher) flushGrab(key string) {
+	d.grabMu.Lock()
+	batch := d.grabBatches[key]
+	delete(d.grabBatches, key)
+	d.grabMu.Unlock()
+	if batch == nil || len(batch.events) == 0 {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	d.Dispatch(ctx, batch.settings, mergeGrabEvents(batch.events))
+}
+
+// mergeGrabEvents turns a burst into one grab-success event. Count is the
+// number of releases; the titles are deduplicated and kept in arrival order.
+func mergeGrabEvents(events []Event) Event {
+	if len(events) == 0 {
+		return Event{Kind: KindGrabSuccess}
+	}
+	if len(events) == 1 {
+		return events[0]
+	}
+	merged := events[0]
+	merged.Kind = KindGrabSuccess
+	merged.Count = len(events)
+	merged.Titles = nil
+	merged.Size = 0
+	merged.Categories = nil
+	seenTitles := map[string]bool{}
+	seenCategories := map[string]bool{}
+	for _, event := range events {
+		merged.Size += event.Size
+		for _, category := range event.Categories {
+			if category = strings.TrimSpace(category); category == "" || seenCategories[category] {
+				continue
+			}
+			seenCategories[category] = true
+			merged.Categories = append(merged.Categories, category)
+		}
+		title := grabTitle(event)
+		if title == "" || seenTitles[title] {
+			continue
+		}
+		seenTitles[title] = true
+		merged.Titles = append(merged.Titles, title)
+	}
+	return merged
 }
 
 // SendTest delivers the test notification, bypassing the event switches, the

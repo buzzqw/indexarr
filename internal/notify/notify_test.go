@@ -22,7 +22,11 @@ import (
 )
 
 func TestWebhook(t *testing.T) {
-	var received Event
+	var received struct {
+		Event
+		Subject string `json:"subject"`
+		Message string `json:"message"`
+	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.Header.Get("Content-Type") != "application/json" {
 			t.Errorf("request = %s %s", r.Method, r.Header.Get("Content-Type"))
@@ -40,6 +44,9 @@ func TestWebhook(t *testing.T) {
 	}
 	if received.Kind != KindNewReleases || received.Source != "MirCrew" || received.Count != 2 || len(received.Titles) != 2 {
 		t.Errorf("event = %#v", received)
+	}
+	if received.Subject == "" || !strings.Contains(received.Message, "MirCrew") {
+		t.Errorf("webhook lacks the rendered text: subject=%q message=%q", received.Subject, received.Message)
 	}
 }
 
@@ -156,7 +163,7 @@ func TestEveryEventHasAMessageAndALink(t *testing.T) {
 		{Event{Kind: KindIndexerState, Source: "Site", Previous: StateOK, Current: StateDegraded}, []string{"Site", "only in part", "healthy"}},
 		{Event{Kind: KindIndexerState, Source: "Site", Previous: StateError, Current: StateOK}, []string{"Site", "works again", "error"}},
 		{Event{Kind: KindGrabFailed, Title: "Dune 2021", App: "radarr", Error: "link quarantined"}, []string{"Dune 2021", "radarr", "quarantined"}},
-		{Event{Kind: KindGrabSuccess, Title: "Dune 2021", App: "sonarr"}, []string{"Dune 2021", "sonarr", "grabbed"}},
+		{Event{Kind: KindGrabSuccess, Title: "Dune 2021", App: "sonarr"}, []string{"Dune 2021", "sonarr", "started the download"}},
 		{Event{Kind: KindCatalogUpdated, Count: 2}, []string{"2", "Catalog"}},
 		{Event{Kind: KindBackupFailed, Error: "disk full"}, []string{"backup", "disk full"}},
 		{Event{Kind: KindTest}, []string{"test", "works"}},
@@ -176,6 +183,132 @@ func TestEveryEventHasAMessageAndALink(t *testing.T) {
 	// Another language is a real translation, not a copy of the English line.
 	if got := MessageFor(Event{Kind: KindBackupFailed}, i18n.IT, ""); got == MessageFor(Event{Kind: KindBackupFailed}, i18n.EN, "") {
 		t.Errorf("Italian message is the English one: %q", got)
+	}
+}
+
+func TestMessageKeepsUserTitlesOnOneLine(t *testing.T) {
+	event := Event{
+		Kind:   KindNewReleases,
+		Source: "Site\nName",
+		Count:  2,
+		Titles: []string{"  First\n\tSecond  ", strings.Repeat("x", 220)},
+	}
+	message := MessageFor(event, i18n.EN, "")
+	if !strings.Contains(message, "Site Name") || strings.Contains(message, "Site\nName") {
+		t.Errorf("source was not folded to one line: %q", message)
+	}
+	if !strings.Contains(message, "• First Second") {
+		t.Errorf("release title was not folded to one line: %q", message)
+	}
+	if strings.Count(message, "•") != 2 {
+		t.Errorf("release titles changed the bullet list: %q", message)
+	}
+	if !strings.Contains(message, "…") {
+		t.Errorf("a long release title was not shortened: %q", message)
+	}
+	for _, line := range strings.Split(message, "\n") {
+		if len([]rune(line)) > 190 {
+			t.Errorf("notification line is too long (%d runes): %q", len([]rune(line)), line)
+		}
+	}
+}
+
+func TestTitleCarriesTheSameMarkerAsTheMessage(t *testing.T) {
+	cases := []struct {
+		event Event
+		want  string
+	}{
+		{Event{Kind: KindNewReleases, Count: 1}, "📥"},
+		{Event{Kind: KindIndexerState, Source: "Site", Current: StateOK}, "✅"},
+		{Event{Kind: KindIndexerState, Source: "Site", Current: StateError}, "⚠️"},
+		{Event{Kind: KindIndexerState, Source: "Site", Current: StateBlocked}, "⛔"},
+		{Event{Kind: KindIndexerState, Source: "Site", Current: StateDegraded}, "🟡"},
+		{Event{Kind: KindIndexerState, Source: "Site", Current: StateDisabled}, "⏸"},
+		{Event{Kind: KindGrabFailed, Title: "Dune"}, "❌"},
+		{Event{Kind: KindGrabSuccess, Title: "Dune"}, "✅"},
+		{Event{Kind: KindCatalogUpdated, Count: 2}, "📚"},
+		{Event{Kind: KindBackupFailed}, "❌"},
+		{Event{Kind: KindIndexerDisabled, Source: "Site"}, "⏸"},
+		{Event{Kind: KindTest}, "✅"},
+	}
+	for _, tc := range cases {
+		if got := TitleFor(tc.event, i18n.EN); !strings.HasPrefix(got, tc.want+" ") {
+			t.Errorf("TitleFor(%s) = %q, want the %s marker", tc.event.Kind, got, tc.want)
+		}
+	}
+}
+
+func TestStateChangeWithoutAnErrorSaysWhatToDo(t *testing.T) {
+	blocked := MessageFor(Event{
+		Kind: KindIndexerState, Source: "Site", Previous: StateOK, Current: StateBlocked,
+	}, i18n.EN, "")
+	if !strings.Contains(blocked, "What to do:") || !strings.Contains(blocked, "FlareSolverr") {
+		t.Errorf("blocked state has no next step: %q", blocked)
+	}
+	ok := MessageFor(Event{
+		Kind: KindIndexerState, Source: "Site", Previous: StateError, Current: StateOK,
+	}, i18n.EN, "")
+	if strings.Contains(ok, "What to do:") {
+		t.Errorf("a recovered source asks for an action: %q", ok)
+	}
+	withError := MessageFor(Event{
+		Kind: KindIndexerState, Source: "Site", Previous: StateOK, Current: StateBlocked,
+		Error: "HTTP 403",
+	}, i18n.EN, "")
+	if strings.Count(withError, "What to do:") != 1 {
+		t.Errorf("a known cause should add one action, not two: %q", withError)
+	}
+}
+
+func TestUnknownProblemGetsTheGenericExplanation(t *testing.T) {
+	message := MessageFor(Event{Kind: KindGrabFailed, Title: "Dune", Error: "something odd"}, i18n.EN, "")
+	if !strings.Contains(message, "The cause was not recognised.") ||
+		!strings.Contains(message, "What to do:") {
+		t.Errorf("an unknown cause has no explanation: %q", message)
+	}
+}
+
+// A season handed over in one go is one event per episode. The batch window
+// keeps the notifications readable: one message, every title in the list.
+func TestGrabBurstBecomesOneMessage(t *testing.T) {
+	events := []Event{
+		{Kind: KindGrabSuccess, App: "gextto", Title: "FBI 3x07"},
+		{Kind: KindGrabSuccess, App: "gextto", Title: "FBI 3x08"},
+		{Kind: KindGrabSuccess, App: "gextto", Title: "FBI 3x08"},
+	}
+	merged := mergeGrabEvents(events)
+	if merged.Count != 3 || len(merged.Titles) != 2 {
+		t.Fatalf("merged = %#v", merged)
+	}
+	message := MessageFor(merged, i18n.IT, "")
+	if !strings.Contains(message, "3 download") || strings.Count(message, "•") != 2 {
+		t.Errorf("batch message = %q", message)
+	}
+	if title := TitleFor(merged, i18n.IT); !strings.HasPrefix(title, "✅ ") || !strings.Contains(title, "3 download") {
+		t.Errorf("batch title = %q", title)
+	}
+}
+
+func TestGrabBatchIsFlushedAsOneEvent(t *testing.T) {
+	dispatcher := NewDispatcher(nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	delivered := make(chan Event, 1)
+	dispatcher.Deliver = func(_ context.Context, _ Config, event Event) error {
+		delivered <- event
+		return nil
+	}
+	settings := store.DefaultSettings()
+	settings.NotifyGrabSuccess = true
+	settings.NotifyWebhookURL = "http://example.invalid/hook"
+	dispatcher.enqueueGrab(settings, Event{Kind: KindGrabSuccess, App: "gextto", Title: "A"})
+	dispatcher.enqueueGrab(settings, Event{Kind: KindGrabSuccess, App: "gextto", Title: "B"})
+	dispatcher.flushGrab("gextto")
+	select {
+	case event := <-delivered:
+		if event.Count != 2 || len(event.Titles) != 2 {
+			t.Errorf("delivered event = %#v", event)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("the batch was not delivered")
 	}
 }
 

@@ -944,12 +944,18 @@ func (r *Runner) logOutcome(outcome RunOutcome) {
 	switch {
 	case outcome.Err != nil:
 		// The error text can embed tracker hostnames, so it stays in the
-		// outcome/history and is never logged here.
+		// outcome/history and is never logged here. An unrecognised cause
+		// still gets the "other" code: an empty problem field would leave the
+		// Logs page without even a generic explanation.
+		problem := logtext.ProblemOf(outcome.Err)
+		if problem == "" {
+			problem = logtext.Other
+		}
 		r.logger.Warn("native: indexer run failed",
 			"indexer", outcome.Slug,
 			"indexer_id", outcome.IndexerID,
 			"duration_ms", outcome.Duration.Milliseconds(),
-			"problem", logtext.ProblemOf(outcome.Err))
+			"problem", problem)
 	case outcome.Skipped:
 		r.logger.Debug("native: indexer skipped",
 			"indexer", outcome.Slug,

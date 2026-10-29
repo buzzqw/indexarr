@@ -35,6 +35,7 @@ func appFromRequest(r *http.Request) string {
 		{"lazylibrarian", "lazylibrarian"},
 		{"prowlarr", "prowlarr"},
 		{"jackett", "jackett"},
+		{"gextto", "gextto"},
 	}
 	for _, candidate := range candidates {
 		lower := strings.ToLower(strings.TrimSpace(candidate))
@@ -46,6 +47,12 @@ func appFromRequest(r *http.Request) string {
 				return app.name
 			}
 		}
+	}
+	// Gextto marks its indexarr requests with live_wait, an indexarr-only
+	// parameter; Sonarr and Radarr never send it. Without this, the generic
+	// Go agent of the request became the application label.
+	if r.URL != nil && strings.TrimSpace(r.URL.Query().Get("live_wait")) != "" {
+		return "gextto"
 	}
 	for _, candidate := range candidates {
 		text := strings.TrimSpace(candidate)

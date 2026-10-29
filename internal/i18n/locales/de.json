@@ -2289,6 +2289,9 @@
   "logs.problem.breaker": "indexarr hat diese Quelle nach wiederholten Fehlern pausiert: Sie wird bis zum Ende der Wartezeit nicht kontaktiert.",
   "logs.problemShort.breaker": "Pausiert",
   "logs.advice.breaker": "Nichts zu tun: indexarr versucht es nach der Wartezeit selbst wieder. Kommt die Pause immer wieder, behebe die Ursache aus den vorherigen Fehlern der Quelle.",
+  "logs.problem.other": "Die Ursache wurde nicht erkannt.",
+  "logs.problemShort.other": "Unbekannte Ursache",
+  "logs.advice.other": "Passiert es nur einmal, kannst du es ignorieren. Wiederholt es sich, lade das Protokoll herunter und füge es deiner Meldung bei.",
   "logs.problem.unknown": "Etwas ist schiefgelaufen; die ursprüngliche Fehlermeldung steht unten.",
   "logs.advice.unknown": "Passiert es nur einmal, kannst du es ignorieren. Wiederholt es sich, lade das Protokoll herunter und füge es deiner Meldung bei.",
   "logs.advice.repeat": "Nichts zu tun, wenn es einmal passiert; wiederholt es sich, prüfe den links angezeigten Bereich.",
@@ -2468,6 +2471,10 @@
   "notify.msg.state.degraded": "🟡 %s funktioniert nur teilweise oder ist langsam: einige Suchen schlagen fehl (vorher: %s).",
   "notify.msg.state.disabled": "⏸ %s wurde deaktiviert und wird nicht mehr abgefragt (vorher: %s).",
   "notify.msg.state.other": "ℹ️ %s hat den Zustand geändert: von „%s“ zu „%s“.",
+  "notify.advice.state.error": "Öffne die Quelle, prüfe ihre Einstellungen und starte den Test; die Seite Protokolle zeigt die Ursache.",
+  "notify.advice.state.blocked": "Richte FlareSolverr unter Einstellungen › Netzwerk ein, aktiviere es für diese Quelle und starte den Test.",
+  "notify.advice.state.degraded": "Öffne die Quelle und starte den Test; wenn es weiter fehlschlägt, muss die Definition vielleicht aktualisiert werden.",
+  "notify.advice.state.other": "Öffne die Quelle und starte den Test; die Seite Protokolle zeigt die Ursache.",
   "notify.msg.grabFailedApp": "❌ %s konnte „%s“ nicht herunterladen.",
   "notify.msg.grabFailed": "❌ Der Download von „%s“ ist fehlgeschlagen.",
   "notify.msg.catalogUpdated": "📚 Der integrierte Quellenkatalog wurde aktualisiert: %d Definitionen verfügbar.",
@@ -2633,6 +2640,10 @@
   "settings.error.scriptPath": "Gib einen Skriptpfad ein, oder leere auch die Argumente.",
   "notify.grabSuccess": "Download gestartet: %s",
   "notify.grabSuccessApp": "Download gestartet für %s (%s)",
-  "notify.msg.grabSuccess": "✅ indexarr hat „%s“ geladen.",
-  "notify.msg.grabSuccessApp": "✅ %s hat „%s“ geladen."
+  "notify.msg.grabSuccess": "✅ indexarr hat den Download von „%s“ gestartet.",
+  "notify.msg.grabSuccessApp": "✅ %s hat den Download von „%s“ gestartet.",
+  "notify.grabSuccessMany": "%d Downloads gestartet",
+  "notify.grabSuccessAppMany": "%d Downloads gestartet für %s",
+  "notify.msg.grabSuccessMany": "✅ %d Downloads gestartet:",
+  "notify.msg.grabSuccessAppMany": "✅ %s hat %d Downloads gestartet:"
 }

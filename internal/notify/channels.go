@@ -33,7 +33,7 @@ func outbound(cfg Config, event Event, message, title string) []delivery {
 	var jobs []delivery
 	if endpoint := strings.TrimSpace(cfg.WebhookURL); endpoint != "" {
 		jobs = append(jobs, delivery{"webhook", func(ctx context.Context) error {
-			return sendWebhook(ctx, cfg, endpoint, event)
+			return sendWebhook(ctx, cfg, endpoint, event, title, message)
 		}})
 	}
 	if token, chat := strings.TrimSpace(cfg.TelegramToken), strings.TrimSpace(cfg.TelegramChatID); token != "" && chat != "" {
@@ -84,8 +84,17 @@ func outbound(cfg Config, event Event, message, title string) []delivery {
 	return jobs
 }
 
-func sendWebhook(ctx context.Context, cfg Config, endpoint string, event Event) error {
-	body, err := json.Marshal(event)
+// webhookPayload is the JSON body of the webhook channel: the event fields
+// plus the rendered subject and message, so a script can reuse the same words
+// every other channel shows without rebuilding them.
+type webhookPayload struct {
+	Event
+	Subject string `json:"subject"`
+	Message string `json:"message"`
+}
+
+func sendWebhook(ctx context.Context, cfg Config, endpoint string, event Event, title, message string) error {
+	body, err := json.Marshal(webhookPayload{Event: event, Subject: title, Message: message})
 	if err != nil {
 		return err
 	}

@@ -895,3 +895,24 @@ func TestCompactReleasesDropsSlackCapacity(t *testing.T) {
 		t.Fatalf("compactReleases changed data: %+v", out)
 	}
 }
+
+// Gextto calls indexarr with Go's default "go-http-client" agent unless a
+// FlareSolverr session supplies another one. It marks its own Torznab requests
+// with live_wait, an indexarr-only parameter, so the activity page and the
+// grab notification can name it instead of showing the HTTP library.
+func TestAppFromRequestRecognisesGextto(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/api?t=tvsearch&q=FBI&live_wait=45", nil)
+	if got := appFromRequest(request); got != "gextto" {
+		t.Errorf("appFromRequest = %q, want gextto", got)
+	}
+	plain := httptest.NewRequest(http.MethodGet, "/api?t=tvsearch&q=FBI", nil)
+	plain.Header.Set("User-Agent", "go-http-client/1.1")
+	if got := appFromRequest(plain); got != "go-http-client" {
+		t.Errorf("a plain Go client changed name: %q", got)
+	}
+	explicit := httptest.NewRequest(http.MethodGet, "/api?live_wait=45", nil)
+	explicit.Header.Set("X-Application", "sonarr")
+	if got := appFromRequest(explicit); got != "sonarr" {
+		t.Errorf("the explicit header lost to the live_wait marker: %q", got)
+	}
+}

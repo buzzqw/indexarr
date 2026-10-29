@@ -475,7 +475,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			if snapshot.TotalOnly {
 				fused, pageTotal, duplicates, _, err := s.rssWindowPage(ctx, filter, snapshot.Total, snapshot.Duplicates)
 				if err != nil {
-					s.log.Error("torznab: rss window", "component", "indexarr", "subsystem", "torznab", "error", err)
+					s.logWindowError("torznab: rss window", err)
 					return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 				}
 				page := snapshotPage(fused, filter.Offset, filter.Limit)
@@ -502,7 +502,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		if !liveQueryEligible(mode, filter) {
 			fused, pageTotal, duplicates, complete, err := s.rssWindowPage(ctx, filter, 0, 0)
 			if err != nil {
-				s.log.Error("torznab: rss window", "component", "indexarr", "subsystem", "torznab", "error", err)
+				s.logWindowError("torznab: rss window", err)
 				return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 			}
 			if !livePartial {
@@ -526,7 +526,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		// page. The window grows only while fusion cannot fill the page.
 		fused, pageTotal, duplicates, complete, err := s.rssWindowPage(ctx, filter, 0, 0)
 		if err != nil {
-			s.log.Error("torznab: fuse window", "component", "indexarr", "subsystem", "torznab", "error", err)
+			s.logWindowError("torznab: fuse window", err)
 			return s.errorOutcome(http.StatusInternalServerError, torznabInternalError, "internal error")
 		}
 		out.DuplicatesMerged = duplicates
@@ -547,6 +547,18 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	out.Total = total
 	out.Body = s.searchXML(base, settings, apiKey, releases, total, filter.Offset, out.Provenance)
 	return out
+}
+
+// logWindowError reports a failed RSS window. A client cancellation is not an
+// indexarr error: the app aborted the search and there is no reader left, so
+// it stays at debug level instead of filling the error log on every restart
+// or cancelled *arr request.
+func (s *Server) logWindowError(message string, err error) {
+	if errors.Is(err, context.Canceled) {
+		s.log.Debug(message, "component", "indexarr", "subsystem", "torznab", "error", err)
+		return
+	}
+	s.log.Error(message, "component", "indexarr", "subsystem", "torznab", "error", err)
 }
 
 // rssWindowPage reads only the prefix needed to fill offset+limit after

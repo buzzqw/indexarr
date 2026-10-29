@@ -2289,6 +2289,9 @@
   "logs.problem.breaker": "indexarr 在多次失败后暂停了此来源：在冷却结束前不会访问它。",
   "logs.problemShort.breaker": "已暂停",
   "logs.advice.breaker": "无需操作：冷却结束后 indexarr 会自动重试。如果暂停反复出现，请根据该来源之前的错误修复原因。",
+  "logs.problem.other": "无法识别原因。",
+  "logs.problemShort.other": "未知原因",
+  "logs.advice.other": "如果只出现一次，请忽略。如果反复出现，请下载日志并在报告问题时附上。",
   "logs.problem.unknown": "出现了问题；原始错误信息显示在下方。",
   "logs.advice.unknown": "如果只出现一次可以忽略。如果反复出现，请下载日志并在报告问题时附上。",
   "logs.advice.repeat": "只出现一次无需处理；如果反复出现，请检查左侧显示的区域。",
@@ -2468,6 +2471,10 @@
   "notify.msg.state.degraded": "🟡 %s 只能部分工作或速度很慢：部分搜索失败（之前：%s）。",
   "notify.msg.state.disabled": "⏸ %s 已被停用，不再被查询（之前：%s）。",
   "notify.msg.state.other": "ℹ️ %s 状态已变化：从“%s”变为“%s”。",
+  "notify.advice.state.error": "打开来源，检查其设置并运行测试；日志页面会显示原因。",
+  "notify.advice.state.blocked": "在“设置 › 网络”中配置 FlareSolverr，为此来源启用它，然后运行测试。",
+  "notify.advice.state.degraded": "打开来源并运行测试；如果仍然失败，可能需要更新定义。",
+  "notify.advice.state.other": "打开来源并运行测试；日志页面会显示原因。",
   "notify.msg.grabFailedApp": "❌ %s 无法下载“%s”。",
   "notify.msg.grabFailed": "❌ “%s”下载失败。",
   "notify.msg.catalogUpdated": "📚 内置来源目录已更新：共 %d 个定义可用。",
@@ -2633,6 +2640,10 @@
   "settings.error.scriptPath": "请输入脚本路径，或同时清空参数。",
   "notify.grabSuccess": "下载已开始：%s",
   "notify.grabSuccessApp": "已开始为 %s 下载（%s）",
-  "notify.msg.grabSuccess": "✅ indexarr 已抓取“%s”。",
-  "notify.msg.grabSuccessApp": "✅ %s 已抓取“%s”。"
+  "notify.msg.grabSuccess": "✅ indexarr 已开始下载“%s”。",
+  "notify.msg.grabSuccessApp": "✅ %s 已开始下载“%s”。",
+  "notify.grabSuccessMany": "已开始 %d 个下载",
+  "notify.grabSuccessAppMany": "已为 %s 开始 %d 个下载",
+  "notify.msg.grabSuccessMany": "✅ 已开始 %d 个下载：",
+  "notify.msg.grabSuccessAppMany": "✅ %s 已开始 %d 个下载："
 }

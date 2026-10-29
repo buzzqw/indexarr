@@ -2289,6 +2289,9 @@
   "logs.problem.breaker": "indexarr ha puesto esta fuente en pausa tras fallos repetidos: no se contacta hasta que termine la espera.",
   "logs.problemShort.breaker": "En pausa",
   "logs.advice.breaker": "No hay nada que hacer: indexarr lo reintenta solo cuando termina la espera. Si la pausa vuelve a menudo, corrige la causa que indican los errores anteriores de la fuente.",
+  "logs.problem.other": "No se reconoció la causa.",
+  "logs.problemShort.other": "Causa desconocida",
+  "logs.advice.other": "Si pasa una sola vez, ignóralo. Si se repite, descarga el registro y adjúntalo al informe.",
   "logs.problem.unknown": "Algo salió mal; el mensaje de error original aparece debajo.",
   "logs.advice.unknown": "Si pasa una sola vez, puedes ignorarlo. Si se repite, descarga el registro y adjúntalo al informar del problema.",
   "logs.advice.repeat": "No hace falta hacer nada si pasa una vez; si se repite, revisa el área indicada a la izquierda.",
@@ -2468,6 +2471,10 @@
   "notify.msg.state.degraded": "🟡 %s funciona solo en parte o va lenta: algunas búsquedas fallan (antes: %s).",
   "notify.msg.state.disabled": "⏸ %s se ha desactivado y ya no se consulta (antes: %s).",
   "notify.msg.state.other": "ℹ️ %s cambió de estado: de «%s» a «%s».",
+  "notify.advice.state.error": "Abre la fuente, revisa sus ajustes y lanza su prueba; la página Registros muestra la causa.",
+  "notify.advice.state.blocked": "Configura FlareSolverr en Ajustes › Red, actívalo para esta fuente y lanza su prueba.",
+  "notify.advice.state.degraded": "Abre la fuente y lanza su prueba; si sigue fallando, puede que haya que actualizar la definición.",
+  "notify.advice.state.other": "Abre la fuente y lanza su prueba; la página Registros muestra la causa.",
   "notify.msg.grabFailedApp": "❌ %s no pudo descargar «%s».",
   "notify.msg.grabFailed": "❌ La descarga de «%s» falló.",
   "notify.msg.catalogUpdated": "📚 Se actualizó el catálogo integrado de fuentes: %d definiciones disponibles.",
@@ -2633,6 +2640,10 @@
   "settings.error.scriptPath": "Introduce una ruta de script, o vacía también los argumentos.",
   "notify.grabSuccess": "Descarga iniciada: %s",
   "notify.grabSuccessApp": "Descarga iniciada para %s (%s)",
-  "notify.msg.grabSuccess": "✅ indexarr ha descargado «%s».",
-  "notify.msg.grabSuccessApp": "✅ %s ha descargado «%s»."
+  "notify.msg.grabSuccess": "✅ indexarr ha iniciado la descarga de «%s».",
+  "notify.msg.grabSuccessApp": "✅ %s ha iniciado la descarga de «%s».",
+  "notify.grabSuccessMany": "%d descargas iniciadas",
+  "notify.grabSuccessAppMany": "%d descargas iniciadas para %s",
+  "notify.msg.grabSuccessMany": "✅ %d descargas iniciadas:",
+  "notify.msg.grabSuccessAppMany": "✅ %s ha iniciado %d descargas:"
 }

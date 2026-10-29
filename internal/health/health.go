@@ -582,6 +582,12 @@ func (c *Checker) RunOnce(ctx context.Context) ([]Result, error) {
 	return out, nil
 }
 
+// healthCheckCanceled reports the interruption of indexarr itself. The health
+// model already treats it as neutral, so it must not become a warning either.
+func healthCheckCanceled(err error) bool {
+	return errors.Is(err, context.Canceled)
+}
+
 func (c *Checker) checkOne(ctx context.Context, row store.Indexer) Result {
 	result := Result{
 		IndexerID: row.ID, Slug: row.Slug, Name: row.Name,
@@ -590,7 +596,10 @@ func (c *Checker) checkOne(ctx context.Context, row store.Indexer) Result {
 	checked, err := c.manager.Health(ctx, row.ID)
 	result.Items = checked.Items
 	result.Err = err
-	if err != nil {
+	// A cancellation is the shutdown of indexarr, not a fault of the site:
+	// the health model already ignores it, and reporting one warning per
+	// indexer at every restart hides the real failures.
+	if err != nil && !healthCheckCanceled(err) {
 		c.logger.Warn("health check failed", "indexer", row.Slug,
 			"error", c.manager.RedactError(row.ID, err))
 	}

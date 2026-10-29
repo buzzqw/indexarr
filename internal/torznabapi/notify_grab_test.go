@@ -26,6 +26,7 @@ func TestGrabSuccessNotifications(t *testing.T) {
 	}
 	events := make(chan notify.Event, 1)
 	dispatcher := notify.NewDispatcher(st, testLogger())
+	dispatcher.BatchWindow = 20 * time.Millisecond
 	dispatcher.Deliver = func(_ context.Context, _ notify.Config, event notify.Event) error {
 		events <- event
 		return nil

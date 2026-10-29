@@ -2289,6 +2289,9 @@
   "logs.problem.breaker": "indexarr wstrzymał to źródło po powtarzających się błędach: nie jest odpytywane do końca okresu oczekiwania.",
   "logs.problemShort.breaker": "Wstrzymane",
   "logs.advice.breaker": "Nie trzeba nic robić: indexarr sam spróbuje ponownie po zakończeniu oczekiwania. Jeśli przerwa wraca często, usuń przyczynę wskazaną w poprzednich błędach źródła.",
+  "logs.problem.other": "Nie rozpoznano przyczyny.",
+  "logs.problemShort.other": "Nieznana przyczyna",
+  "logs.advice.other": "Jeśli zdarzy się raz, zignoruj to. Jeśli się powtarza, pobierz log i dołącz go do zgłoszenia.",
   "logs.problem.unknown": "Coś poszło nie tak; oryginalny komunikat błędu jest poniżej.",
   "logs.advice.unknown": "Jeśli zdarzyło się raz, możesz to zignorować. Jeśli się powtarza, pobierz log i dołącz go do zgłoszenia.",
   "logs.advice.repeat": "Nic nie trzeba robić, jeśli zdarzy się raz; jeśli się powtarza, sprawdź obszar wskazany po lewej.",
@@ -2468,6 +2471,10 @@
   "notify.msg.state.degraded": "🟡 %s działa tylko częściowo lub wolno: część wyszukiwań się nie udaje (wcześniej: %s).",
   "notify.msg.state.disabled": "⏸ %s zostało wyłączone i nie jest już odpytywane (wcześniej: %s).",
   "notify.msg.state.other": "ℹ️ %s zmieniło stan: z „%s” na „%s”.",
+  "notify.advice.state.error": "Otwórz źródło, sprawdź jego ustawienia i uruchom test; strona Logi pokazuje przyczynę.",
+  "notify.advice.state.blocked": "Skonfiguruj FlareSolverr w Ustawienia › Sieć, włącz go dla tego źródła i uruchom test.",
+  "notify.advice.state.degraded": "Otwórz źródło i uruchom test; jeśli nadal się nie udaje, definicja może wymagać aktualizacji.",
+  "notify.advice.state.other": "Otwórz źródło i uruchom test; strona Logi pokazuje przyczynę.",
   "notify.msg.grabFailedApp": "❌ %s nie mogło pobrać „%s”.",
   "notify.msg.grabFailed": "❌ Pobieranie „%s” nie powiodło się.",
   "notify.msg.catalogUpdated": "📚 Zaktualizowano wbudowany katalog źródeł; dostępnych definicji: %d.",
@@ -2633,6 +2640,10 @@
   "settings.error.scriptPath": "Wpisz ścieżkę skryptu albo wyczyść także argumenty.",
   "notify.grabSuccess": "Pobieranie rozpoczęte: %s",
   "notify.grabSuccessApp": "Pobieranie rozpoczęte dla %s (%s)",
-  "notify.msg.grabSuccess": "✅ indexarr pobrał „%s”.",
-  "notify.msg.grabSuccessApp": "✅ %s pobrał „%s”."
+  "notify.msg.grabSuccess": "✅ indexarr rozpoczął pobieranie „%s”.",
+  "notify.msg.grabSuccessApp": "✅ %s rozpoczął pobieranie „%s”.",
+  "notify.grabSuccessMany": "Rozpoczęto %d pobrań",
+  "notify.grabSuccessAppMany": "Rozpoczęto %d pobrań dla %s",
+  "notify.msg.grabSuccessMany": "✅ Rozpoczęto %d pobrań:",
+  "notify.msg.grabSuccessAppMany": "✅ %s rozpoczął pobieranie %d plików:"
 }

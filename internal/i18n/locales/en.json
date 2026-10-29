@@ -2289,6 +2289,9 @@
   "logs.problem.breaker": "indexarr paused this source after repeated failures: it is not contacted until the cooldown ends.",
   "logs.problemShort.breaker": "Paused",
   "logs.advice.breaker": "Nothing to do: indexarr tries again by itself when the cooldown ends. If the pause keeps coming back, fix the cause shown in the previous errors of the source.",
+  "logs.problem.other": "The cause was not recognised.",
+  "logs.problemShort.other": "Unknown cause",
+  "logs.advice.other": "If it happens only once, ignore it. If it repeats, download the log and include it when you report the problem.",
   "logs.problem.unknown": "Something went wrong; the original error message is shown below.",
   "logs.advice.unknown": "If it happens only once, you can ignore it. If it repeats, download the log and include it when you report the problem.",
   "logs.advice.repeat": "Nothing to do if it happens once; if it repeats, check the area shown on the left.",
@@ -2468,6 +2471,10 @@
   "notify.msg.state.degraded": "🟡 %s works only in part or is slow: some searches fail (it was: %s).",
   "notify.msg.state.disabled": "⏸ %s has been disabled and is no longer searched (it was: %s).",
   "notify.msg.state.other": "ℹ️ %s changed state: from “%s” to “%s”.",
+  "notify.advice.state.error": "Open the source, check its settings and run its Test; the Logs page shows the cause.",
+  "notify.advice.state.blocked": "Configure FlareSolverr in Settings › Network, enable it for this source, then run its Test.",
+  "notify.advice.state.degraded": "Open the source and run its Test; if it keeps failing, the definition may need an update.",
+  "notify.advice.state.other": "Open the source and run its Test; the Logs page shows the cause.",
   "notify.msg.grabFailedApp": "❌ %s could not download “%s”.",
   "notify.msg.grabFailed": "❌ The download of “%s” failed.",
   "notify.msg.catalogUpdated": "📚 The built-in source catalogue was updated: %d definitions available.",
@@ -2633,6 +2640,10 @@
   "settings.error.scriptPath": "Enter a script path, or leave the arguments empty too.",
   "notify.grabSuccess": "Download started: %s",
   "notify.grabSuccessApp": "Download started for %s (%s)",
-  "notify.msg.grabSuccess": "✅ indexarr grabbed “%s”.",
-  "notify.msg.grabSuccessApp": "✅ %s grabbed “%s”."
+  "notify.msg.grabSuccess": "✅ indexarr started the download of “%s”.",
+  "notify.msg.grabSuccessApp": "✅ %s started the download of “%s”.",
+  "notify.grabSuccessMany": "%d downloads started",
+  "notify.grabSuccessAppMany": "%d downloads started for %s",
+  "notify.msg.grabSuccessMany": "✅ %d downloads started:",
+  "notify.msg.grabSuccessAppMany": "✅ %s started %d downloads:"
 }

@@ -2289,6 +2289,9 @@
   "logs.problem.breaker": "indexarr ha messo in pausa questa fonte dopo errori ripetuti: non viene contattata finché non finisce l'attesa.",
   "logs.problemShort.breaker": "In pausa",
   "logs.advice.breaker": "Non serve fare nulla: indexarr riprova da solo quando l'attesa finisce. Se la pausa torna spesso, correggi la causa indicata dagli errori precedenti della fonte.",
+  "logs.problem.other": "La causa non è stata riconosciuta.",
+  "logs.problemShort.other": "Causa sconosciuta",
+  "logs.advice.other": "Se capita una volta sola ignoralo. Se si ripete, scarica il log e allegalo quando segnali il problema.",
   "logs.problem.unknown": "Qualcosa non è andato a buon fine; il messaggio d'errore originale è qui sotto.",
   "logs.advice.unknown": "Se capita una volta sola puoi ignorarlo. Se si ripete, scarica il log e allegalo quando segnali il problema.",
   "logs.advice.repeat": "Non serve fare nulla se capita una volta; se si ripete, controlla l'area indicata a sinistra.",
@@ -2468,6 +2471,10 @@
   "notify.msg.state.degraded": "🟡 %s funziona solo in parte o è lenta: alcune ricerche falliscono (prima: %s).",
   "notify.msg.state.disabled": "⏸ %s è stata disattivata e non viene più interrogata (prima: %s).",
   "notify.msg.state.other": "ℹ️ %s ha cambiato stato: da «%s» a «%s».",
+  "notify.advice.state.error": "Apri la fonte, controlla le impostazioni e lancia il Test; la pagina Log mostra la causa.",
+  "notify.advice.state.blocked": "Configura FlareSolverr in Impostazioni › Rete, abilitalo per questa fonte e lancia il Test.",
+  "notify.advice.state.degraded": "Apri la fonte e lancia il Test; se continua a fallire, la definizione potrebbe richiedere un aggiornamento.",
+  "notify.advice.state.other": "Apri la fonte e lancia il Test; la pagina Log mostra la causa.",
   "notify.msg.grabFailedApp": "❌ %s non è riuscita a scaricare «%s».",
   "notify.msg.grabFailed": "❌ Il download di «%s» non è riuscito.",
   "notify.msg.catalogUpdated": "📚 Il catalogo integrato delle fonti è stato aggiornato: %d definizioni disponibili.",
@@ -2633,6 +2640,10 @@
   "settings.error.scriptPath": "Inserisci un percorso script, oppure svuota anche gli argomenti.",
   "notify.grabSuccess": "Download avviato: %s",
   "notify.grabSuccessApp": "Download avviato per %s (%s)",
-  "notify.msg.grabSuccess": "✅ indexarr ha scaricato «%s».",
-  "notify.msg.grabSuccessApp": "✅ %s ha scaricato «%s»."
+  "notify.msg.grabSuccess": "✅ indexarr ha avviato il download di «%s».",
+  "notify.msg.grabSuccessApp": "✅ %s ha avviato il download di «%s».",
+  "notify.grabSuccessMany": "%d download avviati",
+  "notify.grabSuccessAppMany": "%d download avviati per %s",
+  "notify.msg.grabSuccessMany": "✅ Avviati %d download:",
+  "notify.msg.grabSuccessAppMany": "✅ %s ha avviato %d download:"
 }

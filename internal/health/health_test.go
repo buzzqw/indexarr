@@ -2,6 +2,8 @@ package health
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -319,5 +321,17 @@ func TestPausedOutcomeIsNeitherFailureNorSuccess(t *testing.T) {
 	}
 	if got := NextStateGroup(CatalogDegraded, [][]Outcome{{paused, ok}, {ok, ok}}, DefaultThresholds()); got != CatalogDegraded {
 		t.Errorf("paused recovered the definition to %q", got)
+	}
+}
+
+// A restart cancels the in-flight health pass. That must not become one
+// warning per indexer: the site did nothing wrong and the model already
+// ignores the canceled row.
+func TestHealthCheckCanceledIsNotAWarning(t *testing.T) {
+	if !healthCheckCanceled(fmt.Errorf("indexer site: health: %w", context.Canceled)) {
+		t.Error("a wrapped cancellation is not recognised")
+	}
+	if healthCheckCanceled(errors.New("health query returned 0 items")) {
+		t.Error("a real health failure is treated as a cancellation")
 	}
 }

@@ -602,7 +602,8 @@ the other clients keep their own values. The same `seed_ratio` travels to the
 In **Settings → Notifications**:
 
 - **Webhook URL**: receives a JSON POST with `event`, `source`, `count`,
-  `titles`, `error` and `at`;
+  `titles`, `error`, `at`, and the already-rendered `subject` and `message`
+  that the other channels show;
 - **Telegram bot token** and **chat ID**: readable message; both or neither must
   be set;
 - **Apprise**, **Discord**, **Slack**, **Gotify**, **ntfy**, **Pushover**,
@@ -612,6 +613,10 @@ In **Settings → Notifications**:
   succeeded**, **Catalog updated** and **Backup failed** choose the events;
 - **Auto-disable after N consecutive failures**: after N failed runs the source
   is disabled; a successful run resets the counter.
+
+A burst of successful grabs from the same application is grouped: episodes
+handed over within a few seconds arrive as one message with every title in the
+list, not one message per episode.
 
 **Anti-spam** prevents the same event (type and source) from being sent more
 than once in the same interval. The **Send test notification** button checks

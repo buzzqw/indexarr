@@ -2289,6 +2289,9 @@
   "logs.problem.breaker": "indexarr a mis cette source en pause après des échecs répétés : elle n'est pas contactée avant la fin de l'attente.",
   "logs.problemShort.breaker": "En pause",
   "logs.advice.breaker": "Rien à faire : indexarr réessaie tout seul à la fin de l'attente. Si la pause revient souvent, corrigez la cause indiquée par les erreurs précédentes de la source.",
+  "logs.problem.other": "La cause n'a pas été reconnue.",
+  "logs.problemShort.other": "Cause inconnue",
+  "logs.advice.other": "Si cela n'arrive qu'une fois, ignorez-le. Si cela se répète, téléchargez le journal et joignez-le à votre signalement.",
   "logs.problem.unknown": "Quelque chose s'est mal passé ; le message d'erreur d'origine figure ci-dessous.",
   "logs.advice.unknown": "Si cela n'arrive qu'une fois, vous pouvez l'ignorer. Si cela se répète, téléchargez le journal et joignez-le à votre signalement.",
   "logs.advice.repeat": "Rien à faire si cela arrive une fois ; si cela se répète, vérifiez la zone indiquée à gauche.",
@@ -2468,6 +2471,10 @@
   "notify.msg.state.degraded": "🟡 %s ne fonctionne qu'en partie ou est lente : certaines recherches échouent (avant : %s).",
   "notify.msg.state.disabled": "⏸ %s a été désactivée et n'est plus interrogée (avant : %s).",
   "notify.msg.state.other": "ℹ️ %s a changé d'état : de « %s » à « %s ».",
+  "notify.advice.state.error": "Ouvrez la source, vérifiez ses réglages et lancez son test ; la page Journaux indique la cause.",
+  "notify.advice.state.blocked": "Configurez FlareSolverr dans Réglages › Réseau, activez-le pour cette source, puis lancez son test.",
+  "notify.advice.state.degraded": "Ouvrez la source et lancez son test ; si les échecs persistent, la définition devra peut-être être mise à jour.",
+  "notify.advice.state.other": "Ouvrez la source et lancez son test ; la page Journaux indique la cause.",
   "notify.msg.grabFailedApp": "❌ %s n'a pas pu télécharger « %s ».",
   "notify.msg.grabFailed": "❌ Le téléchargement de « %s » a échoué.",
   "notify.msg.catalogUpdated": "📚 Le catalogue intégré des sources a été mis à jour : %d définitions disponibles.",
@@ -2633,6 +2640,10 @@
   "settings.error.scriptPath": "Saisissez un chemin de script, ou videz aussi les arguments.",
   "notify.grabSuccess": "Téléchargement démarré : %s",
   "notify.grabSuccessApp": "Téléchargement démarré pour %s (%s)",
-  "notify.msg.grabSuccess": "✅ indexarr a récupéré « %s ».",
-  "notify.msg.grabSuccessApp": "✅ %s a récupéré « %s »."
+  "notify.msg.grabSuccess": "✅ indexarr a lancé le téléchargement de « %s ».",
+  "notify.msg.grabSuccessApp": "✅ %s a lancé le téléchargement de « %s ».",
+  "notify.grabSuccessMany": "%d téléchargements lancés",
+  "notify.grabSuccessAppMany": "%d téléchargements lancés pour %s",
+  "notify.msg.grabSuccessMany": "✅ %d téléchargements lancés :",
+  "notify.msg.grabSuccessAppMany": "✅ %s a lancé %d téléchargements :"
 }
