@@ -208,7 +208,7 @@ func (c *DefinitionConnector) nextIndexPage(response *Response, selector string,
 		return nil
 	}
 	next, err := url.Parse(resolveURL(strings.TrimSpace(href), response.URL, c.baseURL))
-	if err != nil || next.Host != c.baseURL.Host {
+	if err != nil || !c.ownHost(next.Host) {
 		return nil
 	}
 	if _, done := visited[next.String()]; done {
@@ -329,7 +329,7 @@ func matchIndexEntries(entries []indexEntry, req SearchRequest) []indexEntry {
 		if title == "" {
 			continue
 		}
-		words := strings.Fields(title)
+		words := withJoinedInitials(strings.Fields(title))
 		score := 0
 		for _, token := range tokens {
 			if indexWordPrefix(words, token) {
@@ -400,6 +400,9 @@ var indexStopwords = map[string]struct{}{
 func indexQueryTokens(query string) []string {
 	normalized := normalizeIndexText(query)
 	var out []string
+	for _, token := range joinedInitials(strings.Fields(normalized)) {
+		out = append(out, token)
+	}
 	for _, token := range strings.Fields(normalized) {
 		if len(token) < 2 {
 			continue
@@ -528,4 +531,40 @@ func pad2(value int) string {
 		return "0" + itoaPositive(value)
 	}
 	return itoaPositive(value)
+}
+
+// joinedInitials returns the runs of single-character words joined into one:
+// "9 1 1" gives "911", "s w a t" gives "swat". Titles written with dots or
+// dashes between the letters ("9-1-1", "S.W.A.T.", "N.C.I.S.") lose their
+// words to the normalization, and the list may spell them either way.
+func joinedInitials(words []string) []string {
+	var out []string
+	var run strings.Builder
+	count := 0
+	flush := func() {
+		if count >= 2 {
+			out = append(out, run.String())
+		}
+		run.Reset()
+		count = 0
+	}
+	for _, word := range words {
+		if len([]rune(word)) == 1 {
+			run.WriteString(word)
+			count++
+			continue
+		}
+		flush()
+	}
+	flush()
+	return out
+}
+
+// withJoinedInitials adds the joined runs to a title's words.
+func withJoinedInitials(words []string) []string {
+	joined := joinedInitials(words)
+	if len(joined) == 0 {
+		return words
+	}
+	return append(append([]string(nil), words...), joined...)
 }

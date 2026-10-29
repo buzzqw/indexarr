@@ -224,3 +224,45 @@ func TestEd2kSourceTopicWithTorrentIsATorrentRow(t *testing.T) {
 		t.Errorf("usenet row became %q", usenet.Protocol)
 	}
 }
+
+func ed2kCandidate(name string, hash byte) resolvedDownload {
+	digest := strings.Repeat(string("0123456789abcdef"[hash%16]), 32)
+	return resolvedDownload{Ed2k: "ed2k://|file|" + name + "|100|" + digest + "|/", Ed2kHash: digest, Size: 100}
+}
+
+// The DDUnlimited topic of "Dune - Parte due" carries the film, its TrueHD
+// audio track and a .rar of extras. Gextto saw three "movies" on 2026-10-29.
+func TestMovieTopicDropsAudioTracksAndExtras(t *testing.T) {
+	base := Item{Protocol: ProtocolEd2k, Title: "Dune - Parte due (Villeneuve, 2024)", Categories: []int{2000}}
+	candidates := []resolvedDownload{
+		ed2kCandidate("Dune.Parte.due.2024.bdrip.sd.x264.ita.ac3.eng.aac.subs.fd.mkv", 1),
+		ed2kCandidate("Dune.Parte.Due.2024.audio.ita.7.1.true.hd.dolby.atmos.mka", 2),
+		ed2kCandidate("Dune.Parte.Due.extra.720p.x264.eng.ac3.subs.fd.rar", 3),
+		ed2kCandidate("Dune.Parte.Due.2024.ita.srt", 4),
+	}
+	kept := dropSideFiles(candidates, base)
+	if len(kept) != 1 || !strings.Contains(kept[0].Ed2k, "bdrip.sd") {
+		t.Fatalf("kept = %+v, want only the film", kept)
+	}
+	item := expandItem(base, kept[0])
+	if item.Title != "Dune.Parte.due.2024.bdrip.sd.x264.ita.ac3.eng.aac.subs.fd.mkv" {
+		t.Errorf("title = %q, want the file name alone (title and year)", item.Title)
+	}
+
+	// Music keeps its audio files; a topic made only of side files is kept.
+	music := Item{Title: "Album", Categories: []int{3000}}
+	if got := dropSideFiles(candidates, music); len(got) != len(candidates) {
+		t.Errorf("music topic kept %d of %d files", len(got), len(candidates))
+	}
+	onlyAudio := []resolvedDownload{ed2kCandidate("Film.2020.audio.mka", 5), ed2kCandidate("Film.2020.ita.srt", 6)}
+	if got := dropSideFiles(onlyAudio, base); len(got) != 2 {
+		t.Errorf("a topic of side files only was emptied: %+v", got)
+	}
+
+	// A series called "Extras" is not bonus material.
+	extras := Item{Title: "EXTRAS - Stagione 1", Categories: []int{5000}}
+	series := []resolvedDownload{ed2kCandidate("Extras.S01E01.ITA.avi", 7), ed2kCandidate("Extras.S01E02.ITA.avi", 8)}
+	if got := dropSideFiles(series, extras); len(got) != 2 {
+		t.Errorf("Extras episodes dropped: %+v", got)
+	}
+}

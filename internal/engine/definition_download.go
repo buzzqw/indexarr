@@ -9,6 +9,8 @@ import (
 	"html"
 	"net/http"
 	"net/url"
+	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -245,6 +247,10 @@ func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []
 			}
 			for _, index := range indexes {
 				base := items[index]
+				candidates := candidates
+				if expand {
+					candidates = dropSideFiles(candidates, base)
+				}
 				if !expand || len(candidates) == 1 {
 					applied := base
 					applyResolvedDownload(&applied, candidates[0])
@@ -782,19 +788,20 @@ func (c *DefinitionConnector) downloadFromSection(ctx context.Context, item Item
 }
 
 // fileNameIsRelease reports whether a file of a topic names its episode
-// ("S06E12", "6x12") and shares a word with the topic title, so the file name
-// alone says which series and episode it is.
+// ("S06E12", "6x12") or its year ("Dune.Parte.due.2024.bdrip…") and shares a
+// word with the topic title, so the file name alone says which series and
+// episode, or which film, it is.
 func fileNameIsRelease(topic, name string) bool {
 	normalized := normalizeIndexText(name)
 	words := strings.Fields(normalized)
-	episode := false
+	marker := false
 	for _, word := range words {
-		if isEpisodeToken(word) && strings.ContainsAny(word, "ex") {
-			episode = true
+		if (isEpisodeToken(word) && strings.ContainsAny(word, "ex")) || isYearToken(word) {
+			marker = true
 			break
 		}
 	}
-	if !episode {
+	if !marker {
 		return false
 	}
 	for _, token := range indexQueryTokens(topic) {
@@ -803,4 +810,90 @@ func fileNameIsRelease(topic, name string) bool {
 		}
 	}
 	return false
+}
+
+// isYearToken reports a release year, 1920 to 2099.
+func isYearToken(word string) bool {
+	if len(word) != 4 {
+		return false
+	}
+	year, err := strconv.Atoi(word)
+	return err == nil && year >= 1920 && year <= 2099
+}
+
+// sideFileExtensions are the files of a film or series topic that are not the
+// film or the episode: a separate audio track, subtitles, artwork, checksums.
+var sideFileExtensions = map[string]struct{}{
+	".mka": {}, ".mp3": {}, ".flac": {}, ".aac": {}, ".ac3": {}, ".eac3": {}, ".dts": {}, ".thd": {}, ".wav": {},
+	".srt": {}, ".sub": {}, ".idx": {}, ".ass": {}, ".ssa": {}, ".sup": {},
+	".nfo": {}, ".txt": {}, ".jpg": {}, ".jpeg": {}, ".png": {}, ".sfv": {}, ".md5": {},
+}
+
+// sideFileWords mark bonus material packed next to the film.
+var sideFileWords = []string{"extra", "extras", "bonus", "sample", "trailer"}
+
+// dropSideFiles keeps the films and episodes of a movie or TV topic. A topic of
+// "Dune - Parte due" carries the film, a TrueHD audio track (.mka) and a .rar
+// of extras: published as three movies, Gextto and the Arr could grab the
+// audio track or the extras for the film. Other categories (music, books,
+// software) keep every file, and a topic made only of such files is kept
+// whole rather than emptied.
+func dropSideFiles(candidates []resolvedDownload, base Item) []resolvedDownload {
+	if len(candidates) < 2 || !videoItem(base) {
+		return candidates
+	}
+	topicWords := strings.Fields(normalizeIndexText(base.Title))
+	kept := make([]resolvedDownload, 0, len(candidates))
+	for _, candidate := range candidates {
+		name := strings.ToLower(candidateName(candidate, ""))
+		if name == "" {
+			kept = append(kept, candidate)
+			continue
+		}
+		if _, side := sideFileExtensions[path.Ext(name)]; side {
+			continue
+		}
+		if bonusFile(name, topicWords) {
+			continue
+		}
+		kept = append(kept, candidate)
+	}
+	if len(kept) == 0 {
+		return candidates
+	}
+	return kept
+}
+
+// bonusFile reports a name with a bonus word that the topic itself does not
+// use: "Extras.S01E01" stays when the series is called "Extras".
+func bonusFile(name string, topicWords []string) bool {
+	words := strings.Fields(normalizeIndexText(name))
+	for _, marker := range sideFileWords {
+		if !containsWord(words, marker) || containsWord(topicWords, marker) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func containsWord(words []string, word string) bool {
+	for _, candidate := range words {
+		if candidate == word {
+			return true
+		}
+	}
+	return false
+}
+
+func videoItem(item Item) bool {
+	if len(item.Categories) == 0 {
+		return false
+	}
+	for _, category := range item.Categories {
+		if group := category / 1000; group != 2 && group != 5 {
+			return false
+		}
+	}
+	return true
 }

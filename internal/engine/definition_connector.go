@@ -2,9 +2,12 @@ package engine
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -14,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/definition"
@@ -67,6 +71,11 @@ type DefinitionConnector struct {
 	declared  map[string]struct{}
 	transport *Transport
 	baseURL   *url.URL
+	// mirrors are meta.urls in order (mirrors[0] is baseURL); mirror is the
+	// one in use. A domain that stops resolving moves the connector to the
+	// next address instead of failing every run.
+	mirrors   []*url.URL
+	mirror    atomic.Int32
 	protocol  Protocol
 	caps      Capabilities
 	session   *Session
@@ -192,6 +201,7 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 		declared:              declared,
 		transport:             transport,
 		baseURL:               baseURL,
+		mirrors:               definitionMirrors(baseURL, def.Meta.URLs[1:]),
 		protocol:              protocolFromDefinition(def),
 		session:               newSession(),
 		refresh:               refresh,
@@ -1114,18 +1124,91 @@ func (c *DefinitionConnector) doWithFallback(ctx context.Context, request *http.
 	if c.flare != nil {
 		return c.doSession(ctx, request)
 	}
-	var response *Response
-	var err error
-	if feed {
-		response, err = c.transport.DoFeed(ctx, c.breakerKey(), request)
-	} else {
-		response, err = c.transport.Do(ctx, c.breakerKey(), request)
+	send := func(request *http.Request) (*Response, error) {
+		if feed {
+			return c.transport.DoFeed(ctx, c.breakerKey(), request)
+		}
+		return c.transport.Do(ctx, c.breakerKey(), request)
+	}
+	current := int(c.mirror.Load())
+	response, err := send(c.onMirror(request, current))
+	for next := current + 1; err != nil && mirrorFailover(err) && next < len(c.mirrors); next++ {
+		retry := c.onMirror(request, next)
+		if retry == nil {
+			break
+		}
+		if response, err = send(retry); err == nil {
+			c.mirror.CompareAndSwap(int32(current), int32(next))
+		}
 	}
 	if err != nil {
 		return nil, c.requestError(err)
 	}
 	c.session.Capture(response.URL, response.Header)
 	return response, nil
+}
+
+// definitionMirrors parses the definition's addresses after the first one.
+// An address without scheme or host is skipped.
+func definitionMirrors(base *url.URL, others []string) []*url.URL {
+	mirrors := []*url.URL{base}
+	for _, raw := range others {
+		parsed, err := url.Parse(strings.TrimSpace(raw))
+		if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+			continue
+		}
+		mirrors = append(mirrors, parsed)
+	}
+	return mirrors
+}
+
+// onMirror returns request sent to mirrors[index]. Only a request for one of
+// the definition's own hosts moves; a request elsewhere (a tracker, a CDN)
+// stays as it is. It returns nil when the body cannot be sent twice.
+func (c *DefinitionConnector) onMirror(request *http.Request, index int) *http.Request {
+	if index <= 0 || index >= len(c.mirrors) || !c.ownHost(request.URL.Host) {
+		return request
+	}
+	target := c.mirrors[index]
+	if request.URL.Host == target.Host && request.URL.Scheme == target.Scheme {
+		return request
+	}
+	moved := request.Clone(request.Context())
+	if request.Body != nil && request.Body != http.NoBody {
+		if request.GetBody == nil {
+			return nil
+		}
+		body, err := request.GetBody()
+		if err != nil {
+			return nil
+		}
+		moved.Body = body
+	}
+	moved.URL.Scheme = target.Scheme
+	moved.URL.Host = target.Host
+	moved.Host = target.Host
+	return moved
+}
+
+// ownHost reports whether host is one of the definition's addresses.
+func (c *DefinitionConnector) ownHost(host string) bool {
+	for _, mirror := range c.mirrors {
+		if strings.EqualFold(mirror.Host, host) {
+			return true
+		}
+	}
+	return false
+}
+
+// mirrorFailover reports a failure that says the address itself is gone (the
+// name does not resolve, nothing listens, no route, a certificate for another
+// site), as opposed to a slow or refusing site, which a mirror would not fix.
+func mirrorFailover(err error) bool {
+	switch networkFailure(err) {
+	case "no such host", "name resolution failed", "connection refused", "no route to host", "tls certificate not valid":
+		return true
+	}
+	return false
 }
 
 // requestError removes any URL from transport errors. A passkey can appear in
@@ -1150,8 +1233,46 @@ func (c *DefinitionConnector) requestError(err error) error {
 		// was missing, unreachable or simply did not solve the check.
 		return fmt.Errorf("request blocked by a cloudflare challenge: %w", err)
 	default:
+		if kind := networkFailure(err); kind != "" {
+			return errors.New("request failed: " + kind)
+		}
 		return errors.New("request failed")
 	}
+}
+
+// networkFailure names the kind of a transport failure without the host or
+// the URL, which can carry a passkey: "request failed" alone left the logs and
+// the history without a cause, while a dead domain (no such host) and a
+// refused port need different actions.
+func networkFailure(err error) string {
+	var dnsErr *net.DNSError
+	var certErr *tls.CertificateVerificationError
+	var unknownAuthority x509.UnknownAuthorityError
+	var hostnameErr x509.HostnameError
+	var invalidCert x509.CertificateInvalidError
+	switch {
+	case errors.As(err, &dnsErr):
+		if dnsErr.IsNotFound {
+			return "no such host"
+		}
+		return "name resolution failed"
+	case errors.As(err, &certErr), errors.As(err, &unknownAuthority),
+		errors.As(err, &hostnameErr), errors.As(err, &invalidCert):
+		return "tls certificate not valid"
+	case errors.Is(err, syscall.ECONNREFUSED):
+		return "connection refused"
+	case errors.Is(err, syscall.ECONNRESET), errors.Is(err, syscall.EPIPE):
+		return "connection reset"
+	case errors.Is(err, syscall.ENETUNREACH), errors.Is(err, syscall.EHOSTUNREACH):
+		return "no route to host"
+	case errors.Is(err, io.ErrUnexpectedEOF), errors.Is(err, io.EOF):
+		return "connection closed by the site (unexpected eof)"
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return "timed out"
+	}
+	return ""
 }
 
 func (c *DefinitionConnector) applyAuth(request *http.Request) {

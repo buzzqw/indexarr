@@ -24,7 +24,10 @@ meta:
   description: Public TorrentGalaxy HTML listing, with magnets in the row.
   urls:
     - https://torrentgalaxy.one/
-  updated: "2026-10-24"
+    # Same pages; torrentgalaxy.one stopped resolving on 2026-10-28 and the
+    # engine moves to the next address when a domain is gone.
+    - https://torrentgalaxy.info/
+  updated: "2026-10-29"
 
 settings:
   - name: uploader

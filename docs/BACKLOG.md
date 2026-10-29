@@ -61,6 +61,7 @@ dettaglio e grab, fixture reali, definizione `verificata`.
 
 | Voce | Cosa guardare |
 | --- | --- |
+| `torrentgalaxy`, `torrentgalaxyclone` | dal 2026-10-28 alle 21:27 `torrentgalaxy.one` risponde NXDOMAIN (anche su 1.1.1.1): le 13 fonti per uploader e il clone fallivano a ogni giro (176 ricerche in errore del clone in 12 ore) con un `request failed` senza causa. Dal 2026-10-29 il connettore passa al mirror successivo di `meta.urls` quando un dominio sparisce (`TestConnectorMovesToTheNextMirrorWhenTheDomainIsGone`), `torrentgalaxy.yaml` ha il mirror `torrentgalaxy.info` (stessa pagina: 50 righe `tgxtablerow` su `/get-posts/user:ppb1/`) e l'errore nomina la causa (`request failed: no such host`). Guardare che le righe `run` delle fonti TorrentGalaxy tornino `ok`: `select status,count(*) from indexer_history where indexer_id between 16 and 28 and kind='run' and started_at > <deploy> group by 1`. Se `.one` torna, il connettore resta comunque sul mirror fino al riavvio |
 | `torrentby` | usa `meta.insecure_tls: true` perché il server non manda l'intermedio Let's Encrypt `YE1`. Se la catena torna completa, togliere il flag (e il badge) |
 | `u3c3` | la ricerca dipende dal token fisso `search2` del sito: se cambia, la ricerca risponde la home invece dei risultati |
 | `rutracker` | la ricerca passa da una sessione FlareSolverr: se il sito smette di rispondere anche al browser, la definizione va degradata |

@@ -402,3 +402,35 @@ func TestIndexSkipsLinksBackToTheLists(t *testing.T) {
 		t.Fatalf("entries = %+v", entries)
 	}
 }
+
+// "9-1-1", "S.W.A.T." and "N.C.I.S." lose their words to the normalization:
+// every letter is a word of one character and "1" never starts "911".
+func TestIndexMatchesTitlesWrittenWithInitials(t *testing.T) {
+	entries := []indexEntry{
+		{Title: "911- Stagione 2", Details: "/viewtopic.php?t=1"},
+		{Title: "S.W.A.T. - Stagione 8", Details: "/viewtopic.php?t=2"},
+		{Title: "N.C.I.S. - Stagione 9", Details: "/viewtopic.php?t=3"},
+		{Title: "SWAT - Stagione 7", Details: "/viewtopic.php?t=4"},
+		{Title: "Star Wars - Stagione 1", Details: "/viewtopic.php?t=5"},
+	}
+	cases := []struct {
+		query  string
+		season int
+		want   []string
+	}{
+		{"9-1-1", 2, []string{"911- Stagione 2"}},
+		{"S.W.A.T.", 0, []string{"SWAT - Stagione 7", "S.W.A.T. - Stagione 8"}},
+		{"SWAT", 8, []string{"S.W.A.T. - Stagione 8"}},
+		{"NCIS", 9, []string{"N.C.I.S. - Stagione 9"}},
+	}
+	for _, tc := range cases {
+		matches := matchIndexEntries(entries, SearchRequest{Mode: ModeTV, Query: tc.query, Season: tc.season})
+		var titles []string
+		for _, match := range matches {
+			titles = append(titles, match.Title)
+		}
+		if strings.Join(titles, "|") != strings.Join(tc.want, "|") {
+			t.Errorf("%q S%d: matches = %q, want %q", tc.query, tc.season, titles, tc.want)
+		}
+	}
+}

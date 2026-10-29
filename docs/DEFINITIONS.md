@@ -45,7 +45,7 @@ deve contenere un solo documento YAML.
 | `name` | sì | nome leggibile, non vuoto |
 | `type` | sì | `public`, `semi-private`, `private` |
 | `protocol` | sì | `torrent`, `usenet` oppure `ed2k` |
-| `urls` | sì | almeno un URL assoluto `http`/`https`; il primo è il principale, gli altri sono mirror |
+| `urls` | sì | almeno un URL assoluto `http`/`https`; il primo è il principale, gli altri sono mirror. Quando un indirizzo non c'è più (il nome non si risolve, nessuno risponde sulla porta, host irraggiungibile, certificato di un altro sito) il connettore riprova la stessa richiesta sul mirror successivo e resta lì; un sito lento o che rifiuta non fa cambiare indirizzo. Solo le richieste verso gli host della definizione cambiano indirizzo, non quelle verso tracker o CDN. Il passaggio vale per le richieste dirette, non per quelle via FlareSolverr |
 | `language` | no | tag BCP 47, per esempio `it-IT` |
 | `author` | no | autore o manutentore |
 | `description` | no | descrizione breve |
@@ -628,6 +628,8 @@ il titolo in locale (tollerando punteggiatura e parole comuni) e apre soltanto
 i primi `max_topics` topic. Un termine della query vale solo quando è l'inizio
 di una parola del titolo: «part» trova «Parte», ma «It» non trova «Hitman» e
 «Up» non trova «Superman», perché un falso positivo nasconderebbe il ripiego.
+Le lettere separate da punti o trattini valgono anche unite, nella query e nel
+titolo: «9-1-1» trova «911», «S.W.A.T.» trova «SWAT» e viceversa.
 Le ricerche di libri e musica non leggono l'indice: vanno direttamente alla
 `search.request`. Ogni elenco è tenuto in cache per `index.cache` (vuoto = 30
 minuti): gli elenchi cambiano di rado e un titolo che manca in un elenco
@@ -770,7 +772,15 @@ della richiesta:
 
 Con `expand: file` la scelta non si applica: ogni file del topic diventa una
 release separata. Il titolo unisce il titolo del topic e il nome del file, la
-dimensione viene dal link e l'hash MD4 diventa l'identità della riga. È il
+dimensione viene dal link e l'hash MD4 diventa l'identità della riga. Quando il
+nome del file dice già cosa contiene, cioè nomina l'episodio (`S06E12`, `6x12`)
+o l'anno (`Dune.Parte.due.2024.bdrip…`) e condivide una parola con il topic, il
+titolo è il solo nome del file: con il topic davanti Gextto e le Arr leggevano
+la serie o il film sbagliato. In un topic di film o serie (categorie 2000 e
+5000) i file accessori non diventano release: tracce audio separate (`.mka`,
+`.ac3`, `.dts`…), sottotitoli, immagini, `.nfo` e i file con «extra», «bonus»,
+«sample» o «trailer» nel nome, a meno che il topic stesso non usi quella parola
+(la serie «Extras»). Un topic fatto solo di file accessori resta intero. È il
 percorso giusto per un archivio: un topic con 46 episodi non deve perdere 45
 link. `expand` richiede `resolve_on: search`, perché i link devono essere letti
 prima che i risultati vengano salvati.
