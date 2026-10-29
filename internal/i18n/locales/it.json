@@ -436,6 +436,7 @@
   "idx.access.edit": "Modifica credenziali",
   "idx.access.help": "I dati di accesso richiesti da questa sorgente. Restano cifrati nel vault: qui vedi solo se sono presenti.",
   "idx.access.missing": "Mancante",
+  "idx.access.optional": "Opzionale",
   "idx.access.missingLabel": "Da configurare",
   "idx.access.missingVerdict": "Manca l'accesso: %s.",
   "idx.access.title": "Accesso al sito",

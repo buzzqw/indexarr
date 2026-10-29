@@ -436,6 +436,7 @@
   "idx.access.edit": "修改凭据",
   "idx.access.help": "此源所需的登录凭据。凭据在 vault 中加密保存：这里只显示是否已填写。",
   "idx.access.missing": "缺失",
+  "idx.access.optional": "可选",
   "idx.access.missingLabel": "需要配置",
   "idx.access.missingVerdict": "缺少访问信息：%s。",
   "idx.access.title": "站点访问",

@@ -436,6 +436,7 @@
   "idx.access.edit": "Zugangsdaten ändern",
   "idx.access.help": "Die Zugangsdaten, die diese Quelle benötigt. Sie bleiben verschlüsselt im Vault: hier siehst du nur, ob sie vorhanden sind.",
   "idx.access.missing": "Fehlt",
+  "idx.access.optional": "Optional",
   "idx.access.missingLabel": "Einrichtung nötig",
   "idx.access.missingVerdict": "Der Zugang fehlt: %s.",
   "idx.access.title": "Zugang zur Website",

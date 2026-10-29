@@ -436,6 +436,7 @@
   "idx.access.edit": "Modifier les identifiants",
   "idx.access.help": "Les identifiants demandés par cette source. Ils restent chiffrés dans le vault : ici vous voyez seulement s'ils sont présents.",
   "idx.access.missing": "Manquant",
+  "idx.access.optional": "Facultatif",
   "idx.access.missingLabel": "À configurer",
   "idx.access.missingVerdict": "L'accès manque : %s.",
   "idx.access.title": "Accès au site",

@@ -405,3 +405,25 @@ search:
 		}
 	}
 }
+
+func TestOptionalAccessFieldIsListedOnTheOverview(t *testing.T) {
+	env := newNativeEnv(t)
+	entry, ok := catalog.Get("iptorrents")
+	if !ok {
+		t.Fatal("iptorrents is not in the catalog")
+	}
+	seedDefinition(t, env.store, "iptorrents", "", string(entry.Body))
+	id := seedPhase2Indexer(t, env.store, "iptorrents", "ipt-test", true, `{}`)
+
+	visible := stripDetails(get(t, env.handler, "/indexers/"+strconvI(id)).Body.String())
+	for _, want := range []string{"Site access", "Session cookie", "Optional"} {
+		if !strings.Contains(visible, want) {
+			t.Errorf("detail page missing %q outside Advanced", want)
+		}
+	}
+	for _, unwanted := range []string{"Access is missing:", "Needs setup"} {
+		if strings.Contains(visible, unwanted) {
+			t.Errorf("an optional cookie is reported as missing: %q", unwanted)
+		}
+	}
+}

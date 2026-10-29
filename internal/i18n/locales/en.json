@@ -436,6 +436,7 @@
   "idx.access.edit": "Edit credentials",
   "idx.access.help": "The credentials this source requires. They stay encrypted in the vault: here you only see whether they are present.",
   "idx.access.missing": "Missing",
+  "idx.access.optional": "Optional",
   "idx.access.missingLabel": "Needs setup",
   "idx.access.missingVerdict": "Access is missing: %s.",
   "idx.access.title": "Site access",

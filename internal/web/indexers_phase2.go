@@ -2243,6 +2243,13 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		data.ProtocolKnown = parsed.Meta.Protocol != ""
 	}
 	data.ProtocolLabel = s.protocolLabel(r, data.Protocol)
+	isPrivate := strings.EqualFold(strings.TrimSpace(parsed.Meta.Type), "private")
+	// A restricted source may have optional access fields too: IPTorrents
+	// keeps the session cookie optional because it can be imported from the
+	// browser. They still belong in the visible Access section, not in
+	// Advanced, otherwise the form says "no credentials" for a source that
+	// cannot work without them.
+	isRestricted := isPrivate || strings.EqualFold(strings.TrimSpace(parsed.Meta.Type), "semi-private")
 
 	config := map[string]string{}
 	secretKeys := map[string]bool{}
@@ -2360,9 +2367,11 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		}
 		field := s.settingField(r, setting, raw, secretKeys[name], false)
 		switch {
-		case setting.Required && isAccessSetting(name):
+		case isAccessSetting(name) && (setting.Required || isRestricted):
 			// Credentials are the first thing the user must enter: keep them
 			// at the top of the form instead of mixing them with the filters.
+			// Required fields stay required; optional ones (an imported
+			// session cookie) are shown without the asterisk.
 			data.AccessFields = append(data.AccessFields, field)
 		case setting.Required:
 			data.RequiredFields = append(data.RequiredFields, field)
@@ -2370,7 +2379,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 			data.AdvancedFields = append(data.AdvancedFields, field)
 		}
 	}
-	data.IsPrivate = strings.EqualFold(strings.TrimSpace(parsed.Meta.Type), "private")
+	data.IsPrivate = isPrivate
 	data.NoAccessFields = data.IsPrivate && len(data.AccessFields) == 0
 	if !definitionHasURL {
 		// Definitions that take the address from meta.urls need no URL field,
@@ -2748,6 +2757,7 @@ type hostRequestView struct {
 // or the public configuration already holds it.
 type indexerAccessRow struct {
 	Label      string
+	Required   bool
 	Configured bool
 	UpdatedAt  time.Time
 	HasUpdated bool
@@ -3119,16 +3129,19 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 			data.SmartfeedConvertURL = detailPath + "/smartfeed"
 		}
 	}
-	// Required credentials belong on the Overview tab too: the operator must
-	// see at once whether the source can log in, and where to type them.
+	// Credentials belong on the Overview tab too: the operator must see at
+	// once whether the source can log in, and where to type them. For a
+	// restricted source an optional field (the imported IPTorrents cookie)
+	// is listed without being reported as missing.
 	if def != nil {
+		restricted := strings.EqualFold(def.Meta.Type, "private") || strings.EqualFold(def.Meta.Type, "semi-private")
 		for _, setting := range def.Settings {
-			if !setting.Required || !isAccessSetting(setting.Name) {
+			if !isAccessSetting(setting.Name) || (!setting.Required && !restricted) {
 				continue
 			}
 			name := strings.ToLower(strings.TrimSpace(setting.Name))
 			configured := strings.TrimSpace(config[name]) != ""
-			row := indexerAccessRow{}
+			row := indexerAccessRow{Required: setting.Required}
 			if indexersvc.IsSecretKey(name) {
 				updated, found := secretUpdated[name]
 				configured = found
@@ -3139,7 +3152,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 			row.Label = label
 			row.Configured = configured
 			data.AccessFields = append(data.AccessFields, row)
-			if !configured {
+			if !configured && setting.Required {
 				data.MissingAccess = append(data.MissingAccess, label)
 			}
 		}

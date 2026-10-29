@@ -436,6 +436,7 @@
   "idx.access.edit": "Zmień poświadczenia",
   "idx.access.help": "Poświadczenia wymagane przez to źródło. Pozostają zaszyfrowane w sejfie: tutaj widzisz tylko, czy są obecne.",
   "idx.access.missing": "Brak",
+  "idx.access.optional": "Opcjonalne",
   "idx.access.missingLabel": "Do skonfigurowania",
   "idx.access.missingVerdict": "Brakuje dostępu: %s.",
   "idx.access.title": "Dostęp do witryny",
