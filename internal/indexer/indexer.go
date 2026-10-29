@@ -489,6 +489,7 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 			DeferredSearchAllowed: func(ctx context.Context) error {
 				return m.checkQueryLimit(ctx, indexer.ID)
 			},
+			SavePendingSearches: m.pendingSearchSaver(indexer),
 		})
 		if err != nil {
 			return nil, redactError(fmt.Errorf("indexer %s: build definition connector: %w", indexer.Slug, err), secretValues)
@@ -526,6 +527,10 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 		// until the next request of the definition.
 		m.closeConnectorAsync(replaced.connector)
 	}
+	// Only the connector kept in the cache takes over the saved queue: the old
+	// one is closed above and a connector that lost the build race is never
+	// resumed, so a page cannot be sent twice.
+	m.resumePendingSearches(ctx, indexer, connector)
 	return connector, nil
 }
 

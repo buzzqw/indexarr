@@ -52,9 +52,13 @@ const (
 	// Prowlarr keeps in its application settings: the three search flags, a
 	// seeder floor and the categories the app should receive.
 	indexarr2AppProfilesVersion = 20
+	// indexarr2PendingSearchesVersion keeps the search pages a flood-limited
+	// site could not take yet (search.interval), so a restart resumes them
+	// instead of dropping them.
+	indexarr2PendingSearchesVersion = 21
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2AppProfilesVersion
+	latestSchemaVersion = indexarr2PendingSearchesVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

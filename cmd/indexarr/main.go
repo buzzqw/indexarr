@@ -292,6 +292,9 @@ func main() {
 		// Close browser sessions nobody uses: a Cloudflare-protected indexer
 		// queried once would otherwise keep a Chromium alive for hours.
 		go indexerManager.StartSessionSweeper(ctx)
+		// Searches a flood-limited site had not taken yet when the previous
+		// process stopped are sent again at the site's pace.
+		go indexerManager.ResumePendingSearches(ctx)
 	}
 
 	indexerService, err := indexersvc.New(indexersvc.Config{

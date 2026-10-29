@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 )
 
@@ -51,8 +52,6 @@ const (
 // page still has to be read after the turn.
 const searchTurnMargin = 15 * time.Second
 
-type searchBuild func(ctx context.Context) (*http.Request, error)
-
 // DeferredSearchEvent is one search page the background worker really sent to
 // the site for a deferred search, or tried to send. Err is nil when the page
 // was read and stored in the search cache. Attempt starts at 1.
@@ -70,11 +69,29 @@ type DeferredSearchEvent struct {
 // search.
 type DeferredSearchObserver func(DeferredSearchEvent)
 
+// PendingSearch is a deferred search page in a form that survives a restart:
+// the request and the page counters, not the URL, which can carry a session
+// token. The connector rebuilds the request when the page's turn comes.
+type PendingSearch struct {
+	Request  SearchRequest `json:"request"`
+	Page     int           `json:"page"`
+	Offset   int           `json:"offset"`
+	Param    int           `json:"param"`
+	Attempts int           `json:"attempts,omitempty"`
+	QueuedAt time.Time     `json:"queued_at"`
+}
+
+// samePage reports whether two pending searches ask for the same page.
+func (p PendingSearch) samePage(other PendingSearch) bool {
+	return p.Page == other.Page && p.Offset == other.Offset && p.Param == other.Param &&
+		reflect.DeepEqual(p.Request, other.Request)
+}
+
+// deferredSearch is one queued page. key is the search cache key; a page
+// restored from a previous process has none until its request is built.
 type deferredSearch struct {
-	key      string
-	query    string
-	build    searchBuild
-	attempts int
+	key     string
+	pending PendingSearch
 }
 
 // searchInterval is the minimum time between two search requests sent to the
@@ -196,29 +213,112 @@ func (c *DefinitionConnector) enterSearchLane(ctx context.Context, interval time
 // deferSearch queues a search page for the background worker. It reports
 // false when the queue is full or the connector has been closed; a page
 // already queued is not added twice.
-func (c *DefinitionConnector) deferSearch(key, query string, build searchBuild) bool {
+func (c *DefinitionConnector) deferSearch(key string, pending PendingSearch) bool {
 	if key == "" {
 		return false
 	}
+	if pending.QueuedAt.IsZero() {
+		pending.QueuedAt = c.now()
+	}
 	c.floodMu.Lock()
-	defer c.floodMu.Unlock()
 	if c.queueCtx == nil || c.queueCtx.Err() != nil {
+		c.floodMu.Unlock()
 		return false
 	}
+	if c.pageQueuedLocked(key, pending) {
+		c.floodMu.Unlock()
+		return true
+	}
+	if len(c.searchQueue) >= searchQueueEntries {
+		c.floodMu.Unlock()
+		return false
+	}
+	c.searchQueue = append(c.searchQueue, deferredSearch{key: key, pending: pending})
+	c.startDrainLocked()
+	c.floodMu.Unlock()
+	c.savePendingSearches()
+	return true
+}
+
+// pageQueuedLocked reports whether the page is already queued or being sent.
+// The caller holds floodMu.
+func (c *DefinitionConnector) pageQueuedLocked(key string, pending PendingSearch) bool {
+	same := func(entry deferredSearch) bool {
+		return (key != "" && entry.key == key) || entry.pending.samePage(pending)
+	}
+	if c.searchSending != nil && same(*c.searchSending) {
+		return true
+	}
 	for _, entry := range c.searchQueue {
-		if entry.key == key {
+		if same(entry) {
 			return true
 		}
 	}
-	if len(c.searchQueue) >= searchQueueEntries {
-		return false
-	}
-	c.searchQueue = append(c.searchQueue, deferredSearch{key: key, query: query, build: build})
-	if !c.searchDraining {
+	return false
+}
+
+// startDrainLocked starts the background worker if it is not running. The
+// caller holds floodMu.
+func (c *DefinitionConnector) startDrainLocked() {
+	if !c.searchDraining && len(c.searchQueue) > 0 {
 		c.searchDraining = true
 		go c.drainSearchQueue(c.queueCtx)
 	}
-	return true
+}
+
+// ResumePendingSearches queues again the pages a previous process (or the
+// connector this one replaced) saved, and starts the background worker. A
+// page older than the definition's search.cache is dropped: its answer would
+// already have expired from the cache it was meant to fill. The manager calls
+// it once, on the connector it keeps.
+func (c *DefinitionConnector) ResumePendingSearches(saved []PendingSearch) {
+	if len(saved) == 0 {
+		return
+	}
+	maxAge := c.def.Search.Cache.Duration()
+	now := c.now()
+	kept := 0
+	c.floodMu.Lock()
+	for _, pending := range saved {
+		if c.searchInterval() <= 0 || maxAge <= 0 || pending.QueuedAt.IsZero() || now.Sub(pending.QueuedAt) > maxAge {
+			continue
+		}
+		if len(c.searchQueue) >= searchQueueEntries || c.pageQueuedLocked("", pending) {
+			continue
+		}
+		c.searchQueue = append(c.searchQueue, deferredSearch{pending: pending})
+		kept++
+	}
+	c.startDrainLocked()
+	c.floodMu.Unlock()
+	if kept != len(saved) {
+		c.savePendingSearches()
+	}
+}
+
+// savePendingSearches hands the whole queue, the page being sent included,
+// to the saver. A closed connector saves nothing: Close runs at shutdown too,
+// and the saved queue is what the next process resumes.
+func (c *DefinitionConnector) savePendingSearches() {
+	if c.savePending == nil {
+		return
+	}
+	c.saveMu.Lock()
+	defer c.saveMu.Unlock()
+	c.floodMu.Lock()
+	if c.queueCtx == nil || c.queueCtx.Err() != nil {
+		c.floodMu.Unlock()
+		return
+	}
+	snapshot := make([]PendingSearch, 0, len(c.searchQueue)+1)
+	if c.searchSending != nil {
+		snapshot = append(snapshot, c.searchSending.pending)
+	}
+	for _, entry := range c.searchQueue {
+		snapshot = append(snapshot, entry.pending)
+	}
+	c.floodMu.Unlock()
+	c.savePending(snapshot)
 }
 
 // drainSearchQueue sends the deferred searches one turn at a time and keeps
@@ -243,19 +343,25 @@ func (c *DefinitionConnector) drainSearchQueue(ctx context.Context) {
 		}
 		entry := c.searchQueue[0]
 		c.searchQueue = c.searchQueue[1:]
+		c.searchSending = &entry
 		c.floodMu.Unlock()
 
 		if _, cached := c.cachedSearchPage(entry.key); cached {
+			c.finishSending(nil)
 			continue
 		}
 		if c.deferredSearchAllowed != nil {
 			if err := c.deferredSearchAllowed(ctx); err != nil {
+				if ctx.Err() != nil {
+					return
+				}
 				// The indexer's daily query budget is gone (or the indexer was
 				// deleted): drop the queued pages. The request that queued them
 				// already has its canceled history row.
 				c.floodMu.Lock()
 				c.searchQueue = nil
 				c.floodMu.Unlock()
+				c.finishSending(nil)
 				return
 			}
 		}
@@ -266,18 +372,31 @@ func (c *DefinitionConnector) drainSearchQueue(ctx context.Context) {
 		err := c.sendDeferredSearch(sendCtx, entry)
 		cancel()
 		if ctx.Err() != nil {
+			// Closed: the page stays in the saved queue for the next process.
 			return
 		}
-		if errors.Is(err, errSearchRefused) && entry.attempts+1 < searchQueueAttempts {
-			entry.attempts++
+		if errors.Is(err, errSearchRefused) && entry.pending.Attempts+1 < searchQueueAttempts {
+			entry.pending.Attempts++
 			// A refusal is the site asking for more than one interval: the
 			// next send waits for the pause (see noteSearchRefused). New
 			// entries wait with it, which is correct while the block is on.
-			c.floodMu.Lock()
-			c.searchQueue = append(c.searchQueue, entry)
-			c.floodMu.Unlock()
+			c.finishSending(&entry)
+			continue
 		}
+		c.finishSending(nil)
 	}
+}
+
+// finishSending ends the send of the current page, queues retry at the end
+// when it is not nil, and saves the queue.
+func (c *DefinitionConnector) finishSending(retry *deferredSearch) {
+	c.floodMu.Lock()
+	c.searchSending = nil
+	if retry != nil {
+		c.searchQueue = append(c.searchQueue, *retry)
+	}
+	c.floodMu.Unlock()
+	c.savePendingSearches()
 }
 
 // waitRefusalBackoff pauses the background queue while the site's block is
@@ -350,12 +469,13 @@ func (c *DefinitionConnector) Close() {
 	}
 	c.floodMu.Lock()
 	c.searchQueue = nil
+	c.searchSending = nil
 	c.floodMu.Unlock()
 }
 
 func (c *DefinitionConnector) sendDeferredSearch(ctx context.Context, entry deferredSearch) error {
 	started := time.Now()
-	attempt := entry.attempts + 1
+	attempt := entry.pending.Attempts + 1
 	written, sent, err := c.sendDeferredSearchOnce(ctx, entry)
 	if errors.Is(err, errSearchCached) {
 		// Another request filled the cache while this one waited for its turn:
@@ -368,7 +488,7 @@ func (c *DefinitionConnector) sendDeferredSearch(ctx context.Context, entry defe
 			sent = started
 		}
 		c.deferredSearch(DeferredSearchEvent{
-			Query:   entry.query,
+			Query:   entry.pending.Request.Query,
 			Attempt: attempt,
 			Started: sent,
 			Elapsed: time.Since(sent),
@@ -395,27 +515,36 @@ func (c *DefinitionConnector) sendDeferredSearchOnce(ctx context.Context, entry 
 	if err != nil {
 		return 0, time.Time{}, err
 	}
-	// A concurrent foreground search may have filled this page while the
-	// worker waited: sending it again would spend a turn for nothing.
-	if _, cached := c.cachedSearchPage(entry.key); cached {
-		release()
-		return 0, time.Time{}, errSearchCached
-	}
 	// The request is built after the turn: a token read before a long wait
 	// could be stale by the time the request leaves.
-	request, err := entry.build(ctx)
+	build := func() (*http.Request, error) {
+		p := entry.pending
+		return c.buildSearchRequest(ctx, p.Request, p.Page, p.Offset, p.Param)
+	}
+	request, err := build()
 	if err != nil {
 		release()
 		return 0, time.Time{}, err
 	}
+	key := entry.key
+	if key == "" {
+		// A page restored from a previous process: its key is the URL.
+		key = c.searchCacheKey(request)
+	}
+	// A concurrent foreground search may have filled this page while the
+	// worker waited: sending it again would spend a turn for nothing.
+	if _, cached := c.cachedSearchPage(key); cached {
+		release()
+		return 0, time.Time{}, errSearchCached
+	}
 	relogged := false
 	sent := time.Now()
-	response, err := c.fetchSearchPage(ctx, request, func() (*http.Request, error) { return entry.build(ctx) }, &relogged)
+	response, err := c.fetchSearchPage(ctx, request, build, &relogged)
 	release()
 	if err != nil {
 		return 0, sent, err
 	}
-	c.storeSearchPage(entry.key, response)
+	c.storeSearchPage(key, response)
 	return int64(len(response.Body)), sent, nil
 }
 

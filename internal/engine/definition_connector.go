@@ -56,6 +56,10 @@ type DefinitionConfig struct {
 	// callback means no extra check. The queue is dropped when it returns an
 	// error, so a queued page cannot bypass the limit.
 	DeferredSearchAllowed func(ctx context.Context) error
+	// SavePendingSearches receives the whole queue, the page being sent
+	// included, after every change. An empty slice means nothing is pending.
+	// ResumePendingSearches puts a saved queue back after a restart.
+	SavePendingSearches func([]PendingSearch)
 }
 
 var (
@@ -75,18 +79,18 @@ type DefinitionConnector struct {
 	// mirrors are meta.urls in order (mirrors[0] is baseURL); mirror is the
 	// one in use. A domain that stops resolving moves the connector to the
 	// next address instead of failing every run.
-	mirrors   []*url.URL
-	mirror    atomic.Int32
+	mirrors []*url.URL
+	mirror  atomic.Int32
 	// cookieRejected is set when the site dropped the session of the cookie
 	// pasted from the browser and the connector moved to the login form.
 	cookieRejected atomic.Bool
-	protocol  Protocol
-	caps      Capabilities
-	session   *Session
-	authMu    sync.Mutex
-	refresh   time.Duration
-	appendKey bool
-	secrets   []string
+	protocol       Protocol
+	caps           Capabilities
+	session        *Session
+	authMu         sync.Mutex
+	refresh        time.Duration
+	appendKey      bool
+	secrets        []string
 
 	downloadCache   *downloadCache
 	resolveFailures atomic.Int64
@@ -108,6 +112,13 @@ type DefinitionConnector struct {
 	searchBlockedUntil time.Time
 	searchQueue        []deferredSearch
 	searchDraining     bool
+	// searchSending is the queued page the worker is sending: it stays in the
+	// saved queue until its send is over, so a restart in the middle of the
+	// wait for its turn does not lose it.
+	searchSending *deferredSearch
+	savePending   func([]PendingSearch)
+	// saveMu orders the saves: each one writes a fresh snapshot of the queue.
+	saveMu sync.Mutex
 	// deferredSearch reports the background sends, so a queued search leaves
 	// a row in the history too.
 	deferredSearch        DeferredSearchObserver
@@ -228,6 +239,7 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 		appendKey:             strategy == "api_key" && !definitionUsesAnySetting(def, "api_key", "apikey"),
 		deferredSearch:        cfg.DeferredSearch,
 		deferredSearchAllowed: cfg.DeferredSearchAllowed,
+		savePending:           cfg.SavePendingSearches,
 		queueCtx:              queueCtx,
 		queueCancel:           queueCancel,
 	}
@@ -769,17 +781,15 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 		if !cached {
 			release, err := c.takeSearchTurn(ctx, pageIndex == 0)
 			if err != nil {
-				later := func(ctx context.Context) (*http.Request, error) {
-					return c.buildSearchRequest(ctx, req, pageValue, offsetValue, paramValue)
-				}
+				later := PendingSearch{Request: req, Page: pageValue, Offset: offsetValue, Param: paramValue}
 				if errors.Is(err, errSearchLater) {
 					// The first pages already answered: keep them, and fetch
 					// this one in the background for the next request.
-					c.deferSearch(cacheKey, req.Query, later)
+					c.deferSearch(cacheKey, later)
 					break
 				}
 				if errors.Is(err, ErrSearchDeferred) {
-					queued := c.deferSearch(cacheKey, req.Query, later)
+					queued := c.deferSearch(cacheKey, later)
 					if wait := c.searchBlockedFor(); wait > 0 {
 						return nil, blockedSearchError(c.def.Meta.ID, wait, queued)
 					}
