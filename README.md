@@ -916,5 +916,4 @@ smoke test: [docs/QA.md](docs/QA.md).
 - [QA](docs/QA.md) — tests and smoke tests
 - [Catalog](docs/CATALOG.md) — states, numbers and live evidence per site
 - [UI rules](docs/UI-RULES.md) — rules every page follows
-- [Backlog](docs/BACKLOG.md) — open work with its measured evidence
 - [Migration from Jackett/Prowlarr](docs/MIGRATION-MANAGERS.md)
