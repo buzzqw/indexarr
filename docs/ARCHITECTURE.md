@@ -242,8 +242,10 @@ quelle con origine `local`; riscrive una voce solo quando cambia l'hash.
   pagine (per esempio MirCrew) dichiara invece `session` e usa una sessione
   browser persistente, con login, riciclo a 12 ore e pulizia per prefisso; vedi
   [DEFINITIONS.md](DEFINITIONS.md#session) e [MIRCREW.md](MIRCREW.md).
-- **Ricerca live opt-in**: costa tempo al client, quindi è spenta per default e
-  limitata agli indexer Torznab; una ricerca con soli id esterni non la attiva.
+- **Ricerca live attiva per default**: interroga gli indexer Torznab/Newznab
+  quando la cache non ha risultati, poi salva ciò che arriva. Si può spegnere
+  da Settings perché aggiunge secondi alla risposta del client; una ricerca con
+  soli id esterni non la attiva sui siti che non supportano gli id.
 - **Backup e ripristino**: il backup è un file SQLite autonomo; il ripristino non
   apre il file caricato nel processo vivo ma lo applica al riavvio, dopo aver
   conservato il database corrente.

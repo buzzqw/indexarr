@@ -147,6 +147,23 @@ Filtri avanzati: categoria, seeder minimi, dimensione, qualità, lingua,
 includi/escludi, regex, solo file, nascondi XXX, preferiti, nascosti e
 duplicati. Le ricerche possono essere salvate.
 
+### Ricerca live manuale
+
+Il pannello **Ricerca live** interroga subito i siti scelti invece di leggere
+solo la cache. Scegli la modalità:
+
+- **Ricerca libera**: qualunque titolo;
+- **TV**: query, stagione, episodio, anno e id TVDb/IMDb/TMDb;
+- **Film**: query, anno e id IMDb/TMDb;
+- **Musica**: artista e album;
+- **Libri**: autore e titolo.
+
+Puoi selezionare uno o più indexer e una categoria. I risultati arrivano man
+mano e vengono salvati; i siti in timeout continuano in background e possono
+comparire dopo un ricaricamento. La vista live mostra al massimo 50 righe e non
+usa la paginazione normale. Con le caselle di selezione e **Invia selezionati**
+mandi più release al client di download in un colpo solo.
+
 Le regole (titolo, regex, categoria, infohash, fonte) bloccano le release prima
 del salvataggio; preferiti e nascosti restano locali.
 

@@ -143,10 +143,10 @@ non scarica l'NZB in anticipo; il payload arriva al primo grab. Le definizioni
 native per singoli siti Usenet non fanno parte del catalogo attuale, quindi una
 fonte che non espone Newznab resta in coda.
 
-## Client torrent
+## Client di download
 
 L'invio ai client non fa parte del protocollo Torznab: è un'azione opzionale del
-dettaglio release, configurata in **Settings → Download client**.
+dettaglio release, configurata in **App → Client di download**.
 
 | Client | Integrazione |
 | --- | --- |
