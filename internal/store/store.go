@@ -552,6 +552,26 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 20 adds the per-application sync profile. Existing rows keep
+	// the behaviour they had before: RSS, automatic and interactive search on,
+	// no seeder floor and every category the app supports.
+	if err := s.applyMigration(context.Background(), indexarr2AppProfilesVersion,
+		"application sync profiles", func(tx *sql.Tx) error {
+			for _, statement := range []string{
+				`ALTER TABLE applications ADD COLUMN enable_rss INTEGER NOT NULL DEFAULT 1`,
+				`ALTER TABLE applications ADD COLUMN enable_automatic_search INTEGER NOT NULL DEFAULT 1`,
+				`ALTER TABLE applications ADD COLUMN enable_interactive_search INTEGER NOT NULL DEFAULT 1`,
+				`ALTER TABLE applications ADD COLUMN min_seeders INTEGER NOT NULL DEFAULT 0`,
+				`ALTER TABLE applications ADD COLUMN categories TEXT NOT NULL DEFAULT ''`,
+			} {
+				if _, err := tx.Exec(statement); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
 	// The release table may have been rebuilt by migration 3, which predates
 	// the eD2k columns. Re-apply the idempotent column pass so both a fresh
 	// database and an upgraded one carry them.

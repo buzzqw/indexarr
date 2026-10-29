@@ -48,6 +48,7 @@
   <details class="advanced">
     <summary>{{T "application.advanced"}}</summary>
     <div class="advanced-body">
+      <input type="hidden" name="profile_fields" value="1">
       <div class="form-grid">
         <div class="field grow">
           <label for="name" title="{{T "tip.appName"}}">{{T "application.name"}}</label>
@@ -67,6 +68,26 @@
         <input id="tag_filter" name="tag_filter" type="text" maxlength="200" value="{{.TagFilter}}" placeholder="{{T "application.tagFilterPlaceholder"}}" title="{{T "tip.appTagFilter"}}">
         <p class="help">{{T "application.tagFilterHelp"}}</p>
         <p class="help">{{T "application.tagFilterWhere"}}</p>
+      </div>
+      <div class="form-grid">
+        <div class="field grow">
+          <label for="min_seeders" title="{{T "tip.appMinSeeders"}}">{{T "application.minSeeders"}}</label>
+          <input id="min_seeders" name="min_seeders" type="number" min="0" step="1" value="{{.MinSeeders}}" title="{{T "tip.appMinSeeders"}}">
+          <p class="help">{{T "application.minSeedersHelp"}}</p>
+        </div>
+        <div class="field grow">
+          <label for="categories" title="{{T "tip.appCategories"}}">{{T "application.categories"}}</label>
+          <input id="categories" name="categories" type="text" value="{{.Categories}}" placeholder="{{T "application.categoriesPlaceholder"}}" title="{{T "tip.appCategories"}}">
+          <p class="help">{{T "application.categoriesHelp"}}</p>
+        </div>
+      </div>
+      <div class="field">
+        <label class="muted" title="{{T "tip.appEnableRSS"}}"><input type="checkbox" name="enable_rss"{{if .EnableRSS}} checked{{end}}> {{T "application.enableRss"}}</label>
+        <p class="help">{{T "application.enableRssHelp"}}</p>
+        <label class="muted" title="{{T "tip.appEnableAutomaticSearch"}}"><input type="checkbox" name="enable_automatic_search"{{if .EnableAutomaticSearch}} checked{{end}}> {{T "application.enableAutomaticSearch"}}</label>
+        <p class="help">{{T "application.enableAutomaticSearchHelp"}}</p>
+        <label class="muted" title="{{T "tip.appEnableInteractiveSearch"}}"><input type="checkbox" name="enable_interactive_search"{{if .EnableInteractiveSearch}} checked{{end}}> {{T "application.enableInteractiveSearch"}}</label>
+        <p class="help">{{T "application.enableInteractiveSearchHelp"}}</p>
       </div>
     </div>
   </details>

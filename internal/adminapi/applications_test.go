@@ -122,6 +122,87 @@ func TestApplicationsCRUD(t *testing.T) {
 	}
 }
 
+func TestApplicationSyncProfileRoundTrip(t *testing.T) {
+	e := newEnv(t, true, true)
+
+	created := createTestApplication(t, e, map[string]any{
+		"kind": "sonarr", "name": "Sonarr", "url": "http://sonarr.local:8989",
+		"api_key": "key-value", "sync_level": "full",
+	})
+	if !created.EnableRSS || !created.EnableAutomaticSearch || !created.EnableInteractiveSearch {
+		t.Fatalf("create defaults = %+v", created)
+	}
+	if created.MinSeeders != 0 || len(created.Categories) != 0 {
+		t.Fatalf("create profile = %+v", created)
+	}
+
+	res := e.do(http.MethodPut, fmt.Sprintf("/api/v2/applications/%d", created.ID),
+		jsonBody(map[string]any{
+			"enable_rss":                false,
+			"enable_automatic_search":   true,
+			"enable_interactive_search": false,
+			"min_seeders":               7,
+			"categories":                []int{5000, 2000, 5000},
+		}))
+	requireStatus(t, res, http.StatusOK)
+	updated := decodeJSON[applicationResponse](t, res.body)
+	if updated.EnableRSS || !updated.EnableAutomaticSearch || updated.EnableInteractiveSearch {
+		t.Fatalf("updated flags = %+v", updated)
+	}
+	if updated.MinSeeders != 7 || fmt.Sprint(updated.Categories) != "[2000 5000]" {
+		t.Fatalf("updated profile = %+v", updated)
+	}
+	stored, err := e.store.GetApplication(context.Background(), created.ID)
+	if err != nil {
+		t.Fatalf("GetApplication: %v", err)
+	}
+	if stored.Categories != "2000,5000" || stored.MinSeeders != 7 ||
+		stored.EnableRSS || stored.EnableInteractiveSearch {
+		t.Fatalf("stored profile = %+v", stored)
+	}
+
+	// The string form used by the web form is accepted too, and an omitted
+	// field on update keeps the current value.
+	res = e.do(http.MethodPut, fmt.Sprintf("/api/v2/applications/%d", created.ID),
+		jsonBody(map[string]any{"categories": "5000"}))
+	requireStatus(t, res, http.StatusOK)
+	updated = decodeJSON[applicationResponse](t, res.body)
+	if fmt.Sprint(updated.Categories) != "[5000]" || updated.MinSeeders != 7 || updated.EnableRSS {
+		t.Fatalf("string categories update = %+v", updated)
+	}
+
+	// An empty category list clears the selection.
+	res = e.do(http.MethodPut, fmt.Sprintf("/api/v2/applications/%d", created.ID),
+		jsonBody(map[string]any{"categories": []int{}}))
+	requireStatus(t, res, http.StatusOK)
+	if got := decodeJSON[applicationResponse](t, res.body); len(got.Categories) != 0 {
+		t.Fatalf("categories after clear = %v", got.Categories)
+	}
+}
+
+func TestApplicationSyncProfileValidation(t *testing.T) {
+	e := newEnv(t, true, true)
+	created := createTestApplication(t, e, map[string]any{
+		"kind": "sonarr", "name": "Sonarr", "url": "http://sonarr.local:8989",
+		"api_key": "key-value", "sync_level": "full",
+	})
+	cases := []map[string]any{
+		{"min_seeders": -1},
+		{"categories": []int{5000, -1}},
+		{"categories": "5000,nope"},
+	}
+	for _, payload := range cases {
+		res := e.do(http.MethodPut, fmt.Sprintf("/api/v2/applications/%d", created.ID),
+			jsonBody(payload))
+		requireStatus(t, res, http.StatusBadRequest)
+	}
+	res := e.do(http.MethodPost, "/api/v2/applications", jsonBody(map[string]any{
+		"kind": "sonarr", "name": "Bad", "url": "http://sonarr.local:8989",
+		"api_key": "key-value", "min_seeders": -2,
+	}))
+	requireStatus(t, res, http.StatusBadRequest)
+}
+
 func TestApplicationValidation(t *testing.T) {
 	e := newEnv(t, true, true)
 
@@ -268,6 +349,8 @@ func TestApplicationResponseShape(t *testing.T) {
 	requireStatus(t, res, http.StatusOK)
 	body := decodeJSON[map[string]any](t, res.body)
 	for _, key := range []string{"id", "kind", "name", "url", "sync_level",
+		"enable_rss", "enable_automatic_search", "enable_interactive_search",
+		"min_seeders", "categories",
 		"last_sync_at", "last_error", "has_api_key"} {
 		if _, ok := body[key]; !ok {
 			t.Errorf("response is missing %q: %s", key, res.body)

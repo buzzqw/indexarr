@@ -48,6 +48,13 @@ const (
 	// eD2k, so an aMule client can be stored next to the torrent and usenet
 	// ones.
 	indexarr2Ed2kClientVersion = 19
+	// indexarr2AppProfilesVersion stores the per-application sync profile
+	// Prowlarr keeps in its application settings: the three search flags, a
+	// seeder floor and the categories the app should receive.
+	indexarr2AppProfilesVersion = 20
+	// latestSchemaVersion is the newest numbered migration. Tests use it
+	// instead of pinning a version so a new migration does not break them.
+	latestSchemaVersion = indexarr2AppProfilesVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

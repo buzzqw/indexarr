@@ -108,7 +108,17 @@ type Application struct {
 	SyncLevel string
 	// TagFilter is the comma-separated list of indexarr tag labels that belong
 	// to this application. Empty means "every indexer".
-	TagFilter  string
+	TagFilter string
+	// Sync profile copied to every indexer of this application. The three
+	// search flags and the category list come from Prowlarr's application
+	// settings; MinSeeders zero keeps the indexer's own value.
+	EnableRSS               bool
+	EnableAutomaticSearch   bool
+	EnableInteractiveSearch bool
+	MinSeeders              int
+	// Categories is a comma-separated list of standard Torznab category ids.
+	// Empty means every category the application kind supports.
+	Categories string
 	LastSyncAt time.Time
 	LastError  string
 }
@@ -987,11 +997,15 @@ func (s *Store) CreateApplication(ctx context.Context, in Application) (int64, e
 	var id int64
 	err := s.db.QueryRowContext(ctx, `
 		INSERT INTO applications(kind, name, url, api_key_enc, sync_level,
-			tag_filter, last_sync_at, last_error, created_at, updated_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			tag_filter, enable_rss, enable_automatic_search,
+			enable_interactive_search, min_seeders, categories,
+			last_sync_at, last_error, created_at, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
 		in.Kind, in.Name, in.URL, in.APIKeyEnc, in.SyncLevel,
-		in.TagFilter, in.LastSyncAt.Unix(), in.LastError,
+		in.TagFilter, in.EnableRSS, in.EnableAutomaticSearch,
+		in.EnableInteractiveSearch, in.MinSeeders, in.Categories,
+		in.LastSyncAt.Unix(), in.LastError,
 		time.Now().Unix(), time.Now().Unix()).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create application: %w", err)
@@ -1004,7 +1018,8 @@ func (s *Store) CreateApplication(ctx context.Context, in Application) (int64, e
 func (s *Store) GetApplication(ctx context.Context, id int64) (Application, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, kind, name, url, api_key_enc, sync_level, tag_filter,
-			last_sync_at, last_error
+			enable_rss, enable_automatic_search, enable_interactive_search,
+			min_seeders, categories, last_sync_at, last_error
 		FROM applications WHERE id = ?`, id)
 	out, err := scanApplication(row)
 	if err != nil {
@@ -1020,7 +1035,8 @@ func (s *Store) GetApplication(ctx context.Context, id int64) (Application, erro
 func (s *Store) ListApplications(ctx context.Context) ([]Application, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, kind, name, url, api_key_enc, sync_level, tag_filter,
-			last_sync_at, last_error
+			enable_rss, enable_automatic_search, enable_interactive_search,
+			min_seeders, categories, last_sync_at, last_error
 		FROM applications ORDER BY name COLLATE NOCASE, id`)
 	if err != nil {
 		return nil, err
@@ -1041,7 +1057,9 @@ func scanApplication(scanner interface{ Scan(...any) error }) (Application, erro
 	var out Application
 	var lastSync int64
 	if err := scanner.Scan(&out.ID, &out.Kind, &out.Name, &out.URL,
-		&out.APIKeyEnc, &out.SyncLevel, &out.TagFilter, &lastSync, &out.LastError); err != nil {
+		&out.APIKeyEnc, &out.SyncLevel, &out.TagFilter,
+		&out.EnableRSS, &out.EnableAutomaticSearch, &out.EnableInteractiveSearch,
+		&out.MinSeeders, &out.Categories, &lastSync, &out.LastError); err != nil {
 		return Application{}, err
 	}
 	out.LastSyncAt = unixTime(lastSync)
@@ -1055,10 +1073,15 @@ func (s *Store) UpdateApplication(ctx context.Context, in Application) error {
 	}
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE applications SET kind = ?, name = ?, url = ?, api_key_enc = ?,
-			sync_level = ?, tag_filter = ?, last_sync_at = ?, last_error = ?, updated_at = ?
+			sync_level = ?, tag_filter = ?, enable_rss = ?,
+			enable_automatic_search = ?, enable_interactive_search = ?,
+			min_seeders = ?, categories = ?, last_sync_at = ?, last_error = ?,
+			updated_at = ?
 		WHERE id = ?`,
 		in.Kind, in.Name, in.URL, in.APIKeyEnc, in.SyncLevel, in.TagFilter,
-		in.LastSyncAt.Unix(), in.LastError, time.Now().Unix(), in.ID)
+		in.EnableRSS, in.EnableAutomaticSearch, in.EnableInteractiveSearch,
+		in.MinSeeders, in.Categories, in.LastSyncAt.Unix(), in.LastError,
+		time.Now().Unix(), in.ID)
 	if err != nil {
 		return fmt.Errorf("update application %d: %w", in.ID, err)
 	}

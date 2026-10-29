@@ -254,9 +254,7 @@ func (s *Service) sync(ctx context.Context, app store.Application, result *SyncR
 	if err != nil {
 		return fmt.Errorf("syncjob: %s: list indexers: %w", app.Name, err)
 	}
-	desired, indexerIDs, err := s.desiredIndexers(ctx, indexarrKey,
-		appsync.Kind(strings.ToLower(strings.TrimSpace(app.Kind))), client,
-		splitTags(app.TagFilter))
+	desired, indexerIDs, err := s.desiredIndexers(ctx, indexarrKey, app, client)
 	if err != nil {
 		return err
 	}
@@ -619,13 +617,18 @@ func (s *Service) applyActions(ctx context.Context, app store.Application, clien
 // desiredIndexers builds the desired specs from every enabled indexer that
 // matches the application's tag filter. The returned IDs are parallel to the
 // specs. Categories are narrowed to what the target application consumes and
-// tags are translated to the application's tag IDs, so one per-site indexer
-// carries the same priority and labels as the indexer in indexarr.
+// to the application's own selection, tags are translated to the application's
+// tag IDs, and the application's search flags and seeder floor are applied, so
+// one per-site indexer carries the same priority and labels as the indexer in
+// indexarr.
 //
-// filter is the parsed applications.tag_filter. An empty filter means "all";
-// otherwise an indexer belongs to the app when it has at least one of the
-// labels. Matching is case-insensitive, like the tag labels themselves.
-func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind appsync.Kind, client appsync.Client, filter []string) ([]appsync.IndexerSpec, []int64, error) {
+// The application tag filter is the parsed applications.tag_filter. An empty
+// filter means "all"; otherwise an indexer belongs to the app when it has at
+// least one of the labels. Matching is case-insensitive, like the tag labels.
+func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, app store.Application, client appsync.Client) ([]appsync.IndexerSpec, []int64, error) {
+	kind := appsync.Kind(strings.ToLower(strings.TrimSpace(app.Kind)))
+	filter := splitTags(app.TagFilter)
+	selectedCategories := splitCategoryIDs(app.Categories)
 	indexers, err := s.store.ListIndexers(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("syncjob: list indexers: %w", err)
@@ -673,6 +676,10 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind 
 			}
 			categories[indexer.DefinitionID] = cats
 		}
+		cats, keep := categoriesForApplication(kind, cats, selectedCategories)
+		if !keep {
+			continue
+		}
 
 		implementation, contract := "Torznab", "TorznabSettings"
 		protocol := strings.ToLower(strings.TrimSpace(indexer.Protocol))
@@ -690,17 +697,20 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, kind 
 			// value is the per-site Torznab root, exactly like Prowlarr.
 			BaseURL:                   s.baseURL + "/torznab/" + slug,
 			APIKey:                    indexarrKey,
-			Categories:                appsync.CategoriesForKind(kind, cats),
+			Categories:                cats,
 			Priority:                  clampPriority(indexer.Priority),
 			Tags:                      tagsForLabels(indexer.Tags, tagIDs),
-			EnableRSS:                 true,
-			EnableAutomaticSearch:     true,
-			EnableInteractiveSearch:   true,
+			EnableRSS:                 app.EnableRSS,
+			EnableAutomaticSearch:     app.EnableAutomaticSearch,
+			EnableInteractiveSearch:   app.EnableInteractiveSearch,
 			Protocol:                  protocol,
 			MinSeeders:                indexer.MinSeeders,
 			SeedRatio:                 indexer.SeedRatio,
 			SeedTimeMinutes:           indexer.SeedTimeMinutes,
 			SeasonPackSeedTimeMinutes: indexer.SeasonPackSeedTimeMinutes,
+		}
+		if app.MinSeeders > 0 {
+			spec.MinSeeders = app.MinSeeders
 		}
 		// The two simple applications do not store every field. Normalize the
 		// spec to what they can represent, otherwise every sync would compute
@@ -746,6 +756,74 @@ func (s *Service) definitionCategories(ctx context.Context, definitionID string)
 	}
 	sort.Ints(out)
 	return out, nil
+}
+
+// splitCategoryIDs parses applications.categories into sorted, unique ids.
+// Invalid or negative values are ignored: the web form and the admin API
+// validate them before saving, and a malformed legacy value must not make the
+// whole sync fail.
+func splitCategoryIDs(raw string) []int {
+	seen := make(map[int]bool)
+	out := make([]int, 0, 8)
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, err := strconv.Atoi(part)
+		if err != nil || id < 0 || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	sort.Ints(out)
+	return out
+}
+
+// categoriesForApplication narrows the indexer's standard categories to the
+// application's selected categories and to the categories its kind supports.
+// An application with no selection keeps the previous behaviour: every
+// category the kind supports. When the indexer exposes no categories the
+// application selection is used as-is. The second result is false when the
+// indexer must be skipped because a non-empty selection has no overlap with
+// it.
+func categoriesForApplication(kind appsync.Kind, indexer, selected []int) ([]int, bool) {
+	cats := indexer
+	if len(selected) > 0 {
+		if len(indexer) == 0 {
+			cats = selected
+		} else {
+			cats = intersectCategories(indexer, selected)
+			if len(cats) == 0 {
+				return nil, false
+			}
+		}
+	}
+	cats = appsync.CategoriesForKind(kind, cats)
+	if len(selected) > 0 && len(cats) == 0 {
+		return nil, false
+	}
+	return cats, true
+}
+
+// intersectCategories returns the ids present in both lists, sorted and
+// deduplicated. Both inputs are usually already sorted.
+func intersectCategories(a, b []int) []int {
+	wanted := make(map[int]bool, len(b))
+	for _, id := range b {
+		wanted[id] = true
+	}
+	seen := make(map[int]bool, len(a))
+	out := make([]int, 0, len(a))
+	for _, id := range a {
+		if wanted[id] && !seen[id] {
+			seen[id] = true
+			out = append(out, id)
+		}
+	}
+	sort.Ints(out)
+	return out
 }
 
 // record stores the outcome in applications.last_sync_at/last_error.

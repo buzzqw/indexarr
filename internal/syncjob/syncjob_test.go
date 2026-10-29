@@ -130,11 +130,14 @@ func createTestApplication(t *testing.T, st *store.Store, v *vault.Vault, kind, 
 		t.Fatalf("SealString: %v", err)
 	}
 	id, err := st.CreateApplication(context.Background(), store.Application{
-		Kind:      kind,
-		Name:      name,
-		URL:       appURL,
-		APIKeyEnc: []byte(sealed),
-		SyncLevel: level,
+		Kind:                    kind,
+		Name:                    name,
+		URL:                     appURL,
+		APIKeyEnc:               []byte(sealed),
+		SyncLevel:               level,
+		EnableRSS:               true,
+		EnableAutomaticSearch:   true,
+		EnableInteractiveSearch: true,
 	})
 	if err != nil {
 		t.Fatalf("CreateApplication(%s): %v", name, err)
@@ -1118,6 +1121,107 @@ func TestSyncSnapshotsBeforeEveryChange(t *testing.T) {
 		if !strings.Contains(snapshots[0].Payload, name) {
 			t.Errorf("snapshot payload misses %q", name)
 		}
+	}
+}
+
+// TestSyncApplicationProfile covers the per-application Prowlarr sync
+// profile: search flags, the seeder floor and category filtering.
+func TestSyncApplicationProfile(t *testing.T) {
+	ctx := context.Background()
+	st := newSyncStore(t, true)
+	v := newSyncVault(t)
+	fake := newFakeServarr(t, testAppKey)
+
+	createTestDefinition(t, st, "tv-def", "torrent", 5000, 2000)
+	createTestDefinition(t, st, "movie-def", "torrent", 2000)
+	createTestDefinition(t, st, "nocat-def", "torrent")
+	alpha := createTestIndexer(t, st, "tv-def", "torrent", "alpha", "Alpha", true, 25)
+	createTestIndexer(t, st, "movie-def", "torrent", "beta", "Beta", true, 25)
+	gamma := createTestIndexer(t, st, "nocat-def", "torrent", "gamma", "Gamma", true, 25)
+	// Gamma already uses the same floor as the first application profile, so
+	// the second sync below only updates alpha.
+	gamma.MinSeeders = 9
+	if err := st.UpdateIndexer(ctx, gamma); err != nil {
+		t.Fatalf("UpdateIndexer gamma: %v", err)
+	}
+
+	appID := createTestApplication(t, st, v, "sonarr", "Sonarr", fake.server.URL, testAppKey, "full")
+	app, err := st.GetApplication(ctx, appID)
+	if err != nil {
+		t.Fatalf("GetApplication: %v", err)
+	}
+	app.EnableRSS = false
+	app.EnableAutomaticSearch = true
+	app.EnableInteractiveSearch = false
+	app.MinSeeders = 9
+	app.Categories = "5000"
+	if err := st.UpdateApplication(ctx, app); err != nil {
+		t.Fatalf("UpdateApplication: %v", err)
+	}
+	svc := newSyncService(t, st, v, testBaseURL)
+
+	result, err := svc.SyncApp(ctx, appID)
+	if err != nil {
+		t.Fatalf("SyncApp: %v", err)
+	}
+	if result.Added != 2 || result.Updated != 0 || result.Deleted != 0 {
+		t.Fatalf("profile sync result = %+v", result)
+	}
+	if fake.find(appsync.ManagedPrefix+"Beta") != nil {
+		t.Error("an indexer with no category overlap was synced")
+	}
+
+	alphaItem := fake.find(appsync.ManagedPrefix + "Alpha")
+	if alphaItem == nil {
+		t.Fatal("alpha was not added")
+	}
+	if got := fakeCategories(t, alphaItem); fmt.Sprint(got) != "[5000]" {
+		t.Errorf("alpha categories = %v, want the selected TV category", got)
+	}
+	for flag, want := range map[string]bool{
+		"enableRss":               false,
+		"enableAutomaticSearch":   true,
+		"enableInteractiveSearch": false,
+	} {
+		if got := alphaItem[flag]; got != want {
+			t.Errorf("alpha %s = %v, want %v", flag, got, want)
+		}
+	}
+	if got := fakeField(alphaItem, "minimumSeeders"); got != float64(9) {
+		t.Errorf("alpha minimumSeeders = %v, want the application override 9", got)
+	}
+
+	gammaItem := fake.find(appsync.ManagedPrefix + "Gamma")
+	if gammaItem == nil {
+		t.Fatal("an indexer without categories did not use the application selection")
+	}
+	if got := fakeCategories(t, gammaItem); fmt.Sprint(got) != "[5000]" {
+		t.Errorf("gamma categories = %v, want the application selection", got)
+	}
+
+	// Zero on the application keeps the indexer's own seeder floor.
+	alpha.MinSeeders = 3
+	if err := st.UpdateIndexer(ctx, alpha); err != nil {
+		t.Fatalf("UpdateIndexer: %v", err)
+	}
+	app, err = st.GetApplication(ctx, appID)
+	if err != nil {
+		t.Fatalf("GetApplication: %v", err)
+	}
+	app.MinSeeders = 0
+	if err := st.UpdateApplication(ctx, app); err != nil {
+		t.Fatalf("UpdateApplication zero seeders: %v", err)
+	}
+	result, err = svc.SyncApp(ctx, appID)
+	if err != nil {
+		t.Fatalf("SyncApp without override: %v", err)
+	}
+	if result.Updated != 1 {
+		t.Fatalf("seeder change result = %+v, want one update", result)
+	}
+	alphaItem = fake.find(appsync.ManagedPrefix + "Alpha")
+	if got := fakeField(alphaItem, "minimumSeeders"); got != float64(3) {
+		t.Errorf("alpha minimumSeeders = %v, want the indexer value 3", got)
 	}
 }
 

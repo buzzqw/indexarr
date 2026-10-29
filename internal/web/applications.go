@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -158,27 +159,35 @@ func (s *Server) applicationsPage(w http.ResponseWriter, r *http.Request) {
 
 type applicationFormPage struct {
 	base
-	IsNew       bool
-	Application store.Application
-	Kind        string
-	Name        string
-	URL         string
-	SyncLevel   string
-	TagFilter   string
-	HasKey      bool
-	Kinds       []applicationOption
-	SyncLevels  []applicationOption
-	Problems    []string
+	IsNew                   bool
+	Application             store.Application
+	Kind                    string
+	Name                    string
+	URL                     string
+	SyncLevel               string
+	TagFilter               string
+	EnableRSS               bool
+	EnableAutomaticSearch   bool
+	EnableInteractiveSearch bool
+	MinSeeders              int
+	Categories              string
+	HasKey                  bool
+	Kinds                   []applicationOption
+	SyncLevels              []applicationOption
+	Problems                []string
 }
 
 func (s *Server) newApplicationForm(r *http.Request, title string, current *store.Application, isNew bool) applicationFormPage {
 	data := applicationFormPage{
-		base:       s.newBase(r, title, "applications"),
-		IsNew:      isNew,
-		Kind:       "sonarr",
-		SyncLevel:  "full",
-		Kinds:      applicationKindOptions,
-		SyncLevels: applicationSyncLevelOptions,
+		base:                    s.newBase(r, title, "applications"),
+		IsNew:                   isNew,
+		Kind:                    "sonarr",
+		SyncLevel:               "full",
+		EnableRSS:               true,
+		EnableAutomaticSearch:   true,
+		EnableInteractiveSearch: true,
+		Kinds:                   applicationKindOptions,
+		SyncLevels:              applicationSyncLevelOptions,
 	}
 	if current != nil {
 		data.Application = *current
@@ -187,6 +196,11 @@ func (s *Server) newApplicationForm(r *http.Request, title string, current *stor
 		data.URL = current.URL
 		data.SyncLevel = current.SyncLevel
 		data.TagFilter = current.TagFilter
+		data.EnableRSS = current.EnableRSS
+		data.EnableAutomaticSearch = current.EnableAutomaticSearch
+		data.EnableInteractiveSearch = current.EnableInteractiveSearch
+		data.MinSeeders = current.MinSeeders
+		data.Categories = current.Categories
 		if data.SyncLevel == "" {
 			data.SyncLevel = "full"
 		}
@@ -238,7 +252,65 @@ func (s *Server) applicationInputFromForm(r *http.Request, create bool) (store.A
 	}
 	app.SyncLevel = level
 	app.TagFilter = normalizeTagFilter(r.FormValue("tag_filter"))
+
+	// The form marks the profile block with a hidden field. A legacy client
+	// that does not send that block gets the safe defaults; an explicit
+	// unchecked box is still respected because the real form sends the marker.
+	if r.Form.Has("profile_fields") {
+		app.EnableRSS = r.FormValue("enable_rss") != ""
+		app.EnableAutomaticSearch = r.FormValue("enable_automatic_search") != ""
+		app.EnableInteractiveSearch = r.FormValue("enable_interactive_search") != ""
+	} else {
+		app.EnableRSS = true
+		app.EnableAutomaticSearch = true
+		app.EnableInteractiveSearch = true
+	}
+
+	rawSeeders := strings.TrimSpace(r.FormValue("min_seeders"))
+	if rawSeeders != "" {
+		seeders, err := strconv.Atoi(rawSeeders)
+		if err != nil || seeders < 0 {
+			problems = append(problems, s.translate(r, "application.error.minSeedersInvalid"))
+		} else {
+			app.MinSeeders = seeders
+		}
+	}
+	categories, err := normalizeApplicationCategories(r.FormValue("categories"))
+	if err != nil {
+		problems = append(problems, s.translate(r, "application.error.categoriesInvalid"))
+	} else {
+		app.Categories = categories
+	}
 	return app, problems
+}
+
+// normalizeApplicationCategories turns the free-form category list into the
+// canonical comma-separated form stored in applications.categories: standard
+// Torznab ids, trimmed, deduplicated and sorted. Empty means "all".
+func normalizeApplicationCategories(raw string) (string, error) {
+	seen := make(map[int]bool)
+	ids := make([]int, 0, 8)
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, err := strconv.Atoi(part)
+		if err != nil || id < 0 {
+			return "", errors.New("category ids must be non-negative integers")
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+	sort.Ints(ids)
+	parts := make([]string, len(ids))
+	for i, id := range ids {
+		parts[i] = strconv.Itoa(id)
+	}
+	return strings.Join(parts, ","), nil
 }
 
 // normalizeTagFilter turns the free-form tag filter into a stable
@@ -305,6 +377,11 @@ func (s *Server) applicationCreate(w http.ResponseWriter, r *http.Request) {
 	data.URL = strings.TrimSpace(r.FormValue("url"))
 	data.SyncLevel = app.SyncLevel
 	data.TagFilter = app.TagFilter
+	data.EnableRSS = app.EnableRSS
+	data.EnableAutomaticSearch = app.EnableAutomaticSearch
+	data.EnableInteractiveSearch = app.EnableInteractiveSearch
+	data.MinSeeders = app.MinSeeders
+	data.Categories = app.Categories
 	if data.SyncLevel == "" {
 		data.SyncLevel = "full"
 	}
@@ -392,6 +469,11 @@ func (s *Server) applicationUpdate(w http.ResponseWriter, r *http.Request) {
 		data.URL = strings.TrimSpace(r.FormValue("url"))
 		data.SyncLevel = app.SyncLevel
 		data.TagFilter = app.TagFilter
+		data.EnableRSS = app.EnableRSS
+		data.EnableAutomaticSearch = app.EnableAutomaticSearch
+		data.EnableInteractiveSearch = app.EnableInteractiveSearch
+		data.MinSeeders = app.MinSeeders
+		data.Categories = app.Categories
 		data.Problems = problems
 		data.Error = s.translate(r, "application.error.checkFields")
 		s.render(w, r, "application_form", data, http.StatusBadRequest)

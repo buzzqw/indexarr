@@ -2,9 +2,11 @@ package adminapi
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -14,27 +16,69 @@ import (
 )
 
 // applicationRequest is the create/update payload. api_key is accepted on
-// update only when non-empty; an empty value keeps the stored key.
+// update only when non-empty; an empty value keeps the stored key. Pointer
+// profile fields distinguish an omitted value ("keep the current one") from an
+// explicit zero.
 type applicationRequest struct {
-	Kind      string `json:"kind"`
-	Name      string `json:"name"`
-	URL       string `json:"url"`
-	APIKey    string `json:"api_key"`
-	SyncLevel string `json:"sync_level"`
+	Kind                    string        `json:"kind"`
+	Name                    string        `json:"name"`
+	URL                     string        `json:"url"`
+	APIKey                  string        `json:"api_key"`
+	SyncLevel               string        `json:"sync_level"`
+	EnableRSS               *bool         `json:"enable_rss"`
+	EnableAutomaticSearch   *bool         `json:"enable_automatic_search"`
+	EnableInteractiveSearch *bool         `json:"enable_interactive_search"`
+	MinSeeders              *int          `json:"min_seeders"`
+	Categories              *categoryList `json:"categories"`
+}
+
+// categoryList accepts both a JSON array of ids and the comma-separated form
+// used by the web form, so an API client can send either.
+type categoryList []int
+
+func (c *categoryList) UnmarshalJSON(data []byte) error {
+	raw := strings.TrimSpace(string(data))
+	if raw == "" || raw == "null" {
+		*c = nil
+		return nil
+	}
+	if strings.HasPrefix(raw, `"`) {
+		var text string
+		if err := json.Unmarshal(data, &text); err != nil {
+			return err
+		}
+		ids, err := parseCategoryList(text)
+		if err != nil {
+			return err
+		}
+		*c = ids
+		return nil
+	}
+	var ids []int
+	if err := json.Unmarshal(data, &ids); err != nil {
+		return err
+	}
+	*c = ids
+	return nil
 }
 
 // applicationResponse is the public view of an application. The API key is
 // represented only by has_api_key: neither the sealed blob nor the plaintext
 // is ever returned.
 type applicationResponse struct {
-	ID         int64     `json:"id"`
-	Kind       string    `json:"kind"`
-	Name       string    `json:"name"`
-	URL        string    `json:"url"`
-	SyncLevel  string    `json:"sync_level"`
-	LastSyncAt time.Time `json:"last_sync_at"`
-	LastError  string    `json:"last_error"`
-	HasAPIKey  bool      `json:"has_api_key"`
+	ID                      int64     `json:"id"`
+	Kind                    string    `json:"kind"`
+	Name                    string    `json:"name"`
+	URL                     string    `json:"url"`
+	SyncLevel               string    `json:"sync_level"`
+	EnableRSS               bool      `json:"enable_rss"`
+	EnableAutomaticSearch   bool      `json:"enable_automatic_search"`
+	EnableInteractiveSearch bool      `json:"enable_interactive_search"`
+	MinSeeders              int       `json:"min_seeders"`
+	Categories              []int     `json:"categories"`
+	LastSyncAt              time.Time `json:"last_sync_at"`
+	LastError               string    `json:"last_error"`
+	HasAPIKey               bool      `json:"has_api_key"`
 }
 
 type applicationSyncResponse struct {
@@ -56,15 +100,83 @@ type applicationSyncAllResult struct {
 
 func applicationFromStore(app store.Application) applicationResponse {
 	return applicationResponse{
-		ID:         app.ID,
-		Kind:       app.Kind,
-		Name:       app.Name,
-		URL:        app.URL,
-		SyncLevel:  app.SyncLevel,
-		LastSyncAt: app.LastSyncAt,
-		LastError:  app.LastError,
-		HasAPIKey:  len(app.APIKeyEnc) > 0,
+		ID:                      app.ID,
+		Kind:                    app.Kind,
+		Name:                    app.Name,
+		URL:                     app.URL,
+		SyncLevel:               app.SyncLevel,
+		EnableRSS:               app.EnableRSS,
+		EnableAutomaticSearch:   app.EnableAutomaticSearch,
+		EnableInteractiveSearch: app.EnableInteractiveSearch,
+		MinSeeders:              app.MinSeeders,
+		Categories:              storedCategories(app.Categories),
+		LastSyncAt:              app.LastSyncAt,
+		LastError:               app.LastError,
+		HasAPIKey:               len(app.APIKeyEnc) > 0,
 	}
+}
+
+// parseCategoryList validates and normalizes the standard Torznab ids sent by
+// an API client. It accepts the comma-separated form too, mirroring the web
+// form. Negative and non-numeric ids are rejected.
+func parseCategoryList(raw string) ([]int, error) {
+	seen := make(map[int]bool)
+	out := make([]int, 0, 8)
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, err := strconv.Atoi(part)
+		if err != nil || id < 0 {
+			return nil, errors.New("category ids must be non-negative integers")
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	sort.Ints(out)
+	return out, nil
+}
+
+// normalizeCategoryIDs validates the ids in a request and returns a stable,
+// duplicate-free list.
+func normalizeCategoryIDs(ids []int) ([]int, error) {
+	seen := make(map[int]bool, len(ids))
+	out := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if id < 0 {
+			return nil, errors.New("category ids must be non-negative integers")
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	sort.Ints(out)
+	return out, nil
+}
+
+// storedCategories parses applications.categories. A malformed value is
+// ignored rather than failing the whole API response; the web and API writers
+// validate it before saving.
+func storedCategories(raw string) []int {
+	ids, err := parseCategoryList(raw)
+	if err != nil {
+		return []int{}
+	}
+	return ids
+}
+
+func categoryIDsCSV(ids []int) string {
+	parts := make([]string, len(ids))
+	for i, id := range ids {
+		parts[i] = strconv.Itoa(id)
+	}
+	return strings.Join(parts, ",")
 }
 
 func (s *Server) handleApplicationList(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +238,33 @@ func (s *Server) handleApplicationCreate(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusBadRequest, "invalid sync_level")
 		return
 	}
+	enableRSS, enableAutomaticSearch, enableInteractiveSearch := true, true, true
+	if req.EnableRSS != nil {
+		enableRSS = *req.EnableRSS
+	}
+	if req.EnableAutomaticSearch != nil {
+		enableAutomaticSearch = *req.EnableAutomaticSearch
+	}
+	if req.EnableInteractiveSearch != nil {
+		enableInteractiveSearch = *req.EnableInteractiveSearch
+	}
+	minSeeders := 0
+	if req.MinSeeders != nil {
+		minSeeders = *req.MinSeeders
+	}
+	if minSeeders < 0 {
+		writeError(w, http.StatusBadRequest, "min_seeders must be zero or positive")
+		return
+	}
+	var categories []int
+	if req.Categories != nil {
+		var err error
+		categories, err = normalizeCategoryIDs(*req.Categories)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
 	apiKey := strings.TrimSpace(req.APIKey)
 	if apiKey == "" {
 		writeError(w, http.StatusBadRequest, "api_key is required")
@@ -144,11 +283,16 @@ func (s *Server) handleApplicationCreate(w http.ResponseWriter, r *http.Request)
 
 	ctx := r.Context()
 	id, err := s.store.CreateApplication(ctx, store.Application{
-		Kind:      kind,
-		Name:      name,
-		URL:       appURL,
-		APIKeyEnc: []byte(sealed),
-		SyncLevel: level,
+		Kind:                    kind,
+		Name:                    name,
+		URL:                     appURL,
+		APIKeyEnc:               []byte(sealed),
+		SyncLevel:               level,
+		EnableRSS:               enableRSS,
+		EnableAutomaticSearch:   enableAutomaticSearch,
+		EnableInteractiveSearch: enableInteractiveSearch,
+		MinSeeders:              minSeeders,
+		Categories:              categoryIDsCSV(categories),
 	})
 	if err != nil {
 		s.logger.Error("adminapi: create application", "name", name, "error", err)
@@ -213,6 +357,30 @@ func (s *Server) handleApplicationUpdate(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		app.SyncLevel = level
+	}
+	if req.EnableRSS != nil {
+		app.EnableRSS = *req.EnableRSS
+	}
+	if req.EnableAutomaticSearch != nil {
+		app.EnableAutomaticSearch = *req.EnableAutomaticSearch
+	}
+	if req.EnableInteractiveSearch != nil {
+		app.EnableInteractiveSearch = *req.EnableInteractiveSearch
+	}
+	if req.MinSeeders != nil {
+		if *req.MinSeeders < 0 {
+			writeError(w, http.StatusBadRequest, "min_seeders must be zero or positive")
+			return
+		}
+		app.MinSeeders = *req.MinSeeders
+	}
+	if req.Categories != nil {
+		categories, err := normalizeCategoryIDs(*req.Categories)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		app.Categories = categoryIDsCSV(categories)
 	}
 	// An empty api_key on update means "keep the current key". The key can
 	// never be read back through the API.

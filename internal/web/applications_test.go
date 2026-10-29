@@ -82,12 +82,16 @@ func seedApplication(t *testing.T, st *store.Store, v *vault.Vault, name, syncLe
 
 func applicationValues(token, name, rawURL, apiKey, level string) url.Values {
 	return url.Values{
-		"csrf":       {token},
-		"kind":       {"sonarr"},
-		"name":       {name},
-		"url":        {rawURL},
-		"api_key":    {apiKey},
-		"sync_level": {level},
+		"csrf":                      {token},
+		"kind":                      {"sonarr"},
+		"name":                      {name},
+		"url":                       {rawURL},
+		"api_key":                   {apiKey},
+		"sync_level":                {level},
+		"profile_fields":            {"1"},
+		"enable_rss":                {"on"},
+		"enable_automatic_search":   {"on"},
+		"enable_interactive_search": {"on"},
 	}
 }
 
@@ -154,6 +158,143 @@ func TestApplicationCreateSealsAPIKey(t *testing.T) {
 	}
 	if !strings.Contains(edit, "configured") || !strings.Contains(edit, "Remove the stored API key") {
 		t.Error("the edit form does not show the stored-key state")
+	}
+}
+
+func TestApplicationCreateSavesSyncProfile(t *testing.T) {
+	env, v := newApplicationEnv(t, false)
+	token, cookie := csrfFrom(t, env.handler, "/applications/new")
+
+	values := applicationValues(token, "Sonarr profilo", "http://sonarr:8989", "secret", "full")
+	values.Del("enable_rss")
+	values.Del("enable_interactive_search")
+	values.Set("min_seeders", "9")
+	values.Set("categories", " 5000, 2000,5000 , ")
+	recorder := postForm(t, env.handler, "/applications", values, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("create status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	apps, err := env.store.ListApplications(context.Background())
+	if err != nil || len(apps) != 1 {
+		t.Fatalf("applications = %#v, %v", apps, err)
+	}
+	app := apps[0]
+	if app.EnableRSS || !app.EnableAutomaticSearch || app.EnableInteractiveSearch {
+		t.Errorf("search flags = rss:%v automatic:%v interactive:%v",
+			app.EnableRSS, app.EnableAutomaticSearch, app.EnableInteractiveSearch)
+	}
+	if app.MinSeeders != 9 {
+		t.Errorf("min seeders = %d, want 9", app.MinSeeders)
+	}
+	if app.Categories != "2000,5000" {
+		t.Errorf("categories = %q, want the normalized list", app.Categories)
+	}
+	if len(app.APIKeyEnc) == 0 {
+		t.Fatal("the API key was not sealed")
+	}
+	if plaintext, err := v.OpenString(string(app.APIKeyEnc)); err != nil || plaintext != "secret" {
+		t.Fatalf("sealed key = %q, %v", plaintext, err)
+	}
+
+	edit := get(t, env.handler, "/applications/"+strconv.FormatInt(app.ID, 10)+"/edit").Body.String()
+	for _, want := range []string{
+		`name="enable_rss"`, `name="enable_automatic_search"`,
+		`name="enable_interactive_search"`, `name="min_seeders"`, `name="categories"`,
+		`value="2000,5000"`, `value="9"`,
+	} {
+		if !strings.Contains(edit, want) {
+			t.Errorf("edit form missing %q", want)
+		}
+	}
+	if strings.Contains(edit, `name="enable_rss" checked`) {
+		t.Error("the stored disabled RSS flag is shown as enabled")
+	}
+}
+
+func TestApplicationLegacyFormGetsProfileDefaults(t *testing.T) {
+	env, _ := newApplicationEnv(t, false)
+	token, cookie := csrfFrom(t, env.handler, "/applications/new")
+	values := url.Values{
+		"csrf":       {token},
+		"kind":       {"sonarr"},
+		"name":       {"Sonarr"},
+		"url":        {"http://sonarr:8989"},
+		"api_key":    {"secret"},
+		"sync_level": {"full"},
+	}
+	recorder := postForm(t, env.handler, "/applications", values, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("create status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	apps, err := env.store.ListApplications(context.Background())
+	if err != nil || len(apps) != 1 {
+		t.Fatalf("applications = %#v, %v", apps, err)
+	}
+	app := apps[0]
+	if !app.EnableRSS || !app.EnableAutomaticSearch || !app.EnableInteractiveSearch {
+		t.Errorf("legacy form profile = %#v, want the default search flags", app)
+	}
+	if app.MinSeeders != 0 || app.Categories != "" {
+		t.Errorf("legacy form profile = %#v, want empty overrides", app)
+	}
+}
+
+func TestApplicationSyncProfileValidation(t *testing.T) {
+	env, _ := newApplicationEnv(t, false)
+	token, cookie := csrfFrom(t, env.handler, "/applications/new")
+
+	cases := []struct {
+		name   string
+		field  string
+		value  string
+		status int
+	}{
+		{"non-numeric category", "categories", "5000,abc", http.StatusBadRequest},
+		{"negative category", "categories", "5000,-1", http.StatusBadRequest},
+		{"negative seeders", "min_seeders", "-1", http.StatusBadRequest},
+		{"non-numeric seeders", "min_seeders", "many", http.StatusBadRequest},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			values := applicationValues(token, "Sonarr", "http://sonarr:8989", "secret", "full")
+			values.Set(tc.field, tc.value)
+			recorder := postForm(t, env.handler, "/applications", values, cookie)
+			if recorder.Code != tc.status {
+				t.Fatalf("status = %d, want %d: %s", recorder.Code, tc.status, recorder.Body.String())
+			}
+		})
+	}
+	if apps, err := env.store.ListApplications(context.Background()); err != nil || len(apps) != 0 {
+		t.Fatalf("invalid profiles created applications: %#v, %v", apps, err)
+	}
+}
+
+func TestNormalizeApplicationCategories(t *testing.T) {
+	cases := map[string]struct {
+		want string
+		err  bool
+	}{
+		"":             {want: ""},
+		"5000":         {want: "5000"},
+		" 5000, 2000":  {want: "2000,5000"},
+		"5000,5000":    {want: "5000"},
+		"2000,,5000 ,": {want: "2000,5000"},
+		"0":            {want: "0"},
+		"abc":          {err: true},
+		"5000,-1":      {err: true},
+		"5000,2.5":     {err: true},
+	}
+	for raw, tc := range cases {
+		got, err := normalizeApplicationCategories(raw)
+		if tc.err {
+			if err == nil {
+				t.Errorf("normalizeApplicationCategories(%q) = %q, want an error", raw, got)
+			}
+			continue
+		}
+		if err != nil || got != tc.want {
+			t.Errorf("normalizeApplicationCategories(%q) = %q, %v, want %q", raw, got, err, tc.want)
+		}
 	}
 }
 

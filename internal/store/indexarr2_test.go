@@ -56,7 +56,7 @@ func TestIndexarr2Schema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2Ed2kClientVersion {
+	if version != latestSchemaVersion {
 		t.Fatalf("schema version = %d, want %d", version, indexarr2ActivityVersion)
 	}
 	var name string
@@ -139,7 +139,7 @@ func TestMigrationIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2Ed2kClientVersion {
+	if version != latestSchemaVersion {
 		t.Fatalf("schema version = %d", version)
 	}
 	if err := second.DB().QueryRowContext(ctx,
@@ -170,7 +170,7 @@ func TestFailedMigrationRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("schemaVersion: %v", err)
 	}
-	if version != indexarr2Ed2kClientVersion {
+	if version != latestSchemaVersion {
 		t.Fatalf("schema version after failure = %d", version)
 	}
 	var tables int
@@ -529,6 +529,76 @@ func TestIndexerHistory(t *testing.T) {
 	}
 }
 
+func TestApplicationSyncProfileRoundTripAndDefaults(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+
+	appID, err := st.CreateApplication(ctx, Application{
+		Kind: "sonarr", Name: "Sonarr", URL: "http://sonarr.test:8989",
+		SyncLevel: "full", EnableRSS: false, EnableAutomaticSearch: true,
+		EnableInteractiveSearch: false, MinSeeders: 12, Categories: "2000,5000",
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	app, err := st.GetApplication(ctx, appID)
+	if err != nil {
+		t.Fatalf("GetApplication: %v", err)
+	}
+	if app.EnableRSS || !app.EnableAutomaticSearch || app.EnableInteractiveSearch {
+		t.Fatalf("search flags = rss:%v automatic:%v interactive:%v",
+			app.EnableRSS, app.EnableAutomaticSearch, app.EnableInteractiveSearch)
+	}
+	if app.MinSeeders != 12 || app.Categories != "2000,5000" {
+		t.Fatalf("profile = min_seeders:%d categories:%q", app.MinSeeders, app.Categories)
+	}
+
+	app.EnableRSS = true
+	app.EnableInteractiveSearch = true
+	app.MinSeeders = 0
+	app.Categories = ""
+	if err := st.UpdateApplication(ctx, app); err != nil {
+		t.Fatalf("UpdateApplication: %v", err)
+	}
+	updated, err := st.GetApplication(ctx, appID)
+	if err != nil {
+		t.Fatalf("GetApplication after update: %v", err)
+	}
+	if !updated.EnableRSS || !updated.EnableAutomaticSearch || !updated.EnableInteractiveSearch {
+		t.Fatalf("updated search flags = %#v", updated)
+	}
+	if updated.MinSeeders != 0 || updated.Categories != "" {
+		t.Fatalf("updated profile = %#v", updated)
+	}
+	apps, err := st.ListApplications(ctx)
+	if err != nil || len(apps) != 1 || apps[0].Categories != "" {
+		t.Fatalf("ListApplications = %#v, %v", apps, err)
+	}
+
+	// A row inserted without the new columns (the shape of an old database
+	// upgraded by migration 20) gets the safe defaults.
+	res, err := st.DB().ExecContext(ctx, `
+		INSERT INTO applications(kind, name, url, sync_level)
+		VALUES('radarr', 'Radarr', 'http://radarr.test:7878', 'full')`)
+	if err != nil {
+		t.Fatalf("insert legacy application: %v", err)
+	}
+	legacyID, err := res.LastInsertId()
+	if err != nil {
+		t.Fatalf("LastInsertId: %v", err)
+	}
+	legacy, err := st.GetApplication(ctx, legacyID)
+	if err != nil {
+		t.Fatalf("GetApplication legacy: %v", err)
+	}
+	if !legacy.EnableRSS || !legacy.EnableAutomaticSearch || !legacy.EnableInteractiveSearch {
+		t.Fatalf("legacy search flags = %#v", legacy)
+	}
+	if legacy.MinSeeders != 0 || legacy.Categories != "" {
+		t.Fatalf("legacy profile = %#v", legacy)
+	}
+}
+
 func TestApplicationsAppIndexersAndProxies(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
@@ -734,7 +804,7 @@ func TestDropLegacySourcesMigration(t *testing.T) {
 	}
 	defer migrated.Close()
 	version, err := migrated.schemaVersion(ctx)
-	if err != nil || version != indexarr2Ed2kClientVersion {
+	if err != nil || version != latestSchemaVersion {
 		t.Fatalf("schema version = %d, %v", version, err)
 	}
 	for _, table := range []string{"sources", "runs"} {
