@@ -399,10 +399,7 @@ var indexStopwords = map[string]struct{}{
 
 func indexQueryTokens(query string) []string {
 	normalized := normalizeIndexText(query)
-	var out []string
-	for _, token := range joinedInitials(strings.Fields(normalized)) {
-		out = append(out, token)
-	}
+	out := joinedInitials(strings.Fields(normalized))
 	for _, token := range strings.Fields(normalized) {
 		if len(token) < 2 {
 			continue
