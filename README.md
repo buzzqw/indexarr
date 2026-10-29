@@ -348,7 +348,12 @@ concurrency and cache. CorsaroBlu is a **listing-only** source for guests: no
 username, password or cookie is needed to read its latest list and magnets.
 The site disables guest keyword search, so indexarr does not send a query. The
 `CorsaroBlu (account)` variant accepts a **pasted session cookie** for keyword
-search; it remains a draft until an account can verify it. Since 29 October 2026
+search; it remains a draft until an account can verify it. In the UI, open
+**Add indexer**, find the CorsaroBlu card and follow **Add with account login
+(optional)** (or open `/indexers/new?definition=corsaro-account`). The username
+and password fields do not exist: the site's login is protected by reCAPTCHA, so
+paste the browser's `Cookie` request header into **Session cookie**, or leave it
+empty and use **Create and import cookie** when Firefox is on the indexarr host. Since 29 October 2026
 every request goes through a FlareSolverr session because a plain client
 receives 429/503. Limits: first page, at most 50 releases per source; if the
 layout changes or the site requires login, the test reports the error.
