@@ -547,6 +547,7 @@
   "idx.catalog.mostUsed": "Meistgenutzt",
   "idx.catalog.noneEligible": "Diese Seiten brauchen Einstellungen: öffne sie und fülle das Formular aus.",
   "idx.catalog.optionalLogin": "Mit Konto-Login hinzufügen (optional)",
+  "idx.catalog.accountVariantHelp": "Dies ist die öffentliche Liste ohne Anmeldefelder. Für die Stichwortsuche gibt es eine separate Konto-Variante: Sie fragt nach dem Sitzungscookie des Browsers, weil das Anmeldeformular durch reCAPTCHA geschützt ist.",
   "idx.catalog.probe": "Testen",
   "idx.catalog.probeFailed": "Die Seite hat nicht geantwortet.",
   "idx.catalog.probeNoFamily": "Die Seite antwortet, aber die Familie ist unbekannt: hier noch nicht hinzufügbar.",

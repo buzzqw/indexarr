@@ -2098,6 +2098,7 @@ type compactFormView struct {
 	AccessFields              []indexerSettingField
 	IsPrivate                 bool
 	CanImportCookie           bool
+	LoginVariantID            string
 	NoAccessFields            bool
 	AdvancedFields            []indexerSettingField
 	Problems                  []string
@@ -2197,6 +2198,9 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	data.DefinitionName = parsed.Meta.Name
 	data.Derived = parsed.IsDerived()
 	data.CanImportCookie = definitionHasCookie(parsed)
+	if strings.EqualFold(strings.TrimSpace(parsed.Meta.ID), "corsaro") {
+		data.LoginVariantID = "corsaro-account"
+	}
 	if parsed.Search.Index != nil {
 		data.IndexSources = indexSourceViews(parsed,
 			s.translate(r, "idx.indexSources.tv"), s.translate(r, "idx.indexSources.movies"))

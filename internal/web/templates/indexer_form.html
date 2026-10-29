@@ -21,6 +21,12 @@
 {{if .MirrorWarning}}<p class="flash warn" role="alert">{{.MirrorWarning}}</p>{{end}}
 {{if .TLSWarning}}<p class="flash warn" role="alert">{{.TLSWarning}}</p>{{end}}
 {{if .StateWarning}}<p class="flash warn" role="alert">{{.StateWarning}}</p>{{end}}
+{{if .LoginVariantID}}
+<section class="panel">
+  <p class="help">{{T "idx.catalog.accountVariantHelp"}}</p>
+  <a class="btn" href="/indexers/new?definition={{.LoginVariantID}}">{{T "idx.catalog.optionalLogin"}}</a>
+</section>
+{{end}}
 {{if eq .Protocol "usenet"}}<p class="help" title="{{T "tip.clientProtocol"}}">{{T "idx.protocolUsenet"}} · {{T "tip.clientProtocol"}}</p>{{end}}
 
 <form class="panel form compact-form" method="post" action="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">

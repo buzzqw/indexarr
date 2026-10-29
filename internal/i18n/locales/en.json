@@ -547,6 +547,7 @@
   "idx.catalog.mostUsed": "Most used",
   "idx.catalog.noneEligible": "These sites need settings: open them and fill the form.",
   "idx.catalog.optionalLogin": "Add with account login (optional)",
+  "idx.catalog.accountVariantHelp": "This is the public listing and has no login fields. The site has a separate account variant for keyword search: it asks for a browser session cookie, because the login form is protected by reCAPTCHA.",
   "idx.catalog.probe": "Prova",
   "idx.catalog.probeFailed": "The site did not respond.",
   "idx.catalog.probeNoFamily": "The site responds, but its family is unknown: it cannot be added from here yet.",

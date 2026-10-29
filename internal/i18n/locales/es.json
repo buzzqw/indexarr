@@ -547,6 +547,7 @@
   "idx.catalog.mostUsed": "Más usados",
   "idx.catalog.noneEligible": "Estos sitios necesitan configuración: ábrelos y rellena el formulario.",
   "idx.catalog.optionalLogin": "Añadir con inicio de sesión (opcional)",
+  "idx.catalog.accountVariantHelp": "Esta es la lista pública y no tiene campos de inicio de sesión. Para la búsqueda por palabras clave el sitio tiene una variante de cuenta separada: pide la cookie de sesión del navegador, porque el formulario de acceso está protegido por reCAPTCHA.",
   "idx.catalog.probe": "Probar",
   "idx.catalog.probeFailed": "El sitio no respondió.",
   "idx.catalog.probeNoFamily": "El sitio responde, pero su familia no se conoce: aún no se puede añadir desde aquí.",

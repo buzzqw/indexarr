@@ -547,6 +547,7 @@
   "idx.catalog.mostUsed": "Najczęściej używane",
   "idx.catalog.noneEligible": "Te witryny wymagają ustawień: otwórz je i wypełnij formularz.",
   "idx.catalog.optionalLogin": "Dodaj z logowaniem (opcjonalnie)",
+  "idx.catalog.accountVariantHelp": "To jest publiczna lista bez pól logowania. Do wyszukiwania po słowach kluczowych serwis ma osobną wersję konta: prosi o ciasteczko sesji przeglądarki, ponieważ formularz logowania jest chroniony przez reCAPTCHA.",
   "idx.catalog.probe": "Przetestuj",
   "idx.catalog.probeFailed": "Strona nie odpowiedziała.",
   "idx.catalog.probeNoFamily": "Strona odpowiada, ale rodzina jest nieznana: na razie nie można jej dodać.",

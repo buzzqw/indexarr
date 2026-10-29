@@ -92,6 +92,12 @@ func TestAddCorsaroShowsOnlyNameAndCategories(t *testing.T) {
 			t.Errorf("Corsaro form shows %q outside Advanced", unwanted)
 		}
 	}
+	if !strings.Contains(body, `/indexers/new?definition=corsaro-account`) {
+		t.Error("the public Corsaro form does not link to the account variant")
+	}
+	if !strings.Contains(body, "account variant") {
+		t.Error("the public Corsaro form does not explain the missing login fields")
+	}
 	if !strings.Contains(body, `<details class="advanced">`) {
 		t.Error("the Advanced block is not rendered as a closed detail")
 	}

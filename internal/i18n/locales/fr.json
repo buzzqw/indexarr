@@ -547,6 +547,7 @@
   "idx.catalog.mostUsed": "Les plus utilisés",
   "idx.catalog.noneEligible": "Ces sites nécessitent des réglages : ouvrez-les et remplissez le formulaire.",
   "idx.catalog.optionalLogin": "Ajouter avec connexion (facultatif)",
+  "idx.catalog.accountVariantHelp": "Ceci est la liste publique, sans champs de connexion. Pour la recherche par mots-clés, le site propose une variante compte distincte : elle demande le cookie de session du navigateur, car le formulaire de connexion est protégé par reCAPTCHA.",
   "idx.catalog.probe": "Essayer",
   "idx.catalog.probeFailed": "Le site n’a pas répondu.",
   "idx.catalog.probeNoFamily": "Le site répond, mais sa famille est inconnue : ajout impossible ici pour l’instant.",

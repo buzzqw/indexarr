@@ -547,6 +547,7 @@
   "idx.catalog.mostUsed": "Più usati",
   "idx.catalog.noneEligible": "Questi siti richiedono impostazioni: aprili e compila il form.",
   "idx.catalog.optionalLogin": "Aggiungi con login account (opzionale)",
+  "idx.catalog.accountVariantHelp": "Questa è la variante pubblica e non ha campi di login. Per la ricerca per parole chiave il sito ha una variante account separata: chiede il cookie di sessione del browser, perché il login è protetto da reCAPTCHA.",
   "idx.catalog.probe": "Prova",
   "idx.catalog.probeFailed": "Il sito non ha risposto.",
   "idx.catalog.probeNoFamily": "Il sito risponde, ma la famiglia non è nota: per ora non è aggiungibile da qui.",

@@ -547,6 +547,7 @@
   "idx.catalog.mostUsed": "最常用",
   "idx.catalog.noneEligible": "这些站点需要设置：请打开并填写表单。",
   "idx.catalog.optionalLogin": "使用账号登录添加（可选）",
+  "idx.catalog.accountVariantHelp": "这是公开列表，没有登录字段。关键词搜索需要单独的账户版本：它要求浏览器会话 cookie，因为登录表单受 reCAPTCHA 保护。",
   "idx.catalog.probe": "测试",
   "idx.catalog.probeFailed": "站点没有响应。",
   "idx.catalog.probeNoFamily": "站点有响应，但家族未知：暂时无法从此处添加。",
