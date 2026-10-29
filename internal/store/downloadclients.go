@@ -44,7 +44,7 @@ const (
 // DefaultDownloadClientProtocol derives the protocol from the client kind.
 func DefaultDownloadClientProtocol(kind string) string {
 	switch strings.ToLower(strings.TrimSpace(kind)) {
-	case "sabnzbd", "nzbget":
+	case "sabnzbd", "nzbget", "usenetblackhole", "nzbvortex":
 		return ProtocolUsenet
 	case "amule":
 		return ProtocolEd2k

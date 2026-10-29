@@ -550,7 +550,7 @@ if ("serviceWorker" in navigator) {
   if (!kind || !protocol) {
     return;
   }
-  const protocolFor = { sabnzbd: "usenet", nzbget: "usenet", amule: "ed2k" };
+  const protocolFor = { sabnzbd: "usenet", nzbget: "usenet", amule: "ed2k", usenetblackhole: "usenet", nzbvortex: "usenet" };
   kind.addEventListener("change", () => {
     protocol.value = protocolFor[kind.value] || "torrent";
   });

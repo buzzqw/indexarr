@@ -213,6 +213,9 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 	funcs["T"] = func(key string, args ...any) string {
 		return i18n.T(lang, key, args...)
 	}
+	funcs["clientHelp"] = func(key string) string {
+		return clientHelpText(lang, key)
+	}
 	funcs["stateLabel"] = func(state string) string {
 		return stateLabel(lang, state)
 	}

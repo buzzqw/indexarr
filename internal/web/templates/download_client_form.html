@@ -16,10 +16,23 @@
     </div>
     <div class="field">
       <label for="client_kind">{{T "client.kind"}}</label>
-      <select id="client_kind" name="kind" data-client-kind>
+      <select id="client_kind" name="kind" data-client-kind title="{{T "tip.clientKind"}}">
         {{range .Kinds}}<option value="{{.}}"{{if eq $.Client.Kind .}} selected{{end}}>{{clientKind .}}</option>{{end}}
       </select>
       <p class="help">{{T "client.kindHelp"}}</p>
+      <details class="advanced">
+        <summary>{{T "client.kindHelp"}}</summary>
+        <ul class="help">
+          <li><strong>{{clientKind "torrentblackhole"}}</strong>: {{clientHelp "client.help.torrentblackhole"}}</li>
+          <li><strong>{{clientKind "usenetblackhole"}}</strong>: {{clientHelp "client.help.usenetblackhole"}}</li>
+          <li><strong>{{clientKind "aria2"}}</strong>: {{clientHelp "client.help.aria2"}}</li>
+          <li><strong>{{clientKind "utorrent"}}</strong>: {{clientHelp "client.help.utorrent"}}</li>
+          <li><strong>{{clientKind "flood"}}</strong>: {{clientHelp "client.help.flood"}}</li>
+          <li><strong>{{clientKind "downloadstation"}}</strong>: {{clientHelp "client.help.downloadstation"}}</li>
+          <li><strong>{{clientKind "nzbvortex"}}</strong>: {{clientHelp "client.help.nzbvortex"}}</li>
+          <li><strong>{{clientKind "hadouken"}}</strong>: {{clientHelp "client.help.hadouken"}}</li>
+        </ul>
+      </details>
     </div>
     <div class="field">
       <label for="client_protocol">{{T "client.protocol"}}</label>
@@ -32,8 +45,9 @@
   </div>
   <div class="field grow">
     <label for="client_url">{{T "client.url"}}</label>
-    <input id="client_url" name="url" type="url" required value="{{.Client.URL}}" placeholder="{{T "client.urlPlaceholder"}}">
+    <input id="client_url" name="url" type="url"{{if .URLRequired}} required{{end}} value="{{.Client.URL}}" placeholder="{{T "client.urlPlaceholder"}}">
     <p class="help">{{T "client.urlHelp"}}</p>
+    <p class="help">{{clientHelp "client.help.url"}}</p>
   </div>
   <div class="form-grid">
     <div class="field">
@@ -56,22 +70,26 @@
       </div>
       {{if .HasAPIKey}}<label class="check muted"><input type="checkbox" name="api_key_remove" data-confirm="{{T "client.removeConfirm"}}"> <span>{{T "client.removeStored"}}</span></label>{{end}}
       <p class="help">{{T "client.apiKeyHelp"}}</p>
+      <p class="help">{{clientHelp "client.help.apiKey"}}</p>
     </div>
   </div>
   <div class="form-grid">
     <div class="field">
       <label for="client_category">{{T "client.category"}}</label>
       <input id="client_category" name="category" type="text" value="{{.Client.Category}}" placeholder="{{T "client.categoryPlaceholder"}}">
+      <p class="help">{{clientHelp "client.help.category"}}</p>
     </div>
     <div class="field">
       <label for="client_save_path">{{T "client.savePath"}}</label>
       <input id="client_save_path" name="save_path" type="text" value="{{.Client.SavePath}}" placeholder="{{T "client.savePathPlaceholder"}}">
+      <p class="help">{{clientHelp "client.help.savePath"}}</p>
     </div>
   </div>
   <div class="form-grid">
     <div class="field checkbox">
       <input id="client_paused" name="paused" type="checkbox"{{if .Client.Paused}} checked{{end}}>
       <label for="client_paused">{{T "client.paused"}}</label>
+      <p class="help">{{clientHelp "client.help.paused"}}</p>
     </div>
     <div class="field checkbox">
       <input id="client_enabled" name="enabled" type="checkbox"{{if or .IsNew .Client.Enabled}} checked{{end}}>

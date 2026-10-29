@@ -9,18 +9,66 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/downloadclient"
+	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
 // downloadClientKindLabels are product names: they are not translated.
 var downloadClientKindLabels = map[string]string{
-	"qbittorrent":  "qBittorrent",
-	"transmission": "Transmission",
-	"deluge":       "Deluge",
-	"rtorrent":     "rTorrent",
-	"sabnzbd":      "SABnzbd",
-	"nzbget":       "NZBGet",
-	"amule":        "aMule",
+	"qbittorrent":      "qBittorrent",
+	"transmission":     "Transmission",
+	"deluge":           "Deluge",
+	"rtorrent":         "rTorrent",
+	"sabnzbd":          "SABnzbd",
+	"nzbget":           "NZBGet",
+	"amule":            "aMule",
+	"torrentblackhole": "Torrent Blackhole",
+	"usenetblackhole":  "Usenet Blackhole",
+	"aria2":            "Aria2",
+	"utorrent":         "uTorrent",
+	"flood":            "Flood",
+	"downloadstation":  "Synology Download Station",
+	"nzbvortex":        "NZBVortex",
+	"hadouken":         "Hadouken",
+}
+
+// clientHelpFallback carries the English text of help keys that are not in the
+// shipped catalogs yet. i18n.T wins as soon as a catalog has the key, so adding
+// the translations later needs no template change.
+var clientHelpFallback = map[string]string{
+	"client.help.torrentblackhole": "Writes each .torrent file, or a .magnet file when only a magnet exists, into the save path. Leave the URL empty.",
+	"client.help.usenetblackhole":  "Writes each .nzb file into the save path. Leave the URL empty.",
+	"client.help.aria2":            "Uses JSON-RPC at /jsonrpc. Put the RPC secret in the password or API key field; the save path becomes aria2's dir option and Add paused sets pause=true.",
+	"client.help.utorrent":         "Uses the Web UI under /gui and fetches a token from token.html. Enter the Web UI address plus username and password; save path and category are not used.",
+	"client.help.flood":            "Uses the REST API under /api. Enter its address, username and password; the save path becomes destination and the category becomes a tag.",
+	"client.help.downloadstation":  "Logs in through auth.cgi and creates tasks through task.cgi. Enter the NAS address, username and password; the save path becomes destination. Category is not used.",
+	"client.help.nzbvortex":        "Uses the API under /api and an API key. It accepts .nzb files only; the category becomes the group name.",
+	"client.help.hadouken":         "Uses JSON-RPC under /api. Enter its address, username and password; the category becomes the label.",
+	"client.help.url":              "Blackhole leaves this empty. The other new clients use the address of their API, for example http://192.168.1.30:6800.",
+	"client.help.savePath":         "Blackhole: the folder that receives the files. Aria2: the dir option. Flood and Download Station: the destination. Other clients ignore it.",
+	"client.help.apiKey":           "Aria2 accepts its RPC secret here or in the password field. SABnzbd, NZBGet and NZBVortex use the API key.",
+	"client.help.category":         "Flood uses it as a tag, NZBVortex as a group and Hadouken as a label. Other clients ignore it.",
+	"client.help.paused":           "Aria2 and Flood honour it; the other clients may keep their own default.",
+	"client.error.savePath":        "Blackhole needs a save folder.",
+}
+
+func blackholeKind(kind string) bool {
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case "torrentblackhole", "usenetblackhole":
+		return true
+	}
+	return false
+}
+
+func clientHelpText(lang i18n.Language, key string) string {
+	text := i18n.T(lang, key)
+	if text != key {
+		return text
+	}
+	if fallback, ok := clientHelpFallback[key]; ok {
+		return fallback
+	}
+	return text
 }
 
 func downloadClientKindLabel(kind string) string {
@@ -52,6 +100,7 @@ type downloadClientFormPage struct {
 	HasPassword     bool
 	HasAPIKey       bool
 	DefaultProtocol string
+	URLRequired     bool
 }
 
 func (s *Server) downloadClientForm(r *http.Request, title string, client store.DownloadClient, isNew bool) downloadClientFormPage {
@@ -59,11 +108,12 @@ func (s *Server) downloadClientForm(r *http.Request, title string, client store.
 		base:            s.newBaseT(r, title, "applications"),
 		IsNew:           isNew,
 		Client:          client,
-		Kinds:           []string{"qbittorrent", "transmission", "deluge", "rtorrent", "sabnzbd", "nzbget", "amule"},
+		Kinds:           []string{"qbittorrent", "transmission", "deluge", "rtorrent", "sabnzbd", "nzbget", "amule", "torrentblackhole", "usenetblackhole", "aria2", "utorrent", "flood", "downloadstation", "nzbvortex", "hadouken"},
 		KindName:        downloadClientKindLabel(client.Kind),
 		HasPassword:     client.PasswordEnc != "",
 		HasAPIKey:       client.APIKeyEnc != "",
 		DefaultProtocol: store.DefaultDownloadClientProtocol(client.Kind),
+		URLRequired:     !blackholeKind(client.Kind),
 	}
 }
 
@@ -118,7 +168,16 @@ func (s *Server) downloadClientInput(r *http.Request, current store.DownloadClie
 		problems = append(problems, s.translate(r, "client.error.protocol"))
 	}
 	parsed, err := url.Parse(in.URL)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+	if blackholeKind(in.Kind) {
+		// Blackhole writes into SavePath and needs no address. If one is
+		// entered anyway, it must still be a valid http(s) address.
+		if in.SavePath == "" {
+			problems = append(problems, s.clientHelp(r, "client.error.savePath"))
+		}
+		if strings.TrimSpace(in.URL) != "" && (err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "") {
+			problems = append(problems, s.translate(r, "client.error.url"))
+		}
+	} else if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		problems = append(problems, s.translate(r, "client.error.url"))
 	}
 	// Secrets are sealed only when the operator enters a new value.
@@ -152,6 +211,10 @@ func (s *Server) downloadClientInput(r *http.Request, current store.DownloadClie
 		problems = append(problems, s.translate(r, "client.error.amulePassword"))
 	}
 	return in, problems
+}
+
+func (s *Server) clientHelp(r *http.Request, key string) string {
+	return clientHelpText(requestLanguage(r), key)
 }
 
 func (s *Server) sealSecret(value string) (string, error) {

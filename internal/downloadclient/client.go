@@ -2,8 +2,10 @@
 //
 // qBittorrent is driven through its Web API v2, Transmission through its JSON
 // RPC endpoint, Deluge through its JSON-RPC API, rTorrent through XML-RPC,
-// SABnzbd through its HTTP API and NZBGet through its JSON-RPC API. All are
-// optional: when the feature is disabled the release page hides the button.
+// SABnzbd through its HTTP API and NZBGet through its JSON-RPC API. The
+// expanded set adds Blackhole folders, Aria2, uTorrent, Flood, Synology
+// Download Station, NZBVortex and Hadouken. All are optional: when the feature
+// is disabled the release page hides the button.
 package downloadclient
 
 import (
@@ -24,13 +26,21 @@ import (
 )
 
 const (
-	KindNone         = "none"
-	KindQBittorrent  = "qbittorrent"
-	KindTransmission = "transmission"
-	KindDeluge       = "deluge"
-	KindRTorrent     = "rtorrent"
-	KindSABnzbd      = "sabnzbd"
-	KindNZBGet       = "nzbget"
+	KindNone             = "none"
+	KindQBittorrent      = "qbittorrent"
+	KindTransmission     = "transmission"
+	KindDeluge           = "deluge"
+	KindRTorrent         = "rtorrent"
+	KindSABnzbd          = "sabnzbd"
+	KindNZBGet           = "nzbget"
+	KindTorrentBlackhole = "torrentblackhole"
+	KindUsenetBlackhole  = "usenetblackhole"
+	KindAria2            = "aria2"
+	KindUTorrent         = "utorrent"
+	KindFlood            = "flood"
+	KindDownloadStation  = "downloadstation"
+	KindNZBVortex        = "nzbvortex"
+	KindHadouken         = "hadouken"
 )
 
 // Config is the saved download-client configuration. SABnzbd uses APIKey as
@@ -101,6 +111,22 @@ func New(cfg Config) (Client, error) {
 		return newNZBGet(cfg)
 	case KindAmule:
 		return newAmule(cfg)
+	case KindTorrentBlackhole:
+		return newBlackhole(cfg, KindTorrentBlackhole)
+	case KindUsenetBlackhole:
+		return newBlackhole(cfg, KindUsenetBlackhole)
+	case KindAria2:
+		return newAria2(cfg)
+	case KindUTorrent:
+		return newUTorrent(cfg)
+	case KindFlood:
+		return newFlood(cfg)
+	case KindDownloadStation:
+		return newDownloadStation(cfg)
+	case KindNZBVortex:
+		return newNZBVortex(cfg)
+	case KindHadouken:
+		return newHadouken(cfg)
 	case "", KindNone:
 		return nil, fmt.Errorf("no download client configured")
 	default:
@@ -178,6 +204,13 @@ var (
 	_ Client = (*sabnzbdClient)(nil)
 	_ Client = (*nzbgetClient)(nil)
 	_ Client = (*amuleClient)(nil)
+	_ Client = (*blackholeClient)(nil)
+	_ Client = (*aria2Client)(nil)
+	_ Client = (*utorrentClient)(nil)
+	_ Client = (*floodClient)(nil)
+	_ Client = (*downloadStationClient)(nil)
+	_ Client = (*nzbVortexClient)(nil)
+	_ Client = (*hadoukenClient)(nil)
 
 	_ Tester = (*clientFuncs)(nil)
 	_ Tester = (*delugeClient)(nil)
@@ -185,6 +218,13 @@ var (
 	_ Tester = (*sabnzbdClient)(nil)
 	_ Tester = (*nzbgetClient)(nil)
 	_ Tester = (*amuleClient)(nil)
+	_ Tester = (*blackholeClient)(nil)
+	_ Tester = (*aria2Client)(nil)
+	_ Tester = (*utorrentClient)(nil)
+	_ Tester = (*floodClient)(nil)
+	_ Tester = (*downloadStationClient)(nil)
+	_ Tester = (*nzbVortexClient)(nil)
+	_ Tester = (*hadoukenClient)(nil)
 )
 
 func (c *clientFuncs) Send(ctx context.Context, item Item) error {
