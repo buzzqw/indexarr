@@ -17,12 +17,14 @@
       <label class="sr-only" for="indexer-search">{{T "idx.searchPlaceholder"}}</label>
       <input id="indexer-search" name="q" type="search" value="{{.Query}}" placeholder="{{T "idx.searchPlaceholder"}}" title="{{T "tip.addShowAll"}}" autocomplete="off">
       {{if .State}}<input type="hidden" name="state" value="{{.State}}">{{end}}
+      {{if .Protocol}}<input type="hidden" name="protocol" value="{{.Protocol}}">{{end}}
       <button class="btn" type="submit">{{T "idx.searchAction"}}</button>
     </form>
     <nav class="filter-tabs" aria-label="{{T "idx.filtersLabel"}}">
-      <a class="tab{{if not .State}} active{{end}}" href="/indexers{{if .Query}}?q={{.Query}}{{end}}">{{T "idx.filterAll"}} <span class="chip">{{.Total}}</span></a>
-      <a class="tab{{if eq .State "problem"}} active{{end}}" href="/indexers?state=problem{{if .Query}}&amp;q={{.Query}}{{end}}">{{T "idx.filterProblems"}} <span class="chip">{{.Problems}}</span></a>
-      <a class="tab{{if eq .State "disabled"}} active{{end}}" href="/indexers?state=disabled{{if .Query}}&amp;q={{.Query}}{{end}}">{{T "idx.filterDisabled"}} <span class="chip">{{.Disabled}}</span></a>
+      <a class="tab{{if and (not .State) (not .Protocol)}} active{{end}}" href="{{.ListURL "" ""}}">{{T "idx.filterAll"}} <span class="chip">{{.Total}}</span></a>
+      <a class="tab{{if eq .State "problem"}} active{{end}}" href="{{.ListURL "problem" .Protocol}}">{{T "idx.filterProblems"}} <span class="chip">{{.Problems}}</span></a>
+      <a class="tab{{if eq .State "disabled"}} active{{end}}" href="{{.ListURL "disabled" .Protocol}}">{{T "idx.filterDisabled"}} <span class="chip">{{.Disabled}}</span></a>
+      <a class="tab{{if eq .Protocol "usenet"}} active{{end}}" href="{{.ListURL .State "usenet"}}" title="{{T "tip.clientProtocol"}}">{{T "idx.protocolUsenet"}} <span class="chip">{{.Usenet}}</span></a>
     </nav>
     {{if and (eq .State "problem") (gt .Problems 0)}}
     <form class="toolbar-action" method="post" action="/indexers/test-problems">
@@ -55,7 +57,7 @@
       <div class="indexer-main">
         <a class="indexer-name" href="/indexers/{{.Indexer.ID}}{{$.DetailQuery}}">{{.Indexer.Name}}</a>
         <div class="badges">
-          {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "mirror"}}{{T "tip.addReliability"}}{{else if eq .Kind "tls"}}{{T "tip.insecureTLS"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
+          {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "mirror"}}{{T "tip.addReliability"}}{{else if eq .Kind "tls"}}{{T "tip.insecureTLS"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else if eq .Kind "protocol"}}{{T "tip.clientProtocol"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
           {{if .FiltersLabel}}<span class="badge soft" title="{{T "tip.indexerTags"}}">{{.FiltersLabel}}</span>{{end}}
         </div>
         {{if .Problem}}{{template "problem" .Problem}}{{end}}

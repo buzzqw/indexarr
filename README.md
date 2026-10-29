@@ -53,13 +53,14 @@ Fonti native / RSS ──► scheduler ──► normalizzazione ──► SQLit
 - **Un solo binario**: Go puro, SQLite senza CGO, nessun servizio esterno
   obbligatorio. L'interfaccia è installabile come PWA.
 
-Non scarica il contenuto dei torrent: costruisce un **indice** interrogabile. È il
-ruolo di un client torrent (qBittorrent, Transmission, gx-torrent…) scaricare i file.
+Non scarica il contenuto delle release: costruisce un **indice** interrogabile. È il
+ruolo di un client torrent (qBittorrent, Transmission, gx-torrent…) o Usenet
+(SABnzbd, NZBGet) scaricare i file.
 
 ## Compatibilità
 
-indexarr parla **Torznab**, lo standard di fatto per gli indexer torrent. Questo è
-il quadro reale, non un elenco di intenti:
+indexarr parla **Torznab** e **Newznab**: Torznab per gli indexer torrent,
+Newznab per le fonti Usenet. Questo è il quadro reale, non un elenco di intenti:
 
 | Sorgente | Supporto | Come |
 | --- | --- | --- |
@@ -68,7 +69,7 @@ il quadro reale, non un elenco di intenti:
 | ExtTo (`extto.org`) | completo (listing HTML) | parser dedicato: titolo e magnet dalla stessa riga, nessuna modifica all'URL |
 | TorrentGalaxy | completo (listing HTML) | parser dedicato delle pagine `post-detail`, con cache dei magnet |
 | Corsaro | completo (listing HTML) | parser dedicato di titoli `/torrent/` e magnet diretti, con cache dei dettagli |
-| Newznab / Usenet | completo | ricerca, payload `.nzb` e invio ai client SABnzbd/NZBGet |
+| Newznab / Usenet | completo (generico) | definizione `newznab-generic`: caps, ricerca `search`/`tv`/`movie`/`music`/`book`, payload `.nzb` e invio ai client SABnzbd/NZBGet. Definizioni native per singoli siti Usenet non ancora in catalogo. |
 | eD2k / aMule | completo | definizioni `protocol: ed2k`: link `ed2k://` archiviati, espansi per file, inviati ad aMule (Web API) |
 | RSS / Atom | completo | feed normali, enclosure `.torrent` o magnet |
 | Indexer privati con Basic | completo | campi *HTTP username/password* della sorgente |

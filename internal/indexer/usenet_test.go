@@ -2,9 +2,14 @@ package indexer
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/buzzqw/indexarr/internal/engine"
@@ -230,6 +235,131 @@ func TestRunUsenetStoresSealedDownloadRefWithoutSecrets(t *testing.T) {
 	}
 	if parsed.Item.GUID != "guid-second" {
 		t.Errorf("ref GUID = %q", parsed.Item.GUID)
+	}
+}
+
+const newznabLiveCaps = `<?xml version="1.0" encoding="UTF-8"?>
+<caps>
+  <searching>
+    <search available="yes" supportedParams="q"/>
+    <tv-search available="yes" supportedParams="q,season,ep"/>
+    <movie-search available="yes" supportedParams="q,imdbid"/>
+    <music-search available="yes" supportedParams="q,artist,album"/>
+    <book-search available="yes" supportedParams="q,author,title"/>
+  </searching>
+  <categories>
+    <category id="3000" name="Audio"/>
+    <category id="7000" name="Books"/>
+  </categories>
+</caps>`
+
+// TestSearchLiveIncludesNewznabBookAndMusic proves the Newznab connector is
+// part of the live fan-out, not only the archive run, and that the book and
+// music functions reach it with the Newznab t= value.
+func TestSearchLiveIncludesNewznabBookAndMusic(t *testing.T) {
+	var mu sync.Mutex
+	modes := map[string]int{}
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mode := r.URL.Query().Get("t")
+		switch mode {
+		case "caps":
+			w.Header().Set("Content-Type", "application/xml")
+			_, _ = io.WriteString(w, newznabLiveCaps)
+		case "get":
+			w.Header().Set("Content-Type", "application/x-nzb")
+			_, _ = io.WriteString(w, `<?xml version="1.0"?><nzb><file subject="live"/></nzb>`)
+		default:
+			mu.Lock()
+			modes[mode]++
+			mu.Unlock()
+			w.Header().Set("Content-Type", "application/rss+xml")
+			title := "Usenet Live Book"
+			if mode == "music" {
+				title = "Usenet Live Music"
+			}
+			_, _ = fmt.Fprintf(w, `<?xml version="1.0"?>
+<rss version="2.0" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/">
+<channel><item>
+<title>%s</title><guid isPermaLink="false">%s-guid</guid>
+<link>https://indexer.example/details/%s</link>
+<enclosure url="https://indexer.example/api?t=get&amp;id=%s-guid" length="123" type="application/x-nzb"/>
+<newznab:attr name="size" value="123"/>
+<newznab:attr name="category" value="7000"/>
+</item></channel></rss>`, title, mode, mode, mode)
+		}
+	}))
+	defer upstream.Close()
+
+	st := newTestStore(t)
+	manager := newTestManager(t, st, newTestVault(t, 1))
+	body := `schema: 1
+connector: newznab
+meta:
+  id: newznab-live
+  name: Newznab Live
+  type: private
+  protocol: usenet
+  urls:
+    - https://indexer.example/
+settings:
+  - {name: url, type: text, required: true}
+`
+	seedDefinition(t, st, "newznab-live", "newznab", body)
+	indexerID := createIndexer(t, st, "newznab-live", "newznab-live", "Newznab Live", "usenet",
+		fmt.Sprintf(`{"url":%q,"categories":"7000,3000"}`, upstream.URL+"/api"))
+
+	for _, tc := range []struct {
+		mode  string
+		query string
+	}{
+		{"book", "Book title"},
+		{"music", "Music album"},
+	} {
+		result, err := manager.SearchLive(context.Background(), LiveQuery{
+			Mode: tc.mode, Query: tc.query, Limit: 50,
+		})
+		if err != nil {
+			t.Fatalf("%s SearchLive(%q): %v", tc.mode, tc.query, err)
+		}
+		if result.Stored != 1 {
+			t.Fatalf("%s SearchLive(%q) stored = %d, want 1", tc.mode, tc.query, result.Stored)
+		}
+		if len(result.Indexers) != 1 || result.Indexers[0].IndexerID != indexerID ||
+			result.Indexers[0].Mode != tc.mode || result.Indexers[0].Results != 1 {
+			t.Fatalf("%s SearchLive(%q) outcome = %+v", tc.mode, tc.query, result.Indexers)
+		}
+		mu.Lock()
+		count := modes[tc.mode]
+		mu.Unlock()
+		if count == 0 {
+			t.Errorf("%s search never reached Newznab: %v", tc.mode, modes)
+		}
+	}
+
+	for _, title := range []string{"Usenet Live Book", "Usenet Live Music"} {
+		releases, total, err := st.SearchReleases(context.Background(), store.Filter{Query: title, Limit: 10})
+		if err != nil || total != 1 || len(releases) != 1 {
+			t.Fatalf("stored %q = %d/%d, %v", title, total, len(releases), err)
+		}
+		release, err := st.GetRelease(context.Background(), releases[0].ID)
+		if err != nil {
+			t.Fatalf("GetRelease: %v", err)
+		}
+		if release.Protocol != "usenet" {
+			t.Errorf("live usenet release = protocol %q, want usenet", release.Protocol)
+		}
+		if release.InfoHash != "" || release.Magnet != "" {
+			t.Errorf("live usenet release gained torrent fields: hash %q magnet %q", release.InfoHash, release.Magnet)
+		}
+		// A live search never downloads a payload: the NZB stays behind a
+		// sealed reference that is opened only when a client grabs the row.
+		if len(release.Payload) != 0 || release.PayloadType != "" {
+			t.Errorf("live usenet release downloaded eagerly: %d bytes type %q", len(release.Payload), release.PayloadType)
+		}
+		sources, err := st.ListReleaseSources(context.Background(), release.ID)
+		if err != nil || len(sources) != 1 || strings.TrimSpace(sources[0].DownloadRef) == "" {
+			t.Errorf("live usenet source = %+v, %v; want a sealed download reference", sources, err)
+		}
 	}
 }
 

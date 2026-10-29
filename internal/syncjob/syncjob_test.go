@@ -688,6 +688,62 @@ func TestSyncLifecycle(t *testing.T) {
 	}
 }
 
+// TestSyncUsenetUsesNewznabAndExcludesEd2k covers every Servarr application:
+// a Usenet indexer is pushed as Newznab/NewznabSettings with protocol usenet,
+// while an eD2k indexer is never sent to an app that would hand its link to a
+// torrent client.
+func TestSyncUsenetUsesNewznabAndExcludesEd2k(t *testing.T) {
+	for _, kind := range []string{"sonarr", "radarr", "lidarr", "readarr", "whisparr"} {
+		t.Run(kind, func(t *testing.T) {
+			ctx := context.Background()
+			st := newSyncStore(t, true)
+			v := newSyncVault(t)
+			fake := newFakeServarr(t, testAppKey)
+
+			// The same definition advertises every category root, so each app
+			// can filter it to the categories it consumes.
+			createTestDefinition(t, st, "usenet-def", "usenet", 2000, 3000, 5000, 6000, 7000)
+			createTestDefinition(t, st, "ed2k-def", "ed2k", 5000)
+			usenet := createTestIndexer(t, st, "usenet-def", "usenet", "news", "News Source", true, 10)
+			createTestIndexer(t, st, "ed2k-def", "ed2k", "emule", "eMule Source", true, 20)
+
+			appID := createTestApplication(t, st, v, kind, kind, fake.server.URL, testAppKey, "full")
+			svc := newSyncService(t, st, v, testBaseURL)
+
+			result, err := svc.SyncApp(ctx, appID)
+			if err != nil {
+				t.Fatalf("SyncApp: %v", err)
+			}
+			if result.Added != 1 || result.Deleted != 0 || result.Updated != 0 {
+				t.Fatalf("sync result = %+v, want one added indexer", result)
+			}
+			if fake.count() != 1 {
+				t.Fatalf("remote indexers = %d, want 1", fake.count())
+			}
+
+			item := fake.find(appsync.ManagedPrefix + "News Source")
+			if item == nil {
+				t.Fatal("the usenet indexer was not pushed")
+			}
+			if got := item["implementation"]; got != "Newznab" {
+				t.Errorf("implementation = %v, want Newznab", got)
+			}
+			if got := item["configContract"]; got != "NewznabSettings" {
+				t.Errorf("configContract = %v, want NewznabSettings", got)
+			}
+			if got, _ := item["protocol"].(string); got != "usenet" {
+				t.Errorf("protocol = %q, want usenet", got)
+			}
+			if got := fakeField(item, "baseUrl"); got != "https://indexarr.example/torznab/"+usenet.Slug {
+				t.Errorf("baseUrl = %v", got)
+			}
+			if fake.find(appsync.ManagedPrefix+"eMule Source") != nil {
+				t.Error("the eD2k indexer was pushed to the application")
+			}
+		})
+	}
+}
+
 // TestSyncCarriesTags maps indexarr indexer labels to the application's tag
 // IDs, creates the missing ones once and follows later label changes.
 func TestSyncCarriesTags(t *testing.T) {

@@ -2,8 +2,11 @@
 #
 # The newznab family connector reads the URL, API key and categories from the
 # stored settings and queries the Newznab API directly; no HTML search block
-# is needed. The definition has not been verified against a live site and
-# must not be presented as production ready.
+# is needed. The generic path (caps, RSS search, application/x-nzb payload)
+# has an offline end-to-end test, but the definition ships no live site of its
+# own, so it stays a draft and must not be presented as a verified source.
+# Native definitions for individual Usenet sites are not part of the catalog
+# yet.
 schema: 1
 connector: newznab
 

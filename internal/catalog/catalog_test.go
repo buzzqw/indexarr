@@ -287,6 +287,24 @@ func containsString(list []string, want string) bool {
 	return false
 }
 
+func TestGenericNewznabIsAUsenetEntry(t *testing.T) {
+	entry, ok := Get("newznab-generic")
+	if !ok {
+		t.Fatal("newznab-generic is missing from the catalog")
+	}
+	if entry.Definition.Meta.Protocol != "usenet" {
+		t.Errorf("protocol = %q, want usenet", entry.Definition.Meta.Protocol)
+	}
+	if entry.Definition.Connector != "newznab" {
+		t.Errorf("connector = %q, want newznab", entry.Definition.Connector)
+	}
+	// The entry is generic: it carries no real Usenet site, so it must stay a
+	// draft until a live endpoint is verified. This is what the docs say.
+	if entry.State != "bozza" {
+		t.Errorf("state = %q, want bozza for the generic entry", entry.State)
+	}
+}
+
 func TestBuiltinsManifestOrder(t *testing.T) {
 	entries, err := Builtins()
 	if err != nil {

@@ -1,7 +1,7 @@
 # Compatibilità con gli indexer
 
-indexarr non contiene un parser per ogni tracker: parla **Torznab** (e Newznab
-nella forma compatibile con i torrent). Tutto ciò che espone questo protocollo
+indexarr non contiene un parser per ogni tracker: parla **Torznab** per i
+torrent e **Newznab** per Usenet. Tutto ciò che espone uno di questi protocolli
 funziona senza modifiche. Per il resto indexarr adotta la fonte con una
 definizione nativa o con un connettore di famiglia; se non ha né l'una né
 l'altro, la fonte resta in coda e **non** viene creato un proxy verso Jackett o
@@ -14,7 +14,7 @@ Prowlarr.
 | **Jackett / Prowlarr** | non supportati | indexarr li sostituisce: gli endpoint dei manager vengono rifiutati. Le fonti si aggiungono dal catalogo nativo. |
 | **MirCrew** (`mircrew-indexer`) | completo | Base o `/api`; magnet in link/enclosure; seeder assenti; `/status` per il login al forum; risposte lente. |
 | **Torznab diretto** | completo (torrent) | Qualunque URL di un tracker che contiene `/api` o `torznab` è usato così com'è; altrimenti viene aggiunto `/api`. Gli URL di Jackett/Prowlarr sono esclusi. |
-| **Newznab / usenet** | non supportato | Le voci usenet non hanno un `.torrent` valido e vengono scartate. |
+| **Newznab / Usenet** | completo (generico) | Connettore `newznab` e definizione `newznab-generic`: caps, ricerca `search`/`tv`/`movie`/`music`/`book`, payload `.nzb` archiviato o risolto al grab, invio ai client SABnzbd/NZBGet. Definizioni native per singoli siti Usenet non ancora in catalogo. |
 | **RSS / Atom** | completo | Titolo, magnet, enclosure `.torrent`, dimensione, categoria numerica, data; import massivo e OPML. |
 | **ExtTo** | completo (HTML) | Parser dedicato: titolo e magnet dalla stessa riga; categoria dal filtro `c=`. |
 | **TorrentGalaxy** | completo (HTML) | Parser dedicato delle pagine `post-detail` con cache dei magnet (6 ore). |
@@ -120,6 +120,28 @@ Sources e controllare **Runs** per l'errore esatto restituito dall'indexer.
 **Quick add** riconosce il tipo dall'URL; **Discover feeds** trova i feed
 dichiarati da una pagina; i preset impostano tipo e manager senza vincolare
 l'URL.
+
+## Newznab / Usenet
+
+Il percorso Usenet usa il connettore generico `newznab` e la definizione
+`newznab-generic`. Non è una definizione nativa per un singolo sito: l'URL e la
+API key li fornisce l'utente, quindi il catalogo non contiene ancora sorgenti
+Usenet verificate sito per sito.
+
+| Passo | Comportamento |
+| --- | --- |
+| Aggiunta | URL dell'API (con o senza `/api`) e API key; il protocollo è `usenet` e viene derivato dalla definizione |
+| Caps | `t=caps` letto e messo in cache per un'ora; le modalità dichiarate sono `search`, `tv-search`, `movie-search`, `music-search`, `book-search` |
+| Ricerca | parametri Newznab (`q`, `season`, `ep`, `imdbid`, `tvdbid`, `tmdbid`, `rid`, `artist`, `album`, `author`, `title`, `cat`); le voci senza link valido vengono scartate |
+| Payload | `.nzb` scaricato con `t=get` o dall'enclosure `application/x-nzb`; se il budget di download è esaurito resta un riferimento sigillato, aperto al grab |
+| Output | Torznab/Newznab con `protocol=usenet`, enclosure `application/x-nzb` e nome file `.nzb`; nessun magnet e nessun infohash |
+| App | Sonarr, Radarr, Lidarr, Readarr e Whisparr ricevono `Newznab`/`NewznabSettings` con protocollo `usenet`; eD2k resta escluso |
+| Download | la release viene inviata al client Usenet (SABnzbd o NZBGet) configurato per il protocollo `usenet` |
+
+Limiti misurati: la ricerca live usa lo stesso fan-out degli altri protocolli e
+non scarica l'NZB in anticipo; il payload arriva al primo grab. Le definizioni
+native per singoli siti Usenet non fanno parte del catalogo attuale, quindi una
+fonte che non espone Newznab resta in coda.
 
 ## Client torrent
 

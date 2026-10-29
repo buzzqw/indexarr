@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -69,8 +70,9 @@ func TestNewznabItemAndDownload(t *testing.T) {
 	if contentType := download.Header().Get("Content-Type"); contentType != "application/x-nzb" {
 		t.Errorf("content type = %q", contentType)
 	}
-	if disposition := download.Header().Get("Content-Disposition"); !strings.HasSuffix(disposition, `.nzb"`) {
-		t.Errorf("content disposition = %q", disposition)
+	if disposition := download.Header().Get("Content-Disposition"); !strings.HasSuffix(disposition, `.nzb"`) ||
+		!strings.Contains(disposition, "Usenet Movie 1080p.nzb") {
+		t.Errorf("content disposition = %q, want the title plus .nzb", disposition)
 	}
 
 	byGet := do(t, api, "/api?t=get&id="+itoa(id)+"&apikey=secret")
@@ -199,6 +201,56 @@ func TestMissingNZBWithoutResolverIs404(t *testing.T) {
 	}
 	if recorder := do(t, api, "/api?t=get&id="+itoa(release.ID)+"&apikey=secret"); recorder.Code != http.StatusNotFound {
 		t.Errorf("missing nzb t=get status = %d, want 404", recorder.Code)
+	}
+}
+
+func TestNewznabCapsAdvertiseUsenetModes(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	if err := st.UpsertDefinition(ctx, store.Definition{
+		ID: "usenet", SchemaVersion: 1, Family: "newznab", State: "verificata",
+		Origin: "local", Author: "test", Body: "schema: 1", Hash: "hash",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	id, err := st.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "usenet", Slug: "nzb", Name: "NZB", Enabled: true, Protocol: "usenet",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	api.SetCapabilities(func(context.Context, []int64) (map[int64]engine.Capabilities, error) {
+		return map[int64]engine.Capabilities{
+			id: {
+				Protocol: engine.ProtocolUsenet,
+				Modes: []engine.Mode{
+					engine.ModeSearch, engine.ModeTV, engine.ModeMovie,
+					engine.ModeMusic, engine.ModeBook,
+				},
+				Params: map[engine.Mode][]string{
+					engine.ModeSearch: {engine.ParamQuery},
+					engine.ModeTV:     {engine.ParamQuery, engine.ParamSeason, engine.ParamEpisode},
+					engine.ModeMovie:  {engine.ParamQuery, engine.ParamIMDbID},
+					engine.ModeMusic:  {engine.ParamQuery, engine.ParamArtist, engine.ParamAlbum},
+					engine.ModeBook:   {engine.ParamQuery, engine.ParamAuthor, engine.ParamTitle},
+				},
+				Categories: []int{5000, 7000},
+			},
+		}, nil
+	})
+
+	for _, path := range []string{"/api?t=caps", "/torznab/nzb/api?t=caps"} {
+		body := do(t, api, path).Body.String()
+		for _, want := range []string{
+			`<search available="yes" supportedParams="q"/>`,
+			`<movie-search available="yes" supportedParams="q,imdbid"/>`,
+			`<music-search available="yes" supportedParams="q,artist,album"/>`,
+			`<book-search available="yes" supportedParams="q,author,title"/>`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s missing %q\n%s", path, want, body)
+			}
+		}
 	}
 }
 

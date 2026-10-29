@@ -182,7 +182,7 @@ func TestNativePagesRender(t *testing.T) {
 		}
 	}
 	form := get(t, env.handler, "/indexers/new?definition=test-native").Body.String()
-	for _, want := range []string{"Add Test Native", "API key", "Flavore", "The site is on my local network"} {
+	for _, want := range []string{"Add Test Native", "API key", "Flavore", "The site is on my local network", "Usenet (NZB)", "SABnzbd"} {
 		if !strings.Contains(form, want) {
 			t.Errorf("indexer form missing %q", want)
 		}
@@ -232,6 +232,28 @@ func TestNativeIndexerLifecycle(t *testing.T) {
 	if !strings.Contains(list, "Native One") {
 		t.Errorf("indexers page does not list the indexer:\n%s", list)
 	}
+	for _, want := range []string{"Usenet (NZB)", "SABnzbd", `href="/indexers?protocol=usenet"`} {
+		if !strings.Contains(list, want) {
+			t.Errorf("indexer list missing the usenet marker %q:\n%s", want, list)
+		}
+	}
+	torrentID, err := env.store.CreateIndexer(context.Background(), store.Indexer{
+		DefinitionID: "test-native", Slug: "torrent-one", Name: "Torrent One",
+		Enabled: true, Protocol: "torrent",
+	})
+	if err != nil {
+		t.Fatalf("CreateIndexer torrent: %v", err)
+	}
+	filtered := get(t, env.handler, "/indexers?protocol=usenet").Body.String()
+	if !strings.Contains(filtered, "Native One") {
+		t.Error("the usenet filter dropped a usenet indexer")
+	}
+	if strings.Contains(filtered, "Torrent One") {
+		t.Error("the usenet filter listed a torrent indexer")
+	}
+	if err := env.store.DeleteIndexer(context.Background(), torrentID); err != nil {
+		t.Fatalf("DeleteIndexer torrent: %v", err)
+	}
 
 	editPath := "/indexers/" + strconv.FormatInt(created.ID, 10) + "/edit"
 	edit := get(t, env.handler, editPath).Body.String()
@@ -249,6 +271,11 @@ func TestNativeIndexerLifecycle(t *testing.T) {
 	}
 	if !strings.Contains(detail, "apikey") || !strings.Contains(detail, "Configuration") {
 		t.Errorf("detail does not show the configuration")
+	}
+	for _, want := range []string{"Usenet (NZB)", "SABnzbd"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("detail does not explain the usenet protocol: missing %q", want)
+		}
 	}
 
 	// Update keeps the secret when the password field is empty.

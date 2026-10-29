@@ -119,8 +119,10 @@ type indexersListView struct {
 	Total        int
 	Problems     int
 	Disabled     int
+	Usenet       int
 	Query        string
 	State        string
+	Protocol     string
 	Unavailable  bool
 	Empty        uiEmpty
 	Bulk         bool
@@ -131,15 +133,27 @@ type indexersListView struct {
 	DetailQuery string
 }
 
+// ListURL builds one filter link while keeping the other filters. The Usenet
+// filter is the only protocol filter offered here: it answers the question
+// "where do my NZB sources go?" without turning the list into a manager.
+func (v indexersListView) ListURL(state, protocol string) string {
+	return indexerListPath(state, v.Query, protocol)
+}
+
 func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 	if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("tab")), "legacy") {
 		http.Redirect(w, r, "/indexers", http.StatusFound)
 		return
 	}
+	protocol := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("protocol")))
+	if protocol != "usenet" {
+		protocol = ""
+	}
 	data := indexersListView{
-		base:  s.newBaseT(r, "idx.title", "indexers"),
-		Query: strings.TrimSpace(r.URL.Query().Get("q")),
-		State: strings.ToLower(strings.TrimSpace(r.URL.Query().Get("state"))),
+		base:     s.newBaseT(r, "idx.title", "indexers"),
+		Query:    strings.TrimSpace(r.URL.Query().Get("q")),
+		State:    strings.ToLower(strings.TrimSpace(r.URL.Query().Get("state"))),
+		Protocol: protocol,
 	}
 	data.Empty = uiEmpty{
 		Title:       s.translate(r, "idx.emptyTitle"),
@@ -147,7 +161,7 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 		ActionLabel: s.translate(r, "idx.add"),
 		ActionURL:   "/indexers/new",
 	}
-	data.ListReturn = indexerListPath(data.State, data.Query)
+	data.ListReturn = indexerListPath(data.State, data.Query, data.Protocol)
 	if data.ListReturn != "/indexers" {
 		data.DetailQuery = "?from=" + url.QueryEscape(data.ListReturn)
 	}
@@ -182,6 +196,12 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 		if view.Status.State == "disabled" {
 			data.Disabled++
 		}
+		if strings.EqualFold(strings.TrimSpace(in.Protocol), "usenet") {
+			data.Usenet++
+		}
+		if data.Protocol != "" && !strings.EqualFold(strings.TrimSpace(in.Protocol), data.Protocol) {
+			continue
+		}
 		if data.State == "problem" && !attention {
 			continue
 		}
@@ -198,9 +218,13 @@ func (s *Server) indexersUnifiedPage(w http.ResponseWriter, r *http.Request) {
 	}
 	data.Rows = groupIndexerRows(data.Rows)
 	if data.Total > 0 && len(data.Rows) == 0 {
+		filterLabel := data.Query
+		if filterLabel == "" && data.Protocol != "" {
+			filterLabel = s.protocolLabel(r, data.Protocol)
+		}
 		data.Empty = uiEmpty{
 			Title:       s.translate(r, "idx.noMatchTitle"),
-			Text:        s.translate(r, "idx.noMatchText", data.Query),
+			Text:        s.translate(r, "idx.noMatchText", filterLabel),
 			ActionLabel: s.translate(r, "idx.clearFilters"),
 			ActionURL:   "/indexers",
 		}
@@ -531,6 +555,9 @@ func (s *Server) indexerBadges(r *http.Request, in store.Indexer, def *definitio
 		}
 	case connector == "newznab":
 		out = append(out, uiBadge{Kind: "manager", Label: s.translate(r, "idx.badgeNewznab")})
+	}
+	if strings.EqualFold(strings.TrimSpace(in.Protocol), "usenet") {
+		out = append(out, uiBadge{Kind: "protocol", Label: s.translate(r, "idx.protocolUsenet")})
 	}
 	return out
 }
@@ -2736,6 +2763,7 @@ type indexerDetailView struct {
 	Origin            string
 	Connector         string
 	Protocol          string
+	ProtocolLabel     string
 	LastRun           *store.IndexerHistory
 	LastError         string
 	NextUpdate        time.Time
@@ -2850,6 +2878,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		DefinitionID:   in.DefinitionID,
 		DefinitionName: in.DefinitionID,
 		Protocol:       in.Protocol,
+		ProtocolLabel:  s.protocolLabel(r, in.Protocol),
 		Public:         publicConfig(in.ConfigJSON),
 	}
 	def, _ := s.parsedDefinition(r.Context(), in.DefinitionID)
@@ -3338,9 +3367,9 @@ func (s *Server) indexerToggle(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, returnPath, s.translate(r, "idx.disabledMessage", current.Name), "")
 }
 
-// indexerListPath rebuilds the source list URL from the two supported
+// indexerListPath rebuilds the source list URL from the three supported
 // filters, so a return path never carries anything else.
-func indexerListPath(state, query string) string {
+func indexerListPath(state, query, protocol string) string {
 	values := url.Values{}
 	switch strings.ToLower(strings.TrimSpace(state)) {
 	case "problem", "disabled", "ok":
@@ -3348,6 +3377,9 @@ func indexerListPath(state, query string) string {
 	}
 	if trimmed := strings.TrimSpace(query); trimmed != "" {
 		values.Set("q", trimmed)
+	}
+	if strings.EqualFold(strings.TrimSpace(protocol), "usenet") {
+		values.Set("protocol", "usenet")
 	}
 	if encoded := values.Encode(); encoded != "" {
 		return "/indexers?" + encoded
@@ -3367,7 +3399,7 @@ func sanitizeIndexerReturn(raw string) string {
 	if err != nil || parsed.IsAbs() || parsed.Host != "" || parsed.Path != "/indexers" {
 		return ""
 	}
-	return indexerListPath(parsed.Query().Get("state"), parsed.Query().Get("q"))
+	return indexerListPath(parsed.Query().Get("state"), parsed.Query().Get("q"), parsed.Query().Get("protocol"))
 }
 
 // frequencyReturnPath limits the post-action redirect to the two pages that

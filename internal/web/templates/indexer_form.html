@@ -21,6 +21,7 @@
 {{if .MirrorWarning}}<p class="flash warn" role="alert">{{.MirrorWarning}}</p>{{end}}
 {{if .TLSWarning}}<p class="flash warn" role="alert">{{.TLSWarning}}</p>{{end}}
 {{if .StateWarning}}<p class="flash warn" role="alert">{{.StateWarning}}</p>{{end}}
+{{if eq .Protocol "usenet"}}<p class="help" title="{{T "tip.clientProtocol"}}">{{T "idx.protocolUsenet"}} · {{T "tip.clientProtocol"}}</p>{{end}}
 
 <form class="panel form compact-form" method="post" action="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -111,6 +112,7 @@
         </select>
         {{end}}
         <p class="help">{{T "idx.protocolHelp"}}</p>
+        <p class="help">{{T "tip.clientProtocol"}}</p>
       </div>
       <div class="field">
         <label for="slug">{{T "idx.slug"}}</label>

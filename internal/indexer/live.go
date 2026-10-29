@@ -945,7 +945,17 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			return stored, ctx.Err()
 		}
 		item := raw
+		usenet := item.Protocol == engine.ProtocolUsenet ||
+			(strings.EqualFold(strings.TrimSpace(indexer.Protocol), "usenet") && item.Protocol == "")
 		hash := itemHash(item)
+		if usenet {
+			// A Newznab item has no infohash and no magnet. Keeping either one
+			// would make the Torznab output look like a torrent and hide the
+			// NZB behind a client that cannot open it.
+			hash = ""
+			item.InfoHash = ""
+			item.Magnet = ""
+		}
 		if hash != "" {
 			item.InfoHash = hash
 		}
@@ -1016,11 +1026,14 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 		}
 
 		downloadRef := ""
-		if magnet == "" && (hash == "" || feed.LooksLikeTorrentURL(item.DownloadURL, item.Attributes["enclosure_type"])) {
+		needsRef := usenet ||
+			(magnet == "" && (hash == "" || feed.LooksLikeTorrentURL(item.DownloadURL, item.Attributes["enclosure_type"])))
+		if needsRef {
 			if m.vault == nil {
 				continue
 			}
-			if strings.TrimSpace(item.DownloadURL) == "" && strings.TrimSpace(item.DetailsURL) == "" {
+			if strings.TrimSpace(item.GUID) == "" &&
+				strings.TrimSpace(item.DownloadURL) == "" && strings.TrimSpace(item.DetailsURL) == "" {
 				continue
 			}
 			ref, refErr := SealDownloadRef(m.vault, indexer.ID, item)
@@ -1035,6 +1048,10 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 		dedupKey := releaseKey(hash, item, indexer.Slug)
 		if dedupKey == "" {
 			continue
+		}
+		protocol := "torrent"
+		if usenet {
+			protocol = "usenet"
 		}
 		now := time.Now()
 		release := &store.Release{
@@ -1052,7 +1069,7 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			PublishedAt: item.Published,
 			GUID:        item.GUID,
 			Magnet:      magnet,
-			Protocol:    "torrent",
+			Protocol:    protocol,
 			FirstSeenAt: now,
 			LastSeenAt:  now,
 		}

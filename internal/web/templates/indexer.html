@@ -6,7 +6,7 @@
     <div class="detail-status">
       {{template "status-dot" .Status}}
       <span>{{.Status.Label}}</span>
-      {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "tls"}}{{T "tip.insecureTLS"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
+      {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "tls"}}{{T "tip.insecureTLS"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else if eq .Kind "protocol"}}{{T "tip.clientProtocol"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
     </div>
     {{if .SiteAddress}}
     <p class="site-address" title="{{T "idx.detail.addressTip"}}"><span class="muted">{{T "idx.detail.address"}}:</span> <a class="link" href="{{.SiteAddress}}" target="_blank" rel="noopener noreferrer">{{.SiteAddress}}</a>{{if .ActiveMirror}} · <span class="muted" title="{{T "idx.detail.activeMirrorTip"}}">{{T "idx.detail.activeMirror"}}:</span> <a class="link" href="{{.ActiveMirror}}" target="_blank" rel="noopener noreferrer">{{.ActiveMirror}}</a>{{end}}</p>
@@ -176,6 +176,8 @@
   <dl class="detail detail-grid">
     <dt>{{T "idx.detail.catalogState"}}</dt>
     <dd><span class="state state-{{stateClass .CatalogState}}" title="{{T "tip.indexerState"}}">{{stateLabel .CatalogState}}</span></dd>
+    <dt>{{T "common.protocol"}}</dt>
+    <dd><span class="badge soft" title="{{T "tip.clientProtocol"}}">{{.ProtocolLabel}}</span></dd>
     <dt>{{T "idx.detail.lastUpdate"}}</dt>
     <dd>{{if .LastRun}}{{date .LastRun.StartedAt}} <span class="muted">({{ago .LastRun.StartedAt}})</span>{{else}}<span class="muted">{{T "common.never"}}</span>{{end}}</dd>
     <dt>{{T "idx.detail.nextUpdate"}}</dt>
@@ -201,6 +203,9 @@
   </dl>
   {{if .SearchOnly}}
   <p class="help">{{T "idx.detail.searchOnly"}}</p>
+  {{end}}
+  {{if eq .Protocol "usenet"}}
+  <p class="help">{{T "tip.clientProtocol"}}</p>
   {{end}}
   {{if eq .DefinitionID "mircrew"}}
   <p class="help">{{T "idx.mircrewThanksNote"}}</p>

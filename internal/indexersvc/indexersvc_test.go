@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -594,5 +597,130 @@ func TestCreateAndUpdateAnEd2kIndexer(t *testing.T) {
 
 	if _, err := svc.Update(ctx, created.ID, Input{Protocol: "ftp"}); err == nil {
 		t.Error("Update accepted protocol ftp")
+	}
+}
+
+const usenetDefinition = `schema: 1
+connector: newznab
+meta:
+  id: test-usenet
+  name: Test Usenet
+  type: private
+  protocol: usenet
+  urls:
+    - https://indexer.example/
+settings:
+  - {name: url, type: text, required: true}
+  - {name: apikey, type: password, required: true}
+`
+
+const usenetCapsXML = `<?xml version="1.0" encoding="UTF-8"?>
+<caps>
+  <searching>
+    <search available="yes" supportedParams="q,cat"/>
+    <tv-search available="yes" supportedParams="q,season,ep"/>
+    <movie-search available="yes" supportedParams="q,imdbid"/>
+    <music-search available="yes" supportedParams="q,artist,album"/>
+    <book-search available="yes" supportedParams="q,author,title"/>
+  </searching>
+  <categories>
+    <category id="5000" name="TV"><subcat id="5040" name="TV/HD"/></category>
+    <category id="7000" name="Books"/>
+  </categories>
+</caps>`
+
+const usenetRSSXML = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/">
+  <channel>
+    <item>
+      <title>Usenet E2E Release 1080p</title>
+      <guid isPermaLink="false">e2e-guid</guid>
+      <link>https://indexer.example/details/e2e</link>
+      <pubDate>Mon, 06 May 2024 07:08:09 +0000</pubDate>
+      <enclosure url="https://indexer.example/api?t=get&amp;id=e2e-guid" length="4242" type="application/x-nzb"/>
+      <newznab:attr name="size" value="4242"/>
+      <newznab:attr name="category" value="5040"/>
+    </item>
+  </channel>
+</rss>`
+
+func TestCreateUsenetIndexerAndRunStoresNZB(t *testing.T) {
+	var searchMode string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("t") {
+		case "caps":
+			w.Header().Set("Content-Type", "application/xml")
+			_, _ = io.WriteString(w, usenetCapsXML)
+		case "get":
+			w.Header().Set("Content-Type", "application/x-nzb")
+			_, _ = io.WriteString(w, `<?xml version="1.0"?><nzb><file subject="e2e"/></nzb>`)
+		default:
+			searchMode = r.URL.Query().Get("t")
+			w.Header().Set("Content-Type", "application/rss+xml")
+			_, _ = io.WriteString(w, usenetRSSXML)
+		}
+	}))
+	defer upstream.Close()
+
+	svc, st, _, manager := newService(t)
+	ctx := context.Background()
+	storeDefinition(t, st, "test-usenet", usenetDefinition)
+
+	created, err := svc.Create(ctx, Input{
+		DefinitionID: "test-usenet",
+		Name:         "Usenet indexer",
+		Settings: map[string]string{
+			"url":           upstream.URL + "/api",
+			"apikey":        "usenet-secret",
+			"allow_private": "true",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if created.Protocol != "usenet" {
+		t.Fatalf("protocol = %q, want usenet (derived from the definition)", created.Protocol)
+	}
+	if created.Slug != "usenet-indexer" {
+		t.Errorf("slug = %q", created.Slug)
+	}
+
+	stats, err := manager.Run(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if stats.Seen != 1 || stats.New != 1 || stats.Torrents != 1 {
+		t.Fatalf("run stats = %+v", stats)
+	}
+	if searchMode != "search" {
+		t.Errorf("latest run asked t=%q, want search", searchMode)
+	}
+
+	releases, total, err := st.SearchReleases(ctx, store.Filter{Query: "Usenet E2E", Limit: 10})
+	if err != nil {
+		t.Fatalf("SearchReleases: %v", err)
+	}
+	if total != 1 || len(releases) != 1 {
+		t.Fatalf("stored releases = %d/%d, want one", total, len(releases))
+	}
+	stored, err := st.GetRelease(ctx, releases[0].ID)
+	if err != nil {
+		t.Fatalf("GetRelease: %v", err)
+	}
+	release := stored
+	if release.Protocol != "usenet" {
+		t.Errorf("stored protocol = %q, want usenet", release.Protocol)
+	}
+	if release.PayloadType != "application/x-nzb" {
+		t.Errorf("payload type = %q, want application/x-nzb", release.PayloadType)
+	}
+	if !strings.Contains(string(release.Payload), "<nzb") {
+		t.Errorf("payload is not an NZB document: %q", release.Payload)
+	}
+	if release.Torrent != nil {
+		t.Errorf("usenet release stored torrent bytes: %d", len(release.Torrent))
+	}
+	if release.InfoHash != "" {
+		t.Errorf("usenet release has an infohash: %q", release.InfoHash)
 	}
 }
