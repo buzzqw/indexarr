@@ -401,6 +401,39 @@ func TestOffsetPageWaitsForTheLiveWorkers(t *testing.T) {
 	}
 }
 
+func TestLiveSearchCarriesArtistAlbumAuthorTitle(t *testing.T) {
+	api, st := newAPI(t)
+	ctx := context.Background()
+	settings, _ := st.LoadSettings(ctx)
+	settings.TorznabLiveSearch = true
+	settings.TorznabLiveTimeout = 5
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	var music, book indexer.LiveQuery
+	api.SetLiveSearch(func(_ context.Context, req indexer.LiveQuery) (indexer.LiveResult, error) {
+		switch req.Mode {
+		case "music":
+			music = req
+		case "book":
+			book = req
+		}
+		return indexer.LiveResult{}, nil
+	})
+	if recorder := do(t, api, "/api?t=music&apikey=secret&artist=Artist&album=Album&title=Track"); recorder.Code != http.StatusOK {
+		t.Fatalf("music status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if recorder := do(t, api, "/api?t=book&apikey=secret&author=Author&title=Title"); recorder.Code != http.StatusOK {
+		t.Fatalf("book status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if music.Artist != "Artist" || music.Album != "Album" || music.Title != "Track" {
+		t.Errorf("music live query = %+v", music)
+	}
+	if book.Author != "Author" || book.Title != "Title" {
+		t.Errorf("book live query = %+v", book)
+	}
+}
+
 func TestLiveSearchRunsOnEveryQuery(t *testing.T) {
 	api, st := newAPI(t)
 	ctx := context.Background()

@@ -174,6 +174,9 @@ func T(lang Language, key string, args ...any) string {
 	if !ok || message == "" {
 		message, ok = english[key]
 	}
+	if !ok || message == "" {
+		message, ok = defaultEnglish[key]
+	}
 	if !ok {
 		return key
 	}
@@ -185,9 +188,16 @@ func T(lang Language, key string, args ...any) string {
 
 // Keys returns the English keys sorted, used by the catalog parity tests.
 func Keys() []string {
-	keys := make([]string, 0, len(english))
+	keys := make([]string, 0, len(english)+len(defaultEnglish))
+	seen := make(map[string]struct{}, len(english)+len(defaultEnglish))
 	for key := range english {
 		keys = append(keys, key)
+		seen[key] = struct{}{}
+	}
+	for key := range defaultEnglish {
+		if _, ok := seen[key]; !ok {
+			keys = append(keys, key)
+		}
 	}
 	sort.Strings(keys)
 	return keys

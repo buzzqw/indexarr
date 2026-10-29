@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -102,6 +103,42 @@ type releasesPage struct {
 	AdvancedFilterCount int
 	SavedSearches       []store.SavedSearch
 	CurrentQuery        string
+	// Live search form and its last outcome. The normal cache search leaves
+	// LivePerformed false and renders only the filter form.
+	LiveForm      liveSearchForm
+	LiveIndexers  []liveIndexerOption
+	LivePerformed bool
+	LiveOutcomes  []indexer.LiveIndexerResult
+	LiveStored    int
+	LiveError     string
+}
+
+// liveSearchForm is the state of the on-demand fan-out form. Its fields mirror
+// indexer.LiveQuery so a POST can rebuild the request without sharing names
+// with the cache filter form above it.
+type liveSearchForm struct {
+	Mode       string
+	Query      string
+	Season     int
+	Episode    int
+	Year       int
+	IMDbID     string
+	TMDbID     string
+	TVDbID     string
+	Artist     string
+	Album      string
+	Author     string
+	Title      string
+	Category   string
+	IndexerIDs []int64
+}
+
+// liveIndexerOption is one row of the multi-select. Selected is resolved in the
+// handler so the template never needs an ID lookup helper.
+type liveIndexerOption struct {
+	ID       int64
+	Name     string
+	Selected bool
 }
 
 func (s *Server) releasesPage(w http.ResponseWriter, r *http.Request) {
@@ -239,6 +276,8 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		SavedSearches:       saved,
 		CurrentQuery:        current.Encode(),
 	}
+	data.LiveForm = liveSearchForm{Mode: "search"}
+	data.LiveIndexers = liveIndexerOptions(indexers, nil, true)
 	if parseErr != nil {
 		data.InvalidRegex = parseErr.Error()
 		data.Pager = newPager(r, "/releases", 0, releasesPerPage, 0)
@@ -358,13 +397,7 @@ func (s *Server) releaseDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) releasesDelete(w http.ResponseWriter, r *http.Request) {
-	var ids []int64
-	for _, raw := range r.Form["ids"] {
-		value, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
-		if err == nil && value > 0 {
-			ids = append(ids, value)
-		}
-	}
+	ids := releaseIDsFromForm(r)
 	if len(ids) == 0 {
 		redirect(w, r, "/releases", "", s.translate(r, "releases.noneSelected"))
 		return
@@ -375,6 +408,19 @@ func (s *Server) releasesDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirect(w, r, "/releases", s.translate(r, "releases.deletedCount", removed), "")
+}
+
+// releaseIDsFromForm reads the ids checkboxes of the results table. Invalid
+// values are ignored so one bad row cannot block the other selected rows.
+func releaseIDsFromForm(r *http.Request) []int64 {
+	var ids []int64
+	for _, raw := range r.Form["ids"] {
+		value, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+		if err == nil && value > 0 {
+			ids = append(ids, value)
+		}
+	}
+	return ids
 }
 
 func pathID(r *http.Request) (int64, error) {

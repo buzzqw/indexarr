@@ -328,6 +328,10 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		IMDbID:  query.Get("imdbid"),
 		TMDbID:  query.Get("tmdbid"),
 		TVDbID:  query.Get("tvdbid"),
+		Artist:  strings.TrimSpace(query.Get("artist")),
+		Album:   strings.TrimSpace(query.Get("album")),
+		Author:  strings.TrimSpace(query.Get("author")),
+		Title:   strings.TrimSpace(query.Get("title")),
 	}
 	if rawCategories := strings.TrimSpace(query.Get("cat")); rawCategories != "" {
 		filter.Categories = splitCategories(rawCategories)
@@ -765,13 +769,22 @@ func liveWaitOverride(raw string) time.Duration {
 func liveQueryEligible(mode string, filter store.Filter) bool {
 	switch mode {
 	case "search", "tvsearch":
-		return strings.TrimSpace(filter.Query) != ""
+		return strings.TrimSpace(filter.Query) != "" ||
+			strings.TrimSpace(filter.Title) != ""
 	case "movie":
 		return strings.TrimSpace(filter.Query) != "" ||
 			strings.TrimSpace(filter.IMDbID) != "" ||
-			strings.TrimSpace(filter.TMDbID) != ""
-	case "music", "book":
-		return strings.TrimSpace(filter.Query) != ""
+			strings.TrimSpace(filter.TMDbID) != "" ||
+			strings.TrimSpace(filter.Title) != ""
+	case "music":
+		return strings.TrimSpace(filter.Query) != "" ||
+			strings.TrimSpace(filter.Artist) != "" ||
+			strings.TrimSpace(filter.Album) != "" ||
+			strings.TrimSpace(filter.Title) != ""
+	case "book":
+		return strings.TrimSpace(filter.Query) != "" ||
+			strings.TrimSpace(filter.Author) != "" ||
+			strings.TrimSpace(filter.Title) != ""
 	default:
 		return false
 	}
@@ -790,6 +803,10 @@ func liveQueryFor(mode string, filter store.Filter, app string) indexer.LiveQuer
 		IMDbID:     filter.IMDbID,
 		TMDbID:     filter.TMDbID,
 		TVDbID:     filter.TVDbID,
+		Artist:     filter.Artist,
+		Album:      filter.Album,
+		Author:     filter.Author,
+		Title:      filter.Title,
 		Categories: standardCategoryIDs(filter.Categories),
 		Limit:      filter.Limit,
 		IndexerIDs: filter.IndexerIDs,

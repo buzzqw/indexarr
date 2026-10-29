@@ -6,7 +6,7 @@
   {{if .InvalidRegex}}{{T "releases.noResults"}}{{else}}{{T "releases.found" .Pager.Total}}{{end}}
 </p>
 
-<form method="post" action="/releases/delete" data-confirm="{{T "releases.deleteSelectedConfirm"}}">
+<form method="post" action="/releases/bulk">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <section class="panel">
     <div class="table-scroll">
@@ -50,15 +50,18 @@
       </table>
     </div>
     <div class="panel-foot">
-      <button class="btn danger" type="submit">{{T "releases.deleteSelected"}}</button>
-      <span class="muted">{{T "releases.selectToDelete"}}</span>
+      <button class="btn danger" type="submit" name="op" value="delete" data-confirm="{{T "releases.deleteSelectedConfirm"}}">{{T "releases.deleteSelected"}}</button>
+      <button class="btn primary" type="submit" name="op" value="grab" data-confirm="{{T "releases.bulkGrabConfirm"}}" title="{{T "releases.bulkGrabConfirm"}}">{{T "releases.bulkGrab"}}</button>
+      <span class="muted">{{T "releases.selectToDelete"}} · {{T "releases.bulkGrabHint"}}</span>
     </div>
   </section>
 </form>
 
+{{if not .LivePerformed}}
 <nav class="pagination" aria-label="{{T "releases.pagination"}}">
   {{if .Pager.Prev}}<a class="btn small" href="{{.Pager.Prev}}">{{T "releases.previous"}}</a>{{else}}<span class="btn small disabled">{{T "releases.previous"}}</span>{{end}}
   <span class="muted">{{T "releases.pageSummary" .Pager.Page .Pager.Pages .Pager.FirstItem .Pager.LastItem .Pager.Total}}</span>
   {{if .Pager.Next}}<a class="btn small" href="{{.Pager.Next}}">{{T "releases.next"}}</a>{{else}}<span class="btn small disabled">{{T "releases.next"}}</span>{{end}}
 </nav>
+{{end}}
 {{end}}

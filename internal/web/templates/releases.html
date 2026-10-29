@@ -6,6 +6,153 @@
   </div>
 </section>
 
+<form class="filters live-search" id="release-live-search" method="post" action="/releases/live">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <div class="field grow">
+    <h2>{{T "releases.liveTitle"}}</h2>
+    <p class="help">{{T "releases.liveIntro"}}</p>
+  </div>
+  <div class="field">
+    <label for="live_mode">{{T "idx.try.mode"}}</label>
+    <select id="live_mode" name="mode" title="{{T "releases.liveModeHelp"}}">
+      <option value="search"{{if eq .LiveForm.Mode "search"}} selected{{end}}>{{T "idx.try.modeSearch"}}</option>
+      <option value="tvsearch"{{if eq .LiveForm.Mode "tvsearch"}} selected{{end}}>{{T "idx.try.modeSeries"}}</option>
+      <option value="movie"{{if eq .LiveForm.Mode "movie"}} selected{{end}}>{{T "idx.try.modeMovie"}}</option>
+      <option value="music"{{if eq .LiveForm.Mode "music"}} selected{{end}}>{{T "logs.mode.music"}}</option>
+      <option value="book"{{if eq .LiveForm.Mode "book"}} selected{{end}}>{{T "logs.mode.book"}}</option>
+    </select>
+    <p class="help">{{T "releases.liveModeHelp"}}</p>
+  </div>
+  <div class="field grow">
+    <label for="live_q">{{T "releases.searchLabel"}}</label>
+    <input id="live_q" name="q" type="search" value="{{.LiveForm.Query}}" placeholder="{{T "releases.searchPlaceholder"}}" autocomplete="off" spellcheck="false" title="{{T "releases.liveQueryHelp"}}">
+    <p class="help">{{T "releases.liveQueryHelp"}}</p>
+  </div>
+  <div class="field small">
+    <label for="live_year">{{T "releases.liveYear"}}</label>
+    <input id="live_year" name="year" type="number" min="0" value="{{if .LiveForm.Year}}{{.LiveForm.Year}}{{end}}" title="{{T "releases.liveYearHelp"}}">
+    <p class="help">{{T "releases.liveYearHelp"}}</p>
+  </div>
+  <div class="field">
+    <label for="live_cat">{{T "releases.category"}}</label>
+    <select id="live_cat" name="cat" title="{{T "releases.liveCategoryHelp"}}">
+      <option value="">{{T "releases.allCategories"}}</option>
+      {{range categoryGroups}}
+      <optgroup label="{{.Top.Name}}">
+        <option value="{{.Top.ID}}"{{if eq $.LiveForm.Category (printf "%d" .Top.ID)}} selected{{end}}>{{.Top.Name}}</option>
+        {{range .Children}}<option value="{{.ID}}"{{if eq $.LiveForm.Category (printf "%d" .ID)}} selected{{end}}>{{.Name}}</option>{{end}}
+      </optgroup>
+      {{end}}
+    </select>
+    <p class="help">{{T "releases.liveCategoryHelp"}}</p>
+  </div>
+  <div class="field">
+    <label for="live_indexers">{{T "releases.indexer"}}</label>
+    <select id="live_indexers" name="indexers" multiple size="4" title="{{T "releases.liveIndexersHelp"}}">
+      {{range .LiveIndexers}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+    <p class="help">{{T "releases.liveIndexersHelp"}}</p>
+  </div>
+  <details class="filter-advanced" id="release-live-advanced">
+    <summary><span>{{T "releases.filters"}}</span></summary>
+    <div class="filter-advanced-body">
+      <div class="field small">
+        <label for="live_season">{{T "idx.try.season"}}</label>
+        <input id="live_season" name="season" type="number" min="0" value="{{if .LiveForm.Season}}{{.LiveForm.Season}}{{end}}" title="{{T "releases.liveSeasonHelp"}}">
+        <p class="help">{{T "releases.liveSeasonHelp"}}</p>
+      </div>
+      <div class="field small">
+        <label for="live_episode">{{T "idx.try.episode"}}</label>
+        <input id="live_episode" name="episode" type="number" min="0" value="{{if .LiveForm.Episode}}{{.LiveForm.Episode}}{{end}}" title="{{T "releases.liveEpisodeHelp"}}">
+        <p class="help">{{T "releases.liveEpisodeHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="live_imdbid">{{T "idx.try.imdb"}}</label>
+        <input id="live_imdbid" name="imdbid" type="text" value="{{.LiveForm.IMDbID}}" title="{{T "releases.liveIdsHelp"}}">
+      </div>
+      <div class="field">
+        <label for="live_tmdbid">{{T "release.tmdb"}}</label>
+        <input id="live_tmdbid" name="tmdbid" type="text" value="{{.LiveForm.TMDbID}}" title="{{T "releases.liveIdsHelp"}}">
+      </div>
+      <div class="field">
+        <label for="live_tvdbid">{{T "release.tvdb"}}</label>
+        <input id="live_tvdbid" name="tvdbid" type="text" value="{{.LiveForm.TVDbID}}" title="{{T "releases.liveIdsHelp"}}">
+      </div>
+      <p class="help">{{T "releases.liveIdsHelp"}}</p>
+      <div class="field">
+        <label for="live_artist">{{T "releases.liveArtist"}}</label>
+        <input id="live_artist" name="artist" type="text" value="{{.LiveForm.Artist}}" title="{{T "releases.liveArtistHelp"}}">
+        <p class="help">{{T "releases.liveArtistHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="live_album">{{T "releases.liveAlbum"}}</label>
+        <input id="live_album" name="album" type="text" value="{{.LiveForm.Album}}" title="{{T "releases.liveAlbumHelp"}}">
+        <p class="help">{{T "releases.liveAlbumHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="live_author">{{T "releases.liveAuthor"}}</label>
+        <input id="live_author" name="author" type="text" value="{{.LiveForm.Author}}" title="{{T "releases.liveAuthorHelp"}}">
+        <p class="help">{{T "releases.liveAuthorHelp"}}</p>
+      </div>
+      <div class="field">
+        <label for="live_title">{{T "releases.liveTitleField"}}</label>
+        <input id="live_title" name="title" type="text" value="{{.LiveForm.Title}}" title="{{T "releases.liveTitleFieldHelp"}}">
+        <p class="help">{{T "releases.liveTitleFieldHelp"}}</p>
+      </div>
+    </div>
+  </details>
+  <div class="field actions-field">
+    <button class="btn primary" type="submit" title="{{T "releases.liveFooter"}}">{{T "releases.liveSubmit"}}</button>
+    <a class="btn" href="/releases">{{T "common.reset"}}</a>
+  </div>
+  <p class="help live-search-footer">{{T "releases.liveFooter"}}</p>
+</form>
+
+{{if .LivePerformed}}
+<section class="panel live-outcomes">
+  <div class="panel-head">
+    <h2>{{T "releases.liveOutcomes"}}</h2>
+    <span class="muted">{{T "releases.liveStored" .LiveStored}}</span>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">{{T "releases.indexer"}}</th>
+          <th scope="col">{{T "activity.searches.status"}}</th>
+          <th scope="col">{{T "logs.req.mode"}}</th>
+          <th scope="col">{{T "logs.req.sent"}}</th>
+          <th scope="col">{{T "activity.searches.resultsShort"}}</th>
+          <th scope="col">{{T "idx.try.duration"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .LiveOutcomes}}
+        <tr>
+          <td>{{.Name}}</td>
+          <td>
+            {{if .Err}}<span class="chip danger" title="{{.Err}}">{{T "activity.searches.error"}}</span>
+            {{else if .TimedOut}}<span class="chip" title="{{T "releases.liveTimeoutHelp"}}">{{T "activity.searches.timeout"}}</span>
+            {{else if .Skipped}}<span class="chip" title="{{T "releases.liveSkippedHelp"}}">{{T "activity.searches.skipped"}}</span>
+            {{else}}<span class="chip ok" title="{{T "releases.liveAnsweredHelp"}}">{{T "activity.searches.ok"}}</span>{{end}}
+            {{if .Fallback}} <span class="chip" title="{{T "activity.searches.fallback"}}">{{T "activity.searches.fallback"}}</span>{{end}}
+          </td>
+          <td>{{.Mode}}</td>
+          <td>{{textOrDash .Query}}</td>
+          <td>{{num .Results}}</td>
+          <td>{{duration .Duration}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="6" class="empty">{{T "releases.empty"}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}
+
+{{if .LiveError}}<p class="flash err" role="alert">{{.LiveError}}</p>{{end}}
+
 <form class="filters" id="release-filters" method="get" action="/releases" data-live-search role="search">
   <div class="field grow">
     <label for="q">{{T "releases.searchLabel"}}</label>

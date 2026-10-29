@@ -69,19 +69,30 @@ func (r Release) HasPayload() bool { return r.payloadStored || len(r.Payload) > 
 
 // Filter selects releases for the web UI and the Torznab endpoint.
 type Filter struct {
-	Query         string
-	Include       []string // parsed include terms (normal: normalized; regex: patterns)
-	Exclude       []string // parsed exclude terms, applied with NOT
-	Regex         bool
-	IndexerID     int64
-	IndexerIDs    []int64 // native provenance selection; takes effect when IndexerID is zero
-	Categories    []string
-	Season        int
-	Episode       int
-	Year          int
-	IMDbID        string
-	TMDbID        string
-	TVDbID        string
+	Query      string
+	Include    []string // parsed include terms (normal: normalized; regex: patterns)
+	Exclude    []string // parsed exclude terms, applied with NOT
+	Regex      bool
+	IndexerID  int64
+	IndexerIDs []int64 // native provenance selection; takes effect when IndexerID is zero
+	Categories []string
+	Season     int
+	Episode    int
+	Year       int
+	IMDbID     string
+	TMDbID     string
+	TVDbID     string
+	// Artist, Album, Author and Title carry the music/book parameters to the
+	// live fan-out. The cache has no such columns, so they do not filter the
+	// stored rows here.
+	Artist string
+	Album  string
+	Author string
+	Title  string
+	// SeenSince keeps only releases seen at or after this instant. A manual
+	// live search passes its start time so older cache rows cannot leak into
+	// the result table.
+	SeenSince     time.Time
 	Sort          string
 	Limit         int
 	Offset        int
@@ -1284,6 +1295,11 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 	}
 	if !f.IncludeHidden {
 		clauses = append(clauses, `hidden = 0`)
+	}
+	if !f.SeenSince.IsZero() {
+		nonText = true
+		clauses = append(clauses, `last_seen_at >= ?`)
+		args = append(args, f.SeenSince.Unix())
 	}
 	if f.FavoritesOnly {
 		clauses = append(clauses, `favorite = 1`)

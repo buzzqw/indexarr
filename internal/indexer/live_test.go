@@ -462,6 +462,54 @@ func TestLiveExcludedUploaderAndFilteredSources(t *testing.T) {
 	}
 }
 
+func TestLiveKeyFieldsIncludeMusicAndBookParameters(t *testing.T) {
+	base := LiveQuery{Mode: "music", Query: "Album", Limit: 50}
+	baseKey := liveQueryKey(base)
+	for name, mutate := range map[string]func(*LiveQuery){
+		"artist": func(req *LiveQuery) { req.Artist = "Artist" },
+		"album":  func(req *LiveQuery) { req.Album = "Deluxe" },
+		"author": func(req *LiveQuery) { req.Author = "Author" },
+		"title":  func(req *LiveQuery) { req.Title = "Exact title" },
+	} {
+		variant := base
+		mutate(&variant)
+		if key := liveQueryKey(variant); key == baseKey {
+			t.Errorf("%s does not change the live query key: %q", name, key)
+		}
+	}
+}
+
+func TestPlanLiveSearchCarriesMusicAndBookParameters(t *testing.T) {
+	caps := engine.Capabilities{
+		Modes: []engine.Mode{engine.ModeMusic, engine.ModeBook},
+		Params: map[engine.Mode][]string{
+			engine.ModeMusic: {engine.ParamArtist, engine.ParamAlbum},
+			engine.ModeBook:  {engine.ParamAuthor, engine.ParamTitle},
+		},
+	}
+	music, ok, reason := planLiveSearch(caps, LiveQuery{
+		Mode: "music", Artist: "Artist", Album: "Album",
+	})
+	if !ok {
+		t.Fatalf("music plan rejected: %s", reason)
+	}
+	if music.request.Artist != "Artist" || music.request.Album != "Album" {
+		t.Errorf("music request = %+v", music.request)
+	}
+	book, ok, reason := planLiveSearch(caps, LiveQuery{
+		Mode: "book", Author: "Author", Title: "Title",
+	})
+	if !ok {
+		t.Fatalf("book plan rejected: %s", reason)
+	}
+	if book.request.Author != "Author" || book.request.Title != "Title" {
+		t.Errorf("book request = %+v", book.request)
+	}
+	if !liveQueryPresent(LiveQuery{Artist: "Artist"}) || !liveQueryPresent(LiveQuery{Author: "Author"}) {
+		t.Error("artist/author-only queries must count as present")
+	}
+}
+
 func TestPlanLiveSearchUsesModeCategory(t *testing.T) {
 	caps := engine.Capabilities{Modes: []engine.Mode{engine.ModeSearch}, Params: map[engine.Mode][]string{engine.ModeSearch: {engine.ParamQuery}}}
 	for _, tc := range []struct {

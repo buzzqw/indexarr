@@ -649,6 +649,8 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /language/{code}", s.setLanguage)
 	ui.HandleFunc("GET /releases", s.releasesPage)
 	ui.HandleFunc("GET /releases/results", s.releasesResults)
+	ui.HandleFunc("POST /releases/live", s.releasesLive)
+	ui.HandleFunc("POST /releases/bulk", s.releasesBulk)
 	ui.HandleFunc("POST /releases/saved", s.savedSearchAdd)
 	ui.HandleFunc("POST /releases/saved/{id}/delete", s.savedSearchDelete)
 	ui.HandleFunc("GET /releases/{id}", s.releasePage)
@@ -1020,6 +1022,8 @@ func pageHelpKey(r *http.Request) string {
 	case path == "" || path == "/":
 		return "home"
 	case path == "/releases":
+		return "search"
+	case path == "/releases/live":
 		return "search"
 	case strings.HasPrefix(path, "/releases/"):
 		return "release"

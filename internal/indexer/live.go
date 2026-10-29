@@ -45,14 +45,21 @@ const (
 // LiveQuery is one app-facing Torznab search. It is independent of the store
 // filter because it also carries the year and the IDs the live fan-out needs.
 type LiveQuery struct {
-	Mode       string
-	Query      string
-	Season     int
-	Episode    int
-	Year       int
-	IMDbID     string
-	TMDbID     string
-	TVDbID     string
+	Mode    string
+	Query   string
+	Season  int
+	Episode int
+	Year    int
+	IMDbID  string
+	TMDbID  string
+	TVDbID  string
+	// Artist, Album, Author and Title are the music and book parameters the
+	// engine already accepts. They let a manual search reach a site that
+	// indexes by author or album instead of a free-text query.
+	Artist     string
+	Album      string
+	Author     string
+	Title      string
 	Categories []int
 	Limit      int
 	// IndexerIDs restricts the fan-out to the indexers selected by the
@@ -450,6 +457,10 @@ func liveKeyFields(req LiveQuery, ids []int64) string {
 		strings.ToLower(strings.TrimSpace(req.IMDbID)),
 		strings.ToLower(strings.TrimSpace(req.TMDbID)),
 		strings.ToLower(strings.TrimSpace(req.TVDbID)),
+		textutil.NormalizeTitle(req.Artist),
+		textutil.NormalizeTitle(req.Album),
+		textutil.NormalizeTitle(req.Author),
+		textutil.NormalizeTitle(req.Title),
 		fmt.Sprint(ids),
 		fmt.Sprint(categories),
 		strconv.Itoa(req.Limit),
@@ -761,6 +772,10 @@ func planLiveSearch(caps engine.Capabilities, req LiveQuery) (livePlan, bool, st
 			IMDbID:      strings.TrimSpace(req.IMDbID),
 			TMDbID:      strings.TrimSpace(req.TMDbID),
 			TVDbID:      strings.TrimSpace(req.TVDbID),
+			Artist:      strings.TrimSpace(req.Artist),
+			Album:       strings.TrimSpace(req.Album),
+			Author:      strings.TrimSpace(req.Author),
+			Title:       strings.TrimSpace(req.Title),
 			Categories:  categories,
 			Limit:       req.Limit,
 			SkipDetails: true,
@@ -818,12 +833,34 @@ func planLiveSearch(caps engine.Capabilities, req LiveQuery) (livePlan, bool, st
 	}
 
 	if plan.request.Query == "" {
-		// Without a keyword only an ID the connector declares can answer.
-		if !hasSupportedID(caps, plan.mode, plan.request) {
-			return livePlan{}, false, "no query and no supported id"
+		// Without a keyword only an identifier or a music/book field the
+		// connector declares can answer.
+		if !hasSupportedID(caps, plan.mode, plan.request) &&
+			!hasSupportedField(caps, plan.mode, plan.request) {
+			return livePlan{}, false, "no query and no supported field"
 		}
 	}
 	return plan, true, ""
+}
+
+// hasSupportedField reports whether the request carries a music or book
+// parameter the effective mode accepts. It never invents a query.
+func hasSupportedField(caps engine.Capabilities, mode engine.Mode, req engine.SearchRequest) bool {
+	candidates := []struct {
+		param string
+		value string
+	}{
+		{engine.ParamArtist, req.Artist},
+		{engine.ParamAlbum, req.Album},
+		{engine.ParamAuthor, req.Author},
+		{engine.ParamTitle, req.Title},
+	}
+	for _, candidate := range candidates {
+		if strings.TrimSpace(candidate.value) != "" && caps.SupportsParam(mode, candidate.param) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasSupportedID reports whether the request has at least one identifier the
@@ -888,8 +925,12 @@ func liveQueryPresent(req LiveQuery) bool {
 	if strings.TrimSpace(req.Query) != "" {
 		return true
 	}
-	return strings.TrimSpace(req.IMDbID) != "" || strings.TrimSpace(req.TMDbID) != "" ||
-		strings.TrimSpace(req.TVDbID) != ""
+	if strings.TrimSpace(req.IMDbID) != "" || strings.TrimSpace(req.TMDbID) != "" ||
+		strings.TrimSpace(req.TVDbID) != "" {
+		return true
+	}
+	return strings.TrimSpace(req.Artist) != "" || strings.TrimSpace(req.Album) != "" ||
+		strings.TrimSpace(req.Author) != "" || strings.TrimSpace(req.Title) != ""
 }
 
 // storeLiveItems writes the items of a live search into the cache. It never
