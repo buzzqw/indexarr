@@ -152,7 +152,17 @@ dettaglio release, configurata in **Settings → Download client**.
 | --- | --- |
 | qBittorrent | Web API v2: login, `torrents/add` con magnet o file `.torrent`, categoria, percorso, pausa. |
 | Transmission | RPC `/transmission/rpc`: `torrent-add`, `metainfo` base64 per i `.torrent`, `filename` per i magnet, sessione `409` gestita. |
+| Deluge | JSON-RPC: login, `core.add_torrent_magnet`/`core.add_torrent_file`, percorso e pausa. |
+| rTorrent | XML-RPC: `load.raw_start`/`load.start` con magnet o `.torrent`. |
+| SABnzbd / NZBGet | API Usenet: aggiunta di un `.nzb` o di un URL, categoria, pausa. |
 | aMule | Web API `amuleapi` (`/api/v1`): login con password, `POST /downloads` con il link `ed2k://`. Protocollo `ed2k`. |
+| Aria2 | JSON-RPC `/jsonrpc`: `aria2.addUri` e `aria2.addTorrent`, token, `dir`, pausa. |
+| uTorrent | Web API: token da `token.html`, `add-url` e `add-file`. |
+| Flood | REST `/api`: autenticazione, aggiunta di magnet/URL/file, tag, destinazione. |
+| Download Station | Synology `auth.cgi` + `task.cgi`: magnet/URL e upload di file, destinazione. |
+| NZBVortex | API `/api`: login con nonce, aggiunta `.nzb`, gruppo. |
+| Hadouken | JSON-RPC `/api`: `webui.addTorrent` con file o URL, etichetta. |
+| Blackhole | Cartella locale: scrive `.torrent`, `.magnet` o `.nzb`; nessun URL richiesto. |
 
 Sonarr/Radarr/Lidarr continuano a gestire il download per conto loro; questa
 funzione serve per inviare una release scelta a mano dalla UI.

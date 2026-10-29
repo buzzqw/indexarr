@@ -33,18 +33,20 @@ Fonti native / RSS ──► scheduler ──► normalizzazione ──► SQLit
 - **Server Torznab completo**: `caps`, `search`, `tvsearch`, `movie`, `get`,
   download `.torrent`, paginazione, filtri per categoria, stagione/episodio e id
   esterni. Compatibile con i client Sonarr/Radarr/Lidarr; ricerca live opzionale
-  sugli indexer quando la cache è vuota.
-- **Interfaccia web**: dashboard, ricerca live con filtri e ricerche salvate,
+  sugli indexer quando la cache è vuota, anche per musica e libri.
+- **Interfaccia web**: dashboard, ricerca live manuale con parametri TV/film/musica/libri,
+  filtri e ricerche salvate, grab multiplo,
   ricerca nei nomi dei file dei torrent, ordinamento per più visti/più presi,
   filtro adulti,
   indice full-text **FTS5** (tokenizer trigram) sulla cache, dettaglio release
   con preferiti/blocklist e invio al client torrent, CRUD
   sorgenti con test, clone, import/export, storico esecuzioni, log in-app,
   impostazioni e manutenzione.
-- **Gestione per indexer**: proxy HTTP/HTTPS/SOCKS5, limiti query/grab,
+- **Gestione per indexer**: proxy HTTP/HTTPS/SOCKS4/SOCKS4A/SOCKS5, limiti query/grab,
   seeder minimi, seed ratio/time, priorità e tag.
 - **Operatività**: API key multiple con revoca e rate limit, notifiche
-  webhook/Telegram, auto-disable delle sorgenti, backup automatici con rotazione
+  webhook/Telegram/Apprise/Discord/Slack/Gotify/ntfy/Pushover/email/script,
+  auto-disable delle sorgenti, backup automatici con rotazione
   e ripristino dalla UI, metriche Prometheus.
 - **Sicurezza**: API key per Torznab, HTTP Basic opzionale per la UI, protezione
   CSRF sui moduli, password con PBKDF2-SHA256.
@@ -374,13 +376,16 @@ ignorate. È spenta per default perché può aggiungere secondi alla risposta de
 client. La query deve essere presente: una richiesta solo per IMDb/TMDB/TVDB id
 non attiva la ricerca live.
 
-### Invio ai client torrent
+### Invio ai client di download
 
 In **Settings → Download client** si sceglie **qBittorrent**, **Transmission**,
-**aMule** o uno degli altri client supportati, si inseriscono URL e credenziali
-e, per qBittorrent, categoria e percorso. Sul dettaglio di ogni release compare
-**Invia**: viene inviato il `.torrent` salvato, oppure il magnet se il file non
-è in cache. Per aMule viene inviato il link `ed2k://` alla Web API
+**Deluge**, **rTorrent**, **SABnzbd**, **NZBGet**, **aMule**, **Aria2**,
+**uTorrent**, **Flood**, **Download Station**, **NZBVortex**, **Hadouken** o un
+blackhole torrent/Usenet, si inseriscono URL e credenziali e, per qBittorrent,
+categoria e percorso. Sul dettaglio di ogni release compare **Invia**: viene
+inviato il `.torrent`/`.nzb` salvato, oppure il magnet se il file non è in cache.
+Nella pagina **Releases** le caselle di selezione e **Invia selezionati** inviano
+più release con un solo comando. Per aMule viene inviato il link `ed2k://` alla Web API
 (`/api/v1/downloads`); il protocollo della release sceglie il client.
 qBittorrent usa la Web API v2; Transmission il RPC con negoziazione della sessione.
 Quando l'indexer che ha fornito la release ha un **seed ratio** o un
@@ -395,7 +400,7 @@ L'operazione è registrata nei log.
 | Pagina | Contenuto |
 | --- | --- |
 | **Dashboard** | Totali, stato degli indexer, ultime release ed esecuzioni |
-| **Releases** | Ricerca live, esclusione `-xxx`, regex, filtri avanzati (qualità, lingua, seeders, dimensione), ricerche salvate, preferiti/nascosti; dettaglio con magnet e `.torrent` |
+| **Releases** | Ricerca live manuale (testo, TV, film, musica, libri, ID esterni), esclusione `-xxx`, regex, filtri avanzati (qualità, lingua, seeders, dimensione), ricerche salvate, preferiti/nascosti, grab multiplo; dettaglio con magnet, `.torrent` e `.nzb` |
 | **Indexer** | Elenco unico, Run/Test/Run all/Test all, dettaglio, modifica, export/import JSON e scoperta feed |
 | **Attività** | Storico aggiornamenti da `indexer_history` con esito, query, durata ed errore; nuove release; ricerche delle app |
 | **Log** | Log interni con filtri e livello runtime, richieste ricevute dalle app con esito e tempi, statistiche per app e per indexer collegate alla Manutenzione |
@@ -467,7 +472,11 @@ In **Settings → Notifications**:
   `error` e `at`;
 - **Telegram bot token** e **chat ID**: messaggio leggibile; vanno impostati
   entrambi o nessuno;
-- **Notify new releases** e **Notify failures** scelgono gli eventi;
+- **Apprise**, **Discord**, **Slack**, **Gotify**, **ntfy**, **Pushover**,
+  **email SMTP** e **script personalizzato**: canali indipendenti, con i propri
+  segreti cifrati nel vault;
+- **Notify new releases**, **Notify failures**, **Grab failed**, **A grab
+  succeeded**, **Catalog updated** e **Backup failed** scelgono gli eventi;
 - **Auto-disable after N consecutive failures**: dopo N run falliti la sorgente
   viene disabilitata; un run riuscito azzera il contatore. Il token Telegram è
   oscurato negli errori di log.
@@ -736,7 +745,8 @@ La UI include le pagine **Definizioni** e **Indexer** (form generato dai
 `settings`, test per fase, run manuale). Il sync verso le \*arr si configura da
 `/api/v2/applications`; il proxy serve `.torrent` e `.nzb` senza esporre URL o
 passkey. I client di download supportano qBittorrent, Transmission, Deluge,
-rTorrent, SABnzbd, NZBGet e aMule.
+rTorrent, SABnzbd, NZBGet, aMule, Aria2, uTorrent, Flood, Download Station,
+NZBVortex, Hadouken e i blackhole torrent/Usenet.
 
 Il CLI delle definizioni è `indexarr-def`:
 
@@ -766,8 +776,11 @@ make def-validate   # definizioni di esempio e catalogo, se presente
 - Le categorie RSS sono solo numeriche: le categorie testuali dei feed non
   producono un id Torznab valido e vengono ignorate; **Default category** copre i
   feed e i listing che non ne dichiarano una.
-- La ricerca live Torznab interroga solo sorgenti Torznab e richiede un termine
-  `q`; non traduce in ricerca gli id esterni da soli.
+- La ricerca live interroga solo sorgenti che espongono un protocollo di ricerca
+  (Torznab/Newznab); le fonti RSS/HTML alimentano la cache ma non rispondono a
+  una query manuale. La ricerca manuale accetta anche id esterni e i campi
+  musicali/libri, ma non traduce da sola un id in un titolo per i siti che non
+  lo supportano.
 - Il ripristino di un backup richiede il riavvio del processo; con systemd
   `Restart=always` è automatico, altrimenti va riavviato a mano.
 - I seeder non riportati dall'indexer (per esempio MirCrew) restano sconosciuti:

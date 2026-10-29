@@ -365,6 +365,11 @@ LazyLibrarian.
   "name": "Sonarr",
   "url": "http://192.168.1.10:8989",
   "sync_level": "full",
+  "enable_rss": true,
+  "enable_automatic_search": true,
+  "enable_interactive_search": true,
+  "min_seeders": 0,
+  "categories": [5000, 2000],
   "last_sync_at": "2026-10-26T10:00:00Z",
   "last_error": "",
   "has_api_key": true
@@ -374,7 +379,13 @@ LazyLibrarian.
 `kind` ammessi: `sonarr`, `radarr`, `lidarr`, `readarr`, `whisparr`,
 `mylar3`, `lazylibrarian`.
 
-`sync_level`: `disabled`, `add`, `add-remove`, `full`.
+`sync_level`: `disabled`, `add-remove`, `full`.
+
+`enable_rss`, `enable_automatic_search` e `enable_interactive_search` sono i
+flag con cui l'indexer viene creato nell'app. `min_seeders` (0 = valore
+dell'indexer) e `categories` (id Torznab standard, array o stringa CSV; vuoto =
+tutte le categorie supportate dall'app) completano il profilo della singola
+applicazione. In aggiornamento i campi omessi mantengono il valore corrente.
 
 ### Endpoint
 
@@ -396,7 +407,12 @@ Creazione:
   "name": "Sonarr",
   "url": "http://192.168.1.10:8989",
   "api_key": "chiave-di-sonarr",
-  "sync_level": "full"
+  "sync_level": "full",
+  "enable_rss": true,
+  "enable_automatic_search": true,
+  "enable_interactive_search": true,
+  "min_seeders": 0,
+  "categories": [5000]
 }
 ```
 

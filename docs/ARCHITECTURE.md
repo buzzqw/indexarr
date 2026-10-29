@@ -81,13 +81,13 @@ esterni obbligatori: l'unica dipendenza è il driver SQLite puro Go
 | `internal/feed` | Parser RSS/Atom/Torznab e utility di normalizzazione; i parser HTML storici restano solo come oracolo dei test di equivalenza |
 | `internal/flaresolverr` | Client minimo per risolvere le challenge Cloudflare |
 | `internal/logbuffer` | Ring buffer in memoria e handler slog con redazione dei segreti |
-| `internal/notify` | Notifiche webhook JSON e Telegram, con redazione del token |
+| `internal/notify` | Notifiche webhook JSON, Telegram, Apprise, Discord, Slack, Gotify, ntfy, Pushover, email SMTP e script, con redazione dei segreti |
 | `internal/backup` | Backup consistenti, elenco/rotazione, validazione e ripristino al riavvio |
-| `internal/downloadclient` | Invio di magnet/.torrent/eD2k a qBittorrent, Transmission, Deluge, rTorrent, SABnzbd, NZBGet e aMule |
+| `internal/downloadclient` | Invio di magnet/.torrent/.nzb/eD2k a qBittorrent, Transmission, Deluge, rTorrent, SABnzbd, NZBGet, aMule, Aria2, uTorrent, Flood, Download Station, NZBVortex, Hadouken e blackhole |
 | `internal/simmock`, `cmd/simmock`, `sim/` | Simulazione end-to-end deterministica: finti Torznab/Newznab, Prowlarr, Sonarr, client di download e tracker HTML |
 | `internal/i18n` | Cataloghi UI incorporati (en/it/fr/de/es/zh/pl), negoziazione lingua, fallback inglese |
 | `internal/perf` | Generatore dataset e test di leak per benchmark; non linkato dal binario di produzione |
-| `internal/appsync` | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr (API Servarr) e Mylar3/LazyLibrarian, con livelli di sync |
+| `internal/appsync` | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr (API Servarr) e Mylar3/LazyLibrarian, con livelli di sync e profilo per applicazione (RSS, ricerca automatica/interattiva, min seeders, categorie) |
 | `internal/deftool` | Logica testabile del CLI: validazione, formattazione, controllo fixture |
 | `cmd/indexarr-def` | CLI `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` |
 
@@ -164,12 +164,12 @@ offre una deduplica esplicita che conserva la riga più vecchia e i dati miglior
   non si sovrappongono grazie al manager e allo storico.
 - Timeout per richiesta dal transport; un errore viene registrato in
   `indexer_history` e in `indexer_state.last_error`.
-- Notifiche webhook/Telegram per nuove release o fallimenti. Se
+- Notifiche webhook/Telegram/Apprise/Discord/Slack/Gotify/ntfy/Pushover/email/script per nuove release, grab, stato degli indexer, catalogo e backup. Se
   `auto_disable_after` è impostato e gli ultimi run sono tutti falliti, l'indexer
   viene disabilitato e l'evento viene notificato.
 - La ricerca Torznab live (`torznab_live_search`) usa `indexer.SearchLive` a ogni
   richiesta con una query: fan-out su tutti gli indexer capaci, concorrenza
-  globale 8, deadline `torznab_live_timeout_seconds`; chi è in ritardo continua
+  globale 16, deadline `torznab_live_timeout_seconds`; chi è in ritardo continua
   in background e cachea il risultato. Gli indexer `meta.latest: false` non
   hanno run periodici e partecipano solo alla ricerca dal vivo.
 - I backup automatici (`backup_enabled`) vengono creati ogni

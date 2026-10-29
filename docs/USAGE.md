@@ -162,7 +162,11 @@ del salvataggio; preferiti e nascosti restano locali.
    - **Disattivata**: nessun contatto;
    - **Solo aggiunta/rimozione**;
    - **Completa**: aggiorna anche gli indexer esistenti.
-4. Salva e premi **Sincronizza** (o sincronizza tutte).
+4. In **Avanzate** imposta il profilo di questa app: RSS, ricerca automatica e
+   ricerca interattiva, seeder minimi (0 = valore dell'indexer) e categorie
+   Torznab da inviare (vuoto = tutte quelle supportate dall'app). Un indexer
+   senza categorie in comune non viene sincronizzato con quell'app.
+5. Salva e premi **Sincronizza** (o sincronizza tutte).
 
 indexarr crea nell'app solo gli indexer il cui nome inizia con `indexarr · `;
 il resto non viene toccato. Il filtro per tag decide quali sorgenti mandare a
@@ -187,9 +191,11 @@ Torznab. Se scegli «Altro», usa l'endpoint completo `/api`.
 
 ### Client di download
 
-**App → Client di download**: qBittorrent, Transmission, Deluge, SABnzbd,
-NZBGet, aMule e gli altri supportati. Il client predefinito riceve i grab; il
-pulsante **Invia** nella scheda release usa quello scelto. Per aMule il
+**App → Client di download**: qBittorrent, Transmission, Deluge, rTorrent,
+SABnzbd, NZBGet, aMule, Aria2, uTorrent, Flood, Download Station, NZBVortex,
+Hadouken e i blackhole torrent/Usenet. Il client predefinito riceve i grab; il
+pulsante **Invia** nella scheda release usa quello scelto, e **Invia selezionati**
+nella pagina Releases manda più release in un colpo solo. Per aMule il
 protocollo della release deve essere `ed2k` e il client si configura con
 l'URL della Web API (di solito `http://127.0.0.1:4711`) e la password
 dell'interfaccia web.
@@ -207,8 +213,10 @@ rinvio.
 **Impostazioni → Notifiche**:
 
 - webhook e Telegram (token + chat id);
-- eventi: nuove release, errori, grab falliti, catalogo aggiornato, backup
-  fallito;
+- Apprise, Discord, Slack, Gotify, ntfy, Pushover, email SMTP e script
+  personalizzato, ognuno con i propri segreti cifrati nel vault;
+- eventi: nuove release, errori, grab falliti, grab riuscito, catalogo
+  aggiornato, backup fallito;
 - cooldown anti-spam.
 
 I messaggi sono scritti nella lingua scelta in **Impostazioni → Notifiche →
