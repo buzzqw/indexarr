@@ -39,13 +39,19 @@ Native sources / RSS / Newznab ──► scheduler ──► normalization ─�
   XBTIT, Gazelle, TorrentTrader, Newznab, Torznab, RSS).
 - **RSS/Atom** feeds, bulk import of RSS and OPML lists, **Quick add** and
   **Discover feeds**.
-- Dedicated parsers for ExtTo, TorrentGalaxy and CorsaroBlu.
-- **MirCrew** with native definition and Smartfeed source.
+- Native definitions for the Italian sites: ExtTo, TorrentGalaxy, CorsaroBlu,
+  Knaben (ITA feed), **MirCrew** (with the Smartfeed source), **ilDraGoNeRo**
+  and **DDUnlimited** (eD2k).
 - Any direct **Torznab** or **Newznab** endpoint.
 - **eD2k** sources (`protocol: ed2k`) with `ed2k://` links.
 - Each source has its own interval, starts immediately on first boot, retries
   with backoff and can be slowed down with **Reduce the frequency** after an
   HTTP 429.
+- **Mirrors**: when a site's address is gone, the request moves to the next
+  address of the definition and stays there.
+- **Per-host rate limit** and **circuit breaker**: a host that keeps failing
+  is paused and retried by itself; forum flood controls (DDUnlimited,
+  ilDraGoNeRo) are respected with a queued search lane.
 
 ### Cache and search
 
@@ -65,29 +71,43 @@ Native sources / RSS / Newznab ──► scheduler ──► normalization ─�
 - `caps`, `search`, `tvsearch`, `movie`, `music`, `book` and `get` functions.
 - `.torrent` and `.nzb` download, pagination, standard categories, season,
   episode and external ids.
-- **Optional live search** when the cache has no results: it queries the
-  enabled Torznab/Newznab sources, saves what arrives and repeats the query.
+- **Live search** on every query (on by default): the enabled sources that can
+  search are asked at that moment, what arrives in time is saved and merged
+  with the cache; the aggregated endpoint returns one row per release.
 - Multiple API keys, per-key revocation and per-key rate limit.
+- Administrative JSON API on `/api/v2/`, with the read-only
+  Prowlarr-compatible endpoints that dashboards (Homepage, Organizr) read.
 
 ### Web interface
 
-- **Dashboard** with source status, latest releases and runs.
-- **Releases** with manual live search: free text, TV, movies, music and books,
+- **Guided first start** that asks for the address the apps must use; it can
+  be reopened from Settings.
+- **Home** with source status, latest releases and runs.
+- **Search** with manual live search: free text, TV, movies, music and books,
   IMDb/TMDb/TVDb ids, selection of multiple indexers, categories, filters,
   saved searches and **bulk send** to clients.
-- **Indexer** with a single list, Run/Test/Run all/Test all, detail, edit,
-  clone, JSON export/import, feed discovery and cookie import.
+- **Indexers** with a single list, Run/Test/Run all/Test all/Test problems,
+  detail, edit, clone, JSON export/import, feed discovery and cookie import.
 - **App** to connect and synchronize Sonarr, Radarr, Lidarr, Readarr,
-  Whisparr, Mylar3 and LazyLibrarian.
+  Whisparr, Mylar3 and LazyLibrarian, and to manage the download clients.
 - **Activity** with run history, new releases and app searches.
-- **Log** with filters, runtime level, incoming requests and statistics.
-- **Rules** for the blocklist, **Settings** for configuration and
-  **Maintenance** for integrity, vacuum, deduplication, retention, backup and
-  restore.
+- **Logs** with internal log, incoming requests, statistics and downloads.
+- **Settings** for configuration, with the **Rules** (blocklist),
+  **Backup** and **Maintenance** sections.
+- Interface translated into Italian, English, German, French, Spanish, Polish
+  and Chinese.
 
 ### Per-indexer management
 
-- **HTTP/HTTPS/SOCKS4/SOCKS4A/SOCKS5** proxy, with credentials in the vault.
+- **Site access** section on every form and overview, with the **access
+  method** (username and password, session cookie, API key, passkey, key in
+  the personal address, no account) and the fields it needs.
+- **Session cookie as an alternative to the login** on every form-login
+  definition: either the username and password or a cookie pasted from the
+  browser is enough.
+- **HTTP/HTTPS/SOCKS4/SOCKS4A/SOCKS5** proxies, defined once on the **Proxies**
+  page (Settings → Advanced) and assigned per indexer, with credentials in the
+  vault.
 - Query/grab limits, minimum seeders, seed ratio and seed time.
 - Priority, tags, interval and User-Agent per source.
 - **Freeleech only** when the definition supports it.
@@ -160,7 +180,11 @@ real picture, not a list of intentions:
 | Direct Torznab | complete (torrent) | full or base endpoint; `/api` is added if missing |
 | ExtTo | complete | dedicated HTML parser: title and magnet from the same row |
 | TorrentGalaxy | complete | parser of `post-detail` pages, with magnet cache |
-| CorsaroBlu | listing only | parser of `/torrent/` titles and direct magnets; the site disables guest keyword search and currently requires a FlareSolverr session |
+| CorsaroBlu | listing only | parser of `/torrent/` titles and direct magnets; the site disables guest keyword search and currently requires a FlareSolverr session. `CorsaroBlu (account)` with a pasted cookie is still a draft |
+| ilDraGoNeRo | complete (account) | phpBB login or session cookie, search with the forum flood control, magnet at grab after the thanks |
+| DDUnlimited | complete (eD2k, account) | phpBB login or session cookie, search from the title indexes, `ed2k://` links per file, flood control respected |
+| IPTorrents | complete (account) | session cookie imported from the browser (the form login has Cloudflare Turnstile) |
+| TorrentLeech | draft | login or RSS key; the session drops under load and is renewed |
 | Newznab / Usenet | complete (generic) | `newznab-generic`: caps, `search`/`tv`/`movie`/`music`/`book` search, `.nzb` and sending to SABnzbd/NZBGet. Native definitions for individual Usenet sites not yet in the catalog |
 | eD2k / aMule | complete | `protocol: ed2k` definitions, stored `ed2k://` links, expanded per file, sent to aMule |
 | RSS / Atom | complete | normal feeds, `.torrent`, `.nzb` or magnet enclosure |
@@ -264,8 +288,20 @@ without restarting.
 | `torznab_download_factor` | 0 | `downloadvolumefactor` (0 = freeleech) |
 | `torznab_upload_factor` | 1 | `uploadvolumefactor` |
 | `api_rate_limit_per_minute` | 0 | Requests per API key per minute (0 = unlimited) |
-| `torznab_live_search` | on | Queries the indexers when the cache is empty |
+| `flaresolverr_timeout_seconds` | 60 | Time FlareSolverr may spend on one Cloudflare check |
+| `torznab_live_search` | on | Queries the indexers live on every search with a query |
 | `torznab_live_timeout_seconds` | 20 | Overall deadline of the live search |
+| `torznab_live_wait_seconds` | 5 | How long the answer waits for the live results; late indexers finish in the background |
+| `torznab_live_cache_seconds` | 300 | How long a live result stays cached (0 = off) |
+| `torznab_proxy_magnets` | off | Magnet grabs go through indexarr and are recorded in **Logs → Downloads** |
+| `torznab_proxy_ed2k` | on | eD2k grabs go through indexarr; the direct link stays in the `ed2k` attribute |
+| `host_rate` / `host_burst` | 1 / 4 | Requests per second per host, shared by all indexers, and initial burst |
+| `breaker_threshold` | 5 | Consecutive failures before a host is paused |
+| `breaker_cooldown` | 600 s | Pause after repeated failures or a 429/503 without `Retry-After` |
+| `seeders_ttl_hours` | 6 | Age of the seeders before they are refreshed |
+| `history_retention_days` | 30 | Retention of run metrics, app searches and samples (0 = forever) |
+| `stored_source_limit` | 3 | Soft limit of search-only sites whose results are stored (warning only) |
+| `stored_retention_days` | 90 | Retention of releases that came only from those sites (0 = forever) |
 | `download_client` | none | Legacy client; modern clients are on the App page |
 | `backup_enabled` | on | Automatic database backup |
 | `backup_interval_hours` | 24 | Interval of automatic backups (6–168) |
@@ -293,8 +329,9 @@ enabled sources and write the outcomes to **Activity** and the logs.
   queue.
 
 As of **2026-10-29** the catalog contains **627 entries**: 111 native
-definitions, 85 verified (84 torrent + 1 eD2k), 92 verified public hosts and
-495 entries still to try, mostly private. Coverage of individual sites grows
+definitions, 86 verified (85 torrent + 1 eD2k), 92 verified public hosts and
+495 entries still to try, mostly private. Numbers by state in
+[docs/CATALOG.md](docs/CATALOG.md). Coverage of individual sites grows
 with the catalog; the generic Usenet path is already complete.
 
 ### RSS / Atom
@@ -360,17 +397,31 @@ request goes through a FlareSolverr session because a plain client receives
 429/503. Limits: first page, at most 50 releases per source; if the
 layout changes or the site requires login, the test reports the error.
 
-### Private sources, cookies and MirCrew
+### Private sources, cookies and forums
 
+- **Site access**: every indexer form and overview shows the access method and
+  its fields in a fixed order (username, password, cookie, API key, passkey).
+  Public sources say they need no account; sources whose key is in the
+  personal address (RSS key, Smartfeed) say so.
 - **HTTP Basic** for private feeds and indexers.
+- **Session cookie instead of the login**: every form-login definition run by
+  the engine (MirCrew, ilDraGoNeRo, DDUnlimited, TorrentLeech, …) also accepts
+  a cookie pasted from the browser. With a cookie the login form is skipped;
+  when the site drops that session indexarr signs in with the username and
+  password if they are set, otherwise the test reports that the pasted cookie
+  has expired. Family connectors (NexusPHP, TorrentTrader, XBTIT) do their own
+  login and do not offer the cookie.
 - **Import cookie** for sites with a form login protected by Cloudflare
   Turnstile, such as IPTorrents: it shows a one-line command to run on the
   machine with Firefox; the helper reads the profile, sends the cookie and the
-  browser User-Agent, and indexarr stores both encrypted.
-- **MirCrew** is a direct Torznab indexer: it accepts base or `/api`, magnet in
-  `<link>`/`<enclosure>`, missing seeders and `/status` for the forum login.
-  The default timeout is 45 seconds; a failed forum login does not stop the
-  local index.
+  browser User-Agent, and indexarr stores both encrypted. The indexer can be
+  created first and the cookie imported afterwards.
+- **MirCrew** and **ilDraGoNeRo** are phpBB forums with native definitions:
+  search never thanks; the thanks to the author happens only at download time,
+  when the magnet is unlocked. Details in [docs/MIRCREW.md](docs/MIRCREW.md).
+- **DDUnlimited** is an eD2k forum: search reads its alphabetical title
+  indexes, every file of a topic becomes a release and the forum flood control
+  is respected with a single search lane and a pause after a refusal.
 
 ### Cloudflare / FlareSolverr
 
@@ -403,8 +454,8 @@ In the client add a **Torznab** indexer:
 | API Key | the key shown in Settings |
 | Categories | `5000` TV, `2000` Movies, `3000` Audio, `7000` Books |
 
-The `/torznab/api` alias and the `apikey` parameter in the `X-Api-Key` header
-are also supported. Full details in [docs/API.md](docs/API.md).
+The `/torznab/api` and `/newznab/api` aliases and the API key in the
+`X-Api-Key` header are also supported. Full details in [docs/API.md](docs/API.md).
 
 ### App sync
 
@@ -437,29 +488,32 @@ the threshold the response is HTTP 429 with `Retry-After`.
 
 ### Live search
 
-With **Search indexers live on a cache miss** enabled, a Torznab search that
-finds nothing in the cache queries the enabled Torznab/Newznab sources at that
-moment, saves the results and repeats the query. RSS/HTML sources are excluded
-because they do not accept a search term. `Live search timeout` limits the
-overall wait; slow sources are ignored. It is enabled by default because it
-usually avoids a false "no results" when the cache is still empty; you can turn
-it off if you prefer the fastest possible response. The query must be present
-or there must be an external id; a request by id alone does not trigger a live
-search on sites that do not support ids.
+With live search enabled (the default), every Torznab search that carries a
+query or an external id asks the enabled sources that can search — native
+definitions, families, Torznab and Newznab — at that moment. What arrives
+within **Live search response wait** (5 s) is saved and merged with the cache;
+the answer returns earlier when every indexer has finished. Indexers still
+running continue in the background up to **Live search timeout** (20 s), so
+their results are already in the cache for the next page or the next request.
+A result stays cached for **Live search cache** (300 s). RSS feeds and
+uploader lists do not take part because they do not accept a search term. A
+request by id alone does not trigger a live search on sites that do not
+support ids. Turn it off if you prefer an answer from the cache only.
 
 ## Web interface
 
 | Page | Content |
 | --- | --- |
-| **Dashboard** | Totals, indexer status, latest releases and runs |
-| **Releases** | Manual live search (text, TV, movies, music, books, external IDs), `-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab; detail with magnet, `.torrent` and `.nzb` |
-| **Indexer** | Single list, Run/Test/Run all/Test all, detail, edit, JSON export/import and feed discovery |
+| **Home** | Totals, indexer status, latest releases, runs and problems |
+| **Search** (`/releases`) | Manual live search (text, TV, movies, music, books, external IDs), `-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab; detail with magnet, `.torrent` and `.nzb` |
+| **Indexers** | Single list, Run/Test/Run all/Test all/Test problems, detail with Site access, edit, clone, JSON export/import, feed discovery and cookie import |
 | **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian; sync, per-app profile, snapshots and download clients |
 | **Activity** | Update history, new releases, app searches |
-| **Log** | Internal logs with filters and runtime level, incoming requests, statistics |
-| **Rules** | Blocklist by infohash, title, regex, source or category |
-| **Settings** | API keys, Torznab endpoint, live search, intervals, retention, UI credentials, notifications, auto-disable, backups |
-| **Maintenance** | Integrity, vacuum, optimize/checkpoint, reindex, deduplication, `.torrent` cleanup, retention, purge per indexer, backup and restore |
+| **Logs** | Internal log with filters and runtime level, incoming requests, statistics per app and indexer, downloads served per source |
+| **Settings** | Sections General, Network (FlareSolverr, per-host rate limit), Security, Notifications, **Rules** (blocklist by infohash, title, regex, source or category), **Backup**, **Maintenance** (integrity, vacuum, optimize/checkpoint, reindex, deduplication, `.torrent` cleanup, retention, purge per indexer, restore), Advanced (circuit breaker, live search, downloads through indexarr, definitions, proxies) and Updates |
+
+The old `/rules`, `/maintenance` and `/definitions` addresses redirect to the
+matching Settings section.
 
 The interface is a **PWA**: manifest, icon and service worker that caches only
 static assets; HTML pages always come from the network because they contain
@@ -514,7 +568,7 @@ with an × to delete them. A ★ marks favorite releases.
 
 ### Rules, favorites and hidden releases
 
-The **Rules** tab manages the blocklist:
+**Settings → Rules** manages the blocklist:
 
 - by **infohash** (exact), **title** (substring), **regex** (Go/RE2,
   case-insensitive), **source name** or **category** (`5000` covers `5xxx`);
@@ -529,7 +583,7 @@ counted in the **Blocked** column of the runs.
 
 ### Sending to clients
 
-In **Settings → Download client** or from the **App** page you choose the
+In **App → Download clients** you choose the
 client, enter URL and credentials and, for qBittorrent, category and path. On
 the detail of each release there is **Send**: the saved `.torrent`/`.nzb` is
 sent, or the magnet if the file is not in the cache. For aMule the `ed2k://`
@@ -568,19 +622,21 @@ selector at the top, a fixed language remains even when changing the interface.
 ## Backup and restore
 
 The indexarr backup contains the **SQLite database**, not the downloaded files.
-The database is in `data/indexarr.db`; consistent backups are in
-`data/backups/pre-upgrade-*.db`.
+Backups are kept in `backups/` next to the database (`data/backups/` with the
+user service): automatic ones as `indexarr-<timestamp>.db`, the copies taken
+before a restore as `pre-restore-*.db` and those of `scripts/upgrade.sh` as
+`pre-upgrade-*.db`.
 
 The **vault key is not in the database**: it must be kept separately
 (`INDEXARR_MASTER_KEY`, `vault_key_path` or the user file
 `~/.config/indexarr/master.key`). Without that key the stored secrets cannot be
 opened. Details in [docs/VAULT.md](docs/VAULT.md).
 
-From the **Maintenance** page you can create a backup, download it, delete it
+From **Settings → Backup** you can create a backup, download it, delete it
 and restore it. Restore loads a validated `.db`, copies it to
 `indexarr.db.restore`, the service restarts and the file is applied before
 opening the database. The current database is copied to
-`data/backups/pre-restore-*.db`. The systemd unit uses `Restart=always` to
+`backups/pre-restore-*.db`. The systemd unit uses `Restart=always` to
 complete the restart; without systemd, restart manually.
 
 ## Maintenance and diagnostics
@@ -603,8 +659,10 @@ complete the restart; without systemd, restart manually.
 
 ### Log
 
-The **Logs** tab shows the last **2000** messages of the process, most recent
-first:
+**Logs** has four tabs: **Internal log**, **Requests** (incoming requests with
+outcome and timings), **Statistics** (per app and per indexer) and
+**Downloads** (grabs served per source). The internal log shows the last
+**2000** messages of the process, most recent first:
 
 - filter by level (`debug`, `info`, `warning`, `error`), by **origin**
   (`indexarr`, `indexer`/Torznab, RSS/HTML, notifications) and search in the
@@ -618,8 +676,8 @@ first:
 Each source error reports `source`, `kind`, `host` and the original message.
 Internal errors use `component=indexarr`, indexer errors `component=indexer` and
 feed errors `component=rss`. The same lines go to stdout (journal with systemd)
-and to the rotating log file `logs/indexarr.log` next to the database: 5 files
-of at most 10 MB.
+and to the rotating log file `logs/indexarr.log` next to `indexarr.json`: 5 files
+of at most 10 MB by default.
 
 ```bash
 tail -f data/logs/indexarr.log          # rotating file
@@ -783,6 +841,7 @@ make vet     # go vet ./...
 make qa      # vet + test + HTTP smoke test on the real binary
 make build   # bin/indexarr
 make release # linux/amd64, linux/arm64, windows/amd64, darwin/arm64 binaries
+make ui-smoke  # UI smoke test
 make ci      # local CI, log in ci-logs/<commit>.log
 ```
 
@@ -821,9 +880,9 @@ smoke test: [docs/QA.md](docs/QA.md).
 - RSS categories are numeric only: the textual categories of feeds do not
   produce a valid Torznab id and are ignored; **Default category** covers feeds
   and listings that do not declare one.
-- Live search queries only sources that expose a search protocol
-  (Torznab/Newznab); RSS/HTML sources feed the cache but do not answer a manual
-  query. Manual search accepts external ids and music/book fields, but does not
+- Live search queries only sources that can search (native definitions,
+  families, Torznab/Newznab); RSS feeds and uploader lists feed the cache but
+  do not answer a query. Manual search accepts external ids and music/book fields, but does not
   translate an id into a title by itself for sites that do not support it.
 - The manual live view shows at most 50 rows and does not use normal
   pagination; indexers that time out continue in the background and require a
@@ -855,4 +914,7 @@ smoke test: [docs/QA.md](docs/QA.md).
 - [Torznab API](docs/API.md) and [Administrative API](docs/ADMIN-API.md)
 - [Vault](docs/VAULT.md) — key, backup, Docker secrets
 - [QA](docs/QA.md) — tests and smoke tests
+- [Catalog](docs/CATALOG.md) — states, numbers and live evidence per site
+- [UI rules](docs/UI-RULES.md) — rules every page follows
+- [Backlog](docs/BACKLOG.md) — open work with its measured evidence
 - [Migration from Jackett/Prowlarr](docs/MIGRATION-MANAGERS.md)
