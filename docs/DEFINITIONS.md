@@ -801,7 +801,11 @@ parametri `season` ed `ep` nel link di dettaglio.
 
 `before` è un'azione **generale** da eseguire solo al grab, mai durante una
 ricerca. Nasce dal caso MirCrew (i magnet sono nascosti finché non si ringrazia
-il primo post) ma vale per ogni forum con la stessa logica:
+il primo post) ma vale per ogni forum con la stessa logica. Nemmeno i lavori in
+background la eseguono: il recupero degli infohash mancanti salta le fonti con
+`before`, e così i riferimenti sigillati per un altro indexer (i topic in
+attesa di MirCrew Smartfeed). Fino al 29/10 quel recupero ringraziava circa
+dieci topic MirCrew a ogni giro, per release che nessun client aveva chiesto.
 
 ```yaml
 download:

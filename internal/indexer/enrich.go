@@ -14,6 +14,9 @@ type EnrichReport struct {
 	Recovered  int
 	Merged     int
 	Failed     int
+	// Skipped counts the sources left alone because opening them is an
+	// engagement action (a thank-you) or belongs to another indexer.
+	Skipped int
 }
 
 // EnrichMissingInfohashes recovers the infohash where the listing did not
@@ -38,6 +41,7 @@ func (m *Manager) EnrichMissingInfohashes(ctx context.Context, perIndexer int) (
 	}
 	report.Candidates = len(candidates)
 	used := make(map[int64]int)
+	engaging := make(map[int64]bool)
 	for _, candidate := range candidates {
 		if err := ctx.Err(); err != nil {
 			return report, err
@@ -51,6 +55,17 @@ func (m *Manager) EnrichMissingInfohashes(ctx context.Context, perIndexer int) (
 		parsed, openErr := OpenDownloadRef(m.vault, candidate.DownloadRef)
 		if openErr != nil {
 			report.Failed++
+			continue
+		}
+		// A Smartfeed topic is sealed for the native MirCrew indexer: only a
+		// client's grab may open it. Read with the feed's own connector it
+		// failed every pass ("pending topic"), ten times per run.
+		if parsed.IndexerID > 0 && parsed.IndexerID != candidate.IndexerID {
+			report.Skipped++
+			continue
+		}
+		if m.engagesOnGrab(ctx, candidate.IndexerID, engaging) {
+			report.Skipped++
 			continue
 		}
 		used[candidate.IndexerID]++
@@ -93,9 +108,30 @@ func (m *Manager) EnrichMissingInfohashes(ctx context.Context, perIndexer int) (
 			"attempted", report.Attempted,
 			"recovered", report.Recovered,
 			"merged", report.Merged,
-			"failed", report.Failed)
+			"failed", report.Failed,
+			"skipped", report.Skipped)
 	}
 	return report, nil
+}
+
+// engagesOnGrab reports an indexer whose download runs an engagement action
+// first (download.before: MirCrew thanks the topic to unlock the magnet). A
+// background pass must never perform it: it thanked about ten MirCrew topics
+// per run on the user's account for releases nobody had asked for. The answer
+// is cached per pass; a definition that cannot be read keeps the old
+// behaviour, since its download would fail anyway.
+func (m *Manager) engagesOnGrab(ctx context.Context, indexerID int64, cache map[int64]bool) bool {
+	if engages, ok := cache[indexerID]; ok {
+		return engages
+	}
+	engages := false
+	if indexer, err := m.store.GetIndexer(ctx, indexerID); err == nil {
+		if def, defErr := m.definitionFor(ctx, indexer); defErr == nil && def != nil {
+			engages = def.Download != nil && def.Download.Before != nil
+		}
+	}
+	cache[indexerID] = engages
+	return engages
 }
 
 // EnrichTargets is the default per-site budget of the enrichment job. It is
