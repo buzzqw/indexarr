@@ -48,7 +48,15 @@ func (s *Server) indexerCookiePage(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, r, statusForIndexerError(err), s.indexerErrorMessage(r, err))
 		return
 	}
-	s.render(w, r, "cookie_import", s.buildCookieImportView(r, in, def), http.StatusOK)
+	// Show the command as soon as the page opens: the user has just asked to
+	// import a cookie and should not need a second click to see what to run.
+	// The POST handler below regenerates it on demand.
+	view := s.buildCookieImportView(r, in, def)
+	if view.Error != "" {
+		s.render(w, r, "cookie_import", view, http.StatusBadRequest)
+		return
+	}
+	s.indexerCookieCommand(w, r)
 }
 
 func (s *Server) indexerCookieCommand(w http.ResponseWriter, r *http.Request) {

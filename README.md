@@ -353,18 +353,20 @@ search; it remains a draft until an account can verify it. In the UI, open
 (optional)** (or open `/indexers/new?definition=corsaro-account`). The username
 and password fields do not exist: the site's login is protected by reCAPTCHA, so
 paste the browser's `Cookie` request header into **Session cookie**, or leave it
-empty and use **Create and import cookie** when Firefox is on the indexarr host. Since 29 October 2026
-every request goes through a FlareSolverr session because a plain client
-receives 429/503. Limits: first page, at most 50 releases per source; if the
+empty and press **Create and import cookie**: indexarr creates the indexer and
+shows a one-line `curl` command. Run that command on the machine with Firefox;
+it reads the local profile and sends the cookie. Since 29 October 2026 every
+request goes through a FlareSolverr session because a plain client receives
+429/503. Limits: first page, at most 50 releases per source; if the
 layout changes or the site requires login, the test reports the error.
 
 ### Private sources, cookies and MirCrew
 
 - **HTTP Basic** for private feeds and indexers.
 - **Import cookie** for sites with a form login protected by Cloudflare
-  Turnstile, such as IPTorrents: it reads the Firefox profile, sends the cookie
-  to indexarr and stores it encrypted in the vault. It requires the same
-  User-Agent as the browser.
+  Turnstile, such as IPTorrents: it shows a one-line command to run on the
+  machine with Firefox; the helper reads the profile, sends the cookie and the
+  browser User-Agent, and indexarr stores both encrypted.
 - **MirCrew** is a direct Torznab indexer: it accepts base or `/api`, magnet in
   `<link>`/`<enclosure>`, missing seeders and `/status` for the forum login.
   The default timeout is 45 seconds; a failed forum login does not stop the

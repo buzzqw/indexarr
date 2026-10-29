@@ -19,7 +19,7 @@ meta:
   protocol: torrent
   urls: [https://iptorrents.example/]
 settings:
-  - {name: cookie, type: password, label: Session cookie}
+  - {name: cookie, type: password, label: Session cookie, required: true}
 capabilities:
   search: [q]
 search:
@@ -108,8 +108,8 @@ func TestBrowserCookiePageAndCommand(t *testing.T) {
 	if page.Code != http.StatusOK {
 		t.Fatalf("cookie page = %d: %s", page.Code, page.Body.String())
 	}
-	if !strings.Contains(page.Body.String(), "Generate command") {
-		t.Error("the cookie page has no generate button")
+	if !strings.Contains(page.Body.String(), "cookie-command") {
+		t.Error("the cookie page has no command")
 	}
 
 	csrf, cookie := csrfFrom(t, env.handler, "/indexers/"+strconvI(id)+"/cookie")
@@ -160,7 +160,7 @@ func TestCookieIndexerCanBeCreatedWithoutCookieAndTheFormOffersImport(t *testing
 		t.Fatalf("redirect = %q, want the cookie page", location)
 	}
 	page := get(t, env.handler, location)
-	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "Generate command") {
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "cookie-command") {
 		t.Errorf("cookie page after create = %d: %s", page.Code, page.Body.String())
 	}
 }

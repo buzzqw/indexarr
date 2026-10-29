@@ -79,6 +79,11 @@ type Input struct {
 	// explicit zero means the global default.
 	IntervalSeconds *int
 	Settings        map[string]string
+	// AllowPendingCookie lets the create/update form store an indexer before
+	// the browser-cookie import has supplied the required `cookie` secret.
+	// Only the cookie key is exempted; every other required setting is still
+	// enforced.
+	AllowPendingCookie bool
 	// Optional indexer management fields. Nil means "leave unchanged" on
 	// update; Create treats nil as zero.
 	ProxyID                   *int64
@@ -121,7 +126,8 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 		return store.Indexer{}, err
 	}
 	for _, setting := range parsed.Settings {
-		if setting.Required && settings[setting.Name] == "" {
+		if setting.Required && settings[setting.Name] == "" &&
+			!(in.AllowPendingCookie && strings.EqualFold(strings.TrimSpace(setting.Name), "cookie")) {
 			return store.Indexer{}, fmt.Errorf("missing required setting: %s", setting.Name)
 		}
 	}
@@ -340,7 +346,7 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 			}
 		}
 
-		if err := validateRequired(parsed, settings, config, existingSecrets); err != nil {
+		if err := validateRequired(parsed, settings, config, existingSecrets, in.AllowPendingCookie); err != nil {
 			return store.Indexer{}, err
 		}
 
@@ -533,7 +539,7 @@ func (s *Service) secretKeySet(ctx context.Context, id int64) (map[string]bool, 
 // validateRequired checks the definition's required settings against the
 // submitted values, the existing public configuration and the secrets already
 // stored for the indexer.
-func validateRequired(parsed *definition.Definition, provided map[string]string, config map[string]any, existingSecrets map[string]bool) error {
+func validateRequired(parsed *definition.Definition, provided map[string]string, config map[string]any, existingSecrets map[string]bool, allowPendingCookie bool) error {
 	for _, setting := range parsed.Settings {
 		if !setting.Required {
 			continue
@@ -554,6 +560,9 @@ func validateRequired(parsed *definition.Definition, provided map[string]string,
 			if text := settingText(config[setting.Name]); text != "" {
 				continue
 			}
+		}
+		if allowPendingCookie && strings.EqualFold(strings.TrimSpace(setting.Name), "cookie") {
+			continue
 		}
 		return fmt.Errorf("missing required setting: %s", setting.Name)
 	}

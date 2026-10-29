@@ -2565,6 +2565,7 @@ func (s *Server) indexerUnifiedCreate(w http.ResponseWriter, r *http.Request) {
 		s.renderIndexerFormProblems(w, r, defID, nil, nil, []string{err.Error()})
 		return
 	}
+	in.AllowPendingCookie = r.FormValue("import_cookie") != ""
 	if err := s.ensureStoredDefinition(r, defID); err != nil {
 		s.renderIndexerFormProblems(w, r, defID, nil, nil, []string{err.Error()})
 		return
@@ -2685,6 +2686,7 @@ func (s *Server) indexerUnifiedUpdate(w http.ResponseWriter, r *http.Request) {
 		s.renderCompactFormProblems(w, r, defID, &current, nil, []string{err.Error()})
 		return
 	}
+	in.AllowPendingCookie = r.FormValue("import_cookie") != ""
 	if err := s.addExtraSecretValues(r, current.ID, parsed, &in); err != nil {
 		s.renderCompactFormProblems(w, r, defID, &current, &in, []string{err.Error()})
 		return
