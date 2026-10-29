@@ -4760,31 +4760,6 @@ sites:
       source_id: insanetracker
       checked: "2026-10-25"
       evidence: GET https://newinsane.info/login.php?returnto=%2F -> HTTP 200, 3329 bytes, title "Bejelentkezés", checked 2026-10-25; private, no account used
-    - id: jk-iptorrents
-      name: IPTorrents
-      description: IPTorrents is a Private site. Always a step ahead.
-      url: https://iptorrents.com/
-      urls:
-        - https://iptorrents.com/
-      type: private
-      language: en-US
-      categories:
-        - movies
-        - tv
-        - anime
-        - music
-        - books
-        - games
-        - software
-        - xxx
-      state: da-provvi
-      required:
-        - username
-        - password
-      source: jackett
-      source_id: iptorrents
-      checked: "2026-10-25"
-      evidence: GET https://iptorrents.com/login.php -> HTTP 200, 18164 bytes, title "iPT – Sign In", checked 2026-10-25; private, no account used
     - id: jk-itatorrents
       name: ItaTorrents
       description: ItaTorrents is an ITALIAN Private tracker for MOVIES / TV / GENERAL

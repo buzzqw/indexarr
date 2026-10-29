@@ -13,18 +13,18 @@ lo dimostra, la famiglia software. Non sono una connessione: indexarr non
 interroga Jackett o Prowlarr a runtime e non ne importa la configurazione.
 Non vengono mai generate da una definizione Cardigann.
 
-## Numeri al 2026-10-27
+## Numeri al 2026-10-29
 
 Valori contati su `index.json` dopo `go generate ./internal/catalog`.
 
 | Misura | Valore |
 | --- | ---: |
 | Totale voci nel catalogo (definizioni + voci leggere) | **627** |
-| Definizioni native | 110 (8 aiutanti generici inclusi) |
-| Voci leggere | **517** (512 dall'istantanea Jackett, 5 manuali) |
-| Verificate | **84** |
+| Definizioni native | 111 (8 aiutanti generici inclusi) |
+| Voci leggere | **516** (511 dall'istantanea Jackett, 5 manuali) |
+| Verificate | **85** |
 | Bozze | **24** |
-| Da provare (`da-provvi`) | **496** |
+| Da provare (`da-provvi`) | **495** |
 | Bloccate (`bloccata`) | **14** |
 | Morte (`morta`) | **7** |
 | Pubbliche verificate (host unici) | **92** |
@@ -137,9 +137,9 @@ compaiono: la classe `.site-note` è resa solo nella coda.
 
 | Via | Fonti | Note |
 | --- | ---: | --- |
-| Definizione nativa (id o host) | **126** | fonti dell'istantanea il cui host coincide con una definizione nativa |
+| Definizione nativa (id o host) | **127** | fonti dell'istantanea il cui host coincide con una definizione nativa |
 | Software noto (connettore di famiglia) | **154** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **338** | 282 private, 56 semiprivate |
+| Da scrivere | **337** | 281 private, 56 semiprivate |
 | Fuori coda (bloccate o morte) | **20** | 13 bloccate, 7 morte |
 | **Totale istantanea Jackett** | **638** | metadati del 23/10 |
 

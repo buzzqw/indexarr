@@ -146,6 +146,33 @@ Le impostazioni il cui nome o tipo suggerisce un segreto (`password`, `token`,
 `apikey`, `secret`, `cookie`, `passkey`) sono trattate come sensibili e
 redatte nei messaggi di errore.
 
+### `freeleech`: solo le release gratuite
+
+Una definizione che sa distinguere il freeleech dichiara l'impostazione
+`freeleech` (una casella, `type: checkbox`). Il motore e la UI usano il nome
+`freeleech` come convenzione, quindi il form mostra la casella con l'etichetta
+tradotta senza codice dedicato:
+
+```yaml
+settings:
+  - { name: freeleech, type: checkbox, label: "Freeleech only", default: false }
+```
+
+Il filtro può funzionare in due modi:
+
+- **sul sito**: il parametro di ricerca usa `{{ settings.freeleech | onoff }}`
+  (un `1`/`0`) oppure `{{ settings.freeleech | ifset("on") }}` (il valore che
+  il sito si aspetta, per esempio `free=on`), e il sito restituisce già solo le
+  release gratuite;
+- **riga per riga**: `search.response.fields.freeleech` legge un marcatore
+  (`FREE`, `1`, `0`, …) e il motore scarta le righe non gratuite prima di
+  salvarle, rispondere alle app e leggere l'elenco delle novità. Il filtro vale
+  anche per la ricerca live e per il run periodico.
+
+Un valore del campo diverso da `0`, `false`, `no` e `off` significa freeleech.
+Se la definizione non dichiara l'impostazione, la casella non compare.
+
+
 ## `categories`
 
 Mappa le categorie del sito sulle categorie standard Torznab/Newznab.
@@ -361,8 +388,11 @@ Variabili disponibili:
   `item.episode` — solo in `download.before`: la release scelta dal client. La
   stagione e l'episodio arrivano dalla ricerca (o dai parametri del link).
 
-L'unico filtro è `join(<separatore>)`, applicabile a `categories`. Un nome
-sconosciuto o un filtro sconosciuto è un errore, non una stringa vuota.
+L'unico filtro è `join(<separatore>)`, applicabile a `categories`, e
+`onoff`/`ifset(<valore>)`, applicabili a un'impostazione con casella
+(`true`/`false`): `onoff` rende `1`/`0`, `ifset("on")` rende `on` quando la
+casella è attiva e niente quando è spenta. Un nome sconosciuto o un filtro
+sconosciuto è un errore, non una stringa vuota.
 
 ### Formato delle keywords TV
 
@@ -523,7 +553,7 @@ I nomi speciali riconosciuti dalla normalizzazione, quando dichiarati, sono:
 
 `title`, `guid`, `details`, `download`, `magnet`, `infohash`, `size`, `seeders`,
 `leechers`, `date` (o `published`), `category` (o `categories`), `imdbid`,
-`tmdbid`, `tvdbid`.
+`tmdbid`, `tvdbid`, `freeleech`.
 
 Una riga viene scartata se manca il titolo, se un campo in `required` è vuoto o
 non convertibile, o se non ha né magnet né link di download né link ai dettagli.

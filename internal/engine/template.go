@@ -126,17 +126,45 @@ func (v *templateValues) evaluate(expr string) (string, error) {
 	}
 
 	if filter != "" {
-		if name != "categories" {
-			return "", fmt.Errorf("template: filter %q is not supported on %q", filter, name)
-		}
 		switch filter {
 		case "join":
+			if name != "categories" {
+				return "", fmt.Errorf("template: filter %q is not supported on %q", filter, name)
+			}
 			return strings.Join(v.categories, arg), nil
+		case "onoff":
+			// Turn a checkbox setting ("true"/"false") into the 1/0 a tracker
+			// expects for its own freeleech or boolean flag.
+			value, err := v.value(name)
+			if err != nil {
+				return "", err
+			}
+			if templateTruthy(value) {
+				return "1", nil
+			}
+			return "0", nil
+		case "ifset":
+			// Emit the argument when a checkbox is on and nothing when it is
+			// off, the shape a site that expects free=on (or a similarly
+			// named flag) reads.
+			value, err := v.value(name)
+			if err != nil {
+				return "", err
+			}
+			if templateTruthy(value) {
+				return arg, nil
+			}
+			return "", nil
 		default:
 			return "", fmt.Errorf("template: unknown filter %q", filter)
 		}
 	}
 
+	return v.value(name)
+}
+
+// value resolves one template variable without filters.
+func (v *templateValues) value(name string) (string, error) {
 	if name == "categories" {
 		return strings.Join(v.categories, ","), nil
 	}
@@ -176,6 +204,17 @@ func isQueryVariable(name string) bool {
 		}
 	}
 	return false
+}
+
+// templateTruthy reads a checkbox setting as a boolean. Definitions store the
+// value as "true"/"false"; older ones may still carry 1/0 or yes/on.
+func templateTruthy(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 // splitFilter parses "join(\",\")" into its name and unquoted argument.

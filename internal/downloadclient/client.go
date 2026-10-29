@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/buzzqw/indexarr/internal/store"
@@ -43,6 +44,11 @@ type Config struct {
 	Category string
 	SavePath string
 	Paused   bool
+	// SeedRatio and SeedTimeMinutes are the limits of the source indexer,
+	// applied to the torrent when the client supports share limits at add
+	// time. Zero leaves the client's own default.
+	SeedRatio       float64
+	SeedTimeMinutes int
 }
 
 // Item is one download to hand to a client. Torrent clients use Magnet,
@@ -295,6 +301,12 @@ func addQBittorrent(ctx context.Context, cfg Config, release store.Release) erro
 		_ = writer.WriteField("savepath", cfg.SavePath)
 	}
 	_ = writer.WriteField("paused", boolString(cfg.Paused))
+	if cfg.SeedRatio > 0 {
+		_ = writer.WriteField("ratioLimit", strconv.FormatFloat(cfg.SeedRatio, 'f', -1, 64))
+	}
+	if cfg.SeedTimeMinutes > 0 {
+		_ = writer.WriteField("seedingTimeLimit", strconv.Itoa(cfg.SeedTimeMinutes))
+	}
 	if err := writer.Close(); err != nil {
 		return err
 	}

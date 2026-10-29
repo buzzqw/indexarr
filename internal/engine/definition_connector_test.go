@@ -443,17 +443,31 @@ func TestTemplateRendering(t *testing.T) {
 	values := newTemplateValues()
 	values.settings["username"] = "alice"
 	values.declaredSettings["username"] = struct{}{}
+	values.settings["freeleech"] = "true"
+	values.declaredSettings["freeleech"] = struct{}{}
 	values.query = queryTemplateMap(SearchRequest{Query: "ubuntu", Year: 2026}, "")
 	values.categories = []string{"5", "12"}
 	values.scalars["page"] = "2"
 
-	rendered, err := values.render(`{{ settings.username }}|{{ query.keywords }}|{{ query.season }}|{{ query.year }}|{{ categories }}|{{ categories | join(",") }}|{{ page }}`)
+	rendered, err := values.render(`{{ settings.username }}|{{ query.keywords }}|{{ query.season }}|{{ query.year }}|{{ categories }}|{{ categories | join(",") }}|{{ page }}|{{ settings.freeleech | onoff }}`)
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}
-	want := `alice|ubuntu||2026|5,12|5,12|2`
+	want := `alice|ubuntu||2026|5,12|5,12|2|1`
 	if rendered != want {
 		t.Errorf("rendered = %q, want %q", rendered, want)
+	}
+	values.settings["freeleech"] = "false"
+	if rendered, _ := values.render(`{{ settings.freeleech | onoff }}`); rendered != "0" {
+		t.Errorf("onoff false = %q, want 0", rendered)
+	}
+	values.settings["freeleech"] = "true"
+	if rendered, _ := values.render(`{{ settings.freeleech | ifset("on") }}`); rendered != "on" {
+		t.Errorf("ifset true = %q, want on", rendered)
+	}
+	values.settings["freeleech"] = "false"
+	if rendered, _ := values.render(`{{ settings.freeleech | ifset("on") }}`); rendered != "" {
+		t.Errorf("ifset false = %q, want empty", rendered)
 	}
 
 	for _, source := range []string{

@@ -326,7 +326,9 @@ curl -X POST "http://localhost:8788/api/v2/indexers?apikey=$KEY" \
 `proxy_id` punta a un proxy creato con `/api/v2/proxies`; `0` lo rimuove.
 `query_limit` e `grab_limit` sono per giorno; `min_seeders`, `seed_ratio`,
 `seed_time_minutes` e `season_pack_seed_time_minutes` vengono sincronizzati
-alle applicazioni. Zero significa nessun limite o valore predefinito.
+alle applicazioni. Zero significa nessun limite o valore predefinito. Lo stesso
+`seed_ratio` e `seed_time_minutes` vengono passati a qBittorrent quando la
+release si invia dal pulsante **Invia** (`ratioLimit`/`seedingTimeLimit`).
 
 I valori con nome che contiene `api_key`, `apikey`, `token`, `password`,
 `passkey`, `secret` o `cookie` vengono cifrati nel vault; gli altri finiscono

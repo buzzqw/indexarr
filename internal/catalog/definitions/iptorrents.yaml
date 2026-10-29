@@ -1,0 +1,170 @@
+# IN PROVA (trial). IPTorrents with a pasted browser session cookie.
+#
+# The form login cannot be automated: the site protects it with Cloudflare
+# Turnstile. A POST to /do-login.php with username and password answers
+# 302 /login.php?error=captcha (measured 2026-10-29) and leaves no cookie.
+# The supported path is the one Jackett uses too: paste the Cookie header of a
+# logged-in browser and keep the same User-Agent, because the site ties the
+# session to it.
+#
+# The search page is the one Jackett's IPTorrents indexer reads: /t with the
+# query in q, the sort in o, the freeleech flag in free=on and the site
+# categories as query keys. Categories are declared for the Torznab capability
+# and to map every row, but are not sent: the definition format has no dynamic
+# query keys and the title query is already selective. Rows are
+# table#torrents > tbody > tr, the title is a.hv, the .torrent link is
+# /download.php/..., the category is the ?<id> icon and span.free marks a
+# freeleech release.
+#
+# Site settings recommended by Jackett, otherwise the columns move:
+# - Torrents per page: 100
+# - Torrents - Show files count: on
+# - Torrents category column: Icons
+#
+# State is "bozza" until search, detail and grab are verified with a real
+# account; the fixture is synthetic and keeps the observed shape.
+schema: 1
+
+meta:
+  id: iptorrents
+  name: IPTorrents
+  language: en-US
+  type: private
+  protocol: torrent
+  author: indexarr
+  description: Private IPTorrents with a pasted session cookie, keyword search and a freeleech filter.
+  urls:
+    - https://iptorrents.com/
+    - https://www.iptorrents.com/
+  updated: "2026-10-29"
+  latest: false
+
+settings:
+  - name: cookie
+    type: password
+    label: "Session cookie"
+    help: "Log in with a browser, open DevTools > Network, reload a page, select a request to iptorrents.com and copy its Cookie request header. The login form is protected by Cloudflare Turnstile, so this is the supported path."
+    required: true
+  - name: freeleech
+    type: checkbox
+    label: "Freeleech only"
+    help: "Ask the site for freeleech releases only (free=on)."
+    default: false
+
+categories:
+  - { site: "72",  standard: 2000, desc: "Movies" }
+  - { site: "87",  standard: 2030, desc: "Movie/3D" }
+  - { site: "77",  standard: 2030, desc: "Movie/480p" }
+  - { site: "101", standard: 2045, desc: "Movie/4K" }
+  - { site: "89",  standard: 2050, desc: "Movie/BD-R" }
+  - { site: "90",  standard: 2040, desc: "Movie/BD-Rip" }
+  - { site: "96",  standard: 2030, desc: "Movie/Cam" }
+  - { site: "6",   standard: 2070, desc: "Movie/DVD-R" }
+  - { site: "48",  standard: 2040, desc: "Movie/HD/Bluray" }
+  - { site: "54",  standard: 2000, desc: "Movie/Kids" }
+  - { site: "62",  standard: 2030, desc: "Movie/MP4" }
+  - { site: "38",  standard: 2010, desc: "Movie/Non-English" }
+  - { site: "68",  standard: 2000, desc: "Movie/Packs" }
+  - { site: "20",  standard: 2045, desc: "Movie/Web-DL" }
+  - { site: "100", standard: 2040, desc: "Movie/x265" }
+  - { site: "7",   standard: 2030, desc: "Movie/Xvid" }
+
+  - { site: "73",  standard: 5000, desc: "TV" }
+  - { site: "26",  standard: 5080, desc: "TV/Documentaries" }
+  - { site: "55",  standard: 5060, desc: "Sports" }
+  - { site: "78",  standard: 5030, desc: "TV/480p" }
+  - { site: "23",  standard: 5040, desc: "TV/BD" }
+  - { site: "24",  standard: 5030, desc: "TV/DVD-R" }
+  - { site: "25",  standard: 5030, desc: "TV/DVD-Rip" }
+  - { site: "66",  standard: 5030, desc: "TV/Mobile" }
+  - { site: "82",  standard: 5020, desc: "TV/Non-English" }
+  - { site: "65",  standard: 5000, desc: "TV/Packs" }
+  - { site: "83",  standard: 5020, desc: "TV/Packs/Non-English" }
+  - { site: "79",  standard: 5030, desc: "TV/SD/x264" }
+  - { site: "22",  standard: 5045, desc: "TV/Web-DL" }
+  - { site: "5",   standard: 5040, desc: "TV/x264" }
+  - { site: "99",  standard: 5040, desc: "TV/x265" }
+  - { site: "4",   standard: 5030, desc: "TV/Xvid" }
+
+  - { site: "74",  standard: 1000, desc: "Games" }
+  - { site: "2",   standard: 1090, desc: "Games/Mixed" }
+  - { site: "47",  standard: 1030, desc: "Games/Nintendo" }
+  - { site: "43",  standard: 1000, desc: "Games/PC-ISO" }
+  - { site: "45",  standard: 1000, desc: "Games/PC-Rip" }
+  - { site: "71",  standard: 1180, desc: "Games/Playstation" }
+  - { site: "50",  standard: 1030, desc: "Games/Wii" }
+  - { site: "44",  standard: 1040, desc: "Games/Xbox" }
+
+  - { site: "75",  standard: 3000, desc: "Music" }
+  - { site: "3",   standard: 3010, desc: "Music/Audio" }
+  - { site: "80",  standard: 3040, desc: "Music/Flac" }
+  - { site: "93",  standard: 3000, desc: "Music/Packs" }
+  - { site: "37",  standard: 3020, desc: "Music/Video" }
+  - { site: "21",  standard: 3030, desc: "Podcast" }
+
+  - { site: "76",  standard: 8000, desc: "Miscellaneous" }
+  - { site: "60",  standard: 5070, desc: "Anime" }
+  - { site: "1",   standard: 4000, desc: "Appz" }
+  - { site: "86",  standard: 4000, desc: "Appz/Non-English" }
+  - { site: "64",  standard: 3030, desc: "AudioBook" }
+  - { site: "35",  standard: 7000, desc: "Books" }
+  - { site: "102", standard: 7000, desc: "Books/Non-English" }
+  - { site: "94",  standard: 7030, desc: "Comics" }
+  - { site: "95",  standard: 7020, desc: "Educational" }
+  - { site: "98",  standard: 8000, desc: "Fonts" }
+  - { site: "69",  standard: 4030, desc: "Mac" }
+  - { site: "92",  standard: 7010, desc: "Magazines / Newspapers" }
+  - { site: "58",  standard: 4040, desc: "Mobile" }
+  - { site: "36",  standard: 8000, desc: "Pics/Wallpapers" }
+  - { site: "88",  standard: 6000, desc: "XXX" }
+  - { site: "85",  standard: 6010, desc: "XXX/Magazines" }
+  - { site: "8",   standard: 6000, desc: "XXX/Movie" }
+  - { site: "81",  standard: 6000, desc: "XXX/Movie/0Day" }
+  - { site: "91",  standard: 6040, desc: "XXX/Packs" }
+  - { site: "84",  standard: 6030, desc: "XXX/Pics/Wallpapers" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep]
+  movie-search: [q]
+  music-search: [q]
+  book-search: [q]
+
+auth:
+  # The form login needs a Cloudflare Turnstile token: a cookie copied from a
+  # logged-in browser is the stable path and the engine sends it as-is.
+  strategy: cookie
+
+search:
+  request:
+    get: /t
+    params:
+      q: "{{ query.keywords }}"
+    params_multi:
+      free: ['{{ settings.freeleech | ifset("on") }}']
+  pagination: { type: page, start: 1, max_pages: 3, param: p, stop_when: empty_rows }
+  # An expired cookie is answered with the login page, not with an empty
+  # result set: fail loudly instead of showing zero releases.
+  blocked: { selector: 'form[action="do-login.php"]', message: "the IPTorrents session cookie has expired: paste a new one from the browser" }
+  response:
+    type: html
+    rows: { selector: 'table[id="torrents"] > tbody > tr' }
+    fields:
+      title:    { selector: 'td.al a[href^="/t/"]', filters: [trim] }
+      details:  { selector: 'td.al a[href^="/t/"]', attr: href, type: url }
+      download: { selector: 'a[href^="/download.php/"]', attr: href, type: url }
+      category: { selector: 'td:nth-of-type(1) a[href^="?"]', attr: href, filters: [{ regex: '\?(\d+)' }], type: category }
+      freeleech: { selector: "span.free" }
+      size:     { selector: "td:nth-of-type(6)", type: size }
+      seeders:  { selector: "td:nth-of-type(8)", type: int }
+      leechers: { selector: "td:nth-of-type(9)", type: int }
+    required: [title, details, download, size, seeders]
+
+health:
+  query: "1080p"
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/iptorrents/search.html
+    expect: { min_rows: 3, required: [title, details, download, size, seeders, category] }

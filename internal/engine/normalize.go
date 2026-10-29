@@ -160,6 +160,18 @@ func parseInt(raw string) int64 {
 	return value
 }
 
+// parseFreeleech reads a definition's freeleech marker. Any non-empty value
+// that is not an explicit no ("0", "false", "no", "off") means the release is
+// free; a site usually marks it with a label ("FREE", "Freeleech") or a 1.
+func parseFreeleech(raw string) bool {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "0", "false", "no", "off", "n", "-":
+		return false
+	default:
+		return true
+	}
+}
+
 var commonDateLayouts = []string{
 	time.RFC3339Nano,
 	time.RFC3339,
@@ -406,6 +418,7 @@ func (c *DefinitionConnector) normalizeRowWith(raw map[string]string, responseUR
 	item.Size = parseSize(raw["size"])
 	item.Seeders = parseInt(raw["seeders"])
 	item.Leechers = parseInt(raw["leechers"])
+	item.Freeleech = parseFreeleech(raw["freeleech"])
 
 	dateRaw := raw["date"]
 	layouts := fields["date"].Layouts

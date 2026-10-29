@@ -51,6 +51,34 @@ func TestQBittorrentMagnet(t *testing.T) {
 	}
 }
 
+func TestQBittorrentShareLimits(t *testing.T) {
+	var ratio, seedingTime string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v2/auth/login":
+			_, _ = w.Write([]byte("Ok."))
+		case "/api/v2/torrents/add":
+			_ = r.ParseMultipartForm(4 << 20)
+			ratio = r.FormValue("ratioLimit")
+			seedingTime = r.FormValue("seedingTimeLimit")
+			_, _ = w.Write([]byte("Ok."))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	err := Add(context.Background(), Config{
+		Kind: "qbittorrent", URL: server.URL,
+		SeedRatio: 1.5, SeedTimeMinutes: 90,
+	}, store.Release{Title: "Test", Magnet: "magnet:?xt=urn:btih:abc"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if ratio != "1.5" || seedingTime != "90" {
+		t.Errorf("ratioLimit = %q, seedingTimeLimit = %q", ratio, seedingTime)
+	}
+}
+
 func TestQBittorrentTorrentFile(t *testing.T) {
 	var filename string
 	var content []byte

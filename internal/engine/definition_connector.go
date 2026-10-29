@@ -185,6 +185,17 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 		}
 	}
 
+	// A definition may set a browser User-Agent (the `user_agent` setting):
+	// some private sites tie the session cookie to it, so the header must be
+	// the same on the search, the details page and the .torrent download.
+	// Only this indexer gets the derived transport, and its politeness and
+	// guards stay those of the shared one.
+	if userAgent := strings.TrimSpace(settings["user_agent"]); userAgent != "" && userAgent != transport.Config().UserAgent {
+		derived := transport.Config()
+		derived.UserAgent = userAgent
+		transport = NewTransport(derived)
+	}
+
 	indexer := cfg.Indexer
 	if indexer.Slug == "" {
 		indexer.Slug = def.Meta.ID
@@ -401,6 +412,9 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 			}
 			observeNormalize(ctx, NormalizeObservation{OK: ok})
 			if !ok {
+				continue
+			}
+			if !c.keepsFreeleech(item, spec.Fields) {
 				continue
 			}
 			key := item.InfoHash + "\x00" + item.Title + "\x00" + strconv.FormatInt(item.Size, 10)
@@ -795,7 +809,7 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 				return nil, err
 			}
 			observeNormalize(ctx, NormalizeObservation{OK: ok})
-			if ok {
+			if ok && c.keepsFreeleech(item, c.def.Search.Response.Fields) {
 				annotateQuery(&item, req)
 				items = append(items, item)
 			}
@@ -1742,6 +1756,28 @@ func joinURLPath(basePath, relative string) string {
 		cleaned += "/"
 	}
 	return cleaned
+}
+
+// freeleechOnly reports that the indexer asks for freeleech releases only and
+// that the response in use marks them on each row. A definition that filters
+// on the site side (a query parameter) declares no marker: the site has
+// already done the work and nothing is dropped here.
+func (c *DefinitionConnector) freeleechOnly(fields map[string]definition.Field) bool {
+	if _, marks := fields["freeleech"]; !marks {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(c.settings["freeleech"])) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+// keepsFreeleech applies the per-indexer "freeleech only" choice to one row of
+// the response described by fields.
+func (c *DefinitionConnector) keepsFreeleech(item Item, fields map[string]definition.Field) bool {
+	return !c.freeleechOnly(fields) || item.Freeleech
 }
 
 func (c *DefinitionConnector) buildCapabilities() Capabilities {

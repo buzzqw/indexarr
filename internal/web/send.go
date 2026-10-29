@@ -29,6 +29,13 @@ func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/releases/"+fmt.Sprint(id), "", s.translate(r, "release.noClient"))
 		return
 	}
+	// The indexer's share limits travel with the release: a private tracker
+	// asks for a ratio, and the client that receives the magnet must know it.
+	// A missing provenance leaves the client's defaults untouched.
+	if found, ok, lookupErr := s.store.IndexerForRelease(r.Context(), release.ID); lookupErr == nil && ok {
+		cfg.SeedRatio = found.SeedRatio
+		cfg.SeedTimeMinutes = found.SeedTimeMinutes
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 	defer cancel()
 	if err := downloadclient.Add(ctx, cfg, release); err != nil {

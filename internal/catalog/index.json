@@ -844,6 +844,35 @@
     "scheduled": true
   },
   {
+    "id": "iptorrents",
+    "name": "IPTorrents",
+    "description": "Private IPTorrents with a pasted session cookie, keyword search and a freeleech filter.",
+    "language": "en-US",
+    "type": "private",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "cookie"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "iptorrents.com"
+    ],
+    "url": "https://iptorrents.com/",
+    "source": "native",
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "jk-0dayfiles-api",
     "name": "0DayFiles (API)",
     "description": "0DayFiles is a Private Torrent Tracker for 0DAY / GENERAL",
@@ -6877,37 +6906,6 @@
     "url": "https://newinsane.info/",
     "source": "jackett",
     "evidence": "GET https://newinsane.info/login.php?returnto=%2F -\u003e HTTP 200, 3329 bytes, title \"Bejelentkezés\", checked 2026-10-25; private, no account used",
-    "proposable": true,
-    "latest": false
-  },
-  {
-    "id": "jk-iptorrents",
-    "name": "IPTorrents",
-    "description": "IPTorrents is a Private site. Always a step ahead.",
-    "language": "en-US",
-    "type": "private",
-    "protocol": "torrent",
-    "categories": [
-      "movies",
-      "tv",
-      "anime",
-      "music",
-      "books",
-      "games",
-      "software",
-      "xxx"
-    ],
-    "required": [
-      "password",
-      "username"
-    ],
-    "state": "da-provvi",
-    "hosts": [
-      "iptorrents.com"
-    ],
-    "url": "https://iptorrents.com/",
-    "source": "jackett",
-    "evidence": "GET https://iptorrents.com/login.php -\u003e HTTP 200, 18164 bytes, title \"iPT – Sign In\", checked 2026-10-25; private, no account used",
     "proposable": true,
     "latest": false
   },

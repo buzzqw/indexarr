@@ -206,12 +206,41 @@ ne dichiarano una (per esempio una pagina Corsaro o un feed generico).
 - **Export/import JSON** scarica e ricarica la configurazione pubblica degli
   indexer. I segreti non vengono mai esportati.
 
+### Solo freeleech
+
+Quando la definizione lo prevede, il form dell'indexer mostra la casella
+**Solo freeleech** (`setting.freeleech`). Il comportamento dipende da come il
+sito espone il dato:
+
+- se il sito accetta un filtro nella ricerca, la definizione lo passa come
+  parametro (per esempio `free=1`), quindi il sito restituisce già solo le
+  release gratuite;
+- se il sito marca ogni riga, la definizione dichiara il campo `freeleech` e il
+  motore scarta le righe non gratuite prima di salvarle e di rispondere alle
+  app. Il filtro vale anche per l'elenco delle novità e per la ricerca live.
+
+L'opzione compare solo per le definizioni che la dichiarano: un sito che non
+distingue il freeleech non mostra una casella che non potrebbe rispettare.
+
 ### Definizioni native per ExtTo, TorrentGalaxy e Corsaro
 
 I tre siti HTML hanno definizioni native nel catalogo, con fixture reali
 ripulite e test di equivalenza. Il motore segue i link di dettaglio per ottenere
 il magnet, con concorrenza limitata e cache. Le vecchie impostazioni per singola
 sorgente (uploader, tag, categoria) diventano impostazioni della definizione.
+
+### IPTorrents
+
+IPTorrents è privato e il login a form è protetto da **Cloudflare Turnstile**:
+non si automatizza. Si aggiunge dal catalogo con un **Cookie di sessione**
+copiato dal browser (DevTools → Network → Cookie) e con lo **stesso
+User-Agent** del browser: il sito lega la sessione a entrambi. Nel profilo del
+sito conviene impostare **Torrents per page 100**, **Show files count** e
+**Category column: Icons**, perché la definizione legge quelle colonne. La
+casella **Solo freeleech** passa `free=on` al sito e scarta comunque le righe
+non gratuite. Il **seed ratio** dell'indexer viaggia verso le \*arr e verso
+qBittorrent all'invio. Quando il cookie scade la ricerca fallisce con un
+messaggio esplicito invece di restituire zero release.
 
 ### MirCrew (`mircrew-indexer`)
 
@@ -351,6 +380,11 @@ e, per qBittorrent, categoria e percorso. Sul dettaglio di ogni release compare
 è in cache. Per aMule viene inviato il link `ed2k://` alla Web API
 (`/api/v1/downloads`); il protocollo della release sceglie il client.
 qBittorrent usa la Web API v2; Transmission il RPC con negoziazione della sessione.
+Quando l'indexer che ha fornito la release ha un **seed ratio** o un
+**seed time**, qBittorrent li riceve già all'aggiunta
+(`ratioLimit`/`seedingTimeLimit`), così il torrent si ferma al limite della
+fonte; gli altri client mantengono i propri valori. Lo stesso `seed_ratio`
+viaggia verso le \*arr con la sincronizzazione delle applicazioni.
 L'operazione è registrata nei log.
 
 ## Interfaccia web

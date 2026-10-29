@@ -104,12 +104,16 @@ type Item struct {
 	Magnet      string
 	// Ed2k is an `ed2k://|file|...|/` link. It is a third transfer identity
 	// next to Magnet and DownloadURL; Ed2kHash is its lowercase MD4.
-	Ed2k       string
-	Ed2kHash   string
-	InfoHash   string
-	Size       int64
-	Seeders    int64
-	Leechers   int64
+	Ed2k     string
+	Ed2kHash string
+	InfoHash string
+	Size     int64
+	Seeders  int64
+	Leechers int64
+	// Freeleech marks a release the tracker counts as free (no download
+	// quota). It is read from a definition's optional `freeleech` row field;
+	// a definition that filters freeleech on the site side leaves it false.
+	Freeleech  bool
 	Categories []int
 	Published  time.Time
 	IMDbID     string
