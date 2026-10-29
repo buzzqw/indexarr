@@ -93,13 +93,17 @@ type DefinitionConnector struct {
 	searchCache     map[string]searchCacheEntry
 	// Flood interval (search.interval): the next free search slot and the
 	// searches deferred to the background worker.
-	floodMu        sync.Mutex
-	floodLane      chan struct{}
-	floodWaiting   int
-	floodBusy      bool
-	searchLast     time.Time
-	searchQueue    []deferredSearch
-	searchDraining bool
+	floodMu      sync.Mutex
+	floodLane    chan struct{}
+	floodWaiting int
+	floodBusy    bool
+	searchLast   time.Time
+	// searchRefusals counts the refusals in a row and searchBlockedUntil is
+	// the end of the pause they started: no search is sent before it.
+	searchRefusals     int
+	searchBlockedUntil time.Time
+	searchQueue        []deferredSearch
+	searchDraining     bool
 	// deferredSearch reports the background sends, so a queued search leaves
 	// a row in the history too.
 	deferredSearch        DeferredSearchObserver
@@ -757,6 +761,9 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 				}
 				if errors.Is(err, ErrSearchDeferred) {
 					queued := c.deferSearch(cacheKey, req.Query, later)
+					if wait := c.searchBlockedFor(); wait > 0 {
+						return nil, blockedSearchError(c.def.Meta.ID, wait, queued)
+					}
 					return nil, deferredSearchError(c.def.Meta.ID, c.searchInterval(), queued)
 				}
 				return nil, err
@@ -1844,8 +1851,10 @@ func (c *DefinitionConnector) fetchSearchPage(ctx context.Context, request *http
 			if message == "" {
 				message = "the site refused the search"
 			}
+			c.noteSearchRefused()
 			return nil, fmt.Errorf("definition %q: %w: %s", c.def.Meta.ID, errSearchRefused, strings.Join(strings.Fields(message), " "))
 		}
+		c.noteSearchAccepted()
 	}
 	return response, nil
 }

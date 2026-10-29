@@ -35,11 +35,17 @@ const searchQueueEntries = 256
 // were refused. The retries are deliberately few: each one costs a turn.
 const searchQueueAttempts = 3
 
-// searchRefusalBackoff is how long the worker waits after a refusal before
-// spending another turn. The forum asks to wait "a few minutes" and a refusal
-// means the flood interval alone was not enough; retrying at the normal pace
-// would just hammer the block. Four intervals are about 4m20s on DDUnlimited.
-const searchRefusalBackoff = 4
+// searchRefusalBackoff is how long, in intervals, no search is sent after a
+// refusal. The forum asks to wait "a few minutes" and a refusal means the
+// flood interval alone was not enough; retrying at the normal pace would just
+// hammer the block. Four intervals are about 4m20s on DDUnlimited. Every
+// further refusal in a row doubles the pause, up to searchRefusalBackoffMax:
+// on 2026-10-29 the forum refused every search from 02:06 to 03:29, one every
+// 5.5 minutes, so a fixed pause only kept knocking on the block.
+const (
+	searchRefusalBackoff    = 4
+	searchRefusalBackoffMax = 32
+)
 
 // searchTurnMargin keeps a waiting search clear of the caller's deadline: the
 // page still has to be read after the turn.
@@ -105,6 +111,14 @@ func (c *DefinitionConnector) takeSearchTurn(ctx context.Context, firstPage bool
 	interval := c.searchInterval()
 	if interval <= 0 {
 		return func() {}, nil
+	}
+	if c.searchBlockedFor() > 0 {
+		// The site refused the last search: a live request would wait for a
+		// turn only to be refused again. It goes to the queue at once.
+		if !firstPage {
+			return nil, errSearchLater
+		}
+		return nil, ErrSearchDeferred
 	}
 	limit := time.Duration(0)
 	if firstPage {
@@ -245,6 +259,9 @@ func (c *DefinitionConnector) drainSearchQueue(ctx context.Context) {
 				return
 			}
 		}
+		if !c.waitRefusalBackoff(ctx) {
+			return
+		}
 		sendCtx, cancel := context.WithTimeout(ctx, 3*c.searchInterval()+2*time.Minute)
 		err := c.sendDeferredSearch(sendCtx, entry)
 		cancel()
@@ -253,12 +270,9 @@ func (c *DefinitionConnector) drainSearchQueue(ctx context.Context) {
 		}
 		if errors.Is(err, errSearchRefused) && entry.attempts+1 < searchQueueAttempts {
 			entry.attempts++
-			// A refusal is the site asking for more than one interval: wait
-			// before spending another turn. New entries wait with it, which is
-			// correct while the block is on.
-			if !c.waitRefusalBackoff(ctx) {
-				return
-			}
+			// A refusal is the site asking for more than one interval: the
+			// next send waits for the pause (see noteSearchRefused). New
+			// entries wait with it, which is correct while the block is on.
 			c.floodMu.Lock()
 			c.searchQueue = append(c.searchQueue, entry)
 			c.floodMu.Unlock()
@@ -266,23 +280,61 @@ func (c *DefinitionConnector) drainSearchQueue(ctx context.Context) {
 	}
 }
 
-// waitRefusalBackoff pauses the background queue after a refusal. The flood
-// interval paces normal sends; a refusal needs a longer pause so the worker
-// does not hammer the block with one request every interval. It reports false
-// when the connector is closed while waiting.
+// waitRefusalBackoff pauses the background queue while the site's block is
+// on. The flood interval paces normal sends; a refusal needs a longer pause so
+// the worker does not hammer the block with one request every interval. It
+// reports false when the connector is closed while waiting.
 func (c *DefinitionConnector) waitRefusalBackoff(ctx context.Context) bool {
+	for {
+		wait := c.searchBlockedFor()
+		if wait <= 0 {
+			return true
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return false
+		case <-timer.C:
+		}
+	}
+}
+
+// noteSearchRefused starts or lengthens the pause after the site refused a
+// search: four intervals, doubled for every refusal in a row, at most
+// searchRefusalBackoffMax intervals.
+func (c *DefinitionConnector) noteSearchRefused() {
 	interval := c.searchInterval()
 	if interval <= 0 {
-		return true
+		return
 	}
-	timer := time.NewTimer(time.Duration(searchRefusalBackoff) * interval)
-	defer timer.Stop()
-	select {
-	case <-ctx.Done():
-		return false
-	case <-timer.C:
-		return true
+	c.floodMu.Lock()
+	defer c.floodMu.Unlock()
+	c.searchRefusals++
+	steps := searchRefusalBackoff
+	for i := 1; i < c.searchRefusals && steps < searchRefusalBackoffMax; i++ {
+		steps *= 2
 	}
+	steps = min(steps, searchRefusalBackoffMax)
+	c.searchBlockedUntil = c.now().Add(time.Duration(steps) * interval)
+}
+
+// noteSearchAccepted ends the pause: the site answered a search.
+func (c *DefinitionConnector) noteSearchAccepted() {
+	c.floodMu.Lock()
+	defer c.floodMu.Unlock()
+	c.searchRefusals = 0
+	c.searchBlockedUntil = time.Time{}
+}
+
+// searchBlockedFor is how long the pause after a refusal still lasts.
+func (c *DefinitionConnector) searchBlockedFor() time.Duration {
+	c.floodMu.Lock()
+	defer c.floodMu.Unlock()
+	if c.searchBlockedUntil.IsZero() {
+		return 0
+	}
+	return max(c.searchBlockedUntil.Sub(c.now()), 0)
 }
 
 // Close stops the background queue: queued pages are dropped and an in-flight
@@ -372,4 +424,14 @@ func deferredSearchError(id string, interval time.Duration, queued bool) error {
 		return fmt.Errorf("definition %q: %w: the site allows one search every %s and the queue is full", id, ErrSearchDeferred, interval)
 	}
 	return fmt.Errorf("definition %q: %w: the site allows one search every %s; queued, the next identical request reads it from the cache", id, ErrSearchDeferred, interval)
+}
+
+// blockedSearchError is deferredSearchError while the pause after a refusal
+// is on: the message says why nothing was sent and when the next turn is.
+func blockedSearchError(id string, wait time.Duration, queued bool) error {
+	wait = wait.Round(time.Second)
+	if !queued {
+		return fmt.Errorf("definition %q: %w: the site refused the last search, next turn in %s, and the queue is full", id, ErrSearchDeferred, wait)
+	}
+	return fmt.Errorf("definition %q: %w: the site refused the last search, next turn in %s; queued, the next identical request reads it from the cache", id, ErrSearchDeferred, wait)
 }

@@ -702,6 +702,14 @@ search:
   ricerca in coda, la rifiuta o la scarta dopo i due tentativi. Su DDUnlimited
   il 2026-10-28 il forum ha accettato una ricerca ogni 57-58 s (rifiutata a
   55 s, accettata a 58 s e a 70 s), e un rifiuto non fa ripartire il conto.
+- Dopo un rifiuto nessuna ricerca parte per quattro intervalli; ogni altro
+  rifiuto di fila raddoppia la pausa, fino a 32 intervalli (circa 35 minuti su
+  DDUnlimited), e la prima ricerca accettata la azzera. Durante la pausa una
+  ricerca live non aspetta il turno: va subito in coda con l'errore «the site
+  refused the last search, next turn in …», senza toccare il sito. Il
+  2026-10-29 il forum ha rifiutato tutte le ricerche dalle 02:06 alle 03:29,
+  una ogni 5,5 minuti, e una ricerca live aspettava fino a 167 s per prendere
+  lo stesso rifiuto.
 
 Con `auth.logged_in` anche una pagina di ricerca senza il segno del login
 (il forum ha fatto cadere la sessione e risponde da ospite) fa rifare il login

@@ -86,7 +86,8 @@ accettati (09:53:33, 09:55:18, 09:56:28) e i due successivi rifiutati
 (09:58:02, 09:59:20); con due soli tentativi la pagina veniva scartata mentre
 il blocco era ancora attivo. Ora il worker ritenta al massimo due volte dopo
 un rifiuto, con una pausa di quattro intervalli (circa 4m20s) prima di
-spendere un altro turno
+spendere un altro turno, raddoppiata a ogni rifiuto di fila fino a 32
+intervalli (dal 29/10, dopo un blocco di 83 minuti)
 (`TestDDUnlimitedBackgroundSendRetriesPastABurstBlock`), e il rifiuto resta
 visibile in cronologia. Per non rischiare l'account, le prove manuali si
 fermano qui: il resto lo fa la coda dell'applicazione al ritmo consentito. Lo stesso riquadro «Informazione» del
