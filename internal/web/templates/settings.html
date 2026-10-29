@@ -530,6 +530,8 @@
       <form method="post" action="/maintenance" data-confirm="{{T "settings.clearRunsConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="clear_runs"><button class="btn" type="submit">{{T "settings.cleanup.clearRunsAll"}}</button><p class="help">{{T "maintenance.help.clearRuns"}}</p></form>
       <form method="post" action="/maintenance" id="reset_stats" data-confirm="{{T "settings.resetStatsConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reset_stats"><button class="btn danger" type="submit" title="{{T "settings.cleanup.resetStatsTitle"}}">{{T "settings.cleanup.resetStats"}}</button><p class="help">{{T "maintenance.help.resetStats"}}</p></form>
       <form method="post" action="/maintenance" data-confirm="{{T "settings.resetAPIUsageConfirm"}}"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="reset_api_usage"><button class="btn" type="submit">{{T "settings.cleanup.resetAPIUsage"}}</button><p class="help">{{T "maintenance.help.resetAPI"}}</p></form>
+      </div>
+    <div class="action-grid">
       <form method="post" action="/maintenance" data-confirm="{{T "settings.purgeDaysConfirm"}}">
         <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="action" value="purge_days">
         <div class="field"><label for="purge_days">{{T "settings.cleanup.days"}}</label><input id="purge_days" name="days" type="number" min="1" max="36500" value="{{.DefaultPurgeDays}}" required></div>

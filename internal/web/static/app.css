@@ -701,7 +701,6 @@ label.check input { margin: 0; }
 .field.checkbox > input[type="checkbox"] { grid-column: 1; grid-row: 1; margin: 0.2rem 0 0; }
 .field.checkbox > label { grid-row: 1; }
 .field.checkbox > :not(input) { grid-column: 2; }
-.field.checkbox:not(:has(.help)) { align-self: center; }
 
 label { font-weight: 600; font-size: 0.84rem; }
 
@@ -1986,7 +1985,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
   align-items: center;
   padding: 0.45rem 0.9rem;
 }
-.req-head { color: var(--muted); font-size: 0.72rem; font-weight: 700; border-bottom: 1px solid var(--border); }
+.req-head { color: var(--muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background: var(--surface-2); border-bottom: 1px solid var(--border); }
 .req { border-bottom: 1px solid var(--border); }
 .req:last-child { border-bottom: 0; }
 .req-sum { cursor: pointer; list-style: none; font-size: 0.84rem; }
@@ -2055,3 +2054,21 @@ table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; 
 .danger-zone > form > .field { align-self: stretch; }
 /* A long label wraps inside its grid column instead of running out of it. */
 .action-grid .btn { white-space: normal; max-width: 100%; text-align: left; }
+
+/* Inputs of one form row start on one line even when a neighbour's label
+   wraps to two lines. */
+@media (min-width: 900px) {
+  .form-grid > .field:not(.checkbox) > label:first-child { min-height: 2.6em; display: flex; align-items: flex-end; line-height: 1.3; }
+}
+/* App names such as go-http-client do not break at the hyphen. */
+.req-app { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A checkbox in a filter bar takes only its own width. */
+.filters .field.checkbox { flex: 0 0 auto; }
+/* An intro line above a form: no second gap from the grid's top margin. */
+.panel > p.help + form > .form-grid:first-of-type { margin-top: 0; }
+/* Small stat cards: two per row on a phone instead of one long column. */
+@media (max-width: 480px) {
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* Maintenance: the actions that need a value sit in their own row. */
+.action-grid + .action-grid { margin-top: 0; padding-top: 0; }
