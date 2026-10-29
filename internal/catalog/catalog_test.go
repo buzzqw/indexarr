@@ -124,6 +124,7 @@ func TestBuiltinsValid(t *testing.T) {
 		"magnetcat":          true,
 		"btetree":            true,
 		"damagnet":           true,
+		"ildragonegro":       true,
 	}
 	// A degraded entry keeps its definition and its fixtures: the live sweep
 	// found the site broken, so it is hidden from users until someone re-reads

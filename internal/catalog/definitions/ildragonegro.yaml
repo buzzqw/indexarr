@@ -1,15 +1,30 @@
-# IN PROVA (trial). ilDraGoNeRo private tracker (phpBB based).
+# VERIFICATA (verified). ilDraGoNeRo native definition.
 #
-# Written from the public login page captured on 2026-10-23 in
-# fixtures/ildragonegro/login.html (https://ildragonero2.info/forum/ucp.php?mode=login).
-# The forum refuses guest search ("Non ti è permesso di utilizzare il sistema
-# di ricerca"), so the search fixture is synthetic and keeps the standard phpBB
-# search-result markup; the topic fixture keeps a magnet in the post body. The
-# supported login path is a pasted session cookie (auth.strategy cookie): the
-# phpBB form_token/sid flow is fragile and cannot be verified without an
-# account. A desktop browser User-Agent is sent explicitly: the site redirects
-# the default client to the index page. State stays "bozza" until it is
-# verified with an account.
+# ilDraGoNeRo is an Italian phpBB forum. Guests see no forum at all ("Non sono
+# presenti forum") and cannot search, so every page needs the account login.
+# Releases are published as magnet links hidden by the "magnetlock" extension:
+# the topic shows a "Clicca qui per ringraziare e scaricare" bar and the magnet
+# appears only after the first post has been thanked.
+#
+# Why the definition is built this way:
+#   - auth.strategy form: the standard phpBB login on ucp.php, with the
+#     form_token/creation_time/sid values taken from the login page;
+#   - search.interval: the forum refuses a second search within about 30 s
+#     ("Al momento non ti è permesso fare ricerche. Riprova tra N secondi"),
+#     so the requests are spaced and the answer pages are cached;
+#   - download.before: on grab it posts the thanks action to /magnetlock,
+#     reopens the topic and reads the now visible magnets. A topic can hold
+#     several magnets (episodes and resolutions of a season): select
+#     season_episode chooses the one matching the request.
+#
+# The topic titles carry "S01-03", "Stagione 3" or "COMPLETA", not the single
+# episode, so the search uses the series title (keywords_format: separate) and
+# the season/episode are used to choose the magnet at grab time.
+#
+# Fixtures were captured from https://www.ildragonero2.info/forum/ on
+# 2026-10-29 and then sanitized: session ids, tokens, usernames and avatar
+# URLs are synthetic. The magnet fixture keeps a locked post, the state the
+# engine sees before it thanks the topic.
 schema: 1
 
 meta:
@@ -19,68 +34,176 @@ meta:
   type: private
   protocol: torrent
   author: indexarr
-  description: ilDraGoNeRo Italian tracker (phpBB login and forum search).
+  description: Italian phpBB tracker; login required and magnets unlocked by thanking the post.
   urls:
-    - https://www.ildragonero2.info/
-    - http://www.ildragonero2.info/
-  updated: "2026-10-23"
+    - https://www.ildragonero2.info/forum/
+  updated: "2026-10-29"
   latest: false
 
 settings:
-  - name: cookie
+  - name: username
+    type: text
+    label: "Username"
+    required: true
+  - name: password
     type: password
-    label: "Session cookie"
-    help: "Paste the Cookie request header copied from the browser after logging in to the forum."
+    label: "Password"
     required: true
 
 categories:
-  - { site: "0", standard: 8000, desc: "Other" }
+  - { site: "50", standard: 2040, desc: "Film - HD" }
+  - { site: "77", standard: 2030, desc: "Film - SD" }
+  - { site: "78", standard: 2045, desc: "Film - 4k" }
+  - { site: "66", standard: 2000, desc: "Film - Sub Ita" }
+  - { site: "132", standard: 2000, desc: "Pack video" }
+  - { site: "46", standard: 5040, desc: "Serie TV - HD/4k" }
+  - { site: "45", standard: 5030, desc: "Serie TV - SD" }
+  - { site: "79", standard: 5040, desc: "Serie TV - Sub Ita" }
+  - { site: "63", standard: 2000, desc: "Cartoon & Anime - Film" }
+  - { site: "61", standard: 5070, desc: "Cartoon & Anime - Serie" }
+  - { site: "88", standard: 5070, desc: "Cartoon & Anime - Sub Ita" }
+  - { site: "41", standard: 3000, desc: "Musica - Artisti stranieri" }
+  - { site: "42", standard: 3000, desc: "Musica - Artisti italiani" }
+  - { site: "89", standard: 3000, desc: "Musica - Compilation" }
+  - { site: "53", standard: 3000, desc: "Altri video - Concerti" }
+  - { site: "91", standard: 4050, desc: "Videogiochi - PC" }
+  - { site: "94", standard: 4050, desc: "Videogiochi - Collection" }
+  - { site: "59", standard: 4050, desc: "Videogiochi - Modding" }
+  - { site: "96", standard: 4000, desc: "Software - Windows OS" }
+  - { site: "119", standard: 4000, desc: "Software - Linux OS" }
+  - { site: "20", standard: 4000, desc: "Software - Windows App" }
+  - { site: "21", standard: 4030, desc: "Software - MacOS App" }
+  - { site: "22", standard: 4070, desc: "Software - Android Apk" }
+  - { site: "99", standard: 7040, desc: "Software - Manuali e guide" }
+  - { site: "67", standard: 7020, desc: "Libreria - Ebook" }
+  - { site: "62", standard: 3030, desc: "Libreria - Audiobook" }
+  - { site: "82", standard: 7030, desc: "Libreria - Fumetti" }
+  - { site: "38", standard: 7010, desc: "Libreria - Quotidiani" }
+  - { site: "133", standard: 7010, desc: "Libreria - Periodici" }
+  - { site: "92", standard: 5080, desc: "Altri video - Documentari" }
+  - { site: "93", standard: 5040, desc: "Altri video - TV Show" }
+  # The "Richieste evase" forums hold fulfilled requests, not open requests:
+  # their topics are real releases and appear in the search results.
+  - { site: "47", standard: 2000, desc: "Film - Richieste evase" }
+  - { site: "75", standard: 5040, desc: "Serie TV - Richieste evase" }
+  - { site: "81", standard: 5070, desc: "Cartoon & Anime - Richieste evase" }
+  - { site: "86", standard: 8000, desc: "Altri video - Richieste evase" }
+  - { site: "73", standard: 3000, desc: "Musica - Richieste evase" }
+  - { site: "71", standard: 4050, desc: "Videogiochi - Richieste evase" }
+  - { site: "69", standard: 7000, desc: "Libreria - Richieste evase" }
 
 capabilities:
   search: [q]
+  tv-search: [q, season, ep]
+  movie-search: [q]
 
 auth:
-  # The phpBB login needs a form_token and a session id; a cookie copied from
-  # a logged-in browser is the stable path and the engine sends it as-is.
-  strategy: cookie
+  strategy: form
+  steps:
+    - get: /ucp.php?mode=login
+      extract:
+        creation_time: { selector: 'input[name="creation_time"]', attr: value }
+        form_token: { selector: 'input[name="form_token"]', attr: value }
+        sid: { selector: 'input[name="sid"]', attr: value }
+    - post: /ucp.php?mode=login
+      form:
+        username: "{{ settings.username }}"
+        password: "{{ settings.password }}"
+        login: Login
+        # The literal "&amp;" is intentional. The login page's redirect field
+        # points back to ucp.php, and phpBB answers the successful POST with a
+        # 302 to index.php: the connector follows it with the pre-login cookies
+        # and the final page looks like a guest. An invalid redirect makes
+        # phpBB answer the POST with the 200 "Informazione" page, which already
+        # carries the logout link and proves the login.
+        redirect: "./ucp.php?mode=login&amp;sid={{ sid }}"
+        creation_time: "{{ creation_time }}"
+        form_token: "{{ form_token }}"
+        sid: "{{ sid }}"
+        autologin: "on"
+  # index.php is visible to guests too, so only the logout link proves the
+  # login. The same sign is used to notice a session dropped by a login from
+  # another browser.
+  success: { selector: 'a[href*="mode=logout"]' }
+  logged_in: { selector: 'a[href*="mode=logout"]' }
+  failure:
+    - { selector: "div.error", message: text }
+  refresh_after: 6h
 
 search:
   request:
-    get: /forum/search.php
-    headers:
-      User-Agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    get: /search.php
     params:
-      keywords: "{{ query.keywords }}"
+      keywords: "{{ query.keywords_raw }}"
       terms: all
-      sf: all
+      sf: titleonly
       sr: topics
-  pagination: { type: none }
+  # phpBB paginates search results with start=25, 50, ...
+  pagination: { type: offset, start: 0, step: 25, max_pages: 2, param: start }
+  keywords_format: separate
+  # A second search within about 30 s is refused; 32 s keeps a margin. The
+  # cache serves the Arr and Gextto, which ask the same series once per
+  # episode.
+  interval: 32s
+  cache: 6h
+  blocked: { selector: "#message p", contains: "non ti è permesso", message: text }
   response:
     type: html
-    rows: { selector: "div.search" }
+    rows: { selector: "ul.topiclist.topics > li.row" }
     fields:
-      title:    { selector: "h3 a", filters: [trim] }
-      details:  { selector: "h3 a", attr: href, type: url }
-      magnet:   { selector: 'a[href^="magnet:"]', attr: href }
+      title:    { selector: "a.topictitle", filters: [trim] }
+      details:  { selector: "a.topictitle", attr: href, type: url }
+      category: { selector: 'a[href*="viewforum.php?f="]', attr: href, filters: [{ query_param: f }], type: category }
       date:     { selector: "time", attr: datetime, type: date }
     required: [title, details]
 
 download:
   resolve_on: grab
   from: details
-  max_concurrent: 2
+  # A post carries many magnets: single episodes and several resolutions.
+  # The grab request's season/episode chooses the right one.
+  select: season_episode
+  before:
+    # The magnets are hidden until the first post is thanked. This block is
+    # reached only from Download, never from a search. The site's own button
+    # posts action=thanks with the post id and the page token, then the magnets
+    # are rendered in the topic.
+    wait: 2s
+    extract:
+      token: { selector: "#magnetlock-cfg", attr: data-token }
+      post:  { selector: ".ml-box[data-p]", attr: data-p }
+      index: { selector: ".ml-box[data-p]", attr: data-i }
+    action:
+      post: /magnetlock
+      form:
+        action: thanks
+        p: "{{ post }}"
+        i: "{{ index }}"
+        hash: "{{ token }}"
+      headers:
+        X-Requested-With: XMLHttpRequest
+        Referer: "{{ item.details }}"
   extract:
-    - magnet:  { selector: 'a[href^="magnet:"]', attr: href }
-    - torrent: { selector: 'a[href*="download/file.php"]', attr: href, type: url }
+    - magnet: { selector: ['a.ml-banner[href^="magnet:"]', 'a[href^="magnet:"]'], attr: href }
+      all: true
 
 health:
-  query: test
+  query: Mandalorian
   min_rows: 1
 
 tests:
   - name: search
     fixture: fixtures/ildragonegro/search.html
-    expect: { min_rows: 3, required: [title, details] }
-  - name: detail
-    fixture: fixtures/ildragonegro/detail.html
+    expect: { min_rows: 2, required: [title, details, category, date] }
+  - name: login-page
+    fixture: fixtures/ildragonegro/login.html
+    expect: { authenticated: false }
+  - name: login-ok
+    fixture: fixtures/ildragonegro/login-ok.html
+    expect: { authenticated: true }
+  - name: login-failed
+    fixture: fixtures/ildragonegro/login-failed.html
+    expect: { authenticated: false }
+  - name: topic-locked
+    fixture: fixtures/ildragonegro/topic-locked.html
     expect: { min_rows: 0 }

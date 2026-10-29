@@ -148,11 +148,11 @@ definitions:
 
   - id: ildragonegro
     file: definitions/ildragonegro.yaml
-    state: bozza
+    state: verificata
     author: indexarr
     family: custom
     italian: true
-    note: "Italian priority; phpBB forum, private without an account (da provvi)."
+    note: "Italian priority; phpBB form login verified on 2026-10-29, search and grab with the magnet unlocked by thanking the post."
 
   - id: mircrew
     file: definitions/mircrew.yaml

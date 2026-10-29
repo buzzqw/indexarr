@@ -121,7 +121,7 @@ func TestItalianPriorityRows(t *testing.T) {
 	if entry := native["extto"]; !entry.Italian || entry.Family != FamilyCustom || entry.State != "verificata" {
 		t.Errorf("extto metadata = family %q italian %v state %q", entry.Family, entry.Italian, entry.State)
 	}
-	if entry := native["ildragonegro"]; !entry.Italian || entry.Family != FamilyCustom || entry.State != "bozza" {
+	if entry := native["ildragonegro"]; !entry.Italian || entry.Family != FamilyCustom || entry.State != "verificata" {
 		t.Errorf("ildragonegro metadata = family %q italian %v state %q", entry.Family, entry.Italian, entry.State)
 	}
 }

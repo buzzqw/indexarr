@@ -1,52 +1,62 @@
 <!DOCTYPE html>
 <html lang="it">
-<head>
-<meta charset="utf-8">
-<title>ilDraGoNeRo login (cleaned)</title>
-</head>
+<head><meta charset="utf-8"><title>ilDraGoNeRo - Login (fixture)</title></head>
 <body>
-<form action="./ucp.php?mode=login" data-focus="username" id="login" method="post">
+<div class="panel"><div class="inner">
+<form action="./ucp.php?mode=login&amp;sid=synthetic" method="post" id="login" data-focus="username">
 <div class="panel">
-<div class="inner">
-<div class="content">
-<h2 class="login-title">Login</h2>
-<fieldset class="fields1">
-<dl>
-<dt><label for="username">Nome utente:</label></dt>
-<dd><input autocomplete="username" class="inputbox autowidth" id="username" name="username" size="25" tabindex="1" type="text" value=""/></dd>
-</dl>
-<dl>
-<dt><label for="password">Password:</label></dt>
-<dd><input autocomplete="current-password" class="inputbox autowidth" id="password" name="password" size="25" tabindex="2" type="password"/></dd>
-<dd><a href="/forum/user/forgot_password?sid=synthetic-sid">Ho dimenticato la password</a></dd> <dd><a href="./ucp.php?mode=resend_act&amp;sid=synthetic-sid">Rispedisci l’email di attivazione</a></dd> </dl>
-<dl>
-<dt> </dt>
-<dd><label for="autologin"><input id="autologin" name="autologin" tabindex="4" type="checkbox"/> Ricordami</label></dd> <dd><label for="viewonline"><input id="viewonline" name="viewonline" tabindex="5" type="checkbox"/> Nascondi il mio stato per questa sessione</label></dd>
-</dl>
-<input name="redirect" type="hidden" value="index.php"/>
-<input name="creation_time" type="hidden" value="1790000000"/>
-<input name="form_token" type="hidden" value="synthetic-form-token"/>
-<dl>
-<dt> </dt>
-<dd><input name="sid" type="hidden" value="synthetic-sid"/>
-<input name="redirect" type="hidden" value="index.php"/>
-<input class="button1" name="login" tabindex="6" type="submit" value="Login"/></dd>
-</dl>
-</fieldset>
+	<div class="inner">
+
+	<div class="content">
+		<h2 class="login-title">Login</h2>
+
+		<fieldset class="fields1">
+				<dl>
+			<dt><label for="username">Nome utente:</label></dt>
+			<dd><input type="text" tabindex="1" name="username" id="username" size="25" value="" class="inputbox autowidth" autocomplete="username" /></dd>
+		</dl>
+		<dl>
+			<dt><label for="password">Password:</label></dt>
+			<dd><input type="password" tabindex="2" id="password" name="password" size="25" class="inputbox autowidth" autocomplete="current-password" /></dd>
+							<dd><a href="/forum/user/forgot_password?sid=synthetic">Ho dimenticato la password</a></dd>				<dd><a href="./ucp.php?mode=resend_act&amp;sid=synthetic">Rispedisci l’email di attivazione</a></dd>					</dl>
+						<dl>
+			<dt>&nbsp;</dt>
+			<dd><label for="autologin"><input type="checkbox" name="autologin" id="autologin" tabindex="4" /> Ricordami</label></dd>			<dd><label for="viewonline"><input type="checkbox" name="viewonline" id="viewonline" tabindex="5" /> Nascondi il mio stato per questa sessione</label></dd>
+		</dl>
+
+		<input type="hidden" name="redirect" value="./ucp.php?mode=login&amp;sid=synthetic" />
+<input type="hidden" name="creation_time" value="1700000000" />
+<input type="hidden" name="form_token" value="synthetic-form-token" />
+
+
+		<dl>
+			<dt>&nbsp;</dt>
+			<dd><input type="hidden" name="sid" value="synthetic-sid" />
+<input type="hidden" name="redirect" value="index.php" />
+<input type="submit" name="login" tabindex="6" value="Login" class="button1" /></dd>
+		</dl>
+		</fieldset>
+	</div>
+
+		</div>
 </div>
-</div>
-</div>
-<div class="panel">
-<div class="inner">
-<div class="content">
-<h3>Iscriviti</h3>
-<p>Per eseguire il login devi essere registrato. La registrazione richiede solo pochi secondi e garantisce l’accesso alle funzioni avanzate. L’amministratore può anche dare permessi speciali agli utenti. Prima di eseguire il login assicurati di aver letto i termini d’uso e le varie regole.</p>
-<p><strong><a href="./ucp.php?mode=terms&amp;sid=synthetic-sid">Condizioni d’uso</a> | <a href="./ucp.php?mode=privacy&amp;sid=synthetic-sid">Trattamento dei dati personali</a></strong></p>
-<hr class="dashed"/>
-<p><a class="button2" href="./ucp.php?mode=register&amp;sid=synthetic-sid">Iscriviti</a></p>
-</div>
-</div>
-</div>
+
+
+	<div class="panel">
+		<div class="inner">
+
+		<div class="content">
+			<h3>Iscriviti</h3>
+			<p>Per eseguire il login devi essere registrato. La registrazione richiede solo pochi secondi e garantisce l’accesso alle funzioni avanzate. L’amministratore può anche dare permessi speciali agli utenti. Prima di eseguire il login assicurati di aver letto i termini d’uso e le varie regole.</p>
+			<p><strong><a href="./ucp.php?mode=terms&amp;sid=synthetic">Condizioni d’uso</a> | <a href="./ucp.php?mode=privacy&amp;sid=synthetic">Trattamento dei dati personali</a></strong></p>
+			<hr class="dashed" />
+			<p><a href="./ucp.php?mode=register&amp;sid=synthetic" class="button2">Iscriviti</a></p>
+		</div>
+
+		</div>
+	</div>
+
 </form>
+</div></div>
 </body>
 </html>

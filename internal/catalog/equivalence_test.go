@@ -531,13 +531,13 @@ func TestCatalogVerifiedDefinitionsExist(t *testing.T) {
 		"extto", "torrentgalaxy", "corsaro", "knaben",
 		"1337x", "animetosho", "kickasstorrents", "nyaa",
 		"subsplease", "tokyotosho", "torrentdownloads", "yts",
-		"acgnx", "bangumimoe", "mikan", "iptorrents",
+		"acgnx", "bangumimoe", "mikan", "iptorrents", "ildragonegro",
 	} {
 		if states[id] != "verificata" {
 			t.Errorf("%s: state = %q, want verificata", id, states[id])
 		}
 	}
-	for _, id := range []string{"torrentleech", "torrentleech-rss", "corsaro-account", "ildragonegro"} {
+	for _, id := range []string{"torrentleech", "torrentleech-rss", "corsaro-account"} {
 		if states[id] != "bozza" {
 			t.Errorf("%s: state = %q, want bozza (needs an account to verify)", id, states[id])
 		}

@@ -22,8 +22,8 @@ Values counted on `index.json` after `go generate ./internal/catalog`.
 | Total entries in the catalog (definitions + lightweight entries) | **627** |
 | Native definitions | 111 (including 8 generic helpers) |
 | Lightweight entries | **516** (511 from the Jackett snapshot, 5 manual) |
-| Verified | **85** |
-| Drafts | **24** |
+| Verified | **86** |
+| Drafts | **23** |
 | To try (`da-provvi`) | **495** |
 | Blocked (`bloccata`) | **14** |
 | Dead (`morta`) | **7** |
@@ -355,10 +355,12 @@ The definition now declares a FlareSolverr session
   unreachable IPv6 route or a TLS error are **inconclusive**: the entry stays
   `da-provvi` and is retried, because they do not prove that the site is dead.
 - **`bozza`** (native definition): definition written but not yet tested live.
-  For `ilDraGoNeRo` it also means an account is needed.
 
-No private entry is `verificata` in this cycle. No entry was marked alive
-without a recorded `GET`.
+No private *lightweight* entry is `verificata` in this cycle: without an account
+there is no window on the inside. The private native definitions `mircrew`,
+`ddunlimited` and `ildragonegro` were tested live with an account and keep
+their evidence in the definition's fixtures and comments. No entry was marked
+alive without a recorded `GET`.
 
 ## Covered families
 
@@ -395,7 +397,7 @@ of Italian sites.
 | ShareIsland (`jk-shareisland-api`) | UNIT3D | da provvi | Private; UNIT3D login 200; no account |
 | Girotorrent (`jk-girotorrent`) | XBTIT | da provvi | Private; xbtitFM 4.2.14 footer; no account |
 | TrackerZero (`jk-trackerzero`) | — | da provvi | Private; SvelteKit frontend, family not proven |
-| ilDraGoNeRo (`ildragonegro`) | custom (phpBB) | bozza | Private; native definition being tested, an account is needed |
+| ilDraGoNeRo (`ildragonegro`) | custom (phpBB) | verificata | Private; phpBB form login, search and grab verified on 29/10/2026; magnets unlocked by thanking the post |
 | MirCrew (`mircrew`) | Torznab | da provvi | Local bridge from block B (`localhost:9118`), not a public tracker |
 | ExtTo (`extto`) | custom (HTML) | verificata | Public native definition, fixtures and parity verified |
 

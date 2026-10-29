@@ -59,10 +59,10 @@ the 403 real rows is due to host duplicates.
 | TorrentsCSV | `torrentscsv` | verified |
 | TorrentGalaxyClone | `torrentgalaxyclone` | verified |
 | showRSS | `showrss` | verified |
-| ilDraGoNeRo | `ildragonegro` | draft / cookie required |
+| ilDraGoNeRo | `ildragonegro` | verified / account required |
 
 Six sources are verified and usable right away; two require one-time configuration
-(TorrentLeech: account or rsskey; ilDraGoNeRo: account/cookie).
+(TorrentLeech: account or rsskey; ilDraGoNeRo: username and password).
 
 ## Why the bridge is gone
 

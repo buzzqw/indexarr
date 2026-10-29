@@ -801,18 +801,28 @@
   {
     "id": "ildragonegro",
     "name": "ilDraGoNeRo",
-    "description": "ilDraGoNeRo Italian tracker (phpBB login and forum search).",
+    "description": "Italian phpBB tracker; login required and magnets unlocked by thanking the post.",
     "language": "it-IT",
     "type": "private",
     "protocol": "torrent",
-    "required": [
-      "cookie"
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software"
     ],
-    "state": "bozza",
+    "required": [
+      "password",
+      "username"
+    ],
+    "state": "verificata",
     "hosts": [
       "ildragonero2.info"
     ],
-    "url": "https://www.ildragonero2.info/",
+    "url": "https://www.ildragonero2.info/forum/",
     "family": "custom",
     "italian": true,
     "source": "native",
