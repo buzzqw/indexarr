@@ -24,7 +24,7 @@ meta:
   description: Private TorrentLeech with login, keyword search and a JSON listing.
   urls:
     - https://www.torrentleech.org/
-  updated: "2026-10-26"
+  updated: "2026-10-29"
   latest: false
 
 settings:
@@ -87,6 +87,13 @@ auth:
         username: "{{ settings.username }}"
         password: "{{ settings.password }}"
   success: { selector: 'a[href*="/user/account/logout"]' }
+  # The site drops the session before refresh_after: on 2026-10-28 the browse
+  # list answered the HTML login page for ten minutes (110 searches "invalid
+  # character '<'") and release pages lost the download button for fifteen
+  # hours (130 "no download target"), until a restart logged in again. Every
+  # authenticated page carries the logout link, so a page without it means
+  # one new login and a second read (a JSON answer is always logged in).
+  logged_in: { selector: 'a[href*="/user/account/logout"]' }
   failure:
     - { selector: "div.alert-danger", message: text }
   refresh_after: 6h

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/buzzqw/indexarr/internal/engine"
@@ -89,5 +90,67 @@ func TestTorrentLeechJSONFixture(t *testing.T) {
 	}
 	if string(payload.Body) != string(torrent) {
 		t.Errorf("body = %q, want %q", payload.Body, torrent)
+	}
+}
+
+// On 2026-10-28 TorrentLeech dropped the session hours before refresh_after:
+// the browse list answered the HTML login page ("invalid character '<'") and
+// release pages came without the download button ("no download target") until
+// a restart. auth.logged_in makes both log in again once and read again.
+func TestTorrentLeechLogsInAgainWhenTheSiteDropsTheSession(t *testing.T) {
+	torrent := []byte("torrent-bytes")
+	var logins atomic.Int32
+	dropped := atomic.Bool{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/":
+			serveFile(t, w, "torrentleech/login.html")
+		case r.URL.Path == "/user/account/login/":
+			logins.Add(1)
+			dropped.Store(false)
+			serveFile(t, w, "torrentleech/login-ok.html")
+		case dropped.Load():
+			serveFile(t, w, "torrentleech/login.html")
+		case strings.HasPrefix(r.URL.Path, "/torrents/browse/list/query/"):
+			serveFile(t, w, "torrentleech/search.json")
+		case r.URL.Path == "/torrent/241861196":
+			serveFile(t, w, "torrentleech/detail.html")
+		case r.URL.Path == "/download/9001/release-sintetica-uno.torrent":
+			_, _ = w.Write(torrent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	def := parseDefinition(t, "torrentleech")
+	def.Meta.URLs[0] = server.URL + "/"
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: "torrentleech", Name: "TorrentLeech"},
+		Definition: def,
+		Settings:   map[string]string{"username": "synthetic-user", "password": "synthetic-password"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	if items, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch, Query: "test"}); err != nil || len(items) != 3 {
+		t.Fatalf("first search: %d items, err %v", len(items), err)
+	}
+
+	dropped.Store(true)
+	if items, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeSearch, Query: "other"}); err != nil || len(items) != 3 {
+		t.Fatalf("search after the drop: %d items, err %v", len(items), err)
+	}
+	dropped.Store(true)
+	payload, err := connector.Download(context.Background(), engine.Item{Title: "x", DetailsURL: server.URL + "/torrent/241861196"})
+	if err != nil {
+		t.Fatalf("download after the drop: %v", err)
+	}
+	if string(payload.Body) != string(torrent) {
+		t.Errorf("body = %q, want %q", payload.Body, torrent)
+	}
+	if logins.Load() != 3 {
+		t.Errorf("logins = %d, want 3 (first, after the search drop, after the page drop)", logins.Load())
 	}
 }

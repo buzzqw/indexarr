@@ -17,7 +17,9 @@ placeholders, keeping the observed shape):
   `search.json` keeps three synthetic rows in exactly that shape;
 - the release page `https://www.torrentleech.org/torrent/<fid>` exposes the
   button `href="/download/<fid>/<filename>.torrent"`. `detail.html` keeps that
-  markup with a placeholder fid and filename.
+  markup with a placeholder fid and filename, plus the header's logout link
+  (`/user/account/logout`) that every authenticated page carries and that
+  `auth.logged_in` checks.
 
 Cleaning applied before saving: no cookie, session id, rsskey, username,
 password or account-specific URL is kept in any fixture.

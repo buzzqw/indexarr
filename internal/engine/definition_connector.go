@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -1484,6 +1485,12 @@ func (c *DefinitionConnector) reLoginAfter(ctx context.Context, stamp time.Time)
 // definition's auth.logged_in marker.
 func (c *DefinitionConnector) sessionLost(response *Response) bool {
 	if c.def.Auth == nil || c.def.Auth.LoggedIn == nil || !c.needsLogin() || response == nil {
+		return false
+	}
+	// A JSON answer comes from the authenticated API (TorrentLeech's browse
+	// list): it has no logout link, and a dropped session answers with the
+	// HTML login page instead.
+	if body := bytes.TrimSpace(response.Body); len(body) > 0 && (body[0] == '{' || body[0] == '[') {
 		return false
 	}
 	present, err := conditionMatches(*c.def.Auth.LoggedIn, response)
