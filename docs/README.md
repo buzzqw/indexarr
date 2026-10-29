@@ -1,15 +1,15 @@
-# Documentazione
+# Documentation
 
-- [README](../README.md) — presentazione, avvio rapido, configurazione, uso.
-- [Guida all'uso](USAGE.md) — dal primo avvio alle app, con i problemi frequenti.
-- [API Torznab](API.md) — endpoint, parametri, risposte, download, errori.
-- [API amministrativa JSON](ADMIN-API.md) — definizioni, indexer, proxy, applicazioni.
-- [Architettura](ARCHITECTURE.md) — pacchetti, flusso, database, scelte di progetto.
-- [Vault](VAULT.md) — chiave maestra, ordine di risoluzione, comandi CLI, backup e Docker secrets.
-- [Definizioni](DEFINITIONS.md) — formato nativo v1, sicurezza, fixture e CLI `indexarr-def`.
-- [MirCrew](MIRCREW.md) — definizione nativa, Smartfeed, sessione FlareSolverr e policy dei ringraziamenti.
-- [Catalogo dei siti](CATALOG.md) — voci leggere da un'istantanea storica, famiglie, italiani, stati e prove live.
-- [Regole dell'interfaccia](UI-RULES.md) — regole per ogni pagina, struttura del menu, aggiunta di un indexer e componenti.
-- [Compatibilità](COMPATIBILITY.md) — MirCrew, Torznab, RSS e fonti native; Jackett/Prowlarr sono sostituiti.
-- [QA e test](QA.md) — suite `go test`, smoke test end-to-end e checklist mobile.
-- [Sostituzione di Jackett e Prowlarr](MIGRATION-MANAGERS.md) — nessun import, catalogo nativo, coda e controlli.
+- [README](../README.md) — presentation, quick start, configuration, usage.
+- [Usage guide](USAGE.md) — from the first start to the apps, with common problems.
+- [Torznab API](API.md) — endpoints, parameters, responses, downloads, errors.
+- [Admin JSON API](ADMIN-API.md) — definitions, indexers, proxies, applications.
+- [Architecture](ARCHITECTURE.md) — packages, flow, database, design choices.
+- [Vault](VAULT.md) — master key, resolution order, CLI commands, backup and Docker secrets.
+- [Definitions](DEFINITIONS.md) — native v1 format, security, fixtures and `indexarr-def` CLI.
+- [MirCrew](MIRCREW.md) — native definition, Smartfeed, FlareSolverr session and thanks policy.
+- [Site catalog](CATALOG.md) — lightweight entries from a historical snapshot, families, Italian sites, states and live evidence.
+- [UI rules](UI-RULES.md) — rules for every page, menu structure, adding an indexer and components.
+- [Compatibility](COMPATIBILITY.md) — MirCrew, Torznab, RSS and native sources; Jackett/Prowlarr are replaced.
+- [QA and tests](QA.md) — `go test` suite, end-to-end smoke tests and mobile checklist.
+- [Replacing Jackett and Prowlarr](MIGRATION-MANAGERS.md) — no import, native catalog, queue and checks.

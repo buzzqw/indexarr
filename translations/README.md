@@ -1,27 +1,27 @@
-# Traduzioni UI
+# UI translations
 
-I cataloghi effettivi sono incorporati nel binario da `internal/i18n/locales/`:
+The actual catalogs are embedded in the binary from `internal/i18n/locales/`:
 
-| Lingua | File |
+| Language | File |
 |---|---|
-| Inglese (default e fallback) | `internal/i18n/locales/en.json` |
-| Italiano | `internal/i18n/locales/it.json` |
-| Francese | `internal/i18n/locales/fr.json` |
-| Tedesco | `internal/i18n/locales/de.json` |
-| Spagnolo | `internal/i18n/locales/es.json` |
-| Cinese semplificato | `internal/i18n/locales/zh.json` |
-| Polacco | `internal/i18n/locales/pl.json` |
+| English (default and fallback) | `internal/i18n/locales/en.json` |
+| Italian | `internal/i18n/locales/it.json` |
+| French | `internal/i18n/locales/fr.json` |
+| German | `internal/i18n/locales/de.json` |
+| Spanish | `internal/i18n/locales/es.json` |
+| Simplified Chinese | `internal/i18n/locales/zh.json` |
+| Polish | `internal/i18n/locales/pl.json` |
 
-Ogni file ha le stesse chiavi di `en.json`; la parità è verificata da
-`go test ./internal/i18n`. Per aggiungere una lingua:
+Each file has the same keys as `en.json`; parity is checked by
+`go test ./internal/i18n`. To add a language:
 
-1. copia `en.json` in `<codice>.json` (es. `pt.json`) e traduci i valori;
-2. aggiungi la costante in `internal/i18n/catalog.go` (`Language`, `supported`,
+1. copy `en.json` to `<code>.json` (e.g. `pt.json`) and translate the values;
+2. add the constant in `internal/i18n/catalog.go` (`Language`, `supported`,
    `languageNames`);
-3. aggiungi il file a `internal/i18n/locales/` e verifica la parità delle chiavi
-   con `go test ./internal/i18n`.
+3. add the file to `internal/i18n/locales/` and check key parity with
+   `go test ./internal/i18n`.
 
-Le stringhe con `%s`/`%d` devono mantenere i segnaposto. I nomi di prodotto e i
-termini tecnici (Torznab, Jackett, Prowlarr, Sonarr, `indexarr`, ecc.) restano
-invariati. La lingua si sceglie dal selettore nella sidebar o con
-`?lang=<codice>`; la preferenza viene salvata nel cookie `indexarr_lang`.
+Strings with `%s`/`%d` must keep the placeholders. Product names and technical
+terms (Torznab, Jackett, Prowlarr, Sonarr, `indexarr`, etc.) stay unchanged.
+The language is chosen from the sidebar selector or with `?lang=<code>`; the
+preference is saved in the `indexarr_lang` cookie.

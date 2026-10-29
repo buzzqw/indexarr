@@ -1,32 +1,32 @@
-# API amministrativa JSON di indexarr
+# indexarr administrative JSON API
 
-indexarr espone due superfici diverse:
+indexarr exposes two different surfaces:
 
-| Superficie | Percorso | Formato | Uso |
+| Surface | Path | Format | Use |
 | --- | --- | --- | --- |
-| **Torznab/Newznab** | `/api`, `/torznab/api`, `/newznab/api`, `/torznab/{slug}/api` | XML | Sonarr, Radarr, gextto, client Torznab |
-| **API amministrativa** | `/api/v2/...` | JSON | script, automazioni, integrazioni |
+| **Torznab/Newznab** | `/api`, `/torznab/api`, `/newznab/api`, `/torznab/{slug}/api` | XML | Sonarr, Radarr, gextto, Torznab clients |
+| **Administrative API** | `/api/v2/...` | JSON | scripts, automations, integrations |
 
-Questa pagina documenta l'**API amministrativa JSON**. Per il protocollo
-Torznab vedi [API.md](API.md).
+This page documents the **administrative JSON API**. For the Torznab protocol
+see [API.md](API.md).
 
 ---
 
-## 1. Nozioni di base
+## 1. Basics
 
 - **Base URL**: `http://<host>:8788`
-- **Prefisso**: `/api/v2/`
-- **Content-Type**: `application/json` per ogni corpo inviato
-- **Nessun cookie e nessun CSRF**: pensata per script e servizi
-- **Corpo massimo**: 1 MiB per richiesta
-- **Campi sconosciuti**: rifiutati con `400` (`DisallowUnknownFields`)
-- **Segreti**: password, API key, cookie e token sono **solo in scrittura**.
-  Non vengono mai restituiti in chiaro; le risposte indicano solo
-  `has_secrets`, `has_api_key` o `has_auth`.
+- **Prefix**: `/api/v2/`
+- **Content-Type**: `application/json` for every body sent
+- **No cookies and no CSRF**: meant for scripts and services
+- **Maximum body**: 1 MiB per request
+- **Unknown fields**: rejected with `400` (`DisallowUnknownFields`)
+- **Secrets**: passwords, API keys, cookies and tokens are **write-only**.
+  They are never returned in clear text; responses only report
+  `has_secrets`, `has_api_key` or `has_auth`.
 
-### Autenticazione
+### Authentication
 
-La stessa API key del Torznab, in uno dei tre modi:
+The same API key as Torznab, in one of three ways:
 
 ```http
 GET /api/v2/health?apikey=KEY
@@ -35,35 +35,35 @@ X-Api-Key: KEY
 Authorization: Bearer KEY
 ```
 
-Le chiavi aggiuntive (Impostazioni → API aggiuntive) funzionano come la
-primaria. Una chiave revocata restituisce `401`.
+Additional keys (Settings → Additional API keys) work like the primary one. A
+revoked key returns `401`.
 
-### Errori
+### Errors
 
-Tutti gli errori sono JSON:
+All errors are JSON:
 
 ```json
 {"error": "indexer not found"}
 ```
 
-| HTTP | Significato |
+| HTTP | Meaning |
 | --- | --- |
-| `400` | corpo o parametro non valido |
-| `401` | API key mancante, errata o revocata |
-| `404` | risorsa inesistente |
-| `409` | conflitto (slug o definizione già esistenti) |
-| `413`/`400` | corpo oltre 1 MiB |
-| `422` | definizione non valida (con `errors[]`) |
-| `503` | motore o vault non disponibili |
-| `500` | errore interno (il dettaglio resta nel log del server) |
+| `400` | invalid body or parameter |
+| `401` | missing, wrong or revoked API key |
+| `404` | nonexistent resource |
+| `409` | conflict (slug or definition already exists) |
+| `413`/`400` | body over 1 MiB |
+| `422` | invalid definition (with `errors[]`) |
+| `503` | engine or vault unavailable |
+| `500` | internal error (the detail stays in the server log) |
 
 ---
 
-## 2. Avvio rapido
+## 2. Quick start
 
 ```bash
 export INDEXARR=http://127.0.0.1:8788
-export KEY='la-tua-api-key'
+export KEY='your-api-key'
 
 curl -s "$INDEXARR/api/v2/health?apikey=$KEY" | jq
 curl -s "$INDEXARR/api/v2/indexers?apikey=$KEY" | jq
@@ -80,14 +80,15 @@ curl -s "$INDEXARR/api/v2/catalog?apikey=$KEY" | jq '.catalog[:3]'
 {"status":"ok","version":"v2.1.0-rc1-33-g59a082b"}
 ```
 
-Non richiede il motore: serve a verificare processo, chiave e versione.
+It does not require the engine: it is used to verify the process, the key and
+the version.
 
 ---
 
-## 4. Definizioni
+## 4. Definitions
 
-Una definizione è il file YAML che descrive un sito (connettore, login,
-ricerca, download). Il formato è in [DEFINITIONS.md](DEFINITIONS.md).
+A definition is the YAML file that describes a site (connector, login, search,
+download). The format is described in [DEFINITIONS.md](DEFINITIONS.md).
 
 ### `GET /api/v2/definitions`
 
@@ -110,48 +111,48 @@ ricerca, download). Il formato è in [DEFINITIONS.md](DEFINITIONS.md).
 
 ### `GET /api/v2/definitions/{id}`
 
-Come sopra, più `"body"` con lo YAML completo.
+As above, plus `"body"` with the full YAML.
 
 ### `POST /api/v2/definitions`
 
 ```json
-{"body": "schema: 1\nmeta:\n  id: mio-sito\n…"}
+{"body": "schema: 1\nmeta:\n  id: my-site\n…"}
 ```
 
-- `201` con i metadati della definizione creata;
-- `422` con `{"error":"invalid definition","errors":["…"]}` se lo YAML non è
-  valido;
-- `409` se l'id esiste già, salvo `?overwrite=1` (o `true`/`yes`).
+- `201` with the metadata of the created definition;
+- `422` with `{"error":"invalid definition","errors":["…"]}` if the YAML is not
+  valid;
+- `409` if the id already exists, unless `?overwrite=1` (or `true`/`yes`).
 
-Le definizioni create via API hanno `origin: "local"`: il catalogo non le
-sovrascrive.
+Definitions created through the API have `origin: "local"`: the catalog does not
+overwrite them.
 
 ### `PUT /api/v2/definitions/{id}`
 
-Stesso corpo della creazione. L'id nel corpo deve coincidere con il percorso.
-La definizione diventa `origin: "local"` anche se era builtin.
+Same body as creation. The id in the body must match the path. The definition
+becomes `origin: "local"` even if it was builtin.
 
 ### `DELETE /api/v2/definitions/{id}`
 
-`204` se eliminata. `409` se almeno un indexer la usa.
+`204` if deleted. `409` if at least one indexer uses it.
 
 ### `POST /api/v2/definitions/validate`
 
-Non salva nulla:
+Saves nothing:
 
 ```json
-{"valid": true, "id": "mio-sito", "name": "Mio Sito"}
+{"valid": true, "id": "my-site", "name": "My Site"}
 ```
 
-In caso di errore: `422` con `{"valid":false,"errors":[…]}`.
+On error: `422` with `{"valid":false,"errors":[…]}`.
 
 ---
 
-## 5. Catalogo
+## 5. Catalog
 
 ### `GET /api/v2/catalog`
 
-Elenca le definizioni incluse nel binario:
+Lists the definitions included in the binary:
 
 ```json
 {
@@ -161,12 +162,12 @@ Elenca le definizioni incluse nel binario:
 }
 ```
 
-`installed` indica se la definizione è già nel database.
+`installed` indicates whether the definition is already in the database.
 
 ### `POST /api/v2/catalog/sync`
 
-Allinea il database al catalogo incluso nel binario. Le definizioni
-`origin: "local"` non vengono toccate.
+Aligns the database with the catalog included in the binary. Definitions with
+`origin: "local"` are not touched.
 
 ```json
 {"written": 12}
@@ -174,9 +175,9 @@ Allinea il database al catalogo incluso nel binario. Le definizioni
 
 ---
 
-## 6. Indexer
+## 6. Indexers
 
-### Modello
+### Model
 
 ```json
 {
@@ -210,7 +211,7 @@ Allinea il database al catalogo incluso nel binario. Le definizioni
 
 ### `GET /api/v2/indexers/{id}`
 
-Un solo oggetto indexer. `404` se non esiste.
+A single indexer object. `404` if it does not exist.
 
 ### `POST /api/v2/indexers`
 
@@ -225,34 +226,33 @@ Un solo oggetto indexer. `404` se non esiste.
   "tags": ["tv"],
   "interval_seconds": 1800,
   "settings": {
-    "username": "utente",
-    "password": "segreta",
+    "username": "user",
+    "password": "secret",
     "categories": "2000,5000"
   }
 }
 ```
 
-- `definition_id` e `name` sono obbligatori;
-- `slug` è normalizzato dal nome se assente;
-- `settings` accetta stringhe, numeri e booleani; le chiavi segrete
-  (`password`, `apikey`, `token`, `cookie`, …) finiscono nel vault;
-- i setting obbligatori della definizione devono essere presenti, altrimenti
-  `400 missing required setting: <nome>`;
-- `201` con il modello creato.
+- `definition_id` and `name` are mandatory;
+- `slug` is normalized from the name if missing;
+- `settings` accepts strings, numbers and booleans; secret keys
+  (`password`, `apikey`, `token`, `cookie`, …) go into the vault;
+- the mandatory settings of the definition must be present, otherwise
+  `400 missing required setting: <name>`;
+- `201` with the created model.
 
 ### `PUT /api/v2/indexers/{id}`
 
-Stessi campi. I campi omessi restano invariati; una chiave segreta assente o
-vuota mantiene il valore salvato. Per cancellare un segreto usare
-`"settings": {"password": ""}`.
+Same fields. Omitted fields stay unchanged; a missing or empty secret key keeps
+the saved value. To delete a secret use `"settings": {"password": ""}`.
 
 ### `DELETE /api/v2/indexers/{id}`
 
-`204`. Il motore invalida la connessione in cache.
+`204`. The engine invalidates the cached connection.
 
 ### `POST /api/v2/indexers/{id}/test`
 
-Esegue le fasi di prova (raggiungibilità, capacità, login, ricerca):
+Runs the test phases (reachability, capabilities, login, search):
 
 ```json
 {
@@ -265,8 +265,8 @@ Esegue le fasi di prova (raggiungibilità, capacità, login, ricerca):
 }
 ```
 
-Una prova riuscita registra anche un controllo di salute e pulisce l'ultimo
-errore dello stato.
+A successful test also records a health check and clears the last error from
+the state.
 
 ### `POST /api/v2/indexers/{id}/search`
 
@@ -307,7 +307,7 @@ errore dello stato.
 
 ### `POST /api/v2/indexers/{id}/run`
 
-Esegue un aggiornamento (lista ultime release o ricerca fissa):
+Runs one refresh (latest releases list or fixed search):
 
 ```json
 {"seen":500,"new":494,"updated":0,"blocked":0,"skipped":0,"torrents":12}
@@ -315,9 +315,9 @@ Esegue un aggiornamento (lista ultime release o ricerca fissa):
 
 ---
 
-## 7. Proxy
+## 7. Proxies
 
-### Modello
+### Model
 
 ```json
 {"id": 1, "kind": "http", "url": "http://proxy.example:8080", "has_auth": true}
@@ -325,38 +325,38 @@ Esegue un aggiornamento (lista ultime release o ricerca fissa):
 
 `kind`: `http`, `https`, `socks5`, `socks5h`.
 
-### Endpoint
+### Endpoints
 
-| Metodo | Percorso | Note |
+| Method | Path | Notes |
 | --- | --- | --- |
-| `GET` | `/api/v2/proxies` | elenco |
-| `POST` | `/api/v2/proxies` | crea (`201`) |
-| `GET` | `/api/v2/proxies/{id}` | dettaglio |
-| `PUT` | `/api/v2/proxies/{id}` | aggiorna |
+| `GET` | `/api/v2/proxies` | list |
+| `POST` | `/api/v2/proxies` | create (`201`) |
+| `GET` | `/api/v2/proxies/{id}` | detail |
+| `PUT` | `/api/v2/proxies/{id}` | update |
 | `DELETE` | `/api/v2/proxies/{id}` | `204` |
 
-Corpo di creazione/aggiornamento:
+Creation/update body:
 
 ```json
 {
   "kind": "http",
   "url": "http://proxy.example:8080",
-  "username": "utente",
-  "password": "segreta",
+  "username": "user",
+  "password": "secret",
   "clear_auth": false
 }
 ```
 
-`password` vuota mantiene quella salvata; `clear_auth: true` la rimuove.
+An empty `password` keeps the saved one; `clear_auth: true` removes it.
 
 ---
 
-## 8. Applicazioni
+## 8. Applications
 
-Le applicazioni sono Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3,
+The applications are Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3,
 LazyLibrarian.
 
-### Modello
+### Model
 
 ```json
 {
@@ -376,37 +376,37 @@ LazyLibrarian.
 }
 ```
 
-`kind` ammessi: `sonarr`, `radarr`, `lidarr`, `readarr`, `whisparr`,
+Allowed `kind` values: `sonarr`, `radarr`, `lidarr`, `readarr`, `whisparr`,
 `mylar3`, `lazylibrarian`.
 
 `sync_level`: `disabled`, `add-remove`, `full`.
 
-`enable_rss`, `enable_automatic_search` e `enable_interactive_search` sono i
-flag con cui l'indexer viene creato nell'app. `min_seeders` (0 = valore
-dell'indexer) e `categories` (id Torznab standard, array o stringa CSV; vuoto =
-tutte le categorie supportate dall'app) completano il profilo della singola
-applicazione. In aggiornamento i campi omessi mantengono il valore corrente.
+`enable_rss`, `enable_automatic_search` and `enable_interactive_search` are the
+flags with which the indexer is created in the app. `min_seeders` (0 = the
+indexer value) and `categories` (standard Torznab id, array or CSV string; empty
+= all the categories supported by the app) complete the profile of the single
+application. On update, omitted fields keep the current value.
 
-### Endpoint
+### Endpoints
 
-| Metodo | Percorso | Note |
+| Method | Path | Notes |
 | --- | --- | --- |
 | `GET` | `/api/v2/applications` | `{"applications":[…]}` |
-| `POST` | `/api/v2/applications` | crea (`201`) |
-| `GET` | `/api/v2/applications/{id}` | dettaglio |
-| `PUT` | `/api/v2/applications/{id}` | aggiorna |
+| `POST` | `/api/v2/applications` | create (`201`) |
+| `GET` | `/api/v2/applications/{id}` | detail |
+| `PUT` | `/api/v2/applications/{id}` | update |
 | `DELETE` | `/api/v2/applications/{id}` | `204` |
-| `POST` | `/api/v2/applications/{id}/sync` | sincronizza una app |
-| `POST` | `/api/v2/applications/sync` | sincronizza tutte |
+| `POST` | `/api/v2/applications/{id}/sync` | sync one app |
+| `POST` | `/api/v2/applications/sync` | sync all |
 
-Creazione:
+Creation:
 
 ```json
 {
   "kind": "sonarr",
   "name": "Sonarr",
   "url": "http://192.168.1.10:8989",
-  "api_key": "chiave-di-sonarr",
+  "api_key": "sonarr-api-key",
   "sync_level": "full",
   "enable_rss": true,
   "enable_automatic_search": true,
@@ -416,41 +416,41 @@ Creazione:
 }
 ```
 
-`api_key` è obbligatoria alla creazione; in aggiornamento una stringa vuota
-mantiene quella salvata.
+`api_key` is mandatory on creation; on update an empty string keeps the saved
+one.
 
-Risposta di sincronizzazione:
+Sync response:
 
 ```json
 {"added": 12, "updated": 3, "deleted": 0, "skipped": 1}
 ```
 
-`POST /api/v2/applications/sync` restituisce un array con il risultato di ogni
-app, incluso `error` quando una fallisce.
+`POST /api/v2/applications/sync` returns an array with the result of each app,
+including `error` when one fails.
 
 ---
 
-## 9. Compatibilità Prowlarr (sola lettura)
+## 9. Prowlarr compatibility (read-only)
 
-Per le dashboard (Homepage, Organizr, …) indexarr espone la stessa superficie
-in lettura di Prowlarr:
+For dashboards (Homepage, Organizr, …) indexarr exposes the same read-only
+surface as Prowlarr:
 
-| Metodo | Percorso | Risposta |
+| Method | Path | Response |
 | --- | --- | --- |
 | `GET` | `/api/v1/system/status` | `appName`, `version`, `branch`, `authentication`, `startTime` |
-| `GET` | `/api/v1/health` | array vuoto (nessun problema) |
-| `GET` | `/api/v1/indexer` | elenco in formato Prowlarr |
-| `GET` | `/api/v1/indexer/{id}` | un indexer |
+| `GET` | `/api/v1/health` | empty array (no problems) |
+| `GET` | `/api/v1/indexer` | list in Prowlarr format |
+| `GET` | `/api/v1/indexer/{id}` | a single indexer |
 
-Queste rotte non accettano scritture e non inoltrano ricerche. Ogni indexer
-riporta `baseUrl` = `<base>/torznab/<slug>` e `apiPath` = `/api`, così un
-client che aggiunge `/api` ottiene l'endpoint Torznab per-indexer.
+These routes do not accept writes and do not forward searches. Each indexer
+reports `baseUrl` = `<base>/torznab/<slug>` and `apiPath` = `/api`, so a client
+that appends `/api` gets the per-indexer Torznab endpoint.
 
 ---
 
-## 10. Esempi utili
+## 10. Useful examples
 
-### Creare un indexer ExtTo e provarlo
+### Create an ExtTo indexer and test it
 
 ```bash
 KEY='…'
@@ -469,7 +469,7 @@ curl -s -X POST "$BASE/api/v2/indexers?apikey=$KEY" \
 curl -s -X POST "$BASE/api/v2/indexers/48/test?apikey=$KEY" | jq
 ```
 
-### Cercare un episodio
+### Search for an episode
 
 ```bash
 curl -s -X POST "$BASE/api/v2/indexers/15/search?apikey=$KEY" \
@@ -477,16 +477,16 @@ curl -s -X POST "$BASE/api/v2/indexers/15/search?apikey=$KEY" \
   -d '{"mode":"tvsearch","query":"Reacher","season":3,"episode":1,"limit":10}' | jq
 ```
 
-### Sincronizzare tutte le app
+### Sync all apps
 
 ```bash
 curl -s -X POST "$BASE/api/v2/applications/sync?apikey=$KEY" | jq
 ```
 
-### Validare una definizione prima di salvarla
+### Validate a definition before saving it
 
 ```bash
-jq -Rs '{body: .}' mio-sito.yaml > body.json
+jq -Rs '{body: .}' my-site.yaml > body.json
 curl -s -X POST "$BASE/api/v2/definitions/validate?apikey=$KEY" \
   -H 'Content-Type: application/json' \
   --data @body.json | jq
@@ -494,14 +494,14 @@ curl -s -X POST "$BASE/api/v2/definitions/validate?apikey=$KEY" \
 
 ---
 
-## 11. Note di sicurezza
+## 11. Security notes
 
-- Non mettere la API key negli URL condivisi o nei log: preferisci
-  `X-Api-Key` o `Authorization: Bearer`.
-- L'API non restituisce mai un segreto. Per ruotare una password, invia il
-  nuovo valore; per rimuoverla, invia una stringa vuota.
-- Le chiamate di test, ricerca e aggiornamento possono contattare i siti
-  reali: rispettano i limiti per host e i proxy configurati, ma un test su un
-  sito con CAPTCHA può fallire.
-- Le definizioni create via API sono `local` e non vengono sovrascritte dal
-  catalogo.
+- Do not put the API key in shared URLs or in logs: prefer
+  `X-Api-Key` or `Authorization: Bearer`.
+- The API never returns a secret. To rotate a password, send the new value; to
+  remove it, send an empty string.
+- Test, search and refresh calls can contact the real sites: they respect the
+  per-host limits and the configured proxies, but a test against a site with a
+  CAPTCHA can fail.
+- Definitions created through the API are `local` and are not overwritten by
+  the catalog.

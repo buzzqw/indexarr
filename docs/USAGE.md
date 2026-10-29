@@ -1,322 +1,324 @@
-# Guida all'uso di indexarr
+# indexarr user guide
 
-Questa guida accompagna dall'installazione all'uso quotidiano. Per il dettaglio
-tecnico delle API vedi [API.md](API.md) (Torznab) e
-[ADMIN-API.md](ADMIN-API.md) (JSON). Per installazione, systemd, Docker e
-configurazione di base vedi il [README](../README.md).
-
----
-
-## 1. Primo avvio
-
-1. Apri `http://<host>:8788`.
-2. Il percorso guidato chiede l'indirizzo con cui le app devono raggiungere
-   indexarr. Se le app sono su un'altra macchina, metti l'IP della macchina
-   indexarr (per esempio `http://192.168.1.10:8788`), non `localhost`.
-3. La chiave del vault viene creata al primo avvio. **Conservala**: senza di
-   essa le password e le API key salvate non si possono riaprire. Il percorso è
-   indicato in Impostazioni → Vault.
-4. Completa o salta il percorso: potrai riaprirlo da Impostazioni.
-
-La dashboard mostra sorgenti, release, problemi e lo stato delle app. La voce
-**Attività** raccoglie esecuzioni, nuove release e ricerche delle app. **Log**
-ha i log interni, le richieste ricevute con esito e tempi, e le statistiche per
-app e per indexer.
+This guide takes you from installation to everyday use. For the technical
+details of the APIs see [API.md](API.md) (Torznab) and
+[ADMIN-API.md](ADMIN-API.md) (JSON). For installation, systemd, Docker and
+basic configuration see the [README](../README.md).
 
 ---
 
-## 2. Aggiungere una sorgente
+## 1. First start
 
-### Percorso guidato
+1. Open `http://<host>:8788`.
+2. The guided path asks for the address that the apps must use to reach
+   indexarr. If the apps are on another machine, enter the IP of the indexarr
+   machine (for example `http://192.168.1.10:8788`), not `localhost`.
+3. The vault key is created on first start. **Keep it safe**: without it the
+   saved passwords and API keys cannot be reopened. The path is shown in
+   Settings → Vault.
+4. Complete or skip the guided path: you can reopen it from Settings.
 
-1. **Indexer → Aggiungi**.
-2. La ricerca nel catalogo è in cima alla pagina. Sotto ci sono le schede dei
-   bisogni: **Serie TV, Film, Anime, Musica, Libri, Italiano, Altro**.
-3. Le schede sono **cumulative**: puoi attivare Film e Libri insieme e vedrai
-   l'unione dei risultati. Una scheda attiva ha sfondo pieno e segno di spunta.
-4. **Mostra tutti i siti** apre l'elenco completo delle fonti già utilizzabili,
-   con due elenchi a discesa per **tipo** (pubblico / semi-privato / privato) e
-   **lingua**, più i filtri per categoria e protocollo.
-5. Il catalogo mostra solo le fonti che funzionano: le voci «da scrivere», le
-   bozze, le bloccate e le morte restano nell'indice per la manutenzione ma non
-   compaiono. La vista di manutenzione `/indexers/new?queue=1` le elenca tutte,
-   con i filtri per stato e percorso.
+The dashboard shows sources, releases, problems and the app status. The
+**Activity** entry collects runs, new releases and app searches. **Logs**
+holds the internal logs, the incoming requests with outcome and timings, and
+the statistics per app and per indexer.
 
-### Tipi di sorgente
+---
 
-| Tipo | Quando usarlo | Cosa chiede |
+## 2. Adding a source
+
+### Guided path
+
+1. **Indexers → Add**.
+2. The catalog search is at the top of the page. Below are the need cards:
+   **Series, Films, Anime, Music, Books, Italian, Other languages**.
+3. The cards are **cumulative**: you can enable Films and Books together and
+   see the union of the results. An active card has a filled background and a
+   check mark.
+4. **Show all sites** opens the complete list of sources that are already
+   usable, with two drop-down lists for **type** (public / semi-private /
+   private) and **language**, plus the filters for category and protocol.
+5. The catalog shows only the sources that work: the "to be written" entries,
+   the drafts, the blocked ones and the dead ones stay in the index for
+   maintenance but do not appear. The maintenance view
+   `/indexers/new?queue=1` lists them all, with the filters for status and
+   path.
+
+### Source types
+
+| Type | When to use it | What it asks for |
 | --- | --- | --- |
-| **Nativa** | Sito con definizione inclusa (la maggior parte del catalogo) | URL e, se privato, credenziali |
-| **Famiglia** | Sito con software noto (NexusPHP, Unit3D, Gazelle, …) | URL e credenziali/API key |
-| **RSS / Atom** | Feed con link diretti a `.torrent`/`.nzb` | URL del feed |
-| **Torznab / Newznab** | Servizio Torznab esterno (non Jackett/Prowlarr) | URL completo e API key |
-| **MirCrew (Smartfeed)** | URL personale `…/smartfeed/feed?u=…&e=…` | URL Smartfeed e, per il grab, l'indexer MirCrew |
+| **Native** | Site with a bundled definition (most of the catalog) | URL and, if private, credentials |
+| **Family** | Site running known software (NexusPHP, Unit3D, Gazelle, …) | URL and credentials/API key |
+| **RSS / Atom** | Feed with direct links to `.torrent`/`.nzb` | Feed URL |
+| **Torznab / Newznab** | External Torznab service (not Jackett/Prowlarr) | Full URL and API key |
+| **MirCrew (Smartfeed)** | Personal URL `…/smartfeed/feed?u=…&e=…` | Smartfeed URL and, for the grab, the MirCrew indexer |
 
-### Credenziali
+### Credentials
 
-Nel modulo di modifica, i campi obbligatori di accesso (utente, password, API
-key, cookie, token) sono in cima, nel riquadro **Accesso al sito**. Non sono
-nascosti in Avanzate.
+In the edit form, the mandatory login fields (user, password, API key, cookie,
+token) are at the top, in the **Site access** box. They are not hidden in
+Advanced.
 
-- I campi con `*` sono obbligatori.
-- Password e chiavi sono cifrate nel vault.
-- **Cambia** non salva: prepara il campo e mostra un pulsante **Salva** accanto.
-  Puoi anche scrivere direttamente e premere Salva.
-- La scheda della sorgente mostra **Configurato / Mancante** e, per i segreti,
-  **ultimo aggiornamento …**: serve a verificare che il salvataggio sia
-  arrivato.
+- Fields marked with `*` are mandatory.
+- Passwords and keys are encrypted in the vault.
+- **Change** does not save: it prepares the field and shows a **Save** button
+  next to it. You can also type directly and press Save.
+- The source card shows **Configured / Missing** and, for secrets,
+  **last update …**: it is used to verify that the save went through.
 
-Se una sorgente privata non chiede utente e password (per esempio un feed RSS
-con rsskey), il modulo lo dice: l'accesso è nell'indirizzo personale.
+If a private source does not ask for user and password (for example an RSS feed
+with rsskey), the form says so: the access is in the personal address.
 
-### MirCrew e Smartfeed
+### MirCrew and Smartfeed
 
-- **MirCrew** (definizione nativa) fa ricerca, apre il topic al download e
-  ringrazia **solo** in quel momento. Una ricerca non ringrazia mai.
-- **MirCrew (Smartfeed)** elenca i topic nuovi dal tuo URL personale e li
-  abbina all'indexer MirCrew per il grab. L'URL Smartfeed scade: se la scheda
-  avvisa «Smartfeed scaduto», apri `/smartfeed/ui` sul sito e incolla il nuovo
-  URL.
-- Se incolli un URL Smartfeed nel modulo RSS generico, indexarr lo riconosce e
-  propone il percorso corretto; una sorgente RSS già creata con quell'URL mostra
-  **Passa a Smartfeed**.
-
----
-
-## 3. La scheda di una sorgente
-
-### Panoramica
-
-- **Indirizzo**: sempre visibile sotto il nome, con credenziali e query
-  oscurate.
-- **Salute della sorgente**: verdetto in una frase («Funziona bene», «Non
-  funziona: …», «Da configurare»), ultimo errore con data e ora, registro delle
-  ultime operazioni e righe del log del processo. Una sorgente fermata dal
-  circuit breaker dopo errori ripetuti è segnata «In pausa»: indexarr non la
-  contatta finché non finisce l'attesa e poi riprova da solo.
-- **Accesso al sito**: quali credenziali sono configurate o mancanti e quando
-  sono state salvate.
-- **Stato**: ultimo aggiornamento, prossimo, frequenza, query, latenza,
-  grab.
-- **Filtri**, **Ultime release**, collegamento alle app.
-
-### Dati
-
-Grafico delle esecuzioni, tabella delle ultime corse con motivi di scarto,
-completezza dei campi (size, seeders, categoria, data, infohash) e ultimo
-campione grezzo/normalizzato. Serve a capire perché una release non arriva.
-
-### Azioni
-
-- **Prova**: esegue raggiungibilità, capacità, login e ricerca. Se riesce,
-  registra un controllo di salute e toglie il vecchio errore.
-- **Aggiorna ora**: esegue subito un aggiornamento (per le sorgenti con lista
-  ultime release).
-- **Modifica**, **Disattiva/Attiva**, **Duplica**, **Elimina**.
-- Eliminazione e disattivazione tornano al filtro da cui sei partito (per
-  esempio **Disattivati**).
-
-La frequenza è personale per sorgente e si imposta nel modulo, fuori da
-Avanzate. «Riduci la frequenza» sul problema 429 raddoppia solo quell'intervallo.
-
-Nel filtro **Problemi** c'è **Prova i problemi**: esegue la prova su tutte le
-sorgenti segnalate (problema, degradate, bloccate) in background e aggiorna il
-loro stato. Dopo aver corretto le credenziali o un indirizzo, un solo click
-verifica i casi rimasti; le sorgenti sane non vengono toccate.
-
-Una sorgente che fallisce non viene ritentata ogni ora: la riprova automatica
-segue la scala **1, 2, 3, 6, 12, 24, 48, 96 ore**. Dopo l'ultimo tentativo
-fallito il scheduler si ferma e aspetta l'utente: la scheda mostra «Riprova
-automatica sospesa». Una prova riuscita o una modifica alla sorgente azzerano
-la scala e riprendono la frequenza normale. Un aggiornamento manuale
-(«Aggiorna ora») funziona comunque. Una pausa del circuit breaker non è un
-fallimento: non allunga la scala, non disattiva la sorgente e non manda avvisi.
+- **MirCrew** (native definition) searches, opens the topic on download and
+  thanks **only** at that moment. A search never thanks.
+- **MirCrew (Smartfeed)** lists the new topics from your personal URL and pairs
+  them with the MirCrew indexer for the grab. The Smartfeed URL expires: if the
+  card warns "Smartfeed expired", open `/smartfeed/ui` on the site and paste
+  the new URL.
+- If you paste a Smartfeed URL into the generic RSS form, indexarr recognizes
+  it and suggests the correct path; an RSS source already created with that URL
+  shows **Switch to Smartfeed**.
 
 ---
 
-## 4. Cercare release
+## 3. The card of a source
 
-**Cerca** (o `/releases`) filtra la cache locale. Per ogni risultato:
+### Overview
 
-- **Scarica** apre il `.torrent` o il magnet;
-- **Copia magnet** copia il link negli appunti;
-- il titolo apre la scheda della release, con provenienza, download, invio al
-  client, preferiti, nascosti e blocco.
+- **Address**: always visible under the name, with credentials and query
+  redacted.
+- **Source health**: verdict in one sentence ("Works well", "Not working: …",
+  "Needs setup"), last error with date and time, log of the latest operations
+  and lines of the process log. A source stopped by the circuit breaker after
+  repeated errors is marked "Paused": indexarr does not contact it until the
+  wait is over and then retries by itself.
+- **Site access**: which credentials are configured or missing and when they
+  were saved.
+- **Status**: last update, next, frequency, query, latency, grab.
+- **Filters**, **Latest releases**, link to the apps.
 
-Filtri avanzati: categoria, seeder minimi, dimensione, qualità, lingua,
-includi/escludi, regex, solo file, nascondi XXX, preferiti, nascosti e
-duplicati. Le ricerche possono essere salvate.
+### Data
 
-### Ricerca live manuale
+Chart of the runs, table of the latest runs with rejection reasons,
+completeness of the fields (size, seeders, category, date, infohash) and last
+raw/normalized sample. It helps to understand why a release does not arrive.
 
-Il pannello **Ricerca live** interroga subito i siti scelti invece di leggere
-solo la cache. Scegli la modalità:
+### Actions
 
-- **Ricerca libera**: qualunque titolo;
-- **TV**: query, stagione, episodio, anno e id TVDb/IMDb/TMDb;
-- **Film**: query, anno e id IMDb/TMDb;
-- **Musica**: artista e album;
-- **Libri**: autore e titolo.
+- **Test**: runs reachability, capability, login and search. If it succeeds, it
+  records a health check and clears the old error.
+- **Update now**: runs an update immediately (for the sources with a latest
+  releases list).
+- **Edit**, **Disable/Enable**, **Duplicate**, **Delete**.
+- Deleting and disabling return to the filter you started from (for example
+  **Disabled**).
 
-Puoi selezionare uno o più indexer e una categoria. I risultati arrivano man
-mano e vengono salvati; i siti in timeout continuano in background e possono
-comparire dopo un ricaricamento. La vista live mostra al massimo 50 righe e non
-usa la paginazione normale. Con le caselle di selezione e **Invia selezionati**
-mandi più release al client di download in un colpo solo.
+The frequency is per source and is set in the form, outside Advanced. "Reduce
+the frequency" on the 429 problem doubles only that interval.
 
-Le regole (titolo, regex, categoria, infohash, fonte) bloccano le release prima
-del salvataggio; preferiti e nascosti restano locali.
+In the **Problems** filter there is **Test problems**: it runs the test on all
+the flagged sources (problem, degraded, blocked) in the background and updates
+their status. After fixing the credentials or an address, a single click checks
+the remaining cases; healthy sources are not touched.
+
+A source that fails is not retried every hour: the automatic retry follows the
+ladder **1, 2, 3, 6, 12, 24, 48, 96 hours**. After the last failed attempt the
+scheduler stops and waits for the user: the card shows "Automatic retry
+paused". A successful test or an edit to the source resets the ladder and
+resumes the normal frequency. A manual update ("Update now") works anyway. A
+circuit breaker pause is not a failure: it does not lengthen the ladder, does
+not disable the source and does not send alerts.
 
 ---
 
-## 5. Collegare le app
+## 4. Searching for releases
+
+**Search** (or `/releases`) filters the local cache. For each result:
+
+- **Download** opens the `.torrent` or the magnet;
+- **Copy magnet** copies the link to the clipboard;
+- the title opens the card of the release, with provenance, download, sending
+  to the client, favourites, hidden and block.
+
+Advanced filters: category, minimum seeders, size, quality, language,
+include/exclude, regex, files only, hide XXX, favourites, hidden and
+duplicates. Searches can be saved.
+
+### Manual live search
+
+The **Live search** panel queries the chosen sites immediately instead of
+reading only the cache. Choose the mode:
+
+- **Free search**: any title;
+- **TV**: query, season, episode, year and TVDb/IMDb/TMDb id;
+- **Movies**: query, year and IMDb/TMDb id;
+- **Music**: artist and album;
+- **Books**: author and title.
+
+You can select one or more indexers and a category. The results arrive as they
+come in and are saved; sites that time out continue in the background and may
+appear after a reload. The live view shows at most 50 rows and does not use the
+normal pagination. With the checkboxes and **Send selected** you send several
+releases to the download client in one go.
+
+The rules (title, regex, category, infohash, source) block the releases before
+saving; favourites and hidden stay local.
+
+---
+
+## 5. Connecting the apps
 
 ### Sonarr / Radarr / Lidarr / Readarr / Whisparr / Mylar3 / LazyLibrarian
 
-1. **App → Collega un'app**.
-2. Inserisci tipo, nome, URL dell'app e API key dell'app.
-3. Scegli il livello di sincronizzazione:
-   - **Disattivata**: nessun contatto;
-   - **Solo aggiunta/rimozione**;
-   - **Completa**: aggiorna anche gli indexer esistenti.
-4. In **Avanzate** imposta il profilo di questa app: RSS, ricerca automatica e
-   ricerca interattiva, seeder minimi (0 = valore dell'indexer) e categorie
-   Torznab da inviare (vuoto = tutte quelle supportate dall'app). Un indexer
-   senza categorie in comune non viene sincronizzato con quell'app.
-5. Salva e premi **Sincronizza** (o sincronizza tutte).
+1. **Apps → Connect an app**.
+2. Enter type, name, app URL and app API key.
+3. Choose the sync level:
+   - **Disabled**: no contact;
+   - **Add/remove only**;
+   - **Full**: also updates the existing indexers.
+4. In **Advanced** set the profile of this app: RSS, automatic search and
+   interactive search, minimum seeders (0 = the value of the indexer) and the
+   Torznab categories to send (empty = all those supported by the app). An
+   indexer without categories in common is not synced with that app.
+5. Save and press **Sync** (or sync all).
 
-indexarr crea nell'app solo gli indexer il cui nome inizia con `indexarr · `;
-il resto non viene toccato. Il filtro per tag decide quali sorgenti mandare a
-quale app.
+indexarr creates in the app only the indexers whose name starts with
+`indexarr · `; the rest is not touched. The tag filter decides which sources go
+to which app.
 
-### Torznab manuale
+### Manual Torznab
 
-Per un client che accetta un solo URL Torznab:
+For a client that accepts a single Torznab URL:
 
-- endpoint aggregato: `http://<host>:8788/api`
-- API key: quella di indexarr
-- per un solo indexer: `http://<host>:8788/torznab/<slug>/api`
+- aggregated endpoint: `http://<host>:8788/api`
+- API key: the one of indexarr
+- for a single indexer: `http://<host>:8788/torznab/<slug>/api`
 
-Sonarr/Radarr creati da indexarr usano invece la base
-`http://<host>:8788/torznab/<slug>`: sono loro ad aggiungere `/api`.
+Sonarr/Radarr created by indexarr use instead the base
+`http://<host>:8788/torznab/<slug>`: they are the ones that add `/api`.
 
 ### gextto
 
-In gextto aggiungi una sorgente **indexarr** con URL base
-`http://<host>:8788` (senza `/api`): gextto aggiunge da solo il percorso
-Torznab. Se scegli «Altro», usa l'endpoint completo `/api`.
+In gextto add an **indexarr** source with base URL `http://<host>:8788`
+(without `/api`): gextto adds the Torznab path by itself. If you choose "Other",
+use the complete endpoint `/api`.
 
-### Client di download
+### Download clients
 
-**App → Client di download**: qBittorrent, Transmission, Deluge, rTorrent,
+**Apps → Download clients**: qBittorrent, Transmission, Deluge, rTorrent,
 SABnzbd, NZBGet, aMule, Aria2, uTorrent, Flood, Download Station, NZBVortex,
-Hadouken e i blackhole torrent/Usenet. Il client predefinito riceve i grab; il
-pulsante **Invia** nella scheda release usa quello scelto, e **Invia selezionati**
-nella pagina Releases manda più release in un colpo solo. Per aMule il
-protocollo della release deve essere `ed2k` e il client si configura con
-l'URL della Web API (di solito `http://127.0.0.1:4711`) e la password
-dell'interfaccia web.
+Hadouken and the torrent/Usenet blackholes. The default client receives the
+grabs; the **Send** button in the release card uses the chosen one, and **Send
+selected** in the Releases page sends several releases in one go. For aMule the
+protocol of the release must be `ed2k` and the client is configured with the
+URL of the Web API (usually `http://127.0.0.1:4711`) and the password of the
+web interface.
 
-In **Impostazioni → Avanzate**, «Fai passare i download eD2k da indexarr» è
-attivo di default: il feed consegna il link di download di indexarr, che
-registra il grab e rimanda all'`ed2k://`; l'attributo `ed2k` resta il link
-diretto per i client che lo leggono. Spegnilo solo se un client non segue il
-rinvio.
-
----
-
-## 6. Notifiche
-
-**Impostazioni → Notifiche**:
-
-- webhook e Telegram (token + chat id);
-- Apprise, Discord, Slack, Gotify, ntfy, Pushover, email SMTP e script
-  personalizzato, ognuno con i propri segreti cifrati nel vault;
-- eventi: nuove release, errori, grab falliti, grab riuscito, catalogo
-  aggiornato, backup fallito;
-- cooldown anti-spam.
-
-I messaggi sono scritti nella lingua scelta in **Impostazioni → Notifiche →
-Lingua dei messaggi**: «Come l'interfaccia» (predefinito) segue il selettore in
-alto, mentre una lingua fissa resta anche quando navighi in un'altra. Scegli la
-lingua prima di **Invia notifica di prova**, che verifica subito i canali. Se
-Telegram non arriva, controlla token, chat id e che il bot sia stato avviato
-nella chat.
+In **Settings → Advanced**, "Send eD2k downloads through indexarr" is on by
+default: the feed delivers the download link of indexarr, which records the
+grab and redirects to `ed2k://`; the `ed2k` attribute remains the direct link
+for the clients that read it. Turn it off only if a client does not follow the
+redirect.
 
 ---
 
-## 7. Manutenzione e sicurezza
+## 6. Notifications
 
-- **Backup**: Impostazioni → Manutenzione. Il backup include database e stato
-  del vault; conserva anche la chiave maestra separatamente.
-- **Ripristino**: dalla stessa pagina. Dopo un ripristino, la sincronizzazione
-  successiva riallinea le app allo stato attuale di indexarr.
-- **Retention**: le release e lo storico vengono potati secondo i giorni
-  configurati. Una release già scaricata non viene rimossa.
-- **Log**: voce **Log** nella barra laterale → tab **Log interni** (la stessa vista resta in Attività → Log). Il livello si cambia da Impostazioni → Avanzate o direttamente dalla pagina.
-  Scarica il log dal pulsante dedicato.
-- **Fonti più utili**: in Manutenzione, gli scarichi serviti negli ultimi 30
-  giorni per sorgente, con tipo (Feed, Web, Indexer), numero e percentuale.
-  Serve a vedere quali fonti portano risultati che vengono davvero scaricati.
-- **API key**: Impostazioni → API Torznab. Puoi ruotare la primaria e creare
-  chiavi separate per client, revocabili.
-- **Vault**: password e chiavi sono cifrate. L'interfaccia non le mostra mai in
-  chiaro; un campo vuoto significa «non cambiare».
-- **Accesso UI**: utente e password in Impostazioni → Sicurezza. Dietro un
-  reverse proxy imposta `public_url` e inoltra `X-Forwarded-Proto`/`Host`.
+**Settings → Notifications**:
+
+- webhook and Telegram (token + chat id);
+- Apprise, Discord, Slack, Gotify, ntfy, Pushover, SMTP email and custom
+  script, each with its own secrets encrypted in the vault;
+- events: new releases, errors, failed grabs, successful grab, catalog
+  updated, failed backup;
+- anti-spam cooldown.
+
+The messages are written in the language chosen in **Settings → Notifications →
+Message language**: "Same as the interface" (default) follows the selector at
+the top, while a fixed language stays also when you navigate in another one.
+Choose the language before **Send test notification**, which checks the
+channels immediately. If Telegram does not arrive, check the token, the chat id
+and that the bot has been started in the chat.
 
 ---
 
-## 8. Problemi frequenti
+## 7. Maintenance and security
 
-| Sintomo | Cosa controllare |
+- **Backup**: Settings → Maintenance. The backup includes the database and the
+  vault state; keep the master key separately too.
+- **Restore**: from the same page. After a restore, the next synchronization
+  realigns the apps to the current state of indexarr.
+- **Retention**: the releases and the history are pruned according to the
+  configured days. A release already downloaded is not removed.
+- **Logs**: the **Logs** entry in the sidebar → **Internal log** tab (the same
+  view stays in Activity → Logs). The level is changed from Settings → Advanced
+  or directly from the page.
+  Download the log from the dedicated button.
+- **Most useful sources**: in Maintenance, the downloads served in the last 30
+  days per source, with type (Feed, Web, Indexer), number and percentage.
+  It is used to see which sources bring results that are actually downloaded.
+- **API keys**: Settings → Torznab API. You can rotate the primary one and
+  create separate keys per client, which can be revoked.
+- **Vault**: passwords and keys are encrypted. The interface never shows them
+  in clear; an empty field means "do not change".
+- **UI access**: user and password in Settings → Security. Behind a reverse
+  proxy set `public_url` and forward `X-Forwarded-Proto`/`Host`.
+
+---
+
+## 8. Common problems
+
+| Symptom | What to check |
 | --- | --- |
-| «Il sito non risponde» | rete, DNS, proxy, FlareSolverr; poi **Prova** |
-| «Il sito rifiuta le richieste» (403) | Cloudflare/challenge: configura FlareSolverr |
-| «Il sito limita le richieste» (429) | usa **Riduci la frequenza**; non è un guasto |
-| «In pausa dopo errori ripetuti» | il circuit breaker ha fermato la sorgente dopo errori veri: non serve fare nulla, riprova da solo; se torna spesso correggi la causa dell'ultimo errore |
-| «La ricerca configurata non ha restituito risultati» | la query o il filtro del sito sono sbagliati: apri Modifica |
-| Login rifiutato | password aggiornata? controlla **Accesso al sito** e l'ultimo aggiornamento |
-| CAPTCHA al login | FlareSolverr non risolve i CAPTCHA: attendi o fai un login manuale |
-| Smartfeed senza release | URL Smartfeed scaduto o sorgente RSS generica: usa **Passa a Smartfeed** |
-| Ultime release vuote | la sorgente è «solo ricerca» o l'aggiornamento è fallito: guarda il registro |
-| 404 su un vecchio link | la release è stata rimossa dalla retention: cerca di nuovo |
-| Pulsanti troncati | usa una finestra più larga o il tema mobile; il titolo va a capo |
+| "The site does not respond" | network, DNS, proxy, FlareSolverr; then **Test** |
+| "The site rejects the requests" (403) | Cloudflare/challenge: configure FlareSolverr |
+| "The site limits the requests" (429) | use **Reduce the frequency**; it is not a failure |
+| "Paused after repeated errors" | the circuit breaker stopped the source after real errors: there is nothing to do, it retries by itself; if it comes back often, fix the cause of the last error |
+| "The configured search returned no results" | the query or the filter of the site is wrong: open Edit |
+| Login rejected | password updated? check **Site access** and the last update |
+| CAPTCHA at login | FlareSolverr does not solve CAPTCHAs: wait or do a manual login |
+| Smartfeed without releases | Smartfeed URL expired or generic RSS source: use **Switch to Smartfeed** |
+| Latest releases empty | the source is "search only" or the update failed: look at the log |
+| 404 on an old link | the release was removed by retention: search again |
+| Truncated buttons | use a wider window or the mobile theme; the title wraps |
 
-Per un problema di una singola sorgente, la Panoramica contiene già causa,
-ultimo errore e registro: non serve aprire i log di sistema.
+For a problem with a single source, the Overview already contains the cause,
+the last error and the log: there is no need to open the system logs.
 
 ---
 
-## 9. Comandi utili
+## 9. Useful commands
 
 ```bash
-# stato del servizio
+# service status
 systemctl --user status indexarr.service
 
-# salute e versione
+# health and version
 curl -s http://127.0.0.1:8788/healthz
 
-# capacità Torznab
+# Torznab capabilities
 curl -s 'http://127.0.0.1:8788/api?t=caps'
 
-# elenco indexer dall'API JSON
+# indexer list from the JSON API
 curl -s -H "X-Api-Key: $KEY" http://127.0.0.1:8788/api/v2/indexers
 
-# log in tempo reale (file a rotazione accanto al database, oppure il journal)
+# real-time log (rotating file next to the database, or the journal)
 tail -f data/logs/indexarr.log
 journalctl --user -u indexarr.service -f
 ```
 
 ---
 
-## 10. Dove trovare altro
+## 10. Where to find more
 
-- [API Torznab](API.md) — endpoint, parametri, download, errori.
-- [API amministrativa JSON](ADMIN-API.md) — definizioni, indexer, proxy, app.
-- [Definizioni](DEFINITIONS.md) — come scrivere una sorgente nativa.
-- [Catalogo](CATALOG.md) — siti, famiglie, stati e prove.
-- [MirCrew](MIRCREW.md) — sessione, ringraziamenti e Smartfeed.
-- [Vault](VAULT.md) — chiave maestra, backup, Docker secrets.
-- [Architettura](ARCHITECTURE.md) — pacchetti, flusso e database.
-- [QA](QA.md) — test e checklist.
+- [Torznab API](API.md) — endpoints, parameters, downloads, errors.
+- [JSON administrative API](ADMIN-API.md) — definitions, indexers, proxy, apps.
+- [Definitions](DEFINITIONS.md) — how to write a native source.
+- [Catalog](CATALOG.md) — sites, families, states and tests.
+- [MirCrew](MIRCREW.md) — session, thanks and Smartfeed.
+- [Vault](VAULT.md) — master key, backup, Docker secrets.
+- [Architecture](ARCHITECTURE.md) — packages, flow and database.
+- [QA](QA.md) — tests and checklist.

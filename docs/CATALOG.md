@@ -1,487 +1,485 @@
-# Catalogo dei siti
+# Site catalog
 
-Il catalogo ha due livelli, con scopi diversi.
+The catalog has two levels, with different purposes.
 
-| Livello | Cosa contiene | Dove vive | Stato |
+| Level | What it contains | Where it lives | State |
 | --- | --- | --- | --- |
-| Definizione nativa | Istruzioni complete di ricerca, categorie, login e download di un sito | `internal/catalog/definitions/*.yaml` | `verificata`, `bozza`, `stabile`, `degradata` |
-| Voce leggera | Nome, URL, tipo, lingua, categorie, famiglia e stato di un sito | `internal/catalog/sites.yaml` | `verificata`, `da-provvi`, `morta` |
+| Native definition | Complete search, category, login and download instructions for a site | `internal/catalog/definitions/*.yaml` | `verificata`, `bozza`, `stabile`, `degradata` |
+| Lightweight entry | Name, URL, type, language, categories, family and state of a site | `internal/catalog/sites.yaml` | `verificata`, `da-provvi`, `morta` |
 
-Le voci leggere derivano da un'**istantanea storica dei metadati pubblici**
-dei manager: nome, URL, privacy, lingua, categorie e, quando la pagina del sito
-lo dimostra, la famiglia software. Non sono una connessione: indexarr non
-interroga Jackett o Prowlarr a runtime e non ne importa la configurazione.
-Non vengono mai generate da una definizione Cardigann.
+Lightweight entries come from a **historical snapshot of the managers' public
+metadata**: name, URL, privacy, language, categories and, when the site page
+proves it, the software family. They are not a connection: indexarr does not
+query Jackett or Prowlarr at runtime and does not import their configuration.
+They are never generated from a Cardigann definition.
 
-## Numeri al 2026-10-29
+## Numbers as of 2026-10-29
 
-Valori contati su `index.json` dopo `go generate ./internal/catalog`.
+Values counted on `index.json` after `go generate ./internal/catalog`.
 
-| Misura | Valore |
+| Measure | Value |
 | --- | ---: |
-| Totale voci nel catalogo (definizioni + voci leggere) | **627** |
-| Definizioni native | 111 (8 aiutanti generici inclusi) |
-| Voci leggere | **516** (511 dall'istantanea Jackett, 5 manuali) |
-| Verificate | **85** |
-| Bozze | **24** |
-| Da provare (`da-provvi`) | **495** |
-| Bloccate (`bloccata`) | **14** |
-| Morte (`morta`) | **7** |
-| Pubbliche verificate (host unici) | **92** |
-| Voci italiane | **14** |
+| Total entries in the catalog (definitions + lightweight entries) | **627** |
+| Native definitions | 111 (including 8 generic helpers) |
+| Lightweight entries | **516** (511 from the Jackett snapshot, 5 manual) |
+| Verified | **85** |
+| Drafts | **24** |
+| To try (`da-provvi`) | **495** |
+| Blocked (`bloccata`) | **14** |
+| Dead (`morta`) | **7** |
+| Verified public ones (unique hosts) | **92** |
+| Italian entries | **14** |
 
-Le pubbliche verificate sono conteggiate per host unico, quindi una
-definizione nativa con un mirror conta due host. Le voci leggere private
-restano tutte `da-provvi`: senza un account non si può verificare la ricerca.
+Verified public ones are counted by unique host, so a native definition
+with a mirror counts as two hosts. All private lightweight entries stay
+`da-provvi`: without an account you cannot verify search.
 
 ### eD2k: DDUnlimited
 
-`ddunlimited` è la prima definizione `protocol: ed2k`: il forum phpBB italiano
-pubblica `ed2k://|file|...|/` e solo una minoranza di topic ha anche magnet o
-`.torrent`. Il 27/10 sono stati provati dal vivo login (FlareSolverr), ricerca,
-lettura di una pagina di forum e grab; una pagina di «Movies · High Definition»
-ha prodotto 53 release in 69 s, 49 con link eD2k, e un topic di stagione è
-stato espanso in un file per episodio. I pack di stagione nascondono i link in
-un array JavaScript (`filearray[...]`): l'estrattore `body: true` li legge tutti
-e li deduplica per MD4; verificato sul topic di «The Last of Us» stagione 1
-(10 episodi, S01E01 da 15.928.363.670 byte). La ricerca del forum ha un flood control
-(«attendi qualche minuto»): la ricerca live usa un **indice locale** invece di
-`search.php`, l'elenco alfabetico delle serie (`t=61463`) e le 27
-pagine «Lista Titoli Globale» dei film (`f=1988`, una per lettera). Le due
-pagine funzionano in modo diverso: la lista TV è **un topic su tre pagine**
-(pagina 1 da `#` a H, pagina 2 da I a Q, pagina 3 da R a Z, un messaggio per
-lettera) e il motore segue il link «Prossimo»; fino al 29/10 leggeva solo la
-prima pagina, 6.521 link, e le serie dalla I alla Z (Silo, New Tricks, Scrubs,
-Walker, Strike, «Misteri di Murdoch, I») andavano tutte su `search.php`. Dal
-29/10 la lista dà 15.028 titoli. Il forum dei film contiene invece un topic per
-lettera, di una sola pagina (lettera `#`: 982 titoli), che si apre con la barra
-delle lettere: quei link rimandano agli altri topic-lettera e il motore li
-scarta. Il motore legge la lista TV e il topic della lettera cercata (cache 6
-ore), confronta il titolo in locale e apre solo i primi 5 topic; `search.php`
-(un turno ogni 65 s) resta il ripiego. Dal vivo il 29/10: «Silo» stagione 3 →
-30 file eD2k da 3 topic (2160p, 1080p, SD) in 17 s senza `search.php`; «Solo A
-Star Wars Story» → 6 file eD2k in 9 s. La lista TV
-è l'elenco delle **segnalazioni**, non comprende tutte le release: per le serie
-vecchie o non segnalate il ripiego è la ricerca del forum (con il suo flood
-control), mentre la lista film `f=1988` è completa per lettera. L'archivio
-periodico legge quattro liste (Movies HD, Movies UHD, SerieTV HD ITA, SerieTV
-UHD), due pagine da 25 topic ciascuna, e non la ricerca.
+`ddunlimited` is the first `protocol: ed2k` definition: the Italian phpBB forum
+publishes `ed2k://|file|...|/` and only a minority of topics also has a magnet
+or a `.torrent`. On 27/10 login (FlareSolverr), search, reading a forum page and
+grab were tested live; a «Movies · High Definition» page produced 53 releases in
+69 s, 49 with eD2k links, and a season topic was expanded into one file per
+episode. Season packs hide the links in a JavaScript array (`filearray[...]`):
+the `body: true` extractor reads them all and de-duplicates them by MD4;
+verified on the «The Last of Us» season 1 topic (10 episodes, S01E01 at
+15.928.363.670 bytes). The forum search has flood control («wait a few
+minutes»): live search uses a **local index** instead of `search.php`, the
+alphabetical list of series (`t=61463`) and the 27 «Lista Titoli Globale» movie
+pages (`f=1988`, one per letter). The two pages work differently: the TV list is
+**one topic across three pages** (page 1 from `#` to H, page 2 from I to Q,
+page 3 from R to Z, one post per letter) and the engine follows the «Prossimo»
+link; until 29/10 it read only the first page, 6.521 links, and the series from
+I to Z (Silo, New Tricks, Scrubs, Walker, Strike, «Misteri di Murdoch, I») all
+went through `search.php`. Since 29/10 the list gives 15.028 titles. The movie
+forum instead contains one topic per letter, a single page each (letter `#`: 982
+titles), which opens with the letter bar: those links point to the other
+letter topics and the engine discards them. The engine reads the TV list and the
+topic for the requested letter (6-hour cache), compares the title locally and
+opens only the first 5 topics; `search.php` (one turn every 65 s) remains the
+fallback. Live on 29/10: «Silo» season 3 → 30 eD2k files from 3 topics (2160p,
+1080p, SD) in 17 s without `search.php`; «Solo A Star Wars Story» → 6 eD2k files
+in 9 s. The TV list is the list of **reports**, it does not include every
+release: for old or unreported series the fallback is the forum search (with its
+flood control), while the movie list `f=1988` is complete by letter. The
+periodic archive reads four lists (Movies HD, Movies UHD, SerieTV HD ITA,
+SerieTV UHD), two pages of 25 topics each, and not the search.
 
-Il flood control di `search.php`, misurato il 28/10: il forum accetta una
-ricerca per account ogni 57-58 s (rifiutata a 55 s, accettata a 58 s e a 70 s),
-un rifiuto non fa ripartire il conto, e una ricerca di sole parole troppo
-comuni o inesistenti non conta. Per questo la definizione ha
-`search.interval: 65s` e `search.cache: 12h`: le ricerche al forum passano una
-alla volta, a 65 s dalla risposta della precedente; una ricerca che non ha un
-turno in tempo non parte, va in coda e la cronologia la mostra «In coda» invece
-che come errore. La coda parte da sola in background (provato il 28/10: 4
-ricerche in coda mandate alle 09:04:33, 09:05:39, 09:06:46 e 09:07:52, tutte
-accettate) e la richiesta identica successiva legge la pagina dalla cache. Ogni
-invio del lavoro in background lascia una riga `search` nella cronologia
-dell'indexer, con query, stato, latenza e errore: senza quelle righe un rifiuto
-del forum restava invisibile e la pagina sembrava solo «mai arrivata». Le
-misure del 28/10 mostrano però che il forum rifiuta anche a 65 s quando le
-ricerche si susseguono: in una raffica di sei, tre invii in coda sono stati
-accettati (09:53:33, 09:55:18, 09:56:28) e i due successivi rifiutati
-(09:58:02, 09:59:20); con due soli tentativi la pagina veniva scartata mentre
-il blocco era ancora attivo. Ora il worker ritenta al massimo due volte dopo
-un rifiuto, con una pausa di quattro intervalli (circa 4m20s) prima di
-spendere un altro turno, raddoppiata a ogni rifiuto di fila fino a 32
-intervalli (dal 29/10, dopo un blocco di 83 minuti)
-(`TestDDUnlimitedBackgroundSendRetriesPastABurstBlock`), e il rifiuto resta
-visibile in cronologia. Per non rischiare l'account, le prove manuali si
-fermano qui: il resto lo fa la coda dell'applicazione al ritmo consentito. Lo stesso riquadro «Informazione» del
-forum dice anche «Nessun argomento…» e «le seguenti parole sono state
-ignorate»: solo «non ti è permesso» è un rifiuto. Le ricerche libere con un
-episodio («I misteri di Murdoch S13E01») mandano al forum solo il titolo,
-perché i topic scrivono «Stagione 13» e mai `S13E01`.
+The flood control of `search.php`, measured on 28/10: the forum accepts one
+search per account every 57-58 s (rejected at 55 s, accepted at 58 s and at
+70 s), a rejection does not restart the count, and a search made only of overly
+common or non-existent words does not count. That is why the definition has
+`search.interval: 65s` and `search.cache: 12h`: forum searches go through one
+at a time, 65 s after the response to the previous one; a search that does not
+get a turn in time does not start, it is queued and the history shows it as
+«Queued» instead of as an error. The queue starts by itself in the background
+(tested on 28/10: 4 queued searches sent at 09:04:33, 09:05:39, 09:06:46 and
+09:07:52, all accepted) and the next identical request reads the page from the
+cache. Every background job dispatch leaves a `search` row in the indexer
+history, with query, state, latency and error: without those rows a forum
+rejection stayed invisible and the page just looked like it «never arrived».
+The measurements of 28/10 show, however, that the forum also rejects at 65 s
+when searches follow one another: in a burst of six, three queued dispatches
+were accepted (09:53:33, 09:55:18, 09:56:28) and the next two rejected
+(09:58:02, 09:59:20); with only two attempts the page was discarded while the
+block was still active. Now the worker retries at most twice after a rejection,
+with a pause of four intervals (about 4m20s) before spending another turn,
+doubled on each consecutive rejection up to 32 intervals (since 29/10, after an
+83-minute block) (`TestDDUnlimitedBackgroundSendRetriesPastABurstBlock`), and
+the rejection stays visible in the history. To avoid risking the account,
+manual tests stop here: the application queue does the rest at the allowed
+pace. The same forum «Informazione» box also says «Nessun argomento…» and «le
+seguenti parole sono state ignorate»: only «non ti è permesso» is a rejection.
+Free-text searches with an episode («I misteri di Murdoch S13E01») send only
+the title to the forum, because topics write «Stagione 13» and never `S13E01`.
 
-Il protocollo eD2k è escluso dalla sincronizzazione con Sonarr,
-Radarr e gli altri programmi Servarr; il client aMule (`kind: amule`) riceve i
-link dalla Web API.
+The eD2k protocol is excluded from synchronization with Sonarr, Radarr and the
+other Servarr programs; the aMule client (`kind: amule`) receives the links from
+the Web API.
 
-Il catalogo ora contiene **tutte** le fonti dell'istantanea, comprese le
-private senza una famiglia riconosciuta. Una fonte senza via nativa resta
-nell'indice come **da scrivere** e non produce alcun proxy; non compare
-nell'elenco utente.
+The catalog now contains **all** the sources of the snapshot, including the
+private ones without a recognized family. A source without a native route stays
+in the index as **to be written** and produces no proxy; it does not appear in
+the user list.
 
-### Cosa vede l'utente, cosa tiene il sistema
+### What the user sees, what the system keeps
 
-L'elenco «Aggiungi indexer» mostra solo le fonti che già funzionano: le
-definizioni native `verificata`/`stabile` e i connettori generici. Le bozze, le
-voci `da-provvi`, le `bloccata` e le `morta` restano in `index.json` e in
-`sites.yaml`, perché servono alla manutenzione, ma non vengono proposte.
+The «Add indexer» list shows only the sources that already work: the
+`verificata`/`stabile` native definitions and the generic connectors. Drafts,
+`da-provvi` entries, `bloccata` and `morta` ones stay in `index.json` and in
+`sites.yaml`, because maintenance needs them, but they are not proposed.
 
-La coda non viene cancellata: viene classificata dallo stato. Per rivederla
-tutta c'è la vista di manutenzione `/indexers/new?queue=1`, non linkata dalla
-UI, che mostra anche i badge «Da scrivere», «In prova», «Problemi» e
-«Bloccato».
+The queue is not deleted: it is classified by state. To review all of it there
+is the maintenance view `/indexers/new?queue=1`, not linked from the UI, which
+also shows the «To write», «Trying», «Problems» and «Blocked» badges.
 
-La testata della vista di manutenzione riassume la composizione della coda
-(`Queue: N to write, N drafts, N blocked, N dead`, tradotta nelle 7 lingue) e
-ogni riga `bloccata` o `morta` porta la ragione misurata presa da
-`metadata/blocked.yaml` (`note` in `index.json`), così la prova è visibile
-senza aprire il manifest. Nell'elenco utente né il conteggio né la ragione
-compaiono: la classe `.site-note` è resa solo nella coda.
+The header of the maintenance view summarizes the composition of the queue
+(`Queue: N to write, N drafts, N blocked, N dead`, translated into the 7
+languages) and every `bloccata` or `morta` row carries the measured reason taken
+from `metadata/blocked.yaml` (`note` in `index.json`), so the evidence is
+visible without opening the manifest. In the user list neither the count nor the
+reason appears: the `.site-note` class is rendered only in the queue.
 
-| Stato | Significato | Visibile all'utente |
+| State | Meaning | Visible to the user |
 | --- | --- | --- |
-| `verificata`, `stabile` | pronto e provato dal vivo | sì |
-| `bozza` | definizione da finire o da verificare | no |
-| `degradata` | definizione che funziona con problemi, da migliorare | no |
-| `da-provvi` | fonte da provare o definizione da scrivere | no |
-| `bloccata` | non gestibile per un motivo che non è codice: fuori coda | no |
-| `morta` | indirizzo sparito: fuori coda | no |
+| `verificata`, `stabile` | ready and tested live | yes |
+| `bozza` | definition to finish or verify | no |
+| `degradata` | definition that works with problems, to improve | no |
+| `da-provvi` | source to try or definition to write | no |
+| `bloccata` | not manageable for a reason that is not code: out of the queue | no |
+| `morta` | address gone: out of the queue | no |
 
-### Copertura nativa dell'istantanea Jackett
+### Native coverage of the Jackett snapshot
 
-| Via | Fonti | Note |
+| Route | Sources | Notes |
 | --- | ---: | --- |
-| Definizione nativa (id o host) | **127** | fonti dell'istantanea il cui host coincide con una definizione nativa |
-| Software noto (connettore di famiglia) | **154** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
-| Da scrivere | **337** | 281 private, 56 semiprivate |
-| Fuori coda (bloccate o morte) | **20** | 13 bloccate, 7 morte |
-| **Totale istantanea Jackett** | **638** | metadati del 23/10 |
+| Native definition (id or host) | **127** | snapshot sources whose host matches a native definition |
+| Known software (family connector) | **154** | NexusPHP 76, UNIT3D 59, XBTIT 12, Gazelle 6, TorrentTrader 2 |
+| To write | **337** | 281 private, 56 semi-private |
+| Out of the queue (blocked or dead) | **20** | 13 blocked, 7 dead |
+| **Total Jackett snapshot** | **638** | metadata of 23/10 |
 
-Il conteggio è per `source_id` dell'istantanea: una fonte il cui host coincide
-con una definizione nativa non ha una riga in `sites.yaml` e conta come nativa.
-Le 126 fonti coperte sono più delle definizioni perché una definizione può
-coprire più id della stessa istantanea. La somma non include le 6 fonti già
-configurate in Jackett quando coincidono con una definizione nativa.
+The count is by `source_id` of the snapshot: a source whose host matches a
+native definition has no row in `sites.yaml` and counts as native. The 126
+covered sources are more than the definitions because one definition can cover
+several ids of the same snapshot. The sum does not include the 6 sources already
+configured in Jackett when they match a native definition.
 
-### Fonti dei manager assenti dall'istantanea
+### Manager sources missing from the snapshot
 
-Il 27/10 l'elenco attuale di Jackett e lo schema di Prowlarr (solo `GET`) sono
-stati confrontati con il catalogo per nome e host. Mancavano cinque fonti
-torrent, ora voci leggere in `metadata/manual.yaml` con la prova del `GET`:
+On 27/10 the current Jackett list and the Prowlarr schema (only `GET`) were
+compared with the catalog by name and host. Five torrent sources were missing,
+now lightweight entries in `metadata/manual.yaml` with the `GET` evidence:
 
-| Voce | Tipo | Stato | Nota |
+| Entry | Type | State | Note |
 | --- | --- | --- | --- |
-| Anidex (`mg-anidex`) | pubblica | da provvi | indexer nativo di Prowlarr; il sito risponde con un controllo DDoS-Guard |
-| BinaryBay (`mg-binarybay`) | privata | da provvi | API key; famiglia non dimostrata |
-| Pornorip (`mg-pornorip`) | privata | da provvi | login con cookie |
-| RevolutionTT (`mg-revolutiontt`) | privata | da provvi | indexer nativo di Prowlarr |
-| SAPIbr (`mg-sapibr`) | privata | da provvi | UNIT3D dal titolo della pagina di login |
+| Anidex (`mg-anidex`) | public | da provvi | native Prowlarr indexer; the site responds with a DDoS-Guard check |
+| BinaryBay (`mg-binarybay`) | private | da provvi | API key; family not proven |
+| Pornorip (`mg-pornorip`) | private | da provvi | login with cookie |
+| RevolutionTT (`mg-revolutiontt`) | private | da provvi | native Prowlarr indexer |
+| SAPIbr (`mg-sapibr`) | private | da provvi | UNIT3D from the login page title |
 
-Restano fuori, di proposito, Magnetico e BitMagnet (DHT locali, vedi sotto),
-il Torznab generico, TorrentPotato e il feed RSS generico di Prowlarr, che in
-indexarr sono già tipi di sorgente e non siti.
+Magnetico and BitMagnet (local DHT, see below), the generic Torznab,
+TorrentPotato and the generic Prowlarr RSS feed are deliberately left out,
+because in indexarr they are already source types and not sites.
 
-### Coda pubblica: esito del 27/10
+### Public queue: outcome of 27/10
 
-Quindici fonti pubbliche della coda hanno ora una definizione nativa
-verificata dal vivo (ricerca reale e, dove serve, grab del magnet o del
-`.torrent`) con fixture reali: TorrentDownload, MagnetDownload, BlueRoms,
-XXXClub, Free JAV Torrent, PornXLab, BigFANGroup, Catorrent, SkidrowRepack,
-PC-torrent, Zamunda.LIFE, MyPornClub, PornoTorrent, MixtapeTorrent e sosulki.
-`animetosho.net` è un mirror della definizione AnimeTosho.
+Fifteen public sources in the queue now have a native definition verified live
+(real search and, where needed, grab of the magnet or the `.torrent`) with real
+fixtures: TorrentDownload, MagnetDownload, BlueRoms, XXXClub, Free JAV Torrent,
+PornXLab, BigFANGroup, Catorrent, SkidrowRepack, PC-torrent, Zamunda.LIFE,
+MyPornClub, PornoTorrent, MixtapeTorrent and sosulki. `animetosho.net` is a
+mirror of the AnimeTosho definition.
 
-Nello stesso giorno è stato ripreso il gruppo Cloudflare: cinque nuove
-definizioni (BT.etree, ExtraTorrent.st, kickasstorrents.to, Magnet Cat,
-DaMagNet) e il mirror `kickass.ws` sono descritti nella sezione
-[Cloudflare](#cloudflare-esito-del-2710).
+The same day the Cloudflare group was taken up again: five new definitions
+(BT.etree, ExtraTorrent.st, kickasstorrents.to, Magnet Cat, DaMagNet) and the
+`kickass.ws` mirror are described in the
+[Cloudflare](#cloudflare-outcome-of-2710) section.
 
-Le sette fonti non gestibili per un motivo che non è codice sono uscite dalla
-coda e sono `bloccata` (52BT è `morta`); la prova è in
+The seven sources that cannot be managed for a reason that is not code have left
+the queue and are `bloccata` (52BT is `morta`); the evidence is in
 `metadata/blocked.yaml`.
 
-### Secondo giro sulla coda: esito del 27/10
+### Second round on the queue: outcome of 27/10
 
-Lo stesso giorno le undici fonti pubbliche rimaste sono state riprese una per
-una, con una GET reale e, dove la pagina risponde, il grab. Quattro hanno ora
-una definizione nativa:
+The same day the eleven remaining public sources were gone through one by one,
+with a real GET and, where the page responds, the grab. Four now have a native
+definition:
 
-| Fonte | Ricerca | Grab |
+| Source | Search | Grab |
 | --- | --- | --- |
-| E-Hentai | GET `/?f_search=` | `.torrent` da `gallerytorrents.php`: 200 `application/x-bittorrent`, 18212 byte |
-| XXXTor | GET `/b.php?search=` attraverso FlareSolverr | magnet nella riga |
-| U3C3 | GET `/?search2=<token fisso>&search=` | magnet e `.torrent` nella riga |
-| torrent.by | GET `/search/?search=`, con `meta.insecure_tls` | magnet nella riga (100 magnet su 100 righe) |
+| E-Hentai | GET `/?f_search=` | `.torrent` from `gallerytorrents.php`: 200 `application/x-bittorrent`, 18212 bytes |
+| XXXTor | GET `/b.php?search=` through FlareSolverr | magnet in the row |
+| U3C3 | GET `/?search2=<token fisso>&search=` | magnet and `.torrent` in the row |
+| torrent.by | GET `/search/?search=`, with `meta.insecure_tls` | magnet in the row (100 magnets out of 100 rows) |
 
-Cinque sono uscite dalla coda come `bloccata` e due come `morta`, con la prova
-misurata in `metadata/blocked.yaml`:
+Five left the queue as `bloccata` and two as `morta`, with the measured
+evidence in `metadata/blocked.yaml`:
 
-| Fonte | Stato | Motivo misurato |
+| Source | State | Measured reason |
 | --- | --- | --- |
-| FileMood | `bloccata` | la challenge Cloudflare non si apre sulla pagina di ricerca: tre tentativi via solver restituiscono `One moment...` (3620 byte) |
-| VSTHouse | `bloccata` | non è un indexer BitTorrent: le pagine offrono un download diretto uCoz, 0 magnet e 0 `.torrent` |
-| EpubLibre | `bloccata` | non è un indexer BitTorrent: il catalogo serve EPUB, 0 magnet e 0 `.torrent` |
-| torrent-pirat | `bloccata` | portale phpBB senza magnet; `/tracker/` resta una challenge Cloudflare vuota (718 byte) |
-| Anidex | `bloccata` | DDoS-Guard `403` al client, `Error 502` del origin attraverso il solver |
-| OpenSharing | `morta` | timeout su IPv4 e IPv6, il solver risponde `500` |
-| AniSource | `morta` | nessun record A, connessione rifiutata su 443 e 80 |
+| FileMood | `bloccata` | the Cloudflare challenge does not open on the search page: three attempts through the solver return `One moment...` (3620 bytes) |
+| VSTHouse | `bloccata` | it is not a BitTorrent indexer: the pages offer a direct uCoz download, 0 magnets and 0 `.torrent` |
+| EpubLibre | `bloccata` | it is not a BitTorrent indexer: the catalog serves EPUB, 0 magnets and 0 `.torrent` |
+| torrent-pirat | `bloccata` | phpBB portal without magnets; `/tracker/` stays an empty Cloudflare challenge (718 bytes) |
+| Anidex | `bloccata` | DDoS-Guard `403` to the client, origin `Error 502` through the solver |
+| OpenSharing | `morta` | timeout on IPv4 and IPv6, the solver responds `500` |
+| AniSource | `morta` | no A record, connection refused on 443 and 80 |
 
-**torrent.by** merita una nota a parte: il server invia una catena TLS
-incompleta (manca l'intermedio Let's Encrypt `YE1`) e sia
-Go sia `openssl` rifiutano il certificato, quindi la definizione usa
-`meta.insecure_tls: true`. L'eccezione vale solo per quella fonte pubblica, il
-trasporto condiviso non viene toccato, e la UI mostra il badge «TLS non
-verificato» con l'avviso nel form. La ricerca è stata provata dal vivo
-(`/search/?search=1080p`, 100 righe con magnet, dimensione, data e semi) e il
-grab restituisce il magnet della riga.
+**torrent.by** deserves a separate note: the server sends an incomplete TLS
+chain (the Let's Encrypt intermediate `YE1` is missing) and both Go and
+`openssl` reject the certificate, so the definition uses
+`meta.insecure_tls: true`. The exception applies only to that public source, the
+shared transport is not touched, and the UI shows the «TLS not verified» badge
+with the warning in the form. The search was tested live
+(`/search/?search=1080p`, 100 rows with magnet, size, date and seeds) and the
+grab returns the row's magnet.
 
 
-| Bloccata | Motivo misurato |
+| Blocked | Measured reason |
 | --- | --- |
-| MejorTorrent | `.torrent` dietro Cloudflare; il solver restituisce solo testo, la ricerca funziona e il grab no |
-| OneJAV | come MejorTorrent |
-| Torrent[CORE] | `/search` vuoto (40 byte), handle opachi, nessun magnet |
-| DonTorrent | download con proof-of-work JavaScript |
-| Byrutor | `.torrent` dietro captcha; il link non restituisce il file nemmeno via solver |
-| HDRTorrent | la pagina non espone magnet né `.torrent`, rimanda a archive.org |
-| World-torrent | il dominio serve un altro portale (Darkfox) |
-| FileMood | la challenge Cloudflare non si apre sulla ricerca (3 tentativi via solver) |
-| VSTHouse | non è un indexer BitTorrent: download diretto uCoz, nessun magnet né `.torrent` |
-| EpubLibre | non è un indexer BitTorrent: il catalogo serve EPUB |
-| torrent-pirat | portale phpBB senza magnet; `/tracker/` dietro challenge Cloudflare |
-| Anidex | DDoS-Guard `403` e origin `502` attraverso il solver |
-| comicat | ricerca dietro un visitor test JavaScript (`captcha/addon.php`), 1132 byte senza righe |
-| miobt | come comicat: stesso visitor test, stesso corpo da 1132 byte |
-| OpenSharing (`morta`) | timeout IPv4/IPv6, solver `500` |
-| AniSource (`morta`) | nessun record A, connessione rifiutata |
+| MejorTorrent | `.torrent` behind Cloudflare; the solver returns only text, search works and the grab does not |
+| OneJAV | same as MejorTorrent |
+| Torrent[CORE] | empty `/search` (40 bytes), opaque handles, no magnets |
+| DonTorrent | download with JavaScript proof-of-work |
+| Byrutor | `.torrent` behind captcha; the link does not return the file even through the solver |
+| HDRTorrent | the page exposes neither magnet nor `.torrent`, it points to archive.org |
+| World-torrent | the domain serves another portal (Darkfox) |
+| FileMood | the Cloudflare challenge does not open on search (3 attempts through the solver) |
+| VSTHouse | it is not a BitTorrent indexer: direct uCoz download, no magnets and no `.torrent` |
+| EpubLibre | it is not a BitTorrent indexer: the catalog serves EPUB |
+| torrent-pirat | phpBB portal without magnets; `/tracker/` behind a Cloudflare challenge |
+| Anidex | DDoS-Guard `403` and origin `502` through the solver |
+| comicat | search behind a JavaScript visitor test (`captcha/addon.php`), 1132 bytes with no rows |
+| miobt | same as comicat: same visitor test, same 1132-byte body |
+| OpenSharing (`morta`) | IPv4/IPv6 timeout, solver `500` |
+| AniSource (`morta`) | no A record, connection refused |
 | 52BT (`morta`) | HTTP 410 «The address is dead.» |
 
-### Cloudflare: esito del 27/10
+### Cloudflare: outcome of 27/10
 
-La riga precedente diceva «non verificabili senza FlareSolverr». La prova del
-27/10 dice il contrario: con il FlareSolverr locale attivo gli **undici** siti
-pubblici che il 25/10 avevano risposto `403 "Just a moment..."` si risolvono
-tutti. Cinque hanno ora una definizione nativa nuova (BT.etree, ExtraTorrent.st,
-kickasstorrents.to, kickass.ws, Magnet Cat), tre erano già nativi e restano
-MejorTorrent, OneJAV e Torrent[CORE]. A questi si aggiunge DaMagNet, che aveva
-la home 200 ma il dettaglio dietro challenge e ora è nativo anche lui.
+The previous line said «not verifiable without FlareSolverr». The evidence of
+27/10 says the opposite: with the local FlareSolverr active the **eleven**
+public sites that had responded `403 "Just a moment..."` on 25/10 all resolve.
+Five now have a new native definition (BT.etree, ExtraTorrent.st,
+kickasstorrents.to, kickass.ws, Magnet Cat), three were already native and
+remain MejorTorrent, OneJAV and Torrent[CORE]. DaMagNet is added to these: it
+had the home at 200 but the detail behind a challenge, and now it is native as
+well.
 
-| Fonte | Ricerca | Grab |
+| Source | Search | Grab |
 | --- | --- | --- |
-| BT.etree | FlareSolverr | `.torrent` diretto: `download.php` risponde 200 `application/x-bittorrent` anche senza solver |
-| ExtraTorrent.st | FlareSolverr | magnet nella riga |
-| kickasstorrents.to | FlareSolverr | magnet nella riga |
-| kickass.ws | FlareSolverr | magnet nella riga (mirror della definizione Kickass) |
-| Magnet Cat | FlareSolverr | infohash nel link `/hash/<40-hex>.html` |
-| DaMagNet | FlareSolverr | magnet nella pagina di dettaglio |
+| BT.etree | FlareSolverr | direct `.torrent`: `download.php` responds 200 `application/x-bittorrent` even without the solver |
+| ExtraTorrent.st | FlareSolverr | magnet in the row |
+| kickasstorrents.to | FlareSolverr | magnet in the row |
+| kickass.ws | FlareSolverr | magnet in the row (mirror of the Kickass definition) |
+| Magnet Cat | FlareSolverr | infohash in the `/hash/<40-hex>.html` link |
+| DaMagNet | FlareSolverr | magnet on the detail page |
 
-Le definizioni non usano una sessione persistente: il solver a una richiesta
-basta per la ricerca e lascia il grab dei magnet al transport normale. Dove il
-sito protegge anche il file, il grab non funziona e la definizione non viene
-scritta a metà.
+The definitions do not use a persistent session: the solver on a single request
+is enough for the search and leaves the magnet grab to the normal transport.
+Where the site also protects the file, the grab does not work and the definition
+is not written halfway.
 
-Restano tre, ora `bloccata` e fuori coda, per motivi misurati il 27/10:
+Three remain, now `bloccata` and out of the queue, for reasons measured on
+27/10:
 
-- **MejorTorrent e OneJAV**: la challenge copre anche il `.torrent` (`403
-  text/html` sia a un client normale sia ripetendo i cookie `cf_clearance` del
-  solver con lo stesso User-Agent). Cloudflare lega il lasciapassare al
-  fingerprint TLS del browser, che curl/Go non riproducono, e FlareSolverr non
-  restituisce corpi binari: il grab non è possibile.
-- **Torrent[CORE]**: `/search` risponde un corpo vuoto di 40 byte e le pagine
-  usano handle base64 opachi senza magnet. Non c'è una ricerca HTML da
-  descrivere.
+- **MejorTorrent and OneJAV**: the challenge also covers the `.torrent` (`403
+  text/html` both to a normal client and when repeating the solver's
+  `cf_clearance` cookies with the same User-Agent). Cloudflare ties the pass to
+  the browser's TLS fingerprint, which curl/Go do not reproduce, and
+  FlareSolverr does not return binary bodies: the grab is not possible.
+- **Torrent[CORE]**: `/search` returns an empty 40-byte body and the pages use
+  opaque base64 handles without magnets. There is no HTML search to describe.
 
-### Semi-private: censimento del 27/10
+### Semi-private: census of 27/10
 
-Le 57 fonti semi-private rimaste in coda sono state passate una per una con una
-richiesta reale, leggendo la definizione storica di Jackett **solo come aiuto
-di scrittura** per conoscere il percorso di ricerca (nessuna definizione
-Cardigann viene importata o distribuita). L'esito è netto e non dipende dal
-codice:
+The 57 semi-private sources left in the queue were gone through one by one with
+a real request, reading the historical Jackett definition **only as a writing
+aid** to learn the search path (no Cardigann definition is imported or
+distributed). The outcome is clear-cut and does not depend on the code:
 
-| Esito | Fonti | Dettaglio |
+| Outcome | Sources | Detail |
 | --- | ---: | --- |
-| Serve un account | **52** | la definizione storica dichiara `username`/`password` (o cookie): senza credenziali non c'è nulla da provare |
-| Pagina di login | **4** | AniDUB, Erai-Raws, RuTracker.org, UniOtaku: `type="password"` sulla pagina, ricerca non disponibile da ospite |
-| Visitor test JavaScript | **2** | comicat e miobt: corpo da 1132 byte che carica `captcha/captcha.js` e posta su `/addon.php`; ora `bloccata` |
-| Serie TV senza torrent da ospite | **1** | LostFilm: `/search/?q=` risponde 200 ma elenca serie, i torrent richiedono l'accesso |
+| An account is needed | **52** | the historical definition declares `username`/`password` (or cookie): without credentials there is nothing to test |
+| Login page | **4** | AniDUB, Erai-Raws, RuTracker.org, UniOtaku: `type="password"` on the page, search not available to guests |
+| JavaScript visitor test | **2** | comicat and miobt: 1132-byte body that loads `captcha/captcha.js` and posts to `/addon.php`; now `bloccata` |
+| TV series without torrents for guests | **1** | LostFilm: `/search/?q=` responds 200 but lists series, the torrents require access |
 
-Nessuna di queste può essere verificata senza un account, quindi restano
-`da-provvi`: è lo stato giusto per una fonte raggiungibile ma non dimostrabile.
-Non vanno marcate `bloccata`, perché il motivo non è il sito ma l'assenza delle
-credenziali.
+None of these can be verified without an account, so they stay `da-provvi`: that
+is the right state for a source that is reachable but cannot be proven. They
+must not be marked `bloccata`, because the reason is not the site but the lack
+of credentials.
 
-Un secondo giro ha provato comunque la ricerca da ospite su tutte e 57, anche
-dove la definizione storica dichiara credenziali. Sei fonti dietro Cloudflare
+A second round tried the guest search anyway on all 57, even where the
+historical definition declares credentials. Six sources behind Cloudflare
 (helltorrents, kinozal, seatracker/Marine Tracker, musebootlegs, MVGroup Forum,
-UzTracker) superano la challenge con FlareSolverr — 41-204 KB di pagina vera —
-ma rispondono con un form di login; le altre restituiscono direttamente la
-pagina di accesso. Nessuna fonte semi-private espone righe con magnet da
-ospite, quindi il blocco non è tecnico: serve un account.
+UzTracker) pass the challenge with FlareSolverr — 41-204 KB of real page — but
+respond with a login form; the others return the access page directly. No
+semi-private source exposes rows with magnets to guests, so the block is not
+technical: an account is needed.
 
-Se un account arriva (vault dell'indexer), il percorso è quello solito: si
-osservano ricerca, dettaglio e grab con la sessione, si salvano le fixture e si
-scrive la definizione. Senza, l'unica cosa onesta è lasciarle in coda.
+If an account arrives (indexer vault), the path is the usual one: search, detail
+and grab are observed with the session, the fixtures are saved and the
+definition is written. Without one, the only honest thing is to leave them in
+the queue.
 
-### Salute delle definizioni: prova dal vivo del 27/10
+### Definition health: live test of 27/10
 
-Ogni definizione con una sezione `health` è stata eseguita davvero (reach +
-auth + ricerca) con il FlareSolverr locale. Su **109** definizioni:
+Every definition with a `health` section was really executed (reach + auth +
+search) with the local FlareSolverr. Out of **109** definitions:
 
-| Esito | Definizioni | Dettaglio |
+| Outcome | Definitions | Detail |
 | --- | ---: | --- |
-| Ricerca riuscita | **69** | contando `rutracker` dopo la correzione |
-| Nessuna sezione `search` | **20** | definizioni feed/latest o solo API: la ricerca non fa parte del contratto, non sono errori |
-| Servono impostazioni | **16** | private o parametriche (`username`, `cookie`, `url`): senza non si aprono |
-| Lente ma funzionanti | **2** | `btdirectory` e `mixtapetorrent` risolvono il dettaglio durante la ricerca e superano i 90 s; le pagine hanno 20 righe e 10 risultati |
-| Non funzionanti | **2** | `torrentbyte` e `torrentsome`, ora `degradata` |
+| Search succeeded | **69** | counting `rutracker` after the fix |
+| No `search` section | **20** | feed/latest or API-only definitions: search is not part of the contract, these are not errors |
+| Settings needed | **16** | private or parameterized (`username`, `cookie`, `url`): without them they do not open |
+| Slow but working | **2** | `btdirectory` and `mixtapetorrent` resolve the detail during the search and exceed 90 s; the pages have 20 rows and 10 results |
+| Not working | **2** | `torrentbyte` and `torrentsome`, now `degradata` |
 
-Le due regressioni misurate:
+The two measured regressions:
 
-- **torrentbyte**: la home risponde `403` anche attraverso il solver, che
-  restituisce una pagina `403 Forbidden` da 698 byte; la ricerca non produce più
-  righe. La definizione resta nel catalogo come `degradata` finché qualcuno non
-  rilegge il sito.
-- **torrentsome**: il `POST /topic/index` con `_csrf` e `keywords` ora risponde
-  `400` (funzionava il 25/10); il sito è vivo (108 KB sulla home), è cambiata la
-  ricerca. Anche questa è `degradata`.
+- **torrentbyte**: the home responds `403` even through the solver, which
+  returns a 698-byte `403 Forbidden` page; search no longer produces rows. The
+  definition stays in the catalog as `degradata` until someone re-reads the
+  site.
+- **torrentsome**: the `POST /topic/index` with `_csrf` and `keywords` now
+  responds `400` (it worked on 25/10); the site is alive (108 KB on the home),
+  the search changed. This one is `degradata` too.
 
-Corretta invece **rutracker**: il dominio risponde `403` a un client normale ma
-la ricerca è leggibile da un browser (112 KB, 27 magnet). La definizione ora
-dichiara una sessione FlareSolverr (`name_prefix: indexarr-rutracker`) e il test
-dal vivo passa in 4,1 s.
+**rutracker**, on the other hand, was fixed: the domain responds `403` to a
+normal client but the search is readable from a browser (112 KB, 27 magnets).
+The definition now declares a FlareSolverr session
+(`name_prefix: indexarr-rutracker`) and the live test passes in 4.1 s.
 
-## Stati onesti
+## Honest states
 
-- **`verificata`** (voce leggera): è stato fatto un `GET` reale sulla home page,
-  il sito ha risposto 2xx/3xx con una pagina vera e non è un login o una
-  schermata anti-bot. La prova è in `metadata/verification.yaml`, con data,
-  HTTP, byte e titolo. Non significa che la ricerca sia stata provata: per
-  quello servono una definizione nativa e la sua fixture.
-- **`da-provvi`**: nessuna prova, oppure sito privato raggiungibile ma senza
-  account, oppure `403`/`5xx`/login/anti-bot. È il badge giusto per un privato
-  che non è stato provato dall'interno.
-- **`bloccata`**: il sito non è implementabile per un motivo che non è una riga
-  di codice mancante (captcha, proof-of-work, binario dietro Cloudflare,
-  ricerca inesistente, portale diverso). La riga resta nel catalogo con la
-  prova e il motivo in `metadata/blocked.yaml`, ma è fuori dalla coda
-  `da-provvi`, da `proposable: false` e non viene mostrata all'utente.
-- **`morta`**: il `GET` è fallito perché il nome non risolve o la connessione
-  è stata rifiutata. La riga resta nel catalogo con la prova del fallimento,
-  ma `proposable: false` e non deve essere proposta. Un timeout, una rotta
-  IPv6 irraggiungibile o un errore TLS sono **inconcludenti**: la voce resta
-  `da-provvi` e viene riprovata, perché non dimostrano che il sito sia morto.
-- **`bozza`** (definizione nativa): definizione scritta ma non ancora provata
-  dal vivo. Per `ilDraGoNeRo` significa anche che serve un account.
+- **`verificata`** (lightweight entry): a real `GET` was made on the home page,
+  the site responded 2xx/3xx with a real page and it is not a login or an
+  anti-bot screen. The evidence is in `metadata/verification.yaml`, with date,
+  HTTP, bytes and title. It does not mean search was tested: that takes a native
+  definition and its fixture.
+- **`da-provvi`**: no evidence, or a private site that is reachable but without
+  an account, or `403`/`5xx`/login/anti-bot. It is the right badge for a private
+  site that has not been tested from the inside.
+- **`bloccata`**: the site cannot be implemented for a reason that is not a
+  missing line of code (captcha, proof-of-work, binary behind Cloudflare, no
+  search at all, different portal). The row stays in the catalog with the
+  evidence and the reason in `metadata/blocked.yaml`, but it is out of the
+  `da-provvi` queue, `proposable: false` and is not shown to the user.
+- **`morta`**: the `GET` failed because the name does not resolve or the
+  connection was refused. The row stays in the catalog with the evidence of the
+  failure, but `proposable: false` and it must not be proposed. A timeout, an
+  unreachable IPv6 route or a TLS error are **inconclusive**: the entry stays
+  `da-provvi` and is retried, because they do not prove that the site is dead.
+- **`bozza`** (native definition): definition written but not yet tested live.
+  For `ilDraGoNeRo` it also means an account is needed.
 
-Nessuna voce privata è `verificata` in questo ciclo. Nessuna voce è stata
-marcata viva senza un `GET` registrato.
+No private entry is `verificata` in this cycle. No entry was marked alive
+without a recorded `GET`.
 
-## Famiglie coperte
+## Covered families
 
-Le famiglie sono registrate con una prova nella pagina del sito, nel nome
-stesso del manager o in un marcatore forte osservato dal vivo (per esempio
-`nexusphp`, `unit3d`, `xbtit`, `gazelle`, `torrent trader`). I marcatori
-generici condivisi da più software (`getrss.php`, `ajax.php?action`,
-`download.php?id=`) non sono più usati: una famiglia sbagliata è peggio di una
-fonte in coda. Se una pagina mostra due famiglie, la voce resta senza famiglia
-finché non viene osservata meglio.
+Families are recorded with evidence in the site page, in the manager's own name
+or in a strong marker observed live (for example `nexusphp`, `unit3d`, `xbtit`,
+`gazelle`, `torrent trader`). Generic markers shared by several software
+packages (`getrss.php`, `ajax.php?action`, `download.php?id=`) are no longer
+used: a wrong family is worse than a source in the queue. If a page shows two
+families, the entry stays without a family until it is observed better.
 
-| Famiglia | Voci | Esempi e prova |
+| Family | Entries | Examples and evidence |
 | --- | ---: | --- |
-| UNIT3D | 59 | HDTorrents.it, ShareIsland, ItaTorrents, JME-REUNIT3D, HD-UNiT3D e altre rilevate dal vivo; `unit3d-generic` |
-| Gazelle | 6 | GazelleGames e altre rilevate dal vivo; `gazelle-generic` |
+| UNIT3D | 59 | HDTorrents.it, ShareIsland, ItaTorrents, JME-REUNIT3D, HD-UNiT3D and others detected live; `unit3d-generic` |
+| Gazelle | 6 | GazelleGames and others detected live; `gazelle-generic` |
 | NexusPHP | 76 | SewerPT, HDU, HHanClub, OpenCD, HDSky, CHDBits, PterClub, …; `nexusphp-generic` |
 | TorrentTrader | 2 | The Torrent Trader (`takelogin.php`, logo); `torrenttrader-generic` |
-| XBTIT | 12 | il CorSaRo Blu, ArabaFenice, Girotorrent, Fenyarnyek e altre; `xbtit-generic` |
-| Torznab | 4 | MirCrew (ponte locale), Torlock, TorrentFunk; `torznab-generic` |
-| custom | 2 | ExtTo (HTML pubblico), ilDraGoNeRo (forum phpBB) |
+| XBTIT | 12 | il CorSaRo Blu, ArabaFenice, Girotorrent, Fenyarnyek and others; `xbtit-generic` |
+| Torznab | 4 | MirCrew (local bridge), Torlock, TorrentFunk; `torznab-generic` |
+| custom | 2 | ExtTo (public HTML), ilDraGoNeRo (phpBB forum) |
 
-## Lista italiana
+## Italian list
 
-`italian: true` è un segnale esplicito per il filtro rapido «Italiani»,
-indipendente dalla lingua dichiarata dal sito. Include la lista prioritaria dei
-siti italiani.
+`italian: true` is an explicit signal for the «Italian» quick filter,
+independent of the language declared by the site. It includes the priority list
+of Italian sites.
 
-| Sito | Famiglia | Stato | Note |
+| Site | Family | State | Notes |
 | --- | --- | --- | --- |
-| il CorSaRo Blu (`corsaro`) | XBTIT | verificata | Definizione nativa; lista ospite e magnet verificati, ricerca ospite disabilitata dal sito |
-| ItaTorrents (`jk-itatorrents`) | UNIT3D (probable) | da provvi | Privato; login 200, `/api/torrents` 401; nessun account |
-| ArabaFenice (`jk-arabafenice`) | XBTIT | da provvi | Privato; login xbtitFM 200; nessun account |
-| FutureTorrent (`jk-futuretorrent`) | — | da provvi | Privato; famiglia non dimostrata dal HTML (TSSE), nessun account |
-| HDTorrents.it (`jk-hdtorrentsit`) | UNIT3D | da provvi | Privato; login UNIT3D 200; nessun account |
-| ShareIsland (`jk-shareisland-api`) | UNIT3D | da provvi | Privato; login UNIT3D 200; nessun account |
-| Girotorrent (`jk-girotorrent`) | XBTIT | da provvi | Privato; footer xbtitFM 4.2.14; nessun account |
-| TrackerZero (`jk-trackerzero`) | — | da provvi | Privato; frontend SvelteKit, famiglia non dimostrata |
-| ilDraGoNeRo (`ildragonegro`) | custom (phpBB) | bozza | Privato; definizione nativa in prova, serve un account |
-| MirCrew (`mircrew`) | Torznab | da provvi | Ponte locale del blocco B (`localhost:9118`), non un tracker pubblico |
-| ExtTo (`extto`) | custom (HTML) | verificata | Definizione nativa pubblica, fixture e parità verificate |
+| CorsaroBlu (`corsaro`) | XBTIT | verificata | Native definition; guest list and magnets verified, guest search disabled by the site, requests through FlareSolverr since 29/10/2026 |
+| ItaTorrents (`jk-itatorrents`) | UNIT3D (probable) | da provvi | Private; login 200, `/api/torrents` 401; no account |
+| ArabaFenice (`jk-arabafenice`) | XBTIT | da provvi | Private; xbtitFM login 200; no account |
+| FutureTorrent (`jk-futuretorrent`) | — | da provvi | Private; family not proven by the HTML (TSSE), no account |
+| HDTorrents.it (`jk-hdtorrentsit`) | UNIT3D | da provvi | Private; UNIT3D login 200; no account |
+| ShareIsland (`jk-shareisland-api`) | UNIT3D | da provvi | Private; UNIT3D login 200; no account |
+| Girotorrent (`jk-girotorrent`) | XBTIT | da provvi | Private; xbtitFM 4.2.14 footer; no account |
+| TrackerZero (`jk-trackerzero`) | — | da provvi | Private; SvelteKit frontend, family not proven |
+| ilDraGoNeRo (`ildragonegro`) | custom (phpBB) | bozza | Private; native definition being tested, an account is needed |
+| MirCrew (`mircrew`) | Torznab | da provvi | Local bridge from block B (`localhost:9118`), not a public tracker |
+| ExtTo (`extto`) | custom (HTML) | verificata | Public native definition, fixtures and parity verified |
 
-**UNIT3D:** HDTorrents.it, ShareIsland e, con confidenza `probable`,
-ItaTorrents. MirCrew non è UNIT3D: è un servizio Torznab locale.
+**UNIT3D:** HDTorrents.it, ShareIsland and, with `probable` confidence,
+ItaTorrents. MirCrew is not UNIT3D: it is a local Torznab service.
 
-## Come si rigenera
+## How it is regenerated
 
-Tutto è GET, tranne la scrittura dei file generati.
+Everything is GET, except writing the generated files.
 
 ```sh
-# 1. Prova live di tutto il catalogo, private comprese. Solo GET sulla home
-#    page, nessun login, nessuna scrittura sui siti (-all). Non contatta
-#    Jackett o Prowlarr: legge solo i metadati già committati.
+# 1. Live test of the whole catalog, private ones included. Only GET on the home
+#    page, no login, no writes on the sites (-all). It does not contact
+#    Jackett or Prowlarr: it only reads the already committed metadata.
 go run ./internal/catalog/genverify -all -workers 16 -timeout 10s
 
-# 2. Rigenera sites.yaml e index.json (non tocca la rete)
+# 2. Regenerate sites.yaml and index.json (does not touch the network)
 go generate ./internal/catalog
 
-# 3. Controlli
+# 3. Checks
 make def-validate
 go test ./...
 ```
 
-`verification.yaml` è scritto da `genverify`; `gensites` legge l'istantanea,
-le famiglie, le prove e le voci manuali e produce `sites.yaml`; `genindex`
-unisce definizioni native e voci leggere in `index.json`. L'istantanea
-`metadata/jackett.json` è congelata: non c'è più un comando che contatta i
-manager.
+`verification.yaml` is written by `genverify`; `gensites` reads the snapshot,
+the families, the evidence and the manual entries and produces `sites.yaml`;
+`genindex` merges native definitions and lightweight entries into `index.json`.
+The snapshot `metadata/jackett.json` is frozen: there is no longer a command
+that contacts the managers.
 
-### File
+### Files
 
-| File | Sorgente | Modificabile a mano |
+| File | Source | Editable by hand |
 | --- | --- | --- |
-| `metadata/jackett.json` | istantanea storica | no |
-| `metadata/prowlarr.json` | istantanea storica | no |
-| `metadata/families.yaml` | curatela con prova GET | sì, aggiungendo la prova |
+| `metadata/jackett.json` | historical snapshot | no |
+| `metadata/prowlarr.json` | historical snapshot | no |
+| `metadata/families.yaml` | curation with GET evidence | yes, by adding the evidence |
 | `metadata/verification.yaml` | `genverify` (GET) | no |
-| `metadata/blocked.yaml` | curatela con prova misurata | sì, aggiungendo la prova |
-| `metadata/manual.yaml` | lista prioritaria | sì |
+| `metadata/blocked.yaml` | curation with measured evidence | yes, by adding the evidence |
+| `metadata/manual.yaml` | priority list | yes |
 | `sites.yaml` | `gensites` | no |
 | `index.json` | `genindex` | no |
 
-## Metadati per la UI
+## Metadata for the UI
 
-`index.json` espone per ogni riga:
+`index.json` exposes for each row:
 
-- `italian` — filtro rapido «Italiani»;
-- `usage` — numero di configurazioni osservate nei manager (Jackett
-  `configured=true`, Prowlarr `enable=true`, più lo snapshot di produzione);
-  è il segnale per l'ordinamento «più usati»;
-- `family` — famiglia software, vuota se non dimostrata;
-- `url` — indirizzo primario, per mostrarlo e per il pulsante «Prova»;
-- `source` — `native`, `jackett` o `prowlarr`;
-- `state`, `evidence`, `proposable` — stato onesto e prova.
+- `italian` — «Italian» quick filter;
+- `usage` — number of configurations observed in the managers (Jackett
+  `configured=true`, Prowlarr `enable=true`, plus the production snapshot);
+  it is the signal for the «most used» ordering;
+- `family` — software family, empty if not proven;
+- `url` — primary address, for display and for the «Try» button;
+- `source` — `native`, `jackett` or `prowlarr`;
+- `state`, `evidence`, `proposable` — honest state and evidence.
 
-Le voci leggere hanno sempre almeno un campo obbligatorio (`url` o le
-credenziali), quindi il vecchio percorso di aggiunta rapida non le aggiunge
-per errore: l'integrazione UI deve usare `catalog.DefinitionForSite` per
-costruire la definizione della famiglia scelta.
+Lightweight entries always have at least one required field (`url` or the
+credentials), so the old quick-add path does not add them by mistake: the UI
+integration must use `catalog.DefinitionForSite` to build the definition of the
+chosen family.
 
-## Limiti e blocchi
+## Limits and blocks
 
-- **403 Cloudflare**: 11 siti pubblici dell'istantanea hanno risposto 403
-  «Just a moment...» al probe del 25/10. Otto hanno oggi una definizione nativa
-  (tre lo erano già, cinque sono stati aggiunti il 27/10 con FlareSolverr);
-  MejorTorrent, OneJAV e Torrent[CORE] sono `bloccata` e fuori coda, con il
-  motivo nella sezione Cloudflare qui sopra. DaMagNet, che aveva la home 200 ma
-  il dettaglio dietro challenge, è ora nativo. Il probe non usa FlareSolverr:
-  per questo registra 403 anche quando la ricerca funziona con il solver.
-- **Timeout**: `NewStudio` non ha risposto entro 45 s; è `morta` con la prova.
-  `xxxtor` richiede ~35 s ed è verificato con timeout 45 s.
-- **I2P**: Postman usa un indirizzo `.i2p` non risolvibile qui; è `morta`.
-- **Local DHT**: `Magnetico` e `BitMagnet` sono servizi self-hosted, non siti
-  pubblici; sono esclusi dal catalogo.
-- **Privati**: senza account non si può verificare la ricerca. Le 45 voci
-  private restano `da-provvi`.
-- **Definizioni native**: non è stato aggiunto un parser nativo per ogni sito
-  pubblico; le voci leggere con famiglia nota possono essere aggiunte tramite
-  il connettore della famiglia. Un sito pubblico senza famiglia dimostrata
-  resta `da-provvi` finché non si scrive una definizione o si prova la
-  famiglia.
-- **Uso**: quasi tutti i nuovi siti hanno `usage: 0`; il segnale dei manager è
-  reale ma scarso (Prowlarr ha 3 indexer abilitati, Jackett nessuno
-  configurato in questa istantanea). L'ordinamento «più usati» funziona ma
-  distingue solo le voci native già configurate in produzione.
+- **Cloudflare 403**: 11 public sources in the snapshot responded 403
+  «Just a moment...» to the 25/10 probe. Eight now have a native definition
+  (three already did, five were added on 27/10 with FlareSolverr);
+  MejorTorrent, OneJAV and Torrent[CORE] are `bloccata` and out of the queue,
+  with the reason in the Cloudflare section above. DaMagNet, which had the home
+  at 200 but the detail behind a challenge, is now native. The probe does not
+  use FlareSolverr: that is why it records 403 even when search works with the
+  solver.
+- **Timeouts**: `NewStudio` did not respond within 45 s; it is `morta` with the
+  evidence. `xxxtor` takes ~35 s and is verified with a 45 s timeout.
+- **I2P**: Postman uses an `.i2p` address that does not resolve here; it is
+  `morta`.
+- **Local DHT**: `Magnetico` and `BitMagnet` are self-hosted services, not
+  public sites; they are excluded from the catalog.
+- **Private**: without an account search cannot be verified. The 45 private
+  entries stay `da-provvi`.
+- **Native definitions**: a native parser was not added for every public site;
+  lightweight entries with a known family can be added through the family
+  connector. A public site without a proven family stays `da-provvi` until a
+  definition is written or the family is proven.
+- **Usage**: almost all new sites have `usage: 0`; the managers' signal is real
+  but sparse (Prowlarr has 3 enabled indexers, Jackett none configured in this
+  snapshot). The «most used» ordering works but only distinguishes the native
+  entries already configured in production.

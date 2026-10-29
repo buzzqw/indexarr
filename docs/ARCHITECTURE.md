@@ -1,23 +1,23 @@
-# Architettura
+# Architecture
 
-indexarr è un singolo processo Go con un database SQLite. Non ci sono servizi
-esterni obbligatori: l'unica dipendenza è il driver SQLite puro Go
-`modernc.org/sqlite`, quindi il binario è statico (`CGO_ENABLED=0`).
+indexarr is a single Go process with a SQLite database. There are no mandatory
+external services: the only dependency is the pure-Go SQLite driver
+`modernc.org/sqlite`, so the binary is static (`CGO_ENABLED=0`).
 
-## Flusso
+## Flow
 
 ```
-             ┌──────── scheduler nativo (tick) ────────┐
+             ┌──────── native scheduler (tick) ────────┐
              │                                          │
    indexers ─┤ RunOnce ─► worker x N ─► indexer.Manager.Run
              │                                          │
              └──────────────────────────────────────────┘
                                     │
                                     ▼
-                    connettore (definizione o famiglia)
+                    connector (definition or family)
                                     │
                                     ▼
-                      normalizzazione (engine.Item)
+                       normalization (engine.Item)
                                     │
                                     ▼
                     .torrent? ─► Download + InfoHash
@@ -26,75 +26,75 @@ esterni obbligatori: l'unica dipendenza è il driver SQLite puro Go
                  store.UpsertRelease + release_sources ─► SQLite
                                     ▲
                     Torznab /api ◄──┤
-                    UI web SSR ◄────┘
+                    Web UI SSR ◄────┘
 ```
 
-1. Lo **scheduler nativo** (`internal/native`) esegue un giro all'avvio e poi
-   ogni `default_interval_seconds`, con un minimo di 60 secondi. Un
-   `interval_seconds` positivo sulla singola sorgente sostituisce il valore
-   globale solo per lei; il pulsante «Riduci la frequenza» raddoppia quello
-   della sorgente che ha risposto 429. Ogni indexer abilitato passa da
-   `indexer.Manager.Run`; l'ordine degli esiti è deterministico per id.
-2. I **worker** sono limitati (impostazione `workers`, default 2). Un indexer
-   disabilitato viene saltato e riportato come tale.
-3. `Manager.Run` carica la definizione, costruisce o riusa il connettore in cache,
-   esegue `Search` o `Latest`, registra `indexer_history` (`kind = run`), aggiorna
-   `indexer_state` e scrive le release.
-4. **fetch**: definizione nativa (HTML/JSON/XML), famiglia Torznab/Newznab/RSS o
-   connettore di famiglia (Unit3D, Gazelle, NexusPHP, …). Jackett e Prowlarr sono
-   normali indexer Torznab che puntano all'endpoint per-indexer del manager.
-5. **normalizzazione**: titolo, GUID, magnet, link `.torrent`, infohash, dimensione,
-   seeders/leecher, categoria numerica, data, id IMDb/TMDB/TVDB.
-6. **download `.torrent`**: solo quando manca il magnet e l'indexer offre un link di
-   download. Limite per run e per dimensione; il file viene analizzato per ricavare
-   l'infohash e salvato come BLOB.
-7. **upsert**: la chiave è l'infohash, altrimenti `guid:`, `url:` o `title:` con hash
-   SHA-256. Se l'infohash è già presente sotto un'altra chiave, quella chiave viene
-   riusata. Lo stesso torrent visto da più indexer aggiorna una sola riga e aggiunge
-   una riga in `release_sources` per ogni indexer.
-8. **uscita**: la UI SSR legge lo stesso store; il server Torznab converte le righe
-   in XML e serve i `.torrent` salvati. I filtri per indexer usano
-   `release_sources`, non una colonna denormalizzata.
+1. The **native scheduler** (`internal/native`) runs once at startup and then
+   every `default_interval_seconds`, with a minimum of 60 seconds. A positive
+   `interval_seconds` on an individual source overrides the global value only for
+   that source; the "Reduce frequency" button doubles the interval of the source
+   that returned 429. Every enabled indexer goes through
+   `indexer.Manager.Run`; the order of outcomes is deterministic by id.
+2. **Workers** are limited (`workers` setting, default 2). A disabled indexer is
+   skipped and reported as such.
+3. `Manager.Run` loads the definition, builds or reuses the cached connector,
+   runs `Search` or `Latest`, records `indexer_history` (`kind = run`), updates
+   `indexer_state` and writes the releases.
+4. **fetch**: native definition (HTML/JSON/XML), Torznab/Newznab/RSS family or
+   family connector (Unit3D, Gazelle, NexusPHP, …). Jackett and Prowlarr are
+   ordinary Torznab indexers that point to the manager's per-indexer endpoint.
+5. **normalization**: title, GUID, magnet, `.torrent` link, infohash, size,
+   seeders/leechers, numeric category, date, IMDb/TMDB/TVDB id.
+6. **`.torrent` download**: only when the magnet is missing and the indexer
+   offers a download link. Limit per run and per size; the file is parsed to
+   derive the infohash and stored as a BLOB.
+7. **upsert**: the key is the infohash, otherwise `guid:`, `url:` or `title:`
+   with a SHA-256 hash. If the infohash is already present under another key,
+   that key is reused. The same torrent seen by multiple indexers updates a
+   single row and adds a row to `release_sources` for each indexer.
+8. **output**: the SSR UI reads the same store; the Torznab server converts the
+   rows to XML and serves the stored `.torrent` files. Per-indexer filters use
+   `release_sources`, not a denormalized column.
 
-## Pacchetti
+## Packages
 
-| Percorso | Responsabilità |
+| Path | Responsibility |
 | --- | --- |
-| `cmd/indexarr` | Flag, avvio, segnali, shutdown ordinato |
-| `internal/config` | File JSON minimo, creazione al primo avvio, path del DB |
-| `internal/store` | Schema, migrazioni numerate, impostazioni, indexer, release, provenance, storico, blocklist, ricerche salvate, manutenzione |
-| `internal/definition` | Formato nativo v1: parsing YAML strict, validazione, `Fingerprint` SHA-256, catena di upgrader, JSON Schema incorporato |
-| `internal/engine` | Contratti connettore/pipeline, transport con guardie e proxy, sessioni cookie, sessione FlareSolverr persistente per definizione (`session`), template, estrazione HTML/JSON/XML, normalizzazione, `download.before` e scelta magnet per stagione/episodio |
-| `internal/family` | Connettori di famiglia `torznab`, `newznab`, `rss`, `unit3d`, `gazelle`, `nexusphp`, `torrenttrader`, `xbtit` |
-| `internal/indexer` | Costruisce e mette in cache il connettore da definizione + configurazione + segreti, esegue un indexer torrent/Usenet, registra storico e provenance, offre la ricerca live |
-| `internal/indexersvc` | Servizio delle pagine indexer: validazione, creazione/aggiornamento/cancellazione, separazione tra config pubblica e segreti nel vault |
-| `internal/native` | Scheduler periodico, run/test di tutti gli indexer, backup automatici, retention, notifiche e auto-disable |
-| `internal/catalog` | Catalogo incorporato (`catalog.yaml` + `definitions/*.yaml`): manifest validato, definizioni parsate, sincronizzazione verso lo store |
-| `internal/catalog/managerdata` | Istantanea storica dei metadati pubblici usata solo dai generatori del catalogo; nessun collegamento a runtime |
-| `internal/torznabapi` | Server Torznab, API key multiple, rate limit, ricerca live e download `.torrent` |
-| `internal/adminapi` | API JSON `/api/v2` autenticata con API key: definizioni, catalogo, indexer, applicazioni, test/search/run |
-| `internal/web` | UI SSR, autenticazione, CSRF, form, PWA, manutenzione e ripristino |
-| `internal/syncjob` | Riconciliazione periodica delle applicazioni \*arr con `appsync`, persistenza di `app_indexers` e gestione dei livelli di sync |
-| `internal/downloadproxy` | Risolve i `download_ref` cifrati e serve `.torrent`/`.nzb` non ancora in cache |
-| `internal/vault` | AES-256-GCM; chiave da `INDEXARR_MASTER_KEY`, `INDEXARR_MASTER_KEY_FILE`, `vault_key_path`, file `<db>.key` o directory utente, mai nel database (vedi [VAULT.md](VAULT.md)) |
-| `internal/cardigann` | Convertitore locale Cardigann → nativo v1, con family detection e warning; non è un runtime |
-| `internal/feed` | Parser RSS/Atom/Torznab e utility di normalizzazione; i parser HTML storici restano solo come oracolo dei test di equivalenza |
-| `internal/flaresolverr` | Client minimo per risolvere le challenge Cloudflare |
-| `internal/logbuffer` | Ring buffer in memoria e handler slog con redazione dei segreti |
-| `internal/notify` | Notifiche webhook JSON, Telegram, Apprise, Discord, Slack, Gotify, ntfy, Pushover, email SMTP e script, con redazione dei segreti |
-| `internal/backup` | Backup consistenti, elenco/rotazione, validazione e ripristino al riavvio |
-| `internal/downloadclient` | Invio di magnet/.torrent/.nzb/eD2k a qBittorrent, Transmission, Deluge, rTorrent, SABnzbd, NZBGet, aMule, Aria2, uTorrent, Flood, Download Station, NZBVortex, Hadouken e blackhole |
-| `internal/simmock`, `cmd/simmock`, `sim/` | Simulazione end-to-end deterministica: finti Torznab/Newznab, Prowlarr, Sonarr, client di download e tracker HTML |
-| `internal/i18n` | Cataloghi UI incorporati (en/it/fr/de/es/zh/pl), negoziazione lingua, fallback inglese |
-| `internal/perf` | Generatore dataset e test di leak per benchmark; non linkato dal binario di produzione |
-| `internal/appsync` | Client Sonarr/Radarr/Lidarr/Readarr/Whisparr (API Servarr) e Mylar3/LazyLibrarian, con livelli di sync e profilo per applicazione (RSS, ricerca automatica/interattiva, min seeders, categorie) |
-| `internal/deftool` | Logica testabile del CLI: validazione, formattazione, controllo fixture |
-| `cmd/indexarr-def` | CLI `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` |
+| `cmd/indexarr` | Flags, startup, signals, orderly shutdown |
+| `internal/config` | Minimal JSON file, creation on first start, DB path |
+| `internal/store` | Schema, numbered migrations, settings, indexers, releases, provenance, history, blocklist, saved searches, maintenance |
+| `internal/definition` | Native format v1: strict YAML parsing, validation, SHA-256 `Fingerprint`, upgrader chain, embedded JSON Schema |
+| `internal/engine` | Connector/pipeline contracts, transport with guards and proxy, cookie sessions, persistent FlareSolverr session per definition (`session`), templates, HTML/JSON/XML extraction, normalization, `download.before` and magnet selection by season/episode |
+| `internal/family` | Family connectors `torznab`, `newznab`, `rss`, `unit3d`, `gazelle`, `nexusphp`, `torrenttrader`, `xbtit` |
+| `internal/indexer` | Builds and caches the connector from definition + configuration + secrets, runs a torrent/Usenet indexer, records history and provenance, provides live search |
+| `internal/indexersvc` | Indexer page service: validation, create/update/delete, separation of public config and secrets in the vault |
+| `internal/native` | Periodic scheduler, run/test of all indexers, automatic backups, retention, notifications and auto-disable |
+| `internal/catalog` | Embedded catalog (`catalog.yaml` + `definitions/*.yaml`): validated manifest, parsed definitions, synchronization to the store |
+| `internal/catalog/managerdata` | Historical snapshot of public metadata used only by the catalog generators; no runtime link |
+| `internal/torznabapi` | Torznab server, multiple API keys, rate limit, live search and `.torrent` download |
+| `internal/adminapi` | JSON API `/api/v2` authenticated with an API key: definitions, catalog, indexers, applications, test/search/run |
+| `internal/web` | SSR UI, authentication, CSRF, forms, PWA, maintenance and restore |
+| `internal/syncjob` | Periodic reconciliation of \*arr applications with `appsync`, persistence of `app_indexers` and management of sync levels |
+| `internal/downloadproxy` | Resolves encrypted `download_ref`s and serves `.torrent`/`.nzb` files not yet in the cache |
+| `internal/vault` | AES-256-GCM; key from `INDEXARR_MASTER_KEY`, `INDEXARR_MASTER_KEY_FILE`, `vault_key_path`, `<db>.key` file or user directory, never in the database (see [VAULT.md](VAULT.md)) |
+| `internal/cardigann` | Local Cardigann → native v1 converter, with family detection and warnings; it is not a runtime |
+| `internal/feed` | RSS/Atom/Torznab parser and normalization utilities; the historical HTML parsers remain only as the oracle of the equivalence tests |
+| `internal/flaresolverr` | Minimal client to solve Cloudflare challenges |
+| `internal/logbuffer` | In-memory ring buffer and slog handler with secret redaction |
+| `internal/notify` | JSON webhook, Telegram, Apprise, Discord, Slack, Gotify, ntfy, Pushover, SMTP email and script notifications, with secret redaction |
+| `internal/backup` | Consistent backups, listing/rotation, validation and restore at restart |
+| `internal/downloadclient` | Sending magnets/.torrent/.nzb/eD2k to qBittorrent, Transmission, Deluge, rTorrent, SABnzbd, NZBGet, aMule, Aria2, uTorrent, Flood, Download Station, NZBVortex, Hadouken and blackhole |
+| `internal/simmock`, `cmd/simmock`, `sim/` | Deterministic end-to-end simulation: fake Torznab/Newznab, Prowlarr, Sonarr, download clients and HTML trackers |
+| `internal/i18n` | Embedded UI catalogs (en/it/fr/de/es/zh/pl), language negotiation, English fallback |
+| `internal/perf` | Dataset generator and leak tests for benchmarks; not linked by the production binary |
+| `internal/appsync` | Sonarr/Radarr/Lidarr/Readarr/Whisparr client (Servarr API) and Mylar3/LazyLibrarian, with sync levels and per-application profile (RSS, automatic/interactive search, minimum seeders, categories) |
+| `internal/deftool` | Testable CLI logic: validation, formatting, fixture checking |
+| `cmd/indexarr-def` | `validate`, `schema`, `fmt`, `fingerprint`, `check-fixtures` CLI |
 
-Dipendenze: `definition` non importa nulla di indexarr; `engine` non importa
-`store`, `web` o `torznabapi`; `indexer` è il livello che collega definizioni,
-store, vault e connettori. Ogni indexer passa da un connettore nativo: non esiste
-un secondo scheduler o un secondo client HTTP.
+Dependencies: `definition` imports nothing from indexarr; `engine` does not import
+`store`, `web` or `torznabapi`; `indexer` is the layer that connects definitions,
+store, vault and connectors. Every indexer goes through a native connector: there
+is no second scheduler or second HTTP client.
 
 ## Database
 
@@ -112,155 +112,159 @@ download_clients (torrent/usenet, one default per protocol rule)
 settings (key/value)
 ```
 
-- `definitions`: YAML nativo, famiglia, stato (`bozza`/`verificata`/`stabile`/
-  `degradata`), origine (`builtin`/`catalog`/`local`), autore, hash.
-- `indexers`: istanza configurata con `definition_id`, protocollo, slug unico,
-  nome, priorità, `config_json` non segreto, proxy, tag e limiti di query/grab.
-- `indexer_secrets`: segreti cifrati nel vault per indexer.
-- `indexer_state`: cookie cifrati, ultimo login, circuit breaker, `disabled_until`
-  e ultimo errore.
-- `indexer_history`: storico di `run`, `search`, `latest`, `test`, `grab`,
-  `download` e sync, con latenza, byte ed errore redatto.
-- `release_sources`: provenienza (quale indexer ha visto una release, prima/ultima
-  osservazione, seeder/leecher, `download_ref`).
-- `releases`: identità (`dedup_key` univoca), infohash, id esterni, titolo e
-  `search_title` normalizzato, metadati, magnet, BLOB del `.torrent` o payload
-  Usenet, `first_seen_at`/`last_seen_at`/`times_seen`, `favorite` e `hidden`.
-- `releases_fts`: tabella virtuale FTS5 external-content su `releases`, con
-  tokenizer trigram e trigger di sincronizzazione; non duplica i titoli.
-- `blocklist`: regole `infohash`, `title`, `regex`, `source`, `category`; il
-  matcher compila le regex una volta per run e scarta le release prima dell'upsert.
-- `saved_searches`, `api_keys`, `settings`: ricerca salvata, chiavi aggiuntive
-  revocabili e opzioni key/value.
-- `download_clients`: client torrent e Usenet con segreti sigillati nel vault,
-  protocollo, categoria, percorso, flag predefinito. La migrazione 6 crea la
-  tabella; le vecchie impostazioni `download_client*` restano come fallback e
-  vengono importate al primo avvio quando il vault è disponibile.
+- `definitions`: native YAML, family, state (`bozza`/`verificata`/`stabile`/
+  `degradata`), origin (`builtin`/`catalog`/`local`), author, hash.
+- `indexers`: configured instance with `definition_id`, protocol, unique slug,
+  name, priority, non-secret `config_json`, proxy, tags and query/grab limits.
+- `indexer_secrets`: secrets encrypted in the vault per indexer.
+- `indexer_state`: encrypted cookies, last login, circuit breaker, `disabled_until`
+  and last error.
+- `indexer_history`: history of `run`, `search`, `latest`, `test`, `grab`,
+  `download` and sync, with latency, bytes and redacted error.
+- `release_sources`: provenance (which indexer saw a release, first/last
+  observation, seeders/leechers, `download_ref`).
+- `releases`: identity (unique `dedup_key`), infohash, external ids, title and
+  normalized `search_title`, metadata, magnet, `.torrent` BLOB or Usenet
+  payload, `first_seen_at`/`last_seen_at`/`times_seen`, `favorite` and `hidden`.
+- `releases_fts`: FTS5 external-content virtual table on `releases`, with
+  trigram tokenizer and synchronization triggers; it does not duplicate the
+  titles.
+- `blocklist`: `infohash`, `title`, `regex`, `source`, `category` rules; the
+  matcher compiles the regexes once per run and discards releases before the upsert.
+- `saved_searches`, `api_keys`, `settings`: saved searches, additional revocable
+  keys and key/value options.
+- `download_clients`: torrent and Usenet clients with secrets sealed in the
+  vault, protocol, category, path, default flag. Migration 6 creates the table;
+  the old `download_client*` settings remain as a fallback and are imported on
+  first start when the vault is available.
 
-Indici su infohash, data di pubblicazione, categoria, ultima osservazione, id
-esterni e provenance. Il database usa WAL, `busy_timeout`, foreign key e un pool
-limitato a quattro connessioni.
+Indexes on infohash, publication date, category, last observation, external ids
+and provenance. The database uses WAL, `busy_timeout`, foreign keys and a pool
+limited to four connections.
 
-### Identità e deduplica
+### Identity and deduplication
 
-| Priorità | Chiave | Quando |
+| Priority | Key | When |
 | --- | --- | --- |
-| 1 | infohash (40 hex) | magnet, attributo Torznab, `.torrent` scaricato |
-| 2 | `guid:<sha256>` | GUID stabile dell'indexer |
-| 3 | `url:<sha256>` | link di download |
-| 4 | `title:<sha256>` | titolo + dimensione |
+| 1 | infohash (40 hex) | magnet, Torznab attribute, downloaded `.torrent` |
+| 2 | `guid:<sha256>` | stable indexer GUID |
+| 3 | `url:<sha256>` | download link |
+| 4 | `title:<sha256>` | title + size |
 
-L'infohash è anche la chiave di fusione tra indexer diversi. La pagina Maintenance
-offre una deduplica esplicita che conserva la riga più vecchia e i dati migliori
-(magnet, torrent, seeders, ultima osservazione, `times_seen`).
+The infohash is also the merge key across different indexers. The Maintenance
+page offers an explicit deduplication that keeps the oldest row and the best data
+(magnet, torrent, seeders, last observation, `times_seen`).
 
-## Scheduler e affidabilità
+## Scheduler and reliability
 
-- Giro completo all'avvio e poi ogni `default_interval_seconds`; minimo 60 secondi.
-  Ogni sorgente può avere un `interval_seconds` proprio, mostrato nell'elenco e
-  nella scheda; «Riduci la frequenza» lo raddoppia solo per la sorgente che ha
-  risposto 429. Le ricerche dal vivo non sono soggette a questo intervallo.
-- Worker limitati (`workers`); un run manuale e uno periodico dello stesso indexer
-  non si sovrappongono grazie al manager e allo storico.
-- Timeout per richiesta dal transport; un errore viene registrato in
-  `indexer_history` e in `indexer_state.last_error`.
-- Notifiche webhook/Telegram/Apprise/Discord/Slack/Gotify/ntfy/Pushover/email/script per nuove release, grab, stato degli indexer, catalogo e backup. Se
-  `auto_disable_after` è impostato e gli ultimi run sono tutti falliti, l'indexer
-  viene disabilitato e l'evento viene notificato.
-- La ricerca Torznab live (`torznab_live_search`) usa `indexer.SearchLive` a ogni
-  richiesta con una query: fan-out su tutti gli indexer capaci, concorrenza
-  globale 16, deadline `torznab_live_timeout_seconds`; chi è in ritardo continua
-  in background e cachea il risultato. Gli indexer `meta.latest: false` non
-  hanno run periodici e partecipano solo alla ricerca dal vivo.
-- I backup automatici (`backup_enabled`) vengono creati ogni
-  `backup_interval_hours` con `VACUUM INTO`, ruotati a `backup_keep` e non
-  bloccano i worker. Il ripristino viene preparato come `<db>.restore` e applicato
-  da `main` prima di aprire SQLite; il file corrente viene copiato in
+- Full run at startup and then every `default_interval_seconds`; minimum 60 seconds.
+  Each source can have its own `interval_seconds`, shown in the list and in the
+  detail tab; "Reduce frequency" doubles it only for the source that returned
+  429. Live searches are not subject to this interval.
+- Limited workers (`workers`); a manual run and a periodic run of the same indexer
+  do not overlap thanks to the manager and the history.
+- Per-request timeout from the transport; an error is recorded in
+  `indexer_history` and in `indexer_state.last_error`.
+- Webhook/Telegram/Apprise/Discord/Slack/Gotify/ntfy/Pushover/email/script notifications for new releases, grabs, indexer status, catalog and backups. If
+  `auto_disable_after` is set and the latest runs have all failed, the indexer
+  is disabled and the event is notified.
+- Torznab live search (`torznab_live_search`) uses `indexer.SearchLive` on every
+  request with a query: fan-out to all capable indexers, global concurrency 16,
+  deadline `torznab_live_timeout_seconds`; those running late continue in the
+  background and cache the result. Indexers with `meta.latest: false` do not have
+  periodic runs and only take part in live search.
+- Automatic backups (`backup_enabled`) are created every
+  `backup_interval_hours` with `VACUUM INTO`, rotated at `backup_keep` and do not
+  block the workers. The restore is prepared as `<db>.restore` and applied by
+  `main` before opening SQLite; the current file is copied to
   `backups/pre-restore-*.db`.
-- La retention gira ogni sei ore e dalla pagina Maintenance; la cronologia dei run
-  viene ripulita dopo 90 giorni e viene eseguito `PRAGMA optimize` +
-  `wal_checkpoint(TRUNCATE)`.
+- Retention runs every six hours and from the Maintenance page; run history is
+  cleaned up after 90 days and `PRAGMA optimize` + `wal_checkpoint(TRUNCATE)` is
+  executed.
 
-## Migrazioni
+## Migrations
 
-`internal/store` crea lo schema finale in modo idempotente e applica le migrazioni
-numerate registrate in `schema_migrations`:
+`internal/store` creates the final schema idempotently and applies the numbered
+migrations recorded in `schema_migrations`:
 
 1. `indexarr2 foundation`: `definitions`, `indexers`, `indexer_secrets`,
    `indexer_state`, `release_sources`, `indexer_history`, `proxies`,
    `applications`, `app_indexers`.
 2. `usenet payload`: `releases.protocol`, `payload`, `payload_type`.
-3. `drop legacy sources`: per un database precedente elimina la vecchia tabella
-   `sources`, la colonna `indexers.legacy_source_id`, la tabella `runs` e la
-   denormalizzazione `releases.source_id`/`source_name`, poi ricrea `releases` e
-   `release_sources` sul modello a provenance. Su un database nuovo è un no-op.
+3. `drop legacy sources`: for a previous database it drops the old `sources`
+   table, the `indexers.legacy_source_id` column, the `runs` table and the
+   `releases.source_id`/`source_name` denormalization, then recreates `releases`
+   and `release_sources` on the provenance model. On a new database it is a no-op.
 
-`catalog.Sync` scrive le definizioni incorporate solo come `builtin` e salta
-quelle con origine `local`; riscrive una voce solo quando cambia l'hash.
+`catalog.Sync` writes the embedded definitions only as `builtin` and skips those
+with `local` origin; it rewrites an entry only when the hash changes.
 
-## Server HTTP
+## HTTP server
 
-- UI: SSR con `html/template`, CSS/JS incorporati (`go:embed`), nessuna build Node.
-- Torznab: XML costruito con escaping esplicito (`xml.EscapeText`), nessuna
-  dipendenza da librerie Torznab.
-- Autenticazione: chiave primaria con confronto a tempo costante, chiavi
-  aggiuntive nel database, rate limit per chiave; Basic con PBKDF2.
-- CSRF: cookie `indexarr_csrf` HttpOnly + campo nascosto, doppio invio; l'upload
-  multipart del backup usa lo stesso token nella query.
-- Download: `/dl/{id}.torrent` richiede la stessa API key della ricerca e i link
-  generati usano la chiave della richiesta.
-- Errori XML per i client Torznab, pagine HTML con stato corretto per la UI.
-- `/sources*` e `/indexers?tab=legacy` rispondono 302 verso `/indexers`;
-  `/definitions`, `/rules` e `/maintenance` verso la sezione di Impostazioni.
-- `GET /metrics` e `GET /sw.js` sono sul mux esterno; `/metrics` non richiede
-  autenticazione come `/healthz` e non va pubblicato senza reverse proxy.
-- PWA: manifest e icona negli asset, service worker che mette in cache solo
-  `/static/*`; l'HTML resta di rete perché contiene CSRF e dati privati.
+- UI: SSR with `html/template`, embedded CSS/JS (`go:embed`), no Node build.
+- Torznab: XML built with explicit escaping (`xml.EscapeText`), no dependency on
+  Torznab libraries.
+- Authentication: primary key with constant-time comparison, additional keys in
+  the database, rate limit per key; Basic with PBKDF2.
+- CSRF: `indexarr_csrf` cookie, HttpOnly + hidden field, double submit; the
+  multipart backup upload uses the same token in the query string.
+- Download: `/dl/{id}.torrent` requires the same API key as the search and the
+  generated links use the request's key.
+- XML errors for Torznab clients, HTML pages with the correct status for the UI.
+- `/sources*` and `/indexers?tab=legacy` respond 302 to `/indexers`;
+  `/definitions`, `/rules` and `/maintenance` to the Settings section.
+- `GET /metrics` and `GET /sw.js` are on the outer mux; `/metrics` does not
+  require authentication, like `/healthz`, and must not be exposed without a
+  reverse proxy.
+- PWA: manifest and icon in the assets, service worker that caches only
+  `/static/*`; the HTML stays network-only because it contains CSRF and private
+  data.
 
-## Scelte
+## Design choices
 
-- **SQLite con FTS5 invece di un motore di ricerca esterno**: il volume tipico
-  (decine di migliaia di release) non giustifica un servizio separato. La tabella
-  `releases_fts` è external-content su `releases`, usa il tokenizer **trigram**
-  per mantenere la ricerca a sottostringa e viene sincronizzata da trigger su
-  insert/update/delete. I termini sotto i tre caratteri ricadono su `LIKE`.
-- **Un solo modello di indexer**: un sito pubblico, un feed RSS o un endpoint
-  Torznab di Jackett/Prowlarr sono tutti righe di `indexers`. La provenienza vive
-  in `release_sources`; non c'è una colonna denormalizzata da tenere allineata.
-- **Nessun download del contenuto**: indexarr è un indice; il download dei file è
-  responsabilità del client torrent.
-- **Un processo**: niente lock distribuiti; il database è il punto di verità.
-- **Magnet prima del file**: scaricare il `.torrent` per ogni risultato sarebbe
-  inutile e gravoso; si scarica solo quando è l'unico modo per ottenere la release.
-- **XML tollerante**: i feed scraped contengono `&` grezzi ed entità HTML; una
-  sanitizzazione prima del decoder evita che un carattere renda illeggibile
-  l'intera risposta.
-- **FlareSolverr su challenge**: il solver a una richiesta viene chiamato solo
-  quando la risposta è riconoscibile come challenge Cloudflare, mai per un errore
-  di autenticazione o per un indirizzo LAN. È stateless: una richiesta risolta
-  alla volta, senza sessioni persistenti. Un indexer che protegge **tutte** le
-  pagine (per esempio MirCrew) dichiara invece `session` e usa una sessione
-  browser persistente, con login, riciclo a 12 ore e pulizia per prefisso; vedi
-  [DEFINITIONS.md](DEFINITIONS.md#session) e [MIRCREW.md](MIRCREW.md).
-- **Ricerca live attiva per default**: interroga gli indexer Torznab/Newznab
-  quando la cache non ha risultati, poi salva ciò che arriva. Si può spegnere
-  da Settings perché aggiunge secondi alla risposta del client; una ricerca con
-  soli id esterni non la attiva sui siti che non supportano gli id.
-- **Backup e ripristino**: il backup è un file SQLite autonomo; il ripristino non
-  apre il file caricato nel processo vivo ma lo applica al riavvio, dopo aver
-  conservato il database corrente.
+- **SQLite with FTS5 instead of an external search engine**: the typical volume
+  (tens of thousands of releases) does not justify a separate service. The
+  `releases_fts` table is external-content on `releases`, uses the **trigram**
+  tokenizer to keep substring search and is synchronized by triggers on
+  insert/update/delete. Terms shorter than three characters fall back to `LIKE`.
+- **A single indexer model**: a public site, an RSS feed or a Jackett/Prowlarr
+  Torznab endpoint are all rows in `indexers`. Provenance lives in
+  `release_sources`; there is no denormalized column to keep in sync.
+- **No content download**: indexarr is an index; downloading files is the
+  torrent client's responsibility.
+- **One process**: no distributed locks; the database is the source of truth.
+- **Magnet before file**: downloading the `.torrent` for every result would be
+  pointless and heavy; it is downloaded only when it is the only way to get the
+  release.
+- **Tolerant XML**: scraped feeds contain raw `&` and HTML entities; a
+  sanitization before the decoder prevents a single character from making the
+  whole response unreadable.
+- **FlareSolverr on challenge**: the one-request solver is called only when the
+  response is recognizable as a Cloudflare challenge, never for an authentication
+  error or for a LAN address. It is stateless: one request solved at a time,
+  without persistent sessions. An indexer that protects **all** pages (for
+  example MirCrew) declares `session` instead and uses a persistent browser
+  session, with login, 12-hour recycling and cleanup by prefix; see
+  [DEFINITIONS.md](DEFINITIONS.md#session) and [MIRCREW.md](MIRCREW.md).
+- **Live search active by default**: it queries Torznab/Newznab indexers when the
+  cache has no results, then saves what arrives. It can be turned off from
+  Settings because it adds seconds to the client response; a search with only
+  external ids does not enable it on sites that do not support ids.
+- **Backup and restore**: the backup is a standalone SQLite file; the restore
+  does not open the uploaded file in the live process but applies it at restart,
+  after preserving the current database.
 
-## Cambiamenti 2.0.0-rc1
+## Changes in 2.0.0-rc1
 
-- La fusione delle release avviene sull’insieme completo prima di `limit`/`offset`; lo snapshot breve mantiene `total` costante tra le pagine.
-- Il fan-out live condivide un worker per `(indexer, query effettiva)`, limita la coda e ritira i worker senza richieste.
-- `LiveExcluded` esclude uploader TGx/ExtTo dal live; le liste continuano ad alimentare la cache.
-- Le sorgenti memorizzate hanno avviso misurato, contatore e retention esplicita.
-- Migrazioni 10 (dedup) e 11 (pulizia TGx hashless).
+- Release merging happens on the full set before `limit`/`offset`; the short snapshot keeps `total` constant across pages.
+- Live fan-out shares one worker per `(indexer, effective query)`, bounds the queue and retires workers without requests.
+- `LiveExcluded` excludes TGx/ExtTo uploaders from live; the lists still feed the cache.
+- Stored sources have a measured warning, counter and explicit retention.
+- Migrations 10 (dedup) and 11 (TGx hashless cleanup).
 
-## Memoria
+## Memory
 
-`indexarr` imposta un limite morbido Go di 64 MiB (`memory_limit_mb` in
-`indexarr.json`, 0 per disattivarlo). Il budget `scripts/budget.sh` resta
-avviso a 64 MiB ed errore a 256 MiB, misurato su `RssAnon`; l'RSS totale
-include anche il binario e non è il valore del budget.
+`indexarr` sets a soft Go limit of 64 MiB (`memory_limit_mb` in
+`indexarr.json`, 0 to disable it). The `scripts/budget.sh` budget remains a
+warning at 64 MiB and an error at 256 MiB, measured on `RssAnon`; total RSS also
+includes the binary and is not the budget value.

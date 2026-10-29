@@ -1,118 +1,117 @@
-# Definizioni indexarr (formato v1)
+# indexarr definitions (format v1)
 
-Una definizione è un documento YAML che descrive **un indexer**: metadati,
-impostazioni utente, mappa delle categorie, autenticazione, ricerca e test
-offline. Il motore la interpreta come dati: non esiste codice eseguibile dentro
-una definizione.
+A definition is a YAML document that describes **one indexer**: metadata,
+user settings, category map, authentication, search and offline tests. The
+engine interprets it as data: there is no executable code inside a definition.
 
-Questo documento descrive il formato `schema: 1` accettato da
-`internal/definition`, il connettore `internal/engine` che lo esegue e il CLI
-`indexarr-def`. Per il contesto e le scelte di prodotto:
+This document describes the `schema: 1` format accepted by
+`internal/definition`, the `internal/engine` connector that executes it and the
+`indexarr-def` CLI. For context and product decisions:
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Accanto alle definizioni complete il catalogo ha uno strato di **voci leggere**
-generate da un'istantanea storica dei metadati pubblici (nome, URL, tipo,
-lingua, categorie, famiglia). Non sono definizioni, non importano Cardigann e
-non contattano Jackett o Prowlarr: vedi
-[`CATALOG.md`](CATALOG.md) per stati, famiglie, lista italiana e comandi di
-rigenerazione.
+Alongside full definitions the catalog has a layer of **lightweight entries**
+generated from a historical snapshot of public metadata (name, URL, type,
+language, categories, family). They are not definitions, they do not import
+Cardigann and they do not contact Jackett or Prowlarr: see
+[`CATALOG.md`](CATALOG.md) for states, families, the Italian list and
+regeneration commands.
 
-## Struttura di un file
+## Structure of a file
 
 ```yaml
 schema: 1
-connector: ""          # opzionale: nome di un connettore nativo
-meta: {}               # obbligatorio
+connector: ""          # optional: name of a native connector
+meta: {}               # required
 settings: []
 categories: []
 capabilities: {}
-auth: {}               # opzionale
-session: {}            # opzionale: sessione browser persistente (FlareSolverr)
-search: {}             # obbligatorio se connector è assente
-download: {}           # opzionale: magnet/torrent dalla pagina di dettaglio
-health: {}             # opzionale
-tests: []              # opzionale, ma richiesto per il catalogo
+auth: {}               # optional
+session: {}            # optional: persistent browser session (FlareSolverr)
+search: {}             # required when connector is absent
+download: {}           # optional: magnet/torrent from the details page
+health: {}             # optional
+tests: []              # optional, but required for the catalog
 ```
 
-Le chiavi sconosciute sono **rifiutate**: un refuso non viene ignorato. Il file
-deve contenere un solo documento YAML.
+Unknown keys are **rejected**: a typo is not ignored. The file must contain a
+single YAML document.
 
 ## `meta`
 
-| Campo | Obbligatorio | Regole |
+| Field | Required | Rules |
 |---|---|---|
-| `id` | sì | slug `^[a-z0-9][a-z0-9-]*$`, stabile e univoco |
-| `name` | sì | nome leggibile, non vuoto |
-| `type` | sì | `public`, `semi-private`, `private` |
-| `protocol` | sì | `torrent`, `usenet` oppure `ed2k` |
-| `urls` | sì | almeno un URL assoluto `http`/`https`; il primo è il principale, gli altri sono mirror. Quando un indirizzo non c'è più (il nome non si risolve, nessuno risponde sulla porta, host irraggiungibile, certificato di un altro sito) oppure Cloudflare risponde che il sito dietro è giù (`502`, `504`, `520`-`526`, `530`; non `503`, che è anche la verifica anti-bot), il connettore riprova la stessa richiesta sugli altri indirizzi, in giro, e resta su quello che risponde: se muore anche il mirror torna al primo. Un sito lento o che rifiuta non fa cambiare indirizzo. Solo le richieste verso gli host della definizione cambiano indirizzo, non quelle verso tracker o CDN. Il passaggio vale anche per le sessioni FlareSolverr: il browser segnala un dominio morto con `net::ERR_NAME_NOT_RESOLVED` (o `ERR_CONNECTION_REFUSED`, `ERR_ADDRESS_UNREACHABLE`, `ERR_CERT_COMMON_NAME_INVALID`) e la sessione non viene riavviata per questo. Un mirror va in elenco solo se serve le stesse pagine allo stesso percorso: un dominio passato ad altro (es. un sito di scommesse) va tolto |
-| `language` | no | tag BCP 47, per esempio `it-IT` |
-| `author` | no | autore o manutentore |
-| `description` | no | descrizione breve |
-| `updated` | no | data dell'ultima revisione, per esempio `"2026-10-23"` |
-| `derived_from` | no | slug dello strumento che ha prodotto una bozza, per esempio `cardigann`; una bozza derivata resta locale e il catalogo la rifiuta |
-| `mirror` | no | `official` oppure `unofficial`. `unofficial` segnala che la definizione funziona solo attraverso un mirror non ufficiale: la UI mostra sempre il badge "Mirror non ufficiale" e un avviso nel form, anche quando lo stato è `verificata`. Additivo: le definizioni senza il campo restano valide |
-| `interval` | no | durata Go, per esempio `15m`; è un suggerimento per l'intervallo di aggiornamento dell'indexer. Vuoto = nessun suggerimento, vale il valore globale. Il minimo è 60s |
-| `latest` | no | `true` (predefinito) se il sito pubblica un elenco o un feed delle novità; `false` se sa solo rispondere a una ricerca |
-| `insecure_tls` | no | `true` solo per una definizione `public`: il sito serve una catena TLS incompleta, quindi il motore salta la verifica del certificato **per questo indexer**. La UI mostra un badge "TLS non verificato" e un avviso nel form. Su `semi-private` e `private` è rifiutato |
+| `id` | yes | slug `^[a-z0-9][a-z0-9-]*$`, stable and unique |
+| `name` | yes | readable name, not empty |
+| `type` | yes | `public`, `semi-private`, `private` |
+| `protocol` | yes | `torrent`, `usenet` or `ed2k` |
+| `urls` | yes | at least one absolute `http`/`https` URL; the first is the primary one, the others are mirrors. When an address is no longer there (the name does not resolve, nothing answers on the port, host unreachable, certificate of another site) or Cloudflare answers that the site behind is down (`502`, `504`, `520`-`526`, `530`; not `503`, which is also the anti-bot check), the connector retries the same request on the other addresses, in rotation, and stays on the one that answers: if the mirror dies too it goes back to the first. A slow site or one that refuses does not cause an address change. Only requests to the definition's hosts change address, not those to trackers or CDNs. The switch also applies to FlareSolverr sessions: the browser reports a dead domain with `net::ERR_NAME_NOT_RESOLVED` (or `ERR_CONNECTION_REFUSED`, `ERR_ADDRESS_UNREACHABLE`, `ERR_CERT_COMMON_NAME_INVALID`) and the session is not restarted because of this. A mirror belongs in the list only if it serves the same pages at the same path: a domain that has moved to something else (e.g. a betting site) must be removed |
+| `language` | no | BCP 47 tag, for example `it-IT` |
+| `author` | no | author or maintainer |
+| `description` | no | short description |
+| `updated` | no | date of the last revision, for example `"2026-10-23"` |
+| `derived_from` | no | slug of the tool that produced a draft, for example `cardigann`; a derived draft stays local and the catalog rejects it |
+| `mirror` | no | `official` or `unofficial`. `unofficial` signals that the definition only works through an unofficial mirror: the UI always shows the "Unofficial mirror" badge and a warning in the form, even when the state is `verificata`. Additive: definitions without the field remain valid |
+| `interval` | no | Go duration, for example `15m`; it is a suggestion for the indexer's refresh interval. Empty = no suggestion, the global value applies. The minimum is 60s |
+| `latest` | no | `true` (default) if the site publishes a list or feed of new items; `false` if it can only answer a search |
+| `insecure_tls` | no | `true` only for a `public` definition: the site serves an incomplete TLS chain, so the engine skips certificate verification **for this indexer**. The UI shows a "TLS not verified" badge and a warning in the form. It is rejected on `semi-private` and `private` |
 
-### Eccezione TLS per singola definizione
+### TLS exception per definition
 
-Un sito pubblico può servire una catena TLS incompleta (manca il certificato
-intermedio del firmatario) e diventare inaccessibile a Go, che rifiuta la
-connessione con `x509: certificate signed by unknown authority`. Non è un
-selettore da correggere: è il server.
+A public site can serve an incomplete TLS chain (the signer's intermediate
+certificate is missing) and become unreachable for Go, which refuses the
+connection with `x509: certificate signed by unknown authority`. It is not a
+selector to fix: it is the server.
 
-`meta.insecure_tls: true` autorizza il motore a saltare la verifica del
-certificato **solo per le richieste di quell'indexer**, e solo quando
-`meta.type` è `public`. Il trasporto condiviso non viene modificato: il
-connettore ne deriva uno con la stessa politeness, la stessa guardia SSRF e la
-stessa configurazione, cambiando soltanto il controllo TLS. Un `private` o un
-`semi-private` che chiede l'eccezione viene rifiutato all'apertura del
-connettore, perché le credenziali non devono mai viaggiare verso un certificato
-non verificato.
+`meta.insecure_tls: true` authorizes the engine to skip certificate
+verification **only for that indexer's requests**, and only when
+`meta.type` is `public`. The shared transport is not modified: the
+connector derives one from it with the same politeness, the same SSRF guard and
+the same configuration, changing only the TLS check. A `private` or
+`semi-private` definition that asks for the exception is rejected when the
+connector is opened, because credentials must never travel to an unverified
+certificate.
 
-La UI mostra il badge «TLS non verificato» sull'indexer e un avviso nel form
-(tradotti nelle 7 lingue), così l'utente sa che per quella fonte l'identità del
-server non è provata e che conviene controllare l'hash del magnet. Nel catalogo
-la definizione resta `verificata` se ricerca e grab sono stati provati; la prova
-della catena rotta sta nel commento del file YAML.
+The UI shows the «TLS not verified» badge on the indexer and a warning in the form
+(translated into the 7 languages), so the user knows that for that source the
+server's identity is not proven and that it is advisable to check the magnet
+hash. In the catalog the definition stays `verificata` if search and grab were
+tested; the proof of the broken chain lives in the YAML file's comment.
 
-### Bozze derivate
+### Derived drafts
 
-`derived_from` marca una definizione prodotta da uno strumento di conversione,
-oggi solo il convertitore Cardigann (`derived_from: cardigann`). Non è un
-percorso di migrazione né un'importazione: la bozza resta **locale**, la UI e
-l'API non hanno una rotta per importarla, e il catalogo built-in la rifiuta.
+`derived_from` marks a definition produced by a conversion tool,
+today only the Cardigann converter (`derived_from: cardigann`). It is not a
+migration path nor an import: the draft stays **local**, the UI and
+the API have no route to import it, and the built-in catalog rejects it.
 
-L'autore `cardigann-import` è un marcatore equivalente a `derived_from`,
-confrontato senza distinzione di maiuscole. Per entrare nel catalogo una bozza
-va riscritta osservando il sito: selettori verificati su fixture reali, autore e
-data nostri, `derived_from` rimosso. `make def-validate` esegue questa policy
-sulla directory del catalogo con `validate -catalog`.
+The `cardigann-import` author is a marker equivalent to `derived_from`,
+compared case-insensitively. To enter the catalog a draft
+must be rewritten by observing the site: selectors verified on real fixtures, our
+own author and date, `derived_from` removed. `make def-validate` runs this policy
+on the catalog directory with `validate -catalog`.
 
-### Intervallo suggerito
+### Suggested interval
 
-`meta.interval` è additivo e facoltativo. Un feed "ultime 24 h" ha bisogno di
-aggiornamenti più frequenti di un sito con la ricerca, quindi la definizione
-può suggerire una durata Go (`15m`, `2h`). Alla creazione dell'indexer il campo
-"Intervallo di aggiornamento" è precompilato con questo valore, fuori da
-Avanzate; l'utente può cambiarlo con le scelte rapide (15 minuti–24 ore), con
-un valore in secondi, o impostarlo a `0` per usare l'intervallo globale. Un
-valore inferiore a 60s è rifiutato. Il valore effettivo compare nell'elenco e
-nella scheda; «Riduci la frequenza» raddoppia quello della sola sorgente che ha
-risposto 429. L'intervallo riguarda gli aggiornamenti automatici: le ricerche
-dal vivo delle app non vengono ritardate. Il formato resta `schema: 1`.
+`meta.interval` is additive and optional. A "last 24 h" feed needs
+more frequent refreshes than a site with search, so the definition can
+suggest a Go duration (`15m`, `2h`). When the indexer is created the field
+"Refresh interval" is pre-filled with this value, outside
+Advanced; the user can change it with the quick choices (15 minutes–24 hours), with
+a value in seconds, or set it to `0` to use the global interval. A
+value below 60s is rejected. The effective value appears in the list and
+in the card; «Reduce the frequency» doubles the one of only the source that
+answered 429. The interval concerns automatic refreshes: live searches
+from the apps are not delayed. The format stays `schema: 1`.
 
-### Elenco delle novità
+### List of new items
 
-`meta.latest` è additivo e facoltativo. Assente vale `true`: la definizione ha
-un elenco o un feed delle novità e lo scheduler può eseguire un run periodico.
-Un sito che sa **solo cercare** (per esempio The Pirate Bay, TorrentsCSV,
-LimeTorrents) dichiara `latest: false`: non ha run schedulati, non compare nei
-feed RSS delle *arr e viene interrogato dalla ricerca dal vivo quando un'app
-cerca. I connettori `torznab`, `newznab` e i feed lasciano il valore assente,
-quindi restano `true`.
+`meta.latest` is additive and optional. Absent it means `true`: the definition has
+a list or feed of new items and the scheduler can run a periodic run.
+A site that can **only search** (for example The Pirate Bay, TorrentsCSV,
+LimeTorrents) declares `latest: false`: it has no scheduled runs, does not appear in the
+RSS feeds of the *arr apps and is queried by live search when an app
+searches. The `torznab`, `newznab` connectors and feeds leave the value absent,
+so they stay `true`.
 
 ```yaml
 meta:
@@ -121,61 +120,61 @@ meta:
   latest: false
 ```
 
-Il campo non cambia le capacità di ricerca: una definizione `latest: false`
-resta interrogabile per `search`, `tv-search`, `movie-search`, ecc. secondo
+The field does not change search capabilities: a `latest: false` definition
+remains queryable for `search`, `tv-search`, `movie-search`, etc. according to
 `capabilities`.
 
 ## `settings`
 
-Ogni impostazione diventa un campo del form dell'indexer.
+Each setting becomes a field in the indexer form.
 
-| Campo | Obbligatorio | Note |
+| Field | Required | Notes |
 |---|---|---|
-| `name` | sì | slug; è la chiave usata nei template |
-| `type` | no | tipo del form: `text`, `password`, `select`, `checkbox`, `number`… |
-| `label`, `help` | no | testo mostrato nella UI |
-| `default` | no | valore applicato quando l'utente non ne inserisce uno |
-| `required` | no | se vero il connettore rifiuta l'indexer senza valore |
-| `options` | no | valori ammessi per `select` |
+| `name` | yes | slug; it is the key used in templates |
+| `type` | no | form type: `text`, `password`, `select`, `checkbox`, `number`… |
+| `label`, `help` | no | text shown in the UI |
+| `default` | no | value applied when the user does not enter one |
+| `required` | no | if true the connector rejects the indexer without a value |
+| `options` | no | allowed values for `select` |
 
-I nomi devono essere slug: lettere minuscole, cifre e trattini. Per questo la
-grafia valida di una API key è `apikey` (non `api_key`); il motore sincronizza
-`apikey` e `api_key` quando serve.
+Names must be slugs: lowercase letters, digits and hyphens. That is why the
+valid spelling of an API key is `apikey` (not `api_key`); the engine synchronizes
+`apikey` and `api_key` when needed.
 
-Le impostazioni il cui nome o tipo suggerisce un segreto (`password`, `token`,
-`apikey`, `secret`, `cookie`, `passkey`) sono trattate come sensibili e
-redatte nei messaggi di errore.
+Settings whose name or type suggests a secret (`password`, `token`,
+`apikey`, `secret`, `cookie`, `passkey`) are treated as sensitive and
+redacted in error messages.
 
-### `freeleech`: solo le release gratuite
+### `freeleech`: free releases only
 
-Una definizione che sa distinguere il freeleech dichiara l'impostazione
-`freeleech` (una casella, `type: checkbox`). Il motore e la UI usano il nome
-`freeleech` come convenzione, quindi il form mostra la casella con l'etichetta
-tradotta senza codice dedicato:
+A definition that can distinguish freeleech declares the setting
+`freeleech` (a checkbox, `type: checkbox`). The engine and the UI use the name
+`freeleech` as a convention, so the form shows the checkbox with the translated
+label without dedicated code:
 
 ```yaml
 settings:
   - { name: freeleech, type: checkbox, label: "Freeleech only", default: false }
 ```
 
-Il filtro può funzionare in due modi:
+The filter can work in two ways:
 
-- **sul sito**: il parametro di ricerca usa `{{ settings.freeleech | onoff }}`
-  (un `1`/`0`) oppure `{{ settings.freeleech | ifset("on") }}` (il valore che
-  il sito si aspetta, per esempio `free=on`), e il sito restituisce già solo le
-  release gratuite;
-- **riga per riga**: `search.response.fields.freeleech` legge un marcatore
-  (`FREE`, `1`, `0`, …) e il motore scarta le righe non gratuite prima di
-  salvarle, rispondere alle app e leggere l'elenco delle novità. Il filtro vale
-  anche per la ricerca live e per il run periodico.
+- **on the site**: the search parameter uses `{{ settings.freeleech | onoff }}`
+  (a `1`/`0`) or `{{ settings.freeleech | ifset("on") }}` (the value
+  the site expects, for example `free=on`), and the site already returns only
+  free releases;
+- **row by row**: `search.response.fields.freeleech` reads a marker
+  (`FREE`, `1`, `0`, …) and the engine discards non-free rows before
+  storing them, answering the apps and reading the list of new items. The filter also applies
+  to live search and to the periodic run.
 
-Un valore del campo diverso da `0`, `false`, `no` e `off` significa freeleech.
-Se la definizione non dichiara l'impostazione, la casella non compare.
+A value of the field other than `0`, `false`, `no` and `off` means freeleech.
+If the definition does not declare the setting, the checkbox does not appear.
 
 
 ## `categories`
 
-Mappa le categorie del sito sulle categorie standard Torznab/Newznab.
+Maps the site's categories to the standard Torznab/Newznab categories.
 
 ```yaml
 categories:
@@ -183,17 +182,17 @@ categories:
   - { site: "12", standard: 2040, desc: "Film HD" }
 ```
 
-- `site` è l'id o la stringa usata dal sito;
-- `standard` deve essere tra `1000` e `8999`;
-- `desc` è facoltativo.
+- `site` is the id or string used by the site;
+- `standard` must be between `1000` and `8999`;
+- `desc` is optional.
 
-Quando una ricerca chiede categorie standard, il motore le traduce negli id del
-sito tramite questa tabella. Una categoria non riconosciuta diventa `8000`
+When a search requests standard categories, the engine translates them into the
+site's ids through this table. An unrecognized category becomes `8000`
 (Other).
 
 ## `capabilities`
 
-Dichiarano quali modalità e parametri l'indexer supporta. I valori ammessi sono
+They declare which modes and parameters the indexer supports. The allowed values are
 `q`, `season`, `ep`, `imdbid`, `tvdbid`, `tmdbid`, `tvmazeid`, `rid`, `artist`,
 `album`, `author`, `title`, `year`, `genre`.
 
@@ -204,8 +203,8 @@ capabilities:
   movie-search: [q, imdbid]
 ```
 
-Le modalità senza parametri non vengono pubblicate nelle capability del
-connettore. Le categorie pubblicate sono gli id `standard` dichiarati in
+Modes without parameters are not published in the connector's capabilities.
+The published categories are the `standard` ids declared in
 `categories`.
 
 ## `auth`
@@ -228,28 +227,28 @@ auth:
   refresh_after: 6h
 ```
 
-### Strategie
+### Strategies
 
-| Strategia | Comportamento |
+| Strategy | Behavior |
 |---|---|
-| `none` | nessuna autenticazione |
-| `api_key` | aggiunge `apikey` alla query se la definizione non usa già `settings.apikey`/`settings.api_key`; altrimenti il valore va inserito esplicitamente nei template |
-| `basic` | HTTP Basic con `settings.username` e `settings.password` |
+| `none` | no authentication |
+| `api_key` | adds `apikey` to the query if the definition does not already use `settings.apikey`/`settings.api_key`; otherwise the value must be inserted explicitly in the templates |
+| `basic` | HTTP Basic with `settings.username` and `settings.password` |
 | `token` | header `Authorization: Bearer <settings.token>` |
-| `form` | esegue `steps` al primo uso e conserva cookie e valori estratti |
-| `cookie` | come `form`; utile quando il flusso è già descritto da `steps` |
+| `form` | runs `steps` on first use and keeps cookies and extracted values |
+| `cookie` | like `form`; useful when the flow is already described by `steps` |
 
-`refresh_after` è una durata Go (`30m`, `6h`, `1h30m`). Se assente, il motore
-riusa la sessione per 6 ore. Con `form`/`cookie` il login avviene in modo lazy e
-viene ripetuto su `401`/`403` una volta per ricerca.
+`refresh_after` is a Go duration (`30m`, `6h`, `1h30m`). If absent, the engine
+reuses the session for 6 hours. With `form`/`cookie` the login happens lazily and
+is repeated on `401`/`403` once per search.
 
-`logged_in` (facoltativo, vuole un `selector`) è un segno presente in ogni pagina
-di un utente autenticato, di solito il link di logout. Serve ai forum che tengono
-una sola sessione per account: se lo stesso account entra da un altro browser,
-la sessione di indexarr cade e la pagina di dettaglio risponde `200` come ospite,
-senza link. Quando una pagina di dettaglio non contiene il segno, il motore rifà
-il login una volta e rilegge la pagina; due pagine lette in parallelo che trovano
-la sessione caduta costano un solo login.
+`logged_in` (optional, requires a `selector`) is a sign present on every page
+of an authenticated user, usually the logout link. It is needed by forums that keep
+a single session per account: if the same account logs in from another browser,
+indexarr's session drops and the details page answers `200` as a guest,
+without the link. When a details page does not contain the sign, the engine
+logs in again once and re-reads the page; two pages read in parallel that find
+the session dropped cost only one login.
 
 ```yaml
 auth:
@@ -259,45 +258,45 @@ auth:
 
 ### `steps`
 
-Ogni passo ha **`get` oppure `post`** (mai entrambi) e può avere:
+Each step has **`get` or `post`** (never both) and can have:
 
-- `form`: campi del body, solo per `post`;
-- `headers`: header aggiuntivi;
-- `extract`: valori da estrarre dalla risposta e rendere disponibili ai passi
-  successivi e alla ricerca.
+- `form`: body fields, only for `post`;
+- `headers`: extra headers;
+- `extract`: values to extract from the response and make available to later
+  steps and to the search.
 
-Gli estrattori sono valutati in quest'ordine:
+Extractors are evaluated in this order:
 
 ```yaml
 extract:
-  csrf: { selector: 'input[name="csrf"]', attr: value }  # attr vuoto = testo
+  csrf: { selector: 'input[name="csrf"]', attr: value }  # empty attr = text
   token: { json: "$.token" }
-  nonce: { regex: 'nonce=([a-f0-9]+)' }                  # serve il gruppo 1
+  nonce: { regex: 'nonce=([a-f0-9]+)' }                  # group 1 is required
 ```
 
-I cookie `Set-Cookie` sono catturati automaticamente; non vanno dichiarati.
+`Set-Cookie` cookies are captured automatically; they must not be declared.
 
-### Condizioni
+### Conditions
 
-`success` e ogni voce di `failure` possono avere `selector` e/o `status`:
+`success` and each `failure` entry can have `selector` and/or `status`:
 
-- con entrambi, devono valere entrambi;
-- `message: text` usa il testo del nodo selezionato come messaggio d'errore;
-- senza `success`, il login riesce con uno status `2xx`/`3xx`;
-- i `failure` sono valutati prima di `success`.
+- with both, both must match;
+- `message: text` uses the text of the selected node as the error message;
+- without `success`, the login succeeds with a `2xx`/`3xx` status;
+- `failure` entries are evaluated before `success`.
 
-I valori estratti e le impostazioni sono disponibili nei template; le password
-non compaiono mai nei messaggi restituiti.
+Extracted values and settings are available in the templates; passwords
+never appear in returned messages.
 
 ## `session`
 
-La sezione è **opzionale** e additiva. Serve per i siti che proteggono **tutte**
-le pagine con Cloudflare e mantengono lo stato in un browser: MirCrew è il caso
-di riferimento. Con una sessione persistente ogni richiesta dell'indexer —
-login, ricerca, pagina di dettaglio e download — passa da FlareSolverr con
-`sessions.create` + `request.get`/`request.post`, non dal transport HTTP
-ordinario. Il solver a una richiesta del ciclo 4 resta per i siti che hanno solo
-un controllo occasionale: non conserva cookie né sessione e non può ripetere un
+The section is **optional** and additive. It is for sites that protect **all**
+pages with Cloudflare and keep state in a browser: MirCrew is the reference
+case. With a persistent session every indexer request —
+login, search, details page and download — goes through FlareSolverr with
+`sessions.create` + `request.get`/`request.post`, not through the ordinary
+HTTP transport. The single-request solver from cycle 4 remains for sites that only have
+an occasional check: it keeps no cookies or session and cannot repeat a
 POST.
 
 ```yaml
@@ -310,62 +309,62 @@ session:
   timeout: 60s
 ```
 
-| Campo | Obbligatorio | Regole |
+| Field | Required | Rules |
 |---|---|---|
-| `mode` | no | vuoto oppure `flaresolverr` (vuoto vale `flaresolverr`) |
-| `endpoint` | no | URL `http`/`https` di FlareSolverr oppure template; vuoto usa l'URL globale delle impostazioni di rete |
-| `name_prefix` | no | slug usato per il possesso delle sessioni; vuoto = `indexarr-<id>` |
-| `max_age` | no | durata Go; oltre questo tempo la sessione viene chiusa e ricreata. Default 12h |
-| `idle_timeout` | no | durata Go; dopo questo tempo senza richieste il browser viene chiuso e ricreato alla richiesta successiva. Default 30m |
-| `timeout` | no | durata Go per un comando FlareSolverr. Default 60s |
+| `mode` | no | empty or `flaresolverr` (empty means `flaresolverr`) |
+| `endpoint` | no | FlareSolverr `http`/`https` URL or template; empty uses the global URL from network settings |
+| `name_prefix` | no | slug used for session ownership; empty = `indexarr-<id>` |
+| `max_age` | no | Go duration; beyond this time the session is closed and recreated. Default 12h |
+| `idle_timeout` | no | Go duration; after this time without requests the browser is closed and recreated on the next request. Default 30m |
+| `timeout` | no | Go duration for a FlareSolverr command. Default 60s |
 
-Comportamento:
+Behavior:
 
-- **Tutte** le richieste del connettore usano la sessione, compreso il POST del
-  login. Una sessione FlareSolverr serve una richiesta alla volta, quindi il
-  connettore le serializza.
-- Se un comando fallisce (tab in crash, browser chiuso, verifica non risolta)
-  la sessione viene distrutta, ne viene creata una nuova e la richiesta viene
-  ripetuta **una volta**. Il browser nuovo non ha i cookie: il login lazy
-  successivo li ricrea.
-- Dopo `max_age` la sessione viene riciclata allo stesso modo.
-- Dopo `idle_timeout` senza richieste il browser viene chiuso: un indexer che
-  nessuno interroga non tiene in vita un Chromium intero. Alla richiesta
-  successiva il connettore ricrea la sessione e rifà il login. Lo stesso
-  controllo gira in background ogni due minuti e alla chiusura del processo,
-  così fermare indexarr non lascia browser appesi.
-- Quando un connettore viene scartato (indexer salvato, impostazioni cambiate,
-  definizione aggiornata) la sua sessione viene chiusa subito, non alla
-  richiesta successiva.
-- Alla prima richiesta vengono chiuse le sessioni orfane che iniziano con
-  `name_prefix + "-"`; quelle di altri programmi e quelle ancora vive di un
-  altro connettore dello stesso processo non vengono toccate. La pulizia è
-  quindi limitata al prefisso dichiarato.
-- Le richieste usano `disableMedia: true`, come il servizio Python: le pagine
-  del forum contengono immagini e media lenti che farebbero scadere il timeout.
+- **All** connector requests use the session, including the login POST.
+  A FlareSolverr session serves one request at a time, so the
+  connector serializes them.
+- If a command fails (crashed tab, closed browser, unsolved check)
+  the session is destroyed, a new one is created and the request is
+  repeated **once**. The new browser has no cookies: the next lazy
+  login recreates them.
+- After `max_age` the session is recycled in the same way.
+- After `idle_timeout` without requests the browser is closed: an indexer that
+  nobody queries does not keep a whole Chromium alive. On the next
+  request the connector recreates the session and logs in again. The same
+  check runs in the background every two minutes and at process shutdown,
+  so stopping indexarr does not leave browsers hanging.
+- When a connector is discarded (indexer saved, settings changed,
+  definition updated) its session is closed immediately, not on the next
+  request.
+- On the first request, orphan sessions starting with
+  `name_prefix + "-"` are closed; those of other programs and those still alive from
+  another connector of the same process are not touched. Cleanup is
+  therefore limited to the declared prefix.
+- Requests use `disableMedia: true`, like the Python service: forum
+  pages contain images and slow media that would make the timeout expire.
 
-La modalità sessione non cambia il formato degli altri campi: `auth.steps`,
-`search` e `download` restano gli stessi. Una definizione senza `session` si
-comporta esattamente come prima e `schema` resta `1`.
+The session mode does not change the format of the other fields: `auth.steps`,
+`search` and `download` stay the same. A definition without `session` behaves
+exactly as before and `schema` stays `1`.
 
-### Cloudflare senza sessione
+### Cloudflare without a session
 
-Una definizione non deve dichiarare `session` solo perché il sito è dietro
-Cloudflare. Con FlareSolverr configurato, il transport ripete la GET che ha
-ricevuto la challenge e la ricerca funziona; la sessione persistente serve
-solo quando il sito tiene lo stato nel browser (login, cookie) o quando serve
-un POST che il solver a una richiesta non può ripetere.
+A definition must not declare `session` just because the site is behind
+Cloudflare. With FlareSolverr configured, the transport repeats the GET that
+received the challenge and the search works; the persistent session is
+only needed when the site keeps state in the browser (login, cookies) or when
+a POST is needed that the single-request solver cannot repeat.
 
-Limite noto: il solver restituisce testo, non binari. Un `.torrent` protetto
-da Cloudflare non si scarica: la definizione vale solo se la riga espone un
-magnet o se il file è su un percorso non protetto. BT.etree è il caso
-misurato: la ricerca è dietro challenge, `download.php` risponde `200
-application/x-bittorrent` anche senza solver. Una definizione che cerca ma non
-scarica non va scritta a metà.
+Known limit: the solver returns text, not binaries. A `.torrent` protected
+by Cloudflare cannot be downloaded: the definition is only valid if the row exposes a
+magnet or if the file is on an unprotected path. BT.etree is the measured case:
+the search is behind a challenge, `download.php` answers `200
+application/x-bittorrent` even without the solver. A definition that searches but does not
+download must not be written half-way.
 
-## Template
+## Templates
 
-I template sono deliberatamente minimi:
+Templates are deliberately minimal:
 
 ```yaml
 "{{ query.keywords }}"
@@ -375,50 +374,50 @@ I template sono deliberatamente minimi:
 "{{ page }}"
 ```
 
-Variabili disponibili:
+Available variables:
 
-- `settings.<nome>` — solo impostazioni dichiarate;
+- `settings.<name>` — declared settings only;
 - `query.keywords`, `query.season`, `query.ep`, `query.imdbid`, `query.tvdbid`,
   `query.tmdbid`, `query.tvmazeid`, `query.rid`, `query.artist`,
   `query.album`, `query.author`, `query.title`, `query.year`;
-- i valori estratti durante il login o la `search.preflight` (`{{ csrf }}`, `{{ token }}`, …);
-- `categories` — id del sito corrispondenti alle categorie richieste;
-- `page`, `offset`, `limit` — valori scalari della paginazione;
+- the values extracted during login or `search.preflight` (`{{ csrf }}`, `{{ token }}`, …);
+- `categories` — site ids matching the requested categories;
+- `page`, `offset`, `limit` — scalar pagination values;
 - `item.title`, `item.guid`, `item.details`, `item.download`, `item.season`,
-  `item.episode` — solo in `download.before`: la release scelta dal client. La
-  stagione e l'episodio arrivano dalla ricerca (o dai parametri del link).
+  `item.episode` — only in `download.before`: the release chosen by the client. The
+  season and episode come from the search (or from the link's parameters).
 
-L'unico filtro è `join(<separatore>)`, applicabile a `categories`, e
-`onoff`/`ifset(<valore>)`, applicabili a un'impostazione con casella
-(`true`/`false`): `onoff` rende `1`/`0`, `ifset("on")` rende `on` quando la
-casella è attiva e niente quando è spenta. Un nome sconosciuto o un filtro
-sconosciuto è un errore, non una stringa vuota.
+The only filter is `join(<separator>)`, applicable to `categories`, and
+`onoff`/`ifset(<value>)`, applicable to a setting with a checkbox
+(`true`/`false`): `onoff` renders `1`/`0`, `ifset("on")` renders `on` when the
+checkbox is active and nothing when it is off. An unknown name or an unknown
+filter is an error, not an empty string.
 
-### Formato delle keywords TV
+### TV keywords format
 
-Per una ricerca TV, `query.keywords` contiene la query con il marcatore di
-stagione/episodio, sul modello di Jackett/Prowlarr:
+For a TV search, `query.keywords` contains the query with the
+season/episode marker, following the Jackett/Prowlarr model:
 
-- `q + " S04E01"` quando ci sono stagione ed episodio;
-- `q + " S04"` quando c'è solo la stagione;
-- la query originale se il marcatore è già presente o se la modalità non è TV.
+- `q + " S04E01"` when both season and episode are present;
+- `q + " S04"` when only the season is present;
+- the original query if the marker is already present or if the mode is not TV.
 
-`query.keywords_raw` contiene sempre il testo originale. `query.keywords_title`
-è il testo originale senza i marcatori di stagione/episodio («I misteri di
-Murdoch S13E01» → «I misteri di Murdoch»), per un sito che cerca ogni parola
-nei titoli dei topic, dove il marcatore non compare mai; i filtri di stagione ed
-episodio leggono comunque la query completa. Il formato si sceglie
-con un campo additivo di `search`, default `sxxeyy`:
+`query.keywords_raw` always contains the original text. `query.keywords_title`
+is the original text without the season/episode markers («The Murdoch
+Mysteries S13E01» → «The Murdoch Mysteries»), for a site that searches every word
+in topic titles, where the marker never appears; the season and episode
+filters still read the full query. The format is chosen
+with an additive field of `search`, default `sxxeyy`:
 
 ```yaml
 search:
   keywords_format: sxxeyy   # default: S04E01
   # keywords_format: 1x05   # S04E01 -> 4x01
-  # keywords_format: separate  # keywords resta la query; usa query.season/query.ep
+  # keywords_format: separate  # keywords stays the query; use query.season/query.ep
 ```
 
-Con `separate` la definizione deve passare stagione ed episodio con parametri
-dedicati, per esempio:
+With `separate` the definition must pass season and episode with dedicated
+parameters, for example:
 
 ```yaml
 params:
@@ -427,25 +426,25 @@ params:
   ep: "{{ query.ep }}"
 ```
 
-Il campo è additivo: le definizioni esistenti senza `keywords_format`
-continuano a funzionare e ricevono il formato `sxxeyy`.
+The field is additive: existing definitions without `keywords_format`
+keep working and receive the `sxxeyy` format.
 
 ## `search`
 
-Obbligatorio quando `connector` è assente. Se `connector` è presente e `search`
-è omesso, il connettore nativo gestisce la ricerca; se `search` è presente viene
-comunque validato.
+Required when `connector` is absent. If `connector` is present and `search`
+is omitted, the native connector handles the search; if `search` is present it is
+validated anyway.
 
 ### `preflight`
 
-Alcuni siti generano un token CSRF sulla pagina e lo pretendono nella ricerca.
-`preflight` esegue una richiesta una volta prima della ricerca, estrae i valori
-e li rende disponibili come `{{ nome }}` nel template della ricerca.
+Some sites generate a CSRF token on the page and require it in the search.
+`preflight` makes a request once before the search, extracts the values
+and makes them available as `{{ name }}` in the search template.
 
 ```yaml
 search:
   preflight:
-    get: /                      # oppure post, mai entrambi
+    get: /                      # or post, never both
     extract:
       csrf: { selector: 'input[name="_csrf"]', attr: value }
   request:
@@ -455,39 +454,39 @@ search:
       keywords: "{{ query.keywords }}"
 ```
 
-| Campo | Obbligatorio | Regole |
+| Field | Required | Rules |
 |---|---|---|
-| `get` / `post` | uno dei due | percorso relativo o URL http/https |
-| `params` | no | query string della preflight |
-| `form` | no | body, solo con `post` |
-| `headers` | no | header della preflight |
-| `extract` | sì | almeno un nome; ogni estrattore usa `selector`/`attr`, `json` o `regex` |
+| `get` / `post` | one of the two | relative path or http/https URL |
+| `params` | no | preflight query string |
+| `form` | no | body, only with `post` |
+| `headers` | no | preflight headers |
+| `extract` | yes | at least one name; each extractor uses `selector`/`attr`, `json` or `regex` |
 
-La preflight usa gli stessi cookie, proxy e solver del connettore. Un valore
-estratto vuoto è un errore: la ricerca non parte con un token mancante. I
-valori restano nella sessione del connettore e vengono rinnovati a ogni
-ricerca.
+The preflight uses the same cookies, proxy and solver as the connector. An
+extracted empty value is an error: the search does not start with a missing token. The
+values stay in the connector's session and are renewed on every
+search.
 
 ### `request`
 
 ```yaml
 search:
   request:
-    get: /torrents.php          # oppure post, mai entrambi
+    get: /torrents.php          # or post, never both
     params:                     # query string
       search: "{{ query.keywords }}"
       cat: "{{ categories | join(',') }}"
       page: "{{ page }}"
-    form:                       # body, solo con post
+    form:                       # body, only with post
       sort: "{{ settings.sort }}"
     headers:
       Accept: text/html
 ```
 
-`params` vengono aggiunti alla query anche per le richieste `POST`. I percorsi
-relativi (anche quelli che iniziano con `/`) sono accodati al path del primo URL
-di `meta.urls`; un URL assoluto è usato solo se lo schema è `http`/`https`. I
-redirect sono rivalidati dal transport.
+`params` are added to the query even for `POST` requests. Relative paths
+(including those starting with `/`) are appended to the path of the first URL
+in `meta.urls`; an absolute URL is used only if the scheme is `http`/`https`.
+Redirects are revalidated by the transport.
 
 ### `pagination`
 
@@ -496,17 +495,17 @@ pagination: { type: page, start: 1, step: 1, max_pages: 5,
               param: page, stop_when: empty_rows }
 ```
 
-| Tipo | Significato |
+| Type | Meaning |
 |---|---|
-| `none` (default) | una sola richiesta |
-| `page` | pagine numerate; `start` default 1, `step` default 1 |
-| `offset` | offset crescente; `start` default 0, `step` default `limit` della richiesta |
-| `cursor` | accettato dalla validazione, **non ancora implementato** dal motore: la ricerca restituisce un errore esplicito |
+| `none` (default) | a single request |
+| `page` | numbered pages; `start` default 1, `step` default 1 |
+| `offset` | increasing offset; `start` default 0, `step` default the request's `limit` |
+| `cursor` | accepted by validation, **not yet implemented** by the engine: the search returns an explicit error |
 
-`max_pages` default 1 (la prima pagina). `stop_when` ammette solo
-`empty_rows`: la paginazione si ferma quando una pagina non produce righe.
-`param`, se presente, imposta il parametro di query indicato (senza
-sovrascrivere un valore già prodotto da `params`).
+`max_pages` default 1 (the first page). `stop_when` only accepts
+`empty_rows`: pagination stops when a page produces no rows.
+`param`, if present, sets the indicated query parameter (without
+overwriting a value already produced by `params`).
 
 ### `response`
 
@@ -522,74 +521,74 @@ response:
 
 #### Charset
 
-Le risposte HTML (ricerca, pagina di dettaglio, messaggi di login) sono
-convertite in UTF-8 prima dell'estrazione. Il charset viene dall'header
-`Content-Type`, poi da un `<meta charset>` nei primi 2 KiB; sono gestiti
-`windows-1251` (molti tracker russi) e `ISO-8859-1`/`windows-1252`. Un corpo
-che è già UTF-8 valido non viene toccato, quindi una pagina restituita da
-FlareSolverr non viene decodificata due volte. Le definizioni non devono
-dichiarare nulla.
+HTML responses (search, details page, login messages) are converted to UTF-8
+before extraction. The charset comes from the `Content-Type` header,
+then from a `<meta charset>` in the first 2 KiB; `windows-1251` (many
+Russian trackers) and `ISO-8859-1`/`windows-1252` are handled. A body
+that is already valid UTF-8 is not touched, so a page returned by
+FlareSolverr is not decoded twice. Definitions must not
+declare anything.
 
-#### Righe
+#### Rows
 
-- **HTML**: `rows.selector` è un selettore CSS, oppure una lista di fallback;
-  si usa il primo che trova nodi. È obbligatorio.
-- **JSON**: `rows.path` è un percorso puntato; i segmenti numerici indicizzano
-  gli array (`data.items`, `files.0.url`). Se vuoto, la radice deve essere un
+- **HTML**: `rows.selector` is a CSS selector, or a list of fallbacks;
+  the first one that finds nodes is used. It is required.
+- **JSON**: `rows.path` is a dotted path; numeric segments index
+  arrays (`data.items`, `files.0.url`). If empty, the root must be an
   array.
-- **XML**: `rows.path` è obbligatorio (`rss.channel.item`); i namespace sono
-  confrontati sul nome locale.
+- **XML**: `rows.path` is required (`rss.channel.item`); namespaces are
+  matched on the local name.
 
-#### Campi
+#### Fields
 
-Un campo HTML usa `selector` (lista = fallback) e `attr`. Con `attr` vuoto o
-`text` viene estratto il testo del nodo, altrimenti l'attributo indicato.
+An HTML field uses `selector` (list = fallback) and `attr`. With an empty `attr` or
+`text` the node's text is extracted, otherwise the indicated attribute.
 
-Un campo JSON usa `path`; se assente, usa il nome del campo. Un campo XML usa
-`path` con le forme `title`, `title.#text`, `enclosure@url` e `@attr` (attributo
-della riga).
+A JSON field uses `path`; if absent, it uses the field name. An XML field uses
+`path` with the forms `title`, `title.#text`, `enclosure@url` and `@attr` (row
+attribute).
 
-I nomi speciali riconosciuti dalla normalizzazione, quando dichiarati, sono:
+The special names recognized by normalization, when declared, are:
 
 `title`, `guid`, `details`, `download`, `magnet`, `infohash`, `size`, `seeders`,
-`leechers`, `date` (o `published`), `category` (o `categories`), `imdbid`,
+`leechers`, `date` (or `published`), `category` (or `categories`), `imdbid`,
 `tmdbid`, `tvdbid`, `freeleech`.
 
-Una riga viene scartata se manca il titolo, se un campo in `required` è vuoto o
-non convertibile, o se non ha né magnet né link di download né link ai dettagli.
-Il titolo viene normalizzato negli spazi; le categorie assenti diventano
-`8000`. I duplicati della stessa ricerca sono rimossi per infohash, poi GUID,
-poi URL di download.
+A row is discarded if the title is missing, if a field in `required` is empty or
+not convertible, or if it has neither a magnet nor a download link nor a details link.
+The title is normalized for whitespace; missing categories become
+`8000`. Duplicates from the same search are removed by infohash, then GUID,
+then download URL.
 
-#### Tipi
+#### Types
 
-| Tipo | Conversione |
+| Type | Conversion |
 |---|---|
-| `text` | stringa, default |
-| `int` | intero; tollera separatori delle migliaia, valori non numerici diventano 0 |
-| `size` | byte oppure `1.5 GB`, `1,5 GiB`, ecc. |
-| `date` | layout Go di `layouts`, poi un insieme di formati comuni; accetta anche timestamp Unix |
-| `url` | URL relativo risolto sulla risposta o sul base URL |
-| `category` | id del sito mappato da `categories` |
+| `text` | string, default |
+| `int` | integer; tolerates thousands separators, non-numeric values become 0 |
+| `size` | bytes or `1.5 GB`, `1,5 GiB`, etc. |
+| `date` | Go layout from `layouts`, then a set of common formats; also accepts Unix timestamps |
+| `url` | relative URL resolved against the response or the base URL |
+| `category` | site id mapped by `categories` |
 
-I tipi contano anche nei `required`: un `size` a zero, un `int` a zero, una
-data non valida o un URL vuoto fanno scartare la riga.
+Types also count in `required`: a zero `size`, a zero `int`, an invalid
+date or an empty URL cause the row to be discarded.
 
-#### Filtri
+#### Filters
 
-I filtri sono applicati nell'ordine dichiarato:
+Filters are applied in the declared order:
 
-| Filtro | Effetto |
+| Filter | Effect |
 |---|---|
-| `trim` | rimuove spazi ai bordi |
-| `lower` / `upper` | cambia maiuscole/minuscole |
-| `replace: "old:new"` | sostituisce tutte le occorrenze |
-| `query_param: name` | estrae il parametro dall'URL nel valore |
-| `prefix: "x"` / `suffix: "x"` | aggiunge testo |
-| `regex: "pattern"` | usa il gruppo 1 della prima corrispondenza; nessuna corrispondenza = stringa vuota |
-| `base64` | decodifica base64 (alfabeto standard o URL, con o senza `=`); un valore non valido diventa vuoto. Serve ai siti che nascondono il magnet in un attributo codificato |
+| `trim` | removes surrounding spaces |
+| `lower` / `upper` | changes case |
+| `replace: "old:new"` | replaces all occurrences |
+| `query_param: name` | extracts the parameter from the URL in the value |
+| `prefix: "x"` / `suffix: "x"` | adds text |
+| `regex: "pattern"` | uses group 1 of the first match; no match = empty string |
+| `base64` | decodes base64 (standard or URL alphabet, with or without `=`); an invalid value becomes empty. Used by sites that hide the magnet in an encoded attribute |
 
-Esempio:
+Example:
 
 ```yaml
 category:
@@ -601,37 +600,37 @@ category:
 
 ### eD2k
 
-`protocol: ed2k` descrive una fonte che pubblica link
-`ed2k://|file|nome|dimensione|hash|/` invece di magnet o `.torrent`. La
-release conserva il link e il suo hash MD4; non esiste uno swarm da contare e
-non viene salvato alcun file. Il server Torznab espone il link nel `<link>`,
-nell'enclosure e nell'attributo `ed2k`, con `<guid>` uguale all'hash. Con
-`torznab_proxy_ed2k` attivo (default) `<link>` ed enclosure passano dal link di
-download di indexarr, che rimanda all'`ed2k://` e registra il grab; l'attributo
-`ed2k` porta sempre il link diretto, che è quello che legge gextto. Sonarr,
-Radarr e gli altri programmi Servarr non ricevono questi indexer, perché
-saprebbero solo passare il link a un client torrent.
+`protocol: ed2k` describes a source that publishes
+`ed2k://|file|name|size|hash|/` links instead of magnets or `.torrent`. The
+release keeps the link and its MD4 hash; there is no swarm to count and
+no file is saved. The Torznab server exposes the link in `<link>`,
+in the enclosure and in the `ed2k` attribute, with `<guid>` equal to the hash. With
+`torznab_proxy_ed2k` active (default) `<link>` and enclosure go through indexarr's
+download link, which redirects to the `ed2k://` and records the grab; the
+`ed2k` attribute always carries the direct link, which is what gextto reads. Sonarr,
+Radarr and the other Servarr programs do not receive these indexers, because
+they would only know how to pass the link to a torrent client.
 
-Il grab di una release eD2k restituisce un redirect al link `ed2k://`; la UI
-lo mostra anche come testo da copiare. Un client aMule configurato con
-`kind: amule` riceve il link via `POST /api/v1/downloads` della sua Web API.
-Il download dall'elenco, il grab dal link di download e l'invio ad aMule
-passano da indexarr e lasciano una riga `grab` con stato `ed2k`, visibile in
-Log → Download con la sua card e la sua colonna per fonte. Gextto chiede prima
-il link di download, quindi anche i suoi grab sono contati; un client che apre
-l'attributo `ed2k` senza chiedere nulla a indexarr resta invisibile.
+Grabbing an eD2k release returns a redirect to the `ed2k://` link; the UI
+also shows it as text to copy. An aMule client configured with
+`kind: amule` receives the link via `POST /api/v1/downloads` of its Web API.
+Downloading from the list, grabbing from the download link and sending to aMule
+go through indexarr and leave a `grab` row with state `ed2k`, visible in
+Log → Download with its card and its per-source column. Gextto asks for the
+download link first, so its grabs are counted too; a client that opens
+the `ed2k` attribute without asking indexarr anything stays invisible.
 
-Una ricerca **live** di un indexer eD2k apre al massimo 10 pagine di dettaglio
-(e non le salta come per i torrent): senza quel passaggio la riga avrebbe solo
-un riferimento cifrato, che un client non riconoscerebbe come eD2k. Il limite
-tiene la ricerca legata a poche pagine; l'archivio completo lo costruisce il
-run periodico sulle liste dei forum.
+A **live** search on an eD2k indexer opens at most 10 details pages
+(and does not skip them as for torrents): without that step the row would only have
+an encrypted reference, which a client would not recognize as eD2k. The limit
+keeps the search bound to a few pages; the complete archive is built by the
+periodic run over the forum lists.
 
-### Ricerca su indice locale (`search.index`)
+### Search on a local index (`search.index`)
 
-Alcuni forum non hanno una ricerca utilizzabile (flood control) ma pubblicano
-elenchi alfabetici di titoli. `search.index` sostituisce la richiesta di
-ricerca con una lettura locale di quelle pagine:
+Some forums have no usable search (flood control) but publish
+alphabetical lists of titles. `search.index` replaces the search
+request with a local read of those pages:
 
 ```yaml
 search:
@@ -645,55 +644,55 @@ search:
         title:   { self: true }
         details: { self: true, attr: href, type: url }
     pages:
-      # TV: un solo topic su più pagine, seguite con il link «Prossimo»
+      # TV: a single topic over several pages, followed with the «Next» link
       - { get: /viewtopic.php?t=61463, standard: 5000, next: "a.right-box.right" }
       - { get: /viewtopic.php?t=3941486, letter: A, standard: 2000 }
       - { get: /viewtopic.php?t=3941485, letter: B, standard: 2000 }
-      # ... una pagina per lettera
+      # ... one page per letter
 ```
 
-Il motore legge solo le pagine senza `letter` e quella della prima lettera
-della query (`#` per numeri e simboli), estrae le coppie titolo/URL, confronta
-il titolo in locale (tollerando punteggiatura e parole comuni) e apre soltanto
-i primi `max_topics` topic. Un termine della query vale solo quando è l'inizio
-di una parola del titolo: «part» trova «Parte», ma «It» non trova «Hitman» e
-«Up» non trova «Superman», perché un falso positivo nasconderebbe il ripiego.
-Le lettere separate da punti o trattini valgono anche unite, nella query e nel
-titolo: «9-1-1» trova «911», «S.W.A.T.» trova «SWAT» e viceversa.
-Le ricerche di libri e musica non leggono l'indice: vanno direttamente alla
-`search.request`. Ogni elenco è tenuto in cache per `index.cache` (vuoto = 30
-minuti): gli elenchi cambiano di rado e un titolo che manca in un elenco
-vecchio arriva comunque al ripiego. Se
-nessun titolo corrisponde e la definizione ha anche una `search.request`
-normale, il motore usa quella come ripiego. Le pagine d'indice non diventano
-release: entrano in archivio solo i link trovati aprendo i topic scelti.
+The engine reads only the pages without `letter` and the one for the query's first
+letter (`#` for numbers and symbols), extracts the title/URL pairs, compares
+the title locally (tolerating punctuation and common words) and opens only
+the first `max_topics` topics. A query term counts only when it is the start
+of a word in the title: «part» finds «Parte», but «It» does not find «Hitman» and
+«Up» does not find «Superman», because a false positive would hide the fallback.
+Letters separated by dots or hyphens also count joined, in the query and in the
+title: «9-1-1» finds «911», «S.W.A.T.» finds «SWAT» and vice versa.
+Book and music searches do not read the index: they go directly to
+`search.request`. Each list is cached for `index.cache` (empty = 30
+minutes): lists change rarely and a title missing from an old list still arrives
+at the fallback. If
+no title matches and the definition also has a normal `search.request`,
+the engine uses that as a fallback. Index pages do not become
+releases: only the links found by opening the chosen topics enter the archive.
 
-`self: true` in un campo HTML legge il nodo della riga stessa invece di un
-discendente: serve quando la riga è già l'elemento `<a>` (elenchi di link).
+`self: true` in an HTML field reads the row node itself instead of a
+descendant: it is needed when the row is already the `<a>` element (lists of links).
 
-`next` (per pagina) è il selettore del link alla pagina successiva di un elenco
-diviso in più pagine, come un topic phpBB con «Pagina 1 di 3». Il motore lo
-segue fino a 10 pagine e tiene le pagine in cache come un solo elenco. Senza
-`next` legge solo la prima pagina: sul topic TV di DDUnlimited la prima pagina
-va da `#` a `H`, quindi le serie dalla I alla Z non venivano mai trovate.
+`next` (per page) is the selector of the link to the next page of a list
+split over several pages, like a phpBB topic with «Page 1 of 3». The engine
+follows it up to 10 pages and caches the pages as a single list. Without
+`next` it reads only the first page: on DDUnlimited's TV topic the first page
+goes from `#` to `H`, so series from I to Z were never found.
 
-Un link che punta a una delle `pages` è navigazione, non un titolo: la barra
-delle lettere in testa a un topic dei film rimanda agli altri topic-lettera e
-viene scartata. Un elenco che risponde senza il marcatore `auth.logged_in`
-(sessione caduta perché lo stesso account è entrato da un altro browser) fa
-rifare il login una volta e viene riletto.
+A link pointing to one of the `pages` is navigation, not a title: the letter
+bar at the top of a movie topic points to the other letter topics and
+is discarded. A list that answers without the `auth.logged_in` marker
+(session dropped because the same account logged in from another browser) triggers
+a new login once and is re-read.
 
-`index.forum` è facoltativo: indica il forum che contiene le pagine per lettera
-(per esempio `f=1988`) e serve solo alla UI, che lo mostra in sola lettura nel
-modulo dell'indexer insieme alla pagina senza lettera. Il motore legge le
-`pages`, non il forum.
+`index.forum` is optional: it indicates the forum that contains the letter pages
+(for example `f=1988`) and is only used by the UI, which shows it read-only in
+the indexer form together with the page without a letter. The engine reads the
+`pages`, not the forum.
 
 ### Flood control (`search.blocked`, `search.cache`, `search.interval`)
 
-Un forum con flood control accetta una ricerca ogni qualche minuto e alle
-altre risponde `200` con un riquadro di avviso al posto dei risultati. Per il
-motore quella pagina sembrava «nessun risultato». Due campi facoltativi la
-gestiscono:
+A forum with flood control accepts one search every few minutes and answers the
+others with `200` and a warning box instead of the results. To the
+engine that page looked like «no results». Two optional fields handle
+it:
 
 ```yaml
 search:
@@ -702,65 +701,65 @@ search:
   blocked: { selector: "#message p", contains: "non ti è permesso", message: text }
 ```
 
-- `blocked` (vuole un `selector`) riconosce la pagina di rifiuto. Con
-  `contains` vale solo se il testo del selettore contiene quella frase (senza
-  distinguere maiuscole): DDUnlimited usa lo stesso riquadro anche per
-  «Nessun argomento o messaggio con questo criterio di ricerca» e per «le
-  seguenti parole sono state ignorate», che non sono rifiuti. La ricerca
-  fallisce con il messaggio del sito («Al momento non ti è permesso fare
-  ricerche…»), che compare nella cronologia dell'indexer, invece di dare zero
-  release. Se le prime pagine hanno già risposto, il motore tiene quelle.
-- `cache` riusa per quel tempo le pagine di risultato della stessa richiesta
-  `GET`. Gextto e gli Arr chiedono la stessa serie una volta per episodio:
-  senza cache ogni richiesta dopo la prima viene rifiutata. Una pagina di
-  rifiuto non entra mai in cache.
-- `interval` (vuole `cache`) è il tempo minimo tra due richieste di ricerca
-  mandate al sito, per un flood control che conta per account. Le ricerche
-  passano una alla volta e l'intervallo parte dalla risposta della precedente
-  (compresa una ripetizione dopo un nuovo login), perché il sito conta dalla
-  ricerca che ha elaborato. La prima pagina
-  di una ricerca aspetta il suo turno fino a due intervalli, mai oltre la
-  scadenza del chiamante meno 15 s; se il turno è più lontano la ricerca non
-  parte, finisce in coda e risponde con un errore «deferred» (nella cronologia
-  è «annullata», non un guasto del sito). Un lavoro in background manda le
-  ricerche in coda al ritmo consentito e ne tiene le pagine in cache: la
-  richiesta identica successiva le legge da lì. Una pagina successiva alla
-  prima prende solo un turno libero subito; altrimenti la ricerca tiene le
-  pagine lette e la pagina va in coda. Ogni invio del lavoro in background
-  lascia una riga `search` nella cronologia dell'indexer con la query, lo
-  stato, la latenza e l'errore: è così che si vede se il forum accetta la
-  ricerca in coda, la rifiuta o la scarta dopo i due tentativi. Su DDUnlimited
-  il 2026-10-28 il forum ha accettato una ricerca ogni 57-58 s (rifiutata a
-  55 s, accettata a 58 s e a 70 s), e un rifiuto non fa ripartire il conto.
-- Dopo un rifiuto nessuna ricerca parte per quattro intervalli; ogni altro
-  rifiuto di fila raddoppia la pausa, fino a 32 intervalli (circa 35 minuti su
-  DDUnlimited), e la prima ricerca accettata la azzera. Durante la pausa una
-  ricerca live non aspetta il turno: va subito in coda con l'errore «the site
-  refused the last search, next turn in …», senza toccare il sito. Il
-  2026-10-29 il forum ha rifiutato tutte le ricerche dalle 02:06 alle 03:29,
-  una ogni 5,5 minuti, e una ricerca live aspettava fino a 167 s per prendere
-  lo stesso rifiuto.
+- `blocked` (requires a `selector`) recognizes the refusal page. With
+  `contains` it only counts if the selector's text contains that phrase (case-insensitive):
+  DDUnlimited uses the same box also for
+  "no topics or posts matched this search criterion" and for "the
+  following words were ignored", which are not refusals. The search
+  fails with the site's message ("You are not currently allowed to
+  search…"), which appears in the indexer's history, instead of returning zero
+  releases. If the first pages have already answered, the engine keeps them.
+- `cache` reuses, for that time, the result pages of the same `GET`
+  request. Gextto and the Arr apps ask for the same series once per episode:
+  without the cache every request after the first is refused. A refusal page
+  never enters the cache.
+- `interval` (requires `cache`) is the minimum time between two search requests
+  sent to the site, for a flood control that counts per account. Searches
+  go one at a time and the interval starts from the previous response
+  (including a retry after a new login), because the site counts from the
+  search it processed. The first page
+  of a search waits for its turn up to two intervals, never beyond the
+  caller's deadline minus 15 s; if the turn is further away the search does not
+  start, ends up in the queue and answers with a "deferred" error (in the history
+  it is "canceled", not a site failure). A background job sends
+  queued searches at the allowed pace and caches their pages: the
+  next identical request reads them from there. A page after the
+  first takes only an immediately free turn; otherwise the search keeps the
+  pages read and the page goes to the queue. Every send by the background job
+  leaves a `search` row in the indexer's history with the query, the
+  state, the latency and the error: that is how you see whether the forum accepts the
+  queued search, refuses it or discards it after the two attempts. On DDUnlimited
+  on 2026-10-28 the forum accepted one search every 57-58 s (refused at
+  55 s, accepted at 58 s and at 70 s), and a refusal does not restart the count.
+- After a refusal no search starts for four intervals; each further
+  consecutive refusal doubles the pause, up to 32 intervals (about 35 minutes on
+  DDUnlimited), and the first accepted search resets it to zero. During the pause a
+  live search does not wait for its turn: it goes straight to the queue with the error "the site
+  refused the last search, next turn in …", without touching the site. On
+  2026-10-29 the forum refused all searches from 02:06 to 03:29,
+  one every 5.5 minutes, and a live search waited up to 167 s to receive
+  the same refusal.
 
-Con `auth.logged_in` anche una pagina di ricerca senza il segno del login
-(il forum ha fatto cadere la sessione e risponde da ospite) fa rifare il login
-una volta e rileggere la pagina.
+With `auth.logged_in` a search page without the login sign
+(the forum dropped the session and answers as a guest) also triggers a new login
+once and a re-read of the page.
 
-Con `download.expand: file`, una ricerca con stagione (`season`, oppure
-`S02E03`/`2x03` nella query) non apre i topic che nominano un'altra stagione:
-la ricerca del forum elenca tutte le stagioni di una serie, e aprirle costa una
-pagina ciascuna senza poter dare l'episodio cercato.
+With `download.expand: file`, a search with a season (`season`, or
+`S02E03`/`2x03` in the query) does not open topics that name another season:
+the forum search lists all seasons of a series, and opening them costs one
+page each without being able to yield the requested episode.
 
 ## `download`
 
-Risolve il magnet, il link `.torrent` o il link `ed2k://` da una pagina di
-dettaglio quando il listing non li espone. La sezione è **opzionale** e retro-compatibile: le
-definizioni che hanno già `magnet` o `download` nella riga di ricerca non
-cambiano e `schema` resta 1.
+Resolves the magnet, the `.torrent` link or the `ed2k://` link from a details
+page when the listing does not expose them. The section is **optional** and backward-compatible:
+definitions that already have `magnet` or `download` in the search row do not
+change and `schema` stays 1.
 
 ```yaml
 download:
   resolve_on: grab            # search | grab (default)
-  from: details               # campo della ricerca, default details
+  from: details               # search field, default details
   max_concurrent: 2           # 1..8, default 2
   size: { selector: "table.torrentInfoTable tr:nth-child(1) td", filters: [{ regex: "([0-9][0-9.,]*\\s*(?:B|KB|MB|GB|TB))" }] }
   extract:
@@ -770,80 +769,80 @@ download:
     - torrent: { selector: 'a[href$=".torrent"]', attr: href, type: url }
 ```
 
-| Campo | Obbligatorio | Regole |
+| Field | Required | Rules |
 |---|---|---|
-| `resolve_on` | no | `search` oppure `grab` (default) |
-| `from` | no | nome di un campo dichiarato in `search.response.fields`; vuoto = `details` |
-| `max_concurrent` | no | da 1 a 8; `0` o assente = 2. Valori fuori intervallo sono rifiutati |
-| `size` | no | campo letto dalla pagina di dettaglio; il valore viene interpretato come dimensione e applicato alla release |
-| `select` | no | vuoto oppure `season_episode`: sceglie fra più estrattori quello della stagione/episodio richiesti |
-| `before` | no | azione generale prima del download (per esempio il «grazie» di un forum); richiede `resolve_on: grab` |
-| `expand` | no | vuoto oppure `file`: con `resolve_on: search` crea una release per ogni file estratto (un pack di stagione diventa i suoi episodi) |
-| `extract` | sì | almeno un estrattore; ogni voce ha **solo** `magnet`, **solo** `torrent` o **solo** `ed2k` |
+| `resolve_on` | no | `search` or `grab` (default) |
+| `from` | no | name of a field declared in `search.response.fields`; empty = `details` |
+| `max_concurrent` | no | from 1 to 8; `0` or absent = 2. Out-of-range values are rejected |
+| `size` | no | field read from the details page; the value is interpreted as a size and applied to the release |
+| `select` | no | empty or `season_episode`: chooses, among several extractors, the one for the requested season/episode |
+| `before` | no | general action before the download (for example a forum's «thanks»); requires `resolve_on: grab` |
+| `expand` | no | empty or `file`: with `resolve_on: search` creates a release for every extracted file (a season pack becomes its episodes) |
+| `extract` | yes | at least one extractor; each entry has **only** `magnet`, **only** `torrent` or **only** `ed2k` |
 
-Ogni estrattore è un `Field` con le stesse regole dei campi di ricerca:
-`selector` (lista = fallback) oppure `path` per una risposta JSON, `attr`,
-`type` (`text`, `int`, `size`, `date`, `url`, `category`) e `filters`. Per
-`torrent` il valore viene risolto come URL relativo alla pagina di dettaglio;
-per `magnet` deve essere un URI `magnet:`; per `ed2k` deve essere un link
-`ed2k://|file|...|/` valido, dal quale si leggono nome, dimensione e hash MD4.
+Each extractor is a `Field` with the same rules as search fields:
+`selector` (list = fallback) or `path` for a JSON response, `attr`,
+`type` (`text`, `int`, `size`, `date`, `url`, `category`) and `filters`. For
+`torrent` the value is resolved as a URL relative to the details page;
+for `magnet` it must be a `magnet:` URI; for `ed2k` it must be a valid
+`ed2k://|file|...|/` link, from which name, size and MD4 hash are read.
 
-Un campo eD2k può usare `body: true` invece di `selector`: il motore legge
-l'intera risposta e cerca **tutti** gli URI `ed2k://|file|...|/` nel testo,
-anche quelli dentro un array JavaScript (`filearray[0]='ed2k://…'`) che il
-forum usa per il pulsante «aggiungi tutti i link a eMule». I duplicati sono
-scartati per hash MD4, quindi un link presente sia in un `<a href>` sia
-nell'array conta una volta sola.
+An eD2k field can use `body: true` instead of `selector`: the engine reads
+the whole response and looks for **all** the `ed2k://|file|...|/` URIs in the text,
+including those inside a JavaScript array (`filearray[0]='ed2k://…'`) that the
+forum uses for the "add all links to eMule" button. Duplicates are
+discarded by MD4 hash, so a link present both in an `<a href>` and in the
+array counts only once.
 
-Un estrattore può aggiungere `all: true` (additivo): raccoglie **tutti** i
-valori che il primo selettore trova invece del solo primo. Serve quando un
-topic contiene molti magnet o molti file eD2k. In quel caso
-`select: season_episode` confronta il nome di ogni candidato (il parametro
-`dn` di un magnet, il nome file di un link eD2k) con stagione ed episodio
-della richiesta:
+An extractor can add `all: true` (additive): it collects **all** the
+values that the first selector finds instead of just the first one. It is needed when a
+topic contains many magnets or many eD2k files. In that case
+`select: season_episode` compares the name of each candidate (the `dn`
+parameter of a magnet, the file name of an eD2k link) with the season and episode
+of the request:
 
-- stagione + episodio: sceglie la release che contiene quell'episodio; a parità
-  preferisce l'intervallo più stretto (episodio singolo prima del pack);
-- solo stagione: preferisce il pack della stagione, poi una release qualsiasi
-  della stessa stagione;
-- nessuna stagione/episodio: resta valido il primo valore, come prima.
+- season + episode: chooses the release that contains that episode; on a tie
+  it prefers the narrowest range (single episode before the pack);
+- season only: prefers the season pack, then any release
+  of the same season;
+- no season/episode: the first value remains valid, as before.
 
-Con `expand: file` la scelta non si applica: ogni file del topic diventa una
-release separata. Il titolo unisce il titolo del topic e il nome del file, la
-dimensione viene dal link e l'hash MD4 diventa l'identità della riga. Quando il
-nome del file dice già cosa contiene, cioè nomina l'episodio (`S06E12`, `6x12`)
-o l'anno (`Dune.Parte.due.2024.bdrip…`) e condivide una parola con il topic, il
-titolo è il solo nome del file: con il topic davanti Gextto e le Arr leggevano
-la serie o il film sbagliato. In un topic di film o serie (categorie 2000 e
-5000) i file accessori non diventano release: tracce audio separate (`.mka`,
-`.ac3`, `.dts`…), sottotitoli, immagini, `.nfo` e i file con «extra», «bonus»,
-«sample» o «trailer» nel nome, a meno che il topic stesso non usi quella parola
-(la serie «Extras»). Un topic fatto solo di file accessori resta intero. È il
-percorso giusto per un archivio: un topic con 46 episodi non deve perdere 45
-link. `expand` richiede `resolve_on: search`, perché i link devono essere letti
-prima che i risultati vengano salvati.
+With `expand: file` the selection does not apply: every file in the topic becomes a
+separate release. The title joins the topic title and the file name, the
+size comes from the link and the MD4 hash becomes the row's identity. When the
+file name already says what it contains, that is, it names the episode (`S06E12`, `6x12`)
+or the year (`Dune.Parte.due.2024.bdrip…`) and shares a word with the topic, the
+title is the file name alone: with the topic in front, Gextto and the Arr apps read
+the wrong series or movie. In a movie or series topic (categories 2000 and
+5000) accessory files do not become releases: separate audio tracks (`.mka`,
+`.ac3`, `.dts`…), subtitles, images, `.nfo` and files with "extra", "bonus",
+"sample" or "trailer" in the name, unless the topic itself uses that word
+(the series "Extras"). A topic made only of accessory files stays whole. It is the
+right path for an archive: a topic with 46 episodes must not lose 45
+links. `expand` requires `resolve_on: search`, because the links must be read
+before the results are stored.
 
-In una fonte `protocol: ed2k` il protocollo è deciso riga per riga: un topic
-che porta un magnet o un `.torrent` invece di un link eD2k diventa una riga
-torrent, entra in archivio come torrent e al grab va a un client torrent, non
-ad aMule. Due `.torrent` dello stesso topic ricevono GUID distinti (GUID del
-topic più un digest dell'URL, che non compare in chiaro). Un topic che non si è
-potuto aprire non entra né in archivio né nei risultati live: il suo grab
-restituirebbe il primo file del topic, non quello scelto.
+In a `protocol: ed2k` source the protocol is decided row by row: a topic
+that carries a magnet or a `.torrent` instead of an eD2k link becomes a
+torrent row, enters the archive as a torrent and on grab goes to a torrent client, not
+to aMule. Two `.torrent` files from the same topic receive distinct GUIDs (topic
+GUID plus a digest of the URL, which does not appear in plain text). A topic that could not
+be opened enters neither the archive nor the live results: its grab
+would return the topic's first file, not the chosen one.
 
-La stagione e l'episodio vengono conservati nell'item della ricerca e viaggiano
-nel riferimento di download cifrato; una definizione può anche ripeterli come
-parametri `season` ed `ep` nel link di dettaglio.
+Season and episode are kept in the search item and travel
+in the encrypted download reference; a definition can also repeat them as
+`season` and `ep` parameters in the details link.
 
 ### `download.before`
 
-`before` è un'azione **generale** da eseguire solo al grab, mai durante una
-ricerca. Nasce dal caso MirCrew (i magnet sono nascosti finché non si ringrazia
-il primo post) ma vale per ogni forum con la stessa logica. Nemmeno i lavori in
-background la eseguono: il recupero degli infohash mancanti salta le fonti con
-`before`, e così i riferimenti sigillati per un altro indexer (i topic in
-attesa di MirCrew Smartfeed). Fino al 29/10 quel recupero ringraziava circa
-dieci topic MirCrew a ogni giro, per release che nessun client aveva chiesto.
+`before` is a **general** action to be executed only on grab, never during a
+search. It comes from the MirCrew case (the magnets are hidden until you thank
+the first post) but applies to every forum with the same logic. Not even background jobs
+execute it: the recovery of missing infohashes skips sources with
+`before`, and so do references sealed for another indexer (topics pending
+on MirCrew Smartfeed). Until 29/10 that recovery thanked about
+ten MirCrew topics on every round, for releases no client had requested.
 
 ```yaml
 download:
@@ -861,78 +860,77 @@ download:
       all: true
 ```
 
-Sequenza al grab:
+Sequence on grab:
 
-1. apre la pagina di dettaglio (`from`);
-2. se un estrattore di `download.extract` trova già un magnet o un torrent, li
-   usa e **non esegue l'azione**;
-3. altrimenti estrae i valori dichiarati in `before.extract` dalla pagina;
-4. esegue `before.action` (`get` oppure `post`, con `params`/`form`/`headers`
-   templati);
-5. attende `before.wait` e riapre la pagina;
-6. estrae di nuovo e sceglie il magnet con `select`.
+1. opens the details page (`from`);
+2. if an extractor in `download.extract` already finds a magnet or a torrent, it
+   uses them and **does not execute the action**;
+3. otherwise it extracts the values declared in `before.extract` from the page;
+4. executes `before.action` (`get` or `post`, with templated `params`/`form`/`headers`);
+5. waits for `before.wait` and reopens the page;
+6. extracts again and chooses the magnet with `select`.
 
-Se dopo l'azione non compare alcun magnet il grab fallisce con un errore; non
-viene ritentato in loop. Il vincolo «solo al grab» è validato: `before` con
-`resolve_on: search` è rifiutato, e il motore ha comunque una guardia difensiva
-che salta la risoluzione anticipata. I valori `{{ item.* }}` e quelli estratti
-sono disponibili nell'azione.
+If after the action no magnet appears the grab fails with an error; it is not
+retried in a loop. The "grab only" constraint is validated: `before` with
+`resolve_on: search` is rejected, and the engine also has a defensive guard
+that skips early resolution. The `{{ item.* }}` values and the extracted ones
+are available in the action.
 
 
-### Semantica
+### Semantics
 
-- **`resolve_on: search`** — durante la ricerca, **dopo deduplica e limite**,
-  per ogni riga con il campo `from` valorizzato e senza magnet né link di
-  download, il motore apre la pagina di dettaglio con lo stesso transport, la
-  stessa sessione e la stessa autenticazione della ricerca. Applica gli
-  estrattori **nell'ordine dichiarato**: il primo che produce un valore vince.
-  Imposta `Magnet` e `InfoHash` normalizzato, oppure `DownloadURL` per un
-  `.torrent`. Le righe che hanno già un magnet o un torrent non vengono aperte.
-  Con 50 righe e `limit: 10` vengono aperte al massimo 10 pagine di dettaglio.
-- **`resolve_on: grab`** (default quando il campo è assente) — la ricerca non
-  apre i dettagli; `Download` li apre al momento del grab. Meno richieste al
-  sito, infohash disponibile solo dopo il download.
-- **`Download`** preferisce un magnet già presente. Con `resolve_on: grab` (e
-  una sezione `download`) risolve sempre dalla sorgente dichiarata (`from`,
-  tipicamente la pagina di dettaglio) e **ignora** un `DownloadURL` portato
-  dall'item: quel link può arrivare da un import (per esempio Prowlarr) o da
-  una cache vecchia e puntare a un host diverso, anche privato, che la guardia
-  SSRF rifiuta. Senza sezione `download`, o con `resolve_on: search` (dove il
-  link è già stato risolto dalla sorgente dichiarata), usa un `DownloadURL`
-  diretto e solo dopo la pagina di dettaglio. Un redirect della pagina (o del
-  link) verso `magnet:` viene restituito come `Payload.Magnet`.
-- Quando il `.torrent` arriva da una pagina di dettaglio (o la release ha un
-  link ai dettagli), la richiesta porta `Referer: <pagina di dettaglio>`,
-  come un clic nel browser: diversi siti DataLife Engine rispondono con una
-  pagina HTML se manca. Il referer è inviato solo allo stesso host.
-- **`download.before`** viene eseguito solo da `Download`, dopo che il client ha
-  scelto la release; una ricerca non apre la pagina di dettaglio e non ringrazia.
-- Con `select: season_episode` la scelta usa la stagione e l'episodio della
-  richiesta, non il primo magnet del topic.
-- La concorrenza è limitata da `max_concurrent` (default 2, massimo 8). Le
-  risoluzioni riuscite sono tenute in una cache in memoria per indexer
-  (256 voci, TTL 10 minuti); righe con lo stesso URL di dettaglio condividono
-  una sola richiesta.
-- Un dettaglio che fallisce non interrompe la pagina: la riga resta senza
-  magnet/URL e il fallimento viene contato. Gli errori non contengono mai
-  l'URL del tracker, che può includere una passkey.
+- **`resolve_on: search`** — during the search, **after deduplication and limit**,
+  for each row with the `from` field set and without a magnet or download
+  link, the engine opens the details page with the same transport, the
+  same session and the same authentication as the search. It applies the
+  extractors **in the declared order**: the first one that produces a value wins.
+  It sets `Magnet` and the normalized `InfoHash`, or `DownloadURL` for a
+  `.torrent`. Rows that already have a magnet or a torrent are not opened.
+  With 50 rows and `limit: 10`, at most 10 details pages are opened.
+- **`resolve_on: grab`** (default when the field is absent) — the search does not
+  open details; `Download` opens them at grab time. Fewer requests to the
+  site, infohash available only after download.
+- **`Download`** prefers a magnet already present. With `resolve_on: grab` (and
+  a `download` section) it always resolves from the declared source (`from`,
+  typically the details page) and **ignores** a `DownloadURL` carried
+  by the item: that link may come from an import (for example Prowlarr) or from
+  an old cache and point to a different host, even a private one, which the SSRF
+  guard rejects. Without a `download` section, or with `resolve_on: search` (where the
+  link has already been resolved from the declared source), it uses a direct `DownloadURL`
+  and only afterwards the details page. A redirect of the page (or of the
+  link) to `magnet:` is returned as `Payload.Magnet`.
+- When the `.torrent` comes from a details page (or the release has a
+  details link), the request carries `Referer: <details page>`,
+  like a click in the browser: several DataLife Engine sites answer with an
+  HTML page if it is missing. The referer is sent only to the same host.
+- **`download.before`** is executed only by `Download`, after the client has
+  chosen the release; a search does not open the details page and does not thank.
+- With `select: season_episode` the choice uses the season and episode of the
+  request, not the topic's first magnet.
+- Concurrency is limited by `max_concurrent` (default 2, maximum 8). Successful
+  resolutions are kept in an in-memory cache per indexer
+  (256 entries, 10-minute TTL); rows with the same details URL share
+  a single request.
+- A details page that fails does not interrupt the page: the row stays without
+  magnet/URL and the failure is counted. Errors never contain
+  the tracker URL, which may include a passkey.
 
-### Validazione
+### Validation
 
-- `resolve_on` deve essere `search` o `grab`;
-- `from` (dopo il default `details`) deve esistere in
+- `resolve_on` must be `search` or `grab`;
+- `from` (after defaulting to `details`) must exist in
   `search.response.fields`;
-- `select` deve essere vuoto o `season_episode`;
-- `before` richiede `resolve_on: grab`; `action` deve avere `get` oppure
-  `post`, mai entrambi, e ogni estrattore deve avere `selector`, `json` o
-  `regex` valido;
-- `extract` non può essere vuoto;
-- `size`, quando presente, è un `Field` con `selector` o `path`;
-- ogni voce deve avere esattamente uno tra `magnet`, `torrent` e `ed2k`;
-- ogni campo deve avere `selector` o `path` non vuoti, un `type` ammesso e
-  filtri validi (`replace: old:new`, `query_param` con nome, `regex`
-  compilabile, nomi noti);
-- `max_concurrent` deve essere `0` (default) o tra 1 e 8.
+- `select` must be empty or `season_episode`;
+- `before` requires `resolve_on: grab`; `action` must have `get` or
+  `post`, never both, and each extractor must have a valid `selector`, `json` or
+  `regex`;
+- `extract` cannot be empty;
+- `size`, when present, is a `Field` with `selector` or `path`;
+- each entry must have exactly one of `magnet`, `torrent` and `ed2k`;
+- each field must have a non-empty `selector` or `path`, an allowed `type` and
+  valid filters (`replace: old:new`, `query_param` with a name, compilable
+  `regex`, known names);
+- `max_concurrent` must be `0` (default) or between 1 and 8.
 
 ## `health`
 
@@ -942,13 +940,13 @@ health:
   min_rows: 1
 ```
 
-È la query usata dal test del connettore. Il motore esegue la prima pagina e
-richiede almeno `min_rows` risultati (default 1, query default `test`). Il test
-riporta anche le fasi `reach` (GET sul base URL), `auth` (solo se serve) e
-`download` (oggi `skipped`). `Test.OK` richiede reach, auth (quando previsto) e
-search riusciti.
+It is the query used by the connector test. The engine runs the first page and
+requires at least `min_rows` results (default 1, default query `test`). The test
+also reports the phases `reach` (GET on the base URL), `auth` (only if needed) and
+`download` (today `skipped`). `Test.OK` requires reach, auth (when expected) and
+search to succeed.
 
-## `tests` e fixture offline
+## `tests` and offline fixtures
 
 ```yaml
 tests:
@@ -963,76 +961,76 @@ tests:
     expect: { authenticated: false }
 ```
 
-- `fixture` è un percorso **relativo al file della definizione**, senza `..`,
-  senza path assoluti e senza `~`.
-- `expect.min_rows` è il numero minimo di righe estratte.
-- `expect.required` elenca i campi che devono essere presenti.
-- `expect.authenticated` distingue una fixture di login riuscito da una fallita.
+- `fixture` is a path **relative to the definition file**, without `..`,
+  without absolute paths and without `~`.
+- `expect.min_rows` is the minimum number of extracted rows.
+- `expect.required` lists the fields that must be present.
+- `expect.authenticated` distinguishes a successful-login fixture from a failed one.
 
-`indexarr-def check-fixtures` verifica solo che i file esistano, siano file
-regolari e non vuoti. L'estrazione sulle fixture viene esercitata dai test del
-motore (`internal/engine`) con `httptest`; il CLI non esegue richieste né
-estrazioni.
+`indexarr-def check-fixtures` only checks that the files exist, are regular
+files and are not empty. Extraction on the fixtures is exercised by the engine
+tests (`internal/engine`) with `httptest`; the CLI executes no requests and no
+extractions.
 
-Per il catalogo servono fixture per la ricerca e, se l'indexer è privato, per
-login riuscito e fallito. Nessuna fixture deve contenere passkey, cookie,
-credenziali o nomi utente reali: si usano valori sintetici come
-`synthetic-csrf-token`.
+For the catalog, fixtures are needed for search and, if the indexer is private, for
+successful and failed login. No fixture must contain passkeys, cookies,
+credentials or real usernames: synthetic values such as
+`synthetic-csrf-token` are used.
 
-## `connector` e famiglie
+## `connector` and families
 
-Il campo opzionale `connector` delega l'interpretazione a un connettore nativo.
-I nomi registrati da `internal/family` sono:
+The optional `connector` field delegates interpretation to a native connector.
+The names registered by `internal/family` are:
 
-- `unit3d` — tracker basati su UNIT3D (API JSON, torrent);
-- `newznab` — API Newznab generica (usenet);
-- `torznab` — API Torznab generica (torrent);
-- `gazelle` — software Gazelle e derivati (musica, API JSON);
-- `nexusphp` — tracker basati su NexusPHP (HTML, login form);
-- `torrenttrader` — TorrentTrader/TBDev e derivati (HTML);
-- `xbtit` — Xbtit/BtiTracker e derivati (HTML).
+- `unit3d` — trackers based on UNIT3D (JSON API, torrent);
+- `newznab` — generic Newznab API (usenet);
+- `torznab` — generic Torznab API (torrent);
+- `gazelle` — Gazelle software and derivatives (music, JSON API);
+- `nexusphp` — trackers based on NexusPHP (HTML, login form);
+- `torrenttrader` — TorrentTrader/TBDev and derivatives (HTML);
+- `xbtit` — Xbtit/BtiTracker and derivatives (HTML).
 
-Le famiglie HTML (`nexusphp`, `torrenttrader`, `xbtit`) hanno selettori e
-percorsi predefiniti marcati `bozza`: vanno verificati sul sito reale e, se
-diversi, si sovrascrivono con le opzioni del profilo (non serve una definizione
-per sito).
+The HTML families (`nexusphp`, `torrenttrader`, `xbtit`) have default selectors and
+paths marked `bozza`: they must be verified on the real site and, if
+different, overwritten with the profile options (no per-site definition
+is needed).
 
-Con `connector` valorizzato, `search` può essere omesso. Le impostazioni tipiche
-delle famiglie sono URL, API key, categorie e opzioni del transport; nel YAML i
-nomi devono essere slug, quindi si usano per esempio `url`, `apikey`,
-`categories`. Le categorie e le capability dichiarate nella definizione
-completano il connettore.
+With `connector` set, `search` can be omitted. The typical family
+settings are URL, API key, categories and transport options; in the YAML the
+names must be slugs, so for example `url`, `apikey`,
+`categories` are used. The categories and capabilities declared in the definition
+complete the connector.
 
-Ciò che il formato non esprime va in un connettore Go, non in estensioni ad hoc.
-La gerarchia delle fonti è: API ufficiale, feed standard, connettore di famiglia,
-definizione nativa, connettore dedicato.
+What the format does not express goes into a Go connector, not into ad-hoc extensions.
+The source hierarchy is: official API, standard feed, family connector,
+native definition, dedicated connector.
 
-## Versioning, upgrader e JSON Schema
+## Versioning, upgrader and JSON Schema
 
-Il formato è versionato con `schema`. La versione corrente è **1**; `Parse`
-accetta solo `schema: 1`. Il pacchetto `internal/definition` espone anche:
+The format is versioned with `schema`. The current version is **1**; `Parse`
+only accepts `schema: 1`. The `internal/definition` package also exposes:
 
-- `Upgrade(body)` — porta un documento alla versione corrente applicando la
-  catena di `RegisterUpgrader`; una versione futura o un anello mancante sono
-  errori espliciti;
-- `Fingerprint(body)` — SHA-256 esadecimale dei byte grezzi, usato per rilevare
-  modifiche alle definizioni salvate;
-- `JSONSchema()` — lo schema JSON draft 2020-12 incorporato
+- `Upgrade(body)` — brings a document to the current version by applying the
+  `RegisterUpgrader` chain; a future version or a missing link are
+  explicit errors;
+- `Fingerprint(body)` — hexadecimal SHA-256 of the raw bytes, used to detect
+  changes to saved definitions;
+- `JSONSchema()` — the embedded JSON Schema draft 2020-12
   (`internal/definition/schema.json`).
 
-Per ogni futura versione si registra un upgrader `vN → vN+1`; il motore esegue
-solo la versione corrente. Oggi non esiste una versione 2.
+For each future version an upgrader `vN → vN+1` is registered; the engine runs
+only the current version. Today there is no version 2.
 
-Lo schema JSON si ottiene con:
+The JSON Schema is obtained with:
 
 ```bash
 indexarr-def schema
 ```
 
-Può essere usato in editor e CI per autocompletamento e validazione strutturale;
-la validazione semantica resta quella di `definition.Validate` e del CLI.
+It can be used in editors and CI for autocompletion and structural validation;
+semantic validation remains that of `definition.Validate` and of the CLI.
 
-## CLI `indexarr-def`
+## `indexarr-def` CLI
 
 ```bash
 indexarr-def validate [flags] <file-or-dir>...
@@ -1046,23 +1044,24 @@ indexarr-def -version
 
 ### `validate`
 
-Percorre ricorsivamente le directory, considera solo `*.yaml`/`*.yml`, salta le
-directory nascoste (`.git`, …) e ordina i file. Non esclude `testdata/invalid`:
-se puntate a una directory con fixture volutamente rotte, le riportate.
+It traverses directories recursively, considers only `*.yaml`/`*.yml`, skips
+hidden directories (`.git`, …) and sorts the files. It does not exclude
+`testdata/invalid`: if you point it at a directory with deliberately broken
+fixtures, it reports them.
 
 ```text
 ok examples/definitions/html-forum.yaml (id=html-forum, schema=1, 3 settings, 3 categories)
 FAIL bad.yaml: definition: meta.id: is required
 ```
 
-Con `-json` emette un array di `{path, ok, id, error}`. L'exit code è 1 se
-almeno un file fallisce, 2 per un errore d'uso.
+With `-json` it emits an array of `{path, ok, id, error}`. The exit code is 1 if
+at least one file fails, 2 for a usage error.
 
-`-catalog` (alias `-reject-derived`) aggiunge la policy del catalogo: rifiuta
-le bozze derivate, cioè `meta.derived_from` non vuoto o `meta.author` uguale a
-`cardigann-import` senza distinzione di maiuscole. `make def-validate` usa
-questa modalità per `internal/catalog/definitions/`, mentre la validazione
-normale continua ad accettare le bozze locali prodotte dal convertitore.
+`-catalog` (alias `-reject-derived`) adds the catalog policy: it rejects
+derived drafts, that is, non-empty `meta.derived_from` or `meta.author` equal to
+`cardigann-import` case-insensitively. `make def-validate` uses
+this mode for `internal/catalog/definitions/`, while normal validation
+still accepts local drafts produced by the converter.
 
 ```bash
 indexarr-def validate -catalog internal/catalog/definitions
@@ -1070,8 +1069,8 @@ indexarr-def validate -catalog internal/catalog/definitions
 
 ### `fmt`
 
-Analizza e riserializza in YAML canonico (2 spazi). **I commenti e l'ordine
-originale delle chiavi non vengono conservati.** Senza `-w` scrive su stdout.
+Parses and re-serializes into canonical YAML (2 spaces). **Comments and the original
+key order are not preserved.** Without `-w` it writes to stdout.
 
 ```bash
 indexarr-def fmt definition.yaml
@@ -1080,84 +1079,84 @@ indexarr-def fmt -w definition.yaml
 
 ### `fingerprint`
 
-Stampa lo SHA-256 dei byte grezzi del file, senza parsare né normalizzare.
+Prints the SHA-256 of the file's raw bytes, without parsing or normalizing.
 
 ### `check-fixtures`
 
-Elenca ogni fixture con `ok <path> (<byte>)` o `FAIL <path>: <errore>`; exit 1
-se una fixture manca, è vuota o non è un file regolare.
+Lists each fixture with `ok <path> (<bytes>)` or `FAIL <path>: <error>`; exit 1
+if a fixture is missing, empty or not a regular file.
 
 ### `convert-cardigann`
 
-Converte **in locale** definizioni Cardigann (Jackett/Prowlarr) in **bozze** del
-formato nativo v1. È uno **strumento di scrittura, non di migrazione**: non è un
-runtime Cardigann, indexarr non esegue mai questi file e non li distribuisce.
-Ogni bozza prodotta contiene `meta.derived_from: cardigann`; non esiste una
-rotta UI/API che la importi e il catalogo built-in la rifiuta. Si parte da lì
-per riscrivere la definizione osservando il sito, con fixture nostre.
+Converts **locally** Cardigann definitions (Jackett/Prowlarr) into **drafts** of
+the native v1 format. It is a **writing tool, not a migration tool**: it is not a
+Cardigann runtime, indexarr never executes these files and does not distribute them.
+Every draft produced contains `meta.derived_from: cardigann`; there is no
+UI/API route that imports it and the built-in catalog rejects it. That is the starting point
+for rewriting the definition by observing the site, with our own fixtures.
 
-Il convertitore copre un sottoinsieme documentato in
-`internal/cardigann/MAPPING.md`; ciò che non è rappresentabile finisce in
-`warning`/`unsupported` e la definizione prodotta resta `bozza`.
+The converter covers a subset documented in
+`internal/cardigann/MAPPING.md`; what cannot be represented ends up in
+`warning`/`unsupported` and the resulting definition stays `bozza`.
 
 ```bash
-# una definizione: YAML nativo (bozza) su stdout
+# one definition: native YAML (draft) on stdout
 indexarr-def convert-cardigann ~/.config/Jackett/Indexers/example.yml
 
-# una directory: un file per definizione, poi validazione
+# one directory: one file per definition, then validation
 indexarr-def convert-cardigann -o ./native ~/.config/Jackett/Indexers
 indexarr-def validate ./native
 ```
 
-Le definizioni prodotte non hanno fixture: per entrare nel catalogo vanno
-riscritte e verificate su pagine reali, con test offline e senza
-`derived_from`. Le credenziali non vengono copiate nel YAML: restano
-impostazioni che l'utente compila e che il vault cifra.
+Produced definitions have no fixtures: to enter the catalog they must be
+rewritten and verified on real pages, with offline tests and without
+`derived_from`. Credentials are not copied into the YAML: they remain
+settings that the user fills in and that the vault encrypts.
 
-## Sicurezza e scrittura pulita
+## Security and clean writing
 
-- **Le definizioni sono dati.** Non contengono codice, include, script o comandi.
-  I template leggono solo le variabili elencate e l'unico filtro è `join`.
-- Non esistono richieste implicite oltre a quelle dichiarate in `auth.steps`,
-  `search.request`, `download.extract` (la pagina di dettaglio del campo
-  `from`) e `download.before` (l'azione dichiarata, solo al grab); il transport
-  applica timeout, limite di dimensione, rate limit per host, circuit breaker e
-  blocco SSRF.
-- I segreti (password, token, API key, cookie) sono redatti negli errori; gli URL
-  di download possono contenere una passkey e non escono dalle API.
-- **Nessuna passkey, cookie o credenziale nelle fixture.** Le fixture sono
-  sintetiche e vengono conservate insieme alla definizione.
-- **Clean-room.** Le definizioni si scrivono osservando
-  il sito (pagine, risposte, documentazione delle API), non copiando file o
-  codice di Jackett o Prowlarr. Ogni definizione registra autore, data e le
-  fixture da cui è stata scritta; il catalogo è interamente nostro e
-  distribuibile con la licenza scelta dal progetto.
-- **Le bozze derivate restano locali.** Il convertitore Cardigann è un aiuto
-  alla scrittura: produce `derived_from: cardigann`, non è raggiungibile da
-  UI/API e il catalogo (e `make def-validate`) rifiuta queste bozze.
-- niente CAPTCHA automatico: un indexer bloccato richiede intervento umano.
+- **Definitions are data.** They contain no code, includes, scripts or commands.
+  Templates only read the listed variables and the only filter is `join`.
+- There are no implicit requests beyond those declared in `auth.steps`,
+  `search.request`, `download.extract` (the details page of the
+  `from` field) and `download.before` (the declared action, only on grab); the transport
+  applies timeouts, size limits, per-host rate limits, circuit breaker and
+  SSRF blocking.
+- Secrets (passwords, tokens, API keys, cookies) are redacted in errors; download
+  URLs may contain a passkey and do not leave the APIs.
+- **No passkey, cookie or credential in fixtures.** Fixtures are
+  synthetic and are kept together with the definition.
+- **Clean-room.** Definitions are written by observing
+  the site (pages, responses, API documentation), not by copying files or
+  code from Jackett or Prowlarr. Every definition records author, date and the
+  fixtures it was written from; the catalog is entirely ours and
+  distributable under the license chosen by the project.
+- **Derived drafts stay local.** The Cardigann converter is a writing
+  aid: it produces `derived_from: cardigann`, is not reachable from the
+  UI/API and the catalog (and `make def-validate`) rejects these drafts.
+- no automatic CAPTCHA: a blocked indexer requires human intervention.
 
-## Come aggiungere una definizione
+## How to add a definition
 
-1. Scegli la fonte più stabile: API ufficiale, feed, connettore di famiglia;
-   usa lo scraping HTML solo se necessario.
-2. Crea `examples/definitions/<id>.yaml` (o la directory del catalogo) con
-   `schema: 1` e un `meta.id` slug univoco. Se parti da una bozza del
-   convertitore, riscrivila e togli `derived_from`: il catalogo rifiuta le
-   bozze derivate.
-3. Dichiara `settings`, `categories` e `capabilities` in base a ciò che il sito
-   espone davvero.
-4. Descrivi l'autenticazione con passi espliciti; estrai CSRF/token e verifica
-   `success`/`failure` con selettori o status.
-5. Scrivi `search.request`, la paginazione e i campi tipizzati. Metti in
-   `required` solo i campi senza cui la release è inutilizzabile.
-6. Se il listing non espone il magnet, dichiara `download` con il campo
-   `from` e gli estrattori della pagina di dettaglio; usa `resolve_on: grab`
-   se vuoi rimandare l'apertura dei dettagli al momento del download.
-7. Aggiungi `health` con una query reale e `min_rows` ragionevole.
-8. Salva fixture sintetiche in `fixtures/<id>/` e dichiara i test con
-   `min_rows`, `required` e, per i siti privati, login riuscito/fallito.
-9. Esegui:
+1. Choose the most stable source: official API, feed, family connector;
+   use HTML scraping only if necessary.
+2. Create `examples/definitions/<id>.yaml` (or the catalog directory) with
+   `schema: 1` and a unique slug `meta.id`. If you start from a converter
+   draft, rewrite it and remove `derived_from`: the catalog rejects
+   derived drafts.
+3. Declare `settings`, `categories` and `capabilities` based on what the site
+   actually exposes.
+4. Describe authentication with explicit steps; extract CSRF/token and verify
+   `success`/`failure` with selectors or status.
+5. Write `search.request`, pagination and typed fields. Put in
+   `required` only the fields without which the release is unusable.
+6. If the listing does not expose the magnet, declare `download` with the
+   `from` field and the details page extractors; use `resolve_on: grab`
+   if you want to postpone opening details until download.
+7. Add `health` with a real query and a reasonable `min_rows`.
+8. Save synthetic fixtures in `fixtures/<id>/` and declare the tests with
+   `min_rows`, `required` and, for private sites, successful/failed login.
+9. Run:
 
    ```bash
    indexarr-def validate examples/definitions
@@ -1166,25 +1165,25 @@ impostazioni che l'utente compila e che il vault cifra.
    make def-validate
    ```
 
-10. Se la definizione entra nel catalogo, rigenera l'indice letto dalla UI e
-    dalla ricerca dei siti (non serve toccare il codice: il test di catalogo
-    fallisce se lo dimentichi):
+10. If the definition enters the catalog, regenerate the index read by the UI and
+    by site search (no need to touch code: the catalog test
+    fails if you forget):
 
     ```bash
     go generate ./internal/catalog
     ```
 
-    Il comando scrive `internal/catalog/index.json` a partire dal manifest e
-    dalle definizioni; la pagina "Aggiungi indexer" legge solo questo file e non
-    analizza i YAML. `make catalog-index` fa la stessa cosa.
+    The command writes `internal/catalog/index.json` starting from the manifest and
+    the definitions; the "Add indexer" page reads only this file and does not
+    parse the YAML. `make catalog-index` does the same thing.
 
-11. Verifica che la definizione passi anche i test del motore e che nessun dato
-    sensibile sia finito nelle fixture.
-12. Aggiorna `meta.updated`, autore e descrizione; per il catalogo rispetta i
-    requisiti di §7.2 (`health`, test, fixture di login, stato `bozza` →
+11. Verify that the definition also passes the engine tests and that no
+    sensitive data ended up in the fixtures.
+12. Update `meta.updated`, author and description; for the catalog respect the
+    requirements of §7.2 (`health`, tests, login fixtures, state `bozza` →
     `verificata`).
 
-## Esempio completo
+## Complete example
 
 ```yaml
 schema: 1
@@ -1272,12 +1271,12 @@ tests:
     expect: { authenticated: true }
 ```
 
-Esempi pronti e validati: `examples/definitions/` (`html-forum.yaml`,
+Ready and validated examples: `examples/definitions/` (`html-forum.yaml`,
 `unit3d.yaml`, `newznab.yaml`).
 
-## Cambiamenti 2.0.0-rc1
+## Changes 2.0.0-rc1
 
-- `latest.stop_when_known: false` legge tutte le pagine di una lista economica.
-- `params_multi` invia più valori per lo stesso parametro; i valori vuoti o `nome=` non vengono inviati.
-- `{{ categories }}` permette a una definizione di seguire la categoria standard della richiesta.
-- Le definizioni senza `{{ query.* }}` sono feed-only e non entrano nella ricerca dal vivo.
+- `latest.stop_when_known: false` reads all pages of a cheap list.
+- `params_multi` sends multiple values for the same parameter; empty values or `name=` are not sent.
+- `{{ categories }}` allows a definition to follow the request's standard category.
+- Definitions without `{{ query.* }}` are feed-only and do not enter live search.

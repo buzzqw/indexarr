@@ -1,168 +1,168 @@
-# MirCrew: ponte Torznab e definizione nativa
+# MirCrew: Torznab bridge and native definition
 
-MirCrew è un forum phpBB italiano. Ogni release è un **topic** e i magnet del
-primo post sono **nascosti finché non si ringrazia** l'autore. Cloudflare
-protegge tutte le pagine, non solo alcune. Per questo con Cardigann non era
-possibile usarlo come indexer: servono una sessione browser persistente, un
-login verificato su una pagina protetta e un'azione di «grazie» eseguita solo
-al momento del download.
+MirCrew is an Italian phpBB forum. Every release is a **topic** and the magnets in the
+first post are **hidden until you thank** the author. Cloudflare
+protects all pages, not just some. That is why it could not be used as an indexer
+with Cardigann: it needs a persistent browser session, a
+login verified on a protected page and a "thanks" action performed only
+at download time.
 
-Questo documento descrive le due strade disponibili in indexarr:
+This document describes the two paths available in indexarr:
 
-1. il **ponte** con il servizio Python `mircrew-indexer` (legacy, disabilitato
-   in produzione dal 26/10/2026);
-2. la **definizione nativa `mircrew`** e la sorgente **`mircrew-smartfeed`**
-   (la via attuale).
+1. the **bridge** to the Python service `mircrew-indexer` (legacy, disabled
+   in production since 26/10/2026);
+2. the **native `mircrew` definition** and the **`mircrew-smartfeed`** source
+   (the current path).
 
-> **Aggiornamento 26/10/2026.** La via principale è ora la definizione nativa:
-> login e ricerca sono stati provati dal vivo (test delle 12:08, esito ok), la
-> scheda dice «Funziona bene» e il download usa `download.before` per il
-> ringraziamento. La sorgente **MirCrew (Smartfeed)** elenca i topic nuovi ed è
-> abbinata all'indexer MirCrew. Il vecchio `mircrew-indexer` non serve più:
-> è stato fermato e disabilitato dall'avvio automatico; le sezioni che lo
-> riguardano restano come riferimento storico.
+> **Update 26/10/2026.** The main path is now the native definition:
+> login and search were tested live (12:08 test, result ok), the
+> card says «Works well» and the download uses `download.before` for the
+> thanks. The **MirCrew (Smartfeed)** source lists new topics and is
+> paired with the MirCrew indexer. The old `mircrew-indexer` is no longer needed:
+> it has been stopped and disabled from automatic startup; the sections about it
+> remain as historical reference.
 
-La regola non cambia in nessuna delle due: **una ricerca non ringrazia mai**.
-Il ringraziamento è un'azione visibile sul forum, fatta con l'account
-dell'utente, e avviene solo quando un client sceglie una release e ne chiede il
+The rule does not change in either path: **a search never thanks**.
+The thanks is a visible action on the forum, performed with the user's
+account, and it happens only when a client chooses a release and requests its
 download.
 
 ---
 
-## 1. Ponte Torznab (legacy)
+## 1. Torznab bridge (legacy)
 
-Il servizio `mircrew-indexer` espone un'API Torznab su
-`http://127.0.0.1:9118/api`. indexarr lo aggiunge come **indexer Torznab
-generico**: non serve una definizione né un convertitore.
+The `mircrew-indexer` service exposes a Torznab API at
+`http://127.0.0.1:9118/api`. indexarr adds it as a **generic Torznab
+indexer**: no definition or converter is needed.
 
-| Campo | Valore |
+| Field | Value |
 |---|---|
-| URL base | `http://<host>:9118/api` (l'endpoint Torznab completo, `/api` compreso) |
-| API key | quella in `config.json` del servizio, campo `api_key` |
-| Protocollo | Torrent (anche magnet) |
-| Categorie | 2000 Film, 5000 Serie TV |
+| Base URL | `http://<host>:9118/api` (the complete Torznab endpoint, `/api` included) |
+| API key | the one in the service's `config.json`, field `api_key` |
+| Protocol | Torrent (also magnet) |
+| Categories | 2000 Movies, 5000 TV Series |
 
-Comportamento verificato il 2026-10-23 contro il servizio in esecuzione:
+Behavior verified on 2026-10-23 against the running service:
 
-- `t=caps` risponde `200 application/xml` e dichiara `search`,
-  `tv-search` (`q,season,ep`) e `movie-search` (`q`);
-- `t=tvsearch&q=Reacher&season=3&ep=1` risponde `200` con 8 release e magnet;
-- `GET /dl/<topic>.torrent?k=…&season=3&ep=1` risponde **302** con
-  `Location: magnet:?xt=urn:btih:…`; il client (Sonarr/gextto) segue il
-  redirect e riceve il magnet. Il topic usato nella prova era già indicizzato e
-  già ringraziato: **nessun nuovo ringraziamento** è stato inviato dalla prova.
+- `t=caps` answers `200 application/xml` and declares `search`,
+  `tv-search` (`q,season,ep`) and `movie-search` (`q`);
+- `t=tvsearch&q=Reacher&season=3&ep=1` answers `200` with 8 releases and magnets;
+- `GET /dl/<topic>.torrent?k=…&season=3&ep=1` answers **302** with
+  `Location: magnet:?xt=urn:btih:…`; the client (Sonarr/gextto) follows the
+  redirect and receives the magnet. The topic used in the test was already indexed and
+  already thanked: **no new thanks** was sent by the test.
 
-Verificato anche **da indexarr**: su un'istanza temporanea (DB e porta dedicati,
-nessuna scrittura in produzione) è stato creato un indexer con la definizione
-`torznab-generic`, URL `http://127.0.0.1:9118/api` e la API key del servizio.
-Il test dell'indexer è verde (`reach`, `caps`, `search`) e `tvsearch`
-`Reacher S03E01` ha restituito 8 release con magnet. L'URL **deve includere
-`/api`**: il connettore Torznab generico non lo aggiunge da solo; senza `/api`
-la radice del servizio risponde con la web UI e il test fallisce con «invalid
-caps XML».
+Also verified **from indexarr**: on a temporary instance (dedicated DB and port,
+no production writes) an indexer was created with the definition
+`torznab-generic`, URL `http://127.0.0.1:9118/api` and the service's API key.
+The indexer test is green (`reach`, `caps`, `search`) and `tvsearch` for
+`Reacher S03E01` returned 8 releases with magnets. The URL **must include
+`/api`**: the generic Torznab connector does not add it by itself; without `/api`
+the service root answers with the web UI and the test fails with "invalid
+caps XML".
 
-Il ponte era la strada usata finché la definizione nativa era `bozza`. Ora è
-**legacy**: il servizio è fermo e disabilitato, e la definizione nativa più la
-sorgente Smartfeed coprono ricerca, novità e download con ringraziamento. Le
-note seguenti restano per chi deve riattivarlo o confrontare i due percorsi.
+The bridge was the path used while the native definition was a `bozza`. Now it is
+**legacy**: the service is stopped and disabled, and the native definition plus the
+Smartfeed source cover search, new items and download with thanks. The
+following notes remain for anyone who has to reactivate it or compare the two paths.
 
-### Compatibilità Sonarr: `pubDate` mancante
+### Sonarr compatibility: missing `pubDate`
 
-Sonarr **rifiuta** il ponte in aggiunta come indexer Torznab:
+Sonarr **rejects** the bridge as an additional Torznab indexer:
 
 ```text
 Indexer feed is not supported: Each item in the RSS feed must have a
 pubDate element with a valid publish date.
 ```
 
-La causa è nel servizio Python, non in indexarr: i topic non ancora
-ringraziati compaiono nell'XML come `<item>` con titolo, link `/dl/…`,
-categoria e stagione, ma **senza `<pubDate>`** (`core.torznab_search`,
-ramo «pending item»). Sonarr valida il feed RSS prima di salvare l'indexer e
-quindi non lo accetta; `enableRss: false` e `forceSave` non aggirano il
-controllo. Gextto e i client che non richiedono `pubDate` funzionano.
+The cause is in the Python service, not in indexarr: topics not yet
+thanked appear in the XML as `<item>` with title, `/dl/…` link,
+category and season, but **without `<pubDate>`** (`core.torznab_search`,
+"pending item" branch). Sonarr validates the RSS feed before saving the indexer and
+therefore does not accept it; `enableRss: false` and `forceSave` do not bypass the
+check. Gextto and clients that do not require `pubDate` work.
 
-La ricerca e il grab di Sonarr funzionano se il feed viene normalizzato: nella
-prova del 2026-10-23 è stato interposto un piccolo proxy di test che aggiunge
-`<pubDate>` agli item che ne sono privi. Con quel proxy Sonarr ha accettato
-l'indexer, `tvsearch` di Reacher S03E01 ha restituito 198 release (117 con
-`magnetUrl`) e il grab si è fermato solo perché nel banco non è configurato un
-client di download (`Torrent Download client isn't configured yet`), cioè
-**dopo** aver risolto il magnet. La correzione definitiva appartiene al servizio
-Python: aggiungere una data agli item in attesa. Fino ad allora, per Sonarr usare
-un indexer che non è il ponte diretto o accettare il limite.
+Sonarr's search and grab work if the feed is normalized: in the
+2026-10-23 test a small test proxy was placed in between that adds
+`<pubDate>` to items that lack it. With that proxy Sonarr accepted
+the indexer, `tvsearch` for Reacher S03E01 returned 198 releases (117 with
+`magnetUrl`) and the grab stopped only because no download client is configured in the
+bench (`Torrent Download client isn't configured yet`), that is,
+**after** resolving the magnet. The definitive fix belongs to the Python
+service: add a date to pending items. Until then, for Sonarr use
+an indexer that is not the direct bridge or accept the limit.
 
-### Perché il ponte è sicuro per la ricerca
+### Why the bridge is safe for search
 
-Il servizio separa da sempre due momenti:
+The service has always separated two moments:
 
-| Azione | Apre il topic | Ringrazia |
+| Action | Opens the topic | Thanks |
 |---|---|---|
-| smartfeed, catalogo, ricerca Torznab | no | no |
-| `/dl/<topic>.torrent` o pulsante «Scarica» | sì | sì, solo se i magnet sono ancora nascosti |
+| smartfeed, catalog, Torznab search | no | no |
+| `/dl/<topic>.torrent` or the «Download» button | yes | yes, only if the magnets are still hidden |
 
-Il link `/dl/` contiene un token HMAC per il singolo topic, non la API key. Un
-topic già ringraziato non viene ringraziato di nuovo.
+The `/dl/` link contains an HMAC token for the individual topic, not the API key. A
+topic already thanked is not thanked again.
 
-### Verifica offline del ponte in indexarr
+### Offline verification of the bridge in indexarr
 
-Il percorso Torznab generico è coperto da `internal/feed`:
+The generic Torznab path is covered by `internal/feed`:
 
 ```bash
 go test ./internal/feed -run MirCrew -v
 ```
 
-I test usano una risposta XML identica a quella del servizio: magnet in
-`<link>` e `<enclosure>`, nessun attributo `seeders` (MirCrew non li pubblica,
-quindi restano sconosciuti e non zero) e data del topic.
+The tests use an XML response identical to the service's: magnet in
+`<link>` and `<enclosure>`, no `seeders` attribute (MirCrew does not publish them,
+so they stay unknown and not zero) and the topic date.
 
 ---
 
-## 2. Definizione nativa `mircrew`
+## 2. Native `mircrew` definition
 
-La definizione è in
-`internal/catalog/definitions/mircrew.yaml`, con fixture in
-`internal/catalog/definitions/fixtures/mircrew/`. È nel catalogo con stato
-**`bozza`**: non va presentata come verificata finché non viene provata con un
-account reale.
+The definition is in
+`internal/catalog/definitions/mircrew.yaml`, with fixtures in
+`internal/catalog/definitions/fixtures/mircrew/`. It is in the catalog with state
+**`bozza`**: it must not be presented as verified until it is tested with a
+real account.
 
-### Come è fatta
+### How it is built
 
-| Ostacolo MirCrew | Estensione v1 usata |
+| MirCrew obstacle | v1 extension used |
 |---|---|
-| Cloudflare su tutto il sito | `session: { mode: flaresolverr, … }`: ogni richiesta passa da `sessions.create` + `request.get`/`request.post` |
-| Login phpBB da verificare su pagina protetta | `auth.strategy: form` con `creation_time`, `form_token`, `sid`, `redirect`; `success` su `a[href*="mode=logout"]` (ucp.php) |
-| Magnet nascosti finché non si ringrazia | `download.before`: apre il topic, esegue il link «Grazie» solo se i magnet mancano, riapre e legge |
-| Un topic con molti magnet (episodi, pack, risoluzioni) | `download.extract` con `all: true` + `download.select: season_episode` |
-| Ricerca phpBB HTML | `search.request` su `/search.php` con `sf=titleonly&sr=topics` e paginazione `start=0,25,…` |
+| Cloudflare on the whole site | `session: { mode: flaresolverr, … }`: every request goes through `sessions.create` + `request.get`/`request.post` |
+| phpBB login to be verified on a protected page | `auth.strategy: form` with `creation_time`, `form_token`, `sid`, `redirect`; `success` on `a[href*="mode=logout"]` (ucp.php) |
+| Magnets hidden until you thank | `download.before`: opens the topic, follows the «Thanks» link only if the magnets are missing, reopens and reads |
+| A topic with many magnets (episodes, packs, resolutions) | `download.extract` with `all: true` + `download.select: season_episode` |
+| phpBB HTML search | `search.request` on `/search.php` with `sf=titleonly&sr=topics` and pagination `start=0,25,…` |
 
-La sessione viene chiusa dopo 30 minuti senza richieste, riciclata dopo 12 ore,
-e le sessioni orfane con prefisso `mircrew-idx-` vengono chiuse alla prima
-richiesta. Chiudere il browser quando è inattivo evita che un Chromium resti
-acceso per ore dopo una sola ricerca; la richiesta successiva rifà il login
-da sola. La modalità è documentata in
-[`DEFINITIONS.md`](DEFINITIONS.md#session). L'azione prima del download e la
-scelta del magnet sono documentate in
-[`DEFINITIONS.md`](DEFINITIONS.md#downloadbefore) e
+The session is closed after 30 minutes without requests, recycled after 12 hours,
+and orphan sessions with the `mircrew-idx-` prefix are closed on the first
+request. Closing the browser when idle prevents a Chromium from staying
+on for hours after a single search; the next request logs in again
+by itself. The mode is documented in
+[`DEFINITIONS.md`](DEFINITIONS.md#session). The action before the download and the
+magnet choice are documented in
+[`DEFINITIONS.md`](DEFINITIONS.md#downloadbefore) and
 [`DEFINITIONS.md`](DEFINITIONS.md#download).
 
-### Fixture e privacy
+### Fixtures and privacy
 
-Le fixture sono state registrate dal sito il 2026-10-23 e poi **sanitizzate**:
+The fixtures were recorded from the site on 2026-10-23 and then **sanitized**:
 
-- `login.html` — form di login pubblico (per il test «login fallito»);
-- `login-ok.html` — estratto della pagina `ucp.php` da loggato, con il link di
-  logout;
-- `search.html` — due righe reali della ricerca `Reacher`;
-- `topic.html` — primo post di un topic **già ringraziato**, con i magnet;
-- `topic-locked.html` — derivato dal precedente togliendo i magnet e aggiungendo
-  il link «Grazie»: serve al test di `download.before`.
+- `login.html` — public login form (for the "failed login" test);
+- `login-ok.html` — extract of the `ucp.php` page when logged in, with the
+  logout link;
+- `search.html` — two real rows from the `Reacher` search;
+- `topic.html` — first post of an **already thanked** topic, with the magnets;
+- `topic-locked.html` — derived from the previous one by removing the magnets and adding
+  the «Thanks» link: it is used by the `download.before` test.
 
-Nessuna fixture contiene username, password, cookie, `sid`, `form_token`,
-avatar o API key reali: i valori sono sostituiti con `synthetic-*`. Il test
-offline non esegue alcuna richiesta al forum e non ringrazia nessuno.
+No fixture contains real usernames, passwords, cookies, `sid`, `form_token`,
+avatars or API keys: the values are replaced with `synthetic-*`. The offline
+test makes no request to the forum and thanks nobody.
 
-### Test offline
+### Offline tests
 
 ```bash
 go run ./cmd/indexarr-def validate -catalog internal/catalog/definitions/mircrew.yaml
@@ -171,112 +171,112 @@ go test ./internal/catalog -run TestMirCrewFixtures -v
 go test ./internal/engine -run 'Session|Before|ReleaseName' -v
 ```
 
-`TestMirCrewFixtures` disattiva di proposito la sessione FlareSolverr: verifica
-solo i selettori, la categoria, la data e la scelta del magnet S03E02 fra i
-tre del topic. Le meccaniche della sessione (login via `request.post`, pulizia
-per prefisso, riciclo a 12 ore) hanno test dedicati in `internal/engine` con un
-FlareSolverr finto.
+`TestMirCrewFixtures` deliberately disables the FlareSolverr session: it verifies
+only the selectors, the category, the date and the choice of magnet S03E02 among the
+three in the topic. The session mechanics (login via `request.post`, cleanup
+by prefix, 12-hour recycling) have dedicated tests in `internal/engine` with a
+fake FlareSolverr.
 
-### Stato e limiti
+### State and limits
 
-- **Causa dell'errore `download: before action rendered an empty URL` (2026-10-24).**
-  Riprodotto dal vivo con una sessione FlareSolverr valida ma login fallito: il
-  grab partiva senza `ensureLogin`, quindi la pagina del topic era il form di
-  login, senza link «Grazie», e l'estrazione restava vuota. La ricerca faceva il
-  login, il grab no: dopo un riavvio o con login scaduto ogni grab da release
-  salvata falliva così. Corretto in `internal/engine/definition_before.go`: il
-  download effettua il login, e se un valore di `before.extract` è vuoto rifà il
-  login una volta e rilegge il topic prima di arrendersi. Regressione coperta da
-  `TestDownloadBeforeLogsInWithoutSearch` (grab senza ricerca precedente).
-  I selettori sono stati confrontati con `mircrew-indexer` su pagine reali:
-  link «Grazie» = `a[href*="thanks="]` (per-post, `lnk_thanks_post...`), magnet =
-  `a[href^="magnet:"]` con `magnetBtn`, titolo/forum/data come nella fixture.
-  Le catture reali (prima/dopo il «grazie») restano fuori dal repository e
-  non vengono mai committate perché contengono utenti reali; topic
-  ringraziati nella prova: 226759 (Silo S03, nuovo) e 226850 (Silo S03, già
-  ringraziato, riusato).
-- **Stato: verificata (2026-10-26).** Login, ricerca, grab normale e grab da
-  Smartfeed sono stati provati dal vivo con l'account dell'utente.
-  - Grab normale: *Silo - Stagione 3 (2026) [COMPLETA] 1080p H264 …*, 302 al
-    magnet in 2,2 s, con ringraziamento del topic.
-  - Grab da Smartfeed: *Inside Man (2006) 1080p H264 …*, topic pending elencato
-    dalla Smartfeed e risolto dall'indexer MirCrew nativo, 302 al magnet in
-    7,2 s, con ringraziamento.
-  La selezione fine per stagione/episodio dentro un topic con più magnet resta
-  coperta dai test offline e da provare con un episodio singolo.
-- La ricerca nativa è phpBB HTML; il canale novità è la sorgente separata
-  `mircrew-smartfeed` (`meta.latest: true`). La definizione nativa resta
-  `latest: false` e risponde alle ricerche.
-- Il login dipende dal tema phpBB `prosilver` (nomi dei campi e link «Grazie»).
-  Un cambio di tema richiede di aggiornare i selettori.
-- Il numero di ringraziamenti dal vivo va tenuto al minimo: la prova reale deve
-  usare **al massimo 3 topic scelti apposta**.
+- **Cause of the error `download: before action rendered an empty URL` (2026-10-24).**
+  Reproduced live with a valid FlareSolverr session but a failed login: the
+  grab started without `ensureLogin`, so the topic page was the login
+  form, without a «Thanks» link, and extraction stayed empty. The search logged
+  in, the grab did not: after a restart or with an expired login every grab from a saved
+  release failed like that. Fixed in `internal/engine/definition_before.go`: the
+  download logs in, and if a value in `before.extract` is empty it logs in
+  again once and re-reads the topic before giving up. Regression covered by
+  `TestDownloadBeforeLogsInWithoutSearch` (grab without a preceding search).
+  The selectors were compared with `mircrew-indexer` on real pages:
+  «Thanks» link = `a[href*="thanks="]` (per-post, `lnk_thanks_post...`), magnet =
+  `a[href^="magnet:"]` with `magnetBtn`, title/forum/date as in the fixture.
+  The real captures (before/after the «thanks») stay outside the repository and
+  are never committed because they contain real users; topics
+  thanked in the test: 226759 (Silo S03, new) and 226850 (Silo S03, already
+  thanked, reused).
+- **State: verified (2026-10-26).** Login, search, normal grab and grab from
+  Smartfeed were tested live with the user's account.
+  - Normal grab: *Silo - Stagione 3 (2026) [COMPLETA] 1080p H264 …*, 302 to the
+    magnet in 2.2 s, with a thanks on the topic.
+  - Smartfeed grab: *Inside Man (2006) 1080p H264 …*, a pending topic listed
+    by Smartfeed and resolved by the native MirCrew indexer, 302 to the magnet in
+    7.2 s, with a thanks.
+  Fine-grained selection by season/episode inside a topic with multiple magnets remains
+  covered by the offline tests and still to be tried with a single episode.
+- The native search is phpBB HTML; the new-items channel is the separate source
+  `mircrew-smartfeed` (`meta.latest: true`). The native definition stays
+  `latest: false` and answers searches.
+- The login depends on the phpBB `prosilver` theme (field names and «Thanks» links).
+  A theme change requires updating the selectors.
+- The number of live thanks must be kept to a minimum: the real test must use
+  **at most 3 deliberately chosen topics**.
 
-### Promozione a «verificata» (fatta il 26/10/2026)
+### Promotion to «verified» (done on 26/10/2026)
 
-Passi eseguiti:
+Steps performed:
 
-1. indexer `mircrew` aggiunto con username, password e URL FlareSolverr;
-2. test dell'indexer: login su `ucp.php`, ricerca, download;
-3. grab normale (Silo S03) e grab da Smartfeed (Inside Man): entrambi hanno
-   prodotto un magnet `magnet:?xt=urn:btih:…`, con ringraziamento;
-4. topic ringraziati: 2;
-5. `state: verificata` in `internal/catalog/catalog.yaml` per `mircrew` e
-   `mircrew-smartfeed`, indice rigenerato con `make catalog-index` e questo
-   documento aggiornato.
+1. `mircrew` indexer added with username, password and FlareSolverr URL;
+2. indexer test: login on `ucp.php`, search, download;
+3. normal grab (Silo S03) and Smartfeed grab (Inside Man): both
+   produced a magnet `magnet:?xt=urn:btih:…`, with a thanks;
+4. topics thanked: 2;
+5. `state: verificata` in `internal/catalog/catalog.yaml` for `mircrew` and
+   `mircrew-smartfeed`, index regenerated with `make catalog-index` and this
+   document updated.
 
-Resta da provare la scelta automatica del magnet giusto dentro un topic che
-contiene più episodi e più risoluzioni (la logica è coperta dai test offline).
+Still to be tested is the automatic choice of the right magnet inside a topic that
+contains several episodes and several resolutions (the logic is covered by the offline tests).
 
 ---
 
-## 3. Prova dal banco Sonarr
+## 3. Test from the Sonarr bench
 
-Il banco è `indexarr-test-sonarr` su `127.0.0.1:18989` (container, senza client
-di download). La produzione su `:8788` non va toccata.
+The bench is `indexarr-test-sonarr` on `127.0.0.1:18989` (container, without a download
+client). Production on `:8788` must not be touched.
 
-Con il ponte:
+With the bridge:
 
-1. aggiungere in Sonarr un indexer Torznab generico con URL
-   `http://<host>:9118` e la API key del servizio;
-2. cercare una serie italiana presente su MirCrew (per esempio `Reacher`,
+1. add in Sonarr a generic Torznab indexer with URL
+   `http://<host>:9118` and the service's API key;
+2. search for an Italian series present on MirCrew (for example `Reacher`,
    `Silo`, `FBI Most Wanted`);
-3. aprire i risultati: le release già note hanno il magnet; i topic non ancora
-   ringraziati hanno un link `/dl/…`;
-4. fare un grab di prova e verificare che Sonarr riceva il magnet. Senza client
-   di download il grab si ferma al link restituito.
+3. open the results: already known releases have the magnet; topics not yet
+   thanked have a `/dl/…` link;
+4. do a test grab and verify that Sonarr receives the magnet. Without a download
+   client the grab stops at the returned link.
 
-La prova non deve generare ringraziamenti: usare un topic già indicizzato
-(come `Reacher - Stagione 3`, topic 165159) oppure fermarsi prima del grab.
-Qualsiasi prova che apra un topic non ancora ringraziato va contata.
+The test must not generate thanks: use an already indexed topic
+(like `Reacher - Stagione 3`, topic 165159) or stop before the grab.
+Any test that opens a not-yet-thanked topic must be counted.
 
 ---
 
-## 4. Smartfeed (canale novità, offline)
+## 4. Smartfeed (new-items channel, offline)
 
-Lo Smartfeed personale è il canale **latest** di MirCrew, accanto all'indexer
-nativo di ricerca. Si aggiunge incollando in «Aggiungi sorgente» l'URL che si
-copia da `/smartfeed/ui`: indexarr lo riconosce, propone `t=2` se l'URL ha
-`t=1` (conservando `f`, `d`, `x` e gli altri parametri) e mostra l'URL
-ripulito, mai il token.
+The personal Smartfeed is MirCrew's **latest** channel, next to the native
+search indexer. It is added by pasting into «Add source» the URL copied
+from `/smartfeed/ui`: indexarr recognizes it, proposes `t=2` if the URL has
+`t=1` (keeping `f`, `d`, `x` and the other parameters) and shows the cleaned
+URL, never the token.
 
-- L'URL contiene `u` ed `e`: `IsSensitiveURL` lo riconosce e lo fa sigillare nel
-  vault. Non compare nei log, nell'export né nella scheda dell'indexer.
-- Se esiste già un indexer MirCrew nativo, il canale latest viene abbinato a
-  quello. Altrimenti si può creare insieme al canale, inserendo utente e
-  password: le credenziali servono **solo** alla ricerca e al grab.
-- Ogni voce del feed diventa un **topic in attesa**: titolo pulito
-  (`Forum :: titolo :: Risposta di utente`, CDATA e HTML), forum, data e link
-  al topic. Nessun magnet e nessun ringraziamento durante il polling.
-- Al grab il riferimento sigillato apre il topic con il `download.before`
-  dell'indexer nativo. Il polling non chiama mai quella strada.
-- **Token scaduto.** Il token cambia a ogni apertura di `/smartfeed/ui`.
-  indexarr non tenta di rigenerarlo senza una prova live: mostra il messaggio
-  «Smartfeed expired: paste a new URL from …/smartfeed/ui» e la scheda del
-  canale ha sempre il collegamento alla pagina. Incollare di nuovo l'URL
-  sostituisce quello del canale esistente.
-- Fixture RSS e Atom sanitizzate in
+- The URL contains `u` and `e`: `IsSensitiveURL` recognizes it and seals it in the
+  vault. It does not appear in logs, in the export or in the indexer card.
+- If a native MirCrew indexer already exists, the latest channel is paired with
+  it. Otherwise it can be created together with the channel, entering user and
+  password: the credentials are used **only** for search and grab.
+- Each feed entry becomes a **pending topic**: cleaned title
+  (`Forum :: title :: Reply by user`, CDATA and HTML), forum, date and link
+  to the topic. No magnet and no thanks during polling.
+- On grab the sealed reference opens the topic with the native indexer's
+  `download.before`. Polling never calls that path.
+- **Expired token.** The token changes every time `/smartfeed/ui` is opened.
+  indexarr does not try to regenerate it without a live test: it shows the message
+  «Smartfeed expired: paste a new URL from …/smartfeed/ui» and the channel
+  card always has the link to the page. Pasting the URL again
+  replaces the existing channel's one.
+- Sanitized RSS and Atom fixtures in
   `internal/catalog/definitions/fixtures/mircrew-smartfeed/`.
-- Stato: **verificata (2026-10-26)**. La sorgente ha letto 77 topic dal feed
-  personale; il grab di *Inside Man (2006)* è stato risolto dall'indexer
-  MirCrew nativo (302 al magnet in 7,2 s, con ringraziamento).
+- State: **verified (2026-10-26)**. The source read 77 topics from the personal
+  feed; the grab of *Inside Man (2006)* was resolved by the native
+  MirCrew indexer (302 to the magnet in 7.2 s, with a thanks).

@@ -1,121 +1,121 @@
-# API Torznab di indexarr
+# indexarr Torznab API
 
-indexarr espone un server Torznab (newznab-compatible). Lo stesso handler
-risponde su più percorsi, così i client che aggiungono `/api` e quelli che
-usano l'URL completo funzionano entrambi.
+indexarr exposes a Torznab server (newznab-compatible). The same handler
+answers on several paths, so clients that append `/api` and those that use the
+full URL both work.
 
-| Percorso | Significato |
+| Path | Meaning |
 | --- | --- |
-| `/api` | aggregato (tutti gli indexer) — endpoint consigliato ai client manuali |
-| `/torznab/api` | alias dell'aggregato |
-| `/newznab/api` | alias dell'aggregato |
-| `/api/v2.0/indexers/all/results/torznab/api` | alias compatibile Jackett (aggregato) |
-| `/torznab/{slug}` | base per-indexer: il client aggiunge `/api` |
-| `/torznab/{slug}/api` | endpoint per-indexer completo |
-| `/api/v2.0/indexers/{slug}/results/torznab/api` | alias compatibile Jackett per-indexer |
+| `/api` | aggregate (all indexers) — endpoint recommended for manual clients |
+| `/torznab/api` | alias of the aggregate |
+| `/newznab/api` | alias of the aggregate |
+| `/api/v2.0/indexers/all/results/torznab/api` | Jackett-compatible alias (aggregate) |
+| `/torznab/{slug}` | per-indexer base: the client appends `/api` |
+| `/torznab/{slug}/api` | full per-indexer endpoint |
+| `/api/v2.0/indexers/{slug}/results/torznab/api` | Jackett-compatible per-indexer alias |
 
 - Base: `http://<host>:8788`
-- Endpoint di ricerca aggregato: `http://<host>:8788/api`
-- Autenticazione: parametro `apikey` oppure header `X-Api-Key`
-- Risposta: XML `rss` con namespace `torznab` e `newznab`
-- API amministrativa JSON: vedi [ADMIN-API.md](ADMIN-API.md)
+- Aggregate search endpoint: `http://<host>:8788/api`
+- Authentication: `apikey` parameter or `X-Api-Key` header
+- Response: `rss` XML with the `torznab` and `newznab` namespaces
+- Administrative JSON API: see [ADMIN-API.md](ADMIN-API.md)
 
-`{slug}` è lo slug della sorgente (per esempio `mircrew` o
-`mircrew-smartfeed`), visibile nella scheda della sorgente. L'endpoint
-per-indexer interroga solo quella sorgente; l'aggregato applica la ricerca live
-a tutte quelle abilitate.
+`{slug}` is the source slug (for example `mircrew` or
+`mircrew-smartfeed`), shown on the source page. The per-indexer endpoint
+queries only that source; the aggregate applies live search to all the enabled
+ones.
 
-La chiave primaria si trova in **Settings → Torznab API** e può essere rigenerata
-(tutti i client che la usano vanno aggiornati). In **Additional API keys** si
-creano chiavi separate per client, revocabili singolarmente. I link `.torrent`
-della risposta usano la chiave con cui è arrivata la richiesta, quindi una chiave
-aggiuntiva funziona anche per il download.
+The primary key is in **Settings → Torznab API** and can be regenerated (every
+client that uses it must be updated). In **Additional API keys** you create
+separate keys per client, each one revocable individually. The `.torrent` links
+in the response use the key that came with the request, so an additional key
+also works for downloads.
 
-`api_rate_limit_per_minute` impone un limite per chiave: superata la soglia la
-risposta è `429` con `Retry-After: 60`.
+`api_rate_limit_per_minute` enforces a per-key limit: once the threshold is
+exceeded the response is `429` with `Retry-After: 60`.
 
-## Funzioni supportate
+## Supported functions
 
-| `t` | Parametri | Note |
+| `t` | Parameters | Notes |
 | --- | --- | --- |
-| `caps` | — | Capacità, categorie e limiti; non richiede la chiave |
-| `search` | `q`, `cat`, `limit`, `offset` | Ricerca generica |
-| `tvsearch` | `q`, `season`, `ep`, `cat`, `imdbid`, `tvdbid`, `tmdbid` | Filtro stagione/episodio anche sui season pack |
-| `movie` | `q`, `year`, `cat`, `imdbid`, `tmdbid` | Film |
-| `get` | `id` | Scarica il `.torrent` salvato (alternativa a `/dl/{id}`) |
+| `caps` | — | Capabilities, categories and limits; does not require the key |
+| `search` | `q`, `cat`, `limit`, `offset` | Generic search |
+| `tvsearch` | `q`, `season`, `ep`, `cat`, `imdbid`, `tvdbid`, `tmdbid` | Season/episode filter, also on season packs |
+| `movie` | `q`, `year`, `cat`, `imdbid`, `tmdbid` | Movies |
+| `get` | `id` | Downloads the saved `.torrent` (alternative to `/dl/{id}`) |
 
-`music` e `book` rispondono come `search`: la cache non distingue ancora quei
-tipi con filtri propri, ma le categorie 3000 e 7000 sono disponibili.
+`music` and `book` respond like `search`: the cache does not yet distinguish
+those types with their own filters, but categories 3000 and 7000 are available.
 
-### Parametri
+### Parameters
 
-| Nome | Default | Descrizione |
+| Name | Default | Description |
 | --- | --- | --- |
-| `apikey` | — | Obbligatorio per ricerca e download |
-| `q` | vuoto | Testo cercato nel titolo normalizzato (tutti i termini in AND) |
-| `cat` | tutte | Uno o più id Torznab separati da virgola; `5000` seleziona tutta la radice TV |
-| `limit` | 50 | Massimo 100 |
-| `offset` | 0 | Paginazione |
-| `season` | 0 | Solo `tvsearch` |
-| `ep` | 0 | Solo `tvsearch` |
-| `imdbid` | vuoto | Con o senza prefisso `tt` |
-| `tmdbid` | vuoto | |
-| `tvdbid` | vuoto | |
-| `year` | 0 | Solo `movie`, usato anche nel ripiego testuale |
-| `live_wait` | vuoto | Secondi di attesa della ricerca live per questa richiesta, 1–60; estensione usata da gextto per dare tempo alle fonti eD2k. Non cambia il default di Sonarr/Radarr |
+| `apikey` | — | Required for search and download |
+| `q` | empty | Text searched in the normalized title (all terms in AND) |
+| `cat` | all | One or more comma-separated Torznab ids; `5000` selects the whole TV root |
+| `limit` | 50 | Maximum 100 |
+| `offset` | 0 | Pagination |
+| `season` | 0 | `tvsearch` only |
+| `ep` | 0 | `tvsearch` only |
+| `imdbid` | empty | With or without the `tt` prefix |
+| `tmdbid` | empty | |
+| `tvdbid` | empty | |
+| `year` | 0 | `movie` only, also used in the textual fallback |
+| `live_wait` | empty | Seconds to wait for the live search for this request, 1–60; extension used by gextto to give eD2k sources time. Does not change the Sonarr/Radarr default |
 
-`q` e gli id esterni sono combinati in OR: una release che corrisponde all'id viene
-restituita anche se il titolo è diverso.
+`q` and the external ids are combined in OR: a release that matches the id is
+returned even if the title is different.
 
-La sintassi `-termine` e la modalità regex appartengono alla pagina web **Releases**;
-l'API Torznab usa il solo parametro `q` standard.
+The `-term` syntax and regex mode belong to the **Releases** web page; the
+Torznab API uses only the standard `q` parameter.
 
-### Ricerca live
+### Live search
 
-Con `torznab_live_search` attivo, **ogni** richiesta con una query (`search`,
-`tvsearch`, `movie`, `music`, `book`) interroga dal vivo tutti gli indexer
-abilitati che dichiarano la modalità: non solo quando la cache è vuota. Il
-fan-out ha concorrenza globale 8 e rispetta il limite per host; la deadline
-complessiva è `torznab_live_timeout_seconds` (default 20). I risultati che
-arrivano in tempo si uniscono alla cache con la provenance esistente; chi è in
-ritardo continua in background (fino a 3 minuti) e il suo risultato entra in
-cache per la richiesta successiva.
+With `torznab_live_search` enabled, **every** request with a query (`search`,
+`tvsearch`, `movie`, `music`, `book`) queries live all the enabled indexers
+that declare the mode: not only when the cache is empty. The fan-out has a
+global concurrency of 8 and respects the per-host limit; the overall deadline
+is `torznab_live_timeout_seconds` (default 20). The results that arrive in
+time are merged into the cache with the existing provenance; those that are
+late keep going in the background (up to 3 minutes) and their result enters the
+cache for the next request.
 
-Con `live_wait` un client può allungare la sola attesa della propria richiesta
-(fino a 60 s); gextto lo usa per gli indexer eD2k, che devono aprire le pagine
-dei topic. Gli altri client non mandano il parametro e restano sui 5 s.
+With `live_wait` a client can extend only the wait of its own request (up to
+60 s); gextto uses it for eD2k indexers, which must open the topic pages. The
+other clients do not send the parameter and stay at 5 s.
 
-Un item eD2k porta il link in `<link>`, nell'enclosure (`application/x-ed2k`) e
-negli attributi `ed2k` ed `ed2khash`. Con `torznab_proxy_ed2k` attivo (default)
-`<link>` ed enclosure sono il link di download di indexarr, che rimanda
-all'`ed2k://` e registra il grab; l'attributo `ed2k` porta sempre il link
-diretto. Non porta `seeders`, `leechers` né `peers`: un indexer non può contare
-le fonti eD2k, e uno 0/0 farebbe credere al client che nessuno condivide il
-file.
+An eD2k item carries the link in `<link>`, in the enclosure (`application/x-ed2k`)
+and in the `ed2k` and `ed2khash` attributes. With `torznab_proxy_ed2k` enabled
+(default) `<link>` and enclosure are the indexarr download link, which redirects
+to the `ed2k://` and records the grab; the `ed2k` attribute always carries the
+direct link. It does not carry `seeders`, `leechers` or `peers`: an indexer
+cannot count eD2k sources, and a 0/0 would make the client believe that nobody
+is sharing the file.
 
-Ripiego: `tvsearch` senza supporto diventa `search` con `SxxEyy` (o `Sxx`);
-`movie` aggiunge l'anno; una richiesta con soli id non supportati e senza `q`
-salta quell'indexer. Le richieste RSS (`t=search`/`tvsearch` senza `q`)
-rispondono solo dalla cache degli indexer con `meta.latest` e non generano
-query sintetiche. L'endpoint per singolo indexer interroga solo quello.
+Fallback: `tvsearch` without support becomes `search` with `SxxEyy` (or `Sxx`);
+`movie` adds the year; a request with only unsupported ids and no `q` skips that
+indexer. RSS requests (`t=search`/`tvsearch` without `q`) answer only from the
+cache of indexers with `meta.latest` and do not generate synthetic queries. The
+per-indexer endpoint queries only that one.
 
-## Esempi
+## Examples
 
 ```bash
-# Capacità
+# Capabilities
 curl 'http://localhost:8788/api?t=caps'
 
-# Ricerca TV
+# TV search
 curl 'http://localhost:8788/api?t=tvsearch&q=Show&season=1&ep=2&cat=5000&apikey=KEY'
 
-# Film per IMDb id
+# Movie by IMDb id
 curl 'http://localhost:8788/api?t=movie&imdbid=0133093&apikey=KEY'
 
-# Download del .torrent
+# Download the .torrent
 curl -OJ 'http://localhost:8788/dl/42.torrent?apikey=KEY'
 ```
 
-## Risposta di ricerca
+## Search response
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -152,87 +152,88 @@ curl -OJ 'http://localhost:8788/dl/42.torrent?apikey=KEY'
 </rss>
 ```
 
-Se il `.torrent` non è stato salvato, `<link>` e `<enclosure>` contengono il magnet:
-i client che supportano i magnet (Sonarr, Radarr, qBittorrent) lo usano direttamente.
-`downloadvolumefactor` e `uploadvolumefactor` sono configurabili in Settings.
-Se la richiesta usa una chiave aggiuntiva, i link `.torrent` riportano quella
-chiave, non la primaria.
+If the `.torrent` has not been saved, `<link>` and `<enclosure>` contain the
+magnet: clients that support magnets (Sonarr, Radarr, qBittorrent) use it
+directly. `downloadvolumefactor` and `uploadvolumefactor` are configurable in
+Settings. If the request uses an additional key, the `.torrent` links carry that
+key, not the primary one.
 
-Se un indexer non riporta i seeder (per esempio MirCrew), gli attributi `seeders`,
-`leechers` e `peers` vengono **omessi** invece di valere `0`: un valore assente
-significa "sconosciuto", uno zero significherebbe "torrent morto".
+If an indexer does not report seeders (for example MirCrew), the `seeders`,
+`leechers` and `peers` attributes are **omitted** instead of being `0`: a
+missing value means "unknown", a zero would mean "dead torrent".
 
-### Base dei link
+### Link base
 
-I link sono costruiti con `public_url` se impostato, altrimenti dall'host della
-richiesta. Dietro un reverse proxy imposta `public_url` (per esempio
-`https://indexarr.example.org`) e inoltra `X-Forwarded-Proto`/`X-Forwarded-Host`.
+Links are built with `public_url` if set, otherwise from the request host.
+Behind a reverse proxy set `public_url` (for example
+`https://indexarr.example.org`) and forward `X-Forwarded-Proto`/`X-Forwarded-Host`.
 
 ## Download
 
-| Percorso | Autenticazione | Risposta |
+| Path | Authentication | Response |
 | --- | --- | --- |
-| `GET /dl/{id}.torrent?apikey=KEY` | sì | File `.torrent` con `Content-Type: application/x-bittorrent` |
-| `GET /api?t=get&id={id}&apikey=KEY` | sì | Come sopra |
+| `GET /dl/{id}.torrent?apikey=KEY` | yes | `.torrent` file with `Content-Type: application/x-bittorrent` |
+| `GET /api?t=get&id={id}&apikey=KEY` | yes | As above |
 
-Se per la release esiste solo il magnet la risposta è `404` con una descrizione XML:
-il client deve usare il link magnet ricevuto nella ricerca.
+If only the magnet exists for the release, the response is `404` with an XML
+description: the client must use the magnet link received in the search.
 
-## Configurare i client
+## Configuring clients
 
-| Client | URL da inserire | Note |
+| Client | URL to enter | Notes |
 | --- | --- | --- |
-| Sonarr/Radarr creati da indexarr | `http://<host>:8788/torznab/<slug>` | l'app aggiunge `/api` |
-| Sonarr/Radarr manuale (Torznab) | `http://<host>:8788/torznab/<slug>` | stesso comportamento |
-| gextto (sorgente indexarr) | `http://<host>:8788` | gextto aggiunge `/api` |
-| gextto (Altro/Torznab) | `http://<host>:8788/api` | endpoint completo |
-| curl / script | `http://<host>:8788/api` | aggiungi `?apikey=…` o `X-Api-Key` |
-| dashboard Prowlarr-compatibile | `http://<host>:8788/api/v1/indexer` | sola lettura |
+| Sonarr/Radarr created by indexarr | `http://<host>:8788/torznab/<slug>` | the app appends `/api` |
+| Sonarr/Radarr manual (Torznab) | `http://<host>:8788/torznab/<slug>` | same behavior |
+| gextto (indexarr source) | `http://<host>:8788` | gextto appends `/api` |
+| gextto (Other/Torznab) | `http://<host>:8788/api` | full endpoint |
+| curl / script | `http://<host>:8788/api` | add `?apikey=…` or `X-Api-Key` |
+| Prowlarr-compatible dashboard | `http://<host>:8788/api/v1/indexer` | read-only |
 
-Esempi per-indexer:
+Per-indexer examples:
 
 ```bash
-# capacità del solo MirCrew
+# capabilities of MirCrew only
 curl 'http://localhost:8788/torznab/mircrew/api?t=caps'
 
-# ricerca TV solo su MirCrew
+# TV search on MirCrew only
 curl 'http://localhost:8788/torznab/mircrew/api?t=tvsearch&q=Reacher&season=3&ep=1&apikey=KEY'
 
-# stesso indexer con il percorso compatibile Jackett
+# same indexer with the Jackett-compatible path
 curl 'http://localhost:8788/api/v2.0/indexers/mircrew/results/torznab/api?t=caps'
 ```
 
-## Errori
+## Errors
 
-La risposta di errore è XML:
+The error response is XML:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <error code="401" description="invalid API key"/>
 ```
 
-| HTTP | Causa |
+| HTTP | Cause |
 | --- | --- |
-| 400 | `t` sconosciuto o id non valido |
-| 401 | API key mancante o errata |
-| 404 | Release o `.torrent` inesistente |
-| 429 | Rate limit per chiave superato (`Retry-After: 60`) |
-| 500 | Errore interno/database |
-| 503 | API key non configurata |
+| 400 | unknown `t` or invalid id |
+| 401 | missing or wrong API key |
+| 404 | nonexistent release or `.torrent` |
+| 429 | per-key rate limit exceeded (`Retry-After: 60`) |
+| 500 | internal/database error |
+| 503 | API key not configured |
 
 ## Health check
 
-`GET /healthz` non richiede autenticazione e restituisce JSON:
+`GET /healthz` requires no authentication and returns JSON:
 
 ```json
 {"status":"ok","version":"dev","uptime_seconds":42,"releases":1200,"indexers":3,"db_bytes":1048576}
 ```
 
-## Metriche
+## Metrics
 
-`GET /metrics` non richiede autenticazione (come `/healthz`) e restituisce il
-formato testuale Prometheus. È pensato per uno scraper locale o per la rete
-fidata: non esporre l'istanza su Internet senza un reverse proxy autenticato.
+`GET /metrics` requires no authentication (like `/healthz`) and returns the
+Prometheus text format. It is meant for a local scraper or a trusted network:
+do not expose the instance on the Internet without an authenticated reverse
+proxy.
 
 ```text
 # TYPE indexarr_releases gauge
@@ -251,14 +252,14 @@ indexarr_blocklist_rules 4
 indexarr_db_bytes 1048576
 ```
 
-Sono presenti anche `indexarr_up`, `indexarr_uptime_seconds`,
-`indexarr_torrents` e `indexarr_torrent_bytes`.
+`indexarr_up`, `indexarr_uptime_seconds`, `indexarr_torrents` and
+`indexarr_torrent_bytes` are also present.
 
-## Categorie
+## Categories
 
-Sono quelle standard newznab/Torznab. Le radici emesse da `caps`:
+These are the standard newznab/Torznab ones. The roots emitted by `caps`:
 
-| Id | Categoria |
+| Id | Category |
 | --- | --- |
 | 1000 | Console |
 | 2000 | Movies |
@@ -269,49 +270,49 @@ Sono quelle standard newznab/Torznab. Le radici emesse da `caps`:
 | 7000 | Books |
 | 8000 | Other |
 
-Le sottocategorie complete sono in `internal/categories/categories.go` e nella
-risposta `t=caps`.
+The full subcategories are in `internal/categories/categories.go` and in the
+`t=caps` response.
 
-## API amministrativa `/api/v2`
+## Administrative API `/api/v2`
 
-`indexarr 2` espone un'API JSON versionata per definizioni, indexer nativi e
-applicazioni \*arr. È pensata per script e automazione: usa le stesse API key
-del server Torznab, senza cookie e senza CSRF.
+`indexarr 2` exposes a versioned JSON API for definitions, native indexers and
+\*arr applications. It is meant for scripts and automation: it uses the same API
+keys as the Torznab server, without cookies and without CSRF.
 
-- Autenticazione: `?apikey=...`, header `X-Api-Key` o `Authorization: Bearer ...`
-- Errori: JSON `{"error":"..."}` con stato HTTP coerente
-- Corpi: massimo 1 MiB; campi sconosciuti rifiutati
-- Nessuna risposta contiene API key, password, cookie, URL del tracker o
+- Authentication: `?apikey=...`, `X-Api-Key` header or `Authorization: Bearer ...`
+- Errors: JSON `{"error":"..."}` with a consistent HTTP status
+- Bodies: maximum 1 MiB; unknown fields rejected
+- No response contains API keys, passwords, cookies, tracker URLs or
   `download_ref`
 
-| Metodo | Percorso | Uso |
+| Method | Path | Use |
 |---|---|---|
-| GET | `/api/v2/health` | stato e versione |
-| GET/POST | `/api/v2/definitions` | elenco / crea definizione YAML |
-| POST | `/api/v2/definitions/validate` | valida senza salvare |
-| GET/PUT/DELETE | `/api/v2/definitions/{id}` | leggi (con body) / aggiorna / cancella |
-| GET | `/api/v2/catalog` | catalogo built-in e stato installazione |
-| POST | `/api/v2/catalog/sync` | sincronizza il catalogo nel database |
-| GET/POST | `/api/v2/indexers` | elenco / crea indexer nativo |
-| GET/PUT/DELETE | `/api/v2/indexers/{id}` | dettaglio / aggiorna / cancella |
-| POST | `/api/v2/indexers/{id}/test` | test per fase (reach/auth/search) |
-| POST | `/api/v2/indexers/{id}/search` | ricerca live, senza URL del tracker |
-| POST | `/api/v2/indexers/{id}/run` | un run di ingestion |
-| GET/POST | `/api/v2/proxies` | elenco / crea un proxy HTTP, HTTPS o SOCKS5 |
-| GET/PUT/DELETE | `/api/v2/proxies/{id}` | dettaglio / aggiorna / cancella un proxy |
-| GET/POST | `/api/v2/applications` | elenco / collega una \*arr |
-| GET/PUT/DELETE | `/api/v2/applications/{id}` | dettaglio / aggiorna / scollega |
-| POST | `/api/v2/applications/{id}/sync` | riconcilia un'applicazione |
-| POST | `/api/v2/applications/sync` | riconcilia tutte |
+| GET | `/api/v2/health` | status and version |
+| GET/POST | `/api/v2/definitions` | list / create YAML definition |
+| POST | `/api/v2/definitions/validate` | validate without saving |
+| GET/PUT/DELETE | `/api/v2/definitions/{id}` | read (with body) / update / delete |
+| GET | `/api/v2/catalog` | built-in catalog and installation status |
+| POST | `/api/v2/catalog/sync` | sync the catalog into the database |
+| GET/POST | `/api/v2/indexers` | list / create native indexer |
+| GET/PUT/DELETE | `/api/v2/indexers/{id}` | detail / update / delete |
+| POST | `/api/v2/indexers/{id}/test` | test by phase (reach/auth/search) |
+| POST | `/api/v2/indexers/{id}/search` | live search, without the tracker URL |
+| POST | `/api/v2/indexers/{id}/run` | one ingestion run |
+| GET/POST | `/api/v2/proxies` | list / create an HTTP, HTTPS or SOCKS5 proxy |
+| GET/PUT/DELETE | `/api/v2/proxies/{id}` | detail / update / delete a proxy |
+| GET/POST | `/api/v2/applications` | list / connect an \*arr |
+| GET/PUT/DELETE | `/api/v2/applications/{id}` | detail / update / disconnect |
+| POST | `/api/v2/applications/{id}/sync` | reconcile an application |
+| POST | `/api/v2/applications/sync` | reconcile all |
 
-Esempio:
+Example:
 
 ```sh
 curl -X POST "http://localhost:8788/api/v2/indexers?apikey=$KEY" \
   -H 'Content-Type: application/json' \
   -d '{
         "definition_id": "newznab-generic",
-        "name": "Il mio Usenet",
+        "name": "My Usenet",
         "proxy_id": 1,
         "query_limit": 100,
         "grab_limit": 50,
@@ -323,64 +324,64 @@ curl -X POST "http://localhost:8788/api/v2/indexers?apikey=$KEY" \
       }'
 ```
 
-`proxy_id` punta a un proxy creato con `/api/v2/proxies`; `0` lo rimuove.
-`query_limit` e `grab_limit` sono per giorno; `min_seeders`, `seed_ratio`,
-`seed_time_minutes` e `season_pack_seed_time_minutes` vengono sincronizzati
-alle applicazioni. Zero significa nessun limite o valore predefinito. Lo stesso
-`seed_ratio` e `seed_time_minutes` vengono passati a qBittorrent quando la
-release si invia dal pulsante **Invia** (`ratioLimit`/`seedingTimeLimit`).
+`proxy_id` points to a proxy created with `/api/v2/proxies`; `0` removes it.
+`query_limit` and `grab_limit` are per day; `min_seeders`, `seed_ratio`,
+`seed_time_minutes` and `season_pack_seed_time_minutes` are synced to the
+applications. Zero means no limit or the default value. The same `seed_ratio`
+and `seed_time_minutes` are passed to qBittorrent when the release is sent from
+the **Send** button (`ratioLimit`/`seedingTimeLimit`).
 
-I valori con nome che contiene `api_key`, `apikey`, `token`, `password`,
-`passkey`, `secret` o `cookie` vengono cifrati nel vault; gli altri finiscono
-in `config_json`. Le definizioni built-in sono oggi in stato `bozza`: non sono
-state verificate contro un sito live.
+Values whose name contains `api_key`, `apikey`, `token`, `password`, `passkey`,
+`secret` or `cookie` are encrypted in the vault; the others end up in
+`config_json`. The built-in definitions are currently in the `bozza` (draft)
+state: they have not been verified against a live site.
 
-### Importazione del cookie dal browser
+### Importing the cookie from the browser
 
-Alcuni siti privati (IPTorrents, per esempio) hanno un login protetto da un
-CAPTCHA e si configurano con il **Cookie** di una sessione aperta nel browser.
-La pagina `GET /indexers/{id}/cookie` (interfaccia, CSRF) spiega il
-procedimento; `POST /indexers/{id}/cookie` genera un comando valido **una sola
-volta e per 10 minuti**:
+Some private sites (IPTorrents, for example) have a login protected by a CAPTCHA
+and are configured with the **Cookie** of a session open in the browser. The
+`GET /indexers/{id}/cookie` page (UI, CSRF) explains the procedure;
+`POST /indexers/{id}/cookie` generates a command valid **only once and for 10
+minutes**:
 
 ```
 curl -fsSL <indexarr>/static/import-browser-cookie.py -o /tmp/import-browser-cookie.py && \
-python3 /tmp/import-browser-cookie.py --indexarr <indexarr> --token <token> --domain <dominio>
+python3 /tmp/import-browser-cookie.py --indexarr <indexarr> --token <token> --domain <domain>
 ```
 
-Lo script gira sul computer con il browser, legge il profilo Firefox
-dell'utente (`cookies.sqlite`), ricava lo User-Agent dalla versione in esecuzione
-e invia il tutto a:
+The script runs on the computer with the browser, reads the user's Firefox
+profile (`cookies.sqlite`), derives the User-Agent from the running version and
+sends everything to:
 
-| Metodo | Percorso | Autenticazione | Corpo |
+| Method | Path | Authentication | Body |
 |---|---|---|---|
-| POST | `/pair` | header `X-Indexarr-Pairing: <token>` | `{"cookie":"...","user_agent":"..."}` |
+| POST | `/pair` | `X-Indexarr-Pairing: <token>` header | `{"cookie":"...","user_agent":"..."}` |
 
-`/pair` non usa la API key né la password della UI: il token è casuale, legato
-a un solo indexer, monouso e vive solo in memoria (un riavvio lo invalida). Il
-cookie viene sigillato nel vault e lo User-Agent finisce in `config_json`.
-Risposte: `200 {"ok":true}`, `401` token mancante/scaduto, `400` corpo non
-valido, `503` servizio indexer non disponibile. Lo script non stampa mai il
-cookie né il token.
+`/pair` does not use the API key or the UI password: the token is random, tied
+to a single indexer, single-use and lives only in memory (a restart invalidates
+it). The cookie is sealed in the vault and the User-Agent ends up in
+`config_json`. Responses: `200 {"ok":true}`, `401` missing/expired token, `400`
+invalid body, `503` indexer service unavailable. The script never prints the
+cookie or the token.
 
-## Compatibilità Prowlarr v1 (sola lettura)
+## Prowlarr v1 compatibility (read-only)
 
-Per le dashboard che leggono l'API di Prowlarr (Homepage, Organizr, …) sono
-disponibili tre rotte equivalenti, autenticate con la stessa API key
-(`apikey`, `X-Api-Key` o `Authorization: Bearer`):
+For dashboards that read the Prowlarr API (Homepage, Organizr, …) three
+equivalent routes are available, authenticated with the same API key
+(`apikey`, `X-Api-Key` or `Authorization: Bearer`):
 
-| Metodo | Rotta | Risposta |
+| Method | Route | Response |
 |---|---|---|
-| GET | `/api/v1/system/status` | nome applicazione, versione, autenticazione |
-| GET | `/api/v1/health` | elenco dei problemi (vuoto quando è tutto ok) |
-| GET | `/api/v1/indexer` | elenco indexer in formato Prowlarr |
-| GET | `/api/v1/indexer/{id}` | un indexer |
+| GET | `/api/v1/system/status` | application name, version, authentication |
+| GET | `/api/v1/health` | list of problems (empty when everything is ok) |
+| GET | `/api/v1/indexer` | list of indexers in Prowlarr format |
+| GET | `/api/v1/indexer/{id}` | a single indexer |
 
-Sono **sola lettura** e non creano alcun collegamento verso Prowlarr: servono
-solo a chi ha una dashboard che parla quel dialetto.
+They are **read-only** and do not create any link towards Prowlarr: they only
+serve those who have a dashboard that speaks that dialect.
 
-## Cambiamenti 2.0.0-rc1
+## Changes in 2.0.0-rc1
 
-- `total` è il numero di release dopo la fusione ed è stabile su tutte le pagine; ogni pagina è piena tranne l’ultima.
-- Le ricerche live usano worker condivisi e una finestra di 5 s; i risultati tardivi restano nel DB.
-- ExtTo segue la categoria della richiesta (Movies/TV) nelle ricerche dal vivo; le liste uploader non vengono interrogate.
+- `total` is the number of releases after merging and is stable across all pages; every page is full except the last.
+- Live searches use shared workers and a 5 s window; late results stay in the DB.
+- ExtTo follows the request category (Movies/TV) in live searches; uploader lists are not queried.

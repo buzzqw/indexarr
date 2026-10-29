@@ -1,168 +1,166 @@
-# Compatibilità con gli indexer
+# Indexer compatibility
 
-indexarr non contiene un parser per ogni tracker: parla **Torznab** per i
-torrent e **Newznab** per Usenet. Tutto ciò che espone uno di questi protocolli
-funziona senza modifiche. Per il resto indexarr adotta la fonte con una
-definizione nativa o con un connettore di famiglia; se non ha né l'una né
-l'altro, la fonte resta in coda e **non** viene creato un proxy verso Jackett o
-Prowlarr.
+indexarr does not contain a parser for every tracker: it speaks **Torznab** for
+torrents and **Newznab** for Usenet. Everything that exposes one of these
+protocols works without changes. For the rest, indexarr adopts the source with a
+native definition or with a family connector; if it has neither, the source stays
+queued and **no** proxy to Jackett or Prowlarr is created.
 
-## Matrice
+## Matrix
 
-| Sorgente | Stato | Note |
+| Source | Status | Notes |
 | --- | --- | --- |
-| **Jackett / Prowlarr** | non supportati | indexarr li sostituisce: gli endpoint dei manager vengono rifiutati. Le fonti si aggiungono dal catalogo nativo. |
-| **MirCrew** (`mircrew-indexer`) | completo | Base o `/api`; magnet in link/enclosure; seeder assenti; `/status` per il login al forum; risposte lente. |
-| **Torznab diretto** | completo (torrent) | Qualunque URL di un tracker che contiene `/api` o `torznab` è usato così com'è; altrimenti viene aggiunto `/api`. Gli URL di Jackett/Prowlarr sono esclusi. |
-| **Newznab / Usenet** | completo (generico) | Connettore `newznab` e definizione `newznab-generic`: caps, ricerca `search`/`tv`/`movie`/`music`/`book`, payload `.nzb` archiviato o risolto al grab, invio ai client SABnzbd/NZBGet. Definizioni native per singoli siti Usenet non ancora in catalogo. |
-| **RSS / Atom** | completo | Titolo, magnet, enclosure `.torrent`, dimensione, categoria numerica, data; import massivo e OPML. |
-| **ExtTo** | completo (HTML) | Parser dedicato: titolo e magnet dalla stessa riga; categoria dal filtro `c=`. |
-| **TorrentGalaxy** | completo (HTML) | Parser dedicato delle pagine `post-detail` con cache dei magnet (6 ore). |
-| **Corsaro** | completo (HTML) | Parser dedicato di link `/torrent/`, `/torrents/` e magnet diretti, con cache dei dettagli. |
-| **HTTP Basic** | completo | Campi dedicati per sorgente, usati per ricerche e download. |
-| **API key** | completo | Inviata come `apikey` e come header `X-Api-Key`; può essere vuota. |
-| **Cloudflare / challenge** | con FlareSolverr | Retry automatico per RSS e Torznab diretto; indirizzi LAN esclusi. |
-| **API proprietarie** | non gestite in automatico | La fonte resta in coda «da scrivere» finché non esiste una definizione nativa; non compare nell'elenco utente. Nessun proxy automatico verso Jackett/Prowlarr. |
+| **Jackett / Prowlarr** | not supported | indexarr replaces them: manager endpoints are rejected. Sources are added from the native catalog. |
+| **MirCrew** (`mircrew-indexer`) | complete | Base or `/api`; magnet in link/enclosure; no seeders; `/status` for the forum login; slow responses. |
+| **Direct Torznab** | complete (torrent) | Any tracker URL containing `/api` or `torznab` is used as is; otherwise `/api` is appended. Jackett/Prowlarr URLs are excluded. |
+| **Newznab / Usenet** | complete (generic) | `newznab` connector and `newznab-generic` definition: caps, `search`/`tv`/`movie`/`music`/`book` search, `.nzb` payload stored or resolved at grab time, sending to SABnzbd/NZBGet clients. Native definitions for individual Usenet sites not yet in the catalog. |
+| **RSS / Atom** | complete | Title, magnet, `.torrent` enclosure, size, numeric category, date; bulk import and OPML. |
+| **ExtTo** | complete (HTML) | Dedicated parser: title and magnet from the same row; category from the `c=` filter. |
+| **TorrentGalaxy** | complete (HTML) | Dedicated parser for `post-detail` pages with magnet cache (6 hours). |
+| **CorsaroBlu** | listing only (HTML) | Dedicated parser for `/torrent/`, `/torrents/` links and direct magnets, with detail cache. Guest keyword search is disabled by the site; a FlareSolverr session is required because a plain client receives 429/503. |
+| **HTTP Basic** | complete | Dedicated per-source fields, used for searches and downloads. |
+| **API key** | complete | Sent as `apikey` and as the `X-Api-Key` header; it can be empty. |
+| **Cloudflare / challenge** | with FlareSolverr | Automatic retry for RSS and direct Torznab; LAN addresses excluded. |
+| **Proprietary APIs** | not handled automatically | The source stays in the "to be written" queue until a native definition exists; it does not appear in the user list. No automatic proxy to Jackett/Prowlarr. |
 
 ## MirCrew
 
-`mircrew-indexer` è il caso di riferimento di un servizio Torznab "artigianale":
-merita l'elenco esplicito di ciò che indexarr fa per lui.
+`mircrew-indexer` is the reference case of a "hand-rolled" Torznab service: it
+deserves an explicit list of what indexarr does for it.
 
-| Comportamento MirCrew | Gestione indexarr |
+| MirCrew behavior | indexarr handling |
 | --- | --- |
-| Endpoint `<base>/api`, porta scelta dall'utente | Accetta sia la base sia l'URL con `/api` |
-| Magnet in `<link>` e `<enclosure>` | Riconosciuto, nessun tentativo di scaricarlo via HTTP |
-| Nessun attributo `seeders` | Seeder sconosciuti (`-1`), attributo omesso in uscita |
-| `<response offset total>` senza namespace | Ignorato, la paginazione usa i parametri della richiesta |
-| Data = data del topic del forum | Letta da `<pubDate>` |
-| `/status` con `logged_in`, `login_error`, `last_run` | Il pulsante Test la interroga e distingue login fallito, in corso, perso |
-| Ricerca lenta sul forum | Timeout predefinito 45 s, run con margine |
-| XML con `&` grezzi o entità HTML | Sanitizzazione prima del parsing |
+| Endpoint `<base>/api`, port chosen by the user | Accepts both the base and the URL with `/api` |
+| Magnet in `<link>` and `<enclosure>` | Recognized, no attempt to download it over HTTP |
+| No `seeders` attribute | Seeders unknown (`-1`), attribute omitted in the output |
+| `<response offset total>` without namespace | Ignored, pagination uses the request parameters |
+| Date = forum topic date | Read from `<pubDate>` |
+| `/status` with `logged_in`, `login_error`, `last_run` | The Test button queries it and distinguishes failed, in-progress and lost login |
+| Slow forum search | Default timeout 45 s, run with margin |
+| XML with raw `&` or HTML entities | Sanitization before parsing |
 
-### Configurazione MirCrew
+### MirCrew configuration
 
-| Campo | Valore |
+| Field | Value |
 | --- | --- |
 | Name | `MirCrew` |
 | Type | Torznab / indexer |
-| URL | `http://<host>:<porta>` oppure `http://<host>:<porta>/api` |
-| Manager | MirCrew (o Direct Torznab, Auto va bene) |
-| API key | quella del servizio, se presente |
-| Categories | `5000` per la TV, `2000` per i film |
-| HTTP username/password | solo se il servizio li richiede |
+| URL | `http://<host>:<port>` or `http://<host>:<port>/api` |
+| Manager | MirCrew (or Direct Torznab, Auto is fine) |
+| API key | the service's own, if present |
+| Categories | `5000` for TV, `2000` for movies |
+| HTTP username/password | only if the service requires them |
 
-Il percorso è stato verificato contro un `mircrew-indexer` reale (versione 0.1):
-caps, `/status` con login al forum attivo, ingestione di 100 release dalla lista
-"latest" e ricerca Torznab con magnet e infohash.
+The path has been verified against a real `mircrew-indexer` (version 0.1):
+caps, `/status` with an active forum login, ingestion of 100 releases from the
+"latest" list and Torznab search with magnet and infohash.
 
-### Diagnostica
+### Diagnostics
 
-| Sintomo | Significato |
+| Symptom | Meaning |
 | --- | --- |
-| Test: «forum login failed: …» | Credenziali del forum MirCrew da rifare nel servizio; l'indice locale continua a rispondere |
-| Test: «forum login in progress» | Servizio appena avviato, non è un errore |
-| Test: «forum login lost» | Il servizio aveva completato un giro e ha perso il login |
-| Test FlareSolverr fallito | Servizio non raggiungibile, URL errato o nessun accesso a Internet dal solver |
-| HTTP 401 | API key o credenziali Basic errate |
-| HTTP 404 sul download | Release salvata solo come magnet: usare il link magnet |
-| HTML al posto di XML | L'indexer ha restituito una pagina di login o un blocco: controllare URL e credenziali |
-| Nessun risultato con query vuota | Il Torznab diretto potrebbe non supportare la lista "latest": impostare un termine di ricerca nella sorgente |
+| Test: "forum login failed: …" | MirCrew forum credentials must be redone in the service; the local index keeps responding |
+| Test: "forum login in progress" | Service just started, not an error |
+| Test: "forum login lost" | The service had completed a run and lost the login |
+| FlareSolverr test failed | Service unreachable, wrong URL or no Internet access from the solver |
+| HTTP 401 | Wrong API key or Basic credentials |
+| HTTP 404 on download | Release stored only as a magnet: use the magnet link |
+| HTML instead of XML | The indexer returned a login page or a block: check the URL and credentials |
+| No results with an empty query | Direct Torznab may not support the "latest" list: set a search term on the source |
 
-## Liste HTML (ExtTo, TorrentGalaxy, Corsaro)
+## HTML listings (ExtTo, TorrentGalaxy, CorsaroBlu)
 
-`extto.org`/`ext.to`, `torrentgalaxy.*` e i siti Corsaro non sono feed: sono
-listing HTML. indexarr li riconosce dall'host e usa lo stesso approccio di
+`extto.org`/`ext.to`, `torrentgalaxy.*` and CorsaroBlu are not feeds: they
+are HTML listings. indexarr recognizes them by host and uses the same approach as
 Gextto:
 
-| Sito | Come |
+| Site | How |
 | --- | --- |
-| ExtTo | Accoppia il link `post-detail` e il magnet presenti nella stessa riga; nessun fetch di dettaglio. |
-| TorrentGalaxy | Segue i link `post-detail` delle righe, estrae il magnet dalla pagina e lo mette in cache per 6 ore. |
-| Corsaro | Segue i link `/torrent/` o `/torrents/` e i magnet diretti, estrae i magnet in parallelo e li mette in cache. |
+| ExtTo | Pairs the `post-detail` link and the magnet present in the same row; no detail fetch. |
+| TorrentGalaxy | Follows the `post-detail` links of the rows, extracts the magnet from the page and caches it for 6 hours. |
+| CorsaroBlu | Follows `/torrent/` or `/torrents/` links and direct magnets, extracts magnets in parallel and caches them. It is a latest-list source; guest search is disabled and all requests use FlareSolverr. |
 
-Limiti: prima pagina, massimo 50 release per sorgente; se il layout cambia o il
-sito richiede il login, il test riporta l'errore. **Quick add** riconosce l'host;
-**Default category** assegna una categoria Torznab quando la pagina non la
-fornisce. Gli altri siti senza RSS restano nella coda nativa: l'indice li
-classifica come «da scrivere» (vista di manutenzione `/indexers/new?queue=1`) e
-non crea un endpoint Torznab verso il manager.
+Limits: first page, at most 50 releases per source; if the layout changes or the
+site requires login, the test reports the error. **Quick add** recognizes the
+host; **Default category** assigns a Torznab category when the page does not
+provide one. The other sites without RSS remain in the native queue: the index
+classifies them as "to be written" (maintenance view `/indexers/new?queue=1`) and
+does not create a Torznab endpoint towards the manager.
 
 ## Cloudflare
 
-Con un endpoint configurato in **Settings → Cloudflare / FlareSolverr**, una
-risposta con challenge Cloudflare viene ripetuta tramite il servizio:
+With an endpoint configured in **Settings → Cloudflare / FlareSolverr**, a
+response with a Cloudflare challenge is retried through the service:
 
-- header `cf-mitigated: challenge`, oppure pagina HTML con `Just a moment...`,
-  `cf-chl`, `__cf_chl`, `Attention Required`, su 403/503 (e su 200);
-- RSS, Torznab diretto e test di connessione;
-- nessun retry per gli indirizzi LAN: un 403 locale è un errore di
-  autenticazione/rete, non una challenge;
-- un errore XML/JSON dell'indexer non viene trattato come challenge.
+- `cf-mitigated: challenge` header, or HTML page with `Just a moment...`,
+  `cf-chl`, `__cf_chl`, `Attention Required`, on 403/503 (and on 200);
+- RSS, direct Torznab and connection tests;
+- no retry for LAN addresses: a local 403 is an authentication/network error,
+  not a challenge;
+- an XML/JSON error from the indexer is not treated as a challenge.
 
-Limiti: i `.torrent` non vengono scaricati tramite FlareSolverr (risposta
-binaria) e una risoluzione può richiedere fino a ~60 secondi. L'URL dell'indexer,
-API key compresa, viene inviato al servizio FlareSolverr.
+Limits: `.torrent` files are not downloaded through FlareSolverr (binary
+response) and a resolution can take up to ~60 seconds. The indexer URL, including
+the API key, is sent to the FlareSolverr service.
 
-## Aggiungere un indexer non in elenco
+## Adding an indexer that is not listed
 
-1. Se espone **Torznab**, creare una sorgente con l'URL completo e la API key (se
-   presente). Il tipo *Direct Torznab* evita ogni euristica sul gestore.
-2. Se richiede **HTTP Basic**, compilare i campi dedicati.
-3. Se parla solo la sua **API proprietaria**, la fonte resta in coda: si scrive
-   una definizione nativa osservando il sito. indexarr non crea un proxy verso
-   Jackett/Prowlarr, non li contatta e non implementa protocolli ad-hoc.
-4. Se il servizio espone un **`/status`** accanto a `/api`, il test lo legge
-   automaticamente quando il JSON contiene `ok` o `logged_in`.
+1. If it exposes **Torznab**, create a source with the full URL and the API key
+   (if present). The *Direct Torznab* type avoids any heuristic about the manager.
+2. If it requires **HTTP Basic**, fill in the dedicated fields.
+3. If it only speaks its own **proprietary API**, the source stays queued: write
+   a native definition by observing the site. indexarr does not create a proxy to
+   Jackett/Prowlarr, does not contact them and does not implement ad-hoc protocols.
+4. If the service exposes a **`/status`** next to `/api`, the test reads it
+   automatically when the JSON contains `ok` or `logged_in`.
 
-Per verificare senza aspettare lo scheduler usare **Test** o **Run** nella pagina
-Sources e controllare **Runs** per l'errore esatto restituito dall'indexer.
-**Quick add** riconosce il tipo dall'URL; **Discover feeds** trova i feed
-dichiarati da una pagina; i preset impostano tipo e manager senza vincolare
-l'URL.
+To verify without waiting for the scheduler, use **Test** or **Run** on the
+Sources page and check **Runs** for the exact error returned by the indexer.
+**Quick add** recognizes the type from the URL; **Discover feeds** finds the feeds
+declared by a page; presets set type and manager without constraining the URL.
 
 ## Newznab / Usenet
 
-Il percorso Usenet usa il connettore generico `newznab` e la definizione
-`newznab-generic`. Non è una definizione nativa per un singolo sito: l'URL e la
-API key li fornisce l'utente, quindi il catalogo non contiene ancora sorgenti
-Usenet verificate sito per sito.
+The Usenet path uses the generic `newznab` connector and the `newznab-generic`
+definition. It is not a native definition for a single site: the URL and API key
+are provided by the user, so the catalog does not yet contain Usenet sources
+verified site by site.
 
-| Passo | Comportamento |
+| Step | Behavior |
 | --- | --- |
-| Aggiunta | URL dell'API (con o senza `/api`) e API key; il protocollo è `usenet` e viene derivato dalla definizione |
-| Caps | `t=caps` letto e messo in cache per un'ora; le modalità dichiarate sono `search`, `tv-search`, `movie-search`, `music-search`, `book-search` |
-| Ricerca | parametri Newznab (`q`, `season`, `ep`, `imdbid`, `tvdbid`, `tmdbid`, `rid`, `artist`, `album`, `author`, `title`, `cat`); le voci senza link valido vengono scartate |
-| Payload | `.nzb` scaricato con `t=get` o dall'enclosure `application/x-nzb`; se il budget di download è esaurito resta un riferimento sigillato, aperto al grab |
-| Output | Torznab/Newznab con `protocol=usenet`, enclosure `application/x-nzb` e nome file `.nzb`; nessun magnet e nessun infohash |
-| App | Sonarr, Radarr, Lidarr, Readarr e Whisparr ricevono `Newznab`/`NewznabSettings` con protocollo `usenet`; eD2k resta escluso |
-| Download | la release viene inviata al client Usenet (SABnzbd o NZBGet) configurato per il protocollo `usenet` |
+| Adding | API URL (with or without `/api`) and API key; the protocol is `usenet` and is derived from the definition |
+| Caps | `t=caps` read and cached for an hour; the declared modes are `search`, `tv-search`, `movie-search`, `music-search`, `book-search` |
+| Search | Newznab parameters (`q`, `season`, `ep`, `imdbid`, `tvdbid`, `tmdbid`, `rid`, `artist`, `album`, `author`, `title`, `cat`); entries without a valid link are discarded |
+| Payload | `.nzb` downloaded with `t=get` or from the `application/x-nzb` enclosure; if the download budget is exhausted, a sealed reference remains, opened at grab time |
+| Output | Torznab/Newznab with `protocol=usenet`, `application/x-nzb` enclosure and `.nzb` file name; no magnet and no infohash |
+| Apps | Sonarr, Radarr, Lidarr, Readarr and Whisparr receive `Newznab`/`NewznabSettings` with protocol `usenet`; eD2k remains excluded |
+| Download | the release is sent to the Usenet client (SABnzbd or NZBGet) configured for the `usenet` protocol |
 
-Limiti misurati: la ricerca live usa lo stesso fan-out degli altri protocolli e
-non scarica l'NZB in anticipo; il payload arriva al primo grab. Le definizioni
-native per singoli siti Usenet non fanno parte del catalogo attuale, quindi una
-fonte che non espone Newznab resta in coda.
+Measured limits: live search uses the same fan-out as the other protocols and does
+not download the NZB in advance; the payload arrives at the first grab. Native
+definitions for individual Usenet sites are not part of the current catalog, so a
+source that does not expose Newznab stays queued.
 
-## Client di download
+## Download clients
 
-L'invio ai client non fa parte del protocollo Torznab: è un'azione opzionale del
-dettaglio release, configurata in **App → Client di download**.
+Sending to clients is not part of the Torznab protocol: it is an optional action
+of the release detail, configured in **App → Download clients**.
 
-| Client | Integrazione |
+| Client | Integration |
 | --- | --- |
-| qBittorrent | Web API v2: login, `torrents/add` con magnet o file `.torrent`, categoria, percorso, pausa. |
-| Transmission | RPC `/transmission/rpc`: `torrent-add`, `metainfo` base64 per i `.torrent`, `filename` per i magnet, sessione `409` gestita. |
-| Deluge | JSON-RPC: login, `core.add_torrent_magnet`/`core.add_torrent_file`, percorso e pausa. |
-| rTorrent | XML-RPC: `load.raw_start`/`load.start` con magnet o `.torrent`. |
-| SABnzbd / NZBGet | API Usenet: aggiunta di un `.nzb` o di un URL, categoria, pausa. |
-| aMule | Web API `amuleapi` (`/api/v1`): login con password, `POST /downloads` con il link `ed2k://`. Protocollo `ed2k`. |
-| Aria2 | JSON-RPC `/jsonrpc`: `aria2.addUri` e `aria2.addTorrent`, token, `dir`, pausa. |
-| uTorrent | Web API: token da `token.html`, `add-url` e `add-file`. |
-| Flood | REST `/api`: autenticazione, aggiunta di magnet/URL/file, tag, destinazione. |
-| Download Station | Synology `auth.cgi` + `task.cgi`: magnet/URL e upload di file, destinazione. |
-| NZBVortex | API `/api`: login con nonce, aggiunta `.nzb`, gruppo. |
-| Hadouken | JSON-RPC `/api`: `webui.addTorrent` con file o URL, etichetta. |
-| Blackhole | Cartella locale: scrive `.torrent`, `.magnet` o `.nzb`; nessun URL richiesto. |
+| qBittorrent | Web API v2: login, `torrents/add` with magnet or `.torrent` file, category, path, pause. |
+| Transmission | RPC `/transmission/rpc`: `torrent-add`, base64 `metainfo` for `.torrent` files, `filename` for magnets, `409` session handled. |
+| Deluge | JSON-RPC: login, `core.add_torrent_magnet`/`core.add_torrent_file`, path and pause. |
+| rTorrent | XML-RPC: `load.raw_start`/`load.start` with magnet or `.torrent`. |
+| SABnzbd / NZBGet | Usenet API: add a `.nzb` or a URL, category, pause. |
+| aMule | `amuleapi` Web API (`/api/v1`): password login, `POST /downloads` with the `ed2k://` link. Protocol `ed2k`. |
+| Aria2 | JSON-RPC `/jsonrpc`: `aria2.addUri` and `aria2.addTorrent`, token, `dir`, pause. |
+| uTorrent | Web API: token from `token.html`, `add-url` and `add-file`. |
+| Flood | REST `/api`: authentication, adding magnet/URL/file, tags, destination. |
+| Download Station | Synology `auth.cgi` + `task.cgi`: magnet/URL and file upload, destination. |
+| NZBVortex | `/api` API: nonce login, add `.nzb`, group. |
+| Hadouken | JSON-RPC `/api`: `webui.addTorrent` with file or URL, label. |
+| Blackhole | Local folder: writes `.torrent`, `.magnet` or `.nzb`; no URL required. |
 
-Sonarr/Radarr/Lidarr continuano a gestire il download per conto loro; questa
-funzione serve per inviare una release scelta a mano dalla UI.
+Sonarr/Radarr/Lidarr continue to manage the download on their own; this feature
+is for sending a release chosen manually from the UI.

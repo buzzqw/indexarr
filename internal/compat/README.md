@@ -1,11 +1,11 @@
-# Suite di compatibilità (`internal/compat`)
+# Compatibility suite (`internal/compat`)
 
-Questa suite prova il contratto esterno di indexarr 2 verso le \*arr, non le
-funzioni interne. Usa solo API esportate, fixture locali e `httptest`: non fa
-chiamate di rete reali, non modifica i package di produzione e non aggiunge
-dipendenze.
+This suite tests indexarr 2's external contract toward the \*arr, not the
+internal functions. It uses only exported APIs, local fixtures and `httptest`:
+it makes no real network calls, does not modify the production packages and
+does not add dependencies.
 
-## Come si esegue
+## How to run it
 
 ```bash
 gofmt -l internal/compat
@@ -14,63 +14,63 @@ go test ./internal/compat
 go test -race ./internal/compat
 ```
 
-La suite completa richiede meno di un secondo (con `-race` circa 8 secondi).
+The full suite takes less than a second (with `-race` about 8 seconds).
 
-Per rigenerare i golden dopo una modifica **voluta** del protocollo:
+To regenerate the goldens after an **intentional** protocol change:
 
 ```bash
 UPDATE_GOLDEN=1 go test ./internal/compat -run 'TestCapsGolden|TestSearchGolden'
 ```
 
-I golden non vanno aggiornati per far passare un test: un diff è un segnale di
-incompatibilità.
+Goldens must not be updated just to make a test pass: a diff is a signal of
+incompatibility.
 
-## Fixture
+## Fixtures
 
-| File | Uso |
+| File | Use |
 | --- | --- |
-| `testdata/canonical.json` | Quattro release canoniche: magnet, torrent, nzb Usenet e release multi-indexer. Contiene anche un riferimento di download con passkey, che non deve mai comparire nell'XML. |
-| `testdata/caps.golden.xml` | Snapshot esatto di `t=caps` (categorie, limiti, parametri dichiarati, ordine stabile). |
-| `testdata/search.golden.xml` | Snapshot esatto di una ricerca aggregata: escaping XML, ordine, attributi Torznab, provenance e link proxy. |
+| `testdata/canonical.json` | Four canonical releases: magnet, torrent, Usenet nzb and multi-indexer release. It also contains a download reference with a passkey, which must never appear in the XML. |
+| `testdata/caps.golden.xml` | Exact snapshot of `t=caps` (categories, limits, declared parameters, stable order). |
+| `testdata/search.golden.xml` | Exact snapshot of an aggregated search: XML escaping, order, Torznab attributes, provenance and proxy links. |
 
-Le date sono fisse e il fuso è forzato a UTC in `TestMain`, quindi i golden sono
-riproducibili su qualsiasi macchina.
+Dates are fixed and the time zone is forced to UTC in `TestMain`, so the
+goldens are reproducible on any machine.
 
-## Matrice di copertura
+## Coverage matrix
 
-| Area | Coperto | Note |
+| Area | Covered | Notes |
 | --- | --- | --- |
-| XML Torznab/Newznab | Root `rss` 2.0, namespace `torznab` e `newznab`, `<newznab:response offset total>`, `<item>`, `<title>`, `<guid isPermaLink="false">`, `<link>`, `<comments>`, `<pubDate>`, `<size>`, `<category>`, `<enclosure>` | Well-formed XML verificato con `encoding/xml` |
-| Modalità | `search`, `tvsearch`, `movie`, `music`, `book` | `music` e `book` sono alias di `search`, come documentato |
-| Parametri | `q`, `season`, `ep`, `imdbid` (con e senza `tt`), `tmdbid`, `tvdbid`, `limit`, `offset`, `cat`, `extended`, parametri sconosciuti | `rid`, `artist`, `album`, `author`, `title` sono tollerati e ignorati dove non supportati |
-| Limiti | `limit` default 50, massimo 100, valori negativi/zero, `offset` negativo/fuori pagina | Il tetto di 100 è provato con 109 release |
-| Categorie | Radici 1000–8000 e sottocategorie, filtro per radice e sottocategoria, valori fuori range | Un `cat` non numerico viene ignorato (comportamento attuale) |
-| Attributi Torznab | `category`, `size`, `seeders`, `leechers`, `peers`, `infohash`, `magneturl`, `publishdate`, `downloadvolumefactor`, `uploadvolumefactor`, `protocol=usenet`, `indexers`, `provenance` | Per Usenet assenti `infohash`/`magneturl` |
-| Errori | Codici 100, 101, 200, 201, 300, 400, 500 | Il codice 900 non ha percorsi raggiungibili in questo handler |
-| Download | `/dl/{id}.torrent`, `/dl/{id}.nzb`, `t=get`, `HEAD`, API key obbligatoria, chiave aggiuntiva | Link sempre proxy: nessun URL del tracker, passkey o `download_ref` |
-| Alias | `/api`, `/torznab/api`, `/newznab/api`, `/api/v2.0/indexers/all/results/torznab/api`, `/torznab/{slug}/api`, `/api/v2.0/indexers/{slug}/results/torznab/api` | Risposte byte-identiche a parità di selezione |
-| Selezione per indexer | Due sorgenti legacy, slug case-sensitive, indexer sconosciuto → Torznab 201 | Il filtro aggregato per `tag`, `status`, `indexer_type` è coperto |
+| Torznab/Newznab XML | `rss` 2.0 root, `torznab` and `newznab` namespaces, `<newznab:response offset total>`, `<item>`, `<title>`, `<guid isPermaLink="false">`, `<link>`, `<comments>`, `<pubDate>`, `<size>`, `<category>`, `<enclosure>` | Well-formed XML verified with `encoding/xml` |
+| Modes | `search`, `tvsearch`, `movie`, `music`, `book` | `music` and `book` are aliases of `search`, as documented |
+| Parameters | `q`, `season`, `ep`, `imdbid` (with and without `tt`), `tmdbid`, `tvdbid`, `limit`, `offset`, `cat`, `extended`, unknown parameters | `rid`, `artist`, `album`, `author`, `title` are tolerated and ignored where not supported |
+| Limits | `limit` default 50, maximum 100, negative/zero values, negative/out-of-page `offset` | The cap of 100 is proven with 109 releases |
+| Categories | Roots 1000–8000 and subcategories, filter by root and subcategory, out-of-range values | A non-numeric `cat` is ignored (current behavior) |
+| Torznab attributes | `category`, `size`, `seeders`, `leechers`, `peers`, `infohash`, `magneturl`, `publishdate`, `downloadvolumefactor`, `uploadvolumefactor`, `protocol=usenet`, `indexers`, `provenance` | For Usenet, `infohash`/`magneturl` are absent |
+| Errors | Codes 100, 101, 200, 201, 300, 400, 500 | Code 900 has no reachable paths in this handler |
+| Download | `/dl/{id}.torrent`, `/dl/{id}.nzb`, `t=get`, `HEAD`, mandatory API key, additional key | Links always proxied: no tracker URL, passkey or `download_ref` |
+| Aliases | `/api`, `/torznab/api`, `/newznab/api`, `/api/v2.0/indexers/all/results/torznab/api`, `/torznab/{slug}/api`, `/api/v2.0/indexers/{slug}/results/torznab/api` | Responses byte-identical for the same selection |
+| Per-indexer selection | Two legacy sources, case-sensitive slug, unknown indexer → Torznab 201 | The aggregated filter by `tag`, `status`, `indexer_type` is covered |
 | \*arr payload | Sonarr, Radarr, Lidarr, Readarr, Whisparr × Torznab torrent/Newznab usenet | `implementation`, `configContract`, `protocol`, `fields.baseUrl/apiKey/categories`, `priority`, `tags`, `enableRss`, `enableAutomaticSearch`, `enableInteractiveSearch` |
-| Fake Servarr | Integrazione con `internal/simmock` | Verifica che il payload venga accettato e memorizzato |
-| Concorrenza e header | 20 ricerche concorrenti con la stessa chiave, risposte limitate, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, content type | Eseguito anche con `-race` |
+| Fake Servarr | Integration with `internal/simmock` | Verifies that the payload is accepted and stored |
+| Concurrency and headers | 20 concurrent searches with the same key, limited responses, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, content type | Also run with `-race` |
 
-## Fuori perimetro
+## Out of scope
 
-- Scraping, login e connettori di famiglia: coperti dai test dei rispettivi
-  package.
-- Ricerca live (`torznab_live_search`), rate limit distribuito e refresh della
-  provenance: richiedono scheduler o servizi esterni.
-- Newznab nativo completo: questa suite verifica la forma Newznab compatibile
-  con le \*arr e il download `.nzb`, non un protocollo Usenet separato.
-- Download client (qBittorrent, Transmission, SABnzbd, NZBGet, Deluge,
-  rTorrent): coperti da `internal/downloadclient`; qui si verifica solo il
-  payload servito da indexarr.
-- Compatibilità con versioni reali delle \*arr: la suite usa lo schema e le
-  richieste delle API v3/v1, non binari Sonarr/Radarr/Lidarr reali.
+- Scraping, login and family connectors: covered by the tests of the respective
+  packages.
+- Live search (`torznab_live_search`), distributed rate limit and provenance
+  refresh: they require a scheduler or external services.
+- Full native Newznab: this suite verifies the Newznab shape compatible with
+  the \*arr and the `.nzb` download, not a separate Usenet protocol.
+- Download clients (qBittorrent, Transmission, SABnzbd, NZBGet, Deluge,
+  rTorrent): covered by `internal/downloadclient`; here only the payload served
+  by indexarr is verified.
+- Compatibility with real versions of the \*arr: the suite uses the schema and
+  requests of the v3/v1 APIs, not real Sonarr/Radarr/Lidarr binaries.
 
-## Problemi noti
+## Known issues
 
-| Test | Stato | Dettaglio |
+| Test | Status | Detail |
 | --- | --- | --- |
-| `TestUnknownSeedersAreOmitted` | `SKIP` | **BUG**: una release con `Seeders=-1` e nessuna riga `release_sources` viene resa con `seeders=0`, `leechers=0`, `peers=0`. `writeItem` confronta la provenance a valore zero (0) con il sentinella “sconosciuto” (-1) e lo sovrascrive. Contraddice `docs/API.md`, che prescrive l’omissione degli attributi. Evidenza nel golden: `<torznab:attr name="seeders" value="0"/>` sull’item `Compat.NZB.Album.2026.FLAC`. |
-| `TestErrorCode900` | `SKIP` | Non è un bug: il codice 900 è definito ma nessun percorso di richiesta lo produce. I codici raggiungibili sono 100, 101, 200, 201, 300, 400 e 500. |
+| `TestUnknownSeedersAreOmitted` | `SKIP` | **BUG**: a release with `Seeders=-1` and no `release_sources` row is rendered with `seeders=0`, `leechers=0`, `peers=0`. `writeItem` compares the provenance to the zero value (0) with the “unknown” sentinel (-1) and overwrites it. This contradicts `docs/API.md`, which requires the attributes to be omitted. Evidence in the golden: `<torznab:attr name="seeders" value="0"/>` on the item `Compat.NZB.Album.2026.FLAC`. |
+| `TestErrorCode900` | `SKIP` | Not a bug: code 900 is defined but no request path produces it. The reachable codes are 100, 101, 200, 201, 300, 400 and 500. |

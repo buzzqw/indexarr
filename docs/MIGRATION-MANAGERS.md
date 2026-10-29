@@ -1,90 +1,88 @@
-# Sostituzione di Jackett e Prowlarr
+# Replacing Jackett and Prowlarr
 
-Data: 2026-10-25. indexarr **sostituisce** i due manager: non li affianca e non
-si collega a loro, né in ingresso né in uscita. Non esiste un import da
-Jackett/Prowlarr: le fonti si aggiungono dal catalogo nativo.
+Date: 2026-10-25. indexarr **replaces** the two managers: it does not run
+alongside them and does not connect to them, either inbound or outbound. There is
+no import from Jackett/Prowlarr: sources are added from the native catalog.
 
-## Cosa significa
+## What this means
 
-| Collegamento | Stato |
+| Connection | Status |
 |---|---|
-| indexarr → Jackett/Prowlarr (ricerca, download, proxy) | **assente** |
-| Jackett/Prowlarr → indexarr | **assente** |
-| Import della configurazione dei manager | **rimosso** |
-| Catalogo | nativo, embedded nel binario |
+| indexarr → Jackett/Prowlarr (search, download, proxy) | **absent** |
+| Jackett/Prowlarr → indexarr | **absent** |
+| Import of the managers' configuration | **removed** |
+| Catalog | native, embedded in the binary |
 
-Le applicazioni \*arr parlano **solo** con indexarr. Jackett e Prowlarr si
-spengono; non restano come fallback.
+\*arr applications talk **only** to indexarr. Jackett and Prowlarr are shut down;
+they do not remain as a fallback.
 
-## Come si migra
+## How to migrate
 
-1. Aprire `/indexers/new` e scegliere le fonti dal catalogo nativo. Le fonti
-   con una definizione o un software noto si configurano lì; le altre restano
-   in coda con «da scrivere».
-2. Inserire le credenziali delle fonti private. Jackett non le esponeva e non
-   c'è un file da copiare: si inseriscono una volta in indexarr.
-3. Collegare Sonarr/Radarr/Lidarr a indexarr (app sync o a mano) e rimuovere i
-   loro indexer puntati a Jackett/Prowlarr.
-4. Fermare e rimuovere Jackett e Prowlarr.
+1. Open `/indexers/new` and choose the sources from the native catalog. Sources
+   with a definition or a known software are configured there; the others remain
+   queued as "to be written".
+2. Enter the credentials of private sources. Jackett did not expose them and there
+   is no file to copy: enter them once in indexarr.
+3. Connect Sonarr/Radarr/Lidarr to indexarr (app sync or manually) and remove
+   their indexers pointing to Jackett/Prowlarr.
+4. Stop and remove Jackett and Prowlarr.
 
-Nessuno di questi passi legge il database o le API dei manager. Se un URL
-inserito appartiene a un manager (per esempio
-`.../api/v2.0/indexers/.../results/torznab/` o `/<id>/api`), indexarr lo
-rifiuta con un messaggio esplicito.
+None of these steps reads the managers' database or APIs. If an entered URL
+belongs to a manager (for example
+`.../api/v2.0/indexers/.../results/torznab/` or `/<id>/api`), indexarr rejects it
+with an explicit message.
 
-## Copertura nativa (istantanea del 25/10)
+## Native coverage (snapshot of 25/10)
 
-Il catalogo contiene 568 righe uniche da una vecchia istantanea dei metadati
-pubblici dei manager; non è una connessione viva. Le definizioni e i connettori
-sono nostri.
+The catalog contains 568 unique rows from an old snapshot of the managers' public
+metadata; it is not a live connection. The definitions and connectors are ours.
 
-| Via | Fonti |
+| Route | Sources |
 |---|---:|
-| Definizione nativa | 72 (54 verificate, 18 in bozza) |
-| Software noto (NexusPHP, UNIT3D, Gazelle, XBTIT, TorrentTrader) | 155 |
-| **Native o software noto** | **227 su 613** |
-| In coda «da scrivere» | 386 |
+| Native definition | 72 (54 verified, 18 draft) |
+| Known software (NexusPHP, UNIT3D, Gazelle, XBTIT, TorrentTrader) | 155 |
+| **Native or known software** | **227 out of 613** |
+| Queued "to be written" | 386 |
 
-Sulle 638 voci dell'istantanea Jackett: 29 definizioni native, 155 software
-noto, 184 con via nativa (28,8%); il resto è coda. La differenza con le 403
-righe reali è dovuta ai doppioni di host.
+Out of the 638 entries in the Jackett snapshot: 29 native definitions, 155 known
+software, 184 with a native route (28.8%); the rest is queue. The difference from
+the 403 real rows is due to host duplicates.
 
-## Le fonti dell'utente
+## The user's sources
 
-| Jackett/Prowlarr | Definizione indexarr | Stato |
+| Jackett/Prowlarr | indexarr definition | Status |
 |---|---|---|
-| Knaben | `knaben`, `knaben-search` | verificata |
-| LimeTorrents | `limetorrents` | verificata |
-| The Pirate Bay | `thepiratebay` | verificata |
-| TorrentLeech | `torrentleech`, `torrentleech-rss` | bozza / sperimentale |
-| TorrentsCSV | `torrentscsv` | verificata |
-| TorrentGalaxyClone | `torrentgalaxyclone` | verificata |
-| showRSS | `showrss` | verificata |
-| ilDraGoNeRo | `ildragonegro` | bozza / cookie richiesto |
+| Knaben | `knaben`, `knaben-search` | verified |
+| LimeTorrents | `limetorrents` | verified |
+| The Pirate Bay | `thepiratebay` | verified |
+| TorrentLeech | `torrentleech`, `torrentleech-rss` | draft / experimental |
+| TorrentsCSV | `torrentscsv` | verified |
+| TorrentGalaxyClone | `torrentgalaxyclone` | verified |
+| showRSS | `showrss` | verified |
+| ilDraGoNeRo | `ildragonegro` | draft / cookie required |
 
-Sei fonti sono verificate e utilizzabili subito; due richiedono una
-configurazione una volta (TorrentLeech: account o rsskey; ilDraGoNeRo:
-account/cookie).
+Six sources are verified and usable right away; two require one-time configuration
+(TorrentLeech: account or rsskey; ilDraGoNeRo: account/cookie).
 
-## Perché non c'è più il ponte
+## Why the bridge is gone
 
-Un indexer Torznab che punta al manager non è una fonte propria: lascia intatta
-la dipendenza che indexarr deve togliere. Per questo:
+A Torznab indexer pointing to the manager is not a source of its own: it leaves
+intact the dependency that indexarr must remove. For this reason:
 
-- una fonte senza definizione o connettore **non viene creata**;
-- resta nel catalogo con il filtro «da scrivere» e il motivo visibile;
-- quando la definizione è pronta, la fonte si adotta senza toccare le \*arr;
-- nessun URL di Jackett/Prowlarr viene accettato come sorgente.
+- a source without a definition or connector **is not created**;
+- it remains in the catalog under the "to be written" filter with the reason visible;
+- when the definition is ready, the source is adopted without touching the \*arr;
+- no Jackett/Prowlarr URL is accepted as a source.
 
-## Controlli dopo la sostituzione
+## Checks after the replacement
 
-- ogni query delle \*arr deve restituire almeno le stesse release distinte;
-- controllare `app_searches` per `go-http-client` e gli errori;
-- monitorare coda live, timeout e RAM di indexarr;
-- verificare che Sonarr/Radarr continuino a usare solo `indexarr` su `:8788`;
-- controllare che non esistano indexer con URL di un manager.
+- every \*arr query must return at least the same distinct releases;
+- check `app_searches` for `go-http-client` and errors;
+- monitor live queue, timeouts and indexarr RAM;
+- verify that Sonarr/Radarr keep using only `indexarr` on `:8788`;
+- check that no indexers exist with a manager URL.
 
-## Nota
+## Note
 
-`indexarr` non incorpora Cardigann. Le definizioni non si copiano: si scrivono
-osservando i siti. La coda «da scrivere» è il prezzo onesto di questa regola.
+`indexarr` does not embed Cardigann. Definitions are not copied: they are written
+by observing the sites. The "to be written" queue is the honest price of this rule.

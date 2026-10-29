@@ -1,206 +1,207 @@
-# Simulazione con applicazioni reali
+# Simulation with real applications
 
-Questa directory avvia **indexarr 2 vero** contro **Prowlarr, Sonarr e Radarr
-veri** (immagini LinuxServer.io), con `simmock` come unico servizio finto.
-Serve a verificare ciò che la simulazione di `sim/` non può verificare: il ponte
-Torznab attraverso Prowlarr e la scrittura degli indexer nelle \*arr reali.
+This directory starts the **real indexarr 2** against **real Prowlarr, Sonarr
+and Radarr** (LinuxServer.io images), with `simmock` as the only fake service.
+It is meant to verify what the `sim/` simulation cannot verify: the Torznab
+bridge through Prowlarr and the writing of indexers into the real \*arr.
 
-## Cosa è reale e cosa è finto
+## What is real and what is fake
 
-Reale:
+Real:
 
-- il binario `indexarr` costruito dal `Dockerfile` del repository;
-- Prowlarr, Sonarr e Radarr, nelle immagini `lscr.io/linuxserver/*:latest`;
-- le API v1 di Prowlarr (`/api/v1/indexer`, `/api/v1/indexer/test`,
-  `/api/v1/appprofile`) e le API v3 delle \*arr (`/api/v3/system/status`,
+- the `indexarr` binary built from the repository's `Dockerfile`;
+- Prowlarr, Sonarr and Radarr, from the `lscr.io/linuxserver/*:latest` images;
+- Prowlarr's v1 APIs (`/api/v1/indexer`, `/api/v1/indexer/test`,
+  `/api/v1/appprofile`) and the \*arr v3 APIs (`/api/v3/system/status`,
   `/api/v3/indexer`, `/api/v3/indexer/schema`);
-- SQLite, vault, `/api/v2`, syncjob e appsync di indexarr.
+- SQLite, vault, `/api/v2`, indexarr's syncjob and appsync.
 
-Finto:
+Fake:
 
-- `simmock`: l'indexer Torznab che restituisce tre release deterministiche
-  (due torrent e un `.nzb`), con API key `demo-key`;
-- il tracker HTML e i client di download di `simmock`, non usati da questa
-  simulazione.
+- `simmock`: the Torznab indexer that returns three deterministic releases
+  (two torrents and one `.nzb`), with API key `demo-key`;
+- simmock's HTML tracker and download clients, not used by this
+  simulation.
 
-Non viene contattato alcun tracker reale e non vengono configurate librerie
-multimediali o client di download nelle \*arr.
+No real tracker is contacted and no media libraries or download clients are
+configured in the \*arr.
 
-## Porte
+## Ports
 
-| Servizio | Porta host | Porta container | URL |
-|---|---:|---:|---|
+| Service | Host port | Container port | URL |
+|---|---|---:|---|
 | indexarr | 18484 | 8788 | `http://127.0.0.1:18484` |
 | simmock | 19080 | 19080 | `http://127.0.0.1:19080` |
 | Prowlarr | 19696 | 9696 | `http://127.0.0.1:19696` |
 | Sonarr | 18989 | 8989 | `http://127.0.0.1:18989` |
 | Radarr | 17878 | 7878 | `http://127.0.0.1:17878` |
 
-Le porte **8788** e **9117** dell'host non vengono mai usate: l'indexarr e il
-Jackett già attivi sulla macchina non vengono toccati. Anche la porta 9696
-dell'host (un Prowlarr preesistente) non viene usata: il Prowlarr della
-simulazione è pubblicato su 19696.
+Host ports **8788** and **9117** are never used: the indexarr and the
+Jackett already running on the machine are left untouched. Host port 9696 (a
+pre-existing Prowlarr) is not used either: the simulation's Prowlarr is
+published on 19696.
 
-Dentro la rete Compose i nomi sono `simmock`, `indexarr`, `prowlarr`, `sonarr`
-e `radarr`. `public_url` di indexarr è `http://indexarr:8788`, così gli indexer
-scritti nelle \*arr usano un URL raggiungibile dai container.
+Inside the Compose network the names are `simmock`, `indexarr`, `prowlarr`,
+`sonarr` and `radarr`. indexarr's `public_url` is `http://indexarr:8788`, so
+the indexers written into the \*arr use a URL reachable from the containers.
 
-## Immagini
+## Images
 
-- `indexarr-sim-mock:local`, costruita da `sim/Dockerfile.mock` con contesto la
-  root del repository (contiene `simmock` e il comando `seed`);
-- `indexarr-real:local`, costruita dal `Dockerfile` della root;
+- `indexarr-sim-mock:local`, built from `sim/Dockerfile.mock` with the
+  repository root as context (it contains `simmock` and the `seed` command);
+- `indexarr-real:local`, built from the root `Dockerfile`;
 - `lscr.io/linuxserver/prowlarr:latest`;
 - `lscr.io/linuxserver/sonarr:latest`;
 - `lscr.io/linuxserver/radarr:latest`.
 
-Il runner costruisce le prime due. Se il working tree non compila (per esempio
-per modifiche non ancora complete in altri package), `run.sh` ripiega su uno
-snapshot pulito di `HEAD` creato con `git archive`. `CLEAN=1` forza lo snapshot
-pulito; `REBUILD=1` ricostruisce le immagini; `PULL=1` forza il pull delle
-immagini \*arr.
+The runner builds the first two. If the working tree does not compile (for
+example because of incomplete changes in other packages), `run.sh` falls back
+to a clean snapshot of `HEAD` created with `git archive`. `CLEAN=1` forces the
+clean snapshot; `REBUILD=1` rebuilds the images; `PULL=1` forces pulling the
+\*arr images.
 
-## Scoperta delle API key
+## Discovering the API keys
 
-Le \*arr non accettano chiamate API prima di aver creato la configurazione
-iniziale, ma il file `config.xml` viene scritto subito. Il runner attende il
-file e legge la chiave senza fare setup via browser:
+The \*arr do not accept API calls before the initial configuration has been
+created, but the `config.xml` file is written immediately. The runner waits
+for the file and reads the key without doing setup through a browser:
 
 ```sh
 docker compose -f sim/real/docker-compose.yml exec -T prowlarr \
   sh -c 'cat /config/config.xml'
 ```
 
-La chiave è nel nodo `<ApiKey>`. Lo stesso vale per Sonarr e Radarr
-(`/config/config.xml` nei rispettivi container).
+The key is in the `<ApiKey>` node. The same applies to Sonarr and Radarr
+(`/config/config.xml` in the respective containers).
 
-La API key di indexarr viene generata da indexarr al primo avvio. Il runner la
-legge con il comando `seed` già presente nell'immagine mock:
+indexarr's API key is generated by indexarr on first start. The runner reads
+it with the `seed` command already present in the mock image:
 
 ```sh
 docker compose -f sim/real/docker-compose.yml run --rm --no-deps -T seed \
   -db /data/indexarr.db -print-key
 ```
 
-Il database di indexarr sta nel volume nominato `indexarr-real_indexarr-data`.
-Le configurazioni delle \*arr stanno in `sim/real/.data/{prowlarr,sonarr,radarr}`
-(ignorate da git).
+indexarr's database is in the named volume `indexarr-real_indexarr-data`.
+The \*arr configurations are in `sim/real/.data/{prowlarr,sonarr,radarr}`
+(ignored by git).
 
-## Esecuzione
+## Running
 
 ```sh
-cd /percorso/di/indexarr
+cd /path/to/indexarr
 ./sim/real/run.sh
 ```
 
-Comandi utili:
+Useful commands:
 
 ```sh
-# conserva container, volumi, configurazioni e log
+# keep containers, volumes, configurations and logs
 KEEP=1 ./sim/real/run.sh
 
-# ricostruisce le immagini da zero
+# rebuild the images from scratch
 REBUILD=1 ./sim/real/run.sh
 
-# forza il pull delle immagini LinuxServer
+# force pulling the LinuxServer images
 PULL=1 ./sim/real/run.sh
 
-# forza la build da HEAD pulito
+# force the build from a clean HEAD
 CLEAN=1 ./sim/real/run.sh
 ```
 
-Il runner:
+The runner:
 
-1. valida `docker compose config`;
-2. costruisce `simmock` e `indexarr` (se mancano o con `REBUILD=1`);
-3. scarica le immagini \*arr se mancano (o con `PULL=1`);
-4. avvia lo stack con `docker compose up -d`;
-5. attende `/healthz`, `/ping` e i file `config.xml`;
-6. crea la definizione `sim-torznab` e l'indexer nativo, lo esegue e verifica
-   le tre release;
-7. crea un indexer Torznab in Prowlarr verso `http://simmock:19080/torznab/api`,
-   lo testa con `POST /api/v1/indexer/test` e verifica il feed per-indexer;
-8. crea un indexer Torznab nativo in indexarr verso il feed di Prowlarr
-   (`http://prowlarr:9696/{id}/api?apikey=...`), la esegue e verifica
-   l'ingestion nel log di indexarr;
-9. collega Sonarr e Radarr via `/api/v2/applications` e chiama il sync;
-10. termina con `docker compose down -v --remove-orphans` tranne con
-    `KEEP=1`.
+1. validates `docker compose config`;
+2. builds `simmock` and `indexarr` (if missing or with `REBUILD=1`);
+3. pulls the \*arr images if missing (or with `PULL=1`);
+4. starts the stack with `docker compose up -d`;
+5. waits for `/healthz`, `/ping` and the `config.xml` files;
+6. creates the `sim-torznab` definition and the native indexer, runs it and
+   verifies the three releases;
+7. creates a Torznab indexer in Prowlarr pointing to
+   `http://simmock:19080/torznab/api`, tests it with
+   `POST /api/v1/indexer/test` and verifies the per-indexer feed;
+8. creates a native Torznab indexer in indexarr pointing to the Prowlarr feed
+   (`http://prowlarr:9696/{id}/api?apikey=...`), runs it and verifies the
+   ingestion in indexarr's log;
+9. links Sonarr and Radarr via `/api/v2/applications` and calls the sync;
+10. ends with `docker compose down -v --remove-orphans` unless `KEEP=1`.
 
-Reset manuale:
+Manual reset:
 
 ```sh
 docker compose -f sim/real/docker-compose.yml down -v --remove-orphans
 rm -rf sim/real/.data
 ```
 
-Senza `KEEP=1` il runner fa già il reset di `.data` all'inizio e il `down -v`
-alla fine.
+Without `KEEP=1` the runner already resets `.data` at the beginning and runs
+`down -v` at the end.
 
-## Asserzioni
+## Assertions
 
-La simulazione verifica:
+The simulation verifies:
 
-- compose valido e tutti i servizi raggiungibili;
-- API key lette da `config.xml` per Prowlarr, Sonarr e Radarr e da `seed` per
-  indexarr;
-- definizione nativa, indexer nativo, run con `seen=3`/`new=3` e ricerca
-  Torznab con `total="3"`;
-- Prowlarr: test dell'indexer Torznab verso simmock, `baseUrl` conservato,
-  `enable=true`, API key mascherata, feed per-indexer con 3 item;
-- via Prowlarr: indexer Torznab nativo creato, run completato e `seen=2` (i due
-  torrent; il `.nzb` non fa parte del percorso torrent), ricerca ancora con 3 item;
-- app sync: applicazioni Sonarr/Radarr create, chiamata di sync osservata e,
-  quando il sync riesce, presenza dell'indexer con nome `indexarr · Sim
-  Torznab`, `implementation=Torznab`, `configContract=TorznabSettings`,
-  `protocol=torrent`, flag RSS/automatic/interactive, `baseUrl`, `apiKey` e
-  categorie `[2040,3040,5040]`.
+- valid compose and all services reachable;
+- API keys read from `config.xml` for Prowlarr, Sonarr and Radarr and from
+  `seed` for indexarr;
+- native definition, native indexer, run with `seen=3`/`new=3` and Torznab
+  search with `total="3"`;
+- Prowlarr: test of the Torznab indexer against simmock, `baseUrl` preserved,
+  `enable=true`, API key masked, per-indexer feed with 3 items;
+- via Prowlarr: native Torznab indexer created, run completed and `seen=2`
+  (the two torrents; the `.nzb` is not part of the torrent path), search still
+  with 3 items;
+- app sync: Sonarr/Radarr applications created, sync call observed and, when
+  the sync succeeds, presence of the indexer named
+  `indexarr · Sim Torznab`, `implementation=Torznab`,
+  `configContract=TorznabSettings`, `protocol=torrent`, RSS/automatic/interactive
+  flags, `baseUrl`, `apiKey` and categories `[2040,3040,5040]`.
 
-## Limiti noti e risultato reale
+## Known limits and actual result
 
-### Due difetti reali bloccano oggi l'import in Sonarr/Radarr
+### Two real defects currently block import into Sonarr/Radarr
 
-La simulazione ha trovato due incompatibilità nel codice attuale:
+The simulation found two incompatibilities in the current code:
 
-1. **La rotta per-indexer non è montata.** Il web handler espone
-   `/torznab/api` e `/api`, ma non `/torznab/{slug}/api`. La rotta esiste nel
-   package `torznabapi` ed è coperta dai test unitari, ma `internal/web` non la
-   inoltra: una richiesta a
-   `http://indexarr:8788/torznab/sim-torznab/api?t=caps` risponde
+1. **The per-indexer route is not mounted.** The web handler exposes
+   `/torznab/api` and `/api`, but not `/torznab/{slug}/api`. The route exists
+   in the `torznabapi` package and is covered by unit tests, but `internal/web`
+   does not forward it: a request to
+   `http://indexarr:8788/torznab/sim-torznab/api?t=caps` responds
    `404 page not found`.
-2. **`apiPath` viene duplicato.** `syncjob` costruisce
-   `public_url + "/torznab/" + slug + "/api"`, mentre Sonarr/Radarr aggiungono
-   il campo `apiPath` (default `/api`) del loro schema Torznab. L'URL tentato
-   diventa quindi
-   `http://indexarr:8788/torznab/sim-torznab/api/api?t=caps`, che risponde 404.
+2. **`apiPath` is duplicated.** `syncjob` builds
+   `public_url + "/torznab/" + slug + "/api"`, while Sonarr/Radarr append
+   their Torznab schema's `apiPath` field (default `/api`). The attempted URL
+   therefore becomes
+   `http://indexarr:8788/torznab/sim-torznab/api/api?t=caps`, which responds
+   404.
 
-Di conseguenza il sync restituisce HTTP 502 con `added=0` e nelle \*arr non
-compare alcun indexer. Il runner **non simula un successo**: verifica l'errore
-esatto, la rotta per-indexer 404 e l'assenza dell'indexer, stampa un messaggio
-`BLOCCANTE` ed esce con codice diverso da zero. Le asserzioni complete sui
-campi (`assert_remote_indexer`) sono già presenti e verranno eseguite
-automaticamente quando i due difetti saranno corretti.
+As a result the sync returns HTTP 502 with `added=0` and no indexer appears in
+the \*arr. The runner **does not simulate a success**: it verifies the exact
+error, the 404 per-indexer route and the absence of the indexer, prints a
+`BLOCCANTE` message and exits with a non-zero code. The complete field
+assertions (`assert_remote_indexer`) are already present and will run
+automatically once the two defects are fixed.
 
-Per ottenere un exit 0 nonostante i difetti non esiste un'opzione: sarebbe una
-falsa verifica. L'unico modo è correggere il codice Go (fuori dallo scope di
-questa directory).
+There is no option to get an exit 0 despite the defects: that would be a false
+verification. The only way is to fix the Go code (outside the scope of this
+directory).
 
-### Altri limiti
+### Other limits
 
-- Prowlarr, Sonarr e Radarr sono reali ma non hanno librerie multimediali,
-  download client o account reali: non vengono testati grab e import.
-- Il tracker è finto: simmock restituisce sempre le stesse tre release e non
-  esiste alcuna autenticazione su tracker reali.
-- Prowlarr valida la connettività già in `POST /api/v1/indexer`; per questo
-  simmock deve essere healthy prima della creazione. L'indexer usa
-  `baseUrl=http://simmock:19080/torznab/api` e `apiPath` vuoto, perché
-  Prowlarr concatena `baseUrl` e `apiPath`.
-- L'indexer Torznab vede 2 release su 3: il terzo risultato è un `.nzb` e non
-  rientra nel percorso torrent.
-- Le \*arr possono impiegare 10–30 secondi al primo avvio per creare il
-  database; il runner attende `config.xml`, non solo la porta.
-- Se il working tree ha modifiche non compilabili in altri package, la build
-  usa `HEAD`. Questo è segnalato nel log; usare `CLEAN=1` per renderlo
-  esplicito.
-- Il runner non tocca i container o le porte dell'host (indexarr 8788,
+- Prowlarr, Sonarr and Radarr are real but have no media libraries, download
+  clients or real accounts: grab and import are not tested.
+- The tracker is fake: simmock always returns the same three releases and no
+  authentication against real trackers exists.
+- Prowlarr validates connectivity already in `POST /api/v1/indexer`; that is
+  why simmock must be healthy before creation. The indexer uses
+  `baseUrl=http://simmock:19080/torznab/api` and an empty `apiPath`, because
+  Prowlarr concatenates `baseUrl` and `apiPath`.
+- The Torznab indexer sees 2 releases out of 3: the third result is an `.nzb`
+  and is not part of the torrent path.
+- The \*arr may take 10–30 seconds on first start to create the database; the
+  runner waits for `config.xml`, not just the port.
+- If the working tree has non-compiling changes in other packages, the build
+  uses `HEAD`. This is reported in the log; use `CLEAN=1` to make it explicit.
+- The runner does not touch the host's containers or ports (indexarr 8788,
   Jackett 9117, Prowlarr 9696).

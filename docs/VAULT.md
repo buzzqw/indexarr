@@ -1,58 +1,59 @@
-# Vault e chiave maestra
+# Vault and master key
 
-Il vault di indexarr cifra con AES-256-GCM i segreti degli indexer nativi e le
-credenziali degli indexer (`api_key`, `password` e gli URL che possono contenere
-alcuni tracker contiene la `rsskey`). La chiave maestra **non** sta nel database
-e **non** è inclusa nei backup.
+The indexarr vault encrypts with AES-256-GCM the secrets of native indexers and
+the credentials of the indexers (`api_key`, `password` and the URLs that can
+contain them: on some trackers the URL contains the `rsskey`). The master key
+**is not** in the database and **is not** included in the backups.
 
-## Ordine di risoluzione della chiave
+## Key resolution order
 
-All'avvio la chiave viene cercata nell'ordine seguente:
+At startup the key is looked up in the following order:
 
-1. `INDEXARR_MASTER_KEY` — valore (base64 o esadecimale a 64 caratteri);
-2. `INDEXARR_MASTER_KEY_FILE` — percorso di un file, convenzione Docker secrets;
+1. `INDEXARR_MASTER_KEY` — value (base64 or 64-character hexadecimal);
+2. `INDEXARR_MASTER_KEY_FILE` — path to a file, Docker secrets convention;
 3. `vault_key_path` in `indexarr.json`;
-4. `<db>.key` accanto al database **solo se esiste già** (compatibilità con le
-   installazioni precedenti). Viene emesso un warning: spostare la chiave;
-5. `os.UserConfigDir()/indexarr/master.key` (nuovo default; di solito
-   `~/.config/indexarr/master.key`), creato con permessi `0600`;
-6. se la directory di configurazione utente non è disponibile (container senza
-   `HOME`), `<db>.key` accanto al database, con warning. In Docker si consiglia
-   il punto 2.
+4. `<db>.key` next to the database **only if it already exists** (compatibility
+   with previous installations). A warning is emitted: move the key;
+5. `os.UserConfigDir()/indexarr/master.key` (new default; usually
+   `~/.config/indexarr/master.key`), created with `0600` permissions;
+6. if the user configuration directory is not available (container without
+   `HOME`), `<db>.key` next to the database, with a warning. In Docker, option 2
+   is recommended.
 
-Il file creato da indexarr contiene 32 byte casuali. Un file scritto a mano può
-contenere 32 byte grezzi, base64 (anche senza padding) o 64 caratteri
-esadecimali. La chiave non compare mai nei log, negli errori o nella UI.
+The file created by indexarr contains 32 random bytes. A hand-written file can
+contain 32 raw bytes, base64 (even without padding) or 64 hexadecimal characters.
+The key never appears in logs, errors or the UI.
 
-`vault_key_path` relativo è risolto rispetto alla directory di `indexarr.json`.
+A relative `vault_key_path` is resolved relative to the directory of
+`indexarr.json`.
 
-## Comandi
+## Commands
 
 ```bash
-# Stampa la chiave risolta in base64 su stdout (l'avviso va su stderr).
+# Print the resolved key in base64 to stdout (the warning goes to stderr).
 indexarr vault export-key -config /etc/indexarr/indexarr.json
 
-# Sposta il vecchio file <db>.key in una directory fuori dai dati.
+# Move the old <db>.key file to a directory outside the data.
 indexarr vault move-key -config /etc/indexarr/indexarr.json -to /etc/indexarr/master.key
 ```
 
-Entrambi i comandi accettano `-db <path>` per sovrascrivere il percorso del
-database. `move-key` rifiuta di sovrascrivere un file esistente e crea il nuovo
-file con permessi `0600`: dopo lo spostamento impostare `vault_key_path` o
+Both commands accept `-db <path>` to override the database path. `move-key`
+refuses to overwrite an existing file and creates the new file with `0600`
+permissions: after moving it, set `vault_key_path` or
 `INDEXARR_MASTER_KEY_FILE`.
 
-## Backup e restore
+## Backup and restore
 
-Il backup del database (`backups/*.db`) contiene solo il database: la chiave
-maestra va salvata separatamente (secret manager, Docker secret o copia offline
-del file `master.key`). Per ripristinare su un'altra macchina servono **database
-e chiave**.
+The database backup (`backups/*.db`) contains only the database: the master key
+must be saved separately (secret manager, Docker secret or offline copy of the
+`master.key` file). To restore on another machine you need **both the database
+and the key**.
 
-Dopo un restore, al primo avvio indexarr verifica che la chiave corrente apra
-almeno un segreto cifrato. Se la chiave è sbagliata lo scrive nel log con un
-errore esplicito e continua ad avviarsi; gli indexer con segreti restano non leggibili,
-ma i segreti cifrati non sono leggibili. Il log non contiene mai il valore dei
-segreti.
+After a restore, on first start indexarr verifies that the current key opens at
+least one encrypted secret. If the key is wrong it writes an explicit error to
+the log and keeps starting; indexers that have secrets remain unusable,
+and the encrypted secrets cannot be read. The log never contains the value of the
+secrets.
 
 ## Docker
 
@@ -68,18 +69,18 @@ secrets:
     file: ./indexarr_master_key
 ```
 
-Il volume dati contiene `indexarr.json` e il database, non la chiave. Chi copia
-il volume senza il secret ottiene un database i cui segreti non sono
-decifrabili.
+The data volume contains `indexarr.json` and the database, not the key. Anyone
+who copies the volume without the secret gets a database whose secrets cannot be
+decrypted.
 
-## Segreti degli indexer
+## Indexer secrets
 
-I segreti degli indexer vivono in `indexer_secrets`, cifrati con AES-256-GCM.
-`indexersvc` decide quali impostazioni sono segrete (`api_key`, `apikey`,
-`password`, `token`, `passkey`, `secret`, `cookie`) e non le scrive mai in
-`config_json`, nei log, negli export o nelle risposte API. Senza vault gli
-indexer che richiedono un segreto non possono essere creati o aggiornati; il
-resto dell'applicazione continua a funzionare.
+The indexer secrets live in `indexer_secrets`, encrypted with AES-256-GCM.
+`indexersvc` decides which settings are secret (`api_key`, `apikey`,
+`password`, `token`, `passkey`, `secret`, `cookie`) and never writes them to
+`config_json`, in logs, in exports or in API responses. Without a vault,
+indexers that require a secret cannot be created or updated; the rest of the
+application keeps working.
 
-Il backup del database contiene i segreti cifrati ma non la chiave: per
-ripristinare su un'altra macchina serve la stessa chiave del vault.
+The database backup contains the encrypted secrets but not the key: to restore on
+another machine you need the same vault key.

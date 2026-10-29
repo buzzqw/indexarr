@@ -1,61 +1,61 @@
 # scripts
 
-## Aggiornamento della produzione
+## Updating production
 
-Lo script di aggiornamento conserva il database e i dati vivi. Di default è un
-**dry run**: valida i prerequisiti, compila `cmd/indexarr` in una directory
-temporanea e stampa il piano, senza fermare il servizio e senza installare
-nulla.
+The upgrade script preserves the database and live data. By default it is a
+**dry run**: it validates the prerequisites, builds `cmd/indexarr` into a
+temporary directory and prints the plan, without stopping the service and
+without installing anything.
 
-Comando esatto, su una sola riga:
+Exact command, on a single line:
 
 ```bash
-cd /percorso/di/indexarr && ./scripts/upgrade.sh --apply --yes
+cd /path/to/indexarr && ./scripts/upgrade.sh --apply --yes
 ```
 
-Prima si può lanciare il controllo senza modifiche:
+Before that, you can run the check without changes:
 
 ```bash
 ./scripts/upgrade.sh
 ```
 
-Cosa fa `--apply`, nell'ordine:
+What `--apply` does, in order:
 
-1. compila il binario **prima** di toccare il servizio; se il build fallisce
-   non ferma nulla;
-2. crea un backup coerente del DB con `VACUUM INTO` in
-   `data/backups/pre-upgrade-<timestamp>.db` e salva il binario precedente
-   come `bin/indexarr.old-<timestamp>`;
-3. ferma il servizio, installa il nuovo binario e lo riavvia;
-4. verifica `/healthz` con la versione appena compilata, `t=caps` e una ricerca
-   Torznab autenticata con la API key letta dal DB (la chiave non viene mai
-   stampata);
-5. se un controllo dopo l'installazione fallisce, ripristina automaticamente
-   DB e binario e riavvia il servizio precedente.
+1. builds the binary **before** touching the service; if the build fails it
+   stops nothing;
+2. creates a consistent DB backup with `VACUUM INTO` in
+   `data/backups/pre-upgrade-<timestamp>.db` and saves the previous binary
+   as `bin/indexarr.old-<timestamp>`;
+3. stops the service, installs the new binary and restarts it;
+4. checks `/healthz` with the freshly built version, `t=caps` and an
+   authenticated Torznab search with the API key read from the DB (the key is
+   never printed);
+5. if a check after installation fails, it automatically restores the DB and
+   the binary and restarts the previous service.
 
-Rollback all'ultimo backup pre-aggiornamento:
+Rollback to the last pre-upgrade backup:
 
 ```bash
 ./scripts/upgrade.sh --rollback --yes
 ```
 
-Opzioni per una prova su una copia: `--data-dir`, `--binary`, `--port 18510`,
-`--no-systemd`, `--unit`. La prova non usa mai `:8788`,
-`data/`, `bin/indexarr` o systemd.
+Options for a test on a copy: `--data-dir`, `--binary`, `--port 18510`,
+`--no-systemd`, `--unit`. The test never uses `:8788`, `data/`,
+`bin/indexarr` or systemd.
 
-## Test offline
+## Offline test
 
 ```bash
 ./scripts/upgrade_test.sh
 ```
 
-Esiti delle tre prove:
+Outcomes of the three tests:
 
-- **aggiornamento riuscito**: costruisce il binario, crea il backup
-  `pre-upgrade-*.db` e `indexarr.old-*`, verifica `/healthz` con la versione
-  nuova, `t=caps` e una ricerca Torznab, e conserva la API key;
-- **build rotto**: il fallimento di `cmd/indexarr` avviene prima di fermare il
-  servizio, senza backup e senza modificare i binari;
-- **controllo health fallito**: una versione sbagliata in `/healthz` provoca il
-  ripristino automatico di DB e binari e il riavvio del servizio precedente; il
-  backup resta disponibile.
+- **successful upgrade**: builds the binary, creates the
+  `pre-upgrade-*.db` and `indexarr.old-*` backup, checks `/healthz` with the
+  new version, `t=caps` and a Torznab search, and preserves the API key;
+- **broken build**: the failure of `cmd/indexarr` happens before stopping the
+  service, without a backup and without modifying the binaries;
+- **failed health check**: a wrong version in `/healthz` triggers the
+  automatic restore of the DB and binaries and the restart of the previous
+  service; the backup remains available.

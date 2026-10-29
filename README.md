@@ -1,223 +1,220 @@
 # indexarr
 
-**Indexer torrent e Usenet self-hosted, compatibile Torznab/Newznab.**
-indexarr costruisce un indice locale delle release, lo tiene aggiornato e lo
-espone a Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian o a
-qualunque client Torznab. Nasce per sostituire Jackett e Prowlarr nel flusso
-quotidiano: fonti native, cache SQLite, ricerca live, sincronizzazione delle
-app e un'interfaccia web completa, senza servizi esterni obbligatori.
+**Self-hosted torrent and Usenet indexer, Torznab/Newznab compatible.**
+indexarr builds a local index of releases, keeps it up to date and exposes it
+to Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian or any
+Torznab client. It was created to replace Jackett and Prowlarr in the daily
+workflow: native sources, SQLite cache, live search, app synchronization and a
+complete web interface, with no mandatory external services.
 
-Non scarica il contenuto dei torrent o degli NZB: costruisce un **indice**
-interrogabile. Il download resta al client scelto — qBittorrent, Transmission,
-Deluge, rTorrent, SABnzbd, NZBGet, aMule e altri.
+It does not download the content of torrents or NZBs: it builds a searchable
+**index**. Downloading remains with the chosen client — qBittorrent,
+Transmission, Deluge, rTorrent, SABnzbd, NZBGet, aMule and others.
 
 ```
-Fonti native / RSS / Newznab ──► scheduler ──► normalizzazione ──► SQLite
+Native sources / RSS / Newznab ──► scheduler ──► normalization ──► SQLite
                                                                       │
        Sonarr / Radarr / Lidarr / Readarr ◄── Torznab / Newznab ──────┤
-                          Browser ◄── UI web SSR + API JSON ──────────┘
+                          Browser ◄── web UI SSR + JSON API ──────────┘
 ```
 
-## Perché indexarr
+## Why indexarr
 
-- **Un solo binario Go**, SQLite senza CGO, nessun database o servizio
-  obbligatorio.
-- **Catalogo nativo** di definizioni e connettori di famiglia; nessun proxy
-  verso Jackett o Prowlarr.
-- **Cache reale**: le release restano disponibili anche quando un sito è lento
-  o irraggiungibile, con deduplica, ricerca full-text e retention.
-- **Torznab e Newznab** sullo stesso endpoint, per torrent, Usenet ed eD2k.
-- **Interfaccia web** per cercare, gestire le fonti, sincronizzare le app,
-  inviare ai client e fare manutenzione.
-- **Sicurezza operativa**: API key multiple, rate limit, vault per i segreti,
-  CSRF, backup e ripristino dalla UI.
+- **A single Go binary**, SQLite without CGO, no mandatory database or service.
+- **Native catalog** of definitions and family connectors; no proxy to Jackett
+  or Prowlarr.
+- **Real cache**: releases remain available even when a site is slow or
+  unreachable, with deduplication, full-text search and retention.
+- **Torznab and Newznab** on the same endpoint, for torrents, Usenet and eD2k.
+- **Web interface** to search, manage sources, synchronize apps, send to
+  clients and perform maintenance.
+- **Operational security**: multiple API keys, rate limit, vault for secrets,
+  CSRF, backup and restore from the UI.
 
-## Funzioni
+## Features
 
-### Acquisizione
+### Acquisition
 
-- Catalogo di **definizioni native** e connettori di famiglia (UNIT3D,
-  NexusPHP, XBTIT, Gazelle, TorrentTrader, Newznab, Torznab, RSS).
-- Feed **RSS/Atom**, import massivo di elenchi RSS e OPML, **Quick add** e
+- Catalog of **native definitions** and family connectors (UNIT3D, NexusPHP,
+  XBTIT, Gazelle, TorrentTrader, Newznab, Torznab, RSS).
+- **RSS/Atom** feeds, bulk import of RSS and OPML lists, **Quick add** and
   **Discover feeds**.
-- Parser dedicati per ExtTo, TorrentGalaxy e Corsaro.
-- **MirCrew** con definizione nativa e sorgente Smartfeed.
-- Qualunque endpoint **Torznab** o **Newznab** diretto.
-- Sorgenti **eD2k** (`protocol: ed2k`) con link `ed2k://`.
-- Ogni sorgente ha il proprio intervallo, parte subito al primo avvio,
-  ritenta con backoff e può essere rallentata con **Riduci la frequenza**
-  dopo un HTTP 429.
+- Dedicated parsers for ExtTo, TorrentGalaxy and CorsaroBlu.
+- **MirCrew** with native definition and Smartfeed source.
+- Any direct **Torznab** or **Newznab** endpoint.
+- **eD2k** sources (`protocol: ed2k`) with `ed2k://` links.
+- Each source has its own interval, starts immediately on first boot, retries
+  with backoff and can be slowed down with **Reduce the frequency** after an
+  HTTP 429.
 
-### Cache e ricerca
+### Cache and search
 
-- Titolo, dimensione, seeder/leecher, categoria, data, GUID, infohash, id
-  esterni (IMDb/TMDB/TVDB), magnet, `.torrent`, `.nzb` e link eD2k.
-- **Deduplica** per infohash quando disponibile, altrimenti per GUID/URL/titolo.
-- **FTS5** con tokenizer trigram: trova anche sottostringhe; i termini corti
-  usano un fallback `LIKE`.
-- Ricerca per **regex RE2**, esclusione `-termine`, ricerca nei nomi dei file
-  dei torrent, filtri per qualità, fonte, lingua, seeder e dimensione.
-- **Ricerche salvate**, preferiti, release nascoste e blocklist.
-- **Retention** automatica e pulizia manuale.
+- Title, size, seeders/leechers, category, date, GUID, infohash, external ids
+  (IMDb/TMDB/TVDB), magnet, `.torrent`, `.nzb` and eD2k links.
+- **Deduplication** by infohash when available, otherwise by GUID/URL/title.
+- **FTS5** with trigram tokenizer: it also finds substrings; short terms use a
+  `LIKE` fallback.
+- Search by **RE2 regex**, exclusion `-term`, search in torrent file names,
+  filters by quality, source, language, seeders and size.
+- **Saved searches**, favorites, hidden releases and blocklist.
+- Automatic **retention** and manual cleanup.
 
 ### Torznab / Newznab
 
-- Endpoint aggregato `/api` e per-indexer `/torznab/{slug}/api`.
-- Funzioni `caps`, `search`, `tvsearch`, `movie`, `music`, `book` e `get`.
-- Download `.torrent` e `.nzb`, paginazione, categorie standard, stagione,
-  episodio e id esterni.
-- **Ricerca live opzionale** quando la cache non ha risultati: interroga le
-  sorgenti Torznab/Newznab abilitate, salva ciò che arriva e ripete la query.
-- API key multiple, revoca per chiave e rate limit per chiave.
+- Aggregated `/api` endpoint and per-indexer `/torznab/{slug}/api`.
+- `caps`, `search`, `tvsearch`, `movie`, `music`, `book` and `get` functions.
+- `.torrent` and `.nzb` download, pagination, standard categories, season,
+  episode and external ids.
+- **Optional live search** when the cache has no results: it queries the
+  enabled Torznab/Newznab sources, saves what arrives and repeats the query.
+- Multiple API keys, per-key revocation and per-key rate limit.
 
-### Interfaccia web
+### Web interface
 
-- **Dashboard** con stato delle fonti, ultime release ed esecuzioni.
-- **Releases** con ricerca live manuale: testo libero, TV, film, musica e
-  libri, id IMDb/TMDb/TVDb, selezione di più indexer, categorie, filtri,
-  ricerche salvate e **invio multiplo** ai client.
-- **Indexer** con elenco unico, Run/Test/Run all/Test all, dettaglio, modifica,
-  clone, export/import JSON, scoperta feed e import cookie.
-- **App** per collegare e sincronizzare Sonarr, Radarr, Lidarr, Readarr,
-  Whisparr, Mylar3 e LazyLibrarian.
-- **Attività** con storico dei run, nuove release e ricerche delle app.
-- **Log** con filtri, livello runtime, richieste ricevute e statistiche.
-- **Rules** per blocklist, **Settings** per la configurazione e **Maintenance**
-  per integrità, vacuum, deduplica, retention, backup e ripristino.
+- **Dashboard** with source status, latest releases and runs.
+- **Releases** with manual live search: free text, TV, movies, music and books,
+  IMDb/TMDb/TVDb ids, selection of multiple indexers, categories, filters,
+  saved searches and **bulk send** to clients.
+- **Indexer** with a single list, Run/Test/Run all/Test all, detail, edit,
+  clone, JSON export/import, feed discovery and cookie import.
+- **App** to connect and synchronize Sonarr, Radarr, Lidarr, Readarr,
+  Whisparr, Mylar3 and LazyLibrarian.
+- **Activity** with run history, new releases and app searches.
+- **Log** with filters, runtime level, incoming requests and statistics.
+- **Rules** for the blocklist, **Settings** for configuration and
+  **Maintenance** for integrity, vacuum, deduplication, retention, backup and
+  restore.
 
-### Gestione per indexer
+### Per-indexer management
 
-- Proxy **HTTP/HTTPS/SOCKS4/SOCKS4A/SOCKS5**, con credenziali nel vault.
-- Limiti query/grab, seeder minimi, seed ratio e seed time.
-- Priorità, tag, intervallo e User-Agent per sorgente.
-- **Solo freeleech** quando la definizione lo supporta.
-- **Importa cookie** dal profilo Firefox per i siti che legano la sessione al
-  browser, come IPTorrents.
+- **HTTP/HTTPS/SOCKS4/SOCKS4A/SOCKS5** proxy, with credentials in the vault.
+- Query/grab limits, minimum seeders, seed ratio and seed time.
+- Priority, tags, interval and User-Agent per source.
+- **Freeleech only** when the definition supports it.
+- **Import cookie** from the Firefox profile for sites that bind the session to
+  the browser, such as IPTorrents.
 
-### App \*arr
+### \*arr apps
 
-- Sync verso Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3 e
-  LazyLibrarian.
-- Livelli **disattivata**, **solo aggiunta/rimozione** e **completa**.
-- Profilo per applicazione: RSS, ricerca automatica, ricerca interattiva,
-  seeder minimi e categorie Torznab da inviare.
-- Filtro per tag, snapshot prima delle modifiche e ripristino dello stato
-  precedente dalla UI.
+- Sync to Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3 and LazyLibrarian.
+- Levels **Disabled**, **Add/remove only** and **Full sync**.
+- Per-application profile: RSS, automatic search, interactive search, minimum
+  seeders and Torznab categories to send.
+- Tag filter, snapshot before changes and restore of the previous state from
+  the UI.
 
-### Client di download
+### Download clients
 
-Supportati:
+Supported:
 
-| Client | Protocollo | Note |
+| Client | Protocol | Notes |
 | --- | --- | --- |
-| qBittorrent | torrent | Web API v2, categoria, percorso, pausa, seed ratio/time |
-| Transmission | torrent | RPC, magnet e `.torrent` |
+| qBittorrent | torrent | Web API v2, category, path, pause, seed ratio/time |
+| Transmission | torrent | RPC, magnet and `.torrent` |
 | Deluge | torrent | JSON-RPC |
 | rTorrent | torrent | XML-RPC |
-| Aria2 | torrent | JSON-RPC, token, `dir`, pausa |
-| uTorrent | torrent | Web API, token, magnet e file |
-| Flood | torrent | REST, tag e destinazione |
+| Aria2 | torrent | JSON-RPC, token, `dir`, pause |
+| uTorrent | torrent | Web API, token, magnet and file |
+| Flood | torrent | REST, tag and destination |
 | Download Station | torrent | Synology `auth.cgi` + `task.cgi` |
-| Hadouken | torrent | JSON-RPC, etichetta |
-| Torrent Blackhole | torrent | scrive `.torrent` o `.magnet` in una cartella |
-| SABnzbd | Usenet | API, `.nzb`, categoria, pausa |
-| NZBGet | Usenet | JSON-RPC, `.nzb`, categoria, pausa |
-| NZBVortex | Usenet | API, `.nzb`, gruppo |
-| Usenet Blackhole | Usenet | scrive `.nzb` in una cartella |
-| aMule | eD2k | Web API, link `ed2k://` |
+| Hadouken | torrent | JSON-RPC, label |
+| Torrent Blackhole | torrent | writes `.torrent` or `.magnet` to a folder |
+| SABnzbd | Usenet | API, `.nzb`, category, pause |
+| NZBGet | Usenet | JSON-RPC, `.nzb`, category, pause |
+| NZBVortex | Usenet | API, `.nzb`, group |
+| Usenet Blackhole | Usenet | writes `.nzb` to a folder |
+| aMule | eD2k | Web API, `ed2k://` links |
 
-Il client predefinito riceve i grab; dalla pagina Releases si possono inviare
-più release con **Invia selezionati**. Il seed ratio/time della sorgente viaggia
-verso qBittorrent e verso le app \*arr; gli altri client mantengono i propri
-valori.
+The default client receives the grabs; from the Releases page you can send
+multiple releases with **Send selected**. The source seed ratio/time travels to
+qBittorrent and to the \*arr apps; the other clients keep their own values.
 
-### Notifiche
+### Notifications
 
-Canali indipendenti, ognuno con i propri segreti cifrati:
+Independent channels, each with its own encrypted secrets:
 
-- webhook JSON, Telegram, Apprise, Discord, Slack, Gotify, ntfy, Pushover,
-  email SMTP e script personalizzato.
+- JSON webhook, Telegram, Apprise, Discord, Slack, Gotify, ntfy, Pushover,
+  SMTP email and custom script.
 
-Eventi disponibili: nuove release, cambi di stato degli indexer, grab fallito,
-grab riuscito, catalogo aggiornato e backup fallito. C'è un intervallo
-anti-spam per evento e un pulsante di prova che verifica tutti i canali
-configurati.
+Available events: new releases, indexer status changes, failed grab, successful
+grab, catalog updated and failed backup. There is an anti-spam interval per
+event and a test button that checks all configured channels.
 
-### Operatività
+### Operations
 
-- API key multiple con revoca e rate limit.
-- Auto-disable dopo N errori consecutivi.
-- Backup automatici con rotazione e ripristino dalla UI.
-- Metriche Prometheus su `/metrics`.
-- Log in-app, file di log a rotazione, `journalctl` con systemd.
-- PWA installabile; le pagine HTML restano sempre di rete.
+- Multiple API keys with revocation and rate limit.
+- Auto-disable after N consecutive errors.
+- Automatic backups with rotation and restore from the UI.
+- Prometheus metrics on `/metrics`.
+- In-app logs, rotating log file, `journalctl` with systemd.
+- Installable PWA; HTML pages always come from the network.
 
-## Compatibilità
+## Compatibility
 
-indexarr parla **Torznab** per i torrent e **Newznab** per Usenet. Questo è il
-quadro reale, non un elenco di intenti:
+indexarr speaks **Torznab** for torrents and **Newznab** for Usenet. This is the
+real picture, not a list of intentions:
 
-| Sorgente | Supporto | Come |
+| Source | Support | How |
 | --- | --- | --- |
-| MirCrew | completo | definizione nativa, login, ricerca, magnet al grab con ringraziamento; Smartfeed per i topic nuovi |
-| Torznab diretto | completo (torrent) | endpoint completo o base; `/api` viene aggiunto se manca |
-| ExtTo | completo | parser HTML dedicato: titolo e magnet dalla stessa riga |
-| TorrentGalaxy | completo | parser delle pagine `post-detail`, con cache dei magnet |
-| Corsaro | completo | parser di titoli `/torrent/` e magnet diretti |
-| Newznab / Usenet | completo (generico) | `newznab-generic`: caps, ricerca `search`/`tv`/`movie`/`music`/`book`, `.nzb` e invio a SABnzbd/NZBGet. Definizioni native per singoli siti Usenet non ancora in catalogo |
-| eD2k / aMule | completo | definizioni `protocol: ed2k`, link `ed2k://` archiviati, espansi per file, inviati ad aMule |
-| RSS / Atom | completo | feed normali, enclosure `.torrent`, `.nzb` o magnet |
-| Indexer privati con Basic | completo | campi HTTP username/password per sorgente |
-| API key in query, header o URL | completo | `apikey` come parametro e come `X-Api-Key` |
-| Cloudflare / challenge | con FlareSolverr | retry automatico per RSS e indexer diretti; gli indirizzi LAN non passano dal solver |
-| API proprietarie non Torznab | non automatico | la fonte resta in coda finché non esiste una definizione nativa |
+| MirCrew | complete | native definition, login, search, magnet at grab with thanks; Smartfeed for new topics |
+| Direct Torznab | complete (torrent) | full or base endpoint; `/api` is added if missing |
+| ExtTo | complete | dedicated HTML parser: title and magnet from the same row |
+| TorrentGalaxy | complete | parser of `post-detail` pages, with magnet cache |
+| CorsaroBlu | listing only | parser of `/torrent/` titles and direct magnets; the site disables guest keyword search and currently requires a FlareSolverr session |
+| Newznab / Usenet | complete (generic) | `newznab-generic`: caps, `search`/`tv`/`movie`/`music`/`book` search, `.nzb` and sending to SABnzbd/NZBGet. Native definitions for individual Usenet sites not yet in the catalog |
+| eD2k / aMule | complete | `protocol: ed2k` definitions, stored `ed2k://` links, expanded per file, sent to aMule |
+| RSS / Atom | complete | normal feeds, `.torrent`, `.nzb` or magnet enclosure |
+| Private indexers with Basic | complete | HTTP username/password fields per source |
+| API key in query, header or URL | complete | `apikey` as a parameter and as `X-Api-Key` |
+| Cloudflare / challenge | with FlareSolverr | automatic retry for RSS and direct indexers; LAN addresses do not go through the solver |
+| Proprietary APIs not Torznab | not automatic | the source stays queued until a native definition exists |
 
-**Jackett e Prowlarr non sono sorgenti**: indexarr li sostituisce. Non c'è un
-import che li legga e non viene creato un proxy verso di loro. Le fonti si
-aggiungono dal catalogo nativo; una fonte senza via nativa resta «da scrivere»
-e non compare nell'elenco utente.
+**Jackett and Prowlarr are not sources**: indexarr replaces them. There is no
+import that reads them and no proxy is created towards them. Sources are added
+from the native catalog; a source with no native path remains "to be written"
+and does not appear in the user list.
 
-**Cardigann**: il convertitore `indexarr-def convert-cardigann` aiuta a
-studiare una definizione, ma il formato non viene eseguito a runtime e le
-definizioni derivate non entrano nel catalogo.
+**Cardigann**: the `indexarr-def convert-cardigann` converter helps study a
+definition, but the format is not executed at runtime and the derived
+definitions do not enter the catalog.
 
-Dettagli, casi limite e diagnostica: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+Details, edge cases and diagnostics: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
-## Requisiti
+## Requirements
 
-- **Go 1.26 o successivo** per compilare. Il binario non ha dipendenze runtime.
-- Un filesystem scrivibile per il database.
-- Facoltativi: FlareSolverr per Cloudflare, un client torrent/Usenet/eD2k per
-  l'invio delle release.
+- **Go 1.26 or later** to build. The binary has no runtime dependencies.
+- A writable filesystem for the database.
+- Optional: FlareSolverr for Cloudflare, a torrent/Usenet/eD2k client for
+  sending releases.
 
-## Avvio rapido
+## Quick start
 
 ```bash
 make build
 ./bin/indexarr
 ```
 
-Al primo avvio, nella directory corrente, vengono creati:
+On first start, in the current directory, the following are created:
 
-- `indexarr.json` — configurazione minima (porta, database, log);
-- `indexarr.db` — database SQLite;
-- una API key Torznab casuale, stampata nel log e visibile in **Settings**.
+- `indexarr.json` — minimal configuration (port, database, logs);
+- `indexarr.db` — SQLite database;
+- a random Torznab API key, printed in the log and visible in **Settings**.
 
-Apri <http://localhost:8788>, aggiungi una sorgente e premi **Run**. In
-**Settings** trovi l'URL Torznab da consegnare alle app.
+Open <http://localhost:8788>, add a source and press **Run**. In **Settings**
+you find the Torznab URL to give to the apps.
 
-Flag disponibili:
+Available flags:
 
 ```text
--config string   file JSON di configurazione (default "indexarr.json")
--listen string   indirizzo HTTP, sovrascrive il file
--db string       percorso SQLite, sovrascrive il file
--version         stampa la versione
+-config string   JSON configuration file (default "indexarr.json")
+-listen string   HTTP address, overrides the file
+-db string       SQLite path, overrides the file
+-version         print the version
 ```
 
-## Configurazione
+## Configuration
 
-`indexarr.json` contiene solo l'avvio:
+`indexarr.json` contains only the startup settings:
 
 ```json
 {
@@ -232,497 +229,503 @@ Flag disponibili:
 }
 ```
 
-Un `db_path` relativo è risolto rispetto alla directory del file di
-configurazione. `vault_key_path` è opzionale: se vuoto la chiave del vault viene
-cercata in `INDEXARR_MASTER_KEY`, `INDEXARR_MASTER_KEY_FILE`, `<db>.key` legacy
-(se esiste) e poi `os.UserConfigDir()/indexarr/master.key`. Un percorso relativo
-è risolto rispetto alla directory di `indexarr.json`. Dettagli, comandi
-`vault export-key` / `vault move-key`, backup e Docker secrets in
+A relative `db_path` is resolved against the directory of the configuration
+file. `vault_key_path` is optional: if empty the vault key is looked up in
+`INDEXARR_MASTER_KEY`, `INDEXARR_MASTER_KEY_FILE`, legacy `<db>.key` (if it
+exists) and then `os.UserConfigDir()/indexarr/master.key`. A relative path is
+resolved against the directory of `indexarr.json`. Details, `vault export-key`
+/ `vault move-key` commands, backups and Docker secrets in
 [docs/VAULT.md](docs/VAULT.md).
 
-`log_file` è il file di log a rotazione (relativo come `db_path`; `"off"` lo
-spegne): quando supera `log_max_mb` diventa `indexarr.log.1`, i più vecchi
-scorrono e si tengono `log_max_files` file in tutto. Un file di configurazione
-vecchio senza questi campi usa i predefiniti.
+`log_file` is the rotating log file (relative like `db_path`; `"off"` turns it
+off): when it exceeds `log_max_mb` it becomes `indexarr.log.1`, older files
+shift and `log_max_files` files in total are kept. An old configuration file
+without these fields uses the defaults.
 
-Tutto il resto — API key, intervalli, retention, credenziali UI, notifiche,
-client, backup — è nel database e si modifica dalla pagina **Settings**, senza
-riavviare.
+Everything else — API keys, intervals, retention, UI credentials, notifications,
+clients, backups — is in the database and is changed from the **Settings** page,
+without restarting.
 
-### Impostazioni principali
+### Main settings
 
-| Impostazione | Default | Significato |
+| Setting | Default | Meaning |
 | --- | --- | --- |
-| `default_interval_seconds` | 3600 | Intervallo delle sorgenti senza uno proprio |
-| `fetch_timeout_seconds` | 45 | Timeout per singola richiesta HTTP |
-| `workers` | 2 | Sorgenti eseguite in parallelo (richiede riavvio) |
-| `max_torrents_per_run` | 30 | Limite di `.torrent` scaricati per esecuzione |
-| `max_torrent_bytes` | 8 MiB | Dimensione massima di un `.torrent` |
-| `fetch_torrents` | on | Scarica i `.torrent` quando la sorgente offre solo un link |
-| `retention_days` | 0 | Elimina le release non più viste dopo N giorni (0 = mai) |
-| `public_url` | vuoto | URL pubblico per i link Torznab dietro reverse proxy |
-| `notify_*` | — | Canali e trigger delle notifiche |
-| `auto_disable_after` | 0 | Disabilita una sorgente dopo N errori consecutivi (0 = mai) |
-| `flaresolverr_url` | vuoto | Endpoint FlareSolverr per RSS e indexer diretti |
+| `default_interval_seconds` | 3600 | Interval of sources without their own |
+| `fetch_timeout_seconds` | 45 | Timeout for each HTTP request |
+| `workers` | 2 | Sources run in parallel (requires restart) |
+| `max_torrents_per_run` | 30 | Limit of `.torrent` files downloaded per run |
+| `max_torrent_bytes` | 8 MiB | Maximum size of a `.torrent` |
+| `fetch_torrents` | on | Downloads `.torrent` files when the source only offers a link |
+| `retention_days` | 0 | Deletes releases no longer seen after N days (0 = never) |
+| `public_url` | empty | Public URL for Torznab links behind a reverse proxy |
+| `notify_*` | — | Notification channels and triggers |
+| `auto_disable_after` | 0 | Disables a source after N consecutive errors (0 = never) |
+| `flaresolverr_url` | empty | FlareSolverr endpoint for RSS and direct indexers |
 | `torznab_download_factor` | 0 | `downloadvolumefactor` (0 = freeleech) |
 | `torznab_upload_factor` | 1 | `uploadvolumefactor` |
-| `api_rate_limit_per_minute` | 0 | Richieste per chiave API al minuto (0 = illimitate) |
-| `torznab_live_search` | on | Interroga gli indexer quando la cache è vuota |
-| `torznab_live_timeout_seconds` | 20 | Deadline complessiva della ricerca live |
-| `download_client` | none | Client legacy; i client moderni sono nella pagina App |
-| `backup_enabled` | on | Backup automatico del database |
-| `backup_interval_hours` | 24 | Intervallo dei backup automatici (6–168) |
-| `backup_keep` | 7 | Numero di backup automatici conservati (1–60) |
-| `log_level` | config | Livello runtime (`debug`, `info`, `warn`, `error`) |
-| `memory_limit_mb` | config | Limite morbido di memoria Go in MiB (0 lo disattiva) |
+| `api_rate_limit_per_minute` | 0 | Requests per API key per minute (0 = unlimited) |
+| `torznab_live_search` | on | Queries the indexers when the cache is empty |
+| `torznab_live_timeout_seconds` | 20 | Overall deadline of the live search |
+| `download_client` | none | Legacy client; modern clients are on the App page |
+| `backup_enabled` | on | Automatic database backup |
+| `backup_interval_hours` | 24 | Interval of automatic backups (6–168) |
+| `backup_keep` | 7 | Number of automatic backups kept (1–60) |
+| `log_level` | config | Runtime level (`debug`, `info`, `warn`, `error`) |
+| `memory_limit_mb` | config | Soft Go memory limit in MiB (0 disables it) |
 
-## Sorgenti
+## Sources
 
-Ogni sorgente può avere credenziali **HTTP Basic** (campi *HTTP username* e
-*HTTP password*), indipendenti dalla API key Torznab. Accanto a ogni sorgente
-ci sono **Test** e **Run**; **Test all** e **Run all** lavorano su tutte le
-sorgenti abilitate e scrivono gli esiti in **Attività** e nei log.
+Each source can have **HTTP Basic** credentials (*HTTP username* and *HTTP
+password* fields), independent of the Torznab API key. Next to each source
+there are **Test** and **Run**; **Test all** and **Run all** work on all
+enabled sources and write the outcomes to **Activity** and the logs.
 
-### Catalogo e aggiunta
+### Catalog and adding
 
-- **Aggiungi indexer**: scegli una definizione del catalogo (ExtTo,
-  TorrentGalaxy, Corsaro, Knaben, TorrentLeech, una generica) oppure incolla un
-  endpoint Torznab.
-- **Quick add** riconosce Torznab, Newznab, RSS e listing HTML.
-- **Discover feeds** estrae i feed dichiarati da una pagina.
-- **Export/import JSON** salva e ricarica la configurazione pubblica degli
-  indexer; i segreti non vengono mai esportati.
-- Le fonti non ancora pronte restano in coda e non vengono proposte
-  nell'elenco utente; la vista di manutenzione `/indexers/new?queue=1` mostra
-  anche la composizione della coda.
+- **Add indexer**: choose a catalog definition (ExtTo, TorrentGalaxy, CorsaroBlu,
+  Knaben, TorrentLeech, a generic one) or paste a Torznab endpoint.
+- **Quick add** recognizes Torznab, Newznab, RSS and HTML listings.
+- **Discover feeds** extracts the feeds declared by a page.
+- **Export/import JSON** saves and reloads the public configuration of the
+  indexers; secrets are never exported.
+- Sources not ready yet stay queued and are not offered in the user list; the
+  maintenance view `/indexers/new?queue=1` also shows the composition of the
+  queue.
 
-Al **2026-10-29** il catalogo contiene **627 voci**: 111 definizioni native,
-85 verificate (84 torrent + 1 eD2k), 92 host pubblici verificati e 495 voci
-ancora da provare, in gran parte private. La copertura dei singoli siti cresce
-con il catalogo; il percorso Usenet generico è già completo.
+As of **2026-10-29** the catalog contains **627 entries**: 111 native
+definitions, 85 verified (84 torrent + 1 eD2k), 92 verified public hosts and
+495 entries still to try, mostly private. Coverage of individual sites grows
+with the catalog; the generic Usenet path is already complete.
 
 ### RSS / Atom
 
 - **Type**: RSS / Atom feed
-- **URL**: il feed
-- Vengono letti titolo, magnet, enclosure `.torrent`/`.nzb`, dimensione,
-  categoria numerica, data e gli eventuali attributi `torznab:attr`.
-- Le voci senza magnet o link di download vengono ignorate.
-- **Default category** assegna una categoria Torznab ai feed e ai listing che
-  non ne dichiarano una.
+- **URL**: the feed
+- Title, magnet, `.torrent`/`.nzb` enclosure, size, numeric category, date and
+  any `torznab:attr` attributes are read.
+- Entries without a magnet or download link are ignored.
+- **Default category** assigns a Torznab category to feeds and listings that
+  do not declare one.
 
-### Solo freeleech
+### Freeleech only
 
-Quando la definizione lo prevede, il form dell'indexer mostra la casella
-**Solo freeleech** (`setting.freeleech`). Se il sito accetta un filtro nella
-ricerca, la definizione lo passa come parametro (per esempio `free=1`); se il
-sito marca ogni riga, il motore scarta le righe non gratuite prima di salvarle
-e di rispondere alle app. L'opzione compare solo per le definizioni che la
-dichiarano e vale anche per l'elenco delle novità e per la ricerca live.
+When the definition provides for it, the indexer form shows the **Freeleech
+only** checkbox (`setting.freeleech`). If the site accepts a filter in the
+search, the definition passes it as a parameter (for example `free=1`); if the
+site marks each row, the engine discards non-free rows before saving them and
+before answering the apps. The option appears only for definitions that
+declare it and also applies to the new-release list and to the live search.
 
-### Torznab diretto
+### Direct Torznab
 
-- **URL**: endpoint completo, per esempio `http://indexer.local:8080/api`
-- **Manager**: Direct Torznab (o Auto)
-- **Categorie**: id Torznab separati da virgola (`5000, 2000`)
+- **URL**: full endpoint, for example `http://indexer.local:8080/api`
+- **Manager**: Direct Torznab (or Auto)
+- **Categories**: comma-separated Torznab ids (`5000, 2000`)
 
 ### Usenet / Newznab
 
 - **Type**: Newznab / Usenet
-- **URL** e **API key** del servizio
-- **Categorie**: id Newznab standard
-- Il protocollo è `usenet`; il payload è un `.nzb` e l'invio va a SABnzbd o
-  NZBGet.
-- Le definizioni native per singoli siti Usenet non sono ancora in catalogo:
-  una fonte che espone Newznab funziona subito, le altre restano in coda.
+- **URL** and **API key** of the service
+- **Categories**: standard Newznab ids
+- The protocol is `usenet`; the payload is an `.nzb` and sending goes to
+  SABnzbd or NZBGet.
+- Native definitions for individual Usenet sites are not yet in the catalog: a
+  source that exposes Newznab works immediately, the others stay queued.
 
 ### eD2k / aMule
 
-Le definizioni con `protocol: ed2k` pubblicano link
-`ed2k://|file|nome|dimensione|hash|/`. indexarr li archivia, li espande per
-file e li invia ad aMule tramite la Web API. Il link può arrivare dal corpo
-della pagina o da un campo eD2k; i topic con più file producono una release per
-file. eD2k resta escluso dalla sincronizzazione con le app \*arr.
+Definitions with `protocol: ed2k` publish
+`ed2k://|file|name|size|hash|/` links. indexarr stores them, expands them per
+file and sends them to aMule through the Web API. The link can come from the
+page body or from an eD2k field; topics with multiple files produce one release
+per file. eD2k remains excluded from synchronization with the \*arr apps.
 
-### Siti HTML: ExtTo, TorrentGalaxy, Corsaro
+### HTML sites: ExtTo, TorrentGalaxy, CorsaroBlu
 
-I tre siti hanno definizioni native con fixture reali e test di equivalenza.
-Il motore segue i link di dettaglio per ottenere il magnet, con concorrenza
-limitata e cache. Limiti: prima pagina, massimo 50 release per sorgente; se il
-layout cambia o il sito richiede il login, il test riporta l'errore.
+The three sites have native definitions with real fixtures and equivalence
+tests. The engine follows detail links to get the magnet, with limited
+concurrency and cache. CorsaroBlu is a **listing-only** source: the site
+disables guest keyword search, so indexarr reads its latest list and does not
+send a query; since 29 October 2026 every request goes through a FlareSolverr
+session because a plain client receives 429/503. Limits: first page, at most 50
+releases per source; if the layout changes or the site requires login, the test
+reports the error.
 
-### Sorgenti private, cookie e MirCrew
+### Private sources, cookies and MirCrew
 
-- **HTTP Basic** per feed e indexer privati.
-- **Importa cookie** per i siti con login a form protetto da Cloudflare
-  Turnstile, come IPTorrents: legge il profilo Firefox, invia il cookie a
-  indexarr e lo salva cifrato nel vault. Serve lo stesso User-Agent del browser.
-- **MirCrew** è un indexer Torznab diretto: accetta base o `/api`, magnet in
-  `<link>`/`<enclosure>`, seeder assenti e `/status` per il login al forum. Il
-  timeout predefinito è 45 secondi; un login al forum fallito non ferma
-  l'indice locale.
+- **HTTP Basic** for private feeds and indexers.
+- **Import cookie** for sites with a form login protected by Cloudflare
+  Turnstile, such as IPTorrents: it reads the Firefox profile, sends the cookie
+  to indexarr and stores it encrypted in the vault. It requires the same
+  User-Agent as the browser.
+- **MirCrew** is a direct Torznab indexer: it accepts base or `/api`, magnet in
+  `<link>`/`<enclosure>`, missing seeders and `/status` for the forum login.
+  The default timeout is 45 seconds; a failed forum login does not stop the
+  local index.
 
 ### Cloudflare / FlareSolverr
 
 - Endpoint in **Settings → Cloudflare / FlareSolverr**.
-- Riconosce `cf-mitigated: challenge` e le pagine Cloudflare su 403/503/200.
-- Ripete la richiesta tramite FlareSolverr per RSS e indexer diretti.
-- Gli indirizzi LAN non passano mai dal solver.
-- I `.torrent` non passano dal solver: se il sito richiede il clearance anche
-  per il file, usa il magnet.
+- Recognizes `cf-mitigated: challenge` and Cloudflare pages on 403/503/200.
+- Repeats the request through FlareSolverr for RSS and direct indexers.
+- LAN addresses never go through the solver.
+- `.torrent` files do not go through the solver: if the site requires clearance
+  for the file too, use the magnet.
 
-### Jackett e Prowlarr
+### Jackett and Prowlarr
 
-indexarr li **sostituisce**: non sono sorgenti e non c'è un import che li
-legga. Un URL che appartiene a un manager viene rifiutato con un messaggio
-esplicito. Vedi [docs/MIGRATION-MANAGERS.md](docs/MIGRATION-MANAGERS.md).
+indexarr **replaces** them: they are not sources and there is no import that
+reads them. A URL that belongs to a manager is rejected with an explicit
+message. See [docs/MIGRATION-MANAGERS.md](docs/MIGRATION-MANAGERS.md).
 
-## Collegare le app
+## Connecting the apps
 
-Nella pagina **Settings** copia l'endpoint completo:
+In the **Settings** page copy the full endpoint:
 
 ```text
 http://<host>:8788/api?apikey=<API_KEY>
 ```
 
-Nel client aggiungi un indexer **Torznab**:
+In the client add a **Torznab** indexer:
 
-| Campo | Valore |
+| Field | Value |
 | --- | --- |
 | URL | `http://<host>:8788/api` |
-| API Key | la chiave mostrata in Settings |
-| Categories | `5000` TV, `2000` Film, `3000` Audio, `7000` Libri |
+| API Key | the key shown in Settings |
+| Categories | `5000` TV, `2000` Movies, `3000` Audio, `7000` Books |
 
-Sono supportati anche l'alias `/torznab/api` e il parametro `apikey`
-nell'header `X-Api-Key`. Dettagli completi in [docs/API.md](docs/API.md).
+The `/torznab/api` alias and the `apikey` parameter in the `X-Api-Key` header
+are also supported. Full details in [docs/API.md](docs/API.md).
 
-### Sync delle app
+### App sync
 
-In **App** colleghi Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3 e
-LazyLibrarian. Scegli il livello:
+In **App** you connect Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3 and
+LazyLibrarian. Choose the level:
 
-- **Disattivata**: nessun contatto;
-- **Solo aggiunta/rimozione**: crea e rimuove gli indexer;
-- **Completa**: aggiorna anche gli indexer esistenti.
+- **Disabled**: no contact;
+- **Add/remove only**: creates and removes the indexers;
+- **Full sync**: also updates the existing indexers.
 
-In **Avanzate** imposti il profilo della singola app: RSS, ricerca automatica,
-ricerca interattiva, seeder minimi (0 = valore dell'indexer) e categorie
-Torznab da inviare (vuoto = tutte quelle supportate). Un indexer senza
-categorie in comune non viene sincronizzato con quell'app. Il filtro per tag
-decide quali sorgenti mandare a quale app; prima di ogni modifica viene salvato
-uno snapshot, ripristinabile dalla stessa pagina.
+In **Advanced** you set the profile of the individual app: RSS, automatic
+search, interactive search, minimum seeders (0 = indexer value) and Torznab
+categories to send (empty = all supported ones). An indexer with no categories
+in common is not synchronized with that app. The tag filter decides which
+sources to send to which app; before every change a snapshot is saved,
+restorable from the same page.
 
-indexarr crea nell'app solo gli indexer il cui nome inizia con `indexarr · `.
-Il resto non viene toccato.
+indexarr creates in the app only the indexers whose name starts with
+`indexarr · `. The rest is not touched.
 
-### API key multiple e rate limit
+### Multiple API keys and rate limit
 
-In **Settings → Torznab API** la chiave primaria resta quella mostrata
-nell'endpoint. Sotto, **Additional API keys** permette di crearne una per
-client (Sonarr, Radarr, Lidarr, uno script) con nome, data di creazione, ultimo
-uso e numero di richieste. Ogni chiave è revocabile senza toccare le altre; i
-link `.torrent`/`.nzb` usano la chiave con cui è stata fatta la richiesta.
-**API requests per key per minute** applica un limite per chiave
-(0 = illimitato): oltre la soglia la risposta è HTTP 429 con `Retry-After`.
+In **Settings → Torznab API** the primary key remains the one shown in the
+endpoint. Below, **Additional API keys** lets you create one per client
+(Sonarr, Radarr, Lidarr, a script) with name, creation date, last use and
+number of requests. Each key can be revoked without touching the others;
+`.torrent`/`.nzb` links use the key with which the request was made. **API
+requests per key per minute** applies a limit per key (0 = unlimited): above
+the threshold the response is HTTP 429 with `Retry-After`.
 
-### Ricerca live
+### Live search
 
-Con **Search indexers live on a cache miss** attivo, una ricerca Torznab che
-non trova nulla nella cache interroga al momento le sorgenti Torznab/Newznab
-abilitate, salva i risultati e ripete la query. Le sorgenti RSS/HTML sono
-escluse perché non accettano un termine di ricerca. `Live search timeout`
-limita l'attesa complessiva; le sorgenti lente vengono ignorate. È attiva per
-default perché di solito evita un "nessun risultato" falso quando la cache è
-ancora vuota; puoi spegnerla se preferisci la risposta più rapida possibile. La
-query deve essere presente o deve esserci un id esterno; una richiesta solo per
-id non attiva una ricerca live sui siti che non supportano gli id.
+With **Search indexers live on a cache miss** enabled, a Torznab search that
+finds nothing in the cache queries the enabled Torznab/Newznab sources at that
+moment, saves the results and repeats the query. RSS/HTML sources are excluded
+because they do not accept a search term. `Live search timeout` limits the
+overall wait; slow sources are ignored. It is enabled by default because it
+usually avoids a false "no results" when the cache is still empty; you can turn
+it off if you prefer the fastest possible response. The query must be present
+or there must be an external id; a request by id alone does not trigger a live
+search on sites that do not support ids.
 
-## Interfaccia web
+## Web interface
 
-| Pagina | Contenuto |
+| Page | Content |
 | --- | --- |
-| **Dashboard** | Totali, stato degli indexer, ultime release ed esecuzioni |
-| **Releases** | Ricerca live manuale (testo, TV, film, musica, libri, ID esterni), esclusione `-xxx`, regex, filtri avanzati, ricerche salvate, preferiti/nascosti, grab multiplo; dettaglio con magnet, `.torrent` e `.nzb` |
-| **Indexer** | Elenco unico, Run/Test/Run all/Test all, dettaglio, modifica, export/import JSON e scoperta feed |
-| **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian; sync, profilo per app, snapshot e client di download |
-| **Attività** | Storico aggiornamenti, nuove release, ricerche delle app |
-| **Log** | Log interni con filtri e livello runtime, richieste ricevute, statistiche |
-| **Rules** | Blocklist per infohash, titolo, regex, sorgente o categoria |
-| **Settings** | API key, endpoint Torznab, ricerca live, intervalli, retention, credenziali UI, notifiche, auto-disable, backup |
-| **Maintenance** | Integrità, vacuum, optimize/checkpoint, reindex, deduplica, pulizia `.torrent`, retention, purge per indexer, backup e ripristino |
+| **Dashboard** | Totals, indexer status, latest releases and runs |
+| **Releases** | Manual live search (text, TV, movies, music, books, external IDs), `-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab; detail with magnet, `.torrent` and `.nzb` |
+| **Indexer** | Single list, Run/Test/Run all/Test all, detail, edit, JSON export/import and feed discovery |
+| **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian; sync, per-app profile, snapshots and download clients |
+| **Activity** | Update history, new releases, app searches |
+| **Log** | Internal logs with filters and runtime level, incoming requests, statistics |
+| **Rules** | Blocklist by infohash, title, regex, source or category |
+| **Settings** | API keys, Torznab endpoint, live search, intervals, retention, UI credentials, notifications, auto-disable, backups |
+| **Maintenance** | Integrity, vacuum, optimize/checkpoint, reindex, deduplication, `.torrent` cleanup, retention, purge per indexer, backup and restore |
 
-L'interfaccia è una **PWA**: manifest, icona e service worker che mette in cache
-solo gli asset statici; le pagine HTML restano sempre di rete perché contengono
-CSRF e dati privati.
+The interface is a **PWA**: manifest, icon and service worker that caches only
+static assets; HTML pages always come from the network because they contain
+CSRF and private data.
 
-## Ricerca nelle release
+## Search in releases
 
-La pagina **Releases** cerca mentre scrivi: la richiesta parte dopo 250 ms,
-quella precedente viene annullata e viene aggiornata solo la tabella, senza
-ricaricare la pagina. L'URL resta condivisibile e il modulo funziona anche
-senza JavaScript.
+The **Releases** page searches as you type: the request starts after 250 ms,
+the previous one is cancelled and only the table is updated, without reloading
+the page. The URL remains shareable and the form also works without JavaScript.
 
-- **Esclusione**: `-xxx` toglie i risultati che contengono `xxx`. Si combinano
-  più termini: `show -1080p -cam`.
-- **Full-text**: i termini di almeno tre caratteri usano FTS5 con tokenizer
-  trigram; anche le sottostringhe funzionano. I termini più corti usano
-  `LIKE`.
-- **Regex**: spunta **Regex**; ogni termine è un'espressione regolare RE2,
-  case-insensitive per default. I termini sono in AND, `-pattern` esclude, le
-  virgolette mantengono gli spazi (`"the show"`) e `/pattern/` è accettato.
-- Un'espressione non valida mostra l'errore senza svuotare la pagina.
-- Sorgente, categoria e ordinamento si combinano con il testo; la paginazione
-  resta sulla pagina completa.
+- **Exclusion**: `-xxx` removes the results that contain `xxx`. Multiple terms
+  combine: `show -1080p -cam`.
+- **Full-text**: terms of at least three characters use FTS5 with trigram
+  tokenizer; substrings work too. Shorter terms use `LIKE`.
+- **Regex**: check **Regex**; each term is an RE2 regular expression,
+  case-insensitive by default. Terms are in AND, `-pattern` excludes, quotes
+  keep spaces (`"the show"`) and `/pattern/` is accepted.
+- An invalid expression shows the error without emptying the page.
+- Source, category and sorting combine with the text; pagination remains on
+  the full page.
 
-### Ricerca live manuale
+### Manual live search
 
-Il pannello **Ricerca live** interroga subito i siti selezionati, salva ciò che
-restituiscono e lo mostra sotto. Modalità disponibili:
+The **Live search** panel queries the selected sites immediately, saves what
+they return and shows it below. Available modes:
 
-- **Ricerca libera**: qualunque titolo.
-- **TV**: query, stagione, episodio, anno, TVDb/IMDb/TMDb id.
-- **Film**: query, anno, IMDb/TMDb id.
-- **Musica**: artista, album, anno.
-- **Libri**: autore, titolo.
+- **Free search**: any title.
+- **TV**: query, season, episode, year, TVDb/IMDb/TMDb id.
+- **Movie**: query, year, IMDb/TMDb id.
+- **Music**: artist, album, year.
+- **Books**: author, title.
 
-Puoi scegliere uno o più indexer e una categoria. I siti che rispondono in tempo
-mostrano i risultati subito; quelli in timeout continuano in background e
-possono comparire dopo un ricaricamento. La vista live mostra al massimo 50
-righe e non usa la paginazione normale.
+You can choose one or more indexers and a category. Sites that answer in time
+show the results immediately; those that time out continue in the background
+and may appear after a reload. The live view shows at most 50 rows and does not
+use normal pagination.
 
-### Filtri avanzati e ricerche salvate
+### Advanced filters and saved searches
 
-Sotto la ricerca ci sono i filtri strutturati:
+Below the search there are the structured filters:
 
-- risoluzione (`2160p/4K`, `1080p`, `720p`, `480p`);
-- fonte (`WEB-DL`, `BluRay`, `HDTV`);
-- lingua (`Italian`, `English`);
-- seeder minimi, dimensione minima e massima in MB;
-- **Favorites** e **Show hidden**.
+- resolution (`2160p/4K`, `1080p`, `720p`, `480p`);
+- source (`WEB-DL`, `BluRay`, `HDTV`);
+- language (`Italian`, `English`);
+- minimum seeders, minimum and maximum size in MB;
+- **Favorites** and **Show hidden**.
 
-Si combinano con il testo e con la modalità regex. **Save this search as…**
-salva la vista con un nome; le ricerche salvate compaiono sopra i risultati come
-link pronti, con una × per eliminarle. La pallina ★ indica le release preferite.
+They combine with the text and with regex mode. **Save this search as…** saves
+the view with a name; saved searches appear above the results as ready links,
+with an × to delete them. A ★ marks favorite releases.
 
-### Regole, preferiti e nascosti
+### Rules, favorites and hidden releases
 
-Il tab **Rules** gestisce la blocklist:
+The **Rules** tab manages the blocklist:
 
-- per **infohash** (preciso), **titolo** (sottostringa), **regex** (Go/RE2,
-  case-insensitive), **nome sorgente** o **categoria** (`5000` copre `5xxx`);
-- le release che corrispondono non vengono più inserite nei run successivi;
-- sul dettaglio di una release ci sono **Favorite**, **Hide** e **Block
-  release**: Block aggiunge la regola (infohash se disponibile, altrimenti
-  titolo) e la nasconde subito.
+- by **infohash** (exact), **title** (substring), **regex** (Go/RE2,
+  case-insensitive), **source name** or **category** (`5000` covers `5xxx`);
+- matching releases are no longer inserted in subsequent runs;
+- on a release detail there are **Favorite**, **Hide** and **Block release**:
+  Block adds the rule (infohash if available, otherwise title) and hides it
+  immediately.
 
-Nascondere una release la toglie dalle viste normali ma non impedisce a un nuovo
-run di reinserirla: per questo esiste la blocklist. Le release bloccate sono
-contate nella colonna **Blocked** dei run.
+Hiding a release removes it from the normal views but does not prevent a new
+run from reinserting it: that is why the blocklist exists. Blocked releases are
+counted in the **Blocked** column of the runs.
 
-### Invio ai client
+### Sending to clients
 
-In **Settings → Download client** o dalla pagina **App** si sceglie il client,
-si inseriscono URL e credenziali e, per qBittorrent, categoria e percorso. Sul
-dettaglio di ogni release compare **Invia**: viene inviato il `.torrent`/`.nzb`
-salvato, oppure il magnet se il file non è in cache. Per aMule viene inviato il
-link `ed2k://` alla Web API (`/api/v1/downloads`); il protocollo della release
-sceglie il client.
+In **Settings → Download client** or from the **App** page you choose the
+client, enter URL and credentials and, for qBittorrent, category and path. On
+the detail of each release there is **Send**: the saved `.torrent`/`.nzb` is
+sent, or the magnet if the file is not in the cache. For aMule the `ed2k://`
+link is sent to the Web API (`/api/v1/downloads`); the release protocol chooses
+the client.
 
-qBittorrent usa la Web API v2; Transmission il RPC con negoziazione della
-sessione. Quando l'indexer che ha fornito la release ha un **seed ratio** o un
-**seed time**, qBittorrent li riceve già all'aggiunta
-(`ratioLimit`/`seedingTimeLimit`), così il torrent si ferma al limite della
-fonte; gli altri client mantengono i propri valori. Lo stesso `seed_ratio`
-viaggia verso le \*arr con la sincronizzazione delle applicazioni.
+qBittorrent uses the Web API v2; Transmission uses RPC with session negotiation.
+When the indexer that provided the release has a **seed ratio** or a **seed
+time**, qBittorrent receives them already at addition
+(`ratioLimit`/`seedingTimeLimit`), so the torrent stops at the source limit;
+the other clients keep their own values. The same `seed_ratio` travels to the
+\*arr apps with application synchronization.
 
-## Notifiche e auto-disable
+## Notifications and auto-disable
 
 In **Settings → Notifications**:
 
-- **Webhook URL**: riceve un POST JSON con `event`, `source`, `count`, `titles`,
-  `error` e `at`;
-- **Telegram bot token** e **chat ID**: messaggio leggibile; vanno impostati
-  entrambi o nessuno;
+- **Webhook URL**: receives a JSON POST with `event`, `source`, `count`,
+  `titles`, `error` and `at`;
+- **Telegram bot token** and **chat ID**: readable message; both or neither must
+  be set;
 - **Apprise**, **Discord**, **Slack**, **Gotify**, **ntfy**, **Pushover**,
-  **email SMTP** e **script personalizzato**: canali indipendenti, con i propri
-  segreti cifrati nel vault;
+  **SMTP email** and **custom script**: independent channels, with their own
+  secrets encrypted in the vault;
 - **Notify new releases**, **Notify failures**, **Grab failed**, **A grab
-  succeeded**, **Catalog updated** e **Backup failed** scelgono gli eventi;
-- **Auto-disable after N consecutive failures**: dopo N run falliti la sorgente
-  viene disabilitata; un run riuscito azzera il contatore.
+  succeeded**, **Catalog updated** and **Backup failed** choose the events;
+- **Auto-disable after N consecutive failures**: after N failed runs the source
+  is disabled; a successful run resets the counter.
 
-L'**anti-spam** evita che lo stesso evento (tipo e sorgente) venga inviato più
-volte nello stesso intervallo. Il pulsante **Invia notifica di prova** verifica
-tutti i canali configurati. I messaggi sono nella lingua scelta in
-**Settings → Notifications → Message language**: «Come l'interfaccia» segue il
-selettore in alto, una lingua fissa resta anche cambiando interfaccia.
+**Anti-spam** prevents the same event (type and source) from being sent more
+than once in the same interval. The **Send test notification** button checks
+all configured channels. Messages are in the language chosen in **Settings →
+Notifications → Message language**: "Same as the interface" follows the
+selector at the top, a fixed language remains even when changing the interface.
 
-## Backup e ripristino
+## Backup and restore
 
-Il backup di indexarr contiene il **database SQLite**, non i file scaricati.
-Il database sta in `data/indexarr.db`; i backup coerenti sono in
+The indexarr backup contains the **SQLite database**, not the downloaded files.
+The database is in `data/indexarr.db`; consistent backups are in
 `data/backups/pre-upgrade-*.db`.
 
-La **chiave del vault non è nel database**: va conservata separatamente
-(`INDEXARR_MASTER_KEY`, `vault_key_path` o il file utente
-`~/.config/indexarr/master.key`). Senza quella chiave i segreti salvati non si
-aprono. Dettagli in [docs/VAULT.md](docs/VAULT.md).
+The **vault key is not in the database**: it must be kept separately
+(`INDEXARR_MASTER_KEY`, `vault_key_path` or the user file
+`~/.config/indexarr/master.key`). Without that key the stored secrets cannot be
+opened. Details in [docs/VAULT.md](docs/VAULT.md).
 
-Dalla pagina **Maintenance** puoi creare un backup, scaricarlo, eliminarlo e
-ripristinarlo. Il ripristino carica un `.db` validato, lo copia in
-`indexarr.db.restore`, il servizio si riavvia e il file viene applicato prima di
-aprire il database. Il database corrente viene copiato in
-`data/backups/pre-restore-*.db`. L'unità systemd usa `Restart=always` per
-completare il riavvio; senza systemd basta riavviare a mano.
+From the **Maintenance** page you can create a backup, download it, delete it
+and restore it. Restore loads a validated `.db`, copies it to
+`indexarr.db.restore`, the service restarts and the file is applied before
+opening the database. The current database is copied to
+`data/backups/pre-restore-*.db`. The systemd unit uses `Restart=always` to
+complete the restart; without systemd, restart manually.
 
-## Manutenzione e diagnostica
+## Maintenance and diagnostics
 
-- **Database report**: dimensioni, pagine libere, WAL/SHM, conteggio righe e
-  ripartizione delle release.
+- **Database report**: sizes, free pages, WAL/SHM, row counts and release
+  breakdown.
 - **Integrity check**, **quick check**, **foreign key check**.
 - **Vacuum**, **optimize/checkpoint**, **analyze**, **rebuild indexes**.
-- **Deduplica per infohash**, pulizia `.torrent`, retention, pulizia delle
-  release senza link o nascoste, purge per indexer.
-- **Backup automatici** con rotazione e ripristino dalla UI.
-- **Salute sorgenti** con errori, fallimenti e pulsanti Test/Run.
+- **Deduplication by infohash**, `.torrent` cleanup, retention, cleanup of
+  releases without links or hidden, purge per indexer.
+- **Automatic backups** with rotation and restore from the UI.
+- **Source health** with errors, failures and Test/Run buttons.
 - **Clear source errors**, **reset API usage**, **recount source items**.
-- **Metriche Prometheus** su `GET /metrics` (`indexarr_releases`,
+- **Prometheus metrics** on `GET /metrics` (`indexarr_releases`,
   `indexarr_indexers`, `indexarr_runs_24h`, `indexarr_errors_24h`,
-  `indexarr_blocklist_rules`, `indexarr_db_bytes`, uptime…), senza
-  autenticazione come `/healthz`.
-- **Runs → dettaglio**: conteggi, durata ed errore completo di un singolo run.
-- **Cancel** nella riga di una sorgente in esecuzione annulla il run.
+  `indexarr_blocklist_rules`, `indexarr_db_bytes`, uptime…), without
+  authentication like `/healthz`.
+- **Runs → detail**: counts, duration and full error of a single run.
+- **Cancel** in the row of a running source cancels the run.
 
 ### Log
 
-Il tab **Logs** mostra gli ultimi **2000** messaggi del processo, dal più
-recente:
+The **Logs** tab shows the last **2000** messages of the process, most recent
+first:
 
-- filtro per livello (`debug`, `info`, `warning`, `error`), per **origine**
-  (`indexarr`, `indexer`/Torznab, RSS/HTML, notifiche) e ricerca nel messaggio
-  e negli attributi;
-- pulsante **Problems** con il conteggio di warning ed errori che corrispondono
-  ai filtri correnti;
-- limite righe (100/300/1000) e **auto-refresh** ogni 10 secondi;
-- **Download .txt** e **Clear** del buffer;
-- qui arrivano anche gli esiti di **Test all** e del **Test FlareSolverr**.
+- filter by level (`debug`, `info`, `warning`, `error`), by **origin**
+  (`indexarr`, `indexer`/Torznab, RSS/HTML, notifications) and search in the
+  message and in the attributes;
+- **Problems** button with the count of warnings and errors matching the
+  current filters;
+- row limit (100/300/1000) and **auto-refresh** every 10 seconds;
+- **Download .txt** and **Clear** of the buffer;
+- the outcomes of **Test all** and **Test FlareSolverr** also arrive here.
 
-Ogni errore di una sorgente riporta `source`, `kind`, `host` e il messaggio
-originale. Gli errori interni usano `component=indexarr`, quelli degli indexer
-`component=indexer` e quelli dei feed `component=rss`. Le stesse righe vanno su
-stdout (journal con systemd) e nel file di log a rotazione
-`logs/indexarr.log` accanto al database: 5 file da 10 MB al massimo.
+Each source error reports `source`, `kind`, `host` and the original message.
+Internal errors use `component=indexarr`, indexer errors `component=indexer` and
+feed errors `component=rss`. The same lines go to stdout (journal with systemd)
+and to the rotating log file `logs/indexarr.log` next to the database: 5 files
+of at most 10 MB.
 
 ```bash
-tail -f data/logs/indexarr.log          # file a rotazione
-journalctl --user -u indexarr -f        # journal di systemd
+tail -f data/logs/indexarr.log          # rotating file
+journalctl --user -u indexarr -f        # systemd journal
 ```
 
-La verbosità si cambia da **Logs → Runtime verbosity** (`debug`, `info`, `warn`,
-`error`): viene applicata subito, salvata nel database e mantenuta al riavvio.
-`log_level` in `indexarr.json` è solo il valore iniziale. Le API key, le
-password e i token sono oscurati nel buffer mostrato dalla UI.
+Verbosity is changed from **Logs → Runtime verbosity** (`debug`, `info`, `warn`,
+`error`): it is applied immediately, saved in the database and kept across
+restarts. `log_level` in `indexarr.json` is only the initial value. API keys,
+passwords and tokens are redacted in the buffer shown by the UI.
 
-## Sicurezza
+## Security
 
-- La **API key Torznab** è obbligatoria per ricerca e download. `t=caps`
-  risponde anche senza chiave, come altri client Torznab. Le chiavi aggiuntive
-  sono revocabili singolarmente e il rate limit è per chiave.
-- La UI accetta **HTTP Basic** se imposti utente e password in Settings. Senza
-  credenziali è aperta a chiunque raggiunga la porta: usala su rete fidata o
-  mettila dietro un reverse proxy con TLS.
-- `GET /healthz`, `GET /metrics` e `/static/*` non passano dalla Basic auth:
-  proteggi la rete o il reverse proxy. `/metrics` non contiene dati delle
-  release, solo conteggi.
-- Tutti i moduli POST richiedono un token CSRF legato al browser; l'upload di un
-  backup multipart usa lo stesso token nella query, senza leggere il file prima
-  del controllo.
-- Le password sono salvate come `pbkdf2-sha256$iterazioni$salt$hash`.
-- I segreti di indexer, proxy, app, client e notifiche sono nel vault, non in
-  chiaro nel database.
-- Il server non esegue codice caricato dagli indexer: XML e JSON sono solo dati.
-- FlareSolverr riceve l'URL completo dell'indexer, **API key compresa**, e una
-  singola risoluzione può durare fino a ~60 secondi.
+- The **Torznab API key** is mandatory for search and download. `t=caps` also
+  answers without a key, like other Torznab clients. Additional keys can be
+  revoked individually and the rate limit is per key.
+- The UI accepts **HTTP Basic** if you set a username and password in Settings.
+  Without credentials it is open to anyone who can reach the port: use it on a
+  trusted network or put it behind a reverse proxy with TLS.
+- `GET /healthz`, `GET /metrics` and `/static/*` do not go through Basic auth:
+  protect the network or the reverse proxy. `/metrics` does not contain release
+  data, only counts.
+- All POST forms require a CSRF token tied to the browser; uploading a
+  multipart backup uses the same token in the query, without reading the file
+  before the check.
+- Passwords are stored as `pbkdf2-sha256$iterations$salt$hash`.
+- Indexer, proxy, app, client and notification secrets are in the vault, not in
+  clear text in the database.
+- The server does not execute code uploaded by the indexers: XML and JSON are
+  only data.
+- FlareSolverr receives the full indexer URL, **including the API key**, and a
+  single resolution can take up to ~60 seconds.
 
 ## systemd
 
-### Servizio systemd utente (consigliato)
+### User systemd service (recommended)
 
-Lo script crea e avvia il servizio per l'utente corrente, senza `sudo`:
+The script creates and starts the service for the current user, without `sudo`:
 
 ```bash
 ./scripts/install-user-service.sh
 ```
 
-Crea:
+It creates:
 
-- `~/.config/systemd/user/indexarr.service`, abilitato al login;
-- `data/indexarr.json` e `data/indexarr.db` con permessi privati (700/600);
-- avvia il servizio e ne verifica `/healthz`.
+- `~/.config/systemd/user/indexarr.service`, enabled at login;
+- `data/indexarr.json` and `data/indexarr.db` with private permissions
+  (700/600);
+- starts the service and checks `/healthz`.
 
 ```bash
-./scripts/install-user-service.sh --listen 127.0.0.1:8788   # solo locale
-./scripts/install-user-service.sh --no-build                # usa bin/indexarr
-./scripts/install-user-service.sh --linger                  # resta attivo dopo il logout
+./scripts/install-user-service.sh --listen 127.0.0.1:8788   # local only
+./scripts/install-user-service.sh --no-build                # use bin/indexarr
+./scripts/install-user-service.sh --linger                  # stays active after logout
 ./scripts/install-user-service.sh --status
-./scripts/install-user-service.sh --uninstall               # i dati restano
+./scripts/install-user-service.sh --uninstall               # data is kept
 ```
 
-Il default è `:8788` su tutte le interfacce: sulla LAN l'indirizzo è
-`http://<IP-del-server>:8788/`. Lo script stampa anche l'indirizzo LAN rilevato
-e verifica che la porta risponda lì, non solo su `127.0.0.1`. L'indirizzo passato
-con `--listen` viene scritto nell'unità e prevale sul `listen` del file di
-configurazione. Se vuoi limitarlo alla sola macchina locale usa
-`--listen 127.0.0.1:8788` e riesegui lo script.
+The default is `:8788` on all interfaces: on the LAN the address is
+`http://<server-IP>:8788/`. The script also prints the detected LAN address and
+checks that the port responds there, not only on `127.0.0.1`. The address
+passed with `--listen` is written into the unit and takes precedence over
+`listen` in the configuration file. If you want to limit it to the local
+machine only, use `--listen 127.0.0.1:8788` and run the script again.
 
-La UI è senza autenticazione finché non imposti utente e password in
-**Settings**: fallo prima di esporla alla LAN.
+The UI has no authentication until you set a username and password in
+**Settings**: do that before exposing it to the LAN.
 
-Log e stato:
+Logs and status:
 
 ```bash
 systemctl --user status indexarr
 journalctl --user -u indexarr -f
 ```
 
-Senza `--linger` il servizio parte con la sessione utente e si ferma al logout;
-`--linger` lo mantiene attivo.
+Without `--linger` the service starts with the user session and stops at
+logout; `--linger` keeps it active.
 
-### Aggiornamento della produzione (dati conservati)
+### Production upgrade (data preserved)
 
-`scripts/upgrade.sh` aggiorna il binario **senza azzerare il database**. Di
-default è un dry run: valida i prerequisiti, compila `cmd/indexarr` in una
-directory temporanea e stampa il piano, senza fermare il servizio.
+`scripts/upgrade.sh` updates the binary **without wiping the database**. By
+default it is a dry run: it validates the prerequisites, builds `cmd/indexarr`
+in a temporary directory and prints the plan, without stopping the service.
 
 ```bash
 ./scripts/upgrade.sh                       # dry run
-./scripts/upgrade.sh --apply --yes         # aggiornamento della produzione
-./scripts/upgrade.sh --rollback --yes      # ripristina l'ultimo backup
+./scripts/upgrade.sh --apply --yes         # production upgrade
+./scripts/upgrade.sh --rollback --yes      # restore the latest backup
 ```
 
-Con `--apply` il build avviene **prima** di fermare il servizio. Poi crea un
-backup coerente con `VACUUM INTO` in `data/backups/pre-upgrade-<timestamp>.db`,
-salva il binario precedente come `bin/indexarr.old-<timestamp>`, ferma il
-servizio, installa il nuovo binario e riparte. Verifica `/healthz` con la
-versione nuova, `t=caps` e una ricerca Torznab con la API key letta dal DB (mai
-stampata). Se un controllo fallisce ripristina automaticamente DB e binario e
-riavvia la versione precedente.
+With `--apply` the build happens **before** stopping the service. Then it
+creates a consistent backup with `VACUUM INTO` in
+`data/backups/pre-upgrade-<timestamp>.db`, saves the previous binary as
+`bin/indexarr.old-<timestamp>`, stops the service, installs the new binary and
+starts again. It checks `/healthz` with the new version, `t=caps` and a Torznab
+search with the API key read from the DB (never printed). If a check fails it
+automatically restores the DB and the binary and restarts the previous
+version.
 
-La prova generale su una copia usa `--data-dir`, `--port 18510`, `--no-systemd`
-e binari temporanei; non tocca `:8788`, `data/`, `bin/indexarr` o systemd:
+The rehearsal on a copy uses `--data-dir`, `--port 18510`, `--no-systemd` and
+temporary binaries; it does not touch `:8788`, `data/`, `bin/indexarr` or
+systemd:
 
 ```bash
 ./scripts/upgrade_test.sh
 ```
 
-Gli esiti delle tre prove (aggiornamento riuscito, build rotto, health fallito
-con rollback automatico) sono in [scripts/README.md](scripts/README.md).
+The outcomes of the three tests (successful upgrade, broken build, failed
+health with automatic rollback) are in [scripts/README.md](scripts/README.md).
 
-### Servizio systemd di sistema
+### System-wide systemd service
 
-Se preferisci un servizio globale, usa l'esempio
-[examples/indexarr.service](examples/indexarr.service). Crea l'utente e la
-directory, copia binario e unit:
+If you prefer a global service, use the example
+[examples/indexarr.service](examples/indexarr.service). Create the user and the
+directory, copy the binary and the unit:
 
 ```bash
 sudo useradd --system --home /var/lib/indexarr --shell /usr/sbin/nologin indexarr
@@ -734,7 +737,7 @@ sudo systemctl enable --now indexarr
 journalctl -u indexarr -f
 ```
 
-Il file di configurazione e il database vengono creati in `/var/lib/indexarr`.
+The configuration file and the database are created in `/var/lib/indexarr`.
 
 ## Docker
 
@@ -742,8 +745,8 @@ Il file di configurazione e il database vengono creati in `/var/lib/indexarr`.
 docker compose up -d
 ```
 
-Il volume nominato `indexarr-data` contiene `indexarr.json` e il database. In
-alternativa:
+The named volume `indexarr-data` contains `indexarr.json` and the database.
+Alternatively:
 
 ```bash
 docker build -t indexarr .
@@ -752,37 +755,36 @@ docker run -d --name indexarr -p 8788:8788 \
   indexarr
 ```
 
-La porta predefinita è **8788**, scelta per evitare la 8484 usata da qBittorrent
-in molte installazioni. Il default vale per le installazioni nuove: un
-`indexarr.json` già esistente conserva il valore `listen` scritto al primo
-avvio. Se aggiorni un container creato con la vecchia immagine, aggiorna il
-mapping a `8788:8788` oppure aggiungi `-listen :8484` al comando per restare
-sulla porta precedente.
+The default port is **8788**, chosen to avoid 8484 used by qBittorrent in many
+installations. The default applies to new installations: an existing
+`indexarr.json` keeps the `listen` value written at first start. If you upgrade
+a container created with the old image, update the mapping to `8788:8788` or
+add `-listen :8484` to the command to stay on the previous port.
 
-Il volume **non** contiene la chiave del vault: in Docker usa
-`INDEXARR_MASTER_KEY_FILE` con un secret montato (esempio in
-[docs/VAULT.md](docs/VAULT.md#docker)) oppure `INDEXARR_MASTER_KEY`. Senza chiave
-il servizio parte, ma gli indexer con segreti cifrati non sono leggibili.
+The volume **does not** contain the vault key: in Docker use
+`INDEXARR_MASTER_KEY_FILE` with a mounted secret (example in
+[docs/VAULT.md](docs/VAULT.md#docker)) or `INDEXARR_MASTER_KEY`. Without a key
+the service starts, but indexers with encrypted secrets are not readable.
 
-## Sviluppo
+## Development
 
 ```bash
 make test    # go test ./...
 make vet     # go vet ./...
-make qa      # vet + test + smoke test HTTP sul binario reale
+make qa      # vet + test + HTTP smoke test on the real binary
 make build   # bin/indexarr
-make release # binari linux/amd64, linux/arm64, windows/amd64, darwin/arm64
-make ci      # CI locale, log in ci-logs/<commit>.log
+make release # linux/amd64, linux/arm64, windows/amd64, darwin/arm64 binaries
+make ci      # local CI, log in ci-logs/<commit>.log
 ```
 
-Per diagnosi di memoria/goroutine si può esporre pprof solo su localhost:
+For memory/goroutine diagnosis, pprof can be exposed only on localhost:
 
 ```bash
 INDEXARR_PPROF=127.0.0.1:6060 ./bin/indexarr -config data/indexarr.json
 go tool pprof -top http://127.0.0.1:6060/debug/pprof/heap
 ```
 
-Il CLI delle definizioni è `indexarr-def`:
+The definitions CLI is `indexarr-def`:
 
 ```bash
 go run ./cmd/indexarr-def validate examples/definitions
@@ -791,58 +793,57 @@ go run ./cmd/indexarr-def convert-cardigann -o ./native ./definizioni-da-studiar
 go run ./cmd/indexarr-def fmt -w examples/definitions/html-forum.yaml
 go run ./cmd/indexarr-def fingerprint examples/definitions/html-forum.yaml
 go run ./cmd/indexarr-def schema
-make def-validate   # definizioni di esempio e catalogo, se presente
+make def-validate   # example definitions and catalog, if present
 ```
 
-Struttura dei pacchetti e scelte di progetto:
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Guida all'uso:
-[docs/USAGE.md](docs/USAGE.md). API Torznab: [docs/API.md](docs/API.md);
-API amministrativa JSON: [docs/ADMIN-API.md](docs/ADMIN-API.md). Suite di test e
+Package structure and design choices:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Usage guide:
+[docs/USAGE.md](docs/USAGE.md). Torznab API: [docs/API.md](docs/API.md);
+administrative JSON API: [docs/ADMIN-API.md](docs/ADMIN-API.md). Test suite and
 smoke test: [docs/QA.md](docs/QA.md).
 
-## Limiti
+## Limits
 
-- Un solo processo per database (SQLite con una connessione serializzata).
-- Non è un client BitTorrent, Usenet o eD2k: non scarica e non semina il
-  contenuto.
-- Il filtro per id esterni funziona sulle release che espongono quegli id; in
-  loro assenza si ricade sul titolo.
-- Le categorie RSS sono solo numeriche: le categorie testuali dei feed non
-  producono un id Torznab valido e vengono ignorate; **Default category** copre
-  i feed e i listing che non ne dichiarano una.
-- La ricerca live interroga solo sorgenti che espongono un protocollo di ricerca
-  (Torznab/Newznab); le fonti RSS/HTML alimentano la cache ma non rispondono a
-  una query manuale. La ricerca manuale accetta id esterni e campi
-  musicali/libri, ma non traduce da sola un id in un titolo per i siti che non
-  lo supportano.
-- La vista live manuale mostra al massimo 50 righe e non usa la paginazione
-  normale; gli indexer in timeout continuano in background e richiedono un
-  ricaricamento per mostrare i risultati.
-- Il ripristino di un backup richiede il riavvio del processo; con systemd
-  `Restart=always` è automatico, altrimenti va riavviato a mano.
-- I seeder non riportati dall'indexer (per esempio MirCrew) restano sconosciuti:
-  l'attributo `seeders` viene omesso nella risposta Torznab invece di valere 0.
-- Cloudflare è gestito con FlareSolverr per RSS e indexer diretti; le API
-  proprietarie restano in coda finché non esiste una definizione nativa, e
-  indexarr non include un browser headless.
-- Il catalogo non ha ancora definizioni native per singoli siti Usenet: il
-  percorso Newznab generico è completo, la copertura dei siti cresce con il
-  catalogo.
-- I client di download non hanno ancora una selezione per singolo indexer né
-  una priorità/round-robin tra client dello stesso protocollo.
-- Le notifiche hanno un solo insieme globale di eventi: non c'è ancora una
-  matrice evento × canale.
-- SMTP supporta STARTTLS, non TLS implicito sulla porta 465.
+- One process per database (SQLite with a serialized connection).
+- It is not a BitTorrent, Usenet or eD2k client: it does not download or seed
+  the content.
+- The filter by external ids works on releases that expose those ids; in their
+  absence it falls back to the title.
+- RSS categories are numeric only: the textual categories of feeds do not
+  produce a valid Torznab id and are ignored; **Default category** covers feeds
+  and listings that do not declare one.
+- Live search queries only sources that expose a search protocol
+  (Torznab/Newznab); RSS/HTML sources feed the cache but do not answer a manual
+  query. Manual search accepts external ids and music/book fields, but does not
+  translate an id into a title by itself for sites that do not support it.
+- The manual live view shows at most 50 rows and does not use normal
+  pagination; indexers that time out continue in the background and require a
+  reload to show the results.
+- Restoring a backup requires restarting the process; with systemd
+  `Restart=always` it is automatic, otherwise it must be restarted manually.
+- Seeders not reported by the indexer (for example MirCrew) remain unknown: the
+  `seeders` attribute is omitted in the Torznab response instead of being 0.
+- Cloudflare is handled with FlareSolverr for RSS and direct indexers;
+  proprietary APIs stay queued until a native definition exists, and indexarr
+  does not include a headless browser.
+- The catalog does not yet have native definitions for individual Usenet
+  sites: the generic Newznab path is complete, site coverage grows with the
+  catalog.
+- Download clients do not yet have a per-indexer selection or a
+  priority/round-robin among clients of the same protocol.
+- Notifications have a single global set of events: there is not yet an
+  event × channel matrix.
+- SMTP supports STARTTLS, not implicit TLS on port 465.
 
-## Documentazione
+## Documentation
 
-- [Guida alle definizioni](docs/DEFINITIONS.md) — formato v1, fixture, sicurezza
-- [MirCrew](docs/MIRCREW.md) — definizione nativa, Smartfeed, sessione
-  FlareSolverr
-- [Compatibilità](docs/COMPATIBILITY.md) — fonti, casi limite, diagnostica
-- [Architettura](docs/ARCHITECTURE.md) — pacchetti e scelte di progetto
-- [Uso](docs/USAGE.md) — guida passo passo
-- [API Torznab](docs/API.md) e [API amministrativa](docs/ADMIN-API.md)
-- [Vault](docs/VAULT.md) — chiave, backup, Docker secrets
-- [QA](docs/QA.md) — test e smoke test
-- [Migrazione da Jackett/Prowlarr](docs/MIGRATION-MANAGERS.md)
+- [Definitions guide](docs/DEFINITIONS.md) — v1 format, fixtures, security
+- [MirCrew](docs/MIRCREW.md) — native definition, Smartfeed, FlareSolverr
+  session
+- [Compatibility](docs/COMPATIBILITY.md) — sources, edge cases, diagnostics
+- [Architecture](docs/ARCHITECTURE.md) — packages and design choices
+- [Usage](docs/USAGE.md) — step-by-step guide
+- [Torznab API](docs/API.md) and [Administrative API](docs/ADMIN-API.md)
+- [Vault](docs/VAULT.md) — key, backup, Docker secrets
+- [QA](docs/QA.md) — tests and smoke tests
+- [Migration from Jackett/Prowlarr](docs/MIGRATION-MANAGERS.md)

@@ -1,129 +1,133 @@
-# QA e test
+# QA and tests
 
-indexarr ha una suite di test Go per ogni pacchetto e uno smoke test end-to-end
-che avvia il binario reale su un database temporaneo. L'obiettivo è coprire sia
-la correttezza delle funzioni interne sia il comportamento HTTP osservabile da
-Sonarr/Radarr e dal browser.
+indexarr has a Go test suite for every package and an end-to-end smoke test
+that starts the real binary on a temporary database. The goal is to cover both
+the correctness of the internal functions and the HTTP behavior observable from
+Sonarr/Radarr and from the browser.
 
-## Comandi
+## Commands
 
 ```bash
 make test   # go test ./...
 make vet    # go vet ./...
-make qa     # vet + test + build + smoke test HTTP su un'istanza temporanea
-make e2e    # browser headless, campo per campo, su DB e porta temporanei
+make qa     # vet + test + build + HTTP smoke test on a temporary instance
+make e2e    # headless browser, field by field, on a temporary DB and port
 ```
 
-`make qa` esegue `scripts/qa.sh`: compila il binario, lo avvia su
-`127.0.0.1` con una porta casuale e un database in una directory temporanea,
-verifica le pagine principali, il foglio di stile mobile, il manifest PWA,
-il service worker e la risposta Torznab `t=caps`. Al termine arresta il
-processo e cancella i file temporanei.
+`make qa` runs `scripts/qa.sh`: it builds the binary, starts it on
+`127.0.0.1` with a random port and a database in a temporary directory,
+checks the main pages, the mobile style sheet, the PWA manifest,
+the service worker and the Torznab `t=caps` response. At the end it stops the
+process and deletes the temporary files.
 
-Per usare una porta fissa:
+To use a fixed port:
 
 ```bash
 INDEXARR_QA_PORT=18080 make qa
 ```
 
-`make e2e` esegue `scripts/ui-e2e.py`: compila il binario, apre un database
-temporaneo su una porta casuale, avvia Chrome headless con il Chrome DevTools
-Protocol e un piccolo servizio locale che imita FlareSolverr, qBittorrent e
-Sonarr. Cambia ogni campo dei moduli (Impostazioni, modifica indexer, catalogo,
-App, client di download, definizioni, API key, primo avvio), salva, ricarica e
-rilegge il valore sia dalla pagina sia dal database temporaneo. Copre anche
-`<details>` chiusi, checkbox «rimuovi valore», campi segreti lasciati vuoti,
-tendine di categoria/URL, `data-confirm`, doppio clic e conferma vicino al
-bottone. Senza Chrome stampa `SKIP` ed esce 0; con
-`UI_E2E_REQUIRE_CHROME=1` l'assenza del browser è un errore. `make qa` lo
-esegue quando trova Chrome.
+`make e2e` runs `scripts/ui-e2e.py`: it builds the binary, opens a temporary
+database on a random port, starts headless Chrome with the Chrome DevTools
+Protocol and a small local service that imitates FlareSolverr, qBittorrent and
+Sonarr. It changes every field of the forms (Settings, indexer edit, catalog,
+App, download clients, definitions, API keys, first start), saves, reloads and
+reads the value back both from the page and from the temporary database. It
+covers closed `<details>` too, the «remove value» checkbox, secret fields left
+empty, category/URL drop-downs, `data-confirm`, double click and confirm next to
+the button. Without Chrome it prints `SKIP` and exits 0; with
+`UI_E2E_REQUIRE_CHROME=1` the absence of the browser is an error. `make qa` runs
+it when it finds Chrome.
 
-## Livelli di verifica
+## Verification levels
 
-1. **Statico** — `go vet ./...` e compilazione di tutti i pacchetti.
-2. **Unit/integration** — `go test ./...` sui pacchetti `backup`, `config`,
+1. **Static** — `go vet ./...` and compilation of all packages.
+2. **Unit/integration** — `go test ./...` on the `backup`, `config`,
    `downloadclient`, `feed`, `flaresolverr`, `ingest`, `logbuffer`, `notify`,
-   `store`, `torznabapi`, `web`.
-3. **HTTP integration** — i test di `internal/web` usano `httptest` e
-   esercitano handler, CSRF, cookie, redirect e rendering dei template.
-4. **Smoke end-to-end** — `scripts/qa.sh` usa il binario compilato, quindi
-   verifica anche gli asset embedded e l'avvio reale del server.
+   `store`, `torznabapi`, `web` packages.
+3. **HTTP integration** — the `internal/web` tests use `httptest` and
+   exercise handlers, CSRF, cookies, redirects and template rendering.
+4. **End-to-end smoke** — `scripts/qa.sh` uses the compiled binary, so it
+   also verifies the embedded assets and the real server startup.
 
-## Cosa è coperto
+## What is covered
 
-- **Feed e sorgenti**: parsing RSS/Atom, Torznab, MirCrew,
-  listing HTML (ExtTo, TorrentGalaxy, Corsaro), scoperta feed, sanitizzazione,
-  redazione dei segreti nei log e mapping categorie.
-- **Ingestion**: deduplica, aggiornamento delle release, backoff, auto-disable,
-  scheduler, trigger manuale e gestione degli errori.
-- **Store**: schema e migrazioni, CRUD sorgenti, API key, ricerche e filtri,
-  indice FTS5 (trigger, rebuild su database esistenti, fallback per termini
-  corti e piano di query), blocklist, ricerche salvate, backup, vacuum,
-  integrità, deduplica, azioni di manutenzione e report del database.
-- **Torznab**: `caps`, `search`, `tvsearch`, `movie`, `get`, paginazione,
-  filtri, autenticazione e rate limit.
-- **Web UI**: dashboard, release, dettaglio, sorgenti, quick add, export/import JSON degli indexer,
-  impostazioni, log, manutenzione, CSRF, autenticazione Basic opzionale,
-  PWA e asset statici.
-- **Log**: filtro per livello e per origine (`indexarr`, indexer, RSS,
-  notifiche), conteggio dei problemi, contesto `source`/`kind`/`host` sugli
-  errori delle sorgenti e download filtrato.
-- **Manutenzione**: check di integrità e foreign key, analyze, checkpoint WAL,
-  vacuum, reindex, pulizia per età/sorgente, release senza link, release
-  nascoste, cronologia run, contatori API e ricalcolo dei contatori sorgente.
+- **Feeds and sources**: RSS/Atom parsing, Torznab, MirCrew,
+  HTML listing (ExtTo, TorrentGalaxy, CorsaroBlu), feed discovery, sanitization,
+  redaction of secrets in logs and category mapping.
+- **Ingestion**: de-duplication, release updates, backoff, auto-disable,
+  scheduler, manual trigger and error handling.
+- **Store**: schema and migrations, source CRUD, API keys, searches and filters,
+  FTS5 index (triggers, rebuild on existing databases, fallback for short
+  terms and query plan), blocklist, saved searches, backup, vacuum,
+  integrity, de-duplication, maintenance actions and database report.
+- **Torznab**: `caps`, `search`, `tvsearch`, `movie`, `get`, pagination,
+  filters, authentication and rate limit.
+- **Web UI**: dashboard, releases, detail, sources, quick add, indexer JSON export/import,
+  settings, logs, maintenance, CSRF, optional Basic authentication,
+  PWA and static assets.
+- **Logs**: filter by level and by origin (`indexarr`, indexer, RSS,
+  notifications), problem count, `source`/`kind`/`host` context on source
+  errors, and filtered download log.
+- **Maintenance**: integrity and foreign key check, analyze, WAL checkpoint,
+  vacuum, reindex, cleanup by age/source, releases without links, hidden
+  releases, run history, API counters and source counter recalculation.
 
-## Isolamento
+## Isolation
 
-I test non usano la rete e non toccano il database di produzione:
+The tests do not use the network and do not touch the production database:
 
-- ogni test apre un database in `t.TempDir()`;
-- le sorgenti remote sono simulate con `httptest.Server` o fixture;
-- lo smoke test usa una directory `mktemp` e termina il processo nel `trap`;
-- nessun test richiede servizi esterni o Docker; il solo `make e2e` usa un
-  browser headless, e salta se non è installato.
+- every test opens a database in `t.TempDir()`;
+- remote sources are simulated with `httptest.Server` or fixtures;
+- the smoke test uses an `mktemp` directory and terminates the process in the
+  `trap`;
+- no test requires external services or Docker; only `make e2e` uses a
+  headless browser, and it skips if it is not installed.
 
 ## CI
 
-La CI è locale: `make ci` (`scripts/ci-local.sh`) richiede un albero pulito,
-scrive il log in `ci-logs/<commit>.log` e finisce con `CI-LOCAL <commit> PASS`
-o `CI-LOCAL <commit> FAIL <passaggio>`. Esegue in ordine gofmt e `go vet`, la
-validazione delle definizioni, `make qa`, `go test`, `go test -race`, la
-compilazione per tutte le piattaforme, la compilazione dei test per Windows e
-macOS e il test nel browser; il controllo del budget di risorse (dimensione del
-binario e memoria a riposo, errore sopra 256 MiB) gira in background durante i
-test. Ogni passaggio stampa la sua durata. Tutti i file temporanei (database dei test, binari di `go test`, compilazioni per le altre piattaforme, server del budget, profilo del browser) stanno in una cartella in RAM sotto `/dev/shm` (`CI_TMPFS` per sceglierne un'altra), cancellata alla fine anche se un passaggio fallisce; la cache di compilazione di Go resta su disco. `.github/workflows/qa.yml` resta
-solo come avvio manuale (`workflow_dispatch`) e non parte da sola.
+CI is local: `make ci` (`scripts/ci-local.sh`) requires a clean tree,
+writes the log to `ci-logs/<commit>.log` and ends with `CI-LOCAL <commit> PASS`
+or `CI-LOCAL <commit> FAIL <passaggio>`. It runs in order gofmt and `go vet`,
+definition validation, `make qa`, `go test`, `go test -race`, the build for all
+platforms, the test build for Windows and macOS and the browser test; the
+resource budget check (binary size and idle memory, error above 256 MiB) runs in
+the background during the tests. Every step prints its duration. All temporary
+files (test databases, `go test` binaries, builds for the other platforms, the
+budget server, the browser profile) are in a RAM folder under `/dev/shm`
+(`CI_TMPFS` to choose another one), deleted at the end even if a step fails;
+the Go build cache stays on disk. `.github/workflows/qa.yml` remains
+only as a manual start (`workflow_dispatch`) and does not run by itself.
 
-## Checklist manuale per la UI
+## Manual checklist for the UI
 
-I test automatici verificano che il CSS mobile sia servito, ma la resa visiva
-va controllata a mano quando si modificano i template:
+The automated tests verify that the mobile CSS is served, but the visual
+rendering must be checked by hand when the templates are changed:
 
-- larghezza 390 px: navigazione scorrevole, nessun overflow orizzontale;
-- tabelle trasformate in card con etichette leggibili;
-- checkbox di selezione e “Select all” raggiungibili;
-- input a 16 px e bottoni con area di tocco adeguata;
-- pagine `/`, `/releases`, `/sources`, `/runs`, `/settings`, `/maintenance`,
-  `/logs` e dettaglio release;
-- tema chiaro e scuro;
-- installazione PWA e caricamento offline degli asset statici.
+- 390 px width: scrollable navigation, no horizontal overflow;
+- tables turned into cards with readable labels;
+- selection checkboxes and “Select all” reachable;
+- 16 px inputs and buttons with an adequate touch area;
+- pages `/`, `/releases`, `/sources`, `/runs`, `/settings`, `/maintenance`,
+  `/logs` and release detail;
+- light and dark theme;
+- PWA installation and offline loading of the static assets.
 
-## Aggiungere un test
+## Adding a test
 
-- Per la logica del database: `internal/store/*_test.go`, usando
+- For database logic: `internal/store/*_test.go`, using
   `newTestStore(t)`.
-- Per un handler o una pagina: `internal/web/*_test.go`, usando
-  `newTestEnv(t)`, `csrfFrom`, `postForm` e `get`.
-- Per un parser o un client: fixture locali e `httptest.Server`.
+- For a handler or a page: `internal/web/*_test.go`, using
+  `newTestEnv(t)`, `csrfFrom`, `postForm` and `get`.
+- For a parser or a client: local fixtures and `httptest.Server`.
 
-Ogni nuova utility di manutenzione deve avere almeno un test nello store e uno
-nell'handler web che ne verifichi redirect ed effetto sul database.
+Every new maintenance utility must have at least one test in the store and one
+in the web handler that verifies redirects and the effect on the database.
 
-## Simulazione end-to-end
+## End-to-end simulation
 
-Oltre ai test di package, `sim/` contiene una simulazione deterministica con
-servizi finti (Torznab/Newznab, Sonarr, SABnzbd, NZBGet, Deluge,
-rTorrent e un tracker HTML) e asserzioni con exit code non zero. Si esegue in
-locale con `./sim/run.sh` oppure in Docker con `./sim/run-docker.sh`, sulle
-porte isolate 18484 e 19080. Dettagli, asserzioni e reset in
+Besides the package tests, `sim/` contains a deterministic simulation with
+fake services (Torznab/Newznab, Sonarr, SABnzbd, NZBGet, Deluge,
+rTorrent and an HTML tracker) and assertions with a non-zero exit code. It runs
+locally with `./sim/run.sh` or in Docker with `./sim/run-docker.sh`, on the
+isolated ports 18484 and 19080. Details, assertions and reset in
 [`sim/README.md`](../sim/README.md).
