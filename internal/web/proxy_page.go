@@ -44,7 +44,7 @@ func (s *Server) proxiesPage(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) buildProxyPage(r *http.Request) (proxyPage, error) {
 	data := proxyPage{base: s.newBaseT(r, "proxies.title", "settings"),
-		Kinds: []string{"http", "https", "socks5", "socks5h"}}
+		Kinds: []string{"http", "https", "socks4", "socks4a", "socks5", "socks5h"}}
 	proxies, err := s.store.ListProxies(r.Context())
 	if err != nil {
 		return data, err

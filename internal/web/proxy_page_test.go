@@ -52,8 +52,8 @@ func TestProxyRejectsUnsupportedScheme(t *testing.T) {
 	token, cookie := csrfFrom(t, env.handler, "/proxies")
 	recorder := postForm(t, env.handler, "/proxies", url.Values{
 		"csrf": {token},
-		"kind": {"socks4"},
-		"url":  {"socks4://127.0.0.1:1080"},
+		"kind": {"socks4x"},
+		"url":  {"socks4x://127.0.0.1:1080"},
 	}, cookie)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("POST /proxies = %d, want 400", recorder.Code)
@@ -61,6 +61,37 @@ func TestProxyRejectsUnsupportedScheme(t *testing.T) {
 	proxies, _ := env.store.ListProxies(t.Context())
 	if len(proxies) != 0 {
 		t.Fatalf("an unsupported proxy was stored: %+v", proxies)
+	}
+}
+
+func TestProxyAcceptsSOCKS4Schemes(t *testing.T) {
+	for _, scheme := range []string{"socks4", "socks4a"} {
+		t.Run(scheme, func(t *testing.T) {
+			env := newTestEnv(t)
+			token, cookie := csrfFrom(t, env.handler, "/proxies")
+			recorder := postForm(t, env.handler, "/proxies", url.Values{
+				"csrf": {token},
+				"kind": {scheme},
+				"url":  {scheme + "://127.0.0.1:1080"},
+			}, cookie)
+			if recorder.Code != http.StatusSeeOther {
+				t.Fatalf("POST /proxies = %d: %s", recorder.Code, recorder.Body.String())
+			}
+			proxies, err := env.store.ListProxies(t.Context())
+			if err != nil || len(proxies) != 1 {
+				t.Fatalf("proxies = %+v, %v", proxies, err)
+			}
+			if proxies[0].Kind != scheme {
+				t.Errorf("stored kind = %q, want %q", proxies[0].Kind, scheme)
+			}
+			if proxies[0].URL != scheme+"://127.0.0.1:1080" {
+				t.Errorf("stored URL = %q", proxies[0].URL)
+			}
+			body := get(t, env.handler, "/proxies").Body.String()
+			if !strings.Contains(body, `value="`+scheme+`"`) {
+				t.Errorf("the proxy selector has no %s option", scheme)
+			}
+		})
 	}
 }
 

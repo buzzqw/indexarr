@@ -45,16 +45,16 @@ func proxyLabel(proxy store.Proxy) string {
 	return label
 }
 
-// proxyKind validates the scheme and returns the stored kind. SOCKS4 is not
-// supported by the Go transport used by the engine; HTTP, HTTPS, SOCKS5 and
-// SOCKS5H are.
+// proxyKind validates the scheme and returns the stored kind. HTTP, HTTPS,
+// SOCKS4, SOCKS4a, SOCKS5 and SOCKS5H are accepted; the engine has a dedicated
+// dialer for the SOCKS4 variants.
 func proxyKind(raw string) (string, bool) {
 	parsed, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || parsed.Hostname() == "" {
 		return "", false
 	}
 	switch strings.ToLower(parsed.Scheme) {
-	case "http", "https", "socks5", "socks5h":
+	case "http", "https", "socks4", "socks4a", "socks5", "socks5h":
 		return strings.ToLower(parsed.Scheme), true
 	default:
 		return "", false

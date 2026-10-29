@@ -60,7 +60,7 @@ type TransportConfig struct {
 	Burst            int
 	FailureThreshold int
 	Cooldown         time.Duration
-	ProxyURL         string // optional HTTP/SOCKS5 proxy; empty = direct
+	ProxyURL         string // optional HTTP/SOCKS4/SOCKS4a/SOCKS5 proxy; empty = direct
 	Clock            Clock
 	// Solver retries a request that hit a Cloudflare challenge. Nil disables
 	// the retry; the caller still receives ErrChallenge.
@@ -131,9 +131,17 @@ func NewTransport(cfg TransportConfig) *Transport {
 	if strings.TrimSpace(cfg.ProxyURL) != "" {
 		proxyURL, proxyErr = parseProxyURL(cfg.ProxyURL)
 	}
-	proxyFunc := http.ProxyURL(proxyURL)
-	if proxyURL == nil {
-		proxyFunc = nil
+	// net/http has no SOCKS4 support behind Proxy, so that scheme gets a
+	// dedicated DialContext. Every other supported scheme keeps using the
+	// standard proxy handling.
+	var proxyFunc func(*http.Request) (*url.URL, error)
+	var socks4Proxy *url.URL
+	if proxyURL != nil {
+		if isSOCKS4Scheme(proxyURL.Scheme) {
+			socks4Proxy = proxyURL
+		} else {
+			proxyFunc = http.ProxyURL(proxyURL)
+		}
 	}
 
 	tlsConfig := func() *tls.Config {
@@ -143,12 +151,16 @@ func NewTransport(cfg TransportConfig) *Transport {
 		return &tls.Config{InsecureSkipVerify: true} //nolint:gosec // opt-in per definition, public source only
 	}
 
+	dialContext := guard.DialContext(dialer)
+	if socks4Proxy != nil {
+		dialContext = newSOCKS4Dialer(guard, dialer, socks4Proxy, "tcp")
+	}
 	httpTransport := &http.Transport{
 		// A per-indexer proxy is trusted configuration; the SSRF guard still
 		// validates the final request target before every hop.
 		Proxy:                 proxyFunc,
 		TLSClientConfig:       tlsConfig(),
-		DialContext:           guard.DialContext(dialer),
+		DialContext:           dialContext,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
@@ -171,12 +183,16 @@ func NewTransport(cfg TransportConfig) *Transport {
 	}
 	dialer4 := &net.Dialer{Timeout: cfg.Timeout, KeepAlive: 30 * time.Second}
 	guardDial4 := guard.DialContext(dialer4)
+	dialContext4 := func(ctx context.Context, _, address string) (net.Conn, error) {
+		return guardDial4(ctx, "tcp4", address)
+	}
+	if socks4Proxy != nil {
+		dialContext4 = newSOCKS4Dialer(guard, dialer4, socks4Proxy, "tcp4")
+	}
 	httpTransport4 := &http.Transport{
-		Proxy:           proxyFunc,
-		TLSClientConfig: tlsConfig(),
-		DialContext: func(ctx context.Context, _, address string) (net.Conn, error) {
-			return guardDial4(ctx, "tcp4", address)
-		},
+		Proxy:                 proxyFunc,
+		TLSClientConfig:       tlsConfig(),
+		DialContext:           dialContext4,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
@@ -209,15 +225,16 @@ func isTimeoutError(err error) bool {
 	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
-// parseProxyURL validates a proxy configuration. The returned error never
-// includes the raw URL, which may carry credentials in its userinfo.
+// parseProxyURL validates a proxy configuration. HTTP, HTTPS, SOCKS4, SOCKS4a,
+// SOCKS5 and SOCKS5H are accepted. The returned error never includes the raw
+// URL, which may carry credentials in its userinfo.
 func parseProxyURL(raw string) (*url.URL, error) {
 	parsed, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil {
 		return nil, fmt.Errorf("%w: malformed URL", ErrInvalidProxy)
 	}
 	switch strings.ToLower(parsed.Scheme) {
-	case "http", "https", "socks5", "socks5h":
+	case "http", "https", "socks4", "socks4a", "socks5", "socks5h":
 	default:
 		return nil, fmt.Errorf("%w: unsupported scheme %q", ErrInvalidProxy, parsed.Scheme)
 	}
@@ -225,6 +242,15 @@ func parseProxyURL(raw string) (*url.URL, error) {
 		return nil, fmt.Errorf("%w: missing host", ErrInvalidProxy)
 	}
 	return parsed, nil
+}
+
+func isSOCKS4Scheme(scheme string) bool {
+	switch strings.ToLower(strings.TrimSpace(scheme)) {
+	case "socks4", "socks4a":
+		return true
+	default:
+		return false
+	}
 }
 
 // Do executes req. The caller's request is cloned, so the User-Agent and

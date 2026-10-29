@@ -79,7 +79,7 @@ func TestTransportUsesHTTPProxy(t *testing.T) {
 func TestTransportInvalidProxyFailsClosed(t *testing.T) {
 	cases := []string{
 		"ftp://user:secret@proxy.example:21",
-		"socks4://proxy.example:1080",
+		"socks4x://proxy.example:1080",
 		"://bad",
 		"http:///missing-host",
 	}
@@ -114,6 +114,8 @@ func TestTransportValidProxySchemes(t *testing.T) {
 	for _, proxyURL := range []string{
 		"http://proxy.example:8080",
 		"https://proxy.example:8443",
+		"socks4://proxy.example:1080",
+		"socks4a://proxy.example:1080",
 		"socks5://proxy.example:1080",
 		"socks5h://proxy.example:1080",
 	} {
