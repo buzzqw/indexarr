@@ -107,7 +107,7 @@ var templateSets = newTemplateCache()
 var pageNames = []string{
 	"dashboard", "releases", "release",
 	"run", "rules", "settings", "maintenance", "discover", "error",
-	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form",
+	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form", "cookie_import",
 	"applications", "application_form", "activity", "logs_section", "setup", "proxies",
 	"download_client_form", "site_preview", "smartfeed_form", "store_warning",
 }
@@ -688,6 +688,8 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /indexers/smartfeed", s.smartfeedFormAdd)
 	ui.HandleFunc("GET /indexers/{id}", s.indexerUnifiedDetail)
 	ui.HandleFunc("GET /indexers/{id}/edit", s.indexerUnifiedEdit)
+	ui.HandleFunc("GET /indexers/{id}/cookie", s.indexerCookiePage)
+	ui.HandleFunc("POST /indexers/{id}/cookie", s.indexerCookieCommand)
 	ui.HandleFunc("GET /indexers/{id}/smartfeed", s.indexerSmartfeedConvert)
 	ui.HandleFunc("POST /indexers/{id}", s.indexerUnifiedUpdate)
 	ui.HandleFunc("POST /indexers/{id}/delete", s.indexerUnifiedDelete)
@@ -761,6 +763,7 @@ func (s *Server) Handler() http.Handler {
 		outer.Handle("/api/v2/", s.admin)
 		outer.Handle("/api/v1/", s.admin)
 	}
+	outer.HandleFunc("POST /pair", s.browserCookieImport)
 	outer.HandleFunc("GET /healthz", s.healthz)
 	outer.HandleFunc("GET /metrics", s.metrics)
 	outer.HandleFunc("GET /sw.js", s.serviceWorker)

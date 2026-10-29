@@ -335,6 +335,34 @@ I valori con nome che contiene `api_key`, `apikey`, `token`, `password`,
 in `config_json`. Le definizioni built-in sono oggi in stato `bozza`: non sono
 state verificate contro un sito live.
 
+### Importazione del cookie dal browser
+
+Alcuni siti privati (IPTorrents, per esempio) hanno un login protetto da un
+CAPTCHA e si configurano con il **Cookie** di una sessione aperta nel browser.
+La pagina `GET /indexers/{id}/cookie` (interfaccia, CSRF) spiega il
+procedimento; `POST /indexers/{id}/cookie` genera un comando valido **una sola
+volta e per 10 minuti**:
+
+```
+curl -fsSL <indexarr>/static/import-browser-cookie.py -o /tmp/import-browser-cookie.py && \
+python3 /tmp/import-browser-cookie.py --indexarr <indexarr> --token <token> --domain <dominio>
+```
+
+Lo script gira sul computer con il browser, legge il profilo Firefox
+dell'utente (`cookies.sqlite`), ricava lo User-Agent dalla versione in esecuzione
+e invia il tutto a:
+
+| Metodo | Percorso | Autenticazione | Corpo |
+|---|---|---|---|
+| POST | `/pair` | header `X-Indexarr-Pairing: <token>` | `{"cookie":"...","user_agent":"..."}` |
+
+`/pair` non usa la API key né la password della UI: il token è casuale, legato
+a un solo indexer, monouso e vive solo in memoria (un riavvio lo invalida). Il
+cookie viene sigillato nel vault e lo User-Agent finisce in `config_json`.
+Risposte: `200 {"ok":true}`, `401` token mancante/scaduto, `400` corpo non
+valido, `503` servizio indexer non disponibile. Lo script non stampa mai il
+cookie né il token.
+
 ## Compatibilità Prowlarr v1 (sola lettura)
 
 Per le dashboard che leggono l'API di Prowlarr (Homepage, Organizr, …) sono

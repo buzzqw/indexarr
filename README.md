@@ -232,11 +232,13 @@ sorgente (uploader, tag, categoria) diventano impostazioni della definizione.
 ### IPTorrents
 
 IPTorrents è privato e il login a form è protetto da **Cloudflare Turnstile**:
-non si automatizza. Si aggiunge dal catalogo con un **Cookie di sessione**
-copiato dal browser (DevTools → Network → Cookie) e con lo **stesso
-User-Agent** del browser: il sito lega la sessione a entrambi. Nel profilo del
-sito conviene impostare **Torrents per page 100**, **Show files count** e
-**Category column: Icons**, perché la definizione legge quelle colonne. La
+non si automatizza. Si aggiunge dal catalogo con un **Cookie di sessione** e
+con lo **stesso User-Agent** del browser: il sito lega la sessione a entrambi.
+Sul dettaglio dell'indexer il pulsante **Importa cookie** genera un comando da
+eseguire sul computer col browser: legge il profilo Firefox, invia il cookie a
+indexarr e lo salva cifrato nel vault. In alternativa si incolla il Cookie da
+DevTools → Network. Nel profilo del sito conviene impostare **Torrents per page
+100**, **Show files count** e **Category column: Icons**, perché la definizione legge quelle colonne. La
 casella **Solo freeleech** passa `free=on` al sito e scarta comunque le righe
 non gratuite. Il **seed ratio** dell'indexer viaggia verso le \*arr e verso
 qBittorrent all'invio. Quando il cookie scade la ricerca fallisce con un

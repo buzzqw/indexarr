@@ -24,6 +24,7 @@
     {{end}}
   </div>
   <div class="actions">
+    {{if .CanImportCookie}}<a class="btn" href="/indexers/{{.Indexer.ID}}/cookie" title="{{T "tip.cookieImport"}}">{{T "idx.cookie.menu"}}</a>{{end}}
     <form method="post" action="/indexers/{{.Indexer.ID}}/test">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn primary" type="submit" title="{{T "tip.indexerTest"}}">{{T "idx.test"}}</button>

@@ -1,0 +1,35 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <p class="crumb"><a href="/indexers/{{.Indexer.ID}}">← {{.Indexer.Name}}</a></p>
+    <h1>{{T "idx.cookie.title"}}</h1>
+  </div>
+</section>
+
+{{if .Error}}<p class="flash warn" role="alert">{{.Error}}</p>{{end}}
+
+<section class="panel">
+  <div class="panel-body">
+    <p class="prose">{{T "idx.cookie.help"}}</p>
+    {{if .HasCommand}}
+    <p class="help">{{T "idx.cookie.once"}}</p>
+    <pre class="command" id="cookie-command" tabindex="0" aria-label="{{T "idx.cookie.commandLabel"}}">{{.Command}}</pre>
+    <div class="actions">
+      <button class="btn" type="button" data-copy="{{.Command}}">{{T "common.copy"}}</button>
+      <form method="post" action="/indexers/{{.Indexer.ID}}/cookie">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button class="btn" type="submit">{{T "idx.cookie.regenerate"}}</button>
+      </form>
+      <a class="btn" href="{{.ScriptURL}}">{{T "idx.cookie.download"}}</a>
+    </div>
+    {{else}}
+    <form method="post" action="/indexers/{{.Indexer.ID}}/cookie">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn primary" type="submit">{{T "idx.cookie.generate"}}</button>
+    </form>
+    {{end}}
+    <p class="help">{{T "idx.cookie.browser" .Domain}}</p>
+    <p class="help">{{T "idx.cookie.explain"}}</p>
+  </div>
+</section>
+{{end}}

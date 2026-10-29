@@ -2756,6 +2756,7 @@ type indexerDetailView struct {
 	CatalogState        string
 	Health              health.Assessment
 	Latest              bool
+	CanImportCookie     bool
 	SearchOnly          bool
 	UploaderOnly        bool
 	UploaderMinutes     int
@@ -2848,6 +2849,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		data.DefinitionVersion = def.Schema
 		data.Categories = s.definitionCategoryLabels(r, definitionCategoryIDs(def))
 		data.Latest = def.Meta.HasLatest()
+		data.CanImportCookie = definitionHasCookie(def)
 	}
 	data.SearchOnly = !data.Latest
 	config := publicConfigMap(in.ConfigJSON)
