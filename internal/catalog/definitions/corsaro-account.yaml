@@ -13,6 +13,13 @@
 # fixtures/corsaro-account/README.md.
 schema: 1
 
+# The public origin answers a plain client with 429/503 (Cloudflare in front of
+# nginx); the page opens in a browser. The pasted account cookie must travel
+# through the same FlareSolverr session as the request.
+session:
+  mode: flaresolverr
+  name_prefix: corsaro-account-idx
+
 meta:
   id: corsaro-account
   name: Corsaro (account)
@@ -23,7 +30,7 @@ meta:
   description: ilCorSaRoBlu with login and keyword search (account required).
   urls:
     - https://ilcorsaroblu.org/
-  updated: "2026-10-23"
+  updated: "2026-10-29"
 
 settings:
   - name: cookie

@@ -17,7 +17,7 @@ queued and **no** proxy to Jackett or Prowlarr is created.
 | **RSS / Atom** | complete | Title, magnet, `.torrent` enclosure, size, numeric category, date; bulk import and OPML. |
 | **ExtTo** | complete (HTML) | Dedicated parser: title and magnet from the same row; category from the `c=` filter. |
 | **TorrentGalaxy** | complete (HTML) | Dedicated parser for `post-detail` pages with magnet cache (6 hours). |
-| **CorsaroBlu** | listing only (HTML) | Dedicated parser for `/torrent/`, `/torrents/` links and direct magnets, with detail cache. Guest keyword search is disabled by the site; a FlareSolverr session is required because a plain client receives 429/503. |
+| **CorsaroBlu** | listing only (HTML) | Dedicated parser for `/torrent/`, `/torrents/` links and direct magnets, with detail cache. The public listing needs no credentials. Guest keyword search is disabled by the site; the `CorsaroBlu (account)` variant accepts a pasted session cookie and is still a draft. A FlareSolverr session is required because a plain client receives 429/503. |
 | **HTTP Basic** | complete | Dedicated per-source fields, used for searches and downloads. |
 | **API key** | complete | Sent as `apikey` and as the `X-Api-Key` header; it can be empty. |
 | **Cloudflare / challenge** | with FlareSolverr | Automatic retry for RSS and direct Torznab; LAN addresses excluded. |

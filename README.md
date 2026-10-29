@@ -344,12 +344,14 @@ per file. eD2k remains excluded from synchronization with the \*arr apps.
 
 The three sites have native definitions with real fixtures and equivalence
 tests. The engine follows detail links to get the magnet, with limited
-concurrency and cache. CorsaroBlu is a **listing-only** source: the site
-disables guest keyword search, so indexarr reads its latest list and does not
-send a query; since 29 October 2026 every request goes through a FlareSolverr
-session because a plain client receives 429/503. Limits: first page, at most 50
-releases per source; if the layout changes or the site requires login, the test
-reports the error.
+concurrency and cache. CorsaroBlu is a **listing-only** source for guests: no
+username, password or cookie is needed to read its latest list and magnets.
+The site disables guest keyword search, so indexarr does not send a query. The
+`CorsaroBlu (account)` variant accepts a **pasted session cookie** for keyword
+search; it remains a draft until an account can verify it. Since 29 October 2026
+every request goes through a FlareSolverr session because a plain client
+receives 429/503. Limits: first page, at most 50 releases per source; if the
+layout changes or the site requires login, the test reports the error.
 
 ### Private sources, cookies and MirCrew
 

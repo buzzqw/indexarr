@@ -560,7 +560,7 @@ func TestCorsaroUsesAFlareSolverrSession(t *testing.T) {
 	// real browser opens the listing. The definition must route every request
 	// through FlareSolverr, otherwise a run stores zero rows and still reports
 	// success.
-	for _, id := range []string{"corsaro", "corsaro-user"} {
+	for _, id := range []string{"corsaro", "corsaro-user", "corsaro-account"} {
 		def := parseDefinition(t, id)
 		if def.Session == nil {
 			t.Fatalf("%s: missing session", id)
