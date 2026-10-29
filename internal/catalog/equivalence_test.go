@@ -73,6 +73,9 @@ func nativeConnector(t *testing.T, id, baseURL string) *engine.DefinitionConnect
 
 func nativeConnectorFromDefinition(t *testing.T, def *definition.Definition, baseURL string) *engine.DefinitionConnector {
 	t.Helper()
+	// Fixtures are served by httptest, not by the real site: a session would
+	// require FlareSolverr and has its own test.
+	def.Session = nil
 	def.Meta.URLs[0] = baseURL + "/"
 	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
 		Indexer:    engine.IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
@@ -552,6 +555,22 @@ func TestTGxCapabilitiesAreLocalOnly(t *testing.T) {
 	}
 }
 
+func TestCorsaroUsesAFlareSolverrSession(t *testing.T) {
+	// Since 2026-10-29 a plain HTTP client gets 429/503 from Cloudflare while a
+	// real browser opens the listing. The definition must route every request
+	// through FlareSolverr, otherwise a run stores zero rows and still reports
+	// success.
+	for _, id := range []string{"corsaro", "corsaro-user"} {
+		def := parseDefinition(t, id)
+		if def.Session == nil {
+			t.Fatalf("%s: missing session", id)
+		}
+		if mode := strings.ToLower(strings.TrimSpace(def.Session.Mode)); mode != "flaresolverr" {
+			t.Errorf("%s: session mode = %q, want flaresolverr", id, def.Session.Mode)
+		}
+	}
+}
+
 func TestCorsaroUserLatestList(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/index.php" && r.URL.Query().Get("uploader") == "82400" {
@@ -562,6 +581,7 @@ func TestCorsaroUserLatestList(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	def := parseDefinition(t, "corsaro-user")
+	def.Session = nil
 	def.Meta.URLs[0] = server.URL + "/"
 	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
 		Indexer:    engine.IndexerRef{Slug: "corsaro-user", Name: "Corsaro user"},
@@ -607,6 +627,7 @@ func TestCorsaroUserStopsPaginationAtMaxAge(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 	def := parseDefinition(t, "corsaro-user")
+	def.Session = nil
 	def.Meta.URLs[0] = server.URL + "/"
 	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
 		Indexer:    engine.IndexerRef{Slug: "corsaro-user", Name: "Corsaro user"},

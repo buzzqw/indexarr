@@ -9,6 +9,13 @@
 # queried in live searches.
 schema: 1
 
+# Since 2026-10-29 the origin answers a plain HTTP client with 429/503
+# (Cloudflare in front of nginx), while the page opens in a real browser. Every
+# request of this indexer therefore goes through one FlareSolverr session.
+session:
+  mode: flaresolverr
+  name_prefix: corsaro-user-idx
+
 meta:
   id: corsaro-user
   name: Corsaro (uploader)
@@ -19,7 +26,7 @@ meta:
   description: Corsaro listing for one uploader, updated periodically.
   urls:
     - https://ilcorsaroblu.org/
-  updated: "2026-10-24"
+  updated: "2026-10-29"
 
 settings:
   - name: uploader
