@@ -118,13 +118,14 @@
   </div>
 </section>
 
-{{if .AccessFields}}
 <section class="panel" id="access">
   <div class="panel-head">
     <h2>{{T "idx.access.title"}}</h2>
-    <a class="btn small" href="{{.AccessEditLink}}">{{if .MissingAccess}}{{T "idx.access.action"}}{{else}}{{T "idx.access.edit"}}{{end}}</a>
+    {{if or .AccessFields .AccessURLKey}}<a class="btn small" href="{{.AccessEditLink}}">{{if .MissingAccess}}{{T "idx.access.action"}}{{else}}{{T "idx.access.edit"}}{{end}}</a>{{end}}
   </div>
   <div class="panel-body">
+    {{template "access-methods" .AccessMethods}}
+    {{if .AccessFields}}
     <p class="help">{{T "idx.access.help"}}</p>
     <dl class="detail detail-grid">
       {{range .AccessFields}}
@@ -132,9 +133,13 @@
       <dd>{{if .Configured}}<span class="chip ok">{{T "idx.access.configured"}}</span>{{if .HasUpdated}} <span class="muted">{{T "idx.access.updated" (ago .UpdatedAt)}}</span>{{end}}{{else if .Required}}<span class="chip warn">{{T "idx.access.missing"}}</span>{{else}}<span class="chip">{{T "idx.access.optional"}}</span>{{end}}</dd>
       {{end}}
     </dl>
+    {{else if .AccessURLKey}}
+    <p class="help">{{T "indexerForm.accessNone"}}</p>
+    {{else}}
+    <p class="help">{{T "idx.access.none"}}</p>
+    {{end}}
   </div>
 </section>
-{{end}}
 
 {{if .Test}}
 <section class="panel">

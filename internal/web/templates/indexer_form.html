@@ -60,17 +60,20 @@
   </div>
   {{end}}
 
-  {{if .AccessFields}}
-  <section class="form-access">
+  <section class="form-access" id="access">
     <h3 class="sub-head">{{T "indexerForm.accessTitle"}}</h3>
+    {{template "access-methods" .AccessMethods}}
+    {{if .AccessFields}}
     <p class="help">{{T "indexerForm.accessHelp"}}</p>
     <div class="form-grid">
       {{range .AccessFields}}{{template "indexer-setting-field" .}}{{end}}
     </div>
+    {{else if .NoAccessFields}}
+    <p class="help">{{T "indexerForm.accessNone"}}</p>
+    {{else}}
+    <p class="help">{{T "idx.access.none"}}</p>
+    {{end}}
   </section>
-  {{else if .NoAccessFields}}
-  <p class="help">{{T "indexerForm.accessNone"}}</p>
-  {{end}}
 
   {{if .Categories}}{{template "category-picker" .}}{{end}}
 

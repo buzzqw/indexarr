@@ -31,7 +31,7 @@ meta:
 
 settings:
   - name: url
-    type: text
+    type: password
     label: "Smartfeed URL"
     help: "The personal URL from https://mircrew-releases.org/smartfeed/ui. It contains a token and is stored in the vault."
     required: true

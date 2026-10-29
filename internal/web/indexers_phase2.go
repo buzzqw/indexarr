@@ -2096,6 +2096,7 @@ type compactFormView struct {
 	Help                      string
 	RequiredFields            []indexerSettingField
 	AccessFields              []indexerSettingField
+	AccessMethods             []accessMethodView
 	IsPrivate                 bool
 	CanImportCookie           bool
 	LoginVariantID            string
@@ -2380,6 +2381,8 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		}
 	}
 	data.IsPrivate = isPrivate
+	sortAccessFields(data.AccessFields)
+	data.AccessMethods = s.accessMethods(r, parsed)
 	data.NoAccessFields = data.IsPrivate && len(data.AccessFields) == 0
 	if !definitionHasURL {
 		// Definitions that take the address from meta.urls need no URL field,
@@ -2756,6 +2759,7 @@ type hostRequestView struct {
 // indexerAccessRow is one required credential of a source: whether the vault
 // or the public configuration already holds it.
 type indexerAccessRow struct {
+	Name       string
 	Label      string
 	Required   bool
 	Configured bool
@@ -2842,6 +2846,8 @@ type indexerDetailView struct {
 	RunsLink       string
 	AppLogLink     string
 	AccessFields   []indexerAccessRow
+	AccessMethods  []accessMethodView
+	AccessURLKey   bool
 	MissingAccess  []string
 	AccessEditLink string
 	ListReturn     string
@@ -3141,7 +3147,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 			}
 			name := strings.ToLower(strings.TrimSpace(setting.Name))
 			configured := strings.TrimSpace(config[name]) != ""
-			row := indexerAccessRow{Required: setting.Required}
+			row := indexerAccessRow{Name: name, Required: setting.Required}
 			if indexersvc.IsSecretKey(name) {
 				updated, found := secretUpdated[name]
 				configured = found
@@ -3156,6 +3162,10 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 				data.MissingAccess = append(data.MissingAccess, label)
 			}
 		}
+		sortAccessRows(data.AccessFields)
+		data.AccessMethods = s.accessMethods(r, def)
+		keys := accessMethodKeys(def)
+		data.AccessURLKey = len(keys) == 1 && keys[0] == "urlkey"
 	}
 	data.AccessEditLink = detailPath + "/edit"
 	data.ListReturn = sanitizeIndexerReturn(r.URL.Query().Get("from"))

@@ -93,7 +93,7 @@ func TestOptionalCookieIsShownInTheAccessSection(t *testing.T) {
 	}
 
 	body := stripDetails(get(t, env.handler, "/indexers/new?definition=iptorrents&lang=it").Body.String())
-	start := strings.Index(body, `<section class="form-access">`)
+	start := strings.Index(body, `<section class="form-access"`)
 	if start < 0 {
 		t.Fatal("the form has no Access section")
 	}
