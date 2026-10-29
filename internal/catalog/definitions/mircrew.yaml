@@ -27,7 +27,7 @@ meta:
   description: MirCrew Italian forum (phpBB, Cloudflare, magnets unlocked by thanking a topic).
   urls:
     - https://mircrew-releases.org/
-  updated: "2026-10-26"
+  updated: "2026-10-29"
   latest: false
 
 settings:
@@ -89,6 +89,11 @@ auth:
   # ucp.php is a protected page: index.php is public and shows the same title
   # whether the user is logged in or not.
   success: { selector: 'a[href*="mode=logout"]' }
+  # Every page of a logged-in user carries the logout link in the header. A
+  # search or topic without it means the forum dropped the session (or the
+  # pasted browser cookie expired): log in again once instead of reading the
+  # guest page.
+  logged_in: { selector: 'a[href*="mode=logout"]' }
   failure:
     - { selector: "div.error", message: text }
   refresh_after: 6h

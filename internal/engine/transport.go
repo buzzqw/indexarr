@@ -84,6 +84,17 @@ type Response struct {
 	Header http.Header
 	Body   []byte
 	URL    *url.URL
+	// Redirects are the redirect answers that led to this one, oldest first,
+	// kept only when they set cookies. A login that answers with a 302 sets
+	// the session cookies there, not on the page it redirects to.
+	Redirects []RedirectHop
+}
+
+// RedirectHop is one redirect answer: the address that returned it and its
+// headers.
+type RedirectHop struct {
+	URL    *url.URL
+	Header http.Header
 }
 
 // Transport is the one HTTP transport shared by all connectors. It applies
@@ -391,10 +402,11 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 	}
 
 	result := &Response{
-		Status: response.StatusCode,
-		Header: response.Header.Clone(),
-		Body:   body,
-		URL:    response.Request.URL,
+		Status:    response.StatusCode,
+		Header:    response.Header.Clone(),
+		Body:      body,
+		URL:       response.Request.URL,
+		Redirects: redirectHops(response.Request),
 	}
 
 	observeResponse(ctx, observationOf(req, result, started))
@@ -520,8 +532,80 @@ func (t *Transport) checkRedirect(req *http.Request, via []*http.Request) error 
 		req.Header.Del("Authorization")
 		req.Header.Del("Cookie")
 		req.Header.Del("X-Api-Key")
+		return nil
+	}
+	// Without a cookie jar the client forwards the first request's Cookie
+	// header unchanged, so a login answered with a 302 would follow the
+	// redirect as a guest. Apply the cookies every hop set so far.
+	header := req.Header.Get("Cookie")
+	for _, previous := range via {
+		header = mergeCookieHeader(header, previous.Response)
+	}
+	if header = mergeCookieHeader(header, req.Response); header != "" {
+		req.Header.Set("Cookie", header)
+	} else {
+		req.Header.Del("Cookie")
 	}
 	return nil
+}
+
+// mergeCookieHeader applies the cookies a redirect answer set to a Cookie
+// request header: a new value replaces the old one with the same name and an
+// expired cookie is removed. Order is kept for the cookies that stay.
+func mergeCookieHeader(header string, response *http.Response) string {
+	if response == nil {
+		return header
+	}
+	set := response.Cookies()
+	if len(set) == 0 {
+		return header
+	}
+	parsed := (&http.Request{Header: http.Header{"Cookie": {header}}}).Cookies()
+	now := time.Now()
+	for _, cookie := range set {
+		if cookie == nil || cookie.Name == "" {
+			continue
+		}
+		expired := cookie.MaxAge < 0 || (!cookie.Expires.IsZero() && cookie.Expires.Before(now))
+		index := -1
+		for i, existing := range parsed {
+			if existing.Name == cookie.Name {
+				index = i
+				break
+			}
+		}
+		switch {
+		case expired && index >= 0:
+			parsed = append(parsed[:index], parsed[index+1:]...)
+		case expired:
+		case index >= 0:
+			parsed[index].Value = cookie.Value
+		default:
+			parsed = append(parsed, &http.Cookie{Name: cookie.Name, Value: cookie.Value})
+		}
+	}
+	parts := make([]string, 0, len(parsed))
+	for _, cookie := range parsed {
+		parts = append(parts, cookie.Name+"="+cookie.Value)
+	}
+	return strings.Join(parts, "; ")
+}
+
+// redirectHops walks back from the final request through the redirect
+// answers that produced it and returns those that set cookies, oldest first.
+func redirectHops(final *http.Request) []RedirectHop {
+	var hops []RedirectHop
+	for request := final; request != nil && request.Response != nil; request = request.Response.Request {
+		answer := request.Response
+		if answer.Request == nil || answer.Request.URL == nil || len(answer.Header.Values("Set-Cookie")) == 0 {
+			continue
+		}
+		hops = append(hops, RedirectHop{URL: answer.Request.URL, Header: answer.Header.Clone()})
+	}
+	for i, j := 0, len(hops)-1; i < j; i, j = i+1, j-1 {
+		hops[i], hops[j] = hops[j], hops[i]
+	}
+	return hops
 }
 
 // sameHostChain reports whether every hop, including the target, stayed on the

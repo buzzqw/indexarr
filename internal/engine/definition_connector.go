@@ -1196,6 +1196,9 @@ func (c *DefinitionConnector) doWithFallback(ctx context.Context, request *http.
 		return nil, c.requestError(err)
 	}
 	if c.flare == nil {
+		for _, hop := range response.Redirects {
+			c.session.Capture(hop.URL, hop.Header)
+		}
 		c.session.Capture(response.URL, response.Header)
 	}
 	return response, nil
