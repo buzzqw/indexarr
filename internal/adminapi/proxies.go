@@ -142,9 +142,9 @@ func (s *Server) proxyValues(req proxyRequest, update bool, current *store.Proxy
 	}
 	kind := strings.ToLower(parsed.Scheme)
 	switch kind {
-	case "http", "https", "socks5", "socks5h":
+	case "http", "https", "socks4", "socks4a", "socks5", "socks5h":
 	default:
-		return "", "", nil, errors.New("proxy scheme must be http, https, socks5 or socks5h")
+		return "", "", nil, errors.New("proxy scheme must be http, https, socks4, socks4a, socks5 or socks5h")
 	}
 	credentials := ""
 	if parsed.User != nil {
