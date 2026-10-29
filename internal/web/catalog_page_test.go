@@ -133,13 +133,13 @@ func TestCatalogFiltersCombine(t *testing.T) {
 			name: "public verified English movies",
 			path: "/indexers/new?type=public&state=verified&proto=torrent&cat=movies&language=en-US",
 			want: []string{"ExtTo", "The Pirate Bay"},
-			not:  []string{"TorrentLeech", "Corsaro (ilCorSaRoBlu)"},
+			not:  []string{"TorrentLeech", "CorsaroBlu"},
 		},
 		{
 			name: "semi-private Italian",
 			path: "/indexers/new?type=semi-private&cat=movies&language=it-IT",
 			want: []string{"No site matches"},
-			not:  []string{"Corsaro (account)", "ExtTo", "TorrentLeech"},
+			not:  []string{"CorsaroBlu (account)", "ExtTo", "TorrentLeech"},
 		},
 		{
 			name: "search by name",

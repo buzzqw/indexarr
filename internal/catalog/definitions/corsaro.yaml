@@ -1,4 +1,4 @@
-# VERIFICATA (verified). Corsaro (ilCorSaRoBlu) HTML listing.
+# VERIFICATA (verified). CorsaroBlu HTML listing.
 #
 # Written from the public pages captured on 2026-10-23 in
 # fixtures/corsaro/listing.html and fixtures/corsaro/detail.html. The public
@@ -21,7 +21,7 @@ session:
 
 meta:
   id: corsaro
-  name: Corsaro (ilCorSaRoBlu)
+  name: CorsaroBlu
   language: it-IT
   type: public
   protocol: torrent

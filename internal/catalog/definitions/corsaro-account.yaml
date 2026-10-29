@@ -22,7 +22,7 @@ session:
 
 meta:
   id: corsaro-account
-  name: Corsaro (account)
+  name: CorsaroBlu (account)
   language: it-IT
   type: semi-private
   protocol: torrent

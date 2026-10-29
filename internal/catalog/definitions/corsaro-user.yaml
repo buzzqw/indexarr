@@ -18,7 +18,7 @@ session:
 
 meta:
   id: corsaro-user
-  name: Corsaro (uploader)
+  name: CorsaroBlu (uploader)
   language: it-IT
   type: public
   protocol: torrent

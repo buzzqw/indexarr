@@ -405,7 +405,7 @@
   },
   {
     "id": "corsaro",
-    "name": "Corsaro (ilCorSaRoBlu)",
+    "name": "CorsaroBlu",
     "description": "Public Corsaro HTML listing with magnets in the row.",
     "language": "it-IT",
     "type": "public",
@@ -429,7 +429,7 @@
   },
   {
     "id": "corsaro-account",
-    "name": "Corsaro (account)",
+    "name": "CorsaroBlu (account)",
     "description": "ilCorSaRoBlu with login and keyword search (account required).",
     "language": "it-IT",
     "type": "semi-private",
@@ -453,7 +453,7 @@
   },
   {
     "id": "corsaro-user",
-    "name": "Corsaro (uploader)",
+    "name": "CorsaroBlu (uploader)",
     "description": "Corsaro listing for one uploader, updated periodically.",
     "language": "it-IT",
     "type": "public",
