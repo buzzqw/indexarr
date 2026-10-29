@@ -127,6 +127,7 @@
     {{template "access-methods" .AccessMethods}}
     {{if .AccessFields}}
     <p class="help">{{T "idx.access.help"}}</p>
+    {{if .CookieAlternative}}<p class="help">{{T "idx.access.cookieAlternative"}}</p>{{end}}
     <dl class="detail detail-grid">
       {{range .AccessFields}}
       <dt>{{.Label}}</dt>

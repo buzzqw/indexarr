@@ -29,7 +29,8 @@ func TestParseExample(t *testing.T) {
 	if len(def.Meta.URLs) != 2 {
 		t.Errorf("urls = %v, want 2 entries", def.Meta.URLs)
 	}
-	if len(def.Settings) != 2 || def.Settings[0].Name != "username" {
+	// The form login gets the optional session cookie as a third setting.
+	if len(def.Settings) != 3 || def.Settings[0].Name != "username" || !def.Settings[2].Alternative {
 		t.Errorf("unexpected settings: %+v", def.Settings)
 	}
 	if def.Auth == nil {

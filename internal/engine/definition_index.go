@@ -251,7 +251,7 @@ func (c *DefinitionConnector) fetchIndexPageOnce(ctx context.Context, target *ur
 	if err != nil {
 		return nil, c.requestError(err)
 	}
-	if (response.Status == http.StatusUnauthorized || response.Status == http.StatusForbidden) && c.needsLogin() {
+	if (response.Status == http.StatusUnauthorized || response.Status == http.StatusForbidden) && c.canReLogin() {
 		if err := c.forceReLogin(ctx); err != nil {
 			return nil, err
 		}

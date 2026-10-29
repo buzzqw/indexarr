@@ -2,7 +2,7 @@
 
 {{define "problem"}}<div class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span>{{.Text}}</span>{{if .ActionLabel}}{{if .ActionPost}} <form class="problem-form" method="post" action="{{.ActionPost}}"><input type="hidden" name="csrf" value="{{.CSRF}}">{{if .ActionReturn}}<input type="hidden" name="return" value="{{.ActionReturn}}">{{end}}<button class="problem-action problem-button" type="submit"{{if .ActionTitle}} title="{{.ActionTitle}}"{{end}}>{{.ActionLabel}}</button></form>{{else}} <a class="problem-action" href="{{.ActionURL}}"{{if .ActionTitle}} title="{{.ActionTitle}}"{{end}}>{{.ActionLabel}}</a>{{end}}{{end}}</div>{{end}}
 
-{{define "access-methods"}}{{if .}}<p class="help access-method" title="{{T "idx.accessMethod.tip"}}"><strong>{{T "idx.accessMethod.title"}}:</strong> {{range $i, $m := .}}{{if $i}} + {{end}}<span class="chip" title="{{$m.Help}}">{{$m.Label}}</span>{{end}}</p>{{end}}{{end}}
+{{define "access-methods"}}{{if .}}<p class="help access-method" title="{{T "idx.accessMethod.tip"}}"><strong>{{T "idx.accessMethod.title"}}:</strong> {{range $i, $m := .}}{{if $i}}{{if $m.Alternative}} {{T "idx.accessMethod.or"}} {{else}} + {{end}}{{end}}<span class="chip" title="{{$m.Help}}">{{$m.Label}}</span>{{end}}</p>{{end}}{{end}}
 
 {{define "advanced-open"}}<details class="advanced"{{if .Open}} open{{end}}><summary>{{if .Title}}{{.Title}}{{else}}{{T "component.advanced"}}{{end}}</summary><div class="advanced-body">{{end}}
 

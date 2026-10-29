@@ -125,9 +125,10 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 	if err := rejectManagerEndpoints(settings); err != nil {
 		return store.Indexer{}, err
 	}
+	hasSetting := func(name string) bool { return settings[name] != "" }
 	for _, setting := range parsed.Settings {
-		if setting.Required && settings[setting.Name] == "" &&
-			!(in.AllowPendingCookie && strings.EqualFold(strings.TrimSpace(setting.Name), "cookie")) {
+		if setting.Required && !parsed.LoginSatisfied(setting.Name, hasSetting) &&
+			!(in.AllowPendingCookie && (strings.EqualFold(strings.TrimSpace(setting.Name), "cookie") || parsed.CookieCovers(setting.Name))) {
 			return store.Indexer{}, fmt.Errorf("missing required setting: %s", setting.Name)
 		}
 	}
@@ -540,28 +541,30 @@ func (s *Service) secretKeySet(ctx context.Context, id int64) (map[string]bool, 
 // submitted values, the existing public configuration and the secrets already
 // stored for the indexer.
 func validateRequired(parsed *definition.Definition, provided map[string]string, config map[string]any, existingSecrets map[string]bool, allowPendingCookie bool) error {
+	has := func(name string) bool {
+		// A key present with an empty value explicitly clears the setting
+		// (for a secret it deletes the vault row), so it cannot satisfy a
+		// required setting even when an old value exists.
+		if value, present := provided[name]; present {
+			return value != ""
+		}
+		if existingSecrets[name] {
+			return true
+		}
+		return !IsSecretKey(name) && settingText(config[name]) != ""
+	}
 	for _, setting := range parsed.Settings {
 		if !setting.Required {
 			continue
 		}
-		// A key present with an empty value explicitly clears the setting
-		// (for a secret it deletes the vault row), so it cannot satisfy a
-		// required setting even when an old value exists.
-		if value, present := provided[setting.Name]; present {
-			if value != "" {
-				continue
-			}
-			return fmt.Errorf("missing required setting: %s", setting.Name)
-		}
-		if existingSecrets[setting.Name] {
+		// A session cookie pasted from the browser replaces the login
+		// credentials of a form-login definition.
+		if parsed.LoginSatisfied(setting.Name, has) {
 			continue
 		}
-		if !IsSecretKey(setting.Name) {
-			if text := settingText(config[setting.Name]); text != "" {
-				continue
-			}
-		}
-		if allowPendingCookie && strings.EqualFold(strings.TrimSpace(setting.Name), "cookie") {
+		// The browser import fills the cookie in right after the creation,
+		// and on a form login it stands for the username and password.
+		if allowPendingCookie && (strings.EqualFold(strings.TrimSpace(setting.Name), "cookie") || parsed.CookieCovers(setting.Name)) {
 			continue
 		}
 		return fmt.Errorf("missing required setting: %s", setting.Name)

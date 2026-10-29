@@ -2099,6 +2099,7 @@ type compactFormView struct {
 	AccessMethods             []accessMethodView
 	IsPrivate                 bool
 	CanImportCookie           bool
+	CookieAlternative         bool
 	LoginVariantID            string
 	NoAccessFields            bool
 	AdvancedFields            []indexerSettingField
@@ -2199,6 +2200,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	data.DefinitionName = parsed.Meta.Name
 	data.Derived = parsed.IsDerived()
 	data.CanImportCookie = definitionHasCookie(parsed)
+	data.CookieAlternative = parsed.CookieAlternative()
 	if strings.EqualFold(strings.TrimSpace(parsed.Meta.ID), "corsaro") {
 		data.LoginVariantID = "corsaro-account"
 	}
@@ -2367,6 +2369,16 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 			raw = setting.Default
 		}
 		field := s.settingField(r, setting, raw, secretKeys[name], false)
+		if parsed.CookieAlternative() {
+			// Username and password or the browser cookie: either one is
+			// enough, so neither carries the asterisk on its own.
+			if parsed.CookieCovers(name) {
+				field.Required = false
+			}
+			if setting.Alternative {
+				field.Help = s.translate(r, "setting.cookie.alternativeHelp")
+			}
+		}
 		switch {
 		case isAccessSetting(name) && (setting.Required || isRestricted):
 			// Credentials are the first thing the user must enter: keep them
@@ -2815,6 +2827,7 @@ type indexerDetailView struct {
 	Health              health.Assessment
 	Latest              bool
 	CanImportCookie     bool
+	CookieAlternative   bool
 	MissingCookie       bool
 	SearchOnly          bool
 	UploaderOnly        bool
@@ -2912,6 +2925,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		data.Categories = s.definitionCategoryLabels(r, definitionCategoryIDs(def))
 		data.Latest = def.Meta.HasLatest()
 		data.CanImportCookie = definitionHasCookie(def)
+		data.CookieAlternative = def.CookieAlternative()
 	}
 	data.SearchOnly = !data.Latest
 	config := publicConfigMap(in.ConfigJSON)
@@ -3112,7 +3126,8 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 				break
 			}
 		}
-		data.MissingCookie = !hasCookie
+		// On a form login the cookie is only an alternative to the login.
+		data.MissingCookie = !hasCookie && !data.CookieAlternative
 	}
 	// A feed or Torznab URL is sealed when it carries an rsskey or an API key.
 	// Show the redacted stored address instead of falling back to the
@@ -3141,6 +3156,9 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	// is listed without being reported as missing.
 	if def != nil {
 		restricted := strings.EqualFold(def.Meta.Type, "private") || strings.EqualFold(def.Meta.Type, "semi-private")
+		// A pasted session cookie stands for the username and password of
+		// a form login: they are not reported missing next to it.
+		_, cookieConfigured := secretUpdated["cookie"]
 		for _, setting := range def.Settings {
 			if !isAccessSetting(setting.Name) || (!setting.Required && !restricted) {
 				continue
@@ -3158,7 +3176,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 			row.Label = label
 			row.Configured = configured
 			data.AccessFields = append(data.AccessFields, row)
-			if !configured && setting.Required {
+			if !configured && setting.Required && !(def.CookieCovers(name) && cookieConfigured) {
 				data.MissingAccess = append(data.MissingAccess, label)
 			}
 		}

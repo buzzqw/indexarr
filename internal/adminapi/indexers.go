@@ -205,8 +205,9 @@ func (s *Server) handleIndexerCreate(w http.ResponseWriter, r *http.Request) {
 	for key, value := range req.Settings {
 		provided[key] = strings.TrimSpace(settingText(value))
 	}
+	hasSetting := func(name string) bool { return provided[name] != "" }
 	for _, setting := range parsed.Settings {
-		if setting.Required && provided[setting.Name] == "" {
+		if setting.Required && !parsed.LoginSatisfied(setting.Name, hasSetting) {
 			writeError(w, http.StatusBadRequest, "missing required setting: "+setting.Name)
 			return
 		}

@@ -77,6 +77,9 @@ type DefinitionConnector struct {
 	// next address instead of failing every run.
 	mirrors   []*url.URL
 	mirror    atomic.Int32
+	// cookieRejected is set when the site dropped the session of the cookie
+	// pasted from the browser and the connector moved to the login form.
+	cookieRejected atomic.Bool
 	protocol  Protocol
 	caps      Capabilities
 	session   *Session
@@ -150,8 +153,9 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 	if settings["apikey"] == "" {
 		settings["apikey"] = settings["api_key"]
 	}
+	hasSetting := func(name string) bool { return strings.TrimSpace(settings[name]) != "" }
 	for _, setting := range def.Settings {
-		if setting.Required && strings.TrimSpace(settings[setting.Name]) == "" {
+		if setting.Required && !def.LoginSatisfied(setting.Name, hasSetting) {
 			return nil, fmt.Errorf("definition %q: missing required setting %q", def.Meta.ID, setting.Name)
 		}
 	}
@@ -377,7 +381,7 @@ func (c *DefinitionConnector) latestCategory(ctx context.Context, latest *defini
 			return nil, err
 		}
 		if (response.Status == http.StatusUnauthorized || response.Status == http.StatusForbidden) &&
-			c.needsLogin() && !relogged {
+			c.canReLogin() && !relogged {
 			relogged = true
 			if err := c.forceReLogin(ctx); err != nil {
 				return nil, err
@@ -1446,6 +1450,9 @@ func (c *DefinitionConnector) needsLogin() bool {
 // Browsers copy the whole "Cookie:" request header; the prefix, line breaks
 // and surrounding whitespace are removed before the value reaches a request.
 func (c *DefinitionConnector) pastedCookie() string {
+	if c.cookieRejected.Load() {
+		return ""
+	}
 	raw := strings.TrimSpace(c.settings["cookie"])
 	if raw == "" {
 		return ""
@@ -1469,7 +1476,39 @@ func (c *DefinitionConnector) ensureLogin(ctx context.Context) error {
 	return c.loginLocked(ctx)
 }
 
+// cookieInUse reports whether a form-login definition is running on the
+// session cookie pasted from the browser instead of its login.
+func (c *DefinitionConnector) cookieInUse() bool {
+	return c.def.CookieAlternative() && c.pastedCookie() != ""
+}
+
+// canReLogin reports whether a lost session can be recovered: with the login
+// form, or by leaving an expired pasted cookie for it.
+func (c *DefinitionConnector) canReLogin() bool {
+	return c.needsLogin() || c.cookieInUse()
+}
+
+// dropPastedCookie handles a session the site dropped while the connector ran
+// on the pasted cookie. With username and password it moves to the login
+// form; without them the user must import the cookie again, and an error
+// says so instead of an empty result.
+func (c *DefinitionConnector) dropPastedCookie() error {
+	if !c.cookieInUse() {
+		return nil
+	}
+	for _, setting := range c.def.Settings {
+		if c.def.CookieCovers(setting.Name) && strings.TrimSpace(c.settings[setting.Name]) != "" {
+			c.cookieRejected.Store(true)
+			return nil
+		}
+	}
+	return c.loginError("the session cookie pasted from the browser has expired: import it again or enter the username and password")
+}
+
 func (c *DefinitionConnector) forceReLogin(ctx context.Context) error {
+	if err := c.dropPastedCookie(); err != nil {
+		return err
+	}
 	if !c.needsLogin() {
 		return nil
 	}
@@ -1483,6 +1522,9 @@ func (c *DefinitionConnector) forceReLogin(ctx context.Context) error {
 // stamp (the login time seen before the failed page). Two topic pages read in
 // parallel that both find the session gone cost one login, not two.
 func (c *DefinitionConnector) reLoginAfter(ctx context.Context, stamp time.Time) error {
+	if err := c.dropPastedCookie(); err != nil {
+		return err
+	}
 	if !c.needsLogin() {
 		return nil
 	}
@@ -1498,7 +1540,7 @@ func (c *DefinitionConnector) reLoginAfter(ctx context.Context, stamp time.Time)
 // sessionLost reports whether an authenticated page came back without the
 // definition's auth.logged_in marker.
 func (c *DefinitionConnector) sessionLost(response *Response) bool {
-	if c.def.Auth == nil || c.def.Auth.LoggedIn == nil || !c.needsLogin() || response == nil {
+	if c.def.Auth == nil || c.def.Auth.LoggedIn == nil || !c.canReLogin() || response == nil {
 		return false
 	}
 	// A JSON answer comes from the authenticated API (TorrentLeech's browse
@@ -1962,7 +2004,7 @@ func (c *DefinitionConnector) fetchSearchPage(ctx context.Context, request *http
 	}
 
 	if (response.Status == http.StatusUnauthorized || response.Status == http.StatusForbidden) &&
-		c.needsLogin() && !*relogged {
+		c.canReLogin() && !*relogged {
 		*relogged = true
 		if err := c.forceReLogin(ctx); err != nil {
 			return nil, err

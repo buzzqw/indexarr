@@ -65,6 +65,7 @@
     {{template "access-methods" .AccessMethods}}
     {{if .AccessFields}}
     <p class="help">{{T "indexerForm.accessHelp"}}</p>
+    {{if .CookieAlternative}}<p class="help">{{T "idx.access.cookieAlternative"}}</p>{{end}}
     <div class="form-grid">
       {{range .AccessFields}}{{template "indexer-setting-field" .}}{{end}}
     </div>

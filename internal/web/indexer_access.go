@@ -13,6 +13,9 @@ import (
 type accessMethodView struct {
 	Label string
 	Help  string
+	// Alternative joins the method with "or" instead of "+": the session
+	// cookie of a form login replaces the login, it is not one more field.
+	Alternative bool
 }
 
 // accessFieldRank keeps the access fields in the same order on every source:
@@ -113,8 +116,9 @@ func (s *Server) accessMethods(r *http.Request, def *definition.Definition) []ac
 	for _, key := range accessMethodKeys(def) {
 		text := accessMethodText[key]
 		views = append(views, accessMethodView{
-			Label: s.translate(r, text[0]),
-			Help:  s.translate(r, text[1]),
+			Label:       s.translate(r, text[0]),
+			Help:        s.translate(r, text[1]),
+			Alternative: key == "cookie" && def.CookieAlternative(),
 		})
 	}
 	return views

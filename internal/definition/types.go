@@ -181,6 +181,9 @@ type Setting struct {
 	Default  string   `yaml:"default,omitempty" json:"default,omitempty"`
 	Required bool     `yaml:"required,omitempty" json:"required,omitempty"`
 	Options  []string `yaml:"options,omitempty" json:"options,omitempty"`
+	// Alternative marks the session cookie added by Parse to a form-login
+	// definition: it is not in the YAML and replaces the login when set.
+	Alternative bool `yaml:"-" json:"alternative,omitempty"`
 }
 
 // Category maps a site category id to a standard Torznab/Newznab category.

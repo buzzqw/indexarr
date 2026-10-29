@@ -60,7 +60,7 @@ func (c *DefinitionConnector) downloadWithBefore(ctx context.Context, item Item)
 	// The session may have expired between the login check and this request,
 	// or the forum may have invalidated it. An empty extracted value is the
 	// signal: log in again once and retry the topic before giving up.
-	if c.needsLogin() && hasEmptyValue(before.Extract, values) {
+	if c.canReLogin() && hasEmptyValue(before.Extract, values) {
 		if err := c.forceReLogin(ctx); err != nil {
 			return Payload{}, true, err
 		}

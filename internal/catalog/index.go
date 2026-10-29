@@ -226,6 +226,11 @@ func indexRequired(settings []definition.Setting) []string {
 	out := make([]string, 0, len(settings))
 	for _, setting := range settings {
 		name := strings.TrimSpace(setting.Name)
+		if setting.Alternative {
+			// The cookie added to a form login is a way around the login,
+			// not one more credential the site needs.
+			continue
+		}
 		// A session cookie is always a credential the site needs, even when
 		// the form lets the indexer be created without it and the Import
 		// cookie command fills it in afterwards.

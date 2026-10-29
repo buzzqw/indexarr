@@ -44,6 +44,7 @@ func Parse(body []byte) (*Definition, error) {
 	if err := def.Validate(); err != nil {
 		return nil, err
 	}
+	def.addCookieAlternative()
 	return &def, nil
 }
 
