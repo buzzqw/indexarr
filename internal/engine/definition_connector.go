@@ -1128,14 +1128,28 @@ func (c *DefinitionConnector) doFeed(ctx context.Context, request *http.Request)
 }
 
 func (c *DefinitionConnector) doWithFallback(ctx context.Context, request *http.Request, feed bool) (*Response, error) {
+	// With more than one address every attempt has its own breaker key, so a
+	// dead address only opens its own breaker; the indexer's breaker records
+	// the outcome of the whole circle and fails only when every address did.
+	multi := c.flare == nil && len(c.mirrors) > 1 && request != nil && request.URL != nil && c.ownHost(request.URL.Host)
+	key := c.breakerKey()
+	if multi && c.transport.breaker != nil {
+		if err := c.transport.breaker.allow(key); err != nil {
+			return nil, c.requestError(fmt.Errorf("engine: breaker %q: %w", key, err))
+		}
+	}
 	send := func(request *http.Request) (*Response, error) {
 		if c.flare != nil {
 			return c.doSession(ctx, request)
 		}
-		if feed {
-			return c.transport.DoFeed(ctx, c.breakerKey(), request)
+		sendKey := key
+		if multi {
+			sendKey = key + "@" + strings.ToLower(request.URL.Hostname())
 		}
-		return c.transport.Do(ctx, c.breakerKey(), request)
+		if feed {
+			return c.transport.DoFeed(ctx, sendKey, request)
+		}
+		return c.transport.Do(ctx, sendKey, request)
 	}
 	current := int(c.mirror.Load())
 	response, err := send(c.onMirror(request, current))
@@ -1152,6 +1166,9 @@ func (c *DefinitionConnector) doWithFallback(ctx context.Context, request *http.
 			c.mirror.CompareAndSwap(int32(current), int32(next))
 		}
 	}
+	if multi {
+		c.noteCircleOutcome(ctx, key, response, err)
+	}
 	if err != nil {
 		if c.flare != nil {
 			// doSession already returns a sanitized error.
@@ -1163,6 +1180,41 @@ func (c *DefinitionConnector) doWithFallback(ctx context.Context, request *http.
 		c.session.Capture(response.URL, response.Header)
 	}
 	return response, nil
+}
+
+// noteCircleOutcome records on the indexer's breaker what the whole circle of
+// addresses produced, with the same rules the transport applies to a single
+// address: a 5xx or a network failure counts, a cancelled request or a
+// rate limit (already held by the address's own breaker) does not.
+func (c *DefinitionConnector) noteCircleOutcome(ctx context.Context, key string, response *Response, err error) {
+	breaker := c.transport.breaker
+	if breaker == nil {
+		return
+	}
+	switch {
+	case err == nil && response != nil && response.Status >= 500:
+		breaker.failure(key)
+	case err == nil:
+		breaker.success(key)
+	case ctx.Err() != nil, errors.Is(err, ErrRateLimited):
+		breaker.release(key)
+	default:
+		breaker.failure(key)
+	}
+}
+
+// ActiveBaseURL returns the address the connector is using now: the first
+// address of the definition, or the mirror it moved to.
+func (c *DefinitionConnector) ActiveBaseURL() *url.URL {
+	if c == nil || len(c.mirrors) == 0 {
+		return nil
+	}
+	index := int(c.mirror.Load())
+	if index < 0 || index >= len(c.mirrors) {
+		index = 0
+	}
+	active := *c.mirrors[index]
+	return &active
 }
 
 // definitionMirrors parses the definition's addresses after the first one.
@@ -1223,7 +1275,9 @@ func (c *DefinitionConnector) ownHost(host string) bool {
 // Cloudflare uses it for its challenge too.
 func mirrorDown(response *Response, err error) bool {
 	if err != nil {
-		return mirrorFailover(err)
+		// An address whose own breaker or host backoff is open is skipped
+		// too: the loop only runs when the connector has other addresses.
+		return mirrorFailover(err) || errors.Is(err, ErrBreakerOpen)
 	}
 	if response == nil {
 		return false

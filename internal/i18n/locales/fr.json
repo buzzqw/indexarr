@@ -456,6 +456,8 @@
   "idx.catalog.allTypes": "Tous les types",
   "idx.catalog.credentials": "Saisir les identifiants",
   "idx.detail.address": "Adresse",
+  "idx.detail.activeMirror": "utilisée",
+  "idx.detail.activeMirrorTip": "La première adresse ne répond pas : indexarr est passé tout seul sur ce miroir et la source fonctionne. Il revient à la première si le miroir ne répond plus.",
   "idx.detail.addressNone": "aucune adresse configurée",
   "idx.detail.addressTip": "L'adresse configurée pour cette source. Les identifiants et les paramètres secrets de l'URL sont masqués.",
   "idx.health.appLogAll": "Ouvrir le journal complet",

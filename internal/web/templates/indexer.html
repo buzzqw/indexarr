@@ -9,7 +9,7 @@
       {{range .Badges}}<span class="badge badge-{{.Kind}}" title="{{if eq .Kind "access"}}{{T "tip.indexerAccess"}}{{else if eq .Kind "tls"}}{{T "tip.insecureTLS"}}{{else if eq .Kind "experimental"}}{{T "tip.experimental"}}{{else}}{{T "tip.indexerState"}}{{end}}">{{.Label}}</span>{{end}}
     </div>
     {{if .SiteAddress}}
-    <p class="site-address" title="{{T "idx.detail.addressTip"}}"><span class="muted">{{T "idx.detail.address"}}:</span> <a class="link" href="{{.SiteAddress}}" target="_blank" rel="noopener noreferrer">{{.SiteAddress}}</a></p>
+    <p class="site-address" title="{{T "idx.detail.addressTip"}}"><span class="muted">{{T "idx.detail.address"}}:</span> <a class="link" href="{{.SiteAddress}}" target="_blank" rel="noopener noreferrer">{{.SiteAddress}}</a>{{if .ActiveMirror}} · <span class="muted" title="{{T "idx.detail.activeMirrorTip"}}">{{T "idx.detail.activeMirror"}}:</span> <a class="link" href="{{.ActiveMirror}}" target="_blank" rel="noopener noreferrer">{{.ActiveMirror}}</a>{{end}}</p>
     {{else}}
     <p class="site-address muted" title="{{T "idx.detail.addressTip"}}">{{T "idx.detail.address"}}: {{T "idx.detail.addressNone"}}</p>
     {{end}}

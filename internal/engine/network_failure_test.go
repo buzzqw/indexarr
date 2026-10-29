@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/definition"
 )
@@ -219,5 +220,110 @@ search:
 	search(first.URL)
 	if connector.mirror.Load() != 0 {
 		t.Errorf("mirror = %d, want 0 after the mirror died", connector.mirror.Load())
+	}
+}
+
+// circleConnector builds a connector on two local addresses with a breaker
+// that opens at the first failure, the worst case for a dead first address.
+func circleConnector(t *testing.T, first, second string, clock Clock) *DefinitionConnector {
+	t.Helper()
+	def, err := definition.Parse([]byte(`schema: 1
+meta:
+  id: mirror-breaker
+  name: Mirror breaker
+  type: public
+  protocol: torrent
+  urls:
+    - ` + first + `/
+    - ` + second + `/
+capabilities:
+  search: [q]
+search:
+  request:
+    get: /search
+  response:
+    type: html
+    rows: { selector: "tr" }
+    fields:
+      title: { selector: "a" }
+      details: { selector: "a", attr: href, type: url }
+`))
+	if err != nil {
+		t.Fatalf("parse definition: %v", err)
+	}
+	connector, err := NewDefinitionConnector(DefinitionConfig{
+		Indexer:    IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Transport:  NewTransport(TransportConfig{AllowPrivate: true, FailureThreshold: 1, Cooldown: time.Minute, Clock: clock}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	return connector
+}
+
+// A dead first address only opens its own breaker: the indexer's breaker
+// sees the whole circle, which worked, so the source never reads as failing,
+// also when the dead address gets its half-open probe after the cooldown.
+func TestDeadAddressDoesNotOpenTheIndexerBreaker(t *testing.T) {
+	page := []byte(`<html><body><table><tr><td><a href="/t/1">Release</a></td></tr></table></body></html>`)
+	alive := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { writeBody(t, w, page) }))
+	t.Cleanup(alive.Close)
+	clock := newDefinitionClock()
+	connector := circleConnector(t, "http://indexarr-dead.invalid", alive.URL, clock)
+	search := func(round string) {
+		t.Helper()
+		items, err := connector.Search(context.Background(), SearchRequest{Mode: ModeSearch, Query: "release"})
+		if err != nil {
+			t.Fatalf("%s: Search: %v", round, err)
+		}
+		if len(items) != 1 || !strings.HasPrefix(items[0].DetailsURL, alive.URL) {
+			t.Fatalf("%s: items = %+v", round, items)
+		}
+		if state := connector.transport.BreakerState(connector.breakerKey()); state != BreakerClosed {
+			t.Fatalf("%s: indexer breaker = %v, want closed", round, state)
+		}
+	}
+	search("first")
+	if got := connector.ActiveBaseURL().String(); got != alive.URL+"/" {
+		t.Errorf("ActiveBaseURL = %q, want the mirror", got)
+	}
+	// Back on the dead address after its cooldown: the half-open probe fails,
+	// the mirror answers, the indexer breaker stays closed.
+	connector.mirror.Store(0)
+	clock.Advance(2 * time.Minute)
+	search("half-open")
+}
+
+// Going around the circle passes a host whose backoff is open (it answered
+// 503 with Retry-After) and reaches the address that works.
+func TestCircleSkipsAnAddressInHostBackoff(t *testing.T) {
+	page := []byte(`<html><body><table><tr><td><a href="/t/1">Release</a></td></tr></table></body></html>`)
+	alive := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { writeBody(t, w, page) }))
+	t.Cleanup(alive.Close)
+	busy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "600")
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(busy.Close)
+
+	// The per-host backoff is keyed by host name: the live address goes
+	// through "localhost" so it is not the 127.0.0.1 host in backoff.
+	aliveURL := strings.Replace(alive.URL, "127.0.0.1", "localhost", 1)
+	connector := circleConnector(t, aliveURL, busy.URL, newDefinitionClock())
+	connector.mirror.Store(1)
+	// The 503 is a busy site, not a dead one: no switch on this answer.
+	if _, err := connector.Search(context.Background(), SearchRequest{Mode: ModeSearch, Query: "release"}); err == nil {
+		t.Fatal("Search on a 503 succeeded")
+	}
+	items, err := connector.Search(context.Background(), SearchRequest{Mode: ModeSearch, Query: "release"})
+	if err != nil {
+		t.Fatalf("Search past the backoff: %v", err)
+	}
+	if len(items) != 1 || !strings.HasPrefix(items[0].DetailsURL, aliveURL) {
+		t.Fatalf("items = %+v", items)
+	}
+	if connector.mirror.Load() != 0 {
+		t.Errorf("mirror = %d, want 0", connector.mirror.Load())
 	}
 }

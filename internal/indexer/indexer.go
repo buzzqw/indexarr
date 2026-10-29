@@ -872,6 +872,28 @@ func (m *Manager) CircuitState(indexerID int64, slug string) engine.BreakerState
 	return transport.BreakerState(slug)
 }
 
+// ActiveBaseURL reports the address a source is using now, read from the
+// connector already in the cache: the definition's first address, or the
+// mirror it moved to when that one stopped answering. It never builds a
+// connector, so a source that has not run yet reports false.
+func (m *Manager) ActiveBaseURL(indexerID int64) (string, bool) {
+	m.mu.Lock()
+	entry, ok := m.cache[indexerID]
+	m.mu.Unlock()
+	if !ok || entry.connector == nil {
+		return "", false
+	}
+	active, ok := entry.connector.(interface{ ActiveBaseURL() *url.URL })
+	if !ok {
+		return "", false
+	}
+	base := active.ActiveBaseURL()
+	if base == nil {
+		return "", false
+	}
+	return base.String(), true
+}
+
 // breakerOpen reports whether the existing per-indexer breaker is open for the
 // transport that actually serves this indexer (the shared one, or the private
 // transport built for a local/proxied site).

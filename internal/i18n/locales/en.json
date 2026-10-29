@@ -456,6 +456,8 @@
   "idx.catalog.allTypes": "All types",
   "idx.catalog.credentials": "Enter credentials",
   "idx.detail.address": "Address",
+  "idx.detail.activeMirror": "in use",
+  "idx.detail.activeMirrorTip": "The first address does not answer: indexarr moved to this mirror on its own and the source works. It goes back to the first one if the mirror stops answering.",
   "idx.detail.addressNone": "no address configured",
   "idx.detail.addressTip": "The address configured for this source. Credentials and secret parameters in the URL are hidden.",
   "idx.health.appLogAll": "Open the full log",

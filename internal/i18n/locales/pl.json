@@ -456,6 +456,8 @@
   "idx.catalog.allTypes": "Wszystkie typy",
   "idx.catalog.credentials": "Wpisz poświadczenia",
   "idx.detail.address": "Adres",
+  "idx.detail.activeMirror": "w użyciu",
+  "idx.detail.activeMirrorTip": "Pierwszy adres nie odpowiada: indexarr sam przełączył się na ten mirror i źródło działa. Wróci do pierwszego, jeśli mirror przestanie odpowiadać.",
   "idx.detail.addressNone": "brak skonfigurowanego adresu",
   "idx.detail.addressTip": "Adres skonfigurowany dla tego źródła. Poświadczenia i tajne parametry w adresie URL są ukrywane.",
   "idx.health.appLogAll": "Otwórz pełny dziennik",

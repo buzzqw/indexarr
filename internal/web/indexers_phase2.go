@@ -2773,8 +2773,11 @@ type indexerDetailView struct {
 	NextStep            uiNextStep
 	// Verdict, the address and the source log answer three questions right
 	// on the Overview tab: does it work, what is the address, what happened.
-	Verdict        healthVerdict
-	SiteAddress    string
+	Verdict     healthVerdict
+	SiteAddress string
+	// ActiveMirror is the definition address the connector uses now, set only
+	// when it moved away from the first one because that one stopped answering.
+	ActiveMirror   string
 	ProblemDetail  string
 	ProblemAt      time.Time
 	HasProblemAt   bool
@@ -2859,6 +2862,11 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		address = def.Meta.URLs[0]
 	}
 	data.SiteAddress = indexerSiteAddress(address)
+	if s.native != nil && def != nil && len(def.Meta.URLs) > 1 && address == def.Meta.URLs[0] {
+		if active, ok := s.native.ActiveBaseURL(in.ID); ok && !sameHost(active, address) {
+			data.ActiveMirror = indexerSiteAddress(active)
+		}
+	}
 	if indexer.LiveExcluded(in) {
 		data.UploaderOnly = true
 		interval := time.Hour
@@ -3113,8 +3121,15 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	}
 	if s.polite != nil {
 		host := configHost(in.ConfigJSON)
-		if host == "" && def != nil && len(def.Meta.URLs) > 0 {
-			if parsed, err := url.Parse(def.Meta.URLs[0]); err == nil {
+		first := ""
+		if def != nil && len(def.Meta.URLs) > 0 {
+			first = def.Meta.URLs[0]
+		}
+		if data.ActiveMirror != "" {
+			first = data.ActiveMirror
+		}
+		if host == "" && first != "" {
+			if parsed, err := url.Parse(first); err == nil {
 				host = strings.ToLower(parsed.Hostname())
 			}
 		}
@@ -3546,4 +3561,14 @@ func indexSourceViews(def *definition.Definition, tvLabel, movieLabel string) []
 		out = append(out, indexSourceView{Label: movieLabel, URL: link})
 	}
 	return out
+}
+
+// sameHost reports whether two addresses name the same host.
+func sameHost(a, b string) bool {
+	left, errA := url.Parse(strings.TrimSpace(a))
+	right, errB := url.Parse(strings.TrimSpace(b))
+	if errA != nil || errB != nil {
+		return false
+	}
+	return strings.EqualFold(left.Hostname(), right.Hostname())
 }

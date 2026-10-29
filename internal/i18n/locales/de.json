@@ -456,6 +456,8 @@
   "idx.catalog.allTypes": "Alle Typen",
   "idx.catalog.credentials": "Zugangsdaten eingeben",
   "idx.detail.address": "Adresse",
+  "idx.detail.activeMirror": "in Verwendung",
+  "idx.detail.activeMirrorTip": "Die erste Adresse antwortet nicht: indexarr ist selbst auf diesen Mirror gewechselt und die Quelle funktioniert. Antwortet der Mirror nicht mehr, geht es zur ersten zurück.",
   "idx.detail.addressNone": "keine Adresse konfiguriert",
   "idx.detail.addressTip": "Die für diese Quelle konfigurierte Adresse. Zugangsdaten und geheime Parameter in der URL werden ausgeblendet.",
   "idx.health.appLogAll": "Vollständiges Protokoll öffnen",

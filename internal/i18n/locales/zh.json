@@ -456,6 +456,8 @@
   "idx.catalog.allTypes": "所有类型",
   "idx.catalog.credentials": "填写凭据",
   "idx.detail.address": "地址",
+  "idx.detail.activeMirror": "正在使用",
+  "idx.detail.activeMirrorTip": "第一个地址没有响应：indexarr 已自动切换到这个镜像，来源工作正常。如果镜像停止响应，会切回第一个地址。",
   "idx.detail.addressNone": "未配置地址",
   "idx.detail.addressTip": "为这个源配置的地址。URL 中的凭据和秘密参数会被隐藏。",
   "idx.health.appLogAll": "打开完整日志",

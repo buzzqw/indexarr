@@ -22,11 +22,12 @@ meta:
   protocol: torrent
   author: indexarr
   description: Public TorrentGalaxy HTML listing, with magnets in the row.
+  # Same pages on both. torrentgalaxy.one stopped resolving on 2026-10-28:
+  # the live .info goes first, so a restart does not start from a dead
+  # address; .one stays as a mirror in case it comes back.
   urls:
-    - https://torrentgalaxy.one/
-    # Same pages; torrentgalaxy.one stopped resolving on 2026-10-28 and the
-    # engine moves to the next address when a domain is gone.
     - https://torrentgalaxy.info/
+    - https://torrentgalaxy.one/
   updated: "2026-10-29"
 
 settings:

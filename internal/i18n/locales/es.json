@@ -456,6 +456,8 @@
   "idx.catalog.allTypes": "Todos los tipos",
   "idx.catalog.credentials": "Introducir credenciales",
   "idx.detail.address": "Dirección",
+  "idx.detail.activeMirror": "en uso",
+  "idx.detail.activeMirrorTip": "La primera dirección no responde: indexarr pasó solo a este espejo y la fuente funciona. Vuelve a la primera si el espejo deja de responder.",
   "idx.detail.addressNone": "ninguna dirección configurada",
   "idx.detail.addressTip": "La dirección configurada para esta fuente. Las credenciales y los parámetros secretos de la URL se ocultan.",
   "idx.health.appLogAll": "Abrir el registro completo",

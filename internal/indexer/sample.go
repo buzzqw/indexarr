@@ -12,7 +12,9 @@ import (
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
-// runCapture keeps the first HTTP response of one execution. The response is
+// runCapture keeps the first HTTP response of one execution, or the first
+// good one when an earlier address answered with an error and a mirror
+// answered after it. The response is
 // truncated and redacted before it can reach the store: a sample is a
 // diagnostic, not a copy of the tracker page.
 type runCapture struct {
@@ -32,7 +34,9 @@ func (c *runCapture) observe(observation engine.ResponseObservation) {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.has {
+	// A dead address (a Cloudflare 52x page) followed by the mirror that
+	// answered: the sample shows the mirror, the page the run really read.
+	if c.has && (c.observation.Status < 400 || observation.Status >= 400 || observation.Status == 0) {
 		return
 	}
 	c.observation = observation

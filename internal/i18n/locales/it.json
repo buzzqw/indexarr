@@ -456,6 +456,8 @@
   "idx.catalog.allTypes": "Tutti i tipi",
   "idx.catalog.credentials": "Inserisci credenziali",
   "idx.detail.address": "Indirizzo",
+  "idx.detail.activeMirror": "in uso",
+  "idx.detail.activeMirrorTip": "Il primo indirizzo non risponde: indexarr è passato da solo a questo mirror e la fonte funziona. Tornerà al primo se il mirror smette di rispondere.",
   "idx.detail.addressNone": "nessun indirizzo configurato",
   "idx.detail.addressTip": "L'indirizzo configurato per questa sorgente. Credenziali e parametri segreti nell'URL sono oscurati.",
   "idx.health.appLogAll": "Apri il log completo",
