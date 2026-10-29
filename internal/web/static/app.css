@@ -2037,3 +2037,21 @@ table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; 
 .panel > .empty-state { margin: var(--pad-y) var(--pad-x); }
 /* An "Advanced" block between two cards does not stick to the next one. */
 .content > .advanced { margin-bottom: 1.2rem; }
+
+/* Form footers: secondary actions on the left, the primary one last on the
+   right (UI rule 13). The DOM order stays, so Enter still submits the
+   primary button. */
+.form-actions .btn.primary { order: 99; }
+/* One-action forms in a grid (maintenance): button, field and help stack
+   with one gap, so every card of the grid has the same rhythm. */
+.action-grid > form,
+.danger-zone > form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+.action-grid > form > .field,
+.danger-zone > form > .field { align-self: stretch; }
+/* A long label wraps inside its grid column instead of running out of it. */
+.action-grid .btn { white-space: normal; max-width: 100%; text-align: left; }

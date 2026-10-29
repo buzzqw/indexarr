@@ -1387,6 +1387,7 @@
   "settings.checksTitle": "检查与维护",
   "settings.cleanup.chooseIndexer": "选择索引器",
   "settings.cleanup.clearRuns": "清除运行历史",
+  "settings.cleanup.clearRunsAll": "清除全部运行历史",
   "settings.cleanup.clearTorrents": "清除 .torrent 文件",
   "settings.cleanup.days": "早于（天）",
   "settings.cleanup.dedupe": "合并重复",

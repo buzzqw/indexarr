@@ -1387,6 +1387,7 @@
   "settings.checksTitle": "Kontrole i porządki",
   "settings.cleanup.chooseIndexer": "Wybierz indekser",
   "settings.cleanup.clearRuns": "Wyczyść historię",
+  "settings.cleanup.clearRunsAll": "Wyczyść całą historię",
   "settings.cleanup.clearTorrents": "Usuń pliki .torrent",
   "settings.cleanup.days": "Starsze niż (dni)",
   "settings.cleanup.dedupe": "Scal duplikaty",

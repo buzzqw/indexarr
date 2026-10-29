@@ -50,7 +50,7 @@
   </div>
   {{end}}
 
-  <div class="actions">
+  <div class="actions form-actions">
     <button class="btn primary" type="submit" name="mode" value="latest">{{if .ExistingLatest}}{{T "idx.smartfeed.update"}}{{else}}{{T "idx.smartfeed.add"}}{{end}}</button>
     {{if and (not .NativeExists) (not .ExistingLatest)}}
     <button class="btn" type="submit" name="mode" value="both">{{T "idx.smartfeed.addBoth"}}</button>

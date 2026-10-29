@@ -80,7 +80,7 @@
     {{if .HasAuth}}
     <label class="check"><input type="checkbox" name="clear_auth" value="1"> <span>{{T "proxies.clearAuth"}}</span></label>
     {{end}}
-    <div class="actions">
+    <div class="actions form-actions">
       {{if .Edit}}<a class="btn" href="/proxies">{{T "common.cancel"}}</a>{{end}}
       <button class="btn primary" type="submit">{{if .Edit}}{{T "common.save"}}{{else}}{{T "proxies.add"}}{{end}}</button>
     </div>

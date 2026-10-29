@@ -1387,6 +1387,7 @@
   "settings.checksTitle": "Prüfungen und Pflege",
   "settings.cleanup.chooseIndexer": "Indexer wählen",
   "settings.cleanup.clearRuns": "Laufhistorie löschen",
+  "settings.cleanup.clearRunsAll": "Gesamte Laufhistorie löschen",
   "settings.cleanup.clearTorrents": ".torrent-Dateien löschen",
   "settings.cleanup.days": "Älter als (Tage)",
   "settings.cleanup.dedupe": "Duplikate zusammenführen",
