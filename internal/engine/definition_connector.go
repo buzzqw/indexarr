@@ -1139,12 +1139,16 @@ func (c *DefinitionConnector) doWithFallback(ctx context.Context, request *http.
 	}
 	current := int(c.mirror.Load())
 	response, err := send(c.onMirror(request, current))
-	for next := current + 1; err != nil && mirrorFailover(err) && next < len(c.mirrors); next++ {
+	// The other addresses are tried in a circle, so a connector that moved
+	// to a mirror goes back to the first address when the mirror dies too.
+	for step := 1; step < len(c.mirrors) && mirrorDown(response, err); step++ {
+		next := (current + step) % len(c.mirrors)
 		retry := c.onMirror(request, next)
 		if retry == nil {
 			break
 		}
-		if response, err = send(retry); err == nil {
+		if again, againErr := send(retry); !mirrorDown(again, againErr) {
+			response, err = again, againErr
 			c.mirror.CompareAndSwap(int32(current), int32(next))
 		}
 	}
@@ -1203,6 +1207,24 @@ func (c *DefinitionConnector) ownHost(host string) bool {
 		if strings.EqualFold(mirror.Host, host) {
 			return true
 		}
+	}
+	return false
+}
+
+// mirrorDown reports an answer that says the address itself is gone: a
+// network failure from mirrorFailover, or a Cloudflare page saying the origin
+// behind it is down or unreachable (502, 504, 52x, 530). A 503 is left alone:
+// Cloudflare uses it for its challenge too.
+func mirrorDown(response *Response, err error) bool {
+	if err != nil {
+		return mirrorFailover(err)
+	}
+	if response == nil {
+		return false
+	}
+	switch response.Status {
+	case http.StatusBadGateway, http.StatusGatewayTimeout, 520, 521, 522, 523, 524, 525, 526, 530:
+		return true
 	}
 	return false
 }

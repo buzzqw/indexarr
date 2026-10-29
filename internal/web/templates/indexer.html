@@ -238,7 +238,7 @@
 <section class="panel">
   <div class="panel-head">
     <h2>{{T "idx.detail.filters"}}</h2>
-    <a class="link" href="/indexers/{{.Indexer.ID}}/edit">{{T "common.edit"}}</a>
+    <a class="btn small" href="/indexers/{{.Indexer.ID}}/edit">{{T "common.edit"}}</a>
   </div>
   <div class="panel-body">
     {{if .Categories}}
@@ -255,7 +255,7 @@
 <section class="panel">
   <div class="panel-head">
     <h2>{{T "idx.detail.latest"}}</h2>
-    <a class="link" href="/releases?indexer={{.Indexer.ID}}">{{T "common.view"}}</a>
+    <a class="btn small" href="/releases?indexer={{.Indexer.ID}}">{{T "common.view"}}</a>
   </div>
   <div class="table-scroll">
     <table>

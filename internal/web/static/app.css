@@ -12,6 +12,9 @@
   --warn: #9a5b00;
   --danger: #b42318;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  /* One height for buttons, link-buttons, inputs and selects (UI rule 13). */
+  --control-h: 2.4rem;
+  --control-h-sm: 1.9rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -32,6 +35,10 @@
 }
 
 * { box-sizing: border-box; }
+
+/* .btn and other display rules must not reveal an element the markup hides,
+   such as the secret field's "Save" before "Change" is pressed. */
+[hidden] { display: none !important; }
 
 html { -webkit-text-size-adjust: 100%; }
 
@@ -358,6 +365,8 @@ h2 { font-size: 1.02rem; margin: 0; letter-spacing: -0.01em; }
 .card .hint { color: var(--muted); font-size: 0.78rem; overflow-wrap: anywhere; }
 
 .panel {
+  --pad-x: 1.1rem;
+  --pad-y: 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -398,9 +407,20 @@ h2 { font-size: 1.02rem; margin: 0; letter-spacing: -0.01em; }
   padding: 1rem 1.1rem;
 }
 
-.panel.form { padding: 1rem 1.1rem; }
-.panel.form .panel-head { padding-inline: 0; }
-.panel.form .panel-head:first-child { padding-top: 0; }
+.panel.form { padding: var(--pad-y) var(--pad-x); }
+/* A form panel already has its padding: its own fields, actions and notes
+   must not add a second one, or they sit indented from the grid. */
+.panel.form > .field,
+.panel.form > .actions,
+.panel.form > p,
+.panel.form > form { padding: 0; }
+.panel.form > .actions { margin-top: 1rem; }
+.panel.form > p.help { margin: 0.4rem 0 0.8rem; }
+/* Section heads span the whole card, like the heads of the other panels. */
+.panel.form > .panel-head { margin-inline: calc(-1 * var(--pad-x)); padding-inline: var(--pad-x); }
+.panel.form > .panel-head:first-of-type { margin-top: calc(-1 * var(--pad-y)); }
+.panel.form > .panel-head:not(:first-of-type) { margin-top: 1rem; border-top: 1px solid var(--border); }
+.panel > ul.index-sources { margin: 0; padding: 0 var(--pad-x) var(--pad-y) calc(var(--pad-x) + 1.2rem); }
 
 .panel > .detail { padding: 1rem 1.1rem; }
 .panel > .actions { padding-top: 0; }
@@ -408,6 +428,7 @@ h2 { font-size: 1.02rem; margin: 0; letter-spacing: -0.01em; }
 .detail {
   display: grid;
   grid-template-columns: minmax(130px, 210px) 1fr;
+  align-items: baseline;
   gap: 0.55rem 1.2rem;
   margin: 0;
 }
@@ -456,7 +477,9 @@ tbody tr:hover { background: var(--surface-2); }
 tbody tr:last-child td { border-bottom: 0; }
 td form { display: inline; }
 td.error-cell { max-width: 26rem; overflow-wrap: anywhere; }
-.check { width: 2rem; }
+th.check, td.check { width: 2rem; }
+label.check { display: inline-flex; align-items: center; gap: 0.4rem; }
+label.check input { margin: 0; }
 
 .chip {
   display: inline-block;
@@ -491,6 +514,7 @@ td.error-cell { max-width: 26rem; overflow-wrap: anywhere; }
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
+  min-height: var(--control-h);
 }
 
 .btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -508,7 +532,7 @@ td.error-cell { max-width: 26rem; overflow-wrap: anywhere; }
   background: transparent;
 }
 
-.btn.small { padding: 0.28rem 0.55rem; font-size: 0.78rem; }
+.btn.small { padding: 0.28rem 0.55rem; font-size: 0.78rem; min-height: var(--control-h-sm); }
 .btn.disabled { opacity: 0.45; pointer-events: none; }
 
 .link { color: var(--accent); font-weight: 600; text-decoration: none; }
@@ -646,7 +670,7 @@ td.error-cell { max-width: 26rem; overflow-wrap: anywhere; }
 
 .filters {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 0.8rem;
   flex-wrap: wrap;
   padding: 0.9rem 1rem;
@@ -658,16 +682,25 @@ td.error-cell { max-width: 26rem; overflow-wrap: anywhere; }
 
 .filters .field { flex: 0 1 220px; }
 .filters .field.grow { flex: 2 1 300px; }
-.filters .actions-field { flex: 0 0 auto; flex-direction: row; align-items: center; }
+.filters .actions-field { flex: 0 0 auto; flex-direction: row; align-items: center; align-self: flex-end; }
 
 .field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
 .field.grow { flex: 1 1 320px; }
-.field.checkbox { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 0.45rem; }
-.field.checkbox .help { flex-basis: 100%; }
-/* Without a help line the box and its label stay on one row: wrapping put the
-   checkbox alone above a long label such as the logs' auto-refresh. */
-.field.checkbox:not(:has(.help)) { flex-wrap: nowrap; align-self: center; }
-.field.checkbox > input[type="checkbox"] { flex: 0 0 auto; }
+/* The box sits on the first line of its label, and the label and the help
+   line share one left edge, whatever the order in the markup: a wrapping
+   flex row put the box alone above a long label in narrow grid columns. */
+.field.checkbox {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.5rem;
+  row-gap: 0.25rem;
+  align-items: start;
+  align-content: start;
+}
+.field.checkbox > input[type="checkbox"] { grid-column: 1; grid-row: 1; margin: 0.2rem 0 0; }
+.field.checkbox > label { grid-row: 1; }
+.field.checkbox > :not(input) { grid-column: 2; }
+.field.checkbox:not(:has(.help)) { align-self: center; }
 
 label { font-weight: 600; font-size: 0.84rem; }
 
@@ -683,6 +716,8 @@ input, select, textarea {
 }
 
 input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
+select { min-height: var(--control-h); }
 textarea { resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.82rem; }
 input[readonly] { background: var(--surface-2); }
 
@@ -1042,7 +1077,7 @@ pre.yaml {
   .panel > p,
   .panel > form,
   .panel.form { padding: 0.9rem; }
-  .panel.form .panel-head { padding-inline: 0; }
+  .panel { --pad-x: 0.9rem; --pad-y: 0.9rem; }
 }
 
 @media (max-width: 640px) {
@@ -1222,15 +1257,16 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 .status-dot.status-testing .dot { background: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 20%, transparent); }
 .status-dot.status-blocked .dot { background: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 30%, transparent), 0 0 0 4px color-mix(in srgb, var(--warn) 12%, transparent); }
 
+/* The icon hangs in the left margin: text and action flow as one sentence,
+   and a long sentence on a phone no longer leaves the icon alone on a line. */
 .problem {
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  flex-wrap: wrap;
+  position: relative;
+  padding-left: 1.15rem;
   margin: 0.2rem 0 0;
   color: var(--danger);
   font-size: 0.84rem;
 }
+.problem-icon { position: absolute; left: 0; top: 0; }
 .problem-action { color: var(--danger); font-weight: 700; }
 .problem-form { display: inline; margin: 0; }
 .problem-button {
@@ -1496,7 +1532,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 .indexer-name { font-weight: 700; color: var(--text); text-decoration: none; }
 .indexer-name:hover { color: var(--accent); }
 .indexer-main .badges { margin-top: 0.15rem; }
-.indexer-updated { color: var(--muted); font-size: 0.8rem; text-align: right; white-space: normal; max-width: 16rem; line-height: 1.25; }
+.indexer-updated { color: var(--muted); font-size: 0.8rem; text-align: right; white-space: normal; max-width: 22rem; line-height: 1.25; }
 
 .row-menu { position: relative; justify-self: end; }
 .row-menu > summary {
@@ -1705,7 +1741,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
   padding: 0 1.1rem 1rem;
   align-items: end;
 }
-.try-form .actions-field { grid-column: 1 / -1; }
+.try-form .actions-field { flex-direction: row; justify-content: flex-end; align-self: end; }
 .try-result { padding: 0 1.1rem 1rem; }
 .try-result .detail { padding-inline: 0; }
 .try-result .advanced { margin-top: 0.6rem; }
@@ -1868,7 +1904,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
   gap: 0.35rem;
   padding: 0.85rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 10px;
   background: var(--surface);
   text-decoration: none;
   color: inherit;
@@ -1966,3 +2002,37 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
   .req-what, .req-sources { grid-column: 1 / -1; }
 }
 table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; }
+
+/* Index list addresses are long single tokens: let them wrap on a phone. */
+.index-sources a { overflow-wrap: anywhere; }
+/* A filter chip can hold a long URL; on a phone it wraps instead of running
+   out of the card. */
+@media (max-width: 760px) {
+  .indexer-row .badge { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+}
+
+/* A numbered guide inside a panel keeps its numbers inside the card. */
+.panel > ol.guide-steps { padding-left: calc(var(--pad-x) + 1.6rem); }
+/* A filter bar inside a panel is part of the card, not a card in a card. */
+.panel > .filters { border: 0; border-radius: 0; margin: 0; background: transparent; padding: var(--pad-y) var(--pad-x); }
+/* A note under a filter bar takes its own line, so the buttons stay on the
+   controls' line instead of dropping to the bottom of the note. */
+.filters > .help { flex-basis: 100%; }
+/* A form's buttons never touch the field above them. */
+.field + .actions { margin-top: 0.75rem; }
+
+/* The address kinds sit inside the add panel with the panel's side margin. */
+.panel .generic-sources { margin-inline: var(--pad-x, 0); }
+/* Recommended sites: badges start under the text they describe, and the
+   buttons of the action column share its width. */
+.guide-card .site-meta { justify-content: flex-start; }
+.guide-actions > form,
+.guide-actions > .btn,
+.guide-actions > form > .btn:only-of-type { width: 100%; }
+.guide-try .btn { flex: 1 1 auto; }
+/* A checkbox in a filter bar sits on the controls' line, not on the labels'. */
+.filters .field.checkbox:not(:has(.help)) { align-self: flex-end; min-height: var(--control-h); align-content: center; }
+/* An empty state inside a card keeps the card's side margin. */
+.panel > .empty-state { margin: var(--pad-y) var(--pad-x); }
+/* An "Advanced" block between two cards does not stick to the next one. */
+.content > .advanced { margin-bottom: 1.2rem; }

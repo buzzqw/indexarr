@@ -148,3 +148,76 @@ search:
 		t.Errorf("mirror hits = %d, want 3", hits.Load())
 	}
 }
+
+// A connector that moved to a mirror goes back to the first address when the
+// mirror dies too, and a Cloudflare "origin is down" page (521) counts as a
+// dead address.
+func TestConnectorGoesAroundTheMirrorsWhenTheOriginIsDown(t *testing.T) {
+	var firstDown atomic.Bool
+	firstDown.Store(true)
+	page := []byte(`<html><body><table><tr><td><a href="/t/1">Release</a></td></tr></table></body></html>`)
+	first := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if firstDown.Load() {
+			w.WriteHeader(521)
+			return
+		}
+		writeBody(t, w, page)
+	}))
+	t.Cleanup(first.Close)
+	second := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeBody(t, w, page)
+	}))
+
+	def, err := definition.Parse([]byte(`schema: 1
+meta:
+  id: mirror-circle
+  name: Mirror circle
+  type: public
+  protocol: torrent
+  urls:
+    - ` + first.URL + `/
+    - ` + second.URL + `/
+capabilities:
+  search: [q]
+search:
+  request:
+    get: /search
+  response:
+    type: html
+    rows: { selector: "tr" }
+    fields:
+      title: { selector: "a" }
+      details: { selector: "a", attr: href, type: url }
+`))
+	if err != nil {
+		t.Fatalf("parse definition: %v", err)
+	}
+	connector, err := NewDefinitionConnector(DefinitionConfig{
+		Indexer:    IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Transport:  NewTransport(TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	search := func(want string) {
+		t.Helper()
+		items, err := connector.Search(context.Background(), SearchRequest{Mode: ModeSearch, Query: "release"})
+		if err != nil {
+			t.Fatalf("Search: %v", err)
+		}
+		if len(items) != 1 || !strings.HasPrefix(items[0].DetailsURL, want) {
+			t.Fatalf("items = %+v, want details on %s", items, want)
+		}
+	}
+	search(second.URL)
+	if connector.mirror.Load() != 1 {
+		t.Fatalf("mirror = %d, want 1 after a 521", connector.mirror.Load())
+	}
+	firstDown.Store(false)
+	second.Close()
+	search(first.URL)
+	if connector.mirror.Load() != 0 {
+		t.Errorf("mirror = %d, want 0 after the mirror died", connector.mirror.Load())
+	}
+}

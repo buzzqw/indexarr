@@ -23,11 +23,11 @@
         <option value="warn"{{if eq .RuntimeLevel "warn"}} selected{{end}}>{{T "logs.levels.warn"}}</option>
         <option value="error"{{if eq .RuntimeLevel "error"}} selected{{end}}>{{T "logs.levels.error"}}</option>
       </select>
-      <p class="help">{{T "logs.levelHelp"}}</p>
     </div>
     <div class="field actions-field">
       <button class="btn primary" type="submit">{{T "logs.setLevel"}}</button>
     </div>
+    <p class="help">{{T "logs.levelHelp"}}</p>
   </form>
 </section>
 

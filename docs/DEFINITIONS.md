@@ -45,7 +45,7 @@ deve contenere un solo documento YAML.
 | `name` | sì | nome leggibile, non vuoto |
 | `type` | sì | `public`, `semi-private`, `private` |
 | `protocol` | sì | `torrent`, `usenet` oppure `ed2k` |
-| `urls` | sì | almeno un URL assoluto `http`/`https`; il primo è il principale, gli altri sono mirror. Quando un indirizzo non c'è più (il nome non si risolve, nessuno risponde sulla porta, host irraggiungibile, certificato di un altro sito) il connettore riprova la stessa richiesta sul mirror successivo e resta lì; un sito lento o che rifiuta non fa cambiare indirizzo. Solo le richieste verso gli host della definizione cambiano indirizzo, non quelle verso tracker o CDN. Il passaggio vale per le richieste dirette, non per quelle via FlareSolverr |
+| `urls` | sì | almeno un URL assoluto `http`/`https`; il primo è il principale, gli altri sono mirror. Quando un indirizzo non c'è più (il nome non si risolve, nessuno risponde sulla porta, host irraggiungibile, certificato di un altro sito) oppure Cloudflare risponde che il sito dietro è giù (`502`, `504`, `520`-`526`, `530`; non `503`, che è anche la verifica anti-bot), il connettore riprova la stessa richiesta sugli altri indirizzi, in giro, e resta su quello che risponde: se muore anche il mirror torna al primo. Un sito lento o che rifiuta non fa cambiare indirizzo. Solo le richieste verso gli host della definizione cambiano indirizzo, non quelle verso tracker o CDN. Il passaggio vale per le richieste dirette, non per quelle via FlareSolverr |
 | `language` | no | tag BCP 47, per esempio `it-IT` |
 | `author` | no | autore o manutentore |
 | `description` | no | descrizione breve |

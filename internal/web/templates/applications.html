@@ -6,11 +6,11 @@
   </div>
   <div class="actions">
     <a class="btn" href="/download-clients/new">{{T "client.add"}}</a>
-    <a class="btn primary" href="/applications/new">{{T "applications.new"}}</a>
     <form method="post" action="/applications/sync">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn" type="submit">{{T "applications.syncAll"}}</button>
     </form>
+    <a class="btn primary" href="/applications/new">{{T "applications.new"}}</a>
   </div>
 </section>
 
