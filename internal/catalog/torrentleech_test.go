@@ -83,7 +83,7 @@ func TestTorrentLeechJSONFixture(t *testing.T) {
 	payload, err := connector.Download(context.Background(), engine.Item{
 		Title:       items[0].Title,
 		DetailsURL:  server.URL + "/torrent/241861196",
-		DownloadURL: "http://192.168.1.161:9696/14/download",
+		DownloadURL: "http://192.168.1.10:9696/14/download",
 	})
 	if err != nil {
 		t.Fatalf("Download: %v", err)

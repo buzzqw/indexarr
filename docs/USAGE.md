@@ -12,7 +12,7 @@ configurazione di base vedi il [README](../README.md).
 1. Apri `http://<host>:8788`.
 2. Il percorso guidato chiede l'indirizzo con cui le app devono raggiungere
    indexarr. Se le app sono su un'altra macchina, metti l'IP della macchina
-   indexarr (per esempio `http://192.168.1.161:8788`), non `localhost`.
+   indexarr (per esempio `http://192.168.1.10:8788`), non `localhost`.
 3. La chiave del vault viene creata al primo avvio. **Conservala**: senza di
    essa le password e le API key salvate non si possono riaprire. Il percorso è
    indicato in Impostazioni → Vault.

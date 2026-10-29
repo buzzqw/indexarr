@@ -174,7 +174,7 @@ func TestDefinitionDownloadGrabIgnoresItemDownloadURL(t *testing.T) {
 	// A grab-time definition declares that the link comes from the details
 	// page. An item can still carry a DownloadURL from an import or a stale
 	// reference (TorrentLeech imported from Prowlarr pointed at
-	// http://192.168.1.161:9696/14/download and the SSRF guard refused it).
+	// http://192.168.1.10:9696/14/download and the SSRF guard refused it).
 	// The declared path must win, on the indexer's own host.
 	torrent := []byte("grab-torrent")
 	var details, foreign atomic.Int32
