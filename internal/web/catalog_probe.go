@@ -43,22 +43,9 @@ func (s *Server) indexerCatalogProbe(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/indexers/new?q="+id, "", s.translate(r, "idx.catalog.probeFailed"))
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
-	defer cancel()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, site.URL, nil)
-	if err != nil {
-		redirect(w, r, "/indexers/new?q="+id, "", s.translate(r, "idx.catalog.probeFailed"))
-		return
-	}
-	request.Header.Set("User-Agent", "indexarr/catalog-probe")
-	client := &http.Client{Timeout: 12 * time.Second}
-	response, err := client.Do(request)
-	if err != nil {
-		redirect(w, r, "/indexers/new?q="+id, "", s.translate(r, "idx.catalog.probeFailed"))
-		return
-	}
-	response.Body.Close()
-	if response.StatusCode >= 400 {
+	// A site counts as reachable when any of its addresses answers: a dead
+	// first domain with a live mirror is not a failed probe.
+	if !probeAnyAddress(r.Context(), site) {
 		redirect(w, r, "/indexers/new?q="+id, "", s.translate(r, "idx.catalog.probeFailed"))
 		return
 	}
@@ -67,4 +54,35 @@ func (s *Server) indexerCatalogProbe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirect(w, r, "/indexers/new?q="+id, "", s.translate(r, "idx.catalog.probeNoFamily"))
+}
+
+// probeAnyAddress tries the site's main address and then its mirrors, and
+// reports whether one of them answers below 400.
+func probeAnyAddress(ctx context.Context, site *catalog.Site) bool {
+	addresses := append([]string{site.URL}, site.URLs...)
+	seen := make(map[string]bool, len(addresses))
+	client := &http.Client{Timeout: 12 * time.Second}
+	for _, address := range addresses {
+		address = strings.TrimSpace(address)
+		if address == "" || seen[address] {
+			continue
+		}
+		seen[address] = true
+		probeCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
+		request, err := http.NewRequestWithContext(probeCtx, http.MethodGet, address, nil)
+		if err != nil {
+			cancel()
+			continue
+		}
+		request.Header.Set("User-Agent", "indexarr/catalog-probe")
+		response, err := client.Do(request)
+		if err == nil {
+			response.Body.Close()
+		}
+		cancel()
+		if err == nil && response.StatusCode < 400 {
+			return true
+		}
+	}
+	return false
 }
