@@ -286,7 +286,8 @@
     ],
     "state": "verificata",
     "hosts": [
-      "bitsearch.eu"
+      "bitsearch.eu",
+      "solidtorrents.eu"
     ],
     "url": "https://bitsearch.eu/",
     "source": "native",
@@ -15539,8 +15540,7 @@
     ],
     "state": "verificata",
     "hosts": [
-      "limetorrents.fun",
-      "limetorrents.zone"
+      "limetorrents.fun"
     ],
     "url": "https://www.limetorrents.fun/",
     "usage": 1,
@@ -16753,7 +16753,7 @@
       "torrentgalaxy.info",
       "torrentgalaxy.one"
     ],
-    "url": "https://torrentgalaxy.one/",
+    "url": "https://torrentgalaxy.info/",
     "usage": 1,
     "source": "native",
     "proposable": true,

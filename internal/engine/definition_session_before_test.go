@@ -70,6 +70,7 @@ type fakeFlareSolverr struct {
 	lastPost url.Values
 	pages    map[string]string
 	postPage string
+	dead     map[string]bool
 	server   *httptest.Server
 }
 
@@ -112,6 +113,11 @@ func newFakeFlareSolverr(t *testing.T) *fakeFlareSolverr {
 		case "request.get", "request.post":
 			if !fake.sessions[payload.Session] {
 				_ = json.NewEncoder(w).Encode(map[string]any{"status": "error", "message": "unknown session"})
+				return
+			}
+			if target, err := url.Parse(payload.URL); err == nil && fake.dead[target.Host] {
+				w.WriteHeader(http.StatusInternalServerError)
+				_ = json.NewEncoder(w).Encode(map[string]any{"status": "error", "message": "Error: Error solving the challenge. Message: unknown error: net::ERR_NAME_NOT_RESOLVED"})
 				return
 			}
 			if payload.Cmd == "request.post" {
@@ -388,5 +394,43 @@ func TestParseReleaseNameSelectsSeasonAndEpisode(t *testing.T) {
 		if tc.episode > 0 && (match.episodeStart > tc.episode || (match.episodeEnd > 0 && match.episodeEnd < tc.episode)) {
 			t.Errorf("%q: episode range %d-%d does not contain %d", tc.name, match.episodeStart, match.episodeEnd, tc.episode)
 		}
+	}
+}
+
+// A site read through a FlareSolverr session moves to its mirror too: the
+// browser reports a dead domain as net::ERR_NAME_NOT_RESOLVED inside an
+// HTTP 500 from FlareSolverr.
+func TestPersistentSessionMovesToTheMirrorWhenTheDomainIsGone(t *testing.T) {
+	fake := newFakeFlareSolverr(t)
+	fake.dead = map[string]bool{"site.invalid": true}
+	fake.pages["https://mirror.invalid/ucp.php?mode=login"] = `<html><form action="./ucp.php"><input type="hidden" name="form_token" value="t"><input type="hidden" name="sid" value="s"></form></html>`
+	fake.postPage = `<html><a class="logout" href="/logout">Logout</a></html>`
+	fake.pages["https://mirror.invalid/search.php?keywords=Reacher"] = `<html><ul><li class="row"><a class="topictitle" href="/viewtopic.php?t=1">Reacher - Stagione 3</a></li></ul></html>`
+
+	def, err := definition.Parse([]byte(strings.Replace(sessionDefinitionYAML,
+		`urls: ["https://site.invalid/"]`, `urls: ["https://site.invalid/", "https://mirror.invalid/"]`, 1)))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	def.Session = &definition.Session{Mode: "flaresolverr", Endpoint: fake.server.URL, NamePrefix: "mirror-idx"}
+	connector, err := NewDefinitionConnector(DefinitionConfig{
+		Indexer:    IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"username": "synthetic", "password": "synthetic-password"},
+		Transport:  NewTransport(TransportConfig{AllowPrivate: true, Clock: newDefinitionClock()}),
+		Sessions:   NewSessionRegistry(),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	items, err := connector.Search(context.Background(), SearchRequest{Mode: ModeSearch, Query: "Reacher"})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 1 || !strings.HasPrefix(items[0].DetailsURL, "https://mirror.invalid/") {
+		t.Fatalf("items = %+v, want the mirror", items)
+	}
+	if connector.mirror.Load() != 1 {
+		t.Errorf("mirror = %d, want 1", connector.mirror.Load())
 	}
 }

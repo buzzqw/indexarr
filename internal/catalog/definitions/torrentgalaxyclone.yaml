@@ -23,10 +23,12 @@ meta:
   protocol: torrent
   author: indexarr
   description: Public TorrentGalaxy keyword search (same layout as TorrentGalaxy).
+  # torrentgalaxy.one stopped resolving on 2026-10-28: the live .info goes
+  # first, .one stays as a mirror in case it comes back.
   urls:
-    - https://torrentgalaxy.one/
     - https://torrentgalaxy.info/
-  updated: "2026-10-23"
+    - https://torrentgalaxy.one/
+  updated: "2026-10-29"
   latest: false
 
 categories:

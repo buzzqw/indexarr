@@ -20,9 +20,13 @@ meta:
   protocol: torrent
   author: indexarr
   description: Public Bitsearch HTML search (the SolidTorrents successor) with magnets and .torrent links.
+  # solidtorrents.eu serves the same search (24 div.torrent-result-card for
+  # "ubuntu" on both, 2026-10-29); bitsearch.to and solidtorrents.to only
+  # redirect to bitsearch.eu, so they are not separate mirrors.
   urls:
     - https://bitsearch.eu/
-  updated: "2026-10-23"
+    - https://solidtorrents.eu/
+  updated: "2026-10-29"
   latest: false
 
 categories:

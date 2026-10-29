@@ -179,6 +179,10 @@ func (c *DefinitionConnector) doSession(ctx context.Context, request *http.Reque
 	if ctx.Err() != nil {
 		return nil, c.requestError(ctx.Err())
 	}
+	// A dead domain is not a dead browser: hand it to the mirror switch.
+	if mirrorFailover(err) {
+		return nil, c.sessionError(err)
+	}
 
 	// A dead tab or a browser crash is not fatal: close the session, create a
 	// fresh browser and repeat the request once, as the Python service does.

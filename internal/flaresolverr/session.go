@@ -161,12 +161,21 @@ func sessionCommand(ctx context.Context, client *http.Client, endpoint string, p
 	if len(body) > maxResponseBytes {
 		return nil, &SessionError{Command: fmt.Sprint(payload["cmd"]), Message: "response too large"}
 	}
-	if response.StatusCode >= 400 {
-		return nil, &SessionError{Command: fmt.Sprint(payload["cmd"]), Message: fmt.Sprintf("HTTP %d", response.StatusCode)}
-	}
 	var parsed sessionReply
 	if err := json.Unmarshal(body, &parsed); err != nil {
+		if response.StatusCode >= 400 {
+			return nil, &SessionError{Command: fmt.Sprint(payload["cmd"]), Message: fmt.Sprintf("HTTP %d", response.StatusCode)}
+		}
 		return nil, &SessionError{Command: fmt.Sprint(payload["cmd"]), Message: "invalid reply"}
+	}
+	// FlareSolverr answers 500 with a JSON message when the browser cannot
+	// open the page (net::ERR_NAME_NOT_RESOLVED…): keep that message, the
+	// connector uses it to move to a mirror.
+	if response.StatusCode >= 400 && strings.EqualFold(parsed.Status, "ok") {
+		return nil, &SessionError{Command: fmt.Sprint(payload["cmd"]), Message: fmt.Sprintf("HTTP %d", response.StatusCode)}
+	}
+	if response.StatusCode >= 400 && strings.TrimSpace(parsed.Message) == "" {
+		parsed.Message = fmt.Sprintf("HTTP %d", response.StatusCode)
 	}
 	if !strings.EqualFold(parsed.Status, "ok") {
 		message := strings.TrimSpace(parsed.Message)

@@ -1128,10 +1128,10 @@ func (c *DefinitionConnector) doFeed(ctx context.Context, request *http.Request)
 }
 
 func (c *DefinitionConnector) doWithFallback(ctx context.Context, request *http.Request, feed bool) (*Response, error) {
-	if c.flare != nil {
-		return c.doSession(ctx, request)
-	}
 	send := func(request *http.Request) (*Response, error) {
+		if c.flare != nil {
+			return c.doSession(ctx, request)
+		}
 		if feed {
 			return c.transport.DoFeed(ctx, c.breakerKey(), request)
 		}
@@ -1153,9 +1153,15 @@ func (c *DefinitionConnector) doWithFallback(ctx context.Context, request *http.
 		}
 	}
 	if err != nil {
+		if c.flare != nil {
+			// doSession already returns a sanitized error.
+			return nil, err
+		}
 		return nil, c.requestError(err)
 	}
-	c.session.Capture(response.URL, response.Header)
+	if c.flare == nil {
+		c.session.Capture(response.URL, response.Header)
+	}
 	return response, nil
 }
 
@@ -1233,6 +1239,14 @@ func mirrorDown(response *Response, err error) bool {
 // name does not resolve, nothing listens, no route, a certificate for another
 // site), as opposed to a slow or refusing site, which a mirror would not fix.
 func mirrorFailover(err error) bool {
+	// Through FlareSolverr the browser reports the same failures with its
+	// own network error names.
+	if text := err.Error(); strings.Contains(text, "ERR_NAME_NOT_RESOLVED") ||
+		strings.Contains(text, "ERR_CONNECTION_REFUSED") ||
+		strings.Contains(text, "ERR_ADDRESS_UNREACHABLE") ||
+		strings.Contains(text, "ERR_CERT_COMMON_NAME_INVALID") {
+		return true
+	}
 	switch networkFailure(err) {
 	case "no such host", "name resolution failed", "connection refused", "no route to host", "tls certificate not valid":
 		return true

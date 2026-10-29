@@ -16,10 +16,12 @@ meta:
   protocol: torrent
   author: indexarr
   description: Public LimeTorrents HTML search with magnets on the release page.
+  # limetorrents.zone was dropped on 2026-10-29: the domain now serves an
+  # unrelated gambling site, and a mirror switch would have landed there.
+  # No other LimeTorrents domain answered from this network that day.
   urls:
     - https://www.limetorrents.fun/
-    - https://limetorrents.zone/
-  updated: "2026-10-23"
+  updated: "2026-10-29"
   latest: false
 
 categories:
