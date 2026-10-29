@@ -1,5 +1,6 @@
-// Package notify sends indexarr notifications to a webhook and to Telegram.
-// Both channels are optional.
+// Package notify sends indexarr notifications to a webhook, Telegram, Apprise,
+// Discord, Slack, Gotify, ntfy, Pushover, email or a custom script. Every
+// channel is optional.
 //
 // A Dispatcher adds the policy that a raw Send does not have: the per-event
 // switches from Settings, the anti-spam window and the localized, short
@@ -7,16 +8,12 @@
 package notify
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
-	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/i18n"
@@ -30,6 +27,7 @@ const (
 	KindNewReleases    = "new_releases"
 	KindIndexerState   = "indexer_state"
 	KindGrabFailed     = "grab_failed"
+	KindGrabSuccess    = "grab_success"
 	KindCatalogUpdated = "catalog_updated"
 	KindBackupFailed   = "backup_failed"
 	// KindRunFailed is kept for older senders and tests; new code reports a
@@ -61,9 +59,11 @@ type Event struct {
 	// Previous and Current describe an indexer state change.
 	Previous string `json:"previous,omitempty"`
 	Current  string `json:"current,omitempty"`
-	// Title and App belong to a failed grab.
-	Title string `json:"title,omitempty"`
-	App   string `json:"app,omitempty"`
+	// Title, App, Size and Categories describe a grab.
+	Title      string   `json:"title,omitempty"`
+	App        string   `json:"app,omitempty"`
+	Size       int64    `json:"size,omitempty"`
+	Categories []string `json:"categories,omitempty"`
 }
 
 // Config holds the delivery channels.
@@ -71,20 +71,91 @@ type Config struct {
 	WebhookURL     string
 	TelegramToken  string
 	TelegramChatID string
-	// Language and BaseURL shape the Telegram message: the interface
-	// language and, when known, the public address of indexarr.
+	// Apprise posts title/body/type to an Apprise API server. The key is
+	// optional and selects one Apprise configuration.
+	AppriseURL string
+	AppriseKey string
+	// Discord and Slack are incoming webhook URLs.
+	DiscordURL string
+	SlackURL   string
+	// Gotify: server URL and application token.
+	GotifyURL   string
+	GotifyToken string
+	// ntfy: server URL, topic and an optional access token.
+	NtfyURL   string
+	NtfyTopic string
+	NtfyToken string
+	// Pushover: application token and user/group key.
+	PushoverToken string
+	PushoverUser  string
+	// Email over SMTP. SMTPHost is host:port.
+	SMTPHost     string
+	SMTPStartTLS bool
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+	SMTPTo       string
+	// ScriptPath is executed with ScriptArgs; the event travels in the
+	// INDEXARR_* environment variables.
+	ScriptPath string
+	ScriptArgs string
+	// Language and BaseURL shape every message: the interface language and,
+	// when known, the public address of indexarr.
 	Language i18n.Language
 	BaseURL  string
+	// InstanceName names this indexarr in the custom-script environment.
+	InstanceName string
+	// Timeout bounds every channel call. Zero uses DefaultTimeout.
+	Timeout time.Duration
 }
+
+// DefaultTimeout bounds one delivery attempt, including the custom script.
+const DefaultTimeout = 15 * time.Second
 
 // Configured reports whether at least one channel is usable.
 func Configured(cfg Config) bool {
 	return strings.TrimSpace(cfg.WebhookURL) != "" ||
-		(strings.TrimSpace(cfg.TelegramToken) != "" && strings.TrimSpace(cfg.TelegramChatID) != "")
+		(strings.TrimSpace(cfg.TelegramToken) != "" && strings.TrimSpace(cfg.TelegramChatID) != "") ||
+		strings.TrimSpace(cfg.AppriseURL) != "" ||
+		strings.TrimSpace(cfg.DiscordURL) != "" ||
+		strings.TrimSpace(cfg.SlackURL) != "" ||
+		(strings.TrimSpace(cfg.GotifyURL) != "" && strings.TrimSpace(cfg.GotifyToken) != "") ||
+		(strings.TrimSpace(cfg.NtfyURL) != "" && strings.TrimSpace(cfg.NtfyTopic) != "") ||
+		(strings.TrimSpace(cfg.PushoverToken) != "" && strings.TrimSpace(cfg.PushoverUser) != "") ||
+		(strings.TrimSpace(cfg.SMTPHost) != "" && strings.TrimSpace(cfg.SMTPFrom) != "" && strings.TrimSpace(cfg.SMTPTo) != "") ||
+		strings.TrimSpace(cfg.ScriptPath) != ""
 }
 
 // TelegramAPIBase is a variable so tests can point it at a fake server.
 var TelegramAPIBase = "https://api.telegram.org"
+
+// PushoverAPIBase is a variable so tests can point it at a fake server.
+var PushoverAPIBase = "https://api.pushover.net/1/messages.json"
+
+// timeout returns the per-channel bound.
+func (cfg Config) timeout() time.Duration {
+	if cfg.Timeout > 0 {
+		return cfg.Timeout
+	}
+	return DefaultTimeout
+}
+
+// secrets lists every stored secret so an error or a log line can never show
+// one. The values are also used to scrub the URL path of a webhook channel.
+func (cfg Config) secrets() []string {
+	return []string{
+		cfg.WebhookURL,
+		cfg.TelegramToken,
+		cfg.AppriseKey,
+		cfg.DiscordURL,
+		cfg.SlackURL,
+		cfg.GotifyToken,
+		cfg.NtfyToken,
+		cfg.PushoverToken,
+		cfg.PushoverUser,
+		cfg.SMTPPassword,
+	}
+}
 
 // appContextKey carries the downstream application name of a grab.
 type appContextKey struct{}
@@ -110,82 +181,52 @@ func AppFrom(ctx context.Context) string {
 }
 
 // Send delivers the event to every configured channel and joins the errors.
+// The channels run concurrently, each with its own timeout, so one slow
+// service never prevents the others from receiving the message.
 func Send(ctx context.Context, cfg Config, event Event) error {
 	if event.At.IsZero() {
 		event.At = time.Now().UTC()
 	}
-	var errs []error
-	if webhook := strings.TrimSpace(cfg.WebhookURL); webhook != "" {
-		if err := sendWebhook(ctx, webhook, event); err != nil {
-			errs = append(errs, fmt.Errorf("webhook: %w", err))
-		}
+	lang := cfg.Language
+	if lang == "" {
+		lang = i18n.EN
 	}
-	if token, chat := strings.TrimSpace(cfg.TelegramToken), strings.TrimSpace(cfg.TelegramChatID); token != "" && chat != "" {
-		if err := sendTelegram(ctx, token, chat, cfg.Language, cfg.BaseURL, event); err != nil {
-			errs = append(errs, fmt.Errorf("telegram: %w", err))
+	message := MessageFor(event, lang, cfg.BaseURL)
+	title := TitleFor(event, lang)
+	channels := outbound(cfg, event, message, title)
+	results := make([]error, len(channels))
+	var wait sync.WaitGroup
+	for index := range channels {
+		wait.Add(1)
+		go func(index int) {
+			defer wait.Done()
+			limit := cfg.timeout()
+			callCtx, cancel := context.WithTimeout(ctx, limit)
+			defer cancel()
+			results[index] = channels[index].run(callCtx)
+		}(index)
+	}
+	wait.Wait()
+	var errs []error
+	for index, err := range results {
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", channels[index].name, err))
 		}
 	}
 	return errors.Join(errs...)
 }
 
-func sendWebhook(ctx context.Context, endpoint string, event Event) error {
-	body, err := json.Marshal(event)
-	if err != nil {
-		return err
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
-	if err != nil {
-		return scrub(err, endpoint)
-	}
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("User-Agent", "indexarr")
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return scrub(err, endpoint)
-	}
-	defer response.Body.Close()
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		payload, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-		return scrub(fmt.Errorf("HTTP %d: %s", response.StatusCode, strings.TrimSpace(string(payload))), endpoint)
-	}
-	return nil
-}
-
-func sendTelegram(ctx context.Context, token, chatID string, lang i18n.Language, baseURL string, event Event) error {
-	if lang == "" {
-		lang = i18n.EN
-	}
-	values := url.Values{}
-	values.Set("chat_id", chatID)
-	values.Set("text", MessageFor(event, lang, baseURL))
-	values.Set("disable_web_page_preview", "true")
-	endpoint := strings.TrimRight(TelegramAPIBase, "/") + "/bot" + token + "/sendMessage"
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(values.Encode()))
-	if err != nil {
-		return scrub(err, token)
-	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return scrub(err, token)
-	}
-	defer response.Body.Close()
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		payload, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-		return scrub(fmt.Errorf("HTTP %d: %s", response.StatusCode, strings.TrimSpace(string(payload))), token)
-	}
-	return nil
-}
-
-// scrub removes a secret from an error text. Transport errors often include
-// the full URL, which may carry the webhook token or the Telegram bot token.
-func scrub(err error, secret string) error {
+// scrubSecrets removes every known secret from an error text. Transport errors
+// often include the full URL, which may carry a token in its path or query.
+func scrubSecrets(err error, secrets ...string) error {
 	if err == nil {
 		return nil
 	}
 	message := err.Error()
-	if secret = strings.TrimSpace(secret); secret != "" {
-		message = strings.ReplaceAll(message, secret, "***")
+	for _, secret := range secrets {
+		if secret = strings.TrimSpace(secret); secret != "" {
+			message = strings.ReplaceAll(message, secret, "***")
+		}
 	}
 	// A token inside a URL path is also a long opaque word: mask the usual
 	// query parameters even when the exact value is not known.
@@ -193,7 +234,7 @@ func scrub(err error, secret string) error {
 	return fmt.Errorf("%s", message)
 }
 
-var querySecret = []string{"apikey=", "api_key=", "token=", "passkey=", "rsskey=", "torrent_pass="}
+var querySecret = []string{"apikey=", "api_key=", "token=", "access_token=", "auth=", "passkey=", "rsskey=", "torrent_pass="}
 
 func redactQuery(text string) string {
 	lower := strings.ToLower(text)
@@ -215,10 +256,58 @@ func redactQuery(text string) string {
 	return text
 }
 
-// Message is the human-readable Telegram text in English. It is kept for
-// callers and tests that do not know the interface language.
+// Message is the human-readable text in English. It is kept for callers and
+// tests that do not know the interface language.
 func Message(event Event) string {
 	return MessageFor(event, i18n.EN, "")
+}
+
+func grabTitle(event Event) string {
+	if title := strings.TrimSpace(event.Title); title != "" {
+		return title
+	}
+	return strings.TrimSpace(event.Source)
+}
+
+// TitleFor is the short subject every channel can use as its own title: the
+// Apprise and Gotify title, the email subject and the ntfy title. It uses the
+// same event words as MessageFor, so a notification never says two things.
+func TitleFor(event Event, lang i18n.Language) string {
+	if lang == "" {
+		lang = i18n.EN
+	}
+	switch event.Kind {
+	case KindNewReleases:
+		if event.Source != "" {
+			return i18n.T(lang, "notify.newReleasesFrom", event.Count, event.Source)
+		}
+		return i18n.T(lang, "notify.newReleases", event.Count)
+	case KindIndexerState:
+		return i18n.T(lang, "notify.indexerState", event.Source,
+			stateLabel(lang, event.Previous), stateLabel(lang, event.Current))
+	case KindGrabFailed:
+		if event.App != "" {
+			return i18n.T(lang, "notify.grabFailedApp", event.App, grabTitle(event))
+		}
+		return i18n.T(lang, "notify.grabFailed", grabTitle(event))
+	case KindGrabSuccess:
+		if event.App != "" {
+			return i18n.T(lang, "notify.grabSuccessApp", event.App, grabTitle(event))
+		}
+		return i18n.T(lang, "notify.grabSuccess", grabTitle(event))
+	case KindCatalogUpdated:
+		return i18n.T(lang, "notify.catalogUpdated", event.Count)
+	case KindBackupFailed:
+		return i18n.T(lang, "notify.backupFailed")
+	case KindTest:
+		return i18n.T(lang, "notify.test")
+	case KindIndexerDisabled:
+		return i18n.T(lang, "notify.indexerDisabled", event.Source)
+	case KindRunFailed:
+		return i18n.T(lang, "notify.runFailed", event.Source)
+	default:
+		return "indexarr: " + event.Kind
+	}
 }
 
 // MessageFor builds the short, localized message of one event. baseURL is the
@@ -243,14 +332,18 @@ func MessageFor(event Event, lang i18n.Language, baseURL string) string {
 			b.WriteString(i18n.T(lang, "notify.msg.state.other", event.Source, from, stateLabel(lang, event.Current)))
 		}
 	case KindGrabFailed:
-		title := event.Title
-		if title == "" {
-			title = event.Source
-		}
+		title := grabTitle(event)
 		if event.App != "" {
 			b.WriteString(i18n.T(lang, "notify.msg.grabFailedApp", event.App, title))
 		} else {
 			b.WriteString(i18n.T(lang, "notify.msg.grabFailed", title))
+		}
+	case KindGrabSuccess:
+		title := grabTitle(event)
+		if event.App != "" {
+			b.WriteString(i18n.T(lang, "notify.msg.grabSuccessApp", event.App, title))
+		} else {
+			b.WriteString(i18n.T(lang, "notify.msg.grabSuccess", title))
 		}
 	case KindCatalogUpdated:
 		b.WriteString(i18n.T(lang, "notify.msg.catalogUpdated", event.Count))
@@ -365,6 +458,8 @@ func Enabled(settings store.Settings, kind string) bool {
 		return settings.NotifyFailures
 	case KindGrabFailed:
 		return settings.NotifyGrabFailed
+	case KindGrabSuccess:
+		return settings.NotifyGrabSuccess
 	case KindCatalogUpdated:
 		return settings.NotifyCatalogUpdated
 	case KindBackupFailed:
@@ -389,8 +484,28 @@ func ConfigFrom(settings store.Settings) Config {
 		WebhookURL:     settings.NotifyWebhookURL,
 		TelegramToken:  settings.NotifyTelegramToken,
 		TelegramChatID: settings.NotifyTelegramChatID,
+		AppriseURL:     settings.NotifyAppriseURL,
+		AppriseKey:     settings.NotifyAppriseKey,
+		DiscordURL:     settings.NotifyDiscordURL,
+		SlackURL:       settings.NotifySlackURL,
+		GotifyURL:      settings.NotifyGotifyURL,
+		GotifyToken:    settings.NotifyGotifyToken,
+		NtfyURL:        settings.NotifyNtfyURL,
+		NtfyTopic:      settings.NotifyNtfyTopic,
+		NtfyToken:      settings.NotifyNtfyToken,
+		PushoverToken:  settings.NotifyPushoverToken,
+		PushoverUser:   settings.NotifyPushoverUser,
+		SMTPHost:       settings.NotifySMTPHost,
+		SMTPStartTLS:   settings.NotifySMTPStartTLS,
+		SMTPUsername:   settings.NotifySMTPUsername,
+		SMTPPassword:   settings.NotifySMTPPassword,
+		SMTPFrom:       settings.NotifySMTPFrom,
+		SMTPTo:         settings.NotifySMTPTo,
+		ScriptPath:     settings.NotifyScriptPath,
+		ScriptArgs:     settings.NotifyScriptArgs,
 		Language:       lang,
 		BaseURL:        settings.PublicURL,
+		InstanceName:   "indexarr",
 	}
 }
 
@@ -410,11 +525,18 @@ func (d *Dispatcher) Dispatch(ctx context.Context, settings store.Settings, even
 		event.At = d.now()
 	}
 	dedupeSource := event.Source
-	if event.Kind == KindIndexerState {
+	switch event.Kind {
+	case KindIndexerState:
 		// A change into a different state is a different event: error then
 		// blocked then recovery must all be delivered. Repeating the same
 		// transition (a flapping site) is throttled.
 		dedupeSource += "|" + strings.ToLower(strings.TrimSpace(event.Current))
+	case KindGrabSuccess, KindGrabFailed:
+		// The source of a grab is the indexer; different releases from the
+		// same indexer are different events, so the title is the key.
+		if title := strings.TrimSpace(event.Title); title != "" {
+			dedupeSource = title
+		}
 	}
 	if d.Store != nil && event.Kind != KindNewReleases && event.Kind != KindTest {
 		last, err := d.Store.NotificationSentAt(ctx, event.Kind, dedupeSource)

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -59,6 +61,14 @@ type settingsPage struct {
 	// stored, so the field can show a masked placeholder.
 	WebhookStored       bool
 	TelegramTokenStored bool
+	AppriseKeyStored    bool
+	DiscordURLStored    bool
+	SlackURLStored      bool
+	GotifyTokenStored   bool
+	NtfyTokenStored     bool
+	PushoverTokenStored bool
+	PushoverUserStored  bool
+	SMTPPasswordStored  bool
 	// NotifyLanguages are the choices of the message language: an empty code
 	// means "same as the interface", whose name is NotifyInterfaceName.
 	NotifyLanguages     []settingsLanguageOption
@@ -135,6 +145,14 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 	public.APIKey = ""
 	public.NotifyWebhookURL = ""
 	public.NotifyTelegramToken = ""
+	public.NotifyAppriseKey = ""
+	public.NotifyDiscordURL = ""
+	public.NotifySlackURL = ""
+	public.NotifyGotifyToken = ""
+	public.NotifyNtfyToken = ""
+	public.NotifyPushoverToken = ""
+	public.NotifyPushoverUser = ""
+	public.NotifySMTPPassword = ""
 	public.DownloadClientPassword = ""
 	section = settingsSectionID(section)
 	sections := make([]settingsSection, 0, len(settingsSections))
@@ -154,6 +172,14 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 		TorznabMasked:       baseURL + "?apikey=••••••",
 		WebhookStored:       strings.TrimSpace(settings.NotifyWebhookURL) != "",
 		TelegramTokenStored: strings.TrimSpace(settings.NotifyTelegramToken) != "",
+		AppriseKeyStored:    strings.TrimSpace(settings.NotifyAppriseKey) != "",
+		DiscordURLStored:    strings.TrimSpace(settings.NotifyDiscordURL) != "",
+		SlackURLStored:      strings.TrimSpace(settings.NotifySlackURL) != "",
+		GotifyTokenStored:   strings.TrimSpace(settings.NotifyGotifyToken) != "",
+		NtfyTokenStored:     strings.TrimSpace(settings.NotifyNtfyToken) != "",
+		PushoverTokenStored: strings.TrimSpace(settings.NotifyPushoverToken) != "",
+		PushoverUserStored:  strings.TrimSpace(settings.NotifyPushoverUser) != "",
+		SMTPPasswordStored:  strings.TrimSpace(settings.NotifySMTPPassword) != "",
 		NotifyLanguages:     notifyLanguageOptions(settings),
 		NotifyInterfaceName: interfaceLanguageForNotifications(r, settings).Name(),
 		AdditionalKeys:      views,
@@ -372,9 +398,151 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			renderInvalid(s.translate(r, "settings.error.telegramPair"))
 			return false
 		}
+
+		// Visible channel addresses are saved as they are; an empty one
+		// clears the channel. Secret addresses and tokens follow the same
+		// empty-means-unchanged rule as the webhook and Telegram token. A form
+		// written before these fields existed keeps the stored value instead
+		// of clearing it.
+		has := func(field string) bool { return r.Form.Has(field) }
+		if has("notify_apprise_url") {
+			rawApprise := strings.TrimSpace(r.FormValue("notify_apprise_url"))
+			if in.NotifyAppriseURL, _ = normalizeHTTPURL(rawApprise); in.NotifyAppriseURL == "" && rawApprise != "" {
+				in.NotifyAppriseURL = rawApprise
+				renderInvalidField("notify_apprise_url", s.translate(r, "settings.error.channelURL"))
+				return false
+			}
+		}
+		setSecret := func(removeField, inputField string, target *string) {
+			if r.FormValue(removeField) != "" {
+				*target = ""
+				return
+			}
+			if value := strings.TrimSpace(r.FormValue(inputField)); value != "" {
+				*target = value
+			}
+		}
+		setSecretURL := func(removeField, inputField string, target *string) bool {
+			if r.FormValue(removeField) != "" {
+				*target = ""
+				return true
+			}
+			raw := strings.TrimSpace(r.FormValue(inputField))
+			if raw == "" {
+				return true
+			}
+			normalized, ok := normalizeHTTPURL(raw)
+			if !ok {
+				*target = raw
+				renderInvalidField(inputField, s.translate(r, "settings.error.channelURL"))
+				return false
+			}
+			*target = normalized
+			return true
+		}
+		setSecret("notify_apprise_key_remove", "notify_apprise_key", &in.NotifyAppriseKey)
+		if !setSecretURL("notify_discord_url_remove", "notify_discord_url", &in.NotifyDiscordURL) {
+			return false
+		}
+		if !setSecretURL("notify_slack_url_remove", "notify_slack_url", &in.NotifySlackURL) {
+			return false
+		}
+		if has("notify_gotify_url") {
+			rawGotify := strings.TrimSpace(r.FormValue("notify_gotify_url"))
+			if in.NotifyGotifyURL, _ = normalizeHTTPURL(rawGotify); in.NotifyGotifyURL == "" && rawGotify != "" {
+				in.NotifyGotifyURL = rawGotify
+				renderInvalidField("notify_gotify_url", s.translate(r, "settings.error.channelURL"))
+				return false
+			}
+		}
+		setSecret("notify_gotify_token_remove", "notify_gotify_token", &in.NotifyGotifyToken)
+		if has("notify_ntfy_url") {
+			rawNtfy := strings.TrimSpace(r.FormValue("notify_ntfy_url"))
+			if in.NotifyNtfyURL, _ = normalizeHTTPURL(rawNtfy); in.NotifyNtfyURL == "" && rawNtfy != "" {
+				in.NotifyNtfyURL = rawNtfy
+				renderInvalidField("notify_ntfy_url", s.translate(r, "settings.error.channelURL"))
+				return false
+			}
+		}
+		if has("notify_ntfy_topic") {
+			in.NotifyNtfyTopic = strings.Trim(strings.TrimSpace(r.FormValue("notify_ntfy_topic")), "/")
+		}
+		setSecret("notify_ntfy_token_remove", "notify_ntfy_token", &in.NotifyNtfyToken)
+		setSecret("notify_pushover_token_remove", "notify_pushover_token", &in.NotifyPushoverToken)
+		setSecret("notify_pushover_user_remove", "notify_pushover_user", &in.NotifyPushoverUser)
+		if has("notify_smtp_host") {
+			in.NotifySMTPHost = strings.TrimSpace(r.FormValue("notify_smtp_host"))
+		}
+		if has("notify_smtp_host") {
+			// The checkbox is absent when unchecked: a form that carries the
+			// SMTP host is the new form, so absence means false.
+			in.NotifySMTPStartTLS = r.FormValue("notify_smtp_starttls") != ""
+		}
+		if has("notify_smtp_username") {
+			in.NotifySMTPUsername = strings.TrimSpace(r.FormValue("notify_smtp_username"))
+		}
+		setSecret("notify_smtp_password_remove", "notify_smtp_password", &in.NotifySMTPPassword)
+		if has("notify_smtp_from") {
+			in.NotifySMTPFrom = strings.TrimSpace(r.FormValue("notify_smtp_from"))
+		}
+		if has("notify_smtp_to") {
+			in.NotifySMTPTo = strings.TrimSpace(r.FormValue("notify_smtp_to"))
+		}
+		if has("notify_script_path") {
+			in.NotifyScriptPath = strings.TrimSpace(r.FormValue("notify_script_path"))
+		}
+		if has("notify_script_args") {
+			in.NotifyScriptArgs = strings.TrimSpace(r.FormValue("notify_script_args"))
+		}
+
+		if in.NotifyAppriseKey != "" && in.NotifyAppriseURL == "" {
+			renderInvalid(s.translate(r, "settings.error.apprisePair"))
+			return false
+		}
+		if (in.NotifyGotifyURL == "") != (in.NotifyGotifyToken == "") {
+			renderInvalid(s.translate(r, "settings.error.gotifyPair"))
+			return false
+		}
+		if (in.NotifyNtfyURL == "") != (in.NotifyNtfyTopic == "") {
+			renderInvalid(s.translate(r, "settings.error.ntfyPair"))
+			return false
+		}
+		if (in.NotifyPushoverToken == "") != (in.NotifyPushoverUser == "") {
+			renderInvalid(s.translate(r, "settings.error.pushoverPair"))
+			return false
+		}
+		if in.NotifySMTPHost != "" || in.NotifySMTPFrom != "" || in.NotifySMTPTo != "" ||
+			in.NotifySMTPUsername != "" || in.NotifySMTPPassword != "" {
+			if in.NotifySMTPHost == "" || in.NotifySMTPFrom == "" || in.NotifySMTPTo == "" {
+				renderInvalid(s.translate(r, "settings.error.smtpIncomplete"))
+				return false
+			}
+			if _, _, err := net.SplitHostPort(in.NotifySMTPHost); err != nil {
+				renderInvalidField("notify_smtp_host", s.translate(r, "settings.error.smtpHost"))
+				return false
+			}
+			if err := validEmailList(in.NotifySMTPFrom); err != nil {
+				renderInvalidField("notify_smtp_from", s.translate(r, "settings.error.smtpAddress"))
+				return false
+			}
+			if err := validEmailList(in.NotifySMTPTo); err != nil {
+				renderInvalidField("notify_smtp_to", s.translate(r, "settings.error.smtpAddress"))
+				return false
+			}
+			if (in.NotifySMTPUsername == "") != (in.NotifySMTPPassword == "") {
+				renderInvalid(s.translate(r, "settings.error.smtpCredentials"))
+				return false
+			}
+		}
+		if in.NotifyScriptPath == "" && in.NotifyScriptArgs != "" {
+			renderInvalidField("notify_script_path", s.translate(r, "settings.error.scriptPath"))
+			return false
+		}
+
 		in.NotifyNewReleases = r.FormValue("notify_new_releases") != ""
 		in.NotifyFailures = r.FormValue("notify_failures") != ""
 		in.NotifyGrabFailed = r.FormValue("notify_grab_failed") != ""
+		in.NotifyGrabSuccess = r.FormValue("notify_grab_success") != ""
 		in.NotifyCatalogUpdated = r.FormValue("notify_catalog_updated") != ""
 		in.NotifyBackupFailed = r.FormValue("notify_backup_failed") != ""
 		// An unknown code falls back to "same as the interface" (the stored
@@ -756,6 +924,26 @@ func (s *Server) settingsTestNotification(w http.ResponseWriter, r *http.Request
 	}
 	s.log.Info("test notification sent", "subsystem", "notify")
 	redirect(w, r, "/settings?section=notifications", s.translate(r, "settings.testNotificationOK"), "")
+}
+
+// validEmailList accepts one address or a comma/semicolon separated list.
+func validEmailList(raw string) error {
+	parts := strings.FieldsFunc(raw, func(r rune) bool { return r == ',' || r == ';' })
+	found := false
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if _, err := mail.ParseAddress(part); err != nil {
+			return err
+		}
+		found = true
+	}
+	if !found {
+		return fmt.Errorf("empty address list")
+	}
+	return nil
 }
 
 func (s *Server) formInt(r *http.Request, key string, fallback, min, max int) (int, error) {
@@ -1214,6 +1402,22 @@ func (s *Server) settingsSecret(w http.ResponseWriter, r *http.Request) {
 		value = settings.NotifyWebhookURL
 	case name == "telegram_token":
 		value = settings.NotifyTelegramToken
+	case name == "apprise_key":
+		value = settings.NotifyAppriseKey
+	case name == "discord_webhook":
+		value = settings.NotifyDiscordURL
+	case name == "slack_webhook":
+		value = settings.NotifySlackURL
+	case name == "gotify_token":
+		value = settings.NotifyGotifyToken
+	case name == "ntfy_token":
+		value = settings.NotifyNtfyToken
+	case name == "pushover_token":
+		value = settings.NotifyPushoverToken
+	case name == "pushover_user":
+		value = settings.NotifyPushoverUser
+	case name == "smtp_password":
+		value = settings.NotifySMTPPassword
 	case name == "torznab":
 		if settings.APIKey == "" {
 			http.Error(w, "not found", http.StatusNotFound)

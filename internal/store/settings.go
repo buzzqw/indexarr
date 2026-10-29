@@ -38,9 +38,29 @@ const (
 	KeyNotifyWebhook        = "notify_webhook_url"
 	KeyNotifyTelegramToken  = "notify_telegram_token"
 	KeyNotifyTelegramChat   = "notify_telegram_chat_id"
+	KeyNotifyAppriseURL     = "notify_apprise_url"
+	KeyNotifyAppriseKey     = "notify_apprise_key"
+	KeyNotifyDiscordURL     = "notify_discord_webhook_url"
+	KeyNotifySlackURL       = "notify_slack_webhook_url"
+	KeyNotifyGotifyURL      = "notify_gotify_url"
+	KeyNotifyGotifyToken    = "notify_gotify_token"
+	KeyNotifyNtfyURL        = "notify_ntfy_url"
+	KeyNotifyNtfyTopic      = "notify_ntfy_topic"
+	KeyNotifyNtfyToken      = "notify_ntfy_token"
+	KeyNotifyPushoverToken  = "notify_pushover_token"
+	KeyNotifyPushoverUser   = "notify_pushover_user"
+	KeyNotifySMTPHost       = "notify_smtp_host"
+	KeyNotifySMTPStartTLS   = "notify_smtp_starttls"
+	KeyNotifySMTPUsername   = "notify_smtp_username"
+	KeyNotifySMTPPassword   = "notify_smtp_password"
+	KeyNotifySMTPFrom       = "notify_smtp_from"
+	KeyNotifySMTPTo         = "notify_smtp_to"
+	KeyNotifyScriptPath     = "notify_script_path"
+	KeyNotifyScriptArgs     = "notify_script_args"
 	KeyNotifyNewReleases    = "notify_new_releases"
 	KeyNotifyFailures       = "notify_failures"
 	KeyNotifyGrabFailed     = "notify_grab_failed"
+	KeyNotifyGrabSuccess    = "notify_grab_success"
 	KeyNotifyCatalogUpdated = "notify_catalog_updated"
 	KeyNotifyBackupFailed   = "notify_backup_failed"
 	KeyNotifyCooldown       = "notify_cooldown_minutes"
@@ -103,11 +123,40 @@ type Settings struct {
 	NotifyWebhookURL      string
 	NotifyTelegramToken   string
 	NotifyTelegramChatID  string
-	NotifyNewReleases     bool
+	// Apprise posts a JSON title/body/type to an Apprise API server. The key
+	// selects one Apprise configuration and is optional.
+	NotifyAppriseURL string
+	NotifyAppriseKey string
+	// Discord and Slack receive an incoming-webhook JSON POST.
+	NotifyDiscordURL string
+	NotifySlackURL   string
+	// Gotify needs the server address and an application token.
+	NotifyGotifyURL   string
+	NotifyGotifyToken string
+	// ntfy publishes the message on a topic; the token protects a private one.
+	NotifyNtfyURL   string
+	NotifyNtfyTopic string
+	NotifyNtfyToken string
+	// Pushover needs the application token and the user or group key.
+	NotifyPushoverToken string
+	NotifyPushoverUser  string
+	// Email over SMTP. Host is host:port; STARTTLS upgrades port 587.
+	NotifySMTPHost     string
+	NotifySMTPStartTLS bool
+	NotifySMTPUsername string
+	NotifySMTPPassword string
+	NotifySMTPFrom     string
+	NotifySMTPTo       string
+	// A custom script runs on the host; the event travels in INDEXARR_*
+	// environment variables.
+	NotifyScriptPath  string
+	NotifyScriptArgs  string
+	NotifyNewReleases bool
 	// NotifyFailures gates the indexer state changes: a site that becomes
 	// unreachable, blocked, degraded or healthy again.
 	NotifyFailures       bool
 	NotifyGrabFailed     bool
+	NotifyGrabSuccess    bool
 	NotifyCatalogUpdated bool
 	NotifyBackupFailed   bool
 	// NotifyCooldownMinutes is the anti-spam window for the same event kind
@@ -170,6 +219,7 @@ func DefaultSettings() Settings {
 		NotifyNewReleases:          true,
 		NotifyFailures:             true,
 		NotifyGrabFailed:           true,
+		NotifyGrabSuccess:          true,
 		NotifyCatalogUpdated:       true,
 		NotifyBackupFailed:         true,
 		NotifyCooldownMinutes:      30,
@@ -286,9 +336,29 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.NotifyWebhookURL = strings.TrimSpace(values[KeyNotifyWebhook])
 	out.NotifyTelegramToken = strings.TrimSpace(values[KeyNotifyTelegramToken])
 	out.NotifyTelegramChatID = strings.TrimSpace(values[KeyNotifyTelegramChat])
+	out.NotifyAppriseURL = strings.TrimRight(strings.TrimSpace(values[KeyNotifyAppriseURL]), "/")
+	out.NotifyAppriseKey = strings.TrimSpace(values[KeyNotifyAppriseKey])
+	out.NotifyDiscordURL = strings.TrimSpace(values[KeyNotifyDiscordURL])
+	out.NotifySlackURL = strings.TrimSpace(values[KeyNotifySlackURL])
+	out.NotifyGotifyURL = strings.TrimRight(strings.TrimSpace(values[KeyNotifyGotifyURL]), "/")
+	out.NotifyGotifyToken = strings.TrimSpace(values[KeyNotifyGotifyToken])
+	out.NotifyNtfyURL = strings.TrimRight(strings.TrimSpace(values[KeyNotifyNtfyURL]), "/")
+	out.NotifyNtfyTopic = strings.Trim(strings.TrimSpace(values[KeyNotifyNtfyTopic]), "/")
+	out.NotifyNtfyToken = strings.TrimSpace(values[KeyNotifyNtfyToken])
+	out.NotifyPushoverToken = strings.TrimSpace(values[KeyNotifyPushoverToken])
+	out.NotifyPushoverUser = strings.TrimSpace(values[KeyNotifyPushoverUser])
+	out.NotifySMTPHost = strings.TrimSpace(values[KeyNotifySMTPHost])
+	out.NotifySMTPStartTLS = boolValue(values, KeyNotifySMTPStartTLS, false)
+	out.NotifySMTPUsername = strings.TrimSpace(values[KeyNotifySMTPUsername])
+	out.NotifySMTPPassword = values[KeyNotifySMTPPassword]
+	out.NotifySMTPFrom = strings.TrimSpace(values[KeyNotifySMTPFrom])
+	out.NotifySMTPTo = strings.TrimSpace(values[KeyNotifySMTPTo])
+	out.NotifyScriptPath = strings.TrimSpace(values[KeyNotifyScriptPath])
+	out.NotifyScriptArgs = strings.TrimSpace(values[KeyNotifyScriptArgs])
 	out.NotifyNewReleases = boolValue(values, KeyNotifyNewReleases, true)
 	out.NotifyFailures = boolValue(values, KeyNotifyFailures, true)
 	out.NotifyGrabFailed = boolValue(values, KeyNotifyGrabFailed, true)
+	out.NotifyGrabSuccess = boolValue(values, KeyNotifyGrabSuccess, true)
 	out.NotifyCatalogUpdated = boolValue(values, KeyNotifyCatalogUpdated, true)
 	out.NotifyBackupFailed = boolValue(values, KeyNotifyBackupFailed, true)
 	out.NotifyCooldownMinutes = intValue(values, KeyNotifyCooldown, 30, 1, 7*24*60)
@@ -308,6 +378,23 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 		}
 		if value, ok := s.openAppSecret(ctx, AppSecretNotifyTelegramToken); ok {
 			out.NotifyTelegramToken = value
+		}
+		for _, item := range []struct {
+			secret string
+			target *string
+		}{
+			{AppSecretNotifyAppriseKey, &out.NotifyAppriseKey},
+			{AppSecretNotifyDiscordURL, &out.NotifyDiscordURL},
+			{AppSecretNotifySlackURL, &out.NotifySlackURL},
+			{AppSecretNotifyGotifyToken, &out.NotifyGotifyToken},
+			{AppSecretNotifyNtfyToken, &out.NotifyNtfyToken},
+			{AppSecretNotifyPushoverToken, &out.NotifyPushoverToken},
+			{AppSecretNotifyPushoverUser, &out.NotifyPushoverUser},
+			{AppSecretNotifySMTPPassword, &out.NotifySMTPPassword},
+		} {
+			if value, ok := s.openAppSecret(ctx, item.secret); ok {
+				*item.target = value
+			}
 		}
 	}
 	out.AutoDisableAfter = intValue(values, KeyAutoDisableAfter, 0, 0, 100)
@@ -375,9 +462,21 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyTorznabDownloadFac:   strconv.Itoa(in.TorznabDownloadFactor),
 		KeyTorznabUploadFactor:  strconv.Itoa(in.TorznabUploadFactor),
 		KeyNotifyTelegramChat:   strings.TrimSpace(in.NotifyTelegramChatID),
+		KeyNotifyAppriseURL:     strings.TrimRight(strings.TrimSpace(in.NotifyAppriseURL), "/"),
+		KeyNotifyGotifyURL:      strings.TrimRight(strings.TrimSpace(in.NotifyGotifyURL), "/"),
+		KeyNotifyNtfyURL:        strings.TrimRight(strings.TrimSpace(in.NotifyNtfyURL), "/"),
+		KeyNotifyNtfyTopic:      strings.Trim(strings.TrimSpace(in.NotifyNtfyTopic), "/"),
+		KeyNotifySMTPHost:       strings.TrimSpace(in.NotifySMTPHost),
+		KeyNotifySMTPStartTLS:   boolString(in.NotifySMTPStartTLS),
+		KeyNotifySMTPUsername:   strings.TrimSpace(in.NotifySMTPUsername),
+		KeyNotifySMTPFrom:       strings.TrimSpace(in.NotifySMTPFrom),
+		KeyNotifySMTPTo:         strings.TrimSpace(in.NotifySMTPTo),
+		KeyNotifyScriptPath:     strings.TrimSpace(in.NotifyScriptPath),
+		KeyNotifyScriptArgs:     strings.TrimSpace(in.NotifyScriptArgs),
 		KeyNotifyNewReleases:    boolString(in.NotifyNewReleases),
 		KeyNotifyFailures:       boolString(in.NotifyFailures),
 		KeyNotifyGrabFailed:     boolString(in.NotifyGrabFailed),
+		KeyNotifyGrabSuccess:    boolString(in.NotifyGrabSuccess),
 		KeyNotifyCatalogUpdated: boolString(in.NotifyCatalogUpdated),
 		KeyNotifyBackupFailed:   boolString(in.NotifyBackupFailed),
 		KeyNotifyCooldown:       strconv.Itoa(in.NotifyCooldownMinutes),
@@ -426,32 +525,38 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 			return fmt.Errorf("save setting %s: %w", key, err)
 		}
 	}
-	// The two notification secrets are sealed in app_secrets, never written in
+	// The notification secrets are sealed in app_secrets, never written in
 	// clear. Without a vault the legacy plaintext rows are kept, so an
 	// installation with no master key still delivers what it can.
+	secrets := []struct{ secret, setting, value string }{
+		{AppSecretNotifyWebhook, KeyNotifyWebhook, strings.TrimSpace(in.NotifyWebhookURL)},
+		{AppSecretNotifyTelegramToken, KeyNotifyTelegramToken, strings.TrimSpace(in.NotifyTelegramToken)},
+		{AppSecretNotifyAppriseKey, KeyNotifyAppriseKey, strings.TrimSpace(in.NotifyAppriseKey)},
+		{AppSecretNotifyDiscordURL, KeyNotifyDiscordURL, strings.TrimSpace(in.NotifyDiscordURL)},
+		{AppSecretNotifySlackURL, KeyNotifySlackURL, strings.TrimSpace(in.NotifySlackURL)},
+		{AppSecretNotifyGotifyToken, KeyNotifyGotifyToken, strings.TrimSpace(in.NotifyGotifyToken)},
+		{AppSecretNotifyNtfyToken, KeyNotifyNtfyToken, strings.TrimSpace(in.NotifyNtfyToken)},
+		{AppSecretNotifyPushoverToken, KeyNotifyPushoverToken, strings.TrimSpace(in.NotifyPushoverToken)},
+		{AppSecretNotifyPushoverUser, KeyNotifyPushoverUser, strings.TrimSpace(in.NotifyPushoverUser)},
+		{AppSecretNotifySMTPPassword, KeyNotifySMTPPassword, in.NotifySMTPPassword},
+	}
 	if s.vault != nil {
-		for _, item := range []struct{ secret, value string }{
-			{AppSecretNotifyWebhook, strings.TrimSpace(in.NotifyWebhookURL)},
-			{AppSecretNotifyTelegramToken, strings.TrimSpace(in.NotifyTelegramToken)},
-		} {
+		for _, item := range secrets {
 			if err := saveSealedSetting(ctx, tx, s.vault, item.secret, item.value); err != nil {
 				return err
 			}
 		}
-		for _, legacy := range []string{KeyNotifyWebhook, KeyNotifyTelegramToken} {
-			if _, err := tx.ExecContext(ctx, `DELETE FROM settings WHERE key = ?`, legacy); err != nil {
-				return fmt.Errorf("drop plaintext setting %s: %w", legacy, err)
+		for _, item := range secrets {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM settings WHERE key = ?`, item.setting); err != nil {
+				return fmt.Errorf("drop plaintext setting %s: %w", item.setting, err)
 			}
 		}
 	} else {
-		for key, value := range map[string]string{
-			KeyNotifyWebhook:       strings.TrimSpace(in.NotifyWebhookURL),
-			KeyNotifyTelegramToken: strings.TrimSpace(in.NotifyTelegramToken),
-		} {
+		for _, item := range secrets {
 			if _, err := tx.ExecContext(ctx,
 				`INSERT INTO settings(key, value) VALUES(?, ?)
-				 ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value); err != nil {
-				return fmt.Errorf("save setting %s: %w", key, err)
+				 ON CONFLICT(key) DO UPDATE SET value = excluded.value`, item.setting, item.value); err != nil {
+				return fmt.Errorf("save setting %s: %w", item.setting, err)
 			}
 		}
 	}

@@ -81,6 +81,10 @@ type Server struct {
 
 	grabCheck  func(context.Context, int64) error
 	grabRecord func(context.Context, int64, int64, string) error
+
+	// notifier reports a successful grab when the operator enabled the
+	// grab-success switch. It is optional.
+	notifier *notify.Dispatcher
 }
 
 // SetGrabGuard installs the optional grab policy. check is called before a
@@ -124,6 +128,12 @@ func (s *Server) SetLatestIndexers(fn func(context.Context) ([]int64, error)) {
 // returns body, content type and filename.
 func (s *Server) SetDownloadResolver(fn func(context.Context, int64) ([]byte, string, string, error)) {
 	s.downloadResolver = fn
+}
+
+// SetNotifier installs the dispatcher used for a successful grab. A nil
+// dispatcher disables the notification and leaves the grab untouched.
+func (s *Server) SetNotifier(dispatcher *notify.Dispatcher) {
+	s.notifier = dispatcher
 }
 
 // New builds the server.
@@ -1200,6 +1210,45 @@ func (s *Server) finishGrab(ctx context.Context, indexerID int64, release store.
 				"release_id", release.ID)
 		}
 	}
+	s.notifyGrabSuccess(ctx, indexerID, release)
+}
+
+// notifyGrabSuccess reports a payload or link indexarr just handed to a client.
+// The switch, the anti-spam window and the channel list stay in the dispatcher.
+func (s *Server) notifyGrabSuccess(ctx context.Context, indexerID int64, release store.Release) {
+	if s == nil || s.notifier == nil {
+		return
+	}
+	settings, err := s.store.LoadSettings(ctx)
+	if err != nil {
+		return
+	}
+	source := ""
+	if indexerID > 0 {
+		if found, getErr := s.store.GetIndexer(ctx, indexerID); getErr == nil {
+			source = found.Name
+		}
+	}
+	app := notify.AppFrom(ctx)
+	s.notifier.DispatchAsync(ctx, settings, notify.Event{
+		Kind:       notify.KindGrabSuccess,
+		Source:     source,
+		Title:      release.Title,
+		App:        app,
+		Size:       release.Size,
+		Categories: releaseCategories(release.Category),
+		Path:       "/releases",
+	})
+}
+
+func releaseCategories(category string) []string {
+	var out []string
+	for _, item := range strings.Split(category, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 // releasePayload returns the stored bytes or asks the download resolver for

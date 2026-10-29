@@ -161,6 +161,101 @@ func TestSaveSettingsSealsTheNotificationChannels(t *testing.T) {
 	}
 }
 
+// TestSaveSettingsSealsEveryNotificationChannel covers the new channels: the
+// addresses and tokens survive a round trip, and only a sealed row holds them.
+func TestSaveSettingsSealsEveryNotificationChannel(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	st.AttachVault(testVault(t))
+	settings, err := st.LoadSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.NotifyAppriseURL = "http://apprise.example"
+	settings.NotifyAppriseKey = "APPRISESECRET"
+	settings.NotifyDiscordURL = "https://discord.example/api/webhooks/SECRET"
+	settings.NotifySlackURL = "https://hooks.slack.com/services/SECRET"
+	settings.NotifyGotifyURL = "https://gotify.example"
+	settings.NotifyGotifyToken = "GOTIFYSECRET"
+	settings.NotifyNtfyURL = "https://ntfy.example"
+	settings.NotifyNtfyTopic = "indexarr"
+	settings.NotifyNtfyToken = "NTFYSECRET"
+	settings.NotifyPushoverToken = "PUSHOVERSECRET"
+	settings.NotifyPushoverUser = "PUSHOVERUSER"
+	settings.NotifySMTPHost = "smtp.example.com:587"
+	settings.NotifySMTPStartTLS = true
+	settings.NotifySMTPUsername = "indexarr"
+	settings.NotifySMTPPassword = "SMTPPASSWORD"
+	settings.NotifySMTPFrom = "indexarr@example.com"
+	settings.NotifySMTPTo = "ops@example.com"
+	settings.NotifyScriptPath = "/usr/local/bin/indexarr-notify"
+	settings.NotifyScriptArgs = "--flag value"
+	settings.NotifyGrabSuccess = false
+	if err := st.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := st.LoadSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checks := map[string][2]string{
+		"apprise":  {loaded.NotifyAppriseKey, settings.NotifyAppriseKey},
+		"discord":  {loaded.NotifyDiscordURL, settings.NotifyDiscordURL},
+		"slack":    {loaded.NotifySlackURL, settings.NotifySlackURL},
+		"gotify":   {loaded.NotifyGotifyToken, settings.NotifyGotifyToken},
+		"ntfy":     {loaded.NotifyNtfyToken, settings.NotifyNtfyToken},
+		"pushover": {loaded.NotifyPushoverToken, settings.NotifyPushoverToken},
+		"pushuser": {loaded.NotifyPushoverUser, settings.NotifyPushoverUser},
+		"smtp":     {loaded.NotifySMTPPassword, settings.NotifySMTPPassword},
+	}
+	for name, pair := range checks {
+		if pair[0] != pair[1] {
+			t.Errorf("%s secret = %q, want %q", name, pair[0], pair[1])
+		}
+	}
+	if loaded.NotifyAppriseURL != settings.NotifyAppriseURL ||
+		loaded.NotifyGotifyURL != settings.NotifyGotifyURL ||
+		loaded.NotifyNtfyTopic != settings.NotifyNtfyTopic ||
+		loaded.NotifySMTPHost != settings.NotifySMTPHost ||
+		!loaded.NotifySMTPStartTLS ||
+		loaded.NotifySMTPFrom != settings.NotifySMTPFrom ||
+		loaded.NotifySMTPTo != settings.NotifySMTPTo ||
+		loaded.NotifyScriptPath != settings.NotifyScriptPath ||
+		loaded.NotifyScriptArgs != settings.NotifyScriptArgs ||
+		loaded.NotifyGrabSuccess {
+		t.Errorf("channel settings round trip = %#v", loaded)
+	}
+	for _, key := range []string{
+		KeyNotifyAppriseKey, KeyNotifyDiscordURL, KeyNotifySlackURL,
+		KeyNotifyGotifyToken, KeyNotifyNtfyToken, KeyNotifyPushoverToken,
+		KeyNotifyPushoverUser, KeyNotifySMTPPassword,
+	} {
+		var count int
+		if err := st.DB().QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM settings WHERE key = ? AND value <> ''`, key).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Errorf("plaintext secret setting %s still exists", key)
+		}
+	}
+	for _, key := range []string{
+		AppSecretNotifyAppriseKey, AppSecretNotifyDiscordURL, AppSecretNotifySlackURL,
+		AppSecretNotifyGotifyToken, AppSecretNotifyNtfyToken, AppSecretNotifyPushoverToken,
+		AppSecretNotifyPushoverUser, AppSecretNotifySMTPPassword,
+	} {
+		var ciphertext []byte
+		if err := st.DB().QueryRowContext(ctx,
+			`SELECT ciphertext FROM app_secrets WHERE key = ?`, key).Scan(&ciphertext); err != nil {
+			t.Errorf("sealed secret %s: %v", key, err)
+			continue
+		}
+		if bytes.Contains(ciphertext, []byte("SECRET")) || bytes.Contains(ciphertext, []byte("PASSWORD")) {
+			t.Errorf("sealed secret %s contains plaintext", key)
+		}
+	}
+}
+
 func TestNotificationLedgerAndIndexerState(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)

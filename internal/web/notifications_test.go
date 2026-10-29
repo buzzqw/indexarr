@@ -91,6 +91,141 @@ func TestNotificationsSectionKeepsSecretsMasked(t *testing.T) {
 	}
 }
 
+// TestNotificationChannelsSaveSealAndRender covers the new channels end to
+// end: the form accepts them, the store seals the secrets and the page exposes
+// the fields without their values.
+func TestNotificationChannelsSaveSealAndRender(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=notifications")
+	secrets := map[string]string{
+		"notify_apprise_key":    "APPRISESECRET",
+		"notify_discord_url":    "https://discord.example/api/webhooks/DISCORDSECRET",
+		"notify_slack_url":      "https://hooks.slack.example/services/SLACKSECRET",
+		"notify_gotify_token":   "GOTIFYSECRET",
+		"notify_ntfy_token":     "NTFYSECRET",
+		"notify_pushover_token": "PUSHOVERSECRET",
+		"notify_pushover_user":  "PUSHOVERUSER",
+		"notify_smtp_password":  "SMTPPASSWORD",
+	}
+	values := url.Values{
+		"csrf":                    {token},
+		"section":                 {"notifications"},
+		"notify_apprise_url":      {"http://apprise.example"},
+		"notify_gotify_url":       {"https://gotify.example"},
+		"notify_ntfy_url":         {"https://ntfy.example"},
+		"notify_ntfy_topic":       {"indexarr"},
+		"notify_smtp_host":        {"smtp.example.com:587"},
+		"notify_smtp_starttls":    {"on"},
+		"notify_smtp_username":    {"indexarr"},
+		"notify_smtp_from":        {"indexarr@example.com"},
+		"notify_smtp_to":          {"ops@example.com"},
+		"notify_script_path":      {"/usr/local/bin/indexarr-notify"},
+		"notify_script_args":      {"--flag value"},
+		"notify_new_releases":     {"on"},
+		"notify_grab_failed":      {"on"},
+		"notify_grab_success":     {"on"},
+		"notify_catalog_updated":  {"on"},
+		"notify_backup_failed":    {"on"},
+		"notify_cooldown_minutes": {"30"},
+	}
+	for key, value := range secrets {
+		values.Set(key, value)
+	}
+	recorder := postForm(t, env.handler, "/settings", values, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("channels save = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	stored, err := env.store.LoadSettings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.NotifyAppriseKey != secrets["notify_apprise_key"] ||
+		stored.NotifyDiscordURL != secrets["notify_discord_url"] ||
+		stored.NotifySlackURL != secrets["notify_slack_url"] ||
+		stored.NotifyGotifyToken != secrets["notify_gotify_token"] ||
+		stored.NotifyNtfyToken != secrets["notify_ntfy_token"] ||
+		stored.NotifyPushoverToken != secrets["notify_pushover_token"] ||
+		stored.NotifyPushoverUser != secrets["notify_pushover_user"] ||
+		stored.NotifySMTPPassword != secrets["notify_smtp_password"] {
+		t.Errorf("secrets round trip = %#v", stored)
+	}
+	if stored.NotifyAppriseURL != "http://apprise.example" ||
+		stored.NotifyGotifyURL != "https://gotify.example" ||
+		stored.NotifyNtfyTopic != "indexarr" ||
+		stored.NotifySMTPHost != "smtp.example.com:587" ||
+		!stored.NotifySMTPStartTLS ||
+		stored.NotifyScriptPath != "/usr/local/bin/indexarr-notify" ||
+		!stored.NotifyGrabSuccess {
+		t.Errorf("channel settings = %#v", stored)
+	}
+	page := get(t, env.handler, "/settings?section=notifications").Body.String()
+	for key, value := range secrets {
+		if strings.Contains(page, value) {
+			t.Errorf("the notifications page leaks %s", key)
+		}
+	}
+	for _, want := range []string{
+		`id="notify_apprise_url"`, `id="notify_apprise_key"`,
+		`id="notify_discord_url"`, `id="notify_slack_url"`,
+		`id="notify_gotify_url"`, `id="notify_gotify_token"`,
+		`id="notify_ntfy_url"`, `id="notify_ntfy_topic"`, `id="notify_ntfy_token"`,
+		`id="notify_pushover_token"`, `id="notify_pushover_user"`,
+		`id="notify_smtp_host"`, `id="notify_smtp_starttls"`, `id="notify_smtp_username"`,
+		`id="notify_smtp_password"`, `id="notify_smtp_from"`, `id="notify_smtp_to"`,
+		`id="notify_script_path"`, `id="notify_script_args"`,
+		`name="notify_grab_success"`, "••••••••",
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("notifications page missing %q", want)
+		}
+	}
+
+	request, _ := http.NewRequest(http.MethodGet, "/settings/secrets/discord_webhook", nil)
+	request.Header.Set("X-Requested-With", "fetch")
+	secret := getWith(t, env.handler, request)
+	if secret.Code != http.StatusOK || !strings.Contains(secret.Body.String(), "DISCORDSECRET") {
+		t.Errorf("discord secret = %d: %s", secret.Code, secret.Body.String())
+	}
+}
+
+func TestTestNotificationButtonUsesEveryConfiguredChannel(t *testing.T) {
+	env := newTestEnv(t)
+	var discordCalls, slackCalls atomic.Int64
+	discord := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		discordCalls.Add(1)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer discord.Close()
+	slack := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		slackCalls.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer slack.Close()
+
+	ctx := context.Background()
+	settings, _ := env.store.LoadSettings(ctx)
+	settings.NotifyDiscordURL = discord.URL
+	settings.NotifySlackURL = slack.URL
+	if err := env.store.SaveSettings(ctx, settings); err != nil {
+		t.Fatal(err)
+	}
+	token, cookie := csrfFrom(t, env.handler, "/settings?section=notifications")
+	recorder := postForm(t, env.handler, "/settings/notifications/test", url.Values{
+		"csrf": {token},
+	}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("test button = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if location := recorder.Header().Get("Location"); !strings.Contains(location, "Test+notification+sent") {
+		t.Errorf("test redirect = %q", location)
+	}
+	if discordCalls.Load() != 1 || slackCalls.Load() != 1 {
+		t.Errorf("test deliveries = discord %d, slack %d, want 1 and 1",
+			discordCalls.Load(), slackCalls.Load())
+	}
+}
+
 func TestTestNotificationButtonUsesTheWebhook(t *testing.T) {
 	env := newTestEnv(t)
 	var received atomic.Int64

@@ -76,6 +76,224 @@
         <p class="help">{{T "settings.telegramChatHelp"}}</p>
       </div>
     </div>
+    <p class="help">{{T "settings.channelsExtendedHelp"}}</p>
+
+    <details class="advanced"{{if gt (len .FieldErrors) 0}} open{{end}}>
+      <summary>{{T "settings.appriseTitle"}}</summary>
+      <div class="advanced-body">
+        <p class="help">{{T "settings.appriseHelp"}}</p>
+        <div class="form-grid">
+          <div class="field grow">
+            <label for="notify_apprise_url" title="{{T "settings.appriseURLHelp"}}">{{T "settings.appriseURL"}}</label>
+            <input id="notify_apprise_url" name="notify_apprise_url" type="text" inputmode="url" value="{{.Settings.NotifyAppriseURL}}" placeholder="{{T "settings.appriseURLPlaceholder"}}" title="{{T "settings.appriseURLHelp"}}">
+            {{with index .FieldErrors "notify_apprise_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+            <p class="help">{{T "settings.appriseURLHelp"}}</p>
+          </div>
+          <div class="field">
+            <label for="notify_apprise_key" title="{{T "settings.appriseKeyHelp"}}">{{T "settings.appriseKey"}}</label>
+            <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/apprise_key">
+              <input id="notify_apprise_key" name="notify_apprise_key" type="password" value="" placeholder="{{if .AppriseKeyStored}}••••••••{{else}}{{T "settings.secretStored"}}{{end}}" autocomplete="new-password" title="{{T "settings.secretStoredHelp"}}">
+              <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}" title="{{T "settings.appriseKeyHelp"}}">{{T "common.show"}}</button>
+              <button class="btn" type="button" data-secret-copy title="{{T "common.copy"}}">{{T "common.copy"}}</button>
+            </div>
+            <label class="check muted"><input type="checkbox" name="notify_apprise_key_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+            <p class="help">{{T "settings.appriseKeyHelp"}} {{T "settings.secretStoredHelp"}}</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="advanced"{{if gt (len .FieldErrors) 0}} open{{end}}>
+      <summary>{{T "settings.discordTitle"}}</summary>
+      <div class="advanced-body">
+        <p class="help">{{T "settings.discordHelp"}}</p>
+        <div class="form-grid">
+          <div class="field grow">
+            <label for="notify_discord_url" title="{{T "settings.discordURLHelp"}}">{{T "settings.discordURL"}}</label>
+            <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/discord_webhook">
+              <input id="notify_discord_url" name="notify_discord_url" type="password" inputmode="url" value="" placeholder="{{if .DiscordURLStored}}••••••••{{else}}{{T "settings.secretStored"}}{{end}}" autocomplete="off" spellcheck="false" title="{{T "settings.discordURLHelp"}}">
+              <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}" title="{{T "settings.discordURLHelp"}}">{{T "common.show"}}</button>
+              <button class="btn" type="button" data-secret-copy title="{{T "common.copy"}}">{{T "common.copy"}}</button>
+            </div>
+            {{with index .FieldErrors "notify_discord_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+            <label class="check muted"><input type="checkbox" name="notify_discord_url_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+            <p class="help">{{T "settings.discordURLHelp"}} {{T "settings.secretStoredHelp"}}</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="advanced"{{if gt (len .FieldErrors) 0}} open{{end}}>
+      <summary>{{T "settings.slackTitle"}}</summary>
+      <div class="advanced-body">
+        <p class="help">{{T "settings.slackHelp"}}</p>
+        <div class="form-grid">
+          <div class="field grow">
+            <label for="notify_slack_url" title="{{T "settings.slackURLHelp"}}">{{T "settings.slackURL"}}</label>
+            <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/slack_webhook">
+              <input id="notify_slack_url" name="notify_slack_url" type="password" inputmode="url" value="" placeholder="{{if .SlackURLStored}}••••••••{{else}}{{T "settings.secretStored"}}{{end}}" autocomplete="off" spellcheck="false" title="{{T "settings.slackURLHelp"}}">
+              <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}" title="{{T "settings.slackURLHelp"}}">{{T "common.show"}}</button>
+              <button class="btn" type="button" data-secret-copy title="{{T "common.copy"}}">{{T "common.copy"}}</button>
+            </div>
+            {{with index .FieldErrors "notify_slack_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+            <label class="check muted"><input type="checkbox" name="notify_slack_url_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+            <p class="help">{{T "settings.slackURLHelp"}} {{T "settings.secretStoredHelp"}}</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="advanced"{{if gt (len .FieldErrors) 0}} open{{end}}>
+      <summary>{{T "settings.gotifyTitle"}}</summary>
+      <div class="advanced-body">
+        <p class="help">{{T "settings.gotifyHelp"}}</p>
+        <div class="form-grid">
+          <div class="field grow">
+            <label for="notify_gotify_url" title="{{T "settings.gotifyURLHelp"}}">{{T "settings.gotifyURL"}}</label>
+            <input id="notify_gotify_url" name="notify_gotify_url" type="text" inputmode="url" value="{{.Settings.NotifyGotifyURL}}" placeholder="{{T "settings.gotifyURLPlaceholder"}}" title="{{T "settings.gotifyURLHelp"}}">
+            {{with index .FieldErrors "notify_gotify_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+            <p class="help">{{T "settings.gotifyURLHelp"}}</p>
+          </div>
+          <div class="field">
+            <label for="notify_gotify_token" title="{{T "settings.gotifyTokenHelp"}}">{{T "settings.gotifyToken"}}</label>
+            <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/gotify_token">
+              <input id="notify_gotify_token" name="notify_gotify_token" type="password" value="" placeholder="{{if .GotifyTokenStored}}••••••••{{else}}{{T "settings.secretStored"}}{{end}}" autocomplete="new-password" title="{{T "settings.secretStoredHelp"}}">
+              <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}" title="{{T "settings.gotifyTokenHelp"}}">{{T "common.show"}}</button>
+              <button class="btn" type="button" data-secret-copy title="{{T "common.copy"}}">{{T "common.copy"}}</button>
+            </div>
+            <label class="check muted"><input type="checkbox" name="notify_gotify_token_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+            <p class="help">{{T "settings.gotifyTokenHelp"}} {{T "settings.secretStoredHelp"}}</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="advanced"{{if gt (len .FieldErrors) 0}} open{{end}}>
+      <summary>{{T "settings.ntfyTitle"}}</summary>
+      <div class="advanced-body">
+        <p class="help">{{T "settings.ntfyHelp"}}</p>
+        <div class="form-grid">
+          <div class="field grow">
+            <label for="notify_ntfy_url" title="{{T "settings.ntfyURLHelp"}}">{{T "settings.ntfyURL"}}</label>
+            <input id="notify_ntfy_url" name="notify_ntfy_url" type="text" inputmode="url" value="{{.Settings.NotifyNtfyURL}}" placeholder="{{T "settings.ntfyURLPlaceholder"}}" title="{{T "settings.ntfyURLHelp"}}">
+            {{with index .FieldErrors "notify_ntfy_url"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+            <p class="help">{{T "settings.ntfyURLHelp"}}</p>
+          </div>
+          <div class="field">
+            <label for="notify_ntfy_topic" title="{{T "settings.ntfyTopicHelp"}}">{{T "settings.ntfyTopic"}}</label>
+            <input id="notify_ntfy_topic" name="notify_ntfy_topic" type="text" value="{{.Settings.NotifyNtfyTopic}}" title="{{T "settings.ntfyTopicHelp"}}">
+            <p class="help">{{T "settings.ntfyTopicHelp"}}</p>
+          </div>
+          <div class="field">
+            <label for="notify_ntfy_token" title="{{T "settings.ntfyTokenHelp"}}">{{T "settings.ntfyToken"}}</label>
+            <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/ntfy_token">
+              <input id="notify_ntfy_token" name="notify_ntfy_token" type="password" value="" placeholder="{{if .NtfyTokenStored}}••••••••{{else}}{{T "settings.secretStored"}}{{end}}" autocomplete="new-password" title="{{T "settings.secretStoredHelp"}}">
+              <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}" title="{{T "settings.ntfyTokenHelp"}}">{{T "common.show"}}</button>
+              <button class="btn" type="button" data-secret-copy title="{{T "common.copy"}}">{{T "common.copy"}}</button>
+            </div>
+            <label class="check muted"><input type="checkbox" name="notify_ntfy_token_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+            <p class="help">{{T "settings.ntfyTokenHelp"}} {{T "settings.secretStoredHelp"}}</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="advanced"{{if gt (len .FieldErrors) 0}} open{{end}}>
+      <summary>{{T "settings.pushoverTitle"}}</summary>
+      <div class="advanced-body">
+        <p class="help">{{T "settings.pushoverHelp"}}</p>
+        <div class="form-grid">
+          <div class="field">
+            <label for="notify_pushover_token" title="{{T "settings.pushoverTokenHelp"}}">{{T "settings.pushoverToken"}}</label>
+            <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/pushover_token">
+              <input id="notify_pushover_token" name="notify_pushover_token" type="password" value="" placeholder="{{if .PushoverTokenStored}}••••••••{{else}}{{T "settings.secretStored"}}{{end}}" autocomplete="new-password" title="{{T "settings.secretStoredHelp"}}">
+              <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}" title="{{T "settings.pushoverTokenHelp"}}">{{T "common.show"}}</button>
+              <button class="btn" type="button" data-secret-copy title="{{T "common.copy"}}">{{T "common.copy"}}</button>
+            </div>
+            <label class="check muted"><input type="checkbox" name="notify_pushover_token_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+            <p class="help">{{T "settings.pushoverTokenHelp"}} {{T "settings.secretStoredHelp"}}</p>
+          </div>
+          <div class="field">
+            <label for="notify_pushover_user" title="{{T "settings.pushoverUserHelp"}}">{{T "settings.pushoverUser"}}</label>
+            <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/pushover_user">
+              <input id="notify_pushover_user" name="notify_pushover_user" type="password" value="" placeholder="{{if .PushoverUserStored}}••••••••{{else}}{{T "settings.secretStored"}}{{end}}" autocomplete="new-password" title="{{T "settings.secretStoredHelp"}}">
+              <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}" title="{{T "settings.pushoverUserHelp"}}">{{T "common.show"}}</button>
+              <button class="btn" type="button" data-secret-copy title="{{T "common.copy"}}">{{T "common.copy"}}</button>
+            </div>
+            <label class="check muted"><input type="checkbox" name="notify_pushover_user_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+            <p class="help">{{T "settings.pushoverUserHelp"}} {{T "settings.secretStoredHelp"}}</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="advanced"{{if gt (len .FieldErrors) 0}} open{{end}}>
+      <summary>{{T "settings.smtpTitle"}}</summary>
+      <div class="advanced-body">
+        <p class="help">{{T "settings.smtpHelp"}}</p>
+        <div class="form-grid">
+          <div class="field grow">
+            <label for="notify_smtp_host" title="{{T "settings.smtpHostHelp"}}">{{T "settings.smtpHost"}}</label>
+            <input id="notify_smtp_host" name="notify_smtp_host" type="text" value="{{.Settings.NotifySMTPHost}}" placeholder="{{T "settings.smtpHostPlaceholder"}}" title="{{T "settings.smtpHostHelp"}}">
+            {{with index .FieldErrors "notify_smtp_host"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+            <p class="help">{{T "settings.smtpHostHelp"}}</p>
+          </div>
+          <div class="field checkbox">
+            <input id="notify_smtp_starttls" name="notify_smtp_starttls" type="checkbox"{{if .Settings.NotifySMTPStartTLS}} checked{{end}} title="{{T "settings.smtpStartTLSHelp"}}">
+            <label for="notify_smtp_starttls" title="{{T "settings.smtpStartTLSHelp"}}">{{T "settings.smtpStartTLS"}}</label>
+            <p class="help">{{T "settings.smtpStartTLSHelp"}}</p>
+          </div>
+          <div class="field">
+            <label for="notify_smtp_username" title="{{T "settings.smtpUsernameHelp"}}">{{T "settings.smtpUsername"}}</label>
+            <input id="notify_smtp_username" name="notify_smtp_username" type="text" value="{{.Settings.NotifySMTPUsername}}" autocomplete="off" title="{{T "settings.smtpUsernameHelp"}}">
+            <p class="help">{{T "settings.smtpUsernameHelp"}}</p>
+          </div>
+          <div class="field">
+            <label for="notify_smtp_password" title="{{T "settings.smtpPasswordHelp"}}">{{T "settings.smtpPassword"}}</label>
+            <div class="secret-field" data-secret-field data-secret-url="/settings/secrets/smtp_password">
+              <input id="notify_smtp_password" name="notify_smtp_password" type="password" value="" placeholder="{{if .SMTPPasswordStored}}••••••••{{else}}{{T "settings.secretStored"}}{{end}}" autocomplete="new-password" title="{{T "settings.secretStoredHelp"}}">
+              <button class="btn" type="button" data-secret-show data-show-label="{{T "common.show"}}" data-hide-label="{{T "common.hide"}}" title="{{T "settings.smtpPasswordHelp"}}">{{T "common.show"}}</button>
+              <button class="btn" type="button" data-secret-copy title="{{T "common.copy"}}">{{T "common.copy"}}</button>
+            </div>
+            <label class="check muted"><input type="checkbox" name="notify_smtp_password_remove" data-confirm="{{T "settings.removeConfirm"}}"> <span>{{T "settings.removeStored"}}</span></label>
+            <p class="help">{{T "settings.smtpPasswordHelp"}} {{T "settings.secretStoredHelp"}}</p>
+          </div>
+          <div class="field">
+            <label for="notify_smtp_from" title="{{T "settings.smtpFromHelp"}}">{{T "settings.smtpFrom"}}</label>
+            <input id="notify_smtp_from" name="notify_smtp_from" type="text" inputmode="email" value="{{.Settings.NotifySMTPFrom}}" placeholder="{{T "settings.smtpFromPlaceholder"}}" title="{{T "settings.smtpFromHelp"}}">
+            {{with index .FieldErrors "notify_smtp_from"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+            <p class="help">{{T "settings.smtpFromHelp"}}</p>
+          </div>
+          <div class="field grow">
+            <label for="notify_smtp_to" title="{{T "settings.smtpToHelp"}}">{{T "settings.smtpTo"}}</label>
+            <input id="notify_smtp_to" name="notify_smtp_to" type="text" inputmode="email" value="{{.Settings.NotifySMTPTo}}" placeholder="{{T "settings.smtpToPlaceholder"}}" title="{{T "settings.smtpToHelp"}}">
+            {{with index .FieldErrors "notify_smtp_to"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+            <p class="help">{{T "settings.smtpToHelp"}}</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="advanced"{{if gt (len .FieldErrors) 0}} open{{end}}>
+      <summary>{{T "settings.scriptTitle"}}</summary>
+      <div class="advanced-body">
+        <p class="help">{{T "settings.scriptHelp"}}</p>
+        <div class="form-grid">
+          <div class="field grow">
+            <label for="notify_script_path" title="{{T "settings.scriptPathHelp"}}">{{T "settings.scriptPath"}}</label>
+            <input id="notify_script_path" name="notify_script_path" type="text" value="{{.Settings.NotifyScriptPath}}" placeholder="{{T "settings.scriptPathPlaceholder"}}" title="{{T "settings.scriptPathHelp"}}">
+            {{with index .FieldErrors "notify_script_path"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+            <p class="help">{{T "settings.scriptPathHelp"}}</p>
+          </div>
+          <div class="field grow">
+            <label for="notify_script_args" title="{{T "settings.scriptArgsHelp"}}">{{T "settings.scriptArgs"}}</label>
+            <input id="notify_script_args" name="notify_script_args" type="text" value="{{.Settings.NotifyScriptArgs}}" title="{{T "settings.scriptArgsHelp"}}">
+            <p class="help">{{T "settings.scriptArgsHelp"}}</p>
+          </div>
+        </div>
+      </div>
+    </details>
+
     <div class="panel-head"><h2 title="{{T "settings.notifyLanguageHelp"}}">{{T "settings.notifyLanguageTitle"}}</h2></div>
     <div class="form-grid">
       <div class="field">
@@ -103,6 +321,11 @@
         <input id="notify_grab_failed" name="notify_grab_failed" type="checkbox"{{if .Settings.NotifyGrabFailed}} checked{{end}} title="{{T "settings.notifyGrabFailedHelp"}}">
         <label for="notify_grab_failed" title="{{T "settings.notifyGrabFailedHelp"}}">{{T "settings.notifyGrabFailed"}}</label>
         <p class="help">{{T "settings.notifyGrabFailedHelp"}}</p>
+      </div>
+      <div class="field checkbox">
+        <input id="notify_grab_success" name="notify_grab_success" type="checkbox"{{if .Settings.NotifyGrabSuccess}} checked{{end}} title="{{T "settings.grabSuccessHelp"}}">
+        <label for="notify_grab_success" title="{{T "settings.grabSuccessHelp"}}">{{T "settings.grabSuccess"}}</label>
+        <p class="help">{{T "settings.grabSuccessHelp"}}</p>
       </div>
       <div class="field checkbox">
         <input id="notify_catalog_updated" name="notify_catalog_updated" type="checkbox"{{if .Settings.NotifyCatalogUpdated}} checked{{end}} title="{{T "settings.notifyCatalogUpdatedHelp"}}">
@@ -135,6 +358,7 @@
       <button class="btn" type="submit" title="{{T "settings.testHelp"}}">{{T "settings.testNotification"}}</button>
     </form>
     <p class="help">{{T "settings.notificationsHelp"}}</p>
+    <p class="help">{{T "settings.notificationsFooter"}}</p>
   </section>
   {{end}}
 

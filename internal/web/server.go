@@ -589,6 +589,7 @@ func New(cfg Config) *Server {
 		srv.torznab.SetCapabilities(cfg.Native.CapabilitiesFor)
 	}
 	srv.torznab.SetDownloadResolver(cfg.DownloadResolver)
+	srv.torznab.SetNotifier(srv.notifier)
 	if cfg.GrabGuard != nil {
 		srv.torznab.SetGrabGuard(cfg.GrabGuard, cfg.GrabRecord)
 	}

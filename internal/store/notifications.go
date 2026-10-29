@@ -16,6 +16,14 @@ import (
 const (
 	AppSecretNotifyWebhook       = "notify_webhook_url"
 	AppSecretNotifyTelegramToken = "notify_telegram_token"
+	AppSecretNotifyAppriseKey    = "notify_apprise_key"
+	AppSecretNotifyDiscordURL    = "notify_discord_webhook_url"
+	AppSecretNotifySlackURL      = "notify_slack_webhook_url"
+	AppSecretNotifyGotifyToken   = "notify_gotify_token"
+	AppSecretNotifyNtfyToken     = "notify_ntfy_token"
+	AppSecretNotifyPushoverToken = "notify_pushover_token"
+	AppSecretNotifyPushoverUser  = "notify_pushover_user"
+	AppSecretNotifySMTPPassword  = "notify_smtp_password"
 )
 
 // AttachVault makes the store able to open and seal the settings-level
@@ -106,6 +114,14 @@ func (s *Store) MigrateSettingsSecrets(ctx context.Context) (int, error) {
 	for _, item := range []struct{ setting, secret string }{
 		{KeyNotifyWebhook, AppSecretNotifyWebhook},
 		{KeyNotifyTelegramToken, AppSecretNotifyTelegramToken},
+		{KeyNotifyAppriseKey, AppSecretNotifyAppriseKey},
+		{KeyNotifyDiscordURL, AppSecretNotifyDiscordURL},
+		{KeyNotifySlackURL, AppSecretNotifySlackURL},
+		{KeyNotifyGotifyToken, AppSecretNotifyGotifyToken},
+		{KeyNotifyNtfyToken, AppSecretNotifyNtfyToken},
+		{KeyNotifyPushoverToken, AppSecretNotifyPushoverToken},
+		{KeyNotifyPushoverUser, AppSecretNotifyPushoverUser},
+		{KeyNotifySMTPPassword, AppSecretNotifySMTPPassword},
 	} {
 		var value string
 		err := s.db.QueryRowContext(ctx,

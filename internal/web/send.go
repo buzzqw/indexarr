@@ -9,6 +9,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/downloadclient"
 	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -50,6 +51,7 @@ func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
 		// torrents and magnets keep their historical behaviour.
 		s.recordGrab(r.Context(), release, indexer.GrabViaEd2k)
 	}
+	s.notifyGrabSuccess(r.Context(), release)
 	redirect(w, r, "/releases/"+fmt.Sprint(id), s.translate(r, "release.sentTo", clientName), "")
 }
 
@@ -75,7 +77,45 @@ func (s *Server) releaseDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.recordGrab(r.Context(), release, indexer.GrabViaEd2k)
+	s.notifyGrabSuccess(r.Context(), release)
 	http.Redirect(w, r, link, http.StatusFound)
+}
+
+// notifyGrabSuccess reports a delivery the web interface made, using the same
+// event and switches as a Torznab grab. The source is the indexer that supplied
+// the release when the provenance is known.
+func (s *Server) notifyGrabSuccess(ctx context.Context, release store.Release) {
+	if s == nil || s.notifier == nil {
+		return
+	}
+	ctx = context.WithoutCancel(ctx)
+	settings, err := s.store.LoadSettings(ctx)
+	if err != nil {
+		return
+	}
+	source := ""
+	if found, ok, lookupErr := s.store.IndexerForRelease(ctx, release.ID); lookupErr == nil && ok {
+		source = found.Name
+	}
+	s.notifier.DispatchAsync(ctx, settings, notify.Event{
+		Kind:       notify.KindGrabSuccess,
+		Source:     source,
+		Title:      release.Title,
+		App:        "web",
+		Size:       release.Size,
+		Categories: splitCategories(release.Category),
+		Path:       "/releases",
+	})
+}
+
+func splitCategories(category string) []string {
+	var out []string
+	for _, item := range strings.Split(category, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 // recordGrab writes a web delivery the way the Torznab server does: the
