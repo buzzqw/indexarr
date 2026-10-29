@@ -321,6 +321,10 @@ type SearchIndex struct {
 	// engine reads the pages above.
 	Forum     string `yaml:"forum,omitempty" json:"forum,omitempty"`
 	MaxTopics int    `yaml:"max_topics,omitempty" json:"max_topics,omitempty"`
+	// Cache keeps a fetched list for this long. Zero uses the default of 30
+	// minutes. The lists change slowly and a title missing from a stale list
+	// still reaches the site search fallback.
+	Cache Duration `yaml:"cache,omitempty" json:"cache,omitempty"`
 }
 
 // IndexPage is one page of a title index. Letter is empty for a page that
@@ -330,6 +334,10 @@ type IndexPage struct {
 	Get      string `yaml:"get" json:"get"`
 	Letter   string `yaml:"letter,omitempty" json:"letter,omitempty"`
 	Standard int    `yaml:"standard,omitempty" json:"standard,omitempty"`
+	// Next selects the link to the following page of a list split over
+	// several pages (a forum topic with "Pagina 1 di 3"). The engine follows
+	// it, up to ten pages, and caches the pages as one list.
+	Next string `yaml:"next,omitempty" json:"next,omitempty"`
 }
 
 // Preflight is a small GET/POST request executed once before a search. It

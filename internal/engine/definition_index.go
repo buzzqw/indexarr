@@ -19,6 +19,8 @@ const (
 	defaultIndexMaxTopics = 5
 	indexCacheTTL         = 30 * time.Minute
 	indexCacheEntries     = 8
+	// indexMaxPages bounds the pages followed for one list.
+	indexMaxPages = 10
 )
 
 type indexEntry struct {
@@ -157,33 +159,90 @@ func (c *DefinitionConnector) indexEntries(ctx context.Context, page definition.
 	if err != nil {
 		return nil, err
 	}
-	response, err := c.fetchIndexPage(ctx, target)
-	if err != nil {
-		return nil, err
-	}
-	rows, err := c.extractRowsWith(response, c.def.Search.Index.Response)
-	if err != nil {
-		return nil, err
-	}
-	seen := make(map[string]struct{}, len(rows))
-	entries := make([]indexEntry, 0, len(rows))
-	for _, row := range rows {
-		title := strings.TrimSpace(row["title"])
-		details := resolveURL(strings.TrimSpace(row["details"]), response.URL, c.baseURL)
-		if title == "" || details == "" {
-			continue
+	// Links back to a list page are navigation (the letter bar of a movie
+	// topic points to the other letter topics), not titles.
+	listPages := c.indexListURLs()
+	seen := make(map[string]struct{})
+	visited := make(map[string]struct{})
+	var entries []indexEntry
+	for pages := 0; target != nil && pages < indexMaxPages; pages++ {
+		visited[target.String()] = struct{}{}
+		response, err := c.fetchIndexPage(ctx, target)
+		if err != nil {
+			return nil, err
 		}
-		if _, duplicate := seen[details]; duplicate {
-			continue
+		rows, err := c.extractRowsWith(response, c.def.Search.Index.Response)
+		if err != nil {
+			return nil, err
 		}
-		seen[details] = struct{}{}
-		entries = append(entries, indexEntry{Title: title, Details: details})
+		for _, row := range rows {
+			title := strings.TrimSpace(row["title"])
+			details := resolveURL(strings.TrimSpace(row["details"]), response.URL, c.baseURL)
+			if title == "" || details == "" {
+				continue
+			}
+			if _, list := listPages[details]; list {
+				continue
+			}
+			if _, duplicate := seen[details]; duplicate {
+				continue
+			}
+			seen[details] = struct{}{}
+			entries = append(entries, indexEntry{Title: title, Details: details})
+		}
+		target = c.nextIndexPage(response, page.Next, visited)
 	}
 	c.storeIndexEntries(key, entries)
 	return entries, nil
 }
 
+// nextIndexPage returns the following page of a list split over several
+// pages, or nil when the page has no next link or it was already read.
+func (c *DefinitionConnector) nextIndexPage(response *Response, selector string, visited map[string]struct{}) *url.URL {
+	selector = strings.TrimSpace(selector)
+	if selector == "" {
+		return nil
+	}
+	href, err := extractHTMLValue(htmlBody(response), selector, "href")
+	if err != nil || strings.TrimSpace(href) == "" {
+		return nil
+	}
+	next, err := url.Parse(resolveURL(strings.TrimSpace(href), response.URL, c.baseURL))
+	if err != nil || next.Host != c.baseURL.Host {
+		return nil
+	}
+	if _, done := visited[next.String()]; done {
+		return nil
+	}
+	return next
+}
+
+// indexListURLs returns the absolute URLs of the definition's list pages.
+func (c *DefinitionConnector) indexListURLs() map[string]struct{} {
+	out := make(map[string]struct{}, len(c.def.Search.Index.Pages))
+	for _, page := range c.def.Search.Index.Pages {
+		if target, err := c.buildURL(strings.TrimSpace(page.Get)); err == nil {
+			out[target.String()] = struct{}{}
+		}
+	}
+	return out
+}
+
 func (c *DefinitionConnector) fetchIndexPage(ctx context.Context, target *url.URL) (*Response, error) {
+	stamp := c.session.loginStamp()
+	response, err := c.fetchIndexPageOnce(ctx, target)
+	if err != nil || !c.sessionLost(response) {
+		return response, err
+	}
+	// The forum keeps one session per account: a login from another browser
+	// leaves the list readable as a guest or not at all. Log in again once.
+	if err := c.reLoginAfter(ctx, stamp); err != nil {
+		return nil, err
+	}
+	return c.fetchIndexPageOnce(ctx, target)
+}
+
+func (c *DefinitionConnector) fetchIndexPageOnce(ctx context.Context, target *url.URL) (*Response, error) {
 	request, err := c.newRequest(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return nil, errors.New("search index: build request failed")
@@ -242,7 +301,11 @@ func (c *DefinitionConnector) storeIndexEntries(key string, entries []indexEntry
 		}
 		delete(c.indexCache, oldest)
 	}
-	c.indexCache[key] = indexCacheEntry{entries: entries, expires: c.now().Add(indexCacheTTL)}
+	ttl := indexCacheTTL
+	if configured := c.def.Search.Index.Cache.Duration(); configured > 0 {
+		ttl = configured
+	}
+	c.indexCache[key] = indexCacheEntry{entries: entries, expires: c.now().Add(ttl)}
 }
 
 // matchIndexEntries ranks titles by how many query terms start one of their

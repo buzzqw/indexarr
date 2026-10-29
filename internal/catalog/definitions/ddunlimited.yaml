@@ -115,23 +115,29 @@ auth:
 
 search:
   # The forum search has a flood control. These alphabetical lists are the
-  # local index: the TV "segnalazioni" list (one topic, not every release) and
-  # the movie letter topics of "Lista Titoli Globale" (f=1988). The engine
-  # fetches the page for the query's mode and letter, matches the title
-  # locally and opens only the matching topics. search.php remains the
-  # fallback when the list has no title, which is common for old TV seasons.
+  # local index, the quick list of what the forum has:
+  #   - TV: the "segnalazioni" topic t=61463, one topic over three pages
+  #     (page 1 # to H, page 2 I to Q, page 3 R to Z, one post per letter),
+  #     followed through the "Prossimo" link;
+  #   - movies: the forum "Lista Titoli Globale" (f=1988) holds one topic per
+  #     letter, each a single page whose first post is a bar of letter links.
+  # The engine fetches the lists for the query's mode and letter, matches the
+  # title locally and opens only the matching topics. search.php (one search
+  # every 65 s) remains the fallback when the lists have no title.
+  # Only topic links are titles: the lists also link users, PMs and forums.
   index:
     forum: /viewforum.php?f=1988
     max_topics: 5
+    cache: 6h
     response:
       type: html
-      rows: { selector: "a.postlink-local" }
+      rows: { selector: 'a.postlink-local[href*="viewtopic.php?t="]' }
       fields:
         title:   { self: true, filters: [trim] }
         details: { self: true, attr: href, type: url }
       required: [title, details]
     pages:
-      - { get: "/viewtopic.php?t=61463", standard: 5000 }
+      - { get: "/viewtopic.php?t=61463", standard: 5000, next: "a.right-box.right" }
       - { get: "/viewtopic.php?t=3941487", letter: "#", standard: 2000 }
       - { get: "/viewtopic.php?t=3941486", letter: "A", standard: 2000 }
       - { get: "/viewtopic.php?t=3941485", letter: "B", standard: 2000 }

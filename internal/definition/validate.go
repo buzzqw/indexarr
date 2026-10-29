@@ -401,6 +401,9 @@ func validateSearchIndex(index SearchIndex, add func(string, ...any)) {
 			add("search.index.pages[%d].standard: must be between 1000 and 8999", i)
 		}
 	}
+	if index.Cache.Duration() < 0 {
+		add("search.index.cache: must not be negative")
+	}
 	if index.MaxTopics < 0 || index.MaxTopics > 20 {
 		add("search.index.max_topics: must be between 1 and 20 (0 uses the default 5)")
 	}

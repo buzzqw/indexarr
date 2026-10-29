@@ -710,3 +710,61 @@ func TestDDUnlimitedBackgroundSendRetriesPastABurstBlock(t *testing.T) {
 		t.Errorf("search.php requests = %d, want 2: the cached page must not ask again", requests)
 	}
 }
+
+// The lists are forum topics too: once the account logs in elsewhere they come
+// back as a guest page without titles, and an empty list would send every
+// query to the flood-limited site search. The list is read again after one
+// new login.
+func TestDDUnlimitedIndexLogsInAgainWhenTheForumDropsTheSession(t *testing.T) {
+	var logins, guestLists atomic.Int32
+	dropped := atomic.Bool{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ucp.php":
+			if r.Method == http.MethodPost {
+				dropped.Store(logins.Add(1) == 1)
+				serveFile(t, w, "ddunlimited/login-ok.html")
+				return
+			}
+			serveFile(t, w, "ddunlimited/login.html")
+		case "/viewtopic.php":
+			switch r.URL.Query().Get("t") {
+			case "61463", "3941485":
+				if dropped.Load() {
+					guestLists.Add(1)
+					_, _ = w.Write([]byte(`<html><body><p>Devi essere registrato.</p></body></html>`))
+					return
+				}
+				serveFile(t, w, "ddunlimited/index.html")
+			default:
+				serveFile(t, w, "ddunlimited/topic.html")
+			}
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	def := parseDefinition(t, "ddunlimited")
+	def.Session = nil
+	def.Meta.URLs[0] = server.URL + "/"
+	connector, err := engine.NewDefinitionConnector(engine.DefinitionConfig{
+		Indexer:    engine.IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Settings:   map[string]string{"username": "synthetic-user", "password": "synthetic-password"},
+		Transport:  engine.NewTransport(engine.TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	items, err := connector.Search(context.Background(), engine.SearchRequest{Mode: engine.ModeTV, Query: "bones", Season: 6, Limit: 1})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 3 || items[0].Ed2k == "" {
+		t.Fatalf("items = %d (%+v), want the three eD2k files from the list after a new login", len(items), items)
+	}
+	if logins.Load() != 2 || guestLists.Load() != 1 {
+		t.Errorf("logins = %d, guest lists = %d; want 2 and 1", logins.Load(), guestLists.Load())
+	}
+}

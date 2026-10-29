@@ -1021,6 +1021,11 @@
         "forum": {
           "type": "string",
           "description": "Optional forum URL that holds the letter topics of the index; shown in the form."
+        },
+        "cache": {
+          "type": "string",
+          "pattern": "^$|^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$",
+          "description": "How long a fetched list is reused; empty uses 30 minutes."
         }
       }
     },
@@ -1043,6 +1048,10 @@
           "type": "integer",
           "minimum": 1000,
           "maximum": 8999
+        },
+        "next": {
+          "type": "string",
+          "description": "Selector of the link to the following page of a list split over several pages; followed up to ten pages."
         }
       }
     }

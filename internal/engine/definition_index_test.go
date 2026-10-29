@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/definition"
 )
@@ -257,5 +258,147 @@ func TestIndexReadsTheSeasonOfAFreeTextQuery(t *testing.T) {
 		if season != want[0] || episode != want[1] {
 			t.Errorf("%q: season %d episode %d, want %v", query, season, episode, want)
 		}
+	}
+}
+
+const indexPagedDefinition = `schema: 1
+meta:
+  id: index-paged
+  name: Index paged
+  type: private
+  protocol: ed2k
+  urls:
+    - http://REPLACE/
+capabilities:
+  search: [q]
+  tv-search: [q]
+  movie-search: [q]
+search:
+  index:
+    cache: 6h
+    response:
+      type: html
+      rows: { selector: 'a.postlink-local[href*="viewtopic.php?t="]' }
+      fields:
+        title:   { self: true }
+        details: { self: true, attr: href, type: url }
+    pages:
+      - { get: "/viewtopic.php?t=100", standard: 5000, next: "a.right-box.right" }
+      - { get: "/viewtopic.php?t=200", letter: S, standard: 2000 }
+      - { get: "/viewtopic.php?t=201", letter: A, standard: 2000 }
+`
+
+func indexPagedConnector(t *testing.T, handler http.Handler) *DefinitionConnector {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+	source := strings.ReplaceAll(indexPagedDefinition, "http://REPLACE/", server.URL+"/")
+	def, err := definition.Parse([]byte(source))
+	if err != nil {
+		t.Fatalf("parse definition: %v", err)
+	}
+	connector, err := NewDefinitionConnector(DefinitionConfig{
+		Indexer:    IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+		Definition: def,
+		Transport:  NewTransport(TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	return connector
+}
+
+// The DDUnlimited TV list is one topic over three pages: page 1 holds # to H,
+// the series from I to Z are on pages 2 and 3. Reading only the first page
+// sent every query for "Silo" or "Walker" to the flood-limited site search.
+func TestIndexFollowsTheNextPageOfAList(t *testing.T) {
+	var requests atomic.Int32
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/viewtopic.php" || r.URL.Query().Get("t") != "100" {
+			http.NotFound(w, r)
+			return
+		}
+		requests.Add(1)
+		switch r.URL.Query().Get("start") {
+		case "":
+			writeBody(t, w, []byte(`<html><body>
+<a class="postlink-local" href="memberlist.php?mode=group&amp;g=1">Responsabile di sezione:</a>
+<a class="postlink-local" href="./viewtopic.php?t=11">BONES - Stagione 6</a>
+<a href="./viewtopic.php?t=100&amp;start=10" class="right-box right">Prossimo</a>
+<a href="./viewtopic.php?t=100&amp;start=10" class="right-box right">Prossimo</a>
+</body></html>`))
+		case "10":
+			writeBody(t, w, []byte(`<html><body>
+<a class="postlink-local" href="./viewtopic.php?t=12">NEW TRICKS - Stagione 1</a>
+<a href="./viewtopic.php?t=100&amp;start=0" class="left-box left">Precedente</a>
+<a href="./viewtopic.php?t=100&amp;start=20" class="right-box right">Prossimo</a>
+</body></html>`))
+		case "20":
+			writeBody(t, w, []byte(`<html><body>
+<a class="postlink-local" href="./viewtopic.php?t=13">SILO - Stagione 3</a>
+<a class="postlink-local" href="./viewtopic.php?t=14">SILO - Stagione 2</a>
+<a href="./viewtopic.php?t=100&amp;start=10" class="left-box left">Precedente</a>
+</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	connector := indexPagedConnector(t, handler)
+	page := connector.def.Search.Index.Pages[0]
+	entries, err := connector.indexEntries(context.Background(), page)
+	if err != nil {
+		t.Fatalf("indexEntries: %v", err)
+	}
+	var titles []string
+	for _, entry := range entries {
+		titles = append(titles, entry.Title)
+	}
+	want := []string{"BONES - Stagione 6", "NEW TRICKS - Stagione 1", "SILO - Stagione 3", "SILO - Stagione 2"}
+	if strings.Join(titles, "|") != strings.Join(want, "|") {
+		t.Fatalf("titles = %q, want %q", titles, want)
+	}
+	if requests.Load() != 3 {
+		t.Errorf("list requests = %d, want 3", requests.Load())
+	}
+	matches := matchIndexEntries(entries, SearchRequest{Mode: ModeTV, Query: "Silo", Season: 3})
+	if len(matches) != 1 || matches[0].Title != "SILO - Stagione 3" {
+		t.Errorf("Silo S03 matches = %+v", matches)
+	}
+	// The three pages are one cached list.
+	if _, err := connector.indexEntries(context.Background(), page); err != nil {
+		t.Fatalf("cached indexEntries: %v", err)
+	}
+	if requests.Load() != 3 {
+		t.Errorf("list requests after cache = %d, want 3", requests.Load())
+	}
+	cached := connector.indexCache[page.Get]
+	if ttl := time.Until(cached.expires); ttl < 5*time.Hour {
+		t.Errorf("cache ttl = %s, want the definition's 6h", ttl)
+	}
+}
+
+// A movie letter topic starts with a bar of links to the other letter topics.
+// "A" is not a film: a query for the movie "A" (or any one-letter title) must
+// not open the A list as if it were a release.
+func TestIndexSkipsLinksBackToTheLists(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/viewtopic.php" || r.URL.Query().Get("t") != "200" {
+			http.NotFound(w, r)
+			return
+		}
+		writeBody(t, w, []byte(`<html><body>
+<a class="postlink-local" href="./viewtopic.php?t=201">A</a>
+<a class="postlink-local" href="./viewtopic.php?t=200">S</a>
+<a class="postlink-local" href="viewforum.php?f=1987">Indice</a>
+<a class="postlink-local" href="./viewtopic.php?t=3861373">Solo - A Star Wars Story (Howard, 2018)</a>
+</body></html>`))
+	})
+	connector := indexPagedConnector(t, handler)
+	entries, err := connector.indexEntries(context.Background(), connector.def.Search.Index.Pages[1])
+	if err != nil {
+		t.Fatalf("indexEntries: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Title != "Solo - A Star Wars Story (Howard, 2018)" {
+		t.Fatalf("entries = %+v", entries)
 	}
 }

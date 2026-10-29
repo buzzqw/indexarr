@@ -46,10 +46,21 @@ un array JavaScript (`filearray[...]`): l'estrattore `body: true` li legge tutti
 e li deduplica per MD4; verificato sul topic di «The Last of Us» stagione 1
 (10 episodi, S01E01 da 15.928.363.670 byte). La ricerca del forum ha un flood control
 («attendi qualche minuto»): la ricerca live usa un **indice locale** invece di
-`search.php`, l'elenco alfabetico delle serie (`t=61463`, 6.521 link) e le 27
-pagine «Lista Titoli Globale» dei film (`f=1988`, una per lettera). Il motore
-legge la pagina TV e quella della lettera cercata, confronta il titolo in
-locale e apre solo i primi 5 topic; `search.php` resta il ripiego. La lista TV
+`search.php`, l'elenco alfabetico delle serie (`t=61463`) e le 27
+pagine «Lista Titoli Globale» dei film (`f=1988`, una per lettera). Le due
+pagine funzionano in modo diverso: la lista TV è **un topic su tre pagine**
+(pagina 1 da `#` a H, pagina 2 da I a Q, pagina 3 da R a Z, un messaggio per
+lettera) e il motore segue il link «Prossimo»; fino al 29/10 leggeva solo la
+prima pagina, 6.521 link, e le serie dalla I alla Z (Silo, New Tricks, Scrubs,
+Walker, Strike, «Misteri di Murdoch, I») andavano tutte su `search.php`. Dal
+29/10 la lista dà 15.028 titoli. Il forum dei film contiene invece un topic per
+lettera, di una sola pagina (lettera `#`: 982 titoli), che si apre con la barra
+delle lettere: quei link rimandano agli altri topic-lettera e il motore li
+scarta. Il motore legge la lista TV e il topic della lettera cercata (cache 6
+ore), confronta il titolo in locale e apre solo i primi 5 topic; `search.php`
+(un turno ogni 65 s) resta il ripiego. Dal vivo il 29/10: «Silo» stagione 3 →
+30 file eD2k da 3 topic (2160p, 1080p, SD) in 17 s senza `search.php`; «Solo A
+Star Wars Story» → 6 file eD2k in 9 s. La lista TV
 è l'elenco delle **segnalazioni**, non comprende tutte le release: per le serie
 vecchie o non segnalate il ripiego è la ricerca del forum (con il suo flood
 control), mentre la lista film `f=1988` è completa per lettera. L'archivio

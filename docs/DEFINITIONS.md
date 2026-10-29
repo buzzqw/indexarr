@@ -607,14 +607,16 @@ ricerca con una lettura locale di quelle pagine:
 search:
   index:
     max_topics: 5
+    cache: 6h
     response:
       type: html
-      rows: { selector: "a.postlink-local" }
+      rows: { selector: 'a.postlink-local[href*="viewtopic.php?t="]' }
       fields:
         title:   { self: true }
         details: { self: true, attr: href, type: url }
     pages:
-      - { get: /viewtopic.php?t=61463, standard: 5000 }        # TV, una pagina
+      # TV: un solo topic su più pagine, seguite con il link «Prossimo»
+      - { get: /viewtopic.php?t=61463, standard: 5000, next: "a.right-box.right" }
       - { get: /viewtopic.php?t=3941486, letter: A, standard: 2000 }
       - { get: /viewtopic.php?t=3941485, letter: B, standard: 2000 }
       # ... una pagina per lettera
@@ -627,13 +629,27 @@ i primi `max_topics` topic. Un termine della query vale solo quando è l'inizio
 di una parola del titolo: «part» trova «Parte», ma «It» non trova «Hitman» e
 «Up» non trova «Superman», perché un falso positivo nasconderebbe il ripiego.
 Le ricerche di libri e musica non leggono l'indice: vanno direttamente alla
-`search.request`. Ogni pagina è tenuta in cache per 30 minuti. Se
+`search.request`. Ogni elenco è tenuto in cache per `index.cache` (vuoto = 30
+minuti): gli elenchi cambiano di rado e un titolo che manca in un elenco
+vecchio arriva comunque al ripiego. Se
 nessun titolo corrisponde e la definizione ha anche una `search.request`
 normale, il motore usa quella come ripiego. Le pagine d'indice non diventano
 release: entrano in archivio solo i link trovati aprendo i topic scelti.
 
 `self: true` in un campo HTML legge il nodo della riga stessa invece di un
 discendente: serve quando la riga è già l'elemento `<a>` (elenchi di link).
+
+`next` (per pagina) è il selettore del link alla pagina successiva di un elenco
+diviso in più pagine, come un topic phpBB con «Pagina 1 di 3». Il motore lo
+segue fino a 10 pagine e tiene le pagine in cache come un solo elenco. Senza
+`next` legge solo la prima pagina: sul topic TV di DDUnlimited la prima pagina
+va da `#` a `H`, quindi le serie dalla I alla Z non venivano mai trovate.
+
+Un link che punta a una delle `pages` è navigazione, non un titolo: la barra
+delle lettere in testa a un topic dei film rimanda agli altri topic-lettera e
+viene scartata. Un elenco che risponde senza il marcatore `auth.logged_in`
+(sessione caduta perché lo stesso account è entrato da un altro browser) fa
+rifare il login una volta e viene riletto.
 
 `index.forum` è facoltativo: indica il forum che contiene le pagine per lettera
 (per esempio `f=1988`) e serve solo alla UI, che lo mostra in sola lettura nel
