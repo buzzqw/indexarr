@@ -559,3 +559,40 @@ func TestCreateStoresManagementCriteria(t *testing.T) {
 		t.Fatalf("cleared criteria = %+v", updated)
 	}
 }
+
+func TestCreateAndUpdateAnEd2kIndexer(t *testing.T) {
+	svc, st, _, _ := newService(t)
+	ctx := context.Background()
+	body := strings.Replace(testDefinition("test-ed2k", true, false), "protocol: torrent", "protocol: ed2k", 1)
+	storeDefinition(t, st, "test-ed2k", body)
+
+	created, err := svc.Create(ctx, Input{
+		DefinitionID: "test-ed2k",
+		Name:         "Forum eD2k",
+		Settings:     map[string]string{"url": "https://example.invalid/"},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if created.Protocol != "ed2k" {
+		t.Errorf("protocol = %q, want ed2k", created.Protocol)
+	}
+
+	// The edit form posts the stored protocol back with the other fields.
+	updated, err := svc.Update(ctx, created.ID, Input{
+		DefinitionID: "test-ed2k",
+		Name:         "Forum eD2k",
+		Protocol:     "ed2k",
+		Settings:     map[string]string{"url": "https://example.invalid/"},
+	})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if updated.Protocol != "ed2k" {
+		t.Errorf("protocol after update = %q, want ed2k", updated.Protocol)
+	}
+
+	if _, err := svc.Update(ctx, created.ID, Input{Protocol: "ftp"}); err == nil {
+		t.Error("Update accepted protocol ftp")
+	}
+}

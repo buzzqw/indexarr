@@ -113,7 +113,7 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 		protocol = strings.ToLower(strings.TrimSpace(parsed.Meta.Protocol))
 	}
 	if !validProtocol(protocol) {
-		return store.Indexer{}, errors.New("protocol must be torrent or usenet")
+		return store.Indexer{}, errors.New("protocol must be torrent, usenet or ed2k")
 	}
 
 	settings := normalizeSettings(in.Settings)
@@ -263,7 +263,7 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 	}
 	if protocol := strings.ToLower(strings.TrimSpace(in.Protocol)); protocol != "" {
 		if !validProtocol(protocol) {
-			return store.Indexer{}, errors.New("protocol must be torrent or usenet")
+			return store.Indexer{}, errors.New("protocol must be torrent, usenet or ed2k")
 		}
 		current.Protocol = protocol
 	}
@@ -830,7 +830,7 @@ type criteriaValues struct {
 }
 
 func validProtocol(protocol string) bool {
-	return protocol == "torrent" || protocol == "usenet"
+	return protocol == "torrent" || protocol == "usenet" || protocol == "ed2k"
 }
 
 func isUniqueError(err error) bool {
