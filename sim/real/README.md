@@ -89,7 +89,7 @@ Le configurazioni delle \*arr stanno in `sim/real/.data/{prowlarr,sonarr,radarr}
 ## Esecuzione
 
 ```sh
-cd /home/andres/indexarr
+cd /percorso/di/indexarr
 ./sim/real/run.sh
 ```
 

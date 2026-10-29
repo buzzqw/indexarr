@@ -596,7 +596,7 @@ directory temporanea e stampa il piano, senza fermare il servizio.
 Comando completo, su una sola riga:
 
 ```bash
-cd /home/andres/indexarr && ./scripts/upgrade.sh --apply --yes
+cd /percorso/di/indexarr && ./scripts/upgrade.sh --apply --yes
 ```
 
 Con `--apply` il build avviene **prima** di fermare il servizio. Poi crea un

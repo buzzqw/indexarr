@@ -1,8 +1,8 @@
 # Regole dell'interfaccia
 
 Queste regole valgono per ogni pagina dell'interfaccia web di indexarr e per
-ogni modifica ai template. La mappa delle route e dei redirect è in
-[internal/UI-MAP.md](internal/UI-MAP.md); `scripts/ui-smoke.sh` la verifica.
+ogni modifica ai template. `scripts/ui-smoke.sh` verifica le route e i
+redirect.
 
 ## 1. Regole
 

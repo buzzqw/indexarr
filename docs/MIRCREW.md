@@ -31,7 +31,7 @@ download.
 
 ## 1. Ponte Torznab (legacy)
 
-Il servizio `/home/andres/mircrew-indexer` espone un'API Torznab su
+Il servizio `mircrew-indexer` espone un'API Torznab su
 `http://127.0.0.1:9118/api`. indexarr lo aggiunge come **indexer Torznab
 generico**: non serve una definizione né un convertitore.
 

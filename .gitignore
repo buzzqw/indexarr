@@ -29,3 +29,7 @@ sim/real/.data/
 
 # Python cache
 __pycache__/
+
+# Note private e di lavoro: restano in locale, non nel repository
+/docs/BACKLOG.md
+/docs/internal/

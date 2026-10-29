@@ -10,7 +10,7 @@ nulla.
 Comando esatto, su una sola riga:
 
 ```bash
-cd /home/andres/indexarr && ./scripts/upgrade.sh --apply --yes
+cd /percorso/di/indexarr && ./scripts/upgrade.sh --apply --yes
 ```
 
 Prima si può lanciare il controllo senza modifiche:
