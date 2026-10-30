@@ -38,10 +38,12 @@ source is for development.
 
 ### From a prebuilt archive
 
-Every commit on `main` publishes ready-to-run archives of the current code:
-`indexarr-linux-amd64.tar.gz` and `indexarr-linux-arm64.tar.gz` on the
-[continuous release](https://github.com/buzzqw/indexarr/releases/tag/continuous).
-There is nothing to compile and nothing to clone:
+Ready-to-run archives of the current code are published manually on the
+[continuous release](https://github.com/buzzqw/indexarr/releases/tag/continuous):
+`indexarr-linux-amd64.tar.gz` and `indexarr-linux-arm64.tar.gz`. Publishing is
+not automatic; a maintainer refreshes the rolling release with
+`make publish PUBLISH_ARGS=--yes`. There is nothing to compile and nothing to
+clone:
 
 ```bash
 curl -LO https://github.com/buzzqw/indexarr/releases/download/continuous/indexarr-linux-amd64.tar.gz
@@ -93,8 +95,11 @@ docker compose up -d --build
 The page is on port **8788**, the container runs as the non-root UID 10001 and
 the database, the configuration and the vault key live in the named volume
 `indexarr-data`. `INDEXARR_PORT` changes the host port, `INDEXARR_VERSION`
-tags the image. To keep the vault key outside the volume, mount it and set
-`INDEXARR_MASTER_KEY_FILE` (the line is already in `docker-compose.yml`).
+tags the image (Compose defaults to `dev`; `make docker` uses the version from
+`scripts/version.sh`). To keep the vault key outside the volume, mount it and
+set `INDEXARR_MASTER_KEY_FILE` (the line is already in `docker-compose.yml`).
+The prebuilt archives are for `install.sh`, not a container image: Docker
+builds from the checkout.
 
 ### Upgrading and rollback
 
@@ -430,7 +435,7 @@ make qa        # vet + test + HTTP smoke test on the real binary
 make build     # bin/indexarr
 make release   # linux/amd64, linux/arm64, windows/amd64, darwin/arm64
 make package   # self-contained archives in dist/ (linux/amd64, linux/arm64)
-make publish   # dry run of the continuous release; PUBLISH_ARGS=--yes publishes
+make publish   # dry run; PUBLISH_ARGS=--yes publishes the rolling release manually
 make ui-smoke  # UI smoke test
 make ci        # local CI, log in ci-logs/<commit>.log
 ```

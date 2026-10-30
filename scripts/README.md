@@ -111,14 +111,12 @@ replaced, so the download URLs stay the same.
 ```bash
 ./scripts/publish-release.sh                  # dry run: builds, uploads nothing
 ./scripts/publish-release.sh --yes            # move the tag, upload, update notes
-./scripts/publish-release.sh --install-hook   # publish after every commit
 ```
 
-`--install-hook` writes `.git/hooks/post-commit`: it publishes in the
-background (`ci-logs/publish.log`), skips rebases and cherry-picks, and is
-disabled with `INDEXARR_NO_PUBLISH=1`. A failed publish never blocks the
-commit. The script refuses uncommitted tracked changes (`--allow-dirty` to
-override), needs `gh` logged in and a lock so two runs do not race. The
-stable URLs are
+Publishing is **manual and explicit**: there is no post-commit hook and no
+GitHub Actions workflow that publishes on every commit. Run the command when
+you decide to refresh the rolling release. The script refuses uncommitted
+tracked changes (`--allow-dirty` to override), needs `gh` logged in and a lock
+so two runs do not race. The stable URLs are
 `https://github.com/buzzqw/indexarr/releases/download/continuous/indexarr-linux-<arch>.tar.gz`
 and `.../SHA256SUMS`.

@@ -92,8 +92,9 @@ package:
 supported-list:
 	go generate ./internal/catalog
 
-# Publish the current commit as the rolling "continuous" release.
-# It is a dry run until --yes is passed: make publish PUBLISH_ARGS=--yes
+# Manually publish the current commit as the rolling "continuous" release.
+# It is a dry run until --yes is passed: make publish PUBLISH_ARGS=--yes.
+# There is no post-commit hook and no automatic publication on every commit.
 .PHONY: publish
 publish:
 	./scripts/publish-release.sh $(PUBLISH_ARGS)
