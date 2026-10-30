@@ -95,6 +95,9 @@ Native sources / RSS / Newznab ──► scheduler ──► normalization ─�
 - **Logs** with the system (process) log only.
 - **Settings** for configuration, with the **Rules** (blocklist),
   **Backup** and **Maintenance** sections.
+- The **version** in the bottom-left corner (top right on narrow screens)
+  opens the GitHub repository at
+  [github.com/buzzqw/indexarr](https://github.com/buzzqw/indexarr).
 - Interface translated into Italian, English, German, French, Spanish, Polish
   and Chinese.
 

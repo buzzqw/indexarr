@@ -23,6 +23,10 @@ The dashboard shows sources, releases, problems and the app status. The
 the overview per app and per indexer, the downloads, the runs, the new releases
 and the network counters. **Logs** holds only the system log of the process.
 
+The **version** at the bottom of the sidebar opens the GitHub repository in a
+new tab; on a narrow screen the same link sits at the top right. It is the
+quick way to read the changelog or open an issue.
+
 ---
 
 ## 2. Adding a source
