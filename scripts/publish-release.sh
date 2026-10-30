@@ -10,11 +10,14 @@
 # The tag "continuous" is moved to the new commit and the assets are replaced;
 # the versioned tags (v2.1.3, ...) and the "latest" release are left alone.
 #
-# Publishing is deliberately manual: no post-commit hook and no GitHub Actions
-# workflow. Run it when you decide to refresh the rolling release.
+# Publishing is manual by default: run it when you decide to refresh the
+# rolling release. The optional post-commit hook (--install-hook) publishes
+# after every commit instead; it is a local choice, never a CI job.
 #
-#   scripts/publish-release.sh              # dry run: builds, uploads nothing
-#   scripts/publish-release.sh --yes        # build, move the tag, publish
+#   scripts/publish-release.sh                  # dry run: builds, uploads nothing
+#   scripts/publish-release.sh --yes            # build, move the tag, publish
+#   scripts/publish-release.sh --install-hook   # publish after every commit
+#   scripts/publish-release.sh --auto --yes     # what the hook runs
 set -euo pipefail
 export LC_ALL=C
 
@@ -24,7 +27,9 @@ cd "$ROOT"
 TAG="continuous"
 TITLE="Continuous build (linux amd64 + arm64)"
 YES=0
+AUTO=0
 ALLOW_DIRTY=0
+INSTALL_HOOK=0
 
 usage() {
 	cat <<'TXT'
@@ -33,10 +38,13 @@ Usage: scripts/publish-release.sh [options]
 Options:
   --tag NAME        Release tag to update (default: continuous)
   --yes             Execute; without it nothing is pushed or uploaded
+  --auto            Hook mode: quiet, skips rebases and cherry-picks
   --allow-dirty     Publish even with uncommitted tracked changes
+  --install-hook    Install .git/hooks/post-commit and exit
   -h, --help        This help
 
 Environment:
+  INDEXARR_NO_PUBLISH=1   Make the post-commit hook a no-op
   GH_REPO=owner/name      Repository to publish to (default: origin)
 TXT
 }
@@ -47,7 +55,7 @@ die() {
 }
 
 note() {
-	echo "$@"
+	[[ "$AUTO" == 1 ]] || echo "$@"
 }
 
 while (($#)); do
@@ -61,8 +69,16 @@ while (($#)); do
 		YES=1
 		shift
 		;;
+	--auto)
+		AUTO=1
+		shift
+		;;
 	--allow-dirty)
 		ALLOW_DIRTY=1
+		shift
+		;;
+	--install-hook)
+		INSTALL_HOOK=1
 		shift
 		;;
 	-h | --help)
@@ -74,6 +90,46 @@ while (($#)); do
 		;;
 	esac
 done
+
+install_hook() {
+	local hooks hook
+	hooks="$(git rev-parse --git-path hooks)"
+	mkdir -p "$hooks"
+	hook="${hooks}/post-commit"
+	if [[ -f "$hook" ]] && ! grep -q "publish-release.sh" "$hook"; then
+		die "${hook} already exists and is not ours; move it away first"
+	fi
+	cat >"$hook" <<'SH'
+#!/usr/bin/env bash
+# Installed by scripts/publish-release.sh --install-hook
+# Publishes the "continuous" release in the background after every commit.
+set -u
+[ "${INDEXARR_NO_PUBLISH:-0}" = "1" ] && exit 0
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+[ -x "${root}/scripts/publish-release.sh" ] || exit 0
+# Rebases and cherry-picks create commits we do not want to publish one by one.
+[ -d "${root}/.git/rebase-merge" ] && exit 0
+[ -d "${root}/.git/rebase-apply" ] && exit 0
+mkdir -p "${root}/ci-logs"
+nohup setsid "${root}/scripts/publish-release.sh" --auto --yes \
+	>>"${root}/ci-logs/publish.log" 2>&1 </dev/null &
+exit 0
+SH
+	chmod 0755 "$hook"
+	echo "Hook installed: ${hook}"
+	echo "Disable it with INDEXARR_NO_PUBLISH=1 or remove the file."
+}
+
+if [[ "$INSTALL_HOOK" == 1 ]]; then
+	install_hook
+	exit 0
+fi
+
+# Hook mode never publishes a rebase in progress: those commits are rewritten
+# before the branch settles.
+if [[ "$AUTO" == 1 ]]; then
+	[[ -d "${ROOT}/.git/rebase-merge" || -d "${ROOT}/.git/rebase-apply" ]] && exit 0
+fi
 
 # One publisher at a time: two builds of the same assets would race on the
 # upload. flock is optional (macOS lacks it), the lock is then best-effort.
@@ -114,8 +170,9 @@ done
 [[ ${#ASSETS[@]} -ge 3 ]] || die "the archives are missing: ${ROOT}/dist"
 
 BODY="$(cat <<MD
-Rolling build of \`main\`, published manually. Not a versioned release: use it
-to try the current code, not as a fixed point in production.
+Rolling build of \`main\`, refreshed when the maintainer publishes it. Not a
+versioned release: use it to try the current code, not as a fixed point in
+production.
 
 - version: \`${VERSION}\`
 - commit: \`${SHA}\` — $(git log -1 --format=%s)

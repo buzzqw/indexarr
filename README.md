@@ -42,8 +42,9 @@ Ready-to-run archives of the current code are published manually on the
 [continuous release](https://github.com/buzzqw/indexarr/releases/tag/continuous):
 `indexarr-linux-amd64.tar.gz` and `indexarr-linux-arm64.tar.gz`. Publishing is
 not automatic; a maintainer refreshes the rolling release with
-`make publish PUBLISH_ARGS=--yes`. There is nothing to compile and nothing to
-clone:
+`make publish PUBLISH_ARGS=--yes` (or after every commit, with the opt-in
+`scripts/publish-release.sh --install-hook`). There is nothing to compile and
+nothing to clone:
 
 ```bash
 curl -LO https://github.com/buzzqw/indexarr/releases/download/continuous/indexarr-linux-amd64.tar.gz
@@ -57,7 +58,8 @@ cd indexarr-*-linux-amd64
 The archive holds the static binary, `install.sh`, the installer in
 `scripts/`, the systemd unit and the example definitions; `INSTALL.md`
 repeats the two commands. It is the **current code**, not a fixed version:
-for production pin a versioned release when there is one.
+for production pin a versioned release when there is one, or update an
+existing installation from a newer archive.
 
 ### Install with install.sh
 
