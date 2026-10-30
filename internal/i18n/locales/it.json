@@ -1770,7 +1770,7 @@
   "shell.systemNav": "Sistema",
   "shell.torznab": "Endpoint Torznab",
   "shell.uptime": "indexarr %s · attivo da %s",
-  "shell.versionTitle": "versione di indexarr",
+  "shell.versionTitle": "versione di indexarr — apri il repository GitHub",
   "state.degraded": "degradata",
   "state.draft": "bozza",
   "state.stable": "stabile",

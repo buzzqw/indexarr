@@ -1770,7 +1770,7 @@
   "shell.systemNav": "System",
   "shell.torznab": "Torznab-Endpunkt",
   "shell.uptime": "indexarr %s · Laufzeit %s",
-  "shell.versionTitle": "indexarr-Version",
+  "shell.versionTitle": "indexarr-Version — GitHub-Repository öffnen",
   "state.degraded": "eingeschränkt",
   "state.draft": "Entwurf",
   "state.stable": "stabil",

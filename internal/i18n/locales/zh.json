@@ -1770,7 +1770,7 @@
   "shell.systemNav": "系统",
   "shell.torznab": "Torznab 端点",
   "shell.uptime": "indexarr %s · 已运行 %s",
-  "shell.versionTitle": "indexarr 版本",
+  "shell.versionTitle": "indexarr 版本 — 打开 GitHub 仓库",
   "state.degraded": "降级",
   "state.draft": "草稿",
   "state.stable": "稳定",
