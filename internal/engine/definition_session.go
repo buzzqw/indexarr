@@ -32,11 +32,103 @@ const (
 type SessionRegistry struct {
 	mu    sync.Mutex
 	names map[string]struct{}
+	// prefixes maps a FlareSolverr endpoint to the ownership prefixes of this
+	// process. The global reconcile uses it to close sessions left by a
+	// previous run without touching another program's browsers.
+	prefixes map[string]map[string]struct{}
 }
 
 // NewSessionRegistry returns an empty registry.
 func NewSessionRegistry() *SessionRegistry {
-	return &SessionRegistry{names: make(map[string]struct{})}
+	return &SessionRegistry{
+		names:    make(map[string]struct{}),
+		prefixes: make(map[string]map[string]struct{}),
+	}
+}
+
+// RegisterPrefix records that this process owns the sessions named
+// `<prefix>-<random>` on endpoint.
+func (r *SessionRegistry) RegisterPrefix(endpoint, prefix string) {
+	if r == nil {
+		return
+	}
+	endpoint = flaresolverr.Endpoint(endpoint)
+	prefix = strings.TrimSpace(prefix)
+	if endpoint == "" || prefix == "" {
+		return
+	}
+	r.mu.Lock()
+	if r.prefixes == nil {
+		r.prefixes = make(map[string]map[string]struct{})
+	}
+	set := r.prefixes[endpoint]
+	if set == nil {
+		set = make(map[string]struct{})
+		r.prefixes[endpoint] = set
+	}
+	set[prefix] = struct{}{}
+	r.mu.Unlock()
+}
+
+// Endpoints returns the FlareSolverr endpoints with at least one registered
+// ownership prefix.
+func (r *SessionRegistry) Endpoints() []string {
+	if r == nil {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]string, 0, len(r.prefixes))
+	for endpoint := range r.prefixes {
+		out = append(out, endpoint)
+	}
+	return out
+}
+
+// owns reports whether name belongs to one of the prefixes registered for
+// endpoint.
+func (r *SessionRegistry) owns(endpoint, name string) bool {
+	if r == nil || name == "" {
+		return false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for prefix := range r.prefixes[endpoint] {
+		if strings.HasPrefix(name, prefix+"-") {
+			return true
+		}
+	}
+	return false
+}
+
+// ReconcileSessions destroys the sessions on endpoint that carry a prefix this
+// process owns but are not live in it. It is the global counterpart of the
+// per-definition cleanup: a session left behind by a stopped indexarr, or by a
+// definition nobody queries again, would otherwise keep its Chromium alive
+// until FlareSolverr restarts. Returns how many browsers were closed.
+func (r *SessionRegistry) ReconcileSessions(ctx context.Context, endpoint string, timeout time.Duration) int {
+	if r == nil {
+		return 0
+	}
+	endpoint = flaresolverr.Endpoint(endpoint)
+	if endpoint == "" {
+		return 0
+	}
+	names, err := flaresolverr.ListSessions(ctx, nil, endpoint, timeout)
+	if err != nil {
+		return 0
+	}
+	destroyed := 0
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" || r.has(name) || !r.owns(endpoint, name) {
+			continue
+		}
+		if err := flaresolverr.DestroySession(ctx, nil, endpoint, name, timeout); err == nil {
+			destroyed++
+		}
+	}
+	return destroyed
 }
 
 func (r *SessionRegistry) add(name string) {
@@ -142,6 +234,10 @@ func (c *DefinitionConnector) configureSession(cfg DefinitionConfig) error {
 		client:   &http.Client{Timeout: timeout + 15*time.Second},
 		registry: cfg.Sessions,
 	}
+	// Tell the process-wide registry which session names belong to indexarr,
+	// so the global reconcile can close the ones left by a previous run
+	// without touching the browsers of another program.
+	c.flare.registry.RegisterPrefix(endpoint, prefix)
 	return nil
 }
 
@@ -213,13 +309,17 @@ func (s *flareSessionState) ensure(ctx context.Context, now time.Time) error {
 	if err != nil {
 		return err
 	}
+	// Register the name before creating the browser: the global reconcile
+	// lists sessions without taking the connector lock, and would otherwise
+	// close the new session in the instant between creation and registration.
+	s.registry.add(name)
 	if err := flaresolverr.CreateSession(ctx, s.client, s.endpoint, name, s.timeout); err != nil {
+		s.registry.remove(name)
 		return err
 	}
 	s.name = name
 	s.created = now
 	s.lastUsed = now
-	s.registry.add(name)
 	return nil
 }
 

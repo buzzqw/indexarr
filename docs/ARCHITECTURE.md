@@ -244,7 +244,8 @@ with `local` origin; it rewrites an entry only when the hash changes.
   error or for a LAN address. It is stateless: one request solved at a time,
   without persistent sessions. An indexer that protects **all** pages (for
   example MirCrew) declares `session` instead and uses a persistent browser
-  session, with login, 12-hour recycling and cleanup by prefix; see
+  session, with login, 12-hour recycling, idle closing and a periodic global
+  reconcile of the orphan sessions by ownership prefix; see
   [DEFINITIONS.md](DEFINITIONS.md#session) and [MIRCREW.md](MIRCREW.md).
 - **Live search active by default**: it queries Torznab/Newznab indexers when the
   cache has no results, then saves what arrives. It can be turned off from

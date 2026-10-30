@@ -40,6 +40,9 @@ const (
 	sessionSweepInterval = 2 * time.Minute
 	sessionSweepTimeout  = 45 * time.Second
 	sessionCloseTimeout  = 20 * time.Second
+	// sessionReconcileStartDelay leaves a restarting process a moment to
+	// settle before it closes the sessions it may find from the old one.
+	sessionReconcileStartDelay = 30 * time.Second
 )
 
 var (
@@ -337,12 +340,102 @@ func (m *Manager) SweepSessions(ctx context.Context) int {
 	return closed
 }
 
-// StartSessionSweeper closes idle browser sessions in the background until ctx
-// is cancelled. A Cloudflare-protected indexer queried once would otherwise
-// keep a whole Chromium (hundreds of MB) alive for the rest of the process.
+// ReconcileSessions closes the FlareSolverr browser sessions that carry a
+// prefix owned by indexarr but are not live in this process, and returns how
+// many browsers were closed. The idle sweep only sees the cached connectors:
+// without this pass a session left by a stopped process, or by a definition
+// nobody has queried since the restart, would keep its Chromium alive until
+// FlareSolverr restarts.
+func (m *Manager) ReconcileSessions(ctx context.Context) int {
+	if m == nil || m.sessions == nil || m.store == nil {
+		return 0
+	}
+	network, err := m.store.LoadSettings(ctx)
+	if err != nil {
+		return 0
+	}
+	global := strings.TrimSpace(network.FlareSolverrURL)
+	timeout := time.Duration(network.FlareSolverrTimeoutSeconds) * time.Second
+	if timeout <= 0 {
+		timeout = time.Duration(store.DefaultSettings().FlareSolverrTimeoutSeconds) * time.Second
+	}
+	// Default session names start with "indexarr-": registering the wildcard
+	// also covers the sessions of a definition removed from the store.
+	if global != "" {
+		m.sessions.RegisterPrefix(global, "indexarr")
+	}
+	m.seedSessionPrefixes(ctx, global)
+	closed := 0
+	for _, endpoint := range m.sessions.Endpoints() {
+		closed += m.sessions.ReconcileSessions(ctx, endpoint, timeout)
+	}
+	return closed
+}
+
+// seedSessionPrefixes registers the ownership prefix of every stored
+// definition with a persistent session. A definition that has not been queried
+// since the restart has no cached connector, so its prefix would otherwise be
+// unknown to the reconcile and its session from the previous run would survive.
+func (m *Manager) seedSessionPrefixes(ctx context.Context, global string) {
+	defs, err := m.store.ListDefinitions(ctx)
+	if err != nil {
+		return
+	}
+	for _, stored := range defs {
+		parsed, err := definition.ParseShared([]byte(stored.Body))
+		if err != nil || parsed.Session == nil {
+			continue
+		}
+		mode := strings.ToLower(strings.TrimSpace(parsed.Session.Mode))
+		if mode != "" && mode != "flaresolverr" {
+			continue
+		}
+		endpoint := sessionSeedEndpoint(parsed.Session.Endpoint, global)
+		if endpoint == "" {
+			continue
+		}
+		m.sessions.RegisterPrefix(endpoint, sessionPrefix(parsed))
+	}
+}
+
+// sessionSeedEndpoint resolves the endpoint of a stored definition without an
+// indexer instance: a template means "the global setting", which is what the
+// connector falls back to when the rendered value is empty.
+func sessionSeedEndpoint(declared, global string) string {
+	declared = strings.TrimSpace(declared)
+	if declared == "" || strings.Contains(declared, "{{") {
+		return strings.TrimSpace(global)
+	}
+	return declared
+}
+
+// sessionPrefix mirrors the default of DefinitionConnector.configureSession.
+func sessionPrefix(def *definition.Definition) string {
+	prefix := strings.TrimSpace(def.Session.NamePrefix)
+	if prefix == "" {
+		prefix = "indexarr-" + def.Meta.ID
+	}
+	return prefix
+}
+
+// StartSessionSweeper closes idle browser sessions and reconciles the ones
+// left by a previous run in the background until ctx is cancelled. A
+// Cloudflare-protected indexer queried once would otherwise keep a whole
+// Chromium (hundreds of MB) alive for the rest of the process.
 func (m *Manager) StartSessionSweeper(ctx context.Context) {
 	if m == nil {
 		return
+	}
+	// Sessions left by the previous run are already waiting in FlareSolverr:
+	// close them once before the regular idle sweep starts. The short delay
+	// leaves a restarting process time to settle, as the gextto worker does.
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(sessionReconcileStartDelay):
+	}
+	if closed := m.reconcileOnce(ctx); closed > 0 && m.logger != nil {
+		m.logger.Info("closed FlareSolverr sessions left by a previous run", "browsers", closed)
 	}
 	ticker := time.NewTicker(sessionSweepInterval)
 	defer ticker.Stop()
@@ -357,8 +450,19 @@ func (m *Manager) StartSessionSweeper(ctx context.Context) {
 			if closed > 0 && m.logger != nil {
 				m.logger.Info("closed idle FlareSolverr sessions", "browsers", closed)
 			}
+			orphans := m.reconcileOnce(ctx)
+			if orphans > 0 && m.logger != nil {
+				m.logger.Info("closed orphan FlareSolverr sessions", "browsers", orphans)
+			}
 		}
 	}
+}
+
+// reconcileOnce bounds one global reconcile with the sweep timeout.
+func (m *Manager) reconcileOnce(ctx context.Context) int {
+	reconcileCtx, cancel := context.WithTimeout(ctx, sessionSweepTimeout)
+	defer cancel()
+	return m.ReconcileSessions(reconcileCtx)
 }
 
 func (m *Manager) closeConnector(ctx context.Context, connector engine.Connector) {

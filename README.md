@@ -429,6 +429,10 @@ layout changes or the site requires login, the test reports the error.
 - Endpoint in **Settings → Cloudflare / FlareSolverr**.
 - Recognizes `cf-mitigated: challenge` and Cloudflare pages on 403/503/200.
 - Repeats the request through FlareSolverr for RSS and direct indexers.
+- Persistent sessions are closed after `session.idle_timeout` (30 minutes by
+  default); the browsers left by a stopped instance are reconciled 30 seconds
+  after start and every two minutes, using only the ownership prefixes of
+  indexarr.
 - LAN addresses never go through the solver.
 - `.torrent` files do not go through the solver: if the site requires clearance
   for the file too, use the magnet.

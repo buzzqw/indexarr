@@ -336,10 +336,17 @@ Behavior:
 - When a connector is discarded (indexer saved, settings changed,
   definition updated) its session is closed immediately, not on the next
   request.
-- On the first request, orphan sessions starting with
-  `name_prefix + "-"` are closed; those of other programs and those still alive from
-  another connector of the same process are not touched. Cleanup is
-  therefore limited to the declared prefix.
+- Orphan cleanup runs on three occasions: on a connector's first request
+  (only names starting with `name_prefix + "-"`), 30 seconds after the process
+  starts and on every two-minute sweep. The global passes list the sessions of
+  the configured FlareSolverr and destroy every name that starts with an
+  ownership prefix indexarr knows (the `name_prefix` of the stored definitions
+  and the default `indexarr-` namespace). Sessions of other programs, and the
+  ones this process is using, are never touched. This closes the browsers left
+  by a stopped indexarr even when the definition has not been queried since the
+  restart. A removed definition with a custom `name_prefix` stays covered only
+  while the prefix is known to a running process: after a restart the default
+  `indexarr-` namespace is the guaranteed one.
 - Requests use `disableMedia: true`, like the Python service: forum
   pages contain images and slow media that would make the timeout expire.
 
