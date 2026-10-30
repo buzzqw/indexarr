@@ -18,6 +18,12 @@ Native sources / RSS / Newznab ──► scheduler ──► normalization ─�
                           Browser ◄── web UI SSR + JSON API ──────────┘
 ```
 
+**Documentation:** [wiki home](https://github.com/buzzqw/indexarr/wiki) ·
+[user manual](https://github.com/buzzqw/indexarr/wiki/User-Manual) ·
+[manuale utente](https://github.com/buzzqw/indexarr/wiki/Manuale-Utente) ·
+[Torznab API](https://github.com/buzzqw/indexarr/wiki/Torznab-API) ·
+[admin JSON API](https://github.com/buzzqw/indexarr/wiki/Admin-API).
+
 ## Why indexarr
 
 - **A single Go binary**, SQLite without CGO, no mandatory database or service.
@@ -958,6 +964,9 @@ smoke test: [QA](https://github.com/buzzqw/indexarr/wiki/QA).
 
 ## Documentation
 
+Everything lives in the [GitHub wiki](https://github.com/buzzqw/indexarr/wiki).
+
+- [Wiki home](https://github.com/buzzqw/indexarr/wiki) — index of every page
 - [Definitions guide](https://github.com/buzzqw/indexarr/wiki/Definitions) — v1 format, fixtures, security
 - [MirCrew](https://github.com/buzzqw/indexarr/wiki/MirCrew) — native definition, Smartfeed, FlareSolverr
   session
@@ -971,3 +980,4 @@ smoke test: [QA](https://github.com/buzzqw/indexarr/wiki/QA).
 - [Catalog](https://github.com/buzzqw/indexarr/wiki/Catalog) — states, numbers and live evidence per site
 - [UI rules](https://github.com/buzzqw/indexarr/wiki/UI-Rules) — rules every page follows
 - [Migration from Jackett/Prowlarr](https://github.com/buzzqw/indexarr/wiki/Migration-Managers)
+- [Backlog](https://github.com/buzzqw/indexarr/wiki/Backlog) — open work, evidence and how to verify it
