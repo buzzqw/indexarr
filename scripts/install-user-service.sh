@@ -233,16 +233,17 @@ uninstall)
 esac
 
 # Build by default; --no-build and --binary skip it. When Go or make are
-# missing, fall back to an existing binary instead of failing.
+# missing, or the script runs from a release archive without a source tree,
+# fall back to the binary shipped next to it instead of failing.
 if [[ "$BUILD" == 1 ]]; then
-	if command -v make >/dev/null 2>&1 && command -v go >/dev/null 2>&1; then
+	if command -v make >/dev/null 2>&1 && command -v go >/dev/null 2>&1 && [[ -f "$ROOT/Makefile" ]]; then
 		[[ "$DRY_RUN" == 1 ]] || {
 			echo "Building ${BIN_SRC} ..."
 			make -C "$ROOT" build
 		}
 		BIN_SRC="${ROOT}/bin/indexarr"
 	elif [[ -x "$BIN_SRC" ]]; then
-		echo "Go or make not found: using the existing $BIN_SRC (use --build to force a rebuild)."
+		echo "No source tree or Go toolchain here: using the existing $BIN_SRC (use --build to force a rebuild)."
 	elif [[ "$MODE" == "system" && -x "$BIN_TARGET" ]]; then
 		echo "Go or make not found: using the installed $BIN_TARGET."
 		BIN_SRC="$BIN_TARGET"

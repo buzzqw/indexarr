@@ -81,3 +81,42 @@ Outcomes of the three tests:
 - **failed health check**: a wrong version in `/healthz` triggers the
   automatic restore of the DB and binaries and the restart of the previous
   service; the backup remains available.
+
+## Packaging and the continuous release
+
+`package-release.sh` builds the self-contained archives for `linux/amd64` and
+`linux/arm64` in `dist/` (not committed). Each archive contains `bin/indexarr`,
+`install.sh`, `scripts/install-user-service.sh`, `examples/` (configuration,
+systemd unit, sample definitions), `README.md`, `SUPPORTED.md` (the generated
+source list), `LICENSE` when present and a short `INSTALL.md`. Unpack it and `./install.sh` works with no Go toolchain:
+the installer uses the shipped binary and only builds when it finds a source
+tree (`Makefile`) plus Go and `make`.
+
+```bash
+./scripts/package-release.sh                      # both targets, version from git
+./scripts/package-release.sh --targets linux/amd64
+./scripts/package-release.sh --out /tmp/idx-dist --version v2.1.3
+```
+
+Output: `indexarr-linux-<arch>.tar.gz` (stable names), `SHA256SUMS` and
+`indexarr-version`.
+
+`publish-release.sh` packages the current commit and publishes it as the
+rolling **continuous** release, a prerelease that never takes the `latest`
+slot: the tag `continuous` is moved to the new commit and the assets are
+replaced, so the download URLs stay the same.
+
+```bash
+./scripts/publish-release.sh                  # dry run: builds, uploads nothing
+./scripts/publish-release.sh --yes            # move the tag, upload, update notes
+./scripts/publish-release.sh --install-hook   # publish after every commit
+```
+
+`--install-hook` writes `.git/hooks/post-commit`: it publishes in the
+background (`ci-logs/publish.log`), skips rebases and cherry-picks, and is
+disabled with `INDEXARR_NO_PUBLISH=1`. A failed publish never blocks the
+commit. The script refuses uncommitted tracked changes (`--allow-dirty` to
+override), needs `gh` logged in and a lock so two runs do not race. The
+stable URLs are
+`https://github.com/buzzqw/indexarr/releases/download/continuous/indexarr-linux-<arch>.tar.gz`
+and `.../SHA256SUMS`.

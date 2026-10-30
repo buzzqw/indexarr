@@ -25,6 +25,7 @@ import (
 
 //go:generate go run ./gensites
 //go:generate go run ./genindex
+//go:generate go run ./gensupported
 
 //go:embed index.json
 var indexJSON []byte

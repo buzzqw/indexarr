@@ -79,3 +79,21 @@ release:
 	CGO_ENABLED=0 GOOS=linux  GOARCH=arm64              go build -trimpath -ldflags "$(LDFLAGS)" -o bin/indexarr-linux-arm64 ./cmd/indexarr
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64             go build -trimpath -ldflags "$(LDFLAGS)" -o bin/indexarr-windows-amd64.exe ./cmd/indexarr
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64              go build -trimpath -ldflags "$(LDFLAGS)" -o bin/indexarr-darwin-arm64 ./cmd/indexarr
+
+# Self-contained archives for linux/amd64 and linux/arm64 (binary, installer,
+# unit and examples): unpack and run ./install.sh, no Go needed.
+.PHONY: package
+package:
+	./scripts/package-release.sh
+
+# Regenerate docs/SUPPORTED.md from the catalog (also done by
+# go generate ./internal/catalog). The catalog test fails while it is stale.
+.PHONY: supported-list
+supported-list:
+	go generate ./internal/catalog
+
+# Publish the current commit as the rolling "continuous" release.
+# It is a dry run until --yes is passed: make publish PUBLISH_ARGS=--yes
+.PHONY: publish
+publish:
+	./scripts/publish-release.sh $(PUBLISH_ARGS)

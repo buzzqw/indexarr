@@ -26,14 +26,36 @@ Native sources / RSS / Newznab ──► scheduler ──► normalization ─�
 
 ## Installation
 
-Three ways to run indexarr. The first two need no Go toolchain and are the
-recommended ones; building from source is for development.
+Four ways to run indexarr. The first three need no Go toolchain; building from
+source is for development.
 
 | Path | When to choose it | Command |
 | --- | --- | --- |
-| **install.sh** | Linux with systemd, installed as a service | `./install.sh` |
+| **Prebuilt archive** | you only want to run it | download, unpack, `./install.sh` |
+| **install.sh** | from a checkout | `./install.sh` |
 | **Docker** | container, NAS, everything in one volume | `docker compose up -d --build` |
 | **From source** | development, or a host without systemd | `make build && ./bin/indexarr` |
+
+### From a prebuilt archive
+
+Every commit on `main` publishes ready-to-run archives of the current code:
+`indexarr-linux-amd64.tar.gz` and `indexarr-linux-arm64.tar.gz` on the
+[continuous release](https://github.com/buzzqw/indexarr/releases/tag/continuous).
+There is nothing to compile and nothing to clone:
+
+```bash
+curl -LO https://github.com/buzzqw/indexarr/releases/download/continuous/indexarr-linux-amd64.tar.gz
+curl -LO https://github.com/buzzqw/indexarr/releases/download/continuous/SHA256SUMS
+sha256sum -c SHA256SUMS --ignore-missing
+tar xzf indexarr-linux-amd64.tar.gz
+cd indexarr-*-linux-amd64
+./install.sh
+```
+
+The archive holds the static binary, `install.sh`, the installer in
+`scripts/`, the systemd unit and the example definitions; `INSTALL.md`
+repeats the two commands. It is the **current code**, not a fixed version:
+for production pin a versioned release when there is one.
 
 ### Install with install.sh
 
@@ -78,7 +100,8 @@ tags the image. To keep the vault key outside the volume, mount it and set
 
 `scripts/upgrade.sh` updates a live installation without wiping the database:
 dry run by default, `--apply --yes` to execute, `--rollback --yes` to restore
-the latest backup. With Docker, rebuild the image and recreate the service
+the latest backup. Reinstalling a newer archive with `./install.sh` keeps the
+data directory too. With Docker, rebuild the image and recreate the service
 (`docker compose up -d --build`); the volume is untouched.
 
 Installer flags, production upgrade and rollback, the system-wide unit and
@@ -242,7 +265,19 @@ event and a test button that checks all configured channels.
 ## Compatibility
 
 indexarr speaks **Torznab** for torrents and **Newznab** for Usenet. This is the
-real picture, not a list of intentions:
+real picture, not a list of intentions.
+
+The catalog ships **more than a hundred site definitions** — most of them
+verified, a few still drafts — plus family connectors (UNIT3D, Gazelle,
+NexusPHP, TorrentTrader, Xbtit) and generic Torznab/Newznab/RSS endpoints. The complete,
+generated list with access method, language and state for every site is
+**[docs/SUPPORTED.md](docs/SUPPORTED.md)**; it is regenerated in the same
+commit that adds or removes a provider, and a test fails while it is stale.
+
+Among the best known: 1337x, The Pirate Bay, YTS, EZTV, LimeTorrents, Torlock,
+TorrentFunk, Nyaa, Sukebei, AnimeTosho, RuTracker and RuTor for Russian
+content, TorrentGalaxy, IPTorrents, TorrentLeech (draft), and — Italian —
+MirCrew, ExtTo, CorsaroBlu, ilDraGoNeRo and DDUnlimited (eD2k).
 
 | Source | Support | How |
 | --- | --- | --- |
@@ -394,6 +429,8 @@ make vet       # go vet ./...
 make qa        # vet + test + HTTP smoke test on the real binary
 make build     # bin/indexarr
 make release   # linux/amd64, linux/arm64, windows/amd64, darwin/arm64
+make package   # self-contained archives in dist/ (linux/amd64, linux/arm64)
+make publish   # dry run of the continuous release; PUBLISH_ARGS=--yes publishes
 make ui-smoke  # UI smoke test
 make ci        # local CI, log in ci-logs/<commit>.log
 ```
@@ -438,8 +475,11 @@ command list and the package structure:
 
 ## Documentation
 
-Everything lives in the [GitHub wiki](https://github.com/buzzqw/indexarr/wiki).
+The manuals live in the [GitHub wiki](https://github.com/buzzqw/indexarr/wiki);
+the list of supported sources is generated from the catalog and lives in the
+repository.
 
+- [Supported sources](docs/SUPPORTED.md) — every site and connector, with access method and state
 - [Wiki home](https://github.com/buzzqw/indexarr/wiki) — index of every page
 - [User manual](https://github.com/buzzqw/indexarr/wiki/User-Manual) — step-by-step guide (English)
 - [Manuale utente](https://github.com/buzzqw/indexarr/wiki/Manuale-Utente) — guida passo passo (italiano)
