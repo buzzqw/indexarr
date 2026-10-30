@@ -24,6 +24,66 @@ Native sources / RSS / Newznab ──► scheduler ──► normalization ─�
 [Torznab API](https://github.com/buzzqw/indexarr/wiki/Torznab-API) ·
 [admin JSON API](https://github.com/buzzqw/indexarr/wiki/Admin-API).
 
+## Installation
+
+Three ways to run indexarr. The first two need no Go toolchain and are the
+recommended ones; building from source is for development.
+
+| Path | When to choose it | Command |
+| --- | --- | --- |
+| **install.sh** | Linux with systemd, installed as a service | `./install.sh` |
+| **Docker** | container, NAS, everything in one volume | `docker compose up -d --build` |
+| **From source** | development, or a host without systemd | `make build && ./bin/indexarr` |
+
+### Install with install.sh
+
+Clone the repository, then from its root run the installer. One command
+builds the binary (when Go and `make` are available, otherwise it installs an
+existing `bin/indexarr` or the file given with `--binary`), installs a
+systemd unit, starts it and checks `/healthz`:
+
+```bash
+git clone https://github.com/buzzqw/indexarr.git
+cd indexarr
+./install.sh
+./install.sh --listen 127.0.0.1:8788   # local only
+./install.sh --binary /tmp/indexarr    # prebuilt binary, no Go needed
+./install.sh --system                  # system service in /var/lib/indexarr
+./install.sh --status
+./install.sh --uninstall               # data is kept
+```
+
+By default it is a **user service** started by the account that runs the
+installer, without `sudo`; the data directory is `<repo>/data` and is never
+deleted by `--uninstall`. `--system` installs a system-wide unit for the
+dedicated `indexarr` account with data in `/var/lib/indexarr`, and
+`--linger` keeps the user service running after logout.
+
+### Install with Docker
+
+From the same checkout the image is built locally and started in the
+background:
+
+```bash
+docker compose up -d --build
+```
+
+The page is on port **8788**, the container runs as the non-root UID 10001 and
+the database, the configuration and the vault key live in the named volume
+`indexarr-data`. `INDEXARR_PORT` changes the host port, `INDEXARR_VERSION`
+tags the image. To keep the vault key outside the volume, mount it and set
+`INDEXARR_MASTER_KEY_FILE` (the line is already in `docker-compose.yml`).
+
+### Upgrading and rollback
+
+`scripts/upgrade.sh` updates a live installation without wiping the database:
+dry run by default, `--apply --yes` to execute, `--rollback --yes` to restore
+the latest backup. With Docker, rebuild the image and recreate the service
+(`docker compose up -d --build`); the volume is untouched.
+
+Installer flags, production upgrade and rollback, the system-wide unit and
+Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
+
 ## Why indexarr
 
 - **A single Go binary**, SQLite without CGO, no mandatory database or service.
@@ -216,12 +276,17 @@ Details, edge cases and diagnostics: [Compatibility](https://github.com/buzzqw/i
 
 ## Requirements
 
-- **Go 1.26 or later** to build. The binary has no runtime dependencies.
+- **Linux with systemd** to use `install.sh`, or **Docker with Compose** for
+  the container image. The binary itself has no runtime dependencies.
+- **Go 1.26 or later** only to build from source.
 - A writable filesystem for the database.
 - Optional: FlareSolverr for Cloudflare, a torrent/Usenet/eD2k client for
   sending releases.
 
-## Quick start
+## From source
+
+For development. To run indexarr for real, use `install.sh` or Docker as shown
+in [Installation](#installation).
 
 ```bash
 make build
@@ -320,27 +385,6 @@ Search syntax, saved searches, rules, sending to clients and notifications:
 
 Backup and restore, maintenance, statistics, logs and security:
 [Operations](https://github.com/buzzqw/indexarr/wiki/Operations).
-
-## Installation
-
-One command from the repository root builds the binary, installs and starts a
-user service and checks `/healthz`:
-
-```bash
-./install.sh
-./install.sh --listen 127.0.0.1:8788   # local only
-./install.sh --system                  # system service in /var/lib/indexarr
-./install.sh --status
-./install.sh --uninstall               # data is kept
-```
-
-`scripts/upgrade.sh` updates the binary without wiping the database (dry run by
-default, `--apply --yes` to execute, `--rollback --yes` to restore the latest
-backup). Docker: `docker compose up -d --build`, port **8788**, non-root UID
-10001, named volume `indexarr-data`.
-
-Installer flags, production upgrade and rollback, the system-wide unit and
-Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
 
 ## Development
 
