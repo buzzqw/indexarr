@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -148,7 +149,7 @@ search:
 	}
 
 	body := get(t, env.handler, "/activity?tab=downloads").Body.String()
-	for _, want := range []string{"Grabbed Show S01E01", "dl-src", `action="/activity"`, `name="window"`, "Direct magnets are not counted.", "queued in aMule", "eD2k link"} {
+	for _, want := range []string{"Grabbed Show S01E01", "dl-src", `action="/activity"`, `name="window"`, `name="source"`, "All sources", "Direct magnets are not counted.", "queued in aMule", "eD2k link"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("downloads tab missing %q", want)
 		}
@@ -167,6 +168,86 @@ search:
 	body = get(t, env.handler, "/activity?tab=stats").Body.String()
 	if !strings.Contains(body, "In background") || !strings.Contains(body, "<td><strong>dl-src</strong></td>") || !strings.Contains(body, "<td><strong>4</strong></td>") {
 		t.Errorf("stats tab misses the late column or the downloads count")
+	}
+}
+
+// The source filter narrows the latest table and the counters, and the
+// "delivered as" chip copies the magnet or the .torrent link of that release.
+func TestLogsDownloadsSourceFilterAndCopyLinks(t *testing.T) {
+	env := newNativeEnv(t)
+	ctx := context.Background()
+	now := time.Now()
+	for _, id := range []string{"copy-a", "copy-b"} {
+		seedDefinition(t, env.store, id, "", `schema: 1
+meta:
+  id: `+id+`
+  name: `+id+`
+  type: public
+  protocol: torrent
+  urls: [https://`+id+`.example/]
+search:
+  request:
+    get: /
+  response:
+    type: html
+`)
+	}
+	first := seedPhase2Indexer(t, env.store, "copy-a", "copy-a", true, `{}`)
+	second := seedPhase2Indexer(t, env.store, "copy-b", "copy-b", true, `{}`)
+
+	magnetRelease := store.Release{
+		DedupKey:    "copy-magnet",
+		Title:       "Magnet Show S01E01",
+		Magnet:      "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567",
+		Protocol:    "torrent",
+		FirstSeenAt: now,
+		LastSeenAt:  now,
+		PublishedAt: now,
+	}
+	if _, err := env.store.UpsertRelease(ctx, &magnetRelease); err != nil {
+		t.Fatalf("UpsertRelease(magnet): %v", err)
+	}
+	torrentRelease := store.Release{
+		DedupKey:    "copy-torrent",
+		Title:       "Torrent Show S02E02",
+		Torrent:     []byte("d4:infod4:name4:teste"),
+		Protocol:    "torrent",
+		FirstSeenAt: now,
+		LastSeenAt:  now,
+		PublishedAt: now,
+	}
+	if _, err := env.store.UpsertRelease(ctx, &torrentRelease); err != nil {
+		t.Fatalf("UpsertRelease(torrent): %v", err)
+	}
+	for _, row := range []store.IndexerHistory{
+		{IndexerID: first, ReleaseID: magnetRelease.ID, Kind: "grab", Status: "magnet", Query: magnetRelease.Title, App: "sonarr", StartedAt: now},
+		{IndexerID: second, ReleaseID: torrentRelease.ID, Kind: "grab", Status: "ok", Query: torrentRelease.Title, App: "radarr", StartedAt: now},
+	} {
+		if _, err := env.store.RecordIndexerHistory(ctx, row); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	body := get(t, env.handler, "/activity?tab=downloads&window=all").Body.String()
+	for _, want := range []string{
+		"Magnet Show S01E01",
+		"Torrent Show S02E02",
+		`data-copy="magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567"`,
+		"http://example.com/releases/" + strconv.FormatInt(torrentRelease.ID, 10) + "/torrent",
+		"copy-a",
+		"copy-b",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("downloads tab missing %q", want)
+		}
+	}
+
+	filtered := get(t, env.handler, "/activity?tab=downloads&window=all&source="+strconv.FormatInt(first, 10)).Body.String()
+	if !strings.Contains(filtered, "Magnet Show S01E01") {
+		t.Error("the source filter hid the selected source")
+	}
+	if strings.Contains(filtered, "Torrent Show S02E02") {
+		t.Error("the source filter kept another source's download")
 	}
 }
 

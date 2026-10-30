@@ -84,6 +84,9 @@ type ReleaseSource struct {
 type IndexerHistory struct {
 	ID        int64
 	IndexerID int64
+	// ReleaseID links a grab row to the release it delivered, so the Download
+	// tab can offer the magnet or the .torrent link it handed over.
+	ReleaseID int64
 	Kind      string
 	Query     string
 	Status    string

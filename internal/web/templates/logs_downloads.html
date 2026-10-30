@@ -12,6 +12,14 @@
     </select>
     <p class="help">{{T "logs.dl.windowHelp"}}</p>
   </div>
+  <div class="field">
+    <label for="downloads_source">{{T "logs.dl.sourceFilter"}}</label>
+    <select id="downloads_source" name="source">
+      <option value="">{{T "logs.dl.allSources"}}</option>
+      {{range .SourceOptions}}<option value="{{.ID}}"{{if .Active}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+    <p class="help">{{T "logs.dl.sourceFilterHelp"}}</p>
+  </div>
   <div class="field actions-field">
     <button class="btn primary" type="submit">{{T "logs.apply"}}</button>
   </div>
@@ -88,7 +96,10 @@
           <td>{{textOrDash .App}}</td>
           <td>{{truncate .Title 120}}</td>
           <td>{{textOrDash .Source}}</td>
-          <td><span class="chip">{{.Via}}</span></td>
+          <td>
+            {{if .Copy}}<button class="chip copy" type="button" data-copy="{{.Copy}}" title="{{.CopyTitle}}">{{.Via}}</button>
+            {{else}}<span class="chip" title="{{.CopyTitle}}">{{.Via}}</span>{{end}}
+          </td>
         </tr>
         {{end}}
       </tbody>

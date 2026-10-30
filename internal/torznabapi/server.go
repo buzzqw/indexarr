@@ -1116,6 +1116,12 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		if !ok {
 			return
 		}
+		// Keep the link this grab handed over: the listing may have carried
+		// only a sealed reference, and the Download tab needs the magnet to
+		// offer "copy" later without resolving (and possibly thanking) again.
+		if err := s.store.SetReleaseMagnet(ctx, release.ID, magnet); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			s.log.Debug("torznab: store grab magnet", "release_id", release.ID, "error", err)
+		}
 		http.Redirect(w, r, magnet, http.StatusFound)
 		if r.Method != http.MethodHead {
 			s.finishGrab(ctx, grabIndexerID, release, indexer.GrabViaMagnet)

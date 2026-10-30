@@ -671,7 +671,9 @@ complete the restart; without systemd, restart manually.
 
 **Statistics** has six tabs: **Requests** (incoming requests with outcome and
 timings), **Overview** (per app and per indexer), **Downloads** (grabs served
-per source), **Runs**, **New releases** and **Network** (per-host counters).
+per source, with a source filter and a chip that copies the magnet, eD2k link
+or `.torrent` link of the release), **Runs**, **New releases** and **Network**
+(per-host counters).
 **Logs** holds only the system log: the last **2000** messages of the process,
 most recent first. Old links (`/logs?tab=requests`, `/activity?tab=logs`, …)
 redirect to the new place. The system log offers:

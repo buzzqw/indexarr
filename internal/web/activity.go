@@ -129,7 +129,7 @@ func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
 	}
 	data.TotalRequests, _ = s.store.CountAppSearches(r.Context())
 	data.ErrorRequests, _ = s.store.CountAppSearchesFiltered(r.Context(), true)
-	data.GrabsToday, _ = s.store.CountGrabs(r.Context(), time.Now().Add(-24*time.Hour))
+	data.GrabsToday, _ = s.store.CountGrabs(r.Context(), time.Now().Add(-24*time.Hour), 0)
 	data.HostMetrics = s.polite.HostMetrics()
 	switch tab {
 	case "requests":

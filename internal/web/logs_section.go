@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/i18n"
+	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -79,19 +80,28 @@ type logsIndexerRow struct {
 // logsDownloadsView is the "Download" tab: what the apps actually grabbed,
 // per source and one row per grab.
 type logsDownloadsView struct {
-	Window       string
-	WindowLabel  string
-	Windows      []logsWindowOption
-	Total        int64
-	Torrents     int64
-	Magnets      int64
-	NZBs         int64
-	Ed2k         int64
-	HasEd2k      bool
-	Sources      []logsGrabSourceRow
-	Grabs        []logsGrabRow
-	Pager        pager
-	ProxyMagnets bool
+	Window        string
+	WindowLabel   string
+	Windows       []logsWindowOption
+	SourceID      int64
+	SourceOptions []logsSourceOption
+	Total         int64
+	Torrents      int64
+	Magnets       int64
+	NZBs          int64
+	Ed2k          int64
+	HasEd2k       bool
+	Sources       []logsGrabSourceRow
+	Grabs         []logsGrabRow
+	Pager         pager
+	ProxyMagnets  bool
+}
+
+// logsSourceOption is one entry of the source filter.
+type logsSourceOption struct {
+	ID     int64
+	Name   string
+	Active bool
 }
 
 type logsGrabSourceRow struct {
@@ -105,11 +115,13 @@ type logsGrabSourceRow struct {
 }
 
 type logsGrabRow struct {
-	At     time.Time
-	App    string
-	Title  string
-	Source string
-	Via    string
+	At        time.Time
+	App       string
+	Title     string
+	Source    string
+	Via       string
+	Copy      string
+	CopyTitle string
 }
 
 // logsWindowOption is one selectable time window in the request views.
@@ -172,7 +184,7 @@ func (s *Server) statWindows(r *http.Request, tab, selected string, onlyErrors b
 	options := make([]logsWindowOption, 0, len(statWindowKeys))
 	selectedLabel := ""
 	for _, key := range statWindowKeys {
-		values := url.Values{}
+		values := r.URL.Query()
 		values.Set("tab", tab)
 		values.Set("window", key)
 		if onlyErrors {
@@ -372,16 +384,21 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		page = 1
 	}
 	offset := (page - 1) * logsGrabPageSize
+	sourceID := int64Param(r.URL.Query().Get("source"), 0)
 
-	stats, err := s.store.GrabStatsByIndexer(r.Context(), since)
+	allStats, err := s.store.GrabStatsByIndexer(r.Context(), since)
 	if err != nil {
 		return nil, err
 	}
-	total, err := s.store.CountGrabs(r.Context(), since)
+	total, err := s.store.CountGrabs(r.Context(), since, sourceID)
 	if err != nil {
 		return nil, err
 	}
-	grabs, err := s.store.ListGrabs(r.Context(), since, logsGrabPageSize, offset)
+	grabs, err := s.store.ListGrabs(r.Context(), since, sourceID, logsGrabPageSize, offset)
+	if err != nil {
+		return nil, err
+	}
+	sources, err := s.store.GrabSources(r.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -394,9 +411,26 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		Window:       window,
 		WindowLabel:  selectedLabel,
 		Windows:      windows,
+		SourceID:     sourceID,
 		Total:        total,
 		Pager:        newPager(r, "/activity", total, logsGrabPageSize, offset),
 		ProxyMagnets: settings.TorznabProxyMagnets,
+	}
+	for _, source := range sources {
+		view.SourceOptions = append(view.SourceOptions, logsSourceOption{
+			ID:     source.ID,
+			Name:   source.Name,
+			Active: source.ID == sourceID,
+		})
+	}
+	stats := allStats
+	if sourceID > 0 {
+		stats = make([]store.GrabStat, 0, 1)
+		for _, stat := range allStats {
+			if stat.IndexerID == sourceID {
+				stats = append(stats, stat)
+			}
+		}
 	}
 	for _, stat := range stats {
 		view.Torrents += stat.Torrents
@@ -416,16 +450,49 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		})
 	}
 	lang := requestLanguage(r)
+	base := s.cookieImportBaseURL(r)
 	for _, grab := range grabs {
-		view.Grabs = append(view.Grabs, logsGrabRow{
+		row := logsGrabRow{
 			At:     grab.At,
 			App:    grab.App,
 			Title:  grab.Title,
 			Source: grab.IndexerName,
 			Via:    grabViaLabel(lang, grab.Via),
-		})
+		}
+		row.Copy, row.CopyTitle = grabCopyLink(lang, grab, base)
+		view.Grabs = append(view.Grabs, row)
 	}
 	return view, nil
+}
+
+// grabCopyLink is the value the "delivered as" chip writes to the clipboard:
+// the magnet, the eD2k link or the indexarr .torrent link of the release. An
+// empty value means the link was never stored (old rows, or a listing that
+// carried only a sealed reference) and the chip stays a plain label.
+func grabCopyLink(lang i18n.Language, grab store.Grab, base string) (string, string) {
+	release := store.Release{
+		ID:       grab.ReleaseID,
+		Title:    grab.Title,
+		Magnet:   grab.Magnet,
+		InfoHash: grab.InfoHash,
+		Ed2k:     grab.Ed2k,
+	}
+	switch grab.Via {
+	case indexer.GrabViaMagnet:
+		if magnet := magnetFor(release); magnet != "" {
+			return magnet, i18n.T(lang, "logs.dl.copyMagnetTip")
+		}
+	case indexer.GrabViaEd2k:
+		if link := strings.TrimSpace(grab.Ed2k); link != "" {
+			return link, i18n.T(lang, "logs.dl.copyEd2kTip")
+		}
+	case indexer.GrabViaTorrent:
+		if grab.HasTorrent && grab.ReleaseID > 0 && base != "" {
+			return base + "/releases/" + strconv.FormatInt(grab.ReleaseID, 10) + "/torrent",
+				i18n.T(lang, "logs.dl.copyTorrentTip")
+		}
+	}
+	return "", i18n.T(lang, "logs.dl.noLinkTip")
 }
 
 func grabViaLabel(lang i18n.Language, via string) string {

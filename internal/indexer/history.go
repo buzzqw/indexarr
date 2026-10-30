@@ -221,6 +221,7 @@ func (m *Manager) RecordGrab(ctx context.Context, indexerID int64, releaseID int
 	}
 	_, err := m.store.RecordIndexerHistory(ctx, store.IndexerHistory{
 		IndexerID: indexerID,
+		ReleaseID: releaseID,
 		Kind:      "grab",
 		Query:     truncate(title, 300),
 		Status:    status,

@@ -372,6 +372,28 @@ func (s *Store) PayloadByReleaseID(ctx context.Context, id int64) ([]byte, strin
 	return nil, "", protocol, ErrNoPayload
 }
 
+// SetReleaseMagnet fills the magnet of a release that did not carry one in
+// the listing. Only an empty value is written, so the original link is never
+// replaced. The Download tab reads it back to offer "copy magnet" without
+// resolving the sealed source reference again.
+func (s *Store) SetReleaseMagnet(ctx context.Context, id int64, magnet string) error {
+	magnet = strings.TrimSpace(magnet)
+	if id <= 0 || magnet == "" {
+		return nil
+	}
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE releases SET magnet = ?
+		WHERE id = ? AND TRIM(COALESCE(magnet, '')) = ''`, magnet, id)
+	if err != nil {
+		return fmt.Errorf("store release magnet: %w", err)
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 // SavePayload stores a payload fetched by the opaque download resolver. A
 // torrent payload goes to the legacy torrent column so the rest of indexarr
 // keeps reading it; a usenet payload goes to the generic payload column.

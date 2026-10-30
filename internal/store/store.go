@@ -584,6 +584,34 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 22 links a grab to the release it delivered. The column is
+	// additive; existing rows are matched by title, source and the second the
+	// release was marked downloaded, which is the only link an old row has.
+	// Rows that cannot be matched keep 0 and simply offer no copy button.
+	if err := s.applyMigration(context.Background(), indexarr2GrabReleaseVersion,
+		"grab release link", func(tx *sql.Tx) error {
+			if _, err := tx.Exec(`ALTER TABLE indexer_history
+				ADD COLUMN release_id INTEGER NOT NULL DEFAULT 0`); err != nil {
+				return err
+			}
+			_, err := tx.Exec(`
+				UPDATE indexer_history
+				SET release_id = COALESCE((
+					SELECT r.id
+					FROM releases r
+					JOIN release_sources rs ON rs.release_id = r.id
+					WHERE rs.indexer_id = indexer_history.indexer_id
+						AND substr(r.title, 1, 300) = indexer_history.query
+						AND r.downloaded_at > 0
+						AND abs(r.downloaded_at - indexer_history.started_at) <= 5
+					ORDER BY r.id DESC
+					LIMIT 1
+				), 0)
+				WHERE kind = 'grab' AND release_id = 0`)
+			return err
+		}); err != nil {
+		return err
+	}
 	// The release table may have been rebuilt by migration 3, which predates
 	// the eD2k columns. Re-apply the idempotent column pass so both a fresh
 	// database and an upgraded one carry them.

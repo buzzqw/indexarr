@@ -174,12 +174,12 @@ func (s *Store) RecordIndexerHistory(ctx context.Context, in IndexerHistory) (in
 
 	var id int64
 	err = tx.QueryRowContext(ctx, `
-		INSERT INTO indexer_history(indexer_id, kind, query, status, latency_ms,
-			bytes, error, app, started_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO indexer_history(indexer_id, release_id, kind, query, status,
+			latency_ms, bytes, error, app, started_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
-		indexer, in.Kind, in.Query, in.Status, in.LatencyMS, in.Bytes, in.Error,
-		in.App, in.StartedAt.Unix()).Scan(&id)
+		indexer, in.ReleaseID, in.Kind, in.Query, in.Status, in.LatencyMS,
+		in.Bytes, in.Error, in.App, in.StartedAt.Unix()).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("record indexer history: %w", err)
 	}

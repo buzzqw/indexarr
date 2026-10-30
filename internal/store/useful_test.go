@@ -2,6 +2,8 @@ package store
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"testing"
 	"time"
 )
@@ -67,11 +69,66 @@ func TestSourceDownloadStatsCountsGrabs(t *testing.T) {
 	if len(grabs) != 2 || grabs[0].Torrents != 3 || grabs[1].Magnets != 1 || grabs[1].Ed2k != 1 || grabs[1].Total() != 2 {
 		t.Fatalf("grabs = %+v", grabs)
 	}
-	list, err := st.ListGrabs(ctx, now.AddDate(0, 0, -30), 10, 0)
+	list, err := st.ListGrabs(ctx, now.AddDate(0, 0, -30), 0, 10, 0)
 	if err != nil || len(list) != 5 || list[0].IndexerName == "" {
 		t.Fatalf("ListGrabs = %+v, %v", list, err)
 	}
-	if count, err := st.CountGrabs(ctx, time.Time{}); err != nil || count != 6 {
+	filtered, err := st.ListGrabs(ctx, now.AddDate(0, 0, -30), b, 10, 0)
+	if err != nil || len(filtered) != 2 {
+		t.Fatalf("ListGrabs(source b) = %+v, %v", filtered, err)
+	}
+	if count, err := st.CountGrabs(ctx, time.Time{}, 0); err != nil || count != 6 {
 		t.Fatalf("CountGrabs(all) = %d, %v", count, err)
+	}
+	if count, err := st.CountGrabs(ctx, time.Time{}, b); err != nil || count != 3 {
+		t.Fatalf("CountGrabs(source b) = %d, %v", count, err)
+	}
+	sources, err := st.GrabSources(ctx)
+	if err != nil || len(sources) != 2 {
+		t.Fatalf("GrabSources = %+v, %v", sources, err)
+	}
+}
+
+// A grab row carries the release it delivered so the Download tab can copy the
+// link; the stored magnet is filled only when it was missing.
+func TestListGrabsCarriesTheReleaseLink(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	if err := st.UpsertDefinition(ctx, testDefinition("grab-link-def")); err != nil {
+		t.Fatalf("UpsertDefinition: %v", err)
+	}
+	indexerID, err := st.CreateIndexer(ctx, Indexer{
+		DefinitionID: "grab-link-def", Slug: "grab-link", Name: "Grab Link", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	release := Release{
+		DedupKey: "grab-link", Title: "Linked Show S01E01", Protocol: "torrent",
+		FirstSeenAt: time.Now(), LastSeenAt: time.Now(),
+	}
+	if _, err := st.UpsertRelease(ctx, &release); err != nil {
+		t.Fatalf("UpsertRelease: %v", err)
+	}
+	const magnet = "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567"
+	if err := st.SetReleaseMagnet(ctx, release.ID, magnet); err != nil {
+		t.Fatalf("SetReleaseMagnet: %v", err)
+	}
+	// A second call must not replace the stored link.
+	if err := st.SetReleaseMagnet(ctx, release.ID, "magnet:?xt=urn:btih:ffff"); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("SetReleaseMagnet second = %v, want sql.ErrNoRows", err)
+	}
+	if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+		IndexerID: indexerID, ReleaseID: release.ID, Kind: "grab",
+		Status: "magnet", Query: release.Title, StartedAt: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	grabs, err := st.ListGrabs(ctx, time.Time{}, 0, 10, 0)
+	if err != nil || len(grabs) != 1 {
+		t.Fatalf("ListGrabs = %+v, %v", grabs, err)
+	}
+	if grabs[0].ReleaseID != release.ID || grabs[0].Magnet != magnet {
+		t.Errorf("grab = %+v, want release %d with the magnet", grabs[0], release.ID)
 	}
 }

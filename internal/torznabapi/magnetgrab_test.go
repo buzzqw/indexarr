@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/store"
 )
 
 // A magnet-only release used to answer 404 "use the magnet link" on /dl. The
@@ -38,6 +40,40 @@ func TestDownloadLinkRedirectsMagnetOnlyReleaseAndRecordsGrab(t *testing.T) {
 	}
 	if records != 1 || gotVia != indexer.GrabViaMagnet {
 		t.Errorf("records = %d, via = %q", records, gotVia)
+	}
+}
+
+// The magnet indexarr resolves for a grab is stored on the release, so the
+// Download tab can offer "copy magnet" later without resolving the source
+// reference again (which may thank a forum post).
+func TestDownloadLinkStoresTheResolvedMagnet(t *testing.T) {
+	api, st := newAPI(t)
+	now := time.Now()
+	release := store.Release{
+		DedupKey: "resolved-magnet", Title: "Resolved Magnet Show",
+		SearchTitle: store.NormalizeSearch("Resolved Magnet Show"),
+		Size:        1234, Category: "5040", Protocol: "torrent",
+		PublishedAt: now.Add(-time.Hour), FirstSeenAt: now.Add(-time.Hour), LastSeenAt: now,
+	}
+	if _, err := st.UpsertRelease(context.Background(), &release); err != nil {
+		t.Fatalf("UpsertRelease: %v", err)
+	}
+	linkReleaseIndexer(t, st, "resolved", release.ID)
+	const magnet = "magnet:?xt=urn:btih:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+	api.SetDownloadResolver(func(context.Context, int64) ([]byte, string, string, error) {
+		return []byte(magnet), "application/x-magnet", "", nil
+	})
+
+	recorder := do(t, api, "/dl/"+itoa(release.ID)+".torrent?apikey=secret")
+	if recorder.Code != http.StatusFound {
+		t.Fatalf("status = %d, want 302: %s", recorder.Code, recorder.Body.String())
+	}
+	stored, err := st.GetRelease(context.Background(), release.ID)
+	if err != nil {
+		t.Fatalf("GetRelease: %v", err)
+	}
+	if stored.Magnet != magnet {
+		t.Errorf("stored magnet = %q, want the resolved link", stored.Magnet)
 	}
 }
 

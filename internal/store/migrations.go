@@ -56,9 +56,12 @@ const (
 	// site could not take yet (search.interval), so a restart resumes them
 	// instead of dropping them.
 	indexarr2PendingSearchesVersion = 21
+	// indexarr2GrabReleaseVersion links each grab history row to the release it
+	// delivered, so the Download tab can offer its magnet or .torrent link.
+	indexarr2GrabReleaseVersion = 22
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2PendingSearchesVersion
+	latestSchemaVersion = indexarr2GrabReleaseVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

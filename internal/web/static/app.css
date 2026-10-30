@@ -497,6 +497,8 @@ label.check input { margin: 0; }
 .chip.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 38%, var(--border)); }
 .chip.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 38%, var(--border)); }
 .chip.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 38%, var(--border)); }
+button.chip { cursor: pointer; font-family: inherit; }
+button.chip:hover, button.chip:focus-visible { color: var(--accent); border-color: var(--accent); }
 
 .btn {
   display: inline-flex;

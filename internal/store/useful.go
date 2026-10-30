@@ -92,28 +92,81 @@ type Grab struct {
 	ID          int64
 	IndexerID   int64
 	IndexerName string
-	Title       string
-	Via         string
-	App         string
-	At          time.Time
+	// ReleaseID is 0 for rows recorded before migration 22 whose release could
+	// not be matched, and when the release was deleted.
+	ReleaseID int64
+	Title     string
+	Via       string
+	App       string
+	At        time.Time
+	// Magnet, InfoHash, Ed2k and HasTorrent describe the delivered release, so
+	// the Download tab can offer to copy the link it handed over.
+	Magnet     string
+	InfoHash   string
+	Ed2k       string
+	HasTorrent bool
 }
 
-// ListGrabs returns the newest grabs since the given instant.
-func (s *Store) ListGrabs(ctx context.Context, since time.Time, limit, offset int) ([]Grab, error) {
+// GrabSource is one source that has at least one grab in the history.
+type GrabSource struct {
+	ID   int64
+	Name string
+}
+
+// GrabSources lists the sources with at least one recorded download, for the
+// source filter of the Download tab. It looks at the whole history, so the
+// selection stays valid when the window changes.
+func (s *Store) GrabSources(ctx context.Context) ([]GrabSource, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT i.id, i.name
+		FROM indexers i
+		WHERE EXISTS (
+			SELECT 1 FROM indexer_history h
+			WHERE h.indexer_id = i.id AND h.kind = 'grab'
+		)
+		ORDER BY i.name COLLATE NOCASE`)
+	if err != nil {
+		return nil, fmt.Errorf("grab sources: %w", err)
+	}
+	defer rows.Close()
+	var out []GrabSource
+	for rows.Next() {
+		var item GrabSource
+		if err := rows.Scan(&item.ID, &item.Name); err != nil {
+			return nil, fmt.Errorf("scan grab source: %w", err)
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+// ListGrabs returns the newest grabs since the given instant. indexerID zero
+// means every source.
+func (s *Store) ListGrabs(ctx context.Context, since time.Time, indexerID int64, limit, offset int) ([]Grab, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 50
 	}
 	if offset < 0 {
 		offset = 0
 	}
+	where := `h.kind = 'grab' AND h.started_at >= ?`
+	args := []any{sinceUnix(since)}
+	if indexerID > 0 {
+		where += ` AND h.indexer_id = ?`
+		args = append(args, indexerID)
+	}
+	args = append(args, limit, offset)
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT h.id, COALESCE(h.indexer_id, 0), COALESCE(i.name, ''), h.query, h.status,
-			h.app, h.started_at
+		SELECT h.id, COALESCE(h.indexer_id, 0), COALESCE(i.name, ''),
+			COALESCE(h.release_id, 0), h.query, h.status, h.app, h.started_at,
+			COALESCE(r.magnet, ''), COALESCE(r.infohash, ''), COALESCE(r.ed2k_link, ''),
+			CASE WHEN length(r.torrent) > 0 THEN 1 ELSE 0 END
 		FROM indexer_history h
 		LEFT JOIN indexers i ON i.id = h.indexer_id
-		WHERE h.kind = 'grab' AND h.started_at >= ?
+		LEFT JOIN releases r ON r.id = h.release_id
+		WHERE `+where+`
 		ORDER BY h.started_at DESC, h.id DESC
-		LIMIT ? OFFSET ?`, sinceUnix(since), limit, offset)
+		LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list grabs: %w", err)
 	}
@@ -122,22 +175,30 @@ func (s *Store) ListGrabs(ctx context.Context, since time.Time, limit, offset in
 	for rows.Next() {
 		var item Grab
 		var at int64
-		if err := rows.Scan(&item.ID, &item.IndexerID, &item.IndexerName, &item.Title, &item.Via, &item.App, &at); err != nil {
+		var hasTorrent int
+		if err := rows.Scan(&item.ID, &item.IndexerID, &item.IndexerName, &item.ReleaseID,
+			&item.Title, &item.Via, &item.App, &at, &item.Magnet, &item.InfoHash,
+			&item.Ed2k, &hasTorrent); err != nil {
 			return nil, fmt.Errorf("scan grab: %w", err)
 		}
 		item.At = time.Unix(at, 0)
+		item.HasTorrent = hasTorrent > 0
 		out = append(out, item)
 	}
 	return out, rows.Err()
 }
 
-// CountGrabs counts the grabs since the given instant.
-func (s *Store) CountGrabs(ctx context.Context, since time.Time) (int64, error) {
+// CountGrabs counts the grabs since the given instant. indexerID zero means
+// every source.
+func (s *Store) CountGrabs(ctx context.Context, since time.Time, indexerID int64) (int64, error) {
+	query := `SELECT COUNT(*) FROM indexer_history WHERE kind = 'grab' AND started_at >= ?`
+	args := []any{sinceUnix(since)}
+	if indexerID > 0 {
+		query += ` AND indexer_id = ?`
+		args = append(args, indexerID)
+	}
 	var count int64
-	err := s.db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM indexer_history WHERE kind = 'grab' AND started_at >= ?`,
-		sinceUnix(since)).Scan(&count)
-	if err != nil {
+	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count grabs: %w", err)
 	}
 	return count, nil
