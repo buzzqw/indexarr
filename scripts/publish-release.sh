@@ -147,7 +147,7 @@ fi
 
 git rev-parse --verify HEAD >/dev/null 2>&1 || die "no commit to publish"
 SHA="$(git rev-parse --short HEAD)"
-VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
+VERSION="$("${ROOT}/scripts/version.sh")"
 
 if [[ "$ALLOW_DIRTY" == 0 && -n "$(git status --porcelain --untracked-files=no)" ]]; then
 	die "uncommitted changes: commit them, or pass --allow-dirty"

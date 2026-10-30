@@ -36,7 +36,7 @@ Usage: scripts/package-release.sh [options]
 
 Options:
   --out DIR          Output directory (default: dist)
-  --version VER      Version stamped into the binary (default: git describe)
+  --version VER      Version stamped into the binary (default: scripts/version.sh)
   --targets LIST     Comma-separated GOOS/GOARCH pairs
                      (default: linux/amd64,linux/arm64)
   -h, --help         This help
@@ -76,7 +76,7 @@ while (($#)); do
 done
 
 if [[ -z "$VERSION" ]]; then
-	VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
+	VERSION="$("${ROOT}/scripts/version.sh")"
 fi
 [[ "$VERSION" =~ ^[A-Za-z0-9._+-]+$ ]] || die "invalid version: $VERSION (letters, digits, . _ + - only)"
 

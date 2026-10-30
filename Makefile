@@ -1,5 +1,5 @@
 BINARY  := bin/indexarr
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+VERSION ?= $(shell ./scripts/version.sh)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 .PHONY: build test vet fmt run clean qa def-validate e2e ci docker

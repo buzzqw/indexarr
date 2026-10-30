@@ -99,7 +99,9 @@ tree (`Makefile`) plus Go and `make`.
 ```
 
 Output: `indexarr-linux-<arch>.tar.gz` (stable names), `SHA256SUMS` and
-`indexarr-version`.
+`indexarr-version`. The version comes from `scripts/version.sh`, which reads
+the versioned tags only (`v2.1.3`, `v2.1.3-4-gabc1234`) and ignores the moving
+`continuous` tag; `scripts/version_test.sh` checks that offline.
 
 `publish-release.sh` packages the current commit and publishes it as the
 rolling **continuous** release, a prerelease that never takes the `latest`

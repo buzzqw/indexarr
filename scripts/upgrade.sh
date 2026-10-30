@@ -364,7 +364,7 @@ read_api_key() {
 }
 
 compute_version() {
-	(cd "$ROOT" && git describe --tags --always --dirty 2>/dev/null || echo dev)
+	"${ROOT}/scripts/version.sh"
 }
 
 build_all() {
