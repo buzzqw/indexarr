@@ -111,6 +111,11 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 [ -d "${root}/.git/rebase-merge" ] && exit 0
 [ -d "${root}/.git/rebase-apply" ] && exit 0
 mkdir -p "${root}/ci-logs"
+# Keep the log bounded: one publish per commit would grow it forever.
+log="${root}/ci-logs/publish.log"
+if [ -f "$log" ] && [ "$(wc -c <"$log")" -gt 1048576 ]; then
+	tail -n 200 "$log" >"${log}.tmp" && mv "${log}.tmp" "$log"
+fi
 nohup setsid "${root}/scripts/publish-release.sh" --auto --yes \
 	>>"${root}/ci-logs/publish.log" 2>&1 </dev/null &
 exit 0
