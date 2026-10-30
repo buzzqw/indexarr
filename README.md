@@ -57,9 +57,11 @@ cd indexarr-*-linux-amd64
 
 The archive holds the static binary, `install.sh`, the installer in
 `scripts/`, the systemd unit and the example definitions; `INSTALL.md`
-repeats the two commands. It is the **current code**, not a fixed version:
-for production pin a versioned release when there is one, or update an
-existing installation from a newer archive.
+repeats the two commands. Right after a refresh GitHub's CDN can still serve the
+previous archive for about a minute; `sha256sum -c` tells you which one you got,
+download it again if the checksum fails. It is the **current code**, not a
+fixed version: for production pin a versioned release when there is one, or
+update an existing installation from a newer archive.
 
 ### Install with install.sh
 
