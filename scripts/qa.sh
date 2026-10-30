@@ -91,16 +91,30 @@ check() {
   echo "ok   $path"
 }
 
+# Legacy URLs that redirect to their current page: follow the 302 and check
+# the destination, so an old link that stops redirecting still fails here.
+check_follow() {
+  local path="$1"
+  local want="$2"
+  local body
+  body="$(curl -fsSL "$BASE$path")"
+  if ! grep -q -- "$want" <<<"$body"; then
+    echo "FAIL $path: missing $(printf '%q' "$want") after redirect" >&2
+    exit 1
+  fi
+  echo "ok   $path (redirect)"
+}
+
 echo "==> HTTP smoke tests"
 check / "Welcome to indexarr"
 check /releases "Release"
 check "/indexers" "Indexers"
 check "/settings?section=maintenance" "Database report"
 check "/settings?section=backup" "Backup"
-check "/activity?tab=logs" "Log"
-check "/activity?tab=logs&component=indexer" "Indexer"
+check_follow "/activity?tab=logs" "Log"
+check_follow "/activity?tab=logs&component=indexer" "Indexer"
 check "/activity?tab=feed" "New releases"
-check "/activity?tab=searches" "Searches"
+check_follow "/activity?tab=searches" "Searches"
 check /healthz '"status":"ok"'
 check /static/app.css "max-width: 720px"
 check /static/manifest.webmanifest '"name": "indexarr"'
