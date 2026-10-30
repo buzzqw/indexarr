@@ -1747,6 +1747,8 @@
   "shell.applications": "App",
   "shell.closeMenu": "Close navigation",
   "shell.definitions": "Definitions",
+  "shell.donate": "Donate",
+  "shell.donateTitle": "Support indexarr with a PayPal donation",
   "shell.home": "Home",
   "shell.indexers": "Indexers",
   "shell.language": "Language",

@@ -1747,6 +1747,8 @@
   "shell.applications": "应用",
   "shell.closeMenu": "关闭导航",
   "shell.definitions": "定义",
+  "shell.donate": "捐赠",
+  "shell.donateTitle": "通过 PayPal 捐款支持 indexarr",
   "shell.home": "首页",
   "shell.indexers": "索引器",
   "shell.language": "语言",

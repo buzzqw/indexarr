@@ -1747,6 +1747,8 @@
   "shell.applications": "App",
   "shell.closeMenu": "Cerrar la navegación",
   "shell.definitions": "Definiciones",
+  "shell.donate": "Donar",
+  "shell.donateTitle": "Apoya indexarr con una donación por PayPal",
   "shell.home": "Inicio",
   "shell.indexers": "Indexadores",
   "shell.language": "Idioma",

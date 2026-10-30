@@ -2085,3 +2085,36 @@ table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; 
 }
 /* Maintenance: the actions that need a value sit in their own row. */
 .action-grid + .action-grid { margin-top: 0; padding-top: 0; }
+
+/* Support the project: the donation button stays anchored to the viewport,
+   bottom right, on every page. On narrow screens it keeps the icon only so it
+   does not cover the content. */
+.donate {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgb(8 12 20 / 0.18);
+}
+.donate:hover,
+.donate:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.donate-icon { font-size: 1rem; line-height: 1; }
+@media (max-width: 560px) {
+  .donate { right: 12px; padding: 0.55rem; }
+  .donate-label { display: none; }
+}

@@ -422,7 +422,8 @@ Everything lives in the [GitHub wiki](https://github.com/buzzqw/indexarr/wiki).
 ## Support the project
 
 If indexarr is useful and you would like to support its development, a PayPal
-donation is welcome — thank you.
+donation is welcome — thank you. A **Donate** button is also always visible in
+the UI, bottom right.
 
 [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-0070BA.svg?logo=paypal)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=azanzani@gmail.com&item_name=Support+indexarr+Project)
 
