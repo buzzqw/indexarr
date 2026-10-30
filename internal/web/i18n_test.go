@@ -150,7 +150,8 @@ func TestItalianCatalogOnOwnedPages(t *testing.T) {
 		{"/indexers?lang=it", []string{"Indexer", "Aggiungi indexer"}},
 		{"/settings?section=advanced&lang=it", []string{"Definizioni", "Catalogo", "Azione"}},
 		{"/applications?lang=it", []string{"App", "Client di download", "Sincronizza tutte"}},
-		{"/activity?lang=it", []string{"Attività", "Esecuzioni pianificate", "Log"}},
+		{"/activity?lang=it", []string{"Statistiche", "Richieste", "Riepilogo", "Log"}},
+		{"/logs?lang=it", []string{"Log di sistema", "Statistiche"}},
 	}
 	for _, tc := range cases {
 		body := get(t, env.handler, tc.path).Body.String()
@@ -194,10 +195,16 @@ func TestSidebarActiveSection(t *testing.T) {
 		t.Error("the sidebar lists Indexers more than once")
 	}
 
-	activity := get(t, env.handler, "/activity?tab=logs").Body.String()
+	activity := get(t, env.handler, "/activity?tab=network").Body.String()
 	aside = activity[strings.Index(activity, `<aside class="sidebar"`):strings.Index(activity, "</aside>")]
 	if !strings.Contains(aside, `href="/activity" class="active" aria-current="page"`) {
-		t.Error("Activity is not active on /activity?tab=logs")
+		t.Error("Statistics is not active on /activity?tab=network")
+	}
+
+	logs := get(t, env.handler, "/logs").Body.String()
+	aside = logs[strings.Index(logs, `<aside class="sidebar"`):strings.Index(logs, "</aside>")]
+	if !strings.Contains(aside, `href="/logs" class="active" aria-current="page"`) {
+		t.Error("Log is not active on /logs")
 	}
 }
 

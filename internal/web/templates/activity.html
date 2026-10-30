@@ -4,23 +4,53 @@
     <h1>{{T "activity.title"}}</h1>
     <p class="muted">{{T "activity.subtitle"}}</p>
   </div>
+  <a class="btn" href="/maintenance" title="{{T "logs.openMaintenanceHelp"}}">{{T "logs.openMaintenance"}}</a>
 </section>
 
 <nav class="tabs" aria-label="{{T "activity.tabsLabel"}}">
-  <a class="tab{{if eq .Tab "runs"}} active{{end}}" href="/activity?tab=runs"{{if eq .Tab "runs"}} aria-current="page"{{end}}>
-    {{T "activity.runs"}} <span class="chip">{{len .Runs.Runs}}</span>
+  <a class="tab{{if eq .Tab "requests"}} active{{end}}" href="/activity?tab=requests"{{if eq .Tab "requests"}} aria-current="page"{{end}} title="{{T "logs.tab.requestsHelp"}}">
+    {{T "logs.tab.requests"}} <span class="chip">{{.TotalRequests}}</span>{{if .ErrorRequests}} <span class="chip danger" title="{{T "logs.tab.errorsHelp" .ErrorRequests}}">{{.ErrorRequests}}</span>{{end}}
   </a>
-  <a class="tab{{if eq .Tab "feed"}} active{{end}}" href="/activity?tab=feed"{{if eq .Tab "feed"}} aria-current="page"{{end}}>
+  <a class="tab{{if eq .Tab "stats"}} active{{end}}" href="/activity?tab=stats"{{if eq .Tab "stats"}} aria-current="page"{{end}} title="{{T "logs.tab.statsHelp"}}">
+    {{T "logs.tab.stats"}}
+  </a>
+  <a class="tab{{if eq .Tab "downloads"}} active{{end}}" href="/activity?tab=downloads"{{if eq .Tab "downloads"}} aria-current="page"{{end}} title="{{T "logs.tab.downloadsHelp"}}">
+    {{T "logs.tab.downloads"}}{{if .GrabsToday}} <span class="chip ok" title="{{T "logs.tab.downloadsToday" .GrabsToday}}">{{.GrabsToday}}</span>{{end}}
+  </a>
+  <a class="tab{{if eq .Tab "runs"}} active{{end}}" href="/activity?tab=runs"{{if eq .Tab "runs"}} aria-current="page"{{end}} title="{{T "activity.runsHelp"}}">
+    {{T "activity.runs"}}{{if eq .Tab "runs"}} <span class="chip">{{len .Runs.Runs}}</span>{{end}}
+  </a>
+  <a class="tab{{if eq .Tab "feed"}} active{{end}}" href="/activity?tab=feed"{{if eq .Tab "feed"}} aria-current="page"{{end}} title="{{T "activity.feedHelp"}}">
     {{T "activity.feed"}}{{if .Feed}} <span class="chip">{{.Feed.Pager.Total}}</span>{{end}}
   </a>
-  <a class="tab{{if eq .Tab "searches"}} active{{end}}" href="/activity?tab=searches"{{if eq .Tab "searches"}} aria-current="page"{{end}}>
-    {{T "activity.searches"}}{{if .Searches}} <span class="chip">{{.Searches.Pager.Total}}</span>{{end}}
-  </a>
-  <a class="tab{{if eq .Tab "logs"}} active{{end}}" href="/activity?tab=logs"{{if eq .Tab "logs"}} aria-current="page"{{end}}>
-    {{T "activity.logs"}} <span class="chip">{{.Logs.BufferSize}}</span>
+  <a class="tab{{if eq .Tab "network"}} active{{end}}" href="/activity?tab=network"{{if eq .Tab "network"}} aria-current="page"{{end}} title="{{T "activity.networkTabHelp"}}">
+    {{T "activity.network"}} <span class="chip">{{len .HostMetrics}}</span>
   </a>
 </nav>
 
+<section class="panel" id="logs-guide">
+  <div class="panel-head"><h2>{{T "logs.guideTitle"}}</h2></div>
+  <ol class="guide-steps">
+    <li><strong>{{T "logs.tab.requests"}}</strong> — {{T "logs.guideStep1"}} <a href="/activity?tab=requests">{{T "logs.guideOpen"}}</a></li>
+    <li><strong>{{T "logs.tab.internal"}}</strong> — {{T "logs.guideStep2"}} <a href="/logs">{{T "logs.guideOpen"}}</a></li>
+    <li><strong>{{T "logs.tab.stats"}}</strong> — {{T "logs.guideStep3"}} <a href="/activity?tab=stats">{{T "logs.guideOpen"}}</a></li>
+    <li><strong>{{T "logs.tab.downloads"}}</strong> — {{T "logs.guideStep4"}} <a href="/activity?tab=downloads">{{T "logs.guideOpen"}}</a></li>
+    <li><strong>{{T "activity.runs"}}</strong> — {{T "activity.guideRuns"}} <a href="/activity?tab=runs">{{T "logs.guideOpen"}}</a></li>
+    <li><strong>{{T "activity.feed"}}</strong> — {{T "activity.guideFeed"}} <a href="/activity?tab=feed">{{T "logs.guideOpen"}}</a></li>
+    <li><strong>{{T "activity.network"}}</strong> — {{T "activity.guideNetwork"}} <a href="/activity?tab=network">{{T "logs.guideOpen"}}</a></li>
+  </ol>
+  <p class="help">{{T "logs.guideHelp"}}</p>
+</section>
+
+{{if eq .Tab "requests"}}
+{{template "logs_requests_body" .Requests}}
+{{else if eq .Tab "stats"}}
+{{template "logs_stats_body" .Stats}}
+{{else if eq .Tab "downloads"}}
+{{template "logs_downloads_body" .Downloads}}
+{{else if eq .Tab "feed"}}
+{{template "activity_feed_body" .Feed}}
+{{else if eq .Tab "network"}}
 <section class="panel" id="network-counters">
   <div class="panel-head"><h2>{{T "activity.networkTitle"}}</h2></div>
   <p class="help">{{T "activity.networkHelp"}}</p>
@@ -53,14 +83,15 @@
   <p class="empty">{{T "activity.networkEmpty"}}</p>
   {{end}}
 </section>
-
-{{if eq .Tab "logs"}}
-{{template "logs_body" .Logs}}
-{{else if eq .Tab "feed"}}
-{{template "activity_feed_body" .Feed}}
-{{else if eq .Tab "searches"}}
-{{template "activity_searches_body" .Searches}}
 {{else}}
 {{template "runs_body" .Runs}}
 {{end}}
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "logs.aboutTitle"}}</h2></div>
+  <div class="prose">
+    <p>{{T "activity.aboutText"}}</p>
+    <p>{{T "logs.aboutPrivacy"}}</p>
+  </div>
+</section>
 {{end}}

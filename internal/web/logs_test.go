@@ -22,30 +22,30 @@ func TestLogsPageAndFilters(t *testing.T) {
 		Message: "error message", Attrs: []logbuffer.Attr{{Key: "apikey", Value: "***"}},
 	})
 
-	page := get(t, env.handler, "/activity?tab=logs")
+	page := get(t, env.handler, "/logs")
 	if page.Code != http.StatusOK {
 		t.Fatalf("status = %d", page.Code)
 	}
 	body := page.Body.String()
-	for _, want := range []string{"Activity", "info message", "error message", "Showing 2 of 2"} {
+	for _, want := range []string{"System log", "info message", "error message", "Showing 2 of 2"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("logs page missing %q", want)
 		}
 	}
 
-	errorOnly := get(t, env.handler, "/activity?tab=logs&level=error").Body.String()
+	errorOnly := get(t, env.handler, "/logs?level=error").Body.String()
 	if strings.Contains(errorOnly, "info message") || !strings.Contains(errorOnly, "error message") {
 		t.Error("level filter is not applied")
 	}
-	searched := get(t, env.handler, "/activity?tab=logs&q=feed").Body.String()
+	searched := get(t, env.handler, "/logs?q=feed").Body.String()
 	if !strings.Contains(searched, "info message") || strings.Contains(searched, "error message") {
 		t.Error("text filter is not applied")
 	}
-	limited := get(t, env.handler, "/activity?tab=logs&limit=100").Body.String()
+	limited := get(t, env.handler, "/logs?limit=100").Body.String()
 	if !strings.Contains(limited, "info message") {
 		t.Error("limit filter broke the page")
 	}
-	auto := get(t, env.handler, "/activity?tab=logs&auto=1").Body.String()
+	auto := get(t, env.handler, "/logs?auto=1").Body.String()
 	if !strings.Contains(auto, `http-equiv="refresh"`) {
 		t.Error("auto refresh meta tag missing")
 	}
@@ -67,7 +67,7 @@ func TestLogsDownloadAndClear(t *testing.T) {
 		t.Errorf("Content-Disposition = %q", disposition)
 	}
 
-	token, cookie := csrfFrom(t, env.handler, "/activity?tab=logs")
+	token, cookie := csrfFrom(t, env.handler, "/logs")
 	cleared := postForm(t, env.handler, "/logs/clear", url.Values{"csrf": {token}}, cookie)
 	if cleared.Code != http.StatusSeeOther {
 		t.Fatalf("clear status = %d", cleared.Code)
@@ -75,7 +75,7 @@ func TestLogsDownloadAndClear(t *testing.T) {
 	if env.logs.Len() != 0 {
 		t.Errorf("buffer len after clear = %d", env.logs.Len())
 	}
-	if body := get(t, env.handler, "/activity?tab=logs").Body.String(); !strings.Contains(body, "No log lines match") {
+	if body := get(t, env.handler, "/logs").Body.String(); !strings.Contains(body, "No log lines match") {
 		t.Error("empty state missing")
 	}
 }
@@ -105,7 +105,7 @@ func TestLogsFilterByComponent(t *testing.T) {
 		},
 	})
 
-	indexer := get(t, env.handler, "/activity?tab=logs&component=indexer")
+	indexer := get(t, env.handler, "/logs?component=indexer")
 	if indexer.Code != 200 {
 		t.Fatalf("indexer logs = %d", indexer.Code)
 	}
@@ -119,7 +119,7 @@ func TestLogsFilterByComponent(t *testing.T) {
 		t.Error("component filter leaked other entries")
 	}
 
-	rss := get(t, env.handler, "/activity?tab=logs&component=rss").Body.String()
+	rss := get(t, env.handler, "/logs?component=rss").Body.String()
 	if !strings.Contains(rss, "item skipped") || strings.Contains(rss, "source run failed") {
 		t.Error("rss component filter is wrong")
 	}
@@ -129,7 +129,7 @@ func TestLogsFilterByComponent(t *testing.T) {
 		t.Errorf("component download filter = %q", download)
 	}
 
-	problems := get(t, env.handler, "/activity?tab=logs&level=warn").Body.String()
+	problems := get(t, env.handler, "/logs?level=warn").Body.String()
 	if !strings.Contains(problems, "Problems (3)") {
 		t.Errorf("problem count not shown: %s", problems)
 	}

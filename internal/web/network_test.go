@@ -31,7 +31,7 @@ func TestActivityShowsNetworkCounters(t *testing.T) {
 		t.Fatalf("record 429: %v", err)
 	}
 
-	body := get(t, env.handler, "/activity?lang=en").Body.String()
+	body := get(t, env.handler, "/activity?tab=network&lang=en").Body.String()
 	for _, want := range []string{
 		"Network counters",
 		"counters.example",

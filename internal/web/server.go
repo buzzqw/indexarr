@@ -274,15 +274,14 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 		case "releases":
 			files = append(files, "templates/releases_results.html")
 		case "activity":
-			// Activity embeds the Run, Log, Feed and Searches panels.
-			files = append(files, "templates/runs.html", "templates/logs.html",
-				"templates/activity_feed.html", "templates/activity_searches.html")
+			// Statistics embeds the requests, counters, downloads, runs and
+			// feed panels.
+			files = append(files, "templates/runs.html", "templates/activity_feed.html",
+				"templates/activity_searches.html", "templates/logs_requests.html",
+				"templates/logs_stats.html", "templates/logs_downloads.html")
 		case "logs_section":
-			// The Logs section embeds the internal log, the requests table and
-			// the statistics panels.
-			files = append(files, "templates/logs.html", "templates/activity_searches.html",
-				"templates/logs_requests.html", "templates/logs_stats.html",
-				"templates/logs_downloads.html")
+			// The Log section embeds the process log.
+			files = append(files, "templates/logs.html")
 		case "indexer":
 			// The detail page embeds the Data tab and the Sonarr/Radarr try form.
 			files = append(files, "templates/indexer_data.html", "templates/indexer_try.html")

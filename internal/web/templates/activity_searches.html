@@ -76,18 +76,3 @@
   {{end}}
 </div>
 {{end}}
-
-{{define "activity_searches_body"}}
-<div class="section-head">
-  <p class="muted">{{T "activity.searches.subtitle"}}</p>
-</div>
-
-<section class="panel">
-  {{if .Searches}}
-  {{template "app_searches_table" .}}
-  {{template "pager" .Pager}}
-  {{else}}
-  {{template "empty" .Empty}}
-  {{end}}
-</section>
-{{end}}

@@ -64,7 +64,7 @@ func TestActivityShowsLiveFanOut(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	page := get(t, env.handler, "/activity?tab=searches&lang=en").Body.String()
+	page := get(t, env.handler, "/activity?tab=requests&lang=en").Body.String()
 	for _, want := range []string{"Slow Site", "fallback", "in background", "Fast Site", "tvsearch"} {
 		if !strings.Contains(page, want) {
 			t.Errorf("activity page missing %q", want)

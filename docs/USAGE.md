@@ -19,9 +19,9 @@ basic configuration see the [README](../README.md).
 4. Complete or skip the guided path: you can reopen it from Settings.
 
 The dashboard shows sources, releases, problems and the app status. The
-**Activity** entry collects runs, new releases and app searches. **Logs**
-holds the internal logs, the incoming requests with outcome and timings, and
-the statistics per app and per indexer.
+**Statistics** entry collects the incoming requests with outcome and timings,
+the overview per app and per indexer, the downloads, the runs, the new releases
+and the network counters. **Logs** holds only the system log of the process.
 
 ---
 
@@ -254,8 +254,8 @@ and that the bot has been started in the chat.
   realigns the apps to the current state of indexarr.
 - **Retention**: the releases and the history are pruned according to the
   configured days. A release already downloaded is not removed.
-- **Logs**: the **Logs** entry in the sidebar → **Internal log** tab (the same
-  view stays in Activity → Logs). The level is changed from Settings → Advanced
+- **Logs**: the **Logs** entry in the sidebar shows the system log (the old
+  Activity → Logs link redirects there). The level is changed from Settings → Advanced
   or directly from the page.
   Download the log from the dedicated button.
 - **Most useful sources**: in Maintenance, the downloads served in the last 30

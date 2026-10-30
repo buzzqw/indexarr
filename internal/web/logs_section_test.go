@@ -42,14 +42,14 @@ func TestLogsSectionTabsAndCounters(t *testing.T) {
 		t.Fatalf("GET /logs = %d, want 200", page.Code)
 	}
 	body := page.Body.String()
-	for _, want := range []string{"internal marker line", `href="/logs?tab=requests"`, `href="/logs?tab=stats"`, "Where to start"} {
+	for _, want := range []string{"internal marker line", `href="/activity?tab=requests"`, "Where to start", "System log"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("internal tab missing %q", want)
 		}
 	}
 
 	// Requests tab: counters, both rows, and the outcome column.
-	page = get(t, env.handler, "/logs?tab=requests")
+	page = get(t, env.handler, "/activity?tab=requests")
 	if page.Code != http.StatusOK {
 		t.Fatalf("GET /logs?tab=requests = %d, want 200", page.Code)
 	}
@@ -61,20 +61,20 @@ func TestLogsSectionTabsAndCounters(t *testing.T) {
 	}
 
 	// Errors filter hides the answered request.
-	page = get(t, env.handler, "/logs?tab=requests&status=errors")
+	page = get(t, env.handler, "/activity?tab=requests&status=errors")
 	body = page.Body.String()
 	if strings.Contains(body, "good query") || !strings.Contains(body, "bad query") {
 		t.Error("errors filter did not narrow the table")
 	}
 
 	// Window selector changes the counters: the rows are 1 minute old.
-	page = get(t, env.handler, "/logs?tab=requests&window=all")
+	page = get(t, env.handler, "/activity?tab=requests&window=all")
 	if !strings.Contains(page.Body.String(), "2") {
 		t.Error("all-history window lost the counters")
 	}
 
 	// Statistics tab: per app and per indexer.
-	page = get(t, env.handler, "/logs?tab=stats")
+	page = get(t, env.handler, "/activity?tab=stats")
 	if page.Code != http.StatusOK {
 		t.Fatalf("GET /logs?tab=stats = %d, want 200", page.Code)
 	}
@@ -89,7 +89,7 @@ func TestLogsSectionTabsAndCounters(t *testing.T) {
 func TestLogsSectionEmptyAndFilters(t *testing.T) {
 	env := newTestEnv(t)
 
-	page := get(t, env.handler, "/logs?tab=requests&status=errors")
+	page := get(t, env.handler, "/activity?tab=requests&status=errors")
 	if page.Code != http.StatusOK {
 		t.Fatalf("GET /logs = %d", page.Code)
 	}
@@ -103,8 +103,8 @@ func TestLogsSectionEmptyAndFilters(t *testing.T) {
 	if !strings.Contains(body, `action="/logs"`) {
 		t.Error("internal filter form lost its Logs action")
 	}
-	if !strings.Contains(body, `name="tab" value="internal"`) {
-		t.Error("internal filter form lost its tab")
+	if strings.Contains(body, `name="tab"`) {
+		t.Error("the single-tab Log page must not carry a tab in its filter form")
 	}
 	if !strings.Contains(body, `value="needle"`) {
 		t.Error("internal filter form lost the query")
@@ -147,14 +147,14 @@ search:
 		t.Fatal(err)
 	}
 
-	body := get(t, env.handler, "/logs?tab=downloads").Body.String()
-	for _, want := range []string{"Grabbed Show S01E01", "dl-src", `action="/logs"`, `name="window"`, "Direct magnets are not counted.", "queued in aMule", "eD2k link"} {
+	body := get(t, env.handler, "/activity?tab=downloads").Body.String()
+	for _, want := range []string{"Grabbed Show S01E01", "dl-src", `action="/activity"`, `name="window"`, "Direct magnets are not counted.", "queued in aMule", "eD2k link"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("downloads tab missing %q", want)
 		}
 	}
 
-	body = get(t, env.handler, "/logs?tab=requests").Body.String()
+	body = get(t, env.handler, "/activity?tab=requests").Body.String()
 	for _, want := range []string{"1 in time", "1 in background", "1 skipped", "TV series", "Feed-only source"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("requests tab missing %q", want)
@@ -164,7 +164,7 @@ search:
 		t.Error("a late source is still shown as a red timeout")
 	}
 
-	body = get(t, env.handler, "/logs?tab=stats").Body.String()
+	body = get(t, env.handler, "/activity?tab=stats").Body.String()
 	if !strings.Contains(body, "In background") || !strings.Contains(body, "<td><strong>dl-src</strong></td>") || !strings.Contains(body, "<td><strong>4</strong></td>") {
 		t.Errorf("stats tab misses the late column or the downloads count")
 	}
@@ -174,8 +174,37 @@ search:
 // indexarr, which is information too. It used to disappear with no rows.
 func TestLogsDownloadsShowsTheEd2kTileWithoutGrabs(t *testing.T) {
 	env := newNativeEnv(t)
-	body := get(t, env.handler, "/logs?tab=downloads").Body.String()
+	body := get(t, env.handler, "/activity?tab=downloads").Body.String()
 	if !strings.Contains(body, `<strong>0</strong><span class="hint">queued in aMule</span>`) {
 		t.Errorf("the eD2k tile is missing or not zero\n%s", body)
+	}
+}
+
+func TestStatisticsHoldsTheTabsAndLogOnlyTheProcessLog(t *testing.T) {
+	env := newTestEnv(t)
+
+	body := get(t, env.handler, "/activity?lang=en").Body.String()
+	for _, tab := range []string{"requests", "stats", "downloads", "runs", "feed", "network"} {
+		if !strings.Contains(body, `href="/activity?tab=`+tab+`"`) {
+			t.Errorf("Statistics is missing the %s tab", tab)
+		}
+	}
+	if !strings.Contains(body, `class="tab active" href="/activity?tab=requests"`) {
+		t.Error("Statistics does not open on Requests")
+	}
+	if !strings.Contains(body, `<a href="/logs">`) {
+		t.Error("the Statistics guide does not lead to the system log")
+	}
+
+	logs := get(t, env.handler, "/logs?lang=en").Body.String()
+	for _, moved := range []string{`href="/logs?tab=requests"`, `href="/logs?tab=stats"`, `href="/logs?tab=downloads"`, `class="tabs"`} {
+		if strings.Contains(logs, moved) {
+			t.Errorf("the Log page still has %s", moved)
+		}
+	}
+	for _, want := range []string{`action="/logs/level"`, `action="/logs/clear"`, `href="/logs/download?`, "Statistics → Requests"} {
+		if !strings.Contains(logs, want) {
+			t.Errorf("the Log page lost %s", want)
+		}
 	}
 }

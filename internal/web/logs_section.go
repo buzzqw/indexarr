@@ -12,22 +12,11 @@ import (
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
-// logsSectionPage is the Logs section: internal process log, the requests
-// received from the downstream apps, and the aggregated request statistics.
+// logsSectionPage is the Log section: the process log only. The requests,
+// counters and downloads live in the Statistics section (/activity).
 type logsSectionPage struct {
 	base
-	Tab       string
-	Internal  logsPage
-	Requests  *logsRequestsView
-	Stats     *logsStatsView
-	Downloads *logsDownloadsView
-	// TotalRequests and ErrorRequests feed the tab chips; LogLines is the
-	// number of lines currently held by the log buffer.
-	TotalRequests int64
-	ErrorRequests int64
-	LogLines      int
-	// GrabsToday feeds the Download tab chip.
-	GrabsToday int64
+	Internal logsPage
 }
 
 // logsRequestsView is the "Richieste" tab: the request counters of a window
@@ -196,7 +185,7 @@ func (s *Server) statWindows(r *http.Request, tab, selected string, onlyErrors b
 		options = append(options, logsWindowOption{
 			Key:    key,
 			Label:  label,
-			URL:    "/logs?" + values.Encode(),
+			URL:    "/activity?" + values.Encode(),
 			Active: key == selected,
 		})
 	}
@@ -225,50 +214,21 @@ func humanMillis(ms int64) string {
 }
 
 func (s *Server) logsSection(w http.ResponseWriter, r *http.Request) {
-	tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab")))
-	switch tab {
+	switch tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab"))); tab {
 	case "requests", "stats", "downloads":
-	default:
-		tab = "internal"
+		// These tabs moved to Statistics: keep old bookmarks working.
+		redirectTab(w, r, "/activity", tab)
+		return
 	}
 	data := logsSectionPage{
 		base: s.newBaseT(r, "logs.title", "logs"),
-		Tab:  tab,
 	}
-	data.TotalRequests, _ = s.store.CountAppSearches(r.Context())
-	data.ErrorRequests, _ = s.store.CountAppSearchesFiltered(r.Context(), true)
-	data.LogLines = s.logs.Len()
-	data.GrabsToday, _ = s.store.CountGrabs(r.Context(), time.Now().Add(-24*time.Hour))
-
-	switch tab {
-	case "requests":
-		view, err := s.logsRequests(r)
-		if err != nil {
-			s.renderError(w, r, http.StatusInternalServerError, err.Error())
-			return
-		}
-		data.Requests = view
-		data.LiveRefresh = 10
-	case "stats":
-		view, err := s.logsStats(r)
-		if err != nil {
-			s.renderError(w, r, http.StatusInternalServerError, err.Error())
-			return
-		}
-		data.Stats = view
-	case "downloads":
-		view, err := s.logsDownloads(r)
-		if err != nil {
-			s.renderError(w, r, http.StatusInternalServerError, err.Error())
-			return
-		}
-		data.Downloads = view
-	default:
-		logs := s.logsDataFor(r, "/logs", "internal")
-		logs.base = data.base
-		data.Internal = logs
-		data.AutoRefresh = logs.AutoRefresh
-	}
+	logs := s.logsDataFor(r, "/logs", "")
+	// Keep the page's own base, but not at the cost of the refresh the
+	// filters asked for.
+	data.AutoRefresh = logs.AutoRefresh
+	logs.base = data.base
+	data.Internal = logs
 	s.render(w, r, "logs_section", data, http.StatusOK)
 }
 
@@ -297,7 +257,7 @@ func (s *Server) logsRequests(r *http.Request) (*logsRequestsView, error) {
 	windows, selectedLabel := s.statWindows(r, "requests", window, onlyErrors)
 
 	view := &logsRequestsView{
-		Pager:       newPager(r, "/logs", total, logsRequestPageSize, offset),
+		Pager:       newPager(r, "/activity", total, logsRequestPageSize, offset),
 		Window:      window,
 		WindowLabel: selectedLabel,
 		Windows:     windows,
@@ -312,7 +272,7 @@ func (s *Server) logsRequests(r *http.Request) (*logsRequestsView, error) {
 	}
 	reset := url.Values{}
 	reset.Set("tab", "requests")
-	view.ResetURL = "/logs?" + reset.Encode()
+	view.ResetURL = "/activity?" + reset.Encode()
 	for _, search := range searches {
 		view.Searches = append(view.Searches, s.appSearchView(requestLanguage(r), search))
 	}
@@ -435,7 +395,7 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		WindowLabel:  selectedLabel,
 		Windows:      windows,
 		Total:        total,
-		Pager:        newPager(r, "/logs", total, logsGrabPageSize, offset),
+		Pager:        newPager(r, "/activity", total, logsGrabPageSize, offset),
 		ProxyMagnets: settings.TorznabProxyMagnets,
 	}
 	for _, stat := range stats {

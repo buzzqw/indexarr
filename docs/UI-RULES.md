@@ -71,8 +71,8 @@ Text rules:
 | Search | Search in the releases |
 | Indexers | Single list of the sites, detail, guided addition from the catalog |
 | App | \*arr apps and download clients |
-| Activity | Runs, new releases, received searches |
-| Logs | Internal logs, app requests, statistics, downloads |
+| Statistics | App requests, overview, downloads, runs, new releases, network |
+| Logs | System log only |
 | Settings | Sections, rules, maintenance, definitions |
 
 Old URLs respond with a redirect to the new location. The badge next to an item

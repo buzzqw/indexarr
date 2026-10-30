@@ -90,8 +90,9 @@ Native sources / RSS / Newznab ──► scheduler ──► normalization ─�
   detail, edit, clone, JSON export/import, feed discovery and cookie import.
 - **App** to connect and synchronize Sonarr, Radarr, Lidarr, Readarr,
   Whisparr, Mylar3 and LazyLibrarian, and to manage the download clients.
-- **Activity** with run history, new releases and app searches.
-- **Logs** with internal log, incoming requests, statistics and downloads.
+- **Statistics** with app requests, the overview per app and indexer,
+  downloads, run history, new releases and network counters.
+- **Logs** with the system (process) log only.
 - **Settings** for configuration, with the **Rules** (blocklist),
   **Backup** and **Maintenance** sections.
 - Interface translated into Italian, English, German, French, Spanish, Polish
@@ -293,7 +294,7 @@ without restarting.
 | `torznab_live_timeout_seconds` | 20 | Overall deadline of the live search |
 | `torznab_live_wait_seconds` | 5 | How long the answer waits for the live results; late indexers finish in the background |
 | `torznab_live_cache_seconds` | 300 | How long a live result stays cached (0 = off) |
-| `torznab_proxy_magnets` | off | Magnet grabs go through indexarr and are recorded in **Logs → Downloads** |
+| `torznab_proxy_magnets` | off | Magnet grabs go through indexarr and are recorded in **Statistics → Downloads** |
 | `torznab_proxy_ed2k` | on | eD2k grabs go through indexarr; the direct link stays in the `ed2k` attribute |
 | `host_rate` / `host_burst` | 1 / 4 | Requests per second per host, shared by all indexers, and initial burst |
 | `breaker_threshold` | 5 | Consecutive failures before a host is paused |
@@ -314,7 +315,7 @@ without restarting.
 Each source can have **HTTP Basic** credentials (*HTTP username* and *HTTP
 password* fields), independent of the Torznab API key. Next to each source
 there are **Test** and **Run**; **Test all** and **Run all** work on all
-enabled sources and write the outcomes to **Activity** and the logs.
+enabled sources and write the outcomes to **Statistics → Runs** and the logs.
 
 ### Catalog and adding
 
@@ -508,8 +509,8 @@ support ids. Turn it off if you prefer an answer from the cache only.
 | **Search** (`/releases`) | Manual live search (text, TV, movies, music, books, external IDs), `-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab; detail with magnet, `.torrent` and `.nzb` |
 | **Indexers** | Single list, Run/Test/Run all/Test all/Test problems, detail with Site access, edit, clone, JSON export/import, feed discovery and cookie import |
 | **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian; sync, per-app profile, snapshots and download clients |
-| **Activity** | Update history, new releases, app searches |
-| **Logs** | Internal log with filters and runtime level, incoming requests, statistics per app and indexer, downloads served per source |
+| **Statistics** (`/activity`) | Incoming requests, overview per app and indexer, downloads served per source, update history, new releases, per-host network counters |
+| **Logs** (`/logs`) | System log with filters and runtime level |
 | **Settings** | Sections General, Network (FlareSolverr, per-host rate limit), Security, Notifications, **Rules** (blocklist by infohash, title, regex, source or category), **Backup**, **Maintenance** (integrity, vacuum, optimize/checkpoint, reindex, deduplication, `.torrent` cleanup, retention, purge per indexer, restore), Advanced (circuit breaker, live search, downloads through indexarr, definitions, proxies) and Updates |
 
 The old `/rules`, `/maintenance` and `/definitions` addresses redirect to the
@@ -662,12 +663,14 @@ complete the restart; without systemd, restart manually.
 - **Runs → detail**: counts, duration and full error of a single run.
 - **Cancel** in the row of a running source cancels the run.
 
-### Log
+### Statistics and log
 
-**Logs** has four tabs: **Internal log**, **Requests** (incoming requests with
-outcome and timings), **Statistics** (per app and per indexer) and
-**Downloads** (grabs served per source). The internal log shows the last
-**2000** messages of the process, most recent first:
+**Statistics** has six tabs: **Requests** (incoming requests with outcome and
+timings), **Overview** (per app and per indexer), **Downloads** (grabs served
+per source), **Runs**, **New releases** and **Network** (per-host counters).
+**Logs** holds only the system log: the last **2000** messages of the process,
+most recent first. Old links (`/logs?tab=requests`, `/activity?tab=logs`, …)
+redirect to the new place. The system log offers:
 
 - filter by level (`debug`, `info`, `warning`, `error`), by **origin**
   (`indexarr`, `indexer`/Torznab, RSS/HTML, notifications) and search in the

@@ -6,12 +6,12 @@
 <section class="cards" aria-label="{{T "logs.requests.cardsLabel"}}">
   <article class="card" title="{{T "logs.requests.requestsHelp"}}"><span class="label">{{T "logs.requests.requests"}}</span><strong>{{.Totals.Requests}}</strong><span class="hint">{{.WindowLabel}}</span></article>
   <article class="card" title="{{T "logs.requests.okHelp"}}"><span class="label">{{T "logs.requests.ok"}}</span><strong>{{sub .Totals.Requests .Totals.Errors}}</strong><span class="hint">{{T "logs.requests.okHint"}}</span></article>
-  <article class="card" title="{{T "logs.requests.errorsHelp"}}"><span class="label">{{T "logs.requests.errors"}}</span><strong>{{.Totals.Errors}}</strong><span class="hint"><a href="/logs?tab=requests&status=errors&window={{.Window}}">{{T "logs.requests.onlyErrors"}}</a></span></article>
+  <article class="card" title="{{T "logs.requests.errorsHelp"}}"><span class="label">{{T "logs.requests.errors"}}</span><strong>{{.Totals.Errors}}</strong><span class="hint"><a href="/activity?tab=requests&status=errors&window={{.Window}}">{{T "logs.requests.onlyErrors"}}</a></span></article>
   <article class="card" title="{{T "logs.requests.successHelp"}}"><span class="label">{{T "logs.requests.successRate"}}</span><strong>{{.SuccessRate}}</strong><span class="hint">{{T "logs.requests.successHint"}}</span></article>
   <article class="card" title="{{T "logs.requests.avgHelp"}}"><span class="label">{{T "logs.requests.avg"}}</span><strong>{{.AvgLatency}}</strong><span class="hint">{{T "logs.requests.avgHint"}}</span></article>
 </section>
 
-<form class="filters" method="get" action="/logs">
+<form class="filters" method="get" action="/activity">
   <input type="hidden" name="tab" value="requests">
   <div class="field">
     <label for="requests_window">{{T "logs.requests.window"}}</label>
@@ -46,6 +46,6 @@
 <section class="panel">
   <div class="panel-head"><h2>{{T "logs.requests.nextTitle"}}</h2></div>
   <p class="help">{{T "logs.requests.nextText"}}</p>
-  <p><a class="btn" href="/logs?tab=stats">{{T "logs.requests.nextStats"}}</a></p>
+  <p><a class="btn" href="/activity?tab=stats">{{T "logs.requests.nextStats"}}</a></p>
 </section>
 {{end}}

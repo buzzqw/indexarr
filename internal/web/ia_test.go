@@ -25,26 +25,46 @@ func locationQuery(t *testing.T, location string) (*url.URL, url.Values) {
 func TestLogsSectionKeepsLegacyActivityTab(t *testing.T) {
 	env := newTestEnv(t)
 
-	// The Logs section has its own page now.
-	recorder := get(t, env.handler, "/logs?level=error&q=timeout")
+	// The old Activity → Logs tab now leads to the Log section, filters
+	// included.
+	recorder := get(t, env.handler, "/activity?tab=logs&level=error&q=timeout")
+	if recorder.Code != http.StatusFound {
+		t.Fatalf("GET /activity?tab=logs = %d, want 302", recorder.Code)
+	}
+	parsed, values := locationQuery(t, recorder.Header().Get("Location"))
+	if parsed.Path != "/logs" || values.Get("tab") != "" || values.Get("level") != "error" || values.Get("q") != "timeout" {
+		t.Errorf("GET /activity?tab=logs -> %s", parsed)
+	}
+
+	recorder = get(t, env.handler, "/logs?level=error&q=timeout")
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("GET /logs = %d, want 200", recorder.Code)
 	}
-	if body := recorder.Body.String(); !strings.Contains(body, `href="/logs?tab=internal"`) {
-		t.Error("the Logs section is missing its Internal log tab")
-	}
-
-	// The old Activity → Logs tab still exists and keeps its filters.
-	recorder = get(t, env.handler, "/activity?tab=logs&level=error&q=timeout")
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("GET /activity?tab=logs = %d, want 200", recorder.Code)
-	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, `name="tab" value="logs"`) {
-		t.Error("the Activity log filter lost its tab value")
+	if strings.Contains(body, `name="tab"`) {
+		t.Error("the Log filter carries a tab on a single-tab page")
 	}
 	if !strings.Contains(body, `value="timeout"`) {
-		t.Error("the Activity log filter lost the query")
+		t.Error("the Log filter lost the query")
+	}
+
+	// The tabs that moved to Statistics keep their old links.
+	for _, tab := range []string{"requests", "stats", "downloads"} {
+		recorder = get(t, env.handler, "/logs?tab="+tab+"&window=7d")
+		if recorder.Code != http.StatusFound {
+			t.Fatalf("GET /logs?tab=%s = %d, want 302", tab, recorder.Code)
+		}
+		parsed, values = locationQuery(t, recorder.Header().Get("Location"))
+		if parsed.Path != "/activity" || values.Get("tab") != tab || values.Get("window") != "7d" {
+			t.Errorf("GET /logs?tab=%s -> %s", tab, parsed)
+		}
+	}
+	recorder = get(t, env.handler, "/activity?tab=searches&page=2")
+	if recorder.Code != http.StatusFound {
+		t.Fatalf("GET /activity?tab=searches = %d, want 302", recorder.Code)
+	}
+	if parsed, values = locationQuery(t, recorder.Header().Get("Location")); values.Get("tab") != "requests" || values.Get("page") != "2" {
+		t.Errorf("GET /activity?tab=searches -> %s", parsed)
 	}
 }
 
@@ -109,12 +129,12 @@ func TestActivityTabsReuseRunsAndLogs(t *testing.T) {
 	}
 	env.logs.Add(logbuffer.Entry{Time: time.Now(), Level: slog.LevelInfo, Message: "activity log line"})
 
-	runs := get(t, env.handler, "/activity")
+	runs := get(t, env.handler, "/activity?tab=runs")
 	if runs.Code != http.StatusOK {
 		t.Fatalf("GET /activity = %d: %s", runs.Code, runs.Body.String())
 	}
 	body := runs.Body.String()
-	for _, want := range []string{"Activity", "Runs", "Logs", "Activity source", `class="tab active" href="/activity?tab=runs"`} {
+	for _, want := range []string{"Statistics", "Runs", "Logs", "Activity source", `class="tab active" href="/activity?tab=runs"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("runs tab missing %q", want)
 		}
@@ -123,12 +143,12 @@ func TestActivityTabsReuseRunsAndLogs(t *testing.T) {
 		t.Error("the runs tab rendered the log buffer")
 	}
 
-	logs := get(t, env.handler, "/activity?tab=logs")
+	logs := get(t, env.handler, "/logs")
 	if logs.Code != http.StatusOK {
-		t.Fatalf("GET /activity?tab=logs = %d: %s", logs.Code, logs.Body.String())
+		t.Fatalf("GET /logs = %d: %s", logs.Code, logs.Body.String())
 	}
 	logBody := logs.Body.String()
-	for _, want := range []string{"Activity", "activity log line", "Showing 1 of 1", `class="tab active" href="/activity?tab=logs"`} {
+	for _, want := range []string{"System log", "activity log line", "Showing 1 of 1", `href="/logs" class="active"`} {
 		if !strings.Contains(logBody, want) {
 			t.Errorf("logs tab missing %q", want)
 		}
@@ -233,7 +253,7 @@ func TestNavigationEnglishGroupedAndNoSourcesDuplicate(t *testing.T) {
 	}
 	sidebar := body[asideStart:asideEnd]
 	for _, want := range []string{
-		"Home", "Search", "Indexers", "App", "Activity", "Settings",
+		"Home", "Search", "Indexers", "App", "Statistics", "Logs", "Settings",
 	} {
 		if !strings.Contains(sidebar, want) {
 			t.Errorf("navigation missing %q", want)
@@ -270,7 +290,7 @@ func TestQuickAddCreatesNativeIndexer(t *testing.T) {
 func TestModernPOSTRoutesStillWork(t *testing.T) {
 	env := newTestEnv(t)
 
-	token, cookie := csrfFrom(t, env.handler, "/activity?tab=logs")
+	token, cookie := csrfFrom(t, env.handler, "/logs")
 	level := postForm(t, env.handler, "/logs/level", url.Values{
 		"csrf":          {token},
 		"runtime_level": {"debug"},
@@ -285,7 +305,7 @@ func TestModernPOSTRoutesStillWork(t *testing.T) {
 		t.Fatalf("POST /runs/clear = %d: %s", cleared.Code, cleared.Body.String())
 	}
 
-	token, cookie = csrfFrom(t, env.handler, "/activity?tab=logs")
+	token, cookie = csrfFrom(t, env.handler, "/logs")
 	clearedLogs := postForm(t, env.handler, "/logs/clear", url.Values{"csrf": {token}}, cookie)
 	if clearedLogs.Code != http.StatusSeeOther {
 		t.Fatalf("POST /logs/clear = %d: %s", clearedLogs.Code, clearedLogs.Body.String())

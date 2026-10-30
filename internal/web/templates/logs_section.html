@@ -4,44 +4,18 @@
     <h1>{{T "logs.title"}}</h1>
     <p class="muted">{{T "logs.sectionSubtitle"}}</p>
   </div>
-  <a class="btn" href="/maintenance" title="{{T "logs.openMaintenanceHelp"}}">{{T "logs.openMaintenance"}}</a>
+  <div class="actions">
+    <a class="btn" href="/activity?tab=requests" title="{{T "logs.openStatsHelp"}}">{{T "logs.openStats"}}</a>
+    <a class="btn" href="/maintenance" title="{{T "logs.openMaintenanceHelp"}}">{{T "logs.openMaintenance"}}</a>
+  </div>
 </section>
-
-<nav class="tabs" aria-label="{{T "logs.tabsLabel"}}">
-  <a class="tab{{if eq .Tab "internal"}} active{{end}}" href="/logs?tab=internal"{{if eq .Tab "internal"}} aria-current="page"{{end}} title="{{T "logs.tab.internalHelp"}}">
-    {{T "logs.tab.internal"}}{{if .LogLines}} <span class="chip">{{.LogLines}}</span>{{end}}
-  </a>
-  <a class="tab{{if eq .Tab "requests"}} active{{end}}" href="/logs?tab=requests"{{if eq .Tab "requests"}} aria-current="page"{{end}} title="{{T "logs.tab.requestsHelp"}}">
-    {{T "logs.tab.requests"}} <span class="chip">{{.TotalRequests}}</span>{{if .ErrorRequests}} <span class="chip danger" title="{{T "logs.tab.errorsHelp" .ErrorRequests}}">{{.ErrorRequests}}</span>{{end}}
-  </a>
-  <a class="tab{{if eq .Tab "stats"}} active{{end}}" href="/logs?tab=stats"{{if eq .Tab "stats"}} aria-current="page"{{end}} title="{{T "logs.tab.statsHelp"}}">
-    {{T "logs.tab.stats"}}
-  </a>
-  <a class="tab{{if eq .Tab "downloads"}} active{{end}}" href="/logs?tab=downloads"{{if eq .Tab "downloads"}} aria-current="page"{{end}} title="{{T "logs.tab.downloadsHelp"}}">
-    {{T "logs.tab.downloads"}}{{if .GrabsToday}} <span class="chip ok" title="{{T "logs.tab.downloadsToday" .GrabsToday}}">{{.GrabsToday}}</span>{{end}}
-  </a>
-</nav>
 
 <section class="panel" id="logs-guide">
   <div class="panel-head"><h2>{{T "logs.guideTitle"}}</h2></div>
-  <ol class="guide-steps">
-    <li><strong>{{T "logs.tab.requests"}}</strong> — {{T "logs.guideStep1"}} <a href="/logs?tab=requests">{{T "logs.guideOpen"}}</a></li>
-    <li><strong>{{T "logs.tab.internal"}}</strong> — {{T "logs.guideStep2"}} <a href="/logs?tab=internal">{{T "logs.guideOpen"}}</a></li>
-    <li><strong>{{T "logs.tab.stats"}}</strong> — {{T "logs.guideStep3"}} <a href="/logs?tab=stats">{{T "logs.guideOpen"}}</a></li>
-    <li><strong>{{T "logs.tab.downloads"}}</strong> — {{T "logs.guideStep4"}} <a href="/logs?tab=downloads">{{T "logs.guideOpen"}}</a></li>
-  </ol>
-  <p class="help">{{T "logs.guideHelp"}}</p>
+  <p class="help">{{T "logs.systemGuide"}} <a href="/activity?tab=requests">{{T "logs.guideOpen"}}</a></p>
 </section>
 
-{{if eq .Tab "internal"}}
 {{template "logs_body" .Internal}}
-{{else if eq .Tab "requests"}}
-{{template "logs_requests_body" .Requests}}
-{{else if eq .Tab "downloads"}}
-{{template "logs_downloads_body" .Downloads}}
-{{else}}
-{{template "logs_stats_body" .Stats}}
-{{end}}
 
 <section class="panel">
   <div class="panel-head"><h2>{{T "logs.aboutTitle"}}</h2></div>

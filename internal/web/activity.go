@@ -33,14 +33,6 @@ type feedReleaseView struct {
 	Names        string
 }
 
-// activitySearchesView is the "searches" stream: requests received from
-// Torznab/Newznab clients, newest first, with per-indexer result counts.
-type activitySearchesView struct {
-	Searches []appSearchView
-	Pager    pager
-	Empty    uiEmpty
-}
-
 type appSearchView struct {
 	App         string
 	Mode        string
@@ -89,30 +81,79 @@ type appSearchResult struct {
 	Count int64
 }
 
-// activityPage unifies the run history, the new-release feed, the searches
-// received from apps and the in-memory log in one tabbed page.
+// activityPage is the Statistics section: the requests received from the
+// apps, their aggregated counters, the downloads, the source runs, the
+// new-release feed and the per-host network counters, one tab each. The
+// process log lives on its own page (/logs).
 type activityPage struct {
 	base
 	Tab         string
 	Runs        runsPage
-	Logs        logsPage
 	Feed        *activityFeedView
-	Searches    *activitySearchesView
+	Requests    *logsRequestsView
+	Stats       *logsStatsView
+	Downloads   *logsDownloadsView
 	HostMetrics []engine.HostMetric
+	// TotalRequests and ErrorRequests feed the Requests tab chips, GrabsToday
+	// the Downloads one.
+	TotalRequests int64
+	ErrorRequests int64
+	GrabsToday    int64
 }
 
 func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
 	tab := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("tab")))
 	switch tab {
-	case "logs", "feed", "searches":
+	case "logs":
+		// The process log moved to the Log section: keep the old links and
+		// their filters working.
+		values := r.URL.Query()
+		values.Del("tab")
+		target := "/logs"
+		if encoded := values.Encode(); encoded != "" {
+			target += "?" + encoded
+		}
+		http.Redirect(w, r, target, http.StatusFound)
+		return
+	case "searches":
+		// Searches was the same table as Requests, without the counters.
+		redirectTab(w, r, "/activity", "requests")
+		return
+	case "requests", "stats", "downloads", "runs", "feed", "network":
 	default:
-		tab = "runs"
+		tab = "requests"
 	}
 	data := activityPage{
 		base: s.newBaseT(r, "activity.title", "activity"),
 		Tab:  tab,
 	}
+	data.TotalRequests, _ = s.store.CountAppSearches(r.Context())
+	data.ErrorRequests, _ = s.store.CountAppSearchesFiltered(r.Context(), true)
+	data.GrabsToday, _ = s.store.CountGrabs(r.Context(), time.Now().Add(-24*time.Hour))
+	data.HostMetrics = s.polite.HostMetrics()
 	switch tab {
+	case "requests":
+		view, err := s.logsRequests(r)
+		if err != nil {
+			s.renderError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+		data.Requests = view
+		data.LiveRefresh = 10
+	case "stats":
+		view, err := s.logsStats(r)
+		if err != nil {
+			s.renderError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+		data.Stats = view
+	case "downloads":
+		view, err := s.logsDownloads(r)
+		if err != nil {
+			s.renderError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
+		data.Downloads = view
 	case "feed":
 		feed, err := s.activityFeed(r)
 		if err != nil {
@@ -122,18 +163,7 @@ func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
 		data.Feed = feed
 		// Refresh only while the tab is visible; app.js implements the check.
 		data.LiveRefresh = 10
-	case "searches":
-		searches, err := s.activitySearches(r)
-		if err != nil {
-			s.renderError(w, r, http.StatusInternalServerError, err.Error())
-			return
-		}
-		data.Searches = searches
-		data.LiveRefresh = 10
-	case "logs":
-		logs := s.logsData(r)
-		data.Logs = logs
-		data.AutoRefresh = logs.AutoRefresh
+	case "network":
 	default:
 		runs, err := s.runsData(r)
 		if err != nil {
@@ -142,7 +172,6 @@ func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
 		}
 		data.Runs = runs
 	}
-	data.HostMetrics = s.polite.HostMetrics()
 	s.render(w, r, "activity", data, http.StatusOK)
 }
 
@@ -180,35 +209,8 @@ func (s *Server) activityFeed(r *http.Request) (*activityFeedView, error) {
 	return view, nil
 }
 
-func (s *Server) activitySearches(r *http.Request) (*activitySearchesView, error) {
-	page := intParam(r.URL.Query().Get("page"), 1)
-	if page < 1 {
-		page = 1
-	}
-	offset := (page - 1) * activityPageSize
-	total, err := s.store.CountAppSearches(r.Context())
-	if err != nil {
-		return nil, err
-	}
-	searches, err := s.store.ListAppSearches(r.Context(), activityPageSize, offset)
-	if err != nil {
-		return nil, err
-	}
-	view := &activitySearchesView{
-		Pager: newPager(r, "/activity", total, activityPageSize, offset),
-		Empty: uiEmpty{
-			Title: s.translate(r, "activity.searches.emptyTitle"),
-			Text:  s.translate(r, "activity.searches.emptyText"),
-		},
-	}
-	for _, search := range searches {
-		view.Searches = append(view.Searches, s.appSearchView(requestLanguage(r), search))
-	}
-	return view, nil
-}
-
 // appSearchView converts one stored request into the row rendered by the
-// Search table (Activity and the Logs section share it).
+// Requests table of the Statistics section.
 func (s *Server) appSearchView(lang i18n.Language, search store.AppSearch) appSearchView {
 	row := appSearchView{
 		What:       searchModeLabel(lang, search.Mode),

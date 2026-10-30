@@ -3060,12 +3060,12 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	runsValues.Set("tab", "runs")
 	runsValues.Set("indexer", strconv.FormatInt(in.ID, 10))
 	data.RunsLink = "/activity?" + runsValues.Encode()
-	logValues := url.Values{}
-	logValues.Set("tab", "logs")
+	data.AppLogLink = "/logs"
 	if slug := strings.TrimSpace(in.Slug); slug != "" {
+		logValues := url.Values{}
 		logValues.Set("q", slug)
+		data.AppLogLink += "?" + logValues.Encode()
 	}
-	data.AppLogLink = "/activity?" + logValues.Encode()
 	if latency, found, latencyErr := s.store.IndexerLatency(r.Context(), in.ID, 50); latencyErr == nil && found {
 		data.LatencyP50 = formatLatency(latency.P50MS)
 		data.LatencyP95 = formatLatency(latency.P95MS)

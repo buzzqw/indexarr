@@ -29,9 +29,8 @@ type logsPage struct {
 	LogFile     string
 	LogMaxMB    int
 	LogMaxFiles int
-	// FormPath and TabValue keep the filter form on the page that renders it:
-	// the same body is used by Activity (tab=logs) and by the Logs section
-	// (tab=internal).
+	// FormPath and TabValue keep the filter form on the page that renders it
+	// (the Log section uses /logs with no tab).
 	FormPath string
 	TabValue string
 }
@@ -49,15 +48,6 @@ func parseLogLevel(raw string) (slog.Level, bool) {
 	default:
 		return slog.LevelDebug, false
 	}
-}
-
-// logsRedirect keeps /logs working and folds the old page into Attività.
-func (s *Server) logsRedirect(w http.ResponseWriter, r *http.Request) {
-	redirectTab(w, r, "/activity", "logs")
-}
-
-func (s *Server) logsData(r *http.Request) logsPage {
-	return s.logsDataFor(r, "/activity", "logs")
 }
 
 // logsDataFor builds the internal-log view for the page that renders it.
@@ -117,7 +107,7 @@ func (s *Server) logsDataFor(r *http.Request, formPath, tabValue string) logsPag
 		runtimeLevel = strings.ToLower(s.level.Level().String())
 	}
 	data := logsPage{
-		base:         s.newBaseT(r, "activity.logs", "activity"),
+		base:         s.newBaseT(r, "logs.title", "logs"),
 		Entries:      logViews(requestLanguage(r), entries, s.indexerNames(r.Context())),
 		Level:        levelName,
 		RuntimeLevel: runtimeLevel,

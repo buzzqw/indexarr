@@ -3,7 +3,7 @@
   <p class="muted">{{T "logs.stats.subtitle" .WindowLabel}}</p>
 </div>
 
-<form class="filters" method="get" action="/logs">
+<form class="filters" method="get" action="/activity">
   <input type="hidden" name="tab" value="stats">
   <div class="field">
     <label for="stats_window">{{T "logs.stats.window"}}</label>
@@ -13,7 +13,7 @@
   </div>
   <div class="field actions-field">
     <button class="btn primary" type="submit">{{T "logs.apply"}}</button>
-    <a class="btn" href="/logs?tab=requests">{{T "logs.stats.openRequests"}}</a>
+    <a class="btn" href="/activity?tab=requests">{{T "logs.stats.openRequests"}}</a>
   </div>
   <p class="help">{{T "logs.stats.windowHelp"}}</p>
 </form>

@@ -246,7 +246,7 @@ func TestActivityFeedAndSearchesPages(t *testing.T) {
 		t.Error("the indexer filter dropped releases")
 	}
 
-	searches := get(t, env.handler, "/activity?tab=searches")
+	searches := get(t, env.handler, "/activity?tab=requests")
 	if searches.Code != http.StatusOK {
 		t.Fatalf("searches status = %d: %s", searches.Code, searches.Body.String())
 	}
@@ -259,7 +259,7 @@ func TestActivityFeedAndSearchesPages(t *testing.T) {
 			t.Errorf("searches page missing %q", want)
 		}
 	}
-	searchPage2 := get(t, env.handler, "/activity?tab=searches&page=2")
+	searchPage2 := get(t, env.handler, "/activity?tab=requests&page=2")
 	if !strings.Contains(searchPage2.Body.String(), "query 0") {
 		t.Error("the second searches page does not contain the oldest request")
 	}
@@ -357,16 +357,16 @@ func TestDataAndActivityTabsAreTranslatedInEveryLanguage(t *testing.T) {
 
 func TestVisibilityRefreshIsOnlyOnLiveTabs(t *testing.T) {
 	env := newTestEnv(t)
-	for _, tab := range []string{"feed", "searches"} {
+	for _, tab := range []string{"feed", "requests"} {
 		body := get(t, env.handler, "/activity?tab="+tab).Body.String()
 		if !strings.Contains(body, `data-live-refresh="10"`) {
 			t.Errorf("%s should poll every 10 seconds", tab)
 		}
 	}
-	for _, tab := range []string{"runs", "logs"} {
-		body := get(t, env.handler, "/activity?tab="+tab).Body.String()
+	for _, path := range []string{"/activity?tab=runs", "/activity?tab=network", "/logs"} {
+		body := get(t, env.handler, path).Body.String()
 		if strings.Contains(body, `data-live-refresh`) {
-			t.Errorf("%s must not use visibility polling", tab)
+			t.Errorf("%s must not use visibility polling", path)
 		}
 	}
 }
