@@ -72,5 +72,5 @@ goldens are reproducible on any machine.
 
 | Test | Status | Detail |
 | --- | --- | --- |
-| `TestUnknownSeedersAreOmitted` | `SKIP` | **BUG**: a release with `Seeders=-1` and no `release_sources` row is rendered with `seeders=0`, `leechers=0`, `peers=0`. `writeItem` compares the provenance to the zero value (0) with the “unknown” sentinel (-1) and overwrites it. This contradicts `docs/API.md`, which requires the attributes to be omitted. Evidence in the golden: `<torznab:attr name="seeders" value="0"/>` on the item `Compat.NZB.Album.2026.FLAC`. |
+| `TestUnknownSeedersAreOmitted` | `SKIP` | **BUG**: a release with `Seeders=-1` and no `release_sources` row is rendered with `seeders=0`, `leechers=0`, `peers=0`. `writeItem` compares the provenance to the zero value (0) with the “unknown” sentinel (-1) and overwrites it. This contradicts `https://github.com/buzzqw/indexarr/wiki/Torznab-API`, which requires the attributes to be omitted. Evidence in the golden: `<torznab:attr name="seeders" value="0"/>` on the item `Compat.NZB.Album.2026.FLAC`. |
 | `TestErrorCode900` | `SKIP` | Not a bug: code 900 is defined but no request path produces it. The reachable codes are 100, 101, 200, 201, 300, 400 and 500. |

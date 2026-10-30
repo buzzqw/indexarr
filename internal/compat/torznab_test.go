@@ -400,7 +400,7 @@ func TestUnknownSeedersAreOmitted(t *testing.T) {
 	t.Skip("BUG: a release with Seeders=-1 and no release_sources row is rendered as seeders=0, leechers=0, peers=0. " +
 		"writeItem compares the zero-value provenance (0) with the unknown sentinel (-1) and overwrites it; " +
 		"evidence: /api?t=search&q=Compat item \"Compat.NZB.Album.2026.FLAC\" contains " +
-		"<torznab:attr name=\"seeders\" value=\"0\"/> instead of omitting it, contradicting docs/API.md")
+		"<torznab:attr name=\"seeders\" value=\"0\"/> instead of omitting it, contradicting https://github.com/buzzqw/indexarr/wiki/Torznab-API")
 }
 
 // TestErrorCode900 documents that code 900 (unknown error) has no reachable

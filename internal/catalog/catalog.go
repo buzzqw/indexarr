@@ -15,7 +15,7 @@
 // a committed snapshot of manager metadata: name, URL, type, language,
 // categories and, when the site itself proves it, the software family. They
 // are not definitions, are never produced from Cardigann data and do not
-// connect to Jackett or Prowlarr at runtime. See sites.go and docs/CATALOG.md.
+// connect to Jackett or Prowlarr at runtime. See sites.go and https://github.com/buzzqw/indexarr/wiki/Catalog.
 //
 // Definitions produced by a conversion tool (meta.derived_from, or the
 // Cardigann converter's author) are rejected: derived drafts are local writing

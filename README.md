@@ -206,7 +206,7 @@ and does not appear in the user list.
 definition, but the format is not executed at runtime and the derived
 definitions do not enter the catalog.
 
-Details, edge cases and diagnostics: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+Details, edge cases and diagnostics: [Compatibility](https://github.com/buzzqw/indexarr/wiki/Compatibility).
 
 ## Requirements
 
@@ -263,7 +263,7 @@ file. `vault_key_path` is optional: if empty the vault key is looked up in
 exists) and then `os.UserConfigDir()/indexarr/master.key`. A relative path is
 resolved against the directory of `indexarr.json`. Details, `vault export-key`
 / `vault move-key` commands, backups and Docker secrets in
-[docs/VAULT.md](docs/VAULT.md).
+[Vault](https://github.com/buzzqw/indexarr/wiki/Vault).
 
 `log_file` is the rotating log file (relative like `db_path`; `"off"` turns it
 off): when it exceeds `log_max_mb` it becomes `indexarr.log.1`, older files
@@ -335,7 +335,7 @@ enabled sources and write the outcomes to **Statistics → Runs** and the logs.
 As of **2026-10-29** the catalog contains **627 entries**: 111 native
 definitions, 86 verified (85 torrent + 1 eD2k), 92 verified public hosts and
 495 entries still to try, mostly private. Numbers by state in
-[docs/CATALOG.md](docs/CATALOG.md). Coverage of individual sites grows
+[Catalog](https://github.com/buzzqw/indexarr/wiki/Catalog). Coverage of individual sites grows
 with the catalog; the generic Usenet path is already complete.
 
 ### RSS / Atom
@@ -422,7 +422,7 @@ layout changes or the site requires login, the test reports the error.
   created first and the cookie imported afterwards.
 - **MirCrew** and **ilDraGoNeRo** are phpBB forums with native definitions:
   search never thanks; the thanks to the author happens only at download time,
-  when the magnet is unlocked. Details in [docs/MIRCREW.md](docs/MIRCREW.md).
+  when the magnet is unlocked. Details in [MirCrew](https://github.com/buzzqw/indexarr/wiki/MirCrew).
 - **DDUnlimited** is an eD2k forum: search reads its alphabetical title
   indexes, every file of a topic becomes a release and the forum flood control
   is respected with a single search lane and a pause after a refusal.
@@ -444,7 +444,7 @@ layout changes or the site requires login, the test reports the error.
 
 indexarr **replaces** them: they are not sources and there is no import that
 reads them. A URL that belongs to a manager is rejected with an explicit
-message. See [docs/MIGRATION-MANAGERS.md](docs/MIGRATION-MANAGERS.md).
+message. See [Replacing Jackett and Prowlarr](https://github.com/buzzqw/indexarr/wiki/Migration-Managers).
 
 ## Connecting the apps
 
@@ -463,7 +463,7 @@ In the client add a **Torznab** indexer:
 | Categories | `5000` TV, `2000` Movies, `3000` Audio, `7000` Books |
 
 The `/torznab/api` and `/newznab/api` aliases and the API key in the
-`X-Api-Key` header are also supported. Full details in [docs/API.md](docs/API.md).
+`X-Api-Key` header are also supported. Full details in [Torznab API](https://github.com/buzzqw/indexarr/wiki/Torznab-API).
 
 ### App sync
 
@@ -643,7 +643,7 @@ before a restore as `pre-restore-*.db` and those of `scripts/upgrade.sh` as
 The **vault key is not in the database**: it must be kept separately
 (`INDEXARR_MASTER_KEY`, `vault_key_path` or the user file
 `~/.config/indexarr/master.key`). Without that key the stored secrets cannot be
-opened. Details in [docs/VAULT.md](docs/VAULT.md).
+opened. Details in [Vault](https://github.com/buzzqw/indexarr/wiki/Vault).
 
 From **Settings → Backup** you can create a backup, download it, delete it
 and restore it. Restore loads a validated `.db`, copies it to
@@ -881,7 +881,7 @@ set `INDEXARR_LISTEN=:8484` to stay on the previous port.
 
 The volume **does not** contain the vault key when you use
 `INDEXARR_MASTER_KEY_FILE` with a mounted secret (example in
-[docs/VAULT.md](docs/VAULT.md#docker)) or `INDEXARR_MASTER_KEY`. Without a key
+[Vault](https://github.com/buzzqw/indexarr/wiki/Vault#docker) or `INDEXARR_MASTER_KEY`. Without a key
 the service starts, but indexers with encrypted secrets are not readable.
 
 ## Development
@@ -916,12 +916,12 @@ make def-validate   # example definitions and catalog, if present
 ```
 
 Package structure and design choices:
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). User manual:
-[docs/MANUAL.en.md](docs/MANUAL.en.md) in English,
-[docs/MANUAL.it.md](docs/MANUAL.it.md) in Italian. Torznab API:
-[docs/API.md](docs/API.md);
-administrative JSON API: [docs/ADMIN-API.md](docs/ADMIN-API.md). Test suite and
-smoke test: [docs/QA.md](docs/QA.md).
+[Architecture](https://github.com/buzzqw/indexarr/wiki/Architecture). User manual:
+[User manual](https://github.com/buzzqw/indexarr/wiki/User-Manual) in English,
+[Manuale utente](https://github.com/buzzqw/indexarr/wiki/Manuale-Utente) in Italian. Torznab API:
+[Torznab API](https://github.com/buzzqw/indexarr/wiki/Torznab-API);
+administrative JSON API: [Admin JSON API](https://github.com/buzzqw/indexarr/wiki/Admin-API). Test suite and
+smoke test: [QA](https://github.com/buzzqw/indexarr/wiki/QA).
 
 ## Limits
 
@@ -958,16 +958,16 @@ smoke test: [docs/QA.md](docs/QA.md).
 
 ## Documentation
 
-- [Definitions guide](docs/DEFINITIONS.md) — v1 format, fixtures, security
-- [MirCrew](docs/MIRCREW.md) — native definition, Smartfeed, FlareSolverr
+- [Definitions guide](https://github.com/buzzqw/indexarr/wiki/Definitions) — v1 format, fixtures, security
+- [MirCrew](https://github.com/buzzqw/indexarr/wiki/MirCrew) — native definition, Smartfeed, FlareSolverr
   session
-- [Compatibility](docs/COMPATIBILITY.md) — sources, edge cases, diagnostics
-- [Architecture](docs/ARCHITECTURE.md) — packages and design choices
-- [User manual](docs/MANUAL.en.md) — step-by-step guide (English)
-- [Manuale utente](docs/MANUAL.it.md) — guida passo passo (italiano)
-- [Torznab API](docs/API.md) and [Administrative API](docs/ADMIN-API.md)
-- [Vault](docs/VAULT.md) — key, backup, Docker secrets
-- [QA](docs/QA.md) — tests and smoke tests
-- [Catalog](docs/CATALOG.md) — states, numbers and live evidence per site
-- [UI rules](docs/UI-RULES.md) — rules every page follows
-- [Migration from Jackett/Prowlarr](docs/MIGRATION-MANAGERS.md)
+- [Compatibility](https://github.com/buzzqw/indexarr/wiki/Compatibility) — sources, edge cases, diagnostics
+- [Architecture](https://github.com/buzzqw/indexarr/wiki/Architecture) — packages and design choices
+- [User manual](https://github.com/buzzqw/indexarr/wiki/User-Manual) — step-by-step guide (English)
+- [Manuale utente](https://github.com/buzzqw/indexarr/wiki/Manuale-Utente) — guida passo passo (italiano)
+- [Torznab API](https://github.com/buzzqw/indexarr/wiki/Torznab-API) and [Administrative API](https://github.com/buzzqw/indexarr/wiki/Admin-API)
+- [Vault](https://github.com/buzzqw/indexarr/wiki/Vault) — key, backup, Docker secrets
+- [QA](https://github.com/buzzqw/indexarr/wiki/QA) — tests and smoke tests
+- [Catalog](https://github.com/buzzqw/indexarr/wiki/Catalog) — states, numbers and live evidence per site
+- [UI rules](https://github.com/buzzqw/indexarr/wiki/UI-Rules) — rules every page follows
+- [Migration from Jackett/Prowlarr](https://github.com/buzzqw/indexarr/wiki/Migration-Managers)

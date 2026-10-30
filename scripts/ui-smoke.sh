@@ -418,7 +418,7 @@ fi
 say ""
 say "==> routes"
 
-# Sidebar map (docs/UI-RULES.md §2): Home, Cerca, Indexer, App, Attività, Log, Impostazioni.
+# Sidebar map (https://github.com/buzzqw/indexarr/wiki/UI-Rules §2): Home, Cerca, Indexer, App, Attività, Log, Impostazioni.
 # Old URLs must answer 302 instead of disappearing.
 check_html_route "/"
 check_html_route "/releases"
