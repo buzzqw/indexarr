@@ -727,13 +727,34 @@ passwords and tokens are redacted in the buffer shown by the UI.
 
 ## systemd
 
-### User systemd service (recommended)
+### One-command installer (recommended)
 
-The script creates and starts the service for the current user, without `sudo`:
+From the repository root:
 
 ```bash
-./scripts/install-user-service.sh
+./install.sh
 ```
+
+The installer builds `bin/indexarr` when Go and make are available (otherwise
+it uses the existing binary), writes `data/indexarr.json` with private
+permissions, installs and starts `~/.config/systemd/user/indexarr.service`, and
+checks `/healthz`.
+
+```bash
+./install.sh --listen 127.0.0.1:8788   # local only
+./install.sh --binary /path/indexarr   # prebuilt binary, no Go needed
+./install.sh --linger                  # stays active after logout
+./install.sh --dry-run                 # print the plan and the unit
+sudo ./install.sh --system             # system service in /var/lib/indexarr
+./install.sh --status
+./install.sh --uninstall               # data is kept
+```
+
+With `--system` the script creates the `indexarr` account when missing,
+installs `/usr/local/bin/indexarr`, writes
+`/etc/systemd/system/indexarr.service` and keeps the data in
+`/var/lib/indexarr`. `scripts/install-user-service.sh` is the same installer;
+the root `install.sh` is only the convenient path.
 
 It creates:
 
@@ -741,14 +762,6 @@ It creates:
 - `data/indexarr.json` and `data/indexarr.db` with private permissions
   (700/600);
 - starts the service and checks `/healthz`.
-
-```bash
-./scripts/install-user-service.sh --listen 127.0.0.1:8788   # local only
-./scripts/install-user-service.sh --no-build                # use bin/indexarr
-./scripts/install-user-service.sh --linger                  # stays active after logout
-./scripts/install-user-service.sh --status
-./scripts/install-user-service.sh --uninstall               # data is kept
-```
 
 The default is `:8788` on all interfaces: on the LAN the address is
 `http://<server-IP>:8788/`. The script also prints the detected LAN address and
@@ -823,26 +836,47 @@ The configuration file and the database are created in `/var/lib/indexarr`.
 ## Docker
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-The named volume `indexarr-data` contains `indexarr.json` and the database.
-Alternatively:
+The image is multi-stage (`golang:1.26-alpine` builds a pure-Go binary, the
+runtime is `alpine:3.21`), runs as the non-root UID/GID **10001**, and the
+entry point sets `umask 077`: `indexarr.db` and the vault key are created
+`0600`, not `0644`.
+
+The named volume `indexarr-data` contains `indexarr.json` and the database and
+is initialized with the right owner. A bind mount must be prepared by hand:
 
 ```bash
-docker build -t indexarr .
+mkdir -p ./data && sudo chown -R 10001:10001 ./data
 docker run -d --name indexarr -p 8788:8788 \
-  -v indexarr-data:/data \
+  -v "$PWD/data:/data" \
   indexarr
+```
+
+The compose file also sets:
+
+- `stop_grace_period: 30s`, enough for the HTTP server and the FlareSolverr
+  browsers to close cleanly;
+- `read_only: true` with a `tmpfs` on `/tmp`, `cap_drop: ALL` and
+  `no-new-privileges`;
+- `INDEXARR_LISTEN=:8788`: change it to move the internal port. When you do,
+  update the port mapping and the healthcheck URL too.
+
+Build another architecture with buildx (the SQLite driver is pure Go, so no
+emulation is needed for the compile):
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 -t indexarr .
 ```
 
 The default port is **8788**, chosen to avoid 8484 used by qBittorrent in many
 installations. The default applies to new installations: an existing
 `indexarr.json` keeps the `listen` value written at first start. If you upgrade
 a container created with the old image, update the mapping to `8788:8788` or
-add `-listen :8484` to the command to stay on the previous port.
+set `INDEXARR_LISTEN=:8484` to stay on the previous port.
 
-The volume **does not** contain the vault key: in Docker use
+The volume **does not** contain the vault key when you use
 `INDEXARR_MASTER_KEY_FILE` with a mounted secret (example in
 [docs/VAULT.md](docs/VAULT.md#docker)) or `INDEXARR_MASTER_KEY`. Without a key
 the service starts, but indexers with encrypted secrets are not readable.

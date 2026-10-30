@@ -1,5 +1,27 @@
 # scripts
 
+## Installing
+
+The installer is the same file for a user service and a system service; the
+root `install.sh` is only a convenient path to it.
+
+```bash
+./install.sh                              # user service, build if Go is available
+./install.sh --listen 127.0.0.1:8788      # local only
+./install.sh --binary /tmp/indexarr       # prebuilt binary, no Go needed
+./install.sh --dry-run                    # plan and unit, no changes
+sudo ./install.sh --system                # /var/lib/indexarr, account indexarr
+./install.sh --status
+./install.sh --uninstall                  # data is kept
+```
+
+The user service writes `~/.config/systemd/user/<name>.service` and uses
+`data/indexarr.json` unless `--data-dir` is given. `--system` writes
+`/etc/systemd/system/<name>.service`, creates the service account when missing,
+installs `/usr/local/bin/indexarr` and uses `/var/lib/indexarr`. Both modes
+create the configuration with `0600` and the data directory with `0700`,
+enable the unit, restart it and wait for `/healthz`.
+
 ## Updating production
 
 The upgrade script preserves the database and live data. By default it is a

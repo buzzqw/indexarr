@@ -7,16 +7,31 @@ services:
     image: indexarr:${INDEXARR_VERSION:-latest}
     container_name: indexarr
     ports:
-      - "8788:8788"
+      # Host port, then the fixed container port. If you change
+      # INDEXARR_LISTEN below, update the right-hand side too.
+      - "${INDEXARR_PORT:-8788}:8788"
+    environment:
+      # The entry point applies umask 077 before starting indexarr.
+      INDEXARR_LISTEN: ":8788"
+      # Uncomment to keep the vault key outside the data volume:
+      # INDEXARR_MASTER_KEY_FILE: /run/secrets/indexarr_master_key
     volumes:
       - indexarr-data:/data
     restart: unless-stopped
+    stop_grace_period: 30s
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8788/healthz"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8788/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
 volumes:
   indexarr-data:
