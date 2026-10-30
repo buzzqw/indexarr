@@ -1,9 +1,10 @@
-# indexarr user guide
+# indexarr user manual
 
 This guide takes you from installation to everyday use. For the technical
 details of the APIs see [API.md](API.md) (Torznab) and
 [ADMIN-API.md](ADMIN-API.md) (JSON). For installation, systemd, Docker and
-basic configuration see the [README](../README.md).
+basic configuration see the [README](../README.md). In Italian:
+[MANUAL.it.md](MANUAL.it.md).
 
 ---
 

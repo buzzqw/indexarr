@@ -1,7 +1,8 @@
 # Documentation
 
 - [README](../README.md) — presentation, quick start, configuration, usage.
-- [Usage guide](USAGE.md) — from the first start to the apps, with common problems.
+- [User manual (English)](MANUAL.en.md) — from the first start to the apps, with common problems.
+- [Manuale utente (italiano)](MANUAL.it.md) — dall'avvio alle app, con i problemi comuni.
 - [Torznab API](API.md) — endpoints, parameters, responses, downloads, errors.
 - [Admin JSON API](ADMIN-API.md) — definitions, indexers, proxies, applications.
 - [Architecture](ARCHITECTURE.md) — packages, flow, database, design choices.

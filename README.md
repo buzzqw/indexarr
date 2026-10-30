@@ -916,8 +916,10 @@ make def-validate   # example definitions and catalog, if present
 ```
 
 Package structure and design choices:
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Usage guide:
-[docs/USAGE.md](docs/USAGE.md). Torznab API: [docs/API.md](docs/API.md);
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). User manual:
+[docs/MANUAL.en.md](docs/MANUAL.en.md) in English,
+[docs/MANUAL.it.md](docs/MANUAL.it.md) in Italian. Torznab API:
+[docs/API.md](docs/API.md);
 administrative JSON API: [docs/ADMIN-API.md](docs/ADMIN-API.md). Test suite and
 smoke test: [docs/QA.md](docs/QA.md).
 
@@ -961,7 +963,8 @@ smoke test: [docs/QA.md](docs/QA.md).
   session
 - [Compatibility](docs/COMPATIBILITY.md) — sources, edge cases, diagnostics
 - [Architecture](docs/ARCHITECTURE.md) — packages and design choices
-- [Usage](docs/USAGE.md) — step-by-step guide
+- [User manual](docs/MANUAL.en.md) — step-by-step guide (English)
+- [Manuale utente](docs/MANUAL.it.md) — guida passo passo (italiano)
 - [Torznab API](docs/API.md) and [Administrative API](docs/ADMIN-API.md)
 - [Vault](docs/VAULT.md) — key, backup, Docker secrets
 - [QA](docs/QA.md) — tests and smoke tests
