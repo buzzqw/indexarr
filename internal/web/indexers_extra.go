@@ -102,15 +102,18 @@ func (s *Server) indexersRunAll(w http.ResponseWriter, r *http.Request) {
 // --------------------------------------------------------------- JSON export
 
 type indexerJSON struct {
-	Name            string            `json:"name"`
-	Slug            string            `json:"slug"`
-	DefinitionID    string            `json:"definition_id"`
-	Protocol        string            `json:"protocol"`
-	Enabled         bool              `json:"enabled"`
-	Priority        int               `json:"priority"`
-	IntervalSeconds int               `json:"interval_seconds,omitempty"`
-	Tags            []string          `json:"tags,omitempty"`
-	Settings        map[string]string `json:"settings,omitempty"`
+	Name            string `json:"name"`
+	Slug            string `json:"slug"`
+	DefinitionID    string `json:"definition_id"`
+	Protocol        string `json:"protocol"`
+	Enabled         bool   `json:"enabled"`
+	Priority        int    `json:"priority"`
+	IntervalSeconds int    `json:"interval_seconds,omitempty"`
+	// RequestTimeoutSeconds is the per-indexer request timeout; zero keeps the
+	// global one.
+	RequestTimeoutSeconds int               `json:"request_timeout_seconds,omitempty"`
+	Tags                  []string          `json:"tags,omitempty"`
+	Settings              map[string]string `json:"settings,omitempty"`
 }
 
 type indexersJSON struct {
@@ -147,15 +150,16 @@ func (s *Server) indexersExport(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		payload.Indexers = append(payload.Indexers, indexerJSON{
-			Name:            in.Name,
-			Slug:            in.Slug,
-			DefinitionID:    in.DefinitionID,
-			Protocol:        in.Protocol,
-			Enabled:         in.Enabled,
-			Priority:        in.Priority,
-			IntervalSeconds: in.IntervalSeconds,
-			Tags:            splitTagList(in.Tags),
-			Settings:        settings,
+			Name:                  in.Name,
+			Slug:                  in.Slug,
+			DefinitionID:          in.DefinitionID,
+			Protocol:              in.Protocol,
+			Enabled:               in.Enabled,
+			Priority:              in.Priority,
+			IntervalSeconds:       in.IntervalSeconds,
+			RequestTimeoutSeconds: in.RequestTimeoutSeconds,
+			Tags:                  splitTagList(in.Tags),
+			Settings:              settings,
 		})
 	}
 	body, err := json.MarshalIndent(payload, "", "  ")
@@ -230,16 +234,18 @@ func (s *Server) indexersImport(w http.ResponseWriter, r *http.Request) {
 		priority := entry.Priority
 		enabled := entry.Enabled
 		interval := entry.IntervalSeconds
+		requestTimeout := entry.RequestTimeoutSeconds
 		if _, err := s.svc.Create(r.Context(), indexersvc.Input{
-			DefinitionID:    entry.DefinitionID,
-			Name:            name,
-			Slug:            slug,
-			Protocol:        entry.Protocol,
-			Priority:        &priority,
-			Tags:            entry.Tags,
-			Enabled:         &enabled,
-			IntervalSeconds: &interval,
-			Settings:        entry.Settings,
+			DefinitionID:          entry.DefinitionID,
+			Name:                  name,
+			Slug:                  slug,
+			Protocol:              entry.Protocol,
+			Priority:              &priority,
+			Tags:                  entry.Tags,
+			Enabled:               &enabled,
+			IntervalSeconds:       &interval,
+			RequestTimeoutSeconds: &requestTimeout,
+			Settings:              entry.Settings,
 		}); err != nil {
 			invalid++
 			s.log.Warn("indexer import failed", "index", index, "name", name, "error", err)

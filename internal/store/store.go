@@ -612,6 +612,17 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 23 gives one indexer its own request timeout. The fetch
+	// timeout is shared, so before this the only way to give a slow site a
+	// longer window was to slow down every source; zero keeps the global one.
+	if err := s.applyMigration(context.Background(), indexarr2IndexerTimeoutVersion,
+		"indexer request timeout", func(tx *sql.Tx) error {
+			_, err := tx.Exec(`ALTER TABLE indexers
+				ADD COLUMN request_timeout_seconds INTEGER NOT NULL DEFAULT 0`)
+			return err
+		}); err != nil {
+		return err
+	}
 	// The release table may have been rebuilt by migration 3, which predates
 	// the eD2k columns. Re-apply the idempotent column pass so both a fresh
 	// database and an upgraded one carry them.

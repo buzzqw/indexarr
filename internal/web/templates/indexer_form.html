@@ -93,6 +93,11 @@
       <p class="help">{{T "indexerForm.frequencyHelp"}}</p>
       <p class="help">{{T "indexerForm.intervalHelp"}}</p>
     </div>
+    <div class="field grow">
+      <label for="request_timeout_seconds">{{T "indexerForm.requestTimeout"}}</label>
+      <input id="request_timeout_seconds" name="request_timeout_seconds" type="number" min="0" max="300" step="5" value="{{.RequestTimeoutSeconds}}" title="{{T "indexerForm.requestTimeoutTip"}}">
+      <p class="help">{{T "indexerForm.requestTimeoutHelp"}}</p>
+    </div>
   </div>
 
   {{if .IndexSources}}

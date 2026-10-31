@@ -225,17 +225,18 @@ func TestDefinitionAndIndexerCRUD(t *testing.T) {
 		t.Fatalf("CreateProxy: %v", err)
 	}
 	id, err := st.CreateIndexer(ctx, Indexer{
-		DefinitionID: def.ID,
-		Protocol:     "torrent",
-		Slug:         "site-one",
-		Name:         "Site One",
-		Enabled:      true,
-		Priority:     40,
-		ConfigJSON:   `{"kind":"torznab","url":"http://site.test"}`,
-		Tags:         "tv,hd",
-		ProxyID:      &proxyID,
-		QueryLimit:   100,
-		GrabLimit:    20,
+		DefinitionID:          def.ID,
+		Protocol:              "torrent",
+		Slug:                  "site-one",
+		Name:                  "Site One",
+		Enabled:               true,
+		Priority:              40,
+		ConfigJSON:            `{"kind":"torznab","url":"http://site.test"}`,
+		Tags:                  "tv,hd",
+		ProxyID:               &proxyID,
+		QueryLimit:            100,
+		GrabLimit:             20,
+		RequestTimeoutSeconds: 90,
 	})
 	if err != nil {
 		t.Fatalf("CreateIndexer: %v", err)
@@ -246,7 +247,8 @@ func TestDefinitionAndIndexerCRUD(t *testing.T) {
 		t.Fatalf("GetIndexer: %v", err)
 	}
 	if indexer.Slug != "site-one" || indexer.Tags != "tv,hd" || !indexer.Enabled ||
-		indexer.Priority != 40 || indexer.QueryLimit != 100 || indexer.GrabLimit != 20 {
+		indexer.Priority != 40 || indexer.QueryLimit != 100 || indexer.GrabLimit != 20 ||
+		indexer.RequestTimeoutSeconds != 90 {
 		t.Fatalf("indexer = %#v", indexer)
 	}
 	if indexer.ProxyID == nil || *indexer.ProxyID != proxyID {

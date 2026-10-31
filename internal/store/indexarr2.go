@@ -45,8 +45,11 @@ type Indexer struct {
 	// IntervalSeconds overrides the global scheduler interval when positive.
 	// Zero keeps the global default_interval_seconds.
 	IntervalSeconds int
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	// RequestTimeoutSeconds overrides the global fetch_timeout_seconds for
+	// this indexer when positive. Zero keeps the shared timeout.
+	RequestTimeoutSeconds int
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 // Secret is one vault-sealed value belonging to an indexer.
@@ -174,7 +177,7 @@ const definitionColumns = `id, schema_version, family, state, origin, author,
 const indexerColumns = `id, definition_id, protocol, slug, name, enabled, priority,
 	config_json, tags, proxy_id, query_limit, grab_limit,
 	min_seeders, seed_ratio, seed_time_minutes, season_pack_seed_time_minutes,
-	interval_seconds, created_at, updated_at`
+	interval_seconds, request_timeout_seconds, created_at, updated_at`
 
 // UpsertDefinition inserts or replaces a definition by id.
 func (s *Store) UpsertDefinition(ctx context.Context, d Definition) error {
@@ -314,14 +317,14 @@ func createIndexer(ctx context.Context, db dbExecer, in Indexer) (int64, error) 
 		INSERT INTO indexers(definition_id, protocol, slug, name, enabled, priority,
 			config_json, proxy_id, tags, query_limit, grab_limit,
 			min_seeders, seed_ratio, seed_time_minutes, season_pack_seed_time_minutes,
-			interval_seconds, created_at, updated_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			interval_seconds, request_timeout_seconds, created_at, updated_at)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
 		in.DefinitionID, in.Protocol, strings.TrimSpace(in.Slug), strings.TrimSpace(in.Name),
 		boolInt(in.Enabled), in.Priority, in.ConfigJSON, proxy, in.Tags,
 		in.QueryLimit, in.GrabLimit, in.MinSeeders, in.SeedRatio,
 		in.SeedTimeMinutes, in.SeasonPackSeedTimeMinutes,
-		in.IntervalSeconds, created.Unix(), updated.Unix()).Scan(&id)
+		in.IntervalSeconds, in.RequestTimeoutSeconds, created.Unix(), updated.Unix()).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create indexer: %w", err)
 	}
@@ -382,7 +385,7 @@ func scanIndexer(scanner interface{ Scan(...any) error }) (Indexer, error) {
 		&out.Name, &enabled, &out.Priority, &out.ConfigJSON, &out.Tags, &proxy,
 		&out.QueryLimit, &out.GrabLimit, &out.MinSeeders, &out.SeedRatio,
 		&out.SeedTimeMinutes, &out.SeasonPackSeedTimeMinutes,
-		&out.IntervalSeconds, &created, &updated); err != nil {
+		&out.IntervalSeconds, &out.RequestTimeoutSeconds, &created, &updated); err != nil {
 		return Indexer{}, err
 	}
 	out.Enabled = enabled != 0
@@ -412,13 +415,14 @@ func (s *Store) UpdateIndexer(ctx context.Context, in Indexer) error {
 			enabled = ?, priority = ?, config_json = ?, proxy_id = ?, tags = ?,
 			query_limit = ?, grab_limit = ?,
 			min_seeders = ?, seed_ratio = ?, seed_time_minutes = ?,
-			season_pack_seed_time_minutes = ?, interval_seconds = ?, updated_at = ?
+			season_pack_seed_time_minutes = ?, interval_seconds = ?,
+			request_timeout_seconds = ?, updated_at = ?
 		WHERE id = ?`,
 		in.DefinitionID, in.Protocol, strings.TrimSpace(in.Slug), strings.TrimSpace(in.Name),
 		boolInt(in.Enabled), in.Priority, in.ConfigJSON, proxy, in.Tags,
 		in.QueryLimit, in.GrabLimit, in.MinSeeders, in.SeedRatio,
 		in.SeedTimeMinutes, in.SeasonPackSeedTimeMinutes,
-		in.IntervalSeconds, time.Now().Unix(), in.ID)
+		in.IntervalSeconds, in.RequestTimeoutSeconds, time.Now().Unix(), in.ID)
 	if err != nil {
 		return fmt.Errorf("update indexer %d: %w", in.ID, err)
 	}

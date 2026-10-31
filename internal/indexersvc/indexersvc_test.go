@@ -388,6 +388,47 @@ func TestCreatePrefillsSuggestedInterval(t *testing.T) {
 	}
 }
 
+func TestRequestTimeoutIsValidatedAndSaved(t *testing.T) {
+	svc, st, _, _ := newService(t)
+	ctx := context.Background()
+	storeDefinition(t, st, "timeout-feed", intervalDefinition("timeout-feed"))
+
+	timeout := 90
+	created, err := svc.Create(ctx, Input{
+		DefinitionID:          "timeout-feed",
+		Name:                  "Slow feed",
+		RequestTimeoutSeconds: &timeout,
+		Settings:              map[string]string{"url": "https://feed.example/rss"},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if created.RequestTimeoutSeconds != 90 {
+		t.Fatalf("request timeout = %d, want 90", created.RequestTimeoutSeconds)
+	}
+
+	global := 0
+	updated, err := svc.Update(ctx, created.ID, Input{RequestTimeoutSeconds: &global})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if updated.RequestTimeoutSeconds != 0 {
+		t.Fatalf("request timeout after update = %d, want the global one", updated.RequestTimeoutSeconds)
+	}
+
+	for _, invalid := range []int{1, 4, 301} {
+		value := invalid
+		if _, err := svc.Create(ctx, Input{
+			DefinitionID:          "timeout-feed",
+			Name:                  "Invalid timeout",
+			RequestTimeoutSeconds: &value,
+			Settings:              map[string]string{"url": "https://feed.example/rss"},
+		}); err == nil {
+			t.Fatalf("Create accepted a request timeout of %d seconds", invalid)
+		}
+	}
+}
+
 func TestSensitiveURLIsStoredInTheVault(t *testing.T) {
 	for name, raw := range map[string]string{
 		"path":      "https://rss.example/SYNTHETICRSSKEY/feed.xml",

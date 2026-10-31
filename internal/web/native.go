@@ -734,6 +734,21 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 		}
 		interval = &seconds
 	}
+	var requestTimeout *int
+	if values, present := r.Form["request_timeout_seconds"]; present {
+		seconds := 0
+		if raw := strings.TrimSpace(firstValue(values)); raw != "" {
+			value, err := strconv.Atoi(raw)
+			if err != nil {
+				return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.timeoutNumber"))
+			}
+			if value < 0 || (value > 0 && value < 5) || value > 300 {
+				return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.timeoutRange"))
+			}
+			seconds = value
+		}
+		requestTimeout = &seconds
+	}
 	return indexersvc.Input{
 		DefinitionID:              strings.TrimSpace(r.FormValue("definition_id")),
 		Name:                      strings.TrimSpace(r.FormValue("name")),
@@ -743,6 +758,7 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 		Tags:                      splitTagList(r.FormValue("tags")),
 		Enabled:                   &enabled,
 		IntervalSeconds:           interval,
+		RequestTimeoutSeconds:     requestTimeout,
 		Settings:                  settings,
 		ProxyID:                   proxyID,
 		ClearProxy:                clearProxy,

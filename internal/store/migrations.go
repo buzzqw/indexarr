@@ -59,9 +59,14 @@ const (
 	// indexarr2GrabReleaseVersion links each grab history row to the release it
 	// delivered, so the Download tab can offer its magnet or .torrent link.
 	indexarr2GrabReleaseVersion = 22
+	// indexarr2IndexerTimeoutVersion stores an optional per-indexer request
+	// timeout. Zero keeps the global fetch_timeout_seconds, so an existing row
+	// behaves exactly as before; a site whose first answer is slow can get a
+	// longer window without slowing every other source.
+	indexarr2IndexerTimeoutVersion = 23
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2GrabReleaseVersion
+	latestSchemaVersion = indexarr2IndexerTimeoutVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

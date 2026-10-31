@@ -774,7 +774,7 @@ func (s *Server) Handler() http.Handler {
 	outer.HandleFunc("GET /sw.js", s.serviceWorker)
 	outer.Handle("GET /static/", withCompression(http.HandlerFunc(s.serveStatic)))
 	outer.Handle("/", s.authenticate(s.withCSRF(withCompression(ui))))
-	return outer
+	return s.trustedHosts(outer)
 }
 
 // staticFileETags hashes the embedded assets once at startup. The files are

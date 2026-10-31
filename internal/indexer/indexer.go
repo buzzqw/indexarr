@@ -561,12 +561,18 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 	transport := m.transport
 	transportCfg := m.transport.Config()
 	allowPrivate := settingBool(settings["allow_private"])
+	// A per-indexer timeout is an explicit request to give this site a
+	// different window from the global one, so it needs its own transport
+	// even when the address is public and no proxy is configured.
+	if indexer.RequestTimeoutSeconds > 0 {
+		transportCfg.Timeout = time.Duration(indexer.RequestTimeoutSeconds) * time.Second
+	}
 	// Settings are read on every connector build, so changing the global
 	// FlareSolverr URL or its timeout takes effect without a restart.
 	if solver != nil || transportCfg.Solver != nil {
 		solverOverride = true
 	}
-	if allowPrivate || proxyURL != "" || solverOverride {
+	if allowPrivate || proxyURL != "" || solverOverride || indexer.RequestTimeoutSeconds > 0 {
 		if allowPrivate {
 			transportCfg.AllowPrivate = true
 		}
@@ -666,6 +672,8 @@ func connectorKey(def store.Definition, indexer store.Indexer) string {
 	b.WriteString(indexer.Slug)
 	b.WriteByte('|')
 	b.WriteString(indexer.Protocol)
+	b.WriteByte('|')
+	b.WriteString(strconv.Itoa(indexer.RequestTimeoutSeconds))
 	b.WriteByte('|')
 	if indexer.ProxyID != nil {
 		b.WriteString(strconv.FormatInt(*indexer.ProxyID, 10))

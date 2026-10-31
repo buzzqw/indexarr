@@ -60,6 +60,63 @@ func TestFrequencyIsVisibleOutsideAdvanced(t *testing.T) {
 	}
 }
 
+// TestRequestTimeoutIsVisibleAndSaved covers the per-indexer request timeout:
+// it is a normal field on the form, it survives a save, and an out-of-range
+// value is refused with a localized message next to the field.
+func TestRequestTimeoutIsVisibleAndSaved(t *testing.T) {
+	env := newNativeEnv(t)
+	id := createTestNativeIndexer(t, env, "Timeout Target", "timeout-target")
+	editPath := "/indexers/" + strconv.FormatInt(id, 10) + "/edit"
+
+	body := get(t, env.handler, editPath).Body.String()
+	if !strings.Contains(body, `name="request_timeout_seconds"`) {
+		t.Fatal("the request timeout field is missing from the indexer form")
+	}
+	if !strings.Contains(body, "Maximum time this indexer has to answer") {
+		t.Error("the request timeout field has no English tooltip")
+	}
+
+	token, cookie := csrfFrom(t, env.handler, editPath)
+	values := url.Values{
+		"csrf":                    {token},
+		"definition_id":           {"test-native"},
+		"name":                    {"Timeout Target"},
+		"slug":                    {"timeout-target"},
+		"protocol":                {"usenet"},
+		"priority":                {"25"},
+		"enabled":                 {"on"},
+		"url":                     {env.apiURL},
+		"categories":              {"5000"},
+		"setting_apikey":          {"synthetic-secret"},
+		"setting_flavour":         {"a"},
+		"request_timeout_seconds": {"120"},
+	}
+	recorder := postForm(t, env.handler, "/indexers/"+strconv.FormatInt(id, 10), values, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("save status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	stored, err := env.store.GetIndexer(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.RequestTimeoutSeconds != 120 {
+		t.Fatalf("request timeout = %d, want 120", stored.RequestTimeoutSeconds)
+	}
+	body = get(t, env.handler, editPath).Body.String()
+	if !strings.Contains(body, `value="120"`) {
+		t.Error("the saved request timeout is not shown in the form")
+	}
+
+	values.Set("request_timeout_seconds", "4")
+	recorder = postForm(t, env.handler, "/indexers/"+strconv.FormatInt(id, 10), values, cookie)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("invalid timeout status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), "must be 0 or between 5 and 300 seconds") {
+		t.Error("the invalid request timeout did not show the English error")
+	}
+}
+
 // TestFrequencyListShowsEffectiveValue checks that the list shows the cadence
 // that is actually in force, including the global default when the source has
 // no value of its own.

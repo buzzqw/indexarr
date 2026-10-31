@@ -2089,6 +2089,7 @@ type compactFormView struct {
 	ShowURL                   bool
 	URLLabel                  string
 	IntervalSeconds           int
+	RequestTimeoutSeconds     int
 	IntervalChoices           []indexerSettingOption
 	FrequencyLabel            string
 	Categories                []categoryChoice
@@ -2148,6 +2149,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	}
 	if current != nil {
 		data.IntervalSeconds = current.IntervalSeconds
+		data.RequestTimeoutSeconds = current.RequestTimeoutSeconds
 	}
 	if in != nil {
 		data.Name = in.Name
@@ -2158,6 +2160,9 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		}
 		if in.IntervalSeconds != nil {
 			data.IntervalSeconds = *in.IntervalSeconds
+		}
+		if in.RequestTimeoutSeconds != nil {
+			data.RequestTimeoutSeconds = *in.RequestTimeoutSeconds
 		}
 		data.Tags = strings.Join(in.Tags, ", ")
 		if in.Enabled != nil {

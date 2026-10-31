@@ -468,6 +468,12 @@
         <label for="ui_password_confirm">{{T "settings.confirmPassword"}}</label>
         <input id="ui_password_confirm" name="ui_password_confirm" type="password" autocomplete="new-password">
       </div>
+      <div class="field grow">
+        <label for="trusted_hosts">{{T "settings.trustedHosts"}}</label>
+        <input id="trusted_hosts" name="trusted_hosts" type="text" autocomplete="off" spellcheck="false" value="{{.Settings.TrustedHosts}}" placeholder="{{T "settings.trustedHostsPlaceholder"}}">
+        {{with index .FieldErrors "trusted_hosts"}}<p class="field-error" role="alert">{{.}}</p>{{end}}
+        <p class="help">{{T "settings.trustedHostsHelp"}}</p>
+      </div>
     </div>
     <div class="actions">
       <button class="btn primary" type="submit">{{T "settings.save"}}</button>

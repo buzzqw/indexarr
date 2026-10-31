@@ -78,7 +78,10 @@ type Input struct {
 	// Nil means "use the definition suggestion, then the global default"; an
 	// explicit zero means the global default.
 	IntervalSeconds *int
-	Settings        map[string]string
+	// RequestTimeoutSeconds overrides the global fetch timeout when positive.
+	// Nil leaves it unchanged on update; zero uses the global timeout.
+	RequestTimeoutSeconds *int
+	Settings              map[string]string
 	// AllowPendingCookie lets the create/update form store an indexer before
 	// the browser-cookie import has supplied the required `cookie` secret.
 	// Only the cookie key is exempted; every other required setting is still
@@ -183,6 +186,13 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 	if stored && (in.IntervalSeconds == nil || *in.IntervalSeconds == 0) {
 		interval = storedInterval()
 	}
+	timeout := 0
+	if in.RequestTimeoutSeconds != nil {
+		timeout, err = resolveRequestTimeout(*in.RequestTimeoutSeconds)
+		if err != nil {
+			return store.Indexer{}, err
+		}
+	}
 	criteria, err := criteriaFromInput(in)
 	if err != nil {
 		return store.Indexer{}, err
@@ -198,6 +208,7 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 		ConfigJSON:                configJSON,
 		Tags:                      joinTags(in.Tags),
 		IntervalSeconds:           interval,
+		RequestTimeoutSeconds:     timeout,
 		ProxyID:                   criteria.proxyID,
 		QueryLimit:                criteria.queryLimit,
 		GrabLimit:                 criteria.grabLimit,
@@ -283,6 +294,13 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 			return store.Indexer{}, err
 		}
 		current.IntervalSeconds = interval
+	}
+	if in.RequestTimeoutSeconds != nil {
+		timeout, err := resolveRequestTimeout(*in.RequestTimeoutSeconds)
+		if err != nil {
+			return store.Indexer{}, err
+		}
+		current.RequestTimeoutSeconds = timeout
 	}
 	if in.Enabled != nil {
 		current.Enabled = *in.Enabled
@@ -723,6 +741,20 @@ func resolveInterval(requested *int, suggested time.Duration) (int, error) {
 	seconds := *requested
 	if seconds < 0 || (seconds > 0 && seconds < 60) {
 		return 0, errors.New("interval_seconds must be 0 or at least 60")
+	}
+	return seconds, nil
+}
+
+// resolveRequestTimeout validates a per-indexer request timeout. Zero keeps the
+// global fetch_timeout_seconds; a real override follows the same 5..300 range
+// as the global setting, so the interface cannot store a value the settings
+// page would refuse.
+func resolveRequestTimeout(seconds int) (int, error) {
+	if seconds == 0 {
+		return 0, nil
+	}
+	if seconds < 5 || seconds > 300 {
+		return 0, errors.New("request_timeout_seconds must be 0 or between 5 and 300")
 	}
 	return seconds, nil
 }

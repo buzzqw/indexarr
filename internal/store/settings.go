@@ -18,6 +18,7 @@ import (
 const (
 	KeyAPIKey               = "api_key"
 	KeyPublicURL            = "public_url"
+	KeyTrustedHosts         = "trusted_hosts"
 	KeyFlareSolverr         = "flaresolverr_url"
 	KeyFlareSolverrTimeout  = "flaresolverr_timeout_seconds"
 	KeyDefaultInterval      = "default_interval_seconds"
@@ -95,8 +96,12 @@ const (
 
 // Settings are the runtime options edited from the web interface.
 type Settings struct {
-	APIKey                     string
-	PublicURL                  string
+	APIKey    string
+	PublicURL string
+	// TrustedHosts is an optional comma-separated allowlist of hostnames the
+	// public links may be built from. Empty accepts every Host header, so an
+	// existing installation keeps working unchanged.
+	TrustedHosts               string
 	FlareSolverrURL            string
 	FlareSolverrTimeoutSeconds int
 	DefaultIntervalSeconds     int
@@ -314,6 +319,7 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	}
 	out.APIKey = strings.TrimSpace(values[KeyAPIKey])
 	out.PublicURL = strings.TrimRight(strings.TrimSpace(values[KeyPublicURL]), "/")
+	out.TrustedHosts = strings.TrimSpace(values[KeyTrustedHosts])
 	out.FlareSolverrURL = strings.TrimRight(strings.TrimSpace(values[KeyFlareSolverr]), "/")
 	out.UIUser = strings.TrimSpace(values[KeyUIUser])
 	out.UIPasswordHash = values[KeyUIPasswordHash]
@@ -445,6 +451,7 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 	pairs := map[string]string{
 		KeyAPIKey:               in.APIKey,
 		KeyPublicURL:            strings.TrimRight(strings.TrimSpace(in.PublicURL), "/"),
+		KeyTrustedHosts:         strings.TrimSpace(in.TrustedHosts),
 		KeyFlareSolverr:         strings.TrimRight(strings.TrimSpace(in.FlareSolverrURL), "/"),
 		KeyFlareSolverrTimeout:  strconv.Itoa(in.FlareSolverrTimeoutSeconds),
 		KeyDefaultInterval:      strconv.Itoa(in.DefaultIntervalSeconds),

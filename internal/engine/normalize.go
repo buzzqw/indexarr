@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"net/url"
@@ -262,8 +263,9 @@ func resolveURL(raw string, bases ...*url.URL) string {
 }
 
 var (
-	hexInfoHashPattern    = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
-	base32InfoHashPattern = regexp.MustCompile(`^[A-Za-z2-7]{32}$`)
+	hexInfoHashPattern       = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+	base32InfoHashPattern    = regexp.MustCompile(`^[A-Za-z2-7]{32}$`)
+	doubleHexInfoHashPattern = regexp.MustCompile(`^[0-9a-fA-F]{80}$`)
 )
 
 // normalizeInfoHash accepts a bare hash, a urn:btih: URI or a magnet link and
@@ -285,6 +287,15 @@ func normalizeInfoHash(raw string) string {
 	}
 	raw = strings.TrimSpace(raw)
 	switch {
+	case doubleHexInfoHashPattern.MatchString(raw):
+		// A few indexers hex-encode the 40-character hash a second time
+		// (Jackett issue #17045). The outer 80-character value is not a hash
+		// format; decode it only when the result is a real v1 hash.
+		decoded, err := hex.DecodeString(strings.ToLower(raw))
+		if err == nil && len(decoded) == 40 && hexInfoHashPattern.Match(decoded) {
+			return strings.ToLower(string(decoded))
+		}
+		return ""
 	case hexInfoHashPattern.MatchString(raw):
 		return strings.ToLower(raw)
 	case base32InfoHashPattern.MatchString(raw):

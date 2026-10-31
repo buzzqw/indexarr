@@ -591,6 +591,15 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 			in.UIPasswordHash = ""
 		}
 		in.UIUser = user
+		if r.Form.Has("trusted_hosts") {
+			raw := strings.TrimSpace(r.FormValue("trusted_hosts"))
+			normalized, ok := normalizeTrustedHosts(raw)
+			if !ok {
+				renderInvalidField("trusted_hosts", s.translate(r, "settings.error.trustedHosts"))
+				return false
+			}
+			in.TrustedHosts = normalized
+		}
 		return true
 	}
 	applyNetwork := func() bool {

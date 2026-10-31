@@ -401,7 +401,7 @@ App synchronization, per-app profiles, multiple API keys and live search:
 | --- | --- |
 | **Home** | Totals, indexer status, latest releases, runs and problems |
 | **Search** (`/releases`) | Manual live search (text, TV, movies, music, books, external IDs), `-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab; detail with magnet, `.torrent` and `.nzb` |
-| **Indexers** | Single list, Run/Test/Run all/Test all/Test problems, detail with Site access, edit, clone, JSON export/import, feed discovery and cookie import |
+| **Indexers** | Single list, Run/Test/Run all/Test all/Test problems, detail with Site access, edit, clone, JSON export/import, feed discovery and cookie import; each source can have its own request timeout |
 | **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian; sync, per-app profile, snapshots and download clients |
 | **Statistics** (`/activity`) | Incoming requests, overview per app and indexer, downloads served per source, update history, new releases, per-host network counters |
 | **Logs** (`/logs`) | System log with filters and runtime level |
@@ -429,7 +429,10 @@ Search syntax, saved searches, rules, sending to clients and notifications:
 - **Security**: the Torznab API key is mandatory, the UI can use HTTP Basic,
   secrets live in the vault and all POST forms use CSRF. The UI is open until
   you set a username and password in **Settings**: do that before exposing it
-  to the LAN.
+  to the LAN. An optional **Trusted hosts** list in *Settings → Security*
+  accepts only the listed names in the Host header, so a forged host cannot
+  poison the download and public links; empty keeps every host, and loopback is
+  always accepted for local health checks.
 
 Backup and restore, maintenance, statistics, logs and security:
 [Operations](https://github.com/buzzqw/indexarr/wiki/Operations).
