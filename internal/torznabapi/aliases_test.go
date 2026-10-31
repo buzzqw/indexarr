@@ -353,6 +353,80 @@ func TestAggregateFilters(t *testing.T) {
 	}
 }
 
+func TestAggregateHealthFilters(t *testing.T) {
+	api, st := newAPI(t)
+	seedDefinition(t, st, "health-def", "torznab", "en")
+	healthy := seedIndexer(t, st, "health-def", "healthy-indexer", "Healthy", "", "torrent", true)
+	failing := seedIndexer(t, st, "health-def", "failing-indexer", "Failing", "", "torrent", true)
+	unknown := seedIndexer(t, st, "health-def", "unknown-indexer", "Unknown", "", "torrent", true)
+	insertScopedRelease(t, st, 30, "Healthy Release", healthy, true)
+	insertScopedRelease(t, st, 31, "Failing Release", failing, true)
+	insertScopedRelease(t, st, 32, "Unknown Release", unknown, true)
+	for _, row := range []struct {
+		indexer store.Indexer
+		status  string
+	}{
+		{healthy, "ok"},
+		{failing, "error"},
+	} {
+		if _, err := st.RecordIndexerHistory(context.Background(), store.IndexerHistory{
+			IndexerID: row.indexer.ID,
+			Kind:      "health",
+			Query:     "health",
+			Status:    row.status,
+			StartedAt: time.Now(),
+		}); err != nil {
+			t.Fatalf("record health %s: %v", row.indexer.Slug, err)
+		}
+	}
+
+	tests := []struct {
+		query string
+		want  string
+		total string
+	}{
+		{"status=healthy", "Healthy Release", `total="1"`},
+		{"status=failing", "Failing Release", `total="1"`},
+		{"status=unknown", "Unknown Release", `total="1"`},
+		{"test=passed", "Healthy Release", `total="1"`},
+		{"test=failed", "Failing Release", `total="1"`},
+		{"status=healthy&test=passed", "Healthy Release", `total="1"`},
+		{"status=failing&test=failed", "Failing Release", `total="1"`},
+	}
+	for _, test := range tests {
+		recorder := do(t, api, "/api?t=search&apikey=secret&"+test.query)
+		body := recorder.Body.String()
+		if recorder.Code != http.StatusOK {
+			t.Errorf("%s = %d: %s", test.query, recorder.Code, body)
+			continue
+		}
+		if !strings.Contains(body, test.want) {
+			t.Errorf("%s missing %q:\n%s", test.query, test.want, body)
+		}
+		if !strings.Contains(body, test.total) {
+			t.Errorf("%s missing %s:\n%s", test.query, test.total, body)
+		}
+	}
+
+	emptyQueries := []string{
+		"status=healthy&test=failed",
+		"status=failing&test=passed",
+		"test=does-not-exist",
+		"status=does-not-exist",
+	}
+	for _, query := range emptyQueries {
+		recorder := do(t, api, "/api?t=search&apikey=secret&"+query)
+		if recorder.Code != http.StatusOK {
+			t.Errorf("%s = %d, want 200", query, recorder.Code)
+			continue
+		}
+		body := recorder.Body.String()
+		if strings.Contains(body, "<item>") || !strings.Contains(body, `total="0"`) {
+			t.Errorf("%s should be empty:\n%s", query, body)
+		}
+	}
+}
+
 func TestAggregateFiltersPagination(t *testing.T) {
 	api, st := newAPI(t)
 	seedDefinition(t, st, "page-def", "unit3d", "en")

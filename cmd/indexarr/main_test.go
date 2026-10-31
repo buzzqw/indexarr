@@ -4,11 +4,38 @@ import (
 	"bytes"
 	"errors"
 	"log/slog"
+	"net"
 	"strings"
 	"testing"
 
 	"github.com/buzzqw/indexarr/internal/logsafe"
 )
+
+func TestPreflightListenFailsBeforeStartupWhenPortIsTaken(t *testing.T) {
+	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen busy: %v", err)
+	}
+	defer busy.Close()
+	if listener, err := preflightListen(busy.Addr().String()); err == nil {
+		listener.Close()
+		t.Fatal("preflightListen accepted an address already in use")
+	} else if !strings.Contains(err.Error(), busy.Addr().String()) {
+		t.Fatalf("error does not name the address: %v", err)
+	}
+
+	free, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen free: %v", err)
+	}
+	address := free.Addr().String()
+	free.Close()
+	listener, err := preflightListen(address)
+	if err != nil {
+		t.Fatalf("preflightListen(%s): %v", address, err)
+	}
+	listener.Close()
+}
 
 func TestWebInterfaceLogMasksAPIKey(t *testing.T) {
 	var buf bytes.Buffer

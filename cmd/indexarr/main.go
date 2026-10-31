@@ -119,6 +119,15 @@ func main() {
 		}
 		cfg.DBPath = absolute
 	}
+	// Reserve the listen address before the database, the catalog and the
+	// scheduler are loaded. A second instance then fails in milliseconds
+	// instead of doing the whole start-up and only then finding the port
+	// taken (the same lesson as Jackett's #17042).
+	listener, err := preflightListen(cfg.Listen)
+	if err != nil {
+		fatal(err)
+	}
+	defer listener.Close()
 	logBuffer := logbuffer.New(logbuffer.DefaultMaxEntries)
 	levelVar := new(slog.LevelVar)
 	levelVar.Set(parseLevel(cfg.LogLevel))
@@ -434,7 +443,7 @@ func main() {
 	go func() {
 		base := displayURL(cfg.Listen)
 		logWebInterfaceReady(logger, base, key)
-		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("HTTP server stopped", "error", err)
 			stop()
 		}
@@ -712,4 +721,15 @@ func dedupeLoop(ctx context.Context, st *store.Store, manager *indexer.Manager, 
 func fatal(err error) {
 	fmt.Fprintln(os.Stderr, "indexarr:", err)
 	os.Exit(1)
+}
+
+// preflightListen reserves the HTTP address before any expensive start-up.
+// The returned listener is handed unchanged to http.Server.Serve, so no other
+// process can take the port between the check and the serve.
+func preflightListen(address string) (net.Listener, error) {
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return nil, fmt.Errorf("cannot listen on %s: %w", address, err)
+	}
+	return listener, nil
 }

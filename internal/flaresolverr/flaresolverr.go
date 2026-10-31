@@ -10,8 +10,55 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
+
+// DefaultMaxConcurrency bounds the browser solves one indexarr process asks a
+// FlareSolverr instance for at the same time. A browser session is heavy and
+// FlareSolverr becomes unresponsive when many challenges are submitted at once;
+// the queue is inside indexarr so a cycle over many protected sources cannot
+// starve the service.
+const DefaultMaxConcurrency = 2
+
+var (
+	slotsMu sync.RWMutex
+	slots   = make(chan struct{}, DefaultMaxConcurrency)
+)
+
+// SetMaxConcurrency changes the process-wide solve limit. It is exported for
+// tests and for a future configuration key; values below one restore the
+// default.
+func SetMaxConcurrency(n int) {
+	if n < 1 {
+		n = DefaultMaxConcurrency
+	}
+	slotsMu.Lock()
+	slots = make(chan struct{}, n)
+	slotsMu.Unlock()
+}
+
+func acquireSlot(ctx context.Context) error {
+	slotsMu.RLock()
+	queue := slots
+	slotsMu.RUnlock()
+	select {
+	case queue <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func releaseSlot() {
+	slotsMu.RLock()
+	queue := slots
+	slotsMu.RUnlock()
+	select {
+	case <-queue:
+	default:
+	}
+}
 
 // DefaultTimeout bounds one solve. FlareSolverr's own default maxTimeout is
 // 60 seconds.
@@ -86,6 +133,10 @@ func Fetch(ctx context.Context, client *http.Client, endpoint, rawURL string, op
 	}
 	requestCtx, cancel := context.WithTimeout(ctx, timeout+15*time.Second)
 	defer cancel()
+	if err := acquireSlot(requestCtx); err != nil {
+		return nil, 0, fmt.Errorf("flaresolverr: waiting for a browser slot: %w", err)
+	}
+	defer releaseSlot()
 	request, err := http.NewRequestWithContext(requestCtx, http.MethodPost, command, bytes.NewReader(payload))
 	if err != nil {
 		return nil, 0, err
