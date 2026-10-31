@@ -806,6 +806,7 @@ func (s *Server) settingsSave(w http.ResponseWriter, r *http.Request) {
 		renderInvalid(err.Error())
 		return
 	}
+	s.invalidateTrustedHosts()
 	if section == "network" && s.native != nil {
 		// FlareSolverr URL and timeout are read when a connector is built.
 		// Drop the cached connectors so a saved change applies immediately.

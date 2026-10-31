@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strconv"
@@ -157,12 +158,11 @@ func (s *Server) trustedHosts(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		settings, err := s.store.LoadSettings(r.Context())
+		allowed, err := s.trustedHostList(r.Context())
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		allowed := splitTrustedHosts(settings.TrustedHosts)
 		if len(allowed) == 0 {
 			next.ServeHTTP(w, r)
 			return
@@ -182,4 +182,31 @@ func (s *Server) trustedHosts(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// trustedHostList returns the parsed allowlist, loading it once. The list
+// changes only through the settings page, which calls invalidateTrustedHosts
+// after saving, so a high-frequency Torznab client does not pay a settings
+// query on every search.
+func (s *Server) trustedHostList(ctx context.Context) ([]string, error) {
+	s.hostMu.Lock()
+	defer s.hostMu.Unlock()
+	if s.hostLoaded {
+		return s.hostCache, nil
+	}
+	settings, err := s.store.LoadSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.hostCache = splitTrustedHosts(settings.TrustedHosts)
+	s.hostLoaded = true
+	return s.hostCache, nil
+}
+
+// invalidateTrustedHosts drops the cached allowlist after a save.
+func (s *Server) invalidateTrustedHosts() {
+	s.hostMu.Lock()
+	s.hostCache = nil
+	s.hostLoaded = false
+	s.hostMu.Unlock()
 }

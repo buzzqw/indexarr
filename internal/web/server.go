@@ -515,6 +515,12 @@ type Server struct {
 	status    HomeStatus
 	statusAt  time.Time
 	statusRev uint64
+	// hostCache keeps the parsed Trusted hosts list. It is loaded on the
+	// first request and dropped when the settings are saved, so the hot
+	// Torznab path does not read the settings table on every search.
+	hostMu     sync.Mutex
+	hostCache  []string
+	hostLoaded bool
 	statusOK  bool
 	// definitions caches the parsed YAML of stored definitions by id and
 	// content hash. The zero value is usable, so test servers built with a

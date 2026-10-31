@@ -70,6 +70,7 @@ func TestTrustedHostsMiddleware(t *testing.T) {
 	if err := env.store.SaveSettings(context.Background(), settings); err != nil {
 		t.Fatal(err)
 	}
+	env.server.invalidateTrustedHosts()
 
 	serve := func(path, host, forwarded string) int {
 		request := httptest.NewRequest(http.MethodGet, path, nil)
@@ -102,6 +103,7 @@ func TestTrustedHostsMiddleware(t *testing.T) {
 	if err := env.store.SaveSettings(context.Background(), settings); err != nil {
 		t.Fatal(err)
 	}
+	env.server.invalidateTrustedHosts()
 	if code := serve("/healthz", "evil.example.com", ""); code == http.StatusBadRequest {
 		t.Fatalf("an empty allowlist still refused a host: %d", code)
 	}
@@ -135,6 +137,7 @@ func TestTrustedHostsSettingsAreSaved(t *testing.T) {
 	if err := env.store.SaveSettings(context.Background(), settings); err != nil {
 		t.Fatal(err)
 	}
+	env.server.invalidateTrustedHosts()
 	recorder = postForm(t, env.handler, "/settings", url.Values{
 		"csrf":                {token},
 		"section":             {"security"},
