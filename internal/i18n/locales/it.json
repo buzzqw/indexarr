@@ -1495,7 +1495,7 @@
   "settings.downloadClient": "Client di download",
   "settings.downloadClientHelp": "Aggiunge un pulsante “Invia a…” in ogni dettaglio release.",
   "settings.downloadFactor": "Fattore di volume download",
-  "settings.downloadFactorHelp": "0 = freeleech. Emesso come",
+  "settings.downloadFactorHelp": "Valore di ripiego quando la fonte non dichiara il quota. Una release che la fonte segna come freeleech viene emessa come 0. Emesso come",
   "settings.downloadVolumeFactorTag": "downloadvolumefactor",
   "settings.error.downloadClient": "Il client di download deve essere none, qbittorrent o transmission",
   "settings.error.downloadClientURL": "L'URL del client di download deve essere un indirizzo assoluto http:// o https://",

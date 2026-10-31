@@ -910,6 +910,7 @@ func (s *Store) ensureReleaseColumns() error {
 		{"favorite", "INTEGER NOT NULL DEFAULT 0"},
 		{"hidden", "INTEGER NOT NULL DEFAULT 0"},
 		{"downloaded_at", "INTEGER NOT NULL DEFAULT 0"},
+		{"freeleech", "INTEGER NOT NULL DEFAULT -1"},
 		{"ed2k_link", "TEXT NOT NULL DEFAULT ''"},
 		{"ed2k_hash", "TEXT NOT NULL DEFAULT ''"},
 	} {

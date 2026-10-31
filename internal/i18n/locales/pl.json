@@ -1495,7 +1495,7 @@
   "settings.downloadClient": "Klient pobierania",
   "settings.downloadClientHelp": "Dodaje przycisk „Wyślij do…” na stronie każdego wydania.",
   "settings.downloadFactor": "Współczynnik wolumenu pobierania",
-  "settings.downloadFactorHelp": "0 = freeleech. Wysyłane jako",
+  "settings.downloadFactorHelp": "Wartość zapasowa, gdy źródło nie podaje limitu. Wydanie oznaczone przez źródło jako freeleech jest wysyłane jako 0. Wysyłane jako",
   "settings.downloadVolumeFactorTag": "downloadvolumefactor",
   "settings.error.downloadClient": "Klient pobierania musi mieć wartość none, qbittorrent lub transmission",
   "settings.error.downloadClientURL": "URL klienta pobierania musi być bezwzględnym adresem http:// lub https://",

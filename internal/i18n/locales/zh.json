@@ -1495,7 +1495,7 @@
   "settings.downloadClient": "下载客户端",
   "settings.downloadClientHelp": "在每个资源详情页添加“发送到…”按钮。",
   "settings.downloadFactor": "下载量系数",
-  "settings.downloadFactorHelp": "0 = freeleech。输出为",
+  "settings.downloadFactorHelp": "当来源未说明配额时使用。来源标记为 freeleech 的发布输出为 0。输出为",
   "settings.downloadVolumeFactorTag": "downloadvolumefactor",
   "settings.error.downloadClient": "下载客户端必须是 none、qbittorrent 或 transmission",
   "settings.error.downloadClientURL": "下载客户端 URL 必须是绝对的 http:// 或 https:// 地址",

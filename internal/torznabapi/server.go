@@ -1833,8 +1833,35 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 		b.WriteString(published.Format(time.RFC3339))
 		b.WriteString(`"/>`)
 	}
-	writeAttrInt(b, "downloadvolumefactor", int64(settings.TorznabDownloadFactor))
-	writeAttrInt(b, "uploadvolumefactor", int64(settings.TorznabUploadFactor))
+	// The download factor is per release when the source said something about
+	// the quota, and the configured value otherwise. `freeleechknown` is an
+	// additive attribute for clients that want to tell "paid" from "not
+	// stated"; the standard factor stays valid for every Torznab client.
+	downloadFactor := 1
+	uploadFactor := 1
+	if settings != nil {
+		downloadFactor = settings.TorznabDownloadFactor
+		uploadFactor = settings.TorznabUploadFactor
+	}
+	known := int64(0)
+	if release.FreeleechKnown {
+		known = 1
+		if release.Freeleech {
+			downloadFactor = 0
+		} else {
+			downloadFactor = 1
+		}
+	}
+	writeAttrInt(b, "freeleechknown", known)
+	if release.FreeleechKnown {
+		free := int64(0)
+		if release.Freeleech {
+			free = 1
+		}
+		writeAttrInt(b, "freeleech", free)
+	}
+	writeAttrInt(b, "downloadvolumefactor", int64(downloadFactor))
+	writeAttrInt(b, "uploadvolumefactor", int64(uploadFactor))
 	b.WriteString(`</item>`)
 }
 

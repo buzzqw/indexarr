@@ -62,6 +62,7 @@ type fixtureRelease struct {
 	TMDbID      string `json:"tmdbid"`
 	TVDbID      string `json:"tvdbid"`
 	Multi       bool   `json:"multi"`
+	Freeleech   *bool  `json:"freeleech"`
 }
 
 type fixtureFile struct {
@@ -170,26 +171,28 @@ func newEnv(t *testing.T) *env {
 			protocol = "torrent"
 		}
 		release := store.Release{
-			DedupKey:    "compat-" + fixture.Key,
-			InfoHash:    fixture.InfoHash,
-			IMDbID:      textutil.NormalizeID(fixture.IMDbID),
-			TMDbID:      textutil.NormalizeID(fixture.TMDbID),
-			TVDbID:      textutil.NormalizeID(fixture.TVDbID),
-			Title:       fixture.Title,
-			SearchTitle: store.NormalizeSearch(fixture.Title),
-			Size:        fixture.Size,
-			Seeders:     fixture.Seeders,
-			Leechers:    fixture.Leechers,
-			Category:    fixture.Category,
-			PublishedAt: published,
-			GUID:        fixture.GUID,
-			Magnet:      fixture.Magnet,
-			Torrent:     []byte(fixture.Torrent),
-			Protocol:    protocol,
-			Payload:     []byte(fixture.Payload),
-			PayloadType: fixture.PayloadType,
-			FirstSeenAt: published,
-			LastSeenAt:  published,
+			DedupKey:       "compat-" + fixture.Key,
+			InfoHash:       fixture.InfoHash,
+			IMDbID:         textutil.NormalizeID(fixture.IMDbID),
+			TMDbID:         textutil.NormalizeID(fixture.TMDbID),
+			TVDbID:         textutil.NormalizeID(fixture.TVDbID),
+			Title:          fixture.Title,
+			SearchTitle:    store.NormalizeSearch(fixture.Title),
+			Size:           fixture.Size,
+			Seeders:        fixture.Seeders,
+			Leechers:       fixture.Leechers,
+			Freeleech:      fixture.Freeleech != nil && *fixture.Freeleech,
+			FreeleechKnown: fixture.Freeleech != nil,
+			Category:       fixture.Category,
+			PublishedAt:    published,
+			GUID:           fixture.GUID,
+			Magnet:         fixture.Magnet,
+			Torrent:        []byte(fixture.Torrent),
+			Protocol:       protocol,
+			Payload:        []byte(fixture.Payload),
+			PayloadType:    fixture.PayloadType,
+			FirstSeenAt:    published,
+			LastSeenAt:     published,
 		}
 		if _, err := st.UpsertRelease(ctx, &release); err != nil {
 			t.Fatalf("UpsertRelease(%s): %v", fixture.Key, err)

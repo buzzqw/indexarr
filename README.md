@@ -474,6 +474,11 @@ command list and the package structure:
   `Restart=always` it is automatic, otherwise it must be restarted manually.
 - Seeders not reported by the indexer (for example MirCrew) remain unknown: the
   `seeders` attribute is omitted in the Torznab response instead of being 0.
+- Freeleech is per release when the source states it: `freeleechknown=1` and
+  `freeleech` are emitted, and `downloadvolumefactor` is 0/1. When the source
+  says nothing the configured download factor is the fallback. A release a
+  client grabbed is kept by the retention pass even when older than the window,
+  so it is not indexed as new and grabbed again when it reappears in a feed.
 - Cloudflare is handled with FlareSolverr for RSS and direct indexers;
   proprietary APIs stay queued until a native definition exists, and indexarr
   does not include a headless browser.

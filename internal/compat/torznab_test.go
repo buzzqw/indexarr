@@ -190,6 +190,8 @@ func TestItemAttributes(t *testing.T) {
 	requireAttr(t, magnet, "peers", "14")
 	requireAttr(t, magnet, "infohash", "1111111111111111111111111111111111111111")
 	requireAttr(t, magnet, "publishdate", "2026-10-05T10:17:44Z")
+	requireAttr(t, magnet, "freeleechknown", "1")
+	requireAttr(t, magnet, "freeleech", "1")
 	requireAttr(t, magnet, "downloadvolumefactor", "0")
 	requireAttr(t, magnet, "uploadvolumefactor", "1")
 	if !strings.HasPrefix(itemAttr(t, magnet, "magneturl"), "magnet:?xt=urn:btih:111") {
@@ -201,6 +203,8 @@ func TestItemAttributes(t *testing.T) {
 	if torrent.Enclosure.Type != "application/x-bittorrent" {
 		t.Errorf("torrent enclosure type = %q", torrent.Enclosure.Type)
 	}
+	requireAttr(t, torrent, "freeleechknown", "0")
+	requireNoAttr(t, torrent, "freeleech")
 	requireNoAttr(t, torrent, "protocol")
 
 	nzb := itemByTitle(t, document, "Compat.NZB.Album")

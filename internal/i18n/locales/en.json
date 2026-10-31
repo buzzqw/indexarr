@@ -1495,7 +1495,7 @@
   "settings.downloadClient": "Download client",
   "settings.downloadClientHelp": "Adds a “Send to…” button on every release detail.",
   "settings.downloadFactor": "Download volume factor",
-  "settings.downloadFactorHelp": "0 = freeleech. Emitted as",
+  "settings.downloadFactorHelp": "Fallback when the source does not state the quota. A release the source marks as freeleech is emitted as 0. Emitted as",
   "settings.downloadVolumeFactorTag": "downloadvolumefactor",
   "settings.error.downloadClient": "Download client must be none, qbittorrent or transmission",
   "settings.error.downloadClientURL": "Download client URL must be an absolute http:// or https:// address",

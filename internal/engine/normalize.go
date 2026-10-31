@@ -418,7 +418,10 @@ func (c *DefinitionConnector) normalizeRowWith(raw map[string]string, responseUR
 	item.Size = parseSize(raw["size"])
 	item.Seeders = parseInt(raw["seeders"])
 	item.Leechers = parseInt(raw["leechers"])
-	item.Freeleech = parseFreeleech(raw["freeleech"])
+	if rawFreeleech, ok := raw["freeleech"]; ok && strings.TrimSpace(rawFreeleech) != "" {
+		item.FreeleechKnown = true
+		item.Freeleech = parseFreeleech(rawFreeleech)
+	}
 
 	dateRaw := raw["date"]
 	layouts := fields["date"].Layouts

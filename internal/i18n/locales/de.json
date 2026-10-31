@@ -1495,7 +1495,7 @@
   "settings.downloadClient": "Download-Client",
   "settings.downloadClientHelp": "Fügt auf jeder Release-Detailseite eine Schaltfläche „Senden an…“ hinzu.",
   "settings.downloadFactor": "Download-Volumenfaktor",
-  "settings.downloadFactorHelp": "0 = Freeleech. Ausgegeben als",
+  "settings.downloadFactorHelp": "Ersatzwert, wenn die Quelle das Kontingent nicht angibt. Eine von der Quelle als Freeleech markierte Veröffentlichung wird als 0 ausgegeben. Ausgegeben als",
   "settings.downloadVolumeFactorTag": "downloadvolumefactor",
   "settings.error.downloadClient": "Der Download-Client muss none, qbittorrent oder transmission sein",
   "settings.error.downloadClientURL": "Die URL des Download-Clients muss eine absolute http://- oder https://-Adresse sein",

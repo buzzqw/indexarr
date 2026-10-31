@@ -113,13 +113,17 @@ type Item struct {
 	// Freeleech marks a release the tracker counts as free (no download
 	// quota). It is read from a definition's optional `freeleech` row field;
 	// a definition that filters freeleech on the site side leaves it false.
-	Freeleech  bool
-	Categories []int
-	Published  time.Time
-	IMDbID     string
-	TMDbID     string
-	TVDbID     string
-	Attributes map[string]string
+	// FreeleechKnown separates "the source says this is paid" from "the source
+	// does not say": the Torznab output must not turn an unknown release into a
+	// free one (or the other way round).
+	Freeleech      bool
+	FreeleechKnown bool
+	Categories     []int
+	Published      time.Time
+	IMDbID         string
+	TMDbID         string
+	TVDbID         string
+	Attributes     map[string]string
 }
 
 // Capabilities describes what an indexer can search.

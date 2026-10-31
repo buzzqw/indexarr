@@ -11,7 +11,8 @@
       "source": "alpha",
       "infohash": "1111111111111111111111111111111111111111",
       "magnet": "magnet:?xt=urn:btih:1111111111111111111111111111111111111111&dn=Compat.Magnet.Show.S01E02.1080p",
-      "tvdbid": "81189"
+      "tvdbid": "81189",
+      "freeleech": true
     },
     {
       "key": "torrent",

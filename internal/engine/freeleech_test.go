@@ -24,6 +24,39 @@ func TestParseFreeleechMarker(t *testing.T) {
 	}
 }
 
+func TestParseFreeleechKnownSeparatesUnknownFromPaid(t *testing.T) {
+	def := loadTestDefinition(t, "pagination.yaml", "http://127.0.0.1:1")
+	def.Search.Response.Fields["freeleech"] = definition.Field{Selector: definition.Selector{".free"}}
+	connector, err := NewDefinitionConnector(DefinitionConfig{
+		Definition: def,
+		Settings:   map[string]string{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		name      string
+		raw       map[string]string
+		free      bool
+		wantKnown bool
+	}{
+		{"unknown", map[string]string{"title": "Unknown", "details": "/d/1", "download": "/d/1.torrent"}, false, false},
+		{"paid", map[string]string{"title": "Paid", "details": "/d/2", "download": "/d/2.torrent", "freeleech": "0"}, false, true},
+		{"free", map[string]string{"title": "Free", "details": "/d/3", "download": "/d/3.torrent", "freeleech": "FREE"}, true, true},
+		{"empty", map[string]string{"title": "Empty", "details": "/d/4", "download": "/d/4.torrent", "freeleech": "  "}, false, false},
+	}
+	for _, tc := range cases {
+		item, ok, err := connector.normalizeRow(tc.raw, nil)
+		if err != nil || !ok {
+			t.Fatalf("%s: normalizeRow = %+v, ok=%v, err=%v", tc.name, item, ok, err)
+		}
+		if item.Freeleech != tc.free || item.FreeleechKnown != tc.wantKnown {
+			t.Errorf("%s: freeleech=%v known=%v, want %v/%v", tc.name, item.Freeleech, item.FreeleechKnown, tc.free, tc.wantKnown)
+		}
+	}
+}
+
 func TestFreeleechOnlyDropsRowsWithoutTheMarker(t *testing.T) {
 	def := loadTestDefinition(t, "pagination.yaml", "http://127.0.0.1:1")
 	def.Search.Response.Fields["freeleech"] = definition.Field{Selector: definition.Selector{".free"}}

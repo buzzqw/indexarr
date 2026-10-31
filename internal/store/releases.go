@@ -30,10 +30,16 @@ type Release struct {
 	Size        int64
 	Seeders     int64
 	Leechers    int64
-	Category    string
-	PublishedAt time.Time
-	GUID        string
-	Magnet      string
+	// Freeleech is what the source said about the download quota. Known
+	// separates "paid" from "not stated", so the Torznab output can use the
+	// per-release value only when it is real and fall back to the setting
+	// otherwise.
+	Freeleech      bool
+	FreeleechKnown bool
+	Category       string
+	PublishedAt    time.Time
+	GUID           string
+	Magnet         string
 	// Ed2k is an `ed2k://|file|...|/` link and Ed2kHash its lowercase MD4.
 	// They are the transfer identity of an eD2k release, next to Magnet and
 	// Torrent; a row has at most one of the three.
@@ -118,7 +124,7 @@ const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, titl
 	search_title, size, seeders, leechers, category, published_at,
 	guid, magnet, ed2k_link, ed2k_hash, torrent, torrent_size, torrent_fetched_at,
 	first_seen_at, last_seen_at, times_seen, favorite, hidden,
-	protocol, payload, payload_type, downloaded_at`
+	protocol, payload, payload_type, downloaded_at, freeleech`
 
 // releaseListColumns has the shape of releaseColumns but replaces the torrent
 // and payload blobs with presence flags. SQLite answers length() from the
@@ -127,7 +133,7 @@ const releaseListColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, 
 	search_title, size, seeders, leechers, category, published_at,
 	guid, magnet, ed2k_link, ed2k_hash, length(torrent) > 0, torrent_size, torrent_fetched_at,
 	first_seen_at, last_seen_at, times_seen, favorite, hidden,
-	protocol, length(payload) > 0, payload_type, downloaded_at`
+	protocol, length(payload) > 0, payload_type, downloaded_at, freeleech`
 
 // ErrNoPayload reports that a release has neither a torrent nor a generic
 // payload stored.
@@ -221,12 +227,16 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 	}
 	var id int64
 	var timesSeen int64
+	freeleech := -1
+	if rel.FreeleechKnown {
+		freeleech = boolInt(rel.Freeleech)
+	}
 	err = s.db.QueryRowContext(ctx, `
 		INSERT INTO releases(dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
 			search_title, size, seeders, leechers, category, published_at,
 			guid, magnet, ed2k_link, ed2k_hash, torrent, torrent_size, torrent_fetched_at,
-			first_seen_at, last_seen_at, protocol, payload, payload_type, times_seen)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+			first_seen_at, last_seen_at, protocol, payload, payload_type, times_seen, freeleech)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
 		ON CONFLICT(dedup_key) DO UPDATE SET
 			infohash = CASE WHEN excluded.infohash <> '' THEN excluded.infohash ELSE releases.infohash END,
 			imdb_id = CASE WHEN excluded.imdb_id <> '' THEN excluded.imdb_id ELSE releases.imdb_id END,
@@ -235,8 +245,8 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 			title = CASE WHEN excluded.title <> '' THEN excluded.title ELSE releases.title END,
 			search_title = CASE WHEN excluded.search_title <> '' THEN excluded.search_title ELSE releases.search_title END,
 			size = CASE WHEN excluded.size > 0 THEN excluded.size ELSE releases.size END,
-			seeders = excluded.seeders,
-			leechers = excluded.leechers,
+			seeders = CASE WHEN excluded.seeders >= 0 THEN excluded.seeders ELSE releases.seeders END,
+			leechers = CASE WHEN excluded.leechers >= 0 THEN excluded.leechers ELSE releases.leechers END,
 			category = CASE WHEN excluded.category <> '' THEN excluded.category ELSE releases.category END,
 			published_at = CASE WHEN excluded.published_at > 0 THEN excluded.published_at ELSE releases.published_at END,
 			guid = CASE WHEN excluded.guid <> '' THEN excluded.guid ELSE releases.guid END,
@@ -249,6 +259,7 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 			protocol = CASE WHEN ? <> 0 THEN excluded.protocol ELSE releases.protocol END,
 			payload = COALESCE(excluded.payload, releases.payload),
 			payload_type = CASE WHEN excluded.payload_type <> '' THEN excluded.payload_type ELSE releases.payload_type END,
+			freeleech = CASE WHEN excluded.freeleech >= 0 THEN excluded.freeleech ELSE releases.freeleech END,
 			last_seen_at = excluded.last_seen_at,
 			times_seen = releases.times_seen + 1
 		RETURNING id, times_seen`,
@@ -257,7 +268,7 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 		rel.Category, rel.PublishedAt.Unix(),
 		rel.GUID, rel.Magnet, rel.Ed2k, rel.Ed2kHash, torrent, rel.TorrentSize,
 		rel.TorrentFetchedAt.Unix(), rel.FirstSeenAt.Unix(), rel.LastSeenAt.Unix(),
-		rel.Protocol, payload, rel.PayloadType, boolInt(protocolProvided)).Scan(&id, &timesSeen)
+		rel.Protocol, payload, rel.PayloadType, freeleech, boolInt(protocolProvided)).Scan(&id, &timesSeen)
 	if err != nil {
 		return false, fmt.Errorf("upsert release: %w", err)
 	}
@@ -1042,9 +1053,13 @@ func (s *Store) DeleteAllReleases(ctx context.Context) (int64, error) {
 }
 
 // PruneReleases deletes releases not seen since before and returns the count.
+// A release a client grabbed is kept: forgetting it would make the next
+// appearance in a feed look new again, and the client could grab the same file
+// twice. Favorites are kept for the same reason.
 func (s *Store) PruneReleases(ctx context.Context, before time.Time) (int64, error) {
 	res, err := s.db.ExecContext(ctx,
-		`DELETE FROM releases WHERE last_seen_at < ? AND last_seen_at > 0`, before.Unix())
+		`DELETE FROM releases WHERE last_seen_at < ? AND last_seen_at > 0
+			AND downloaded_at = 0 AND favorite = 0`, before.Unix())
 	if err != nil {
 		return 0, err
 	}
@@ -1599,7 +1614,7 @@ func scanReleaseExtra(scanner interface{ Scan(...any) error }, list bool, extra 
 	var published, torrentFetched, firstSeen, lastSeen, downloadedAt int64
 	var torrent, payload []byte
 	var torrentFlag, payloadFlag sql.NullBool
-	var favorite, hidden int
+	var favorite, hidden, freeleech int
 	var torrentDest, payloadDest any = &torrent, &payload
 	if list {
 		torrentDest, payloadDest = &torrentFlag, &payloadFlag
@@ -1609,7 +1624,7 @@ func scanReleaseExtra(scanner interface{ Scan(...any) error }, list bool, extra 
 		&out.Leechers, &out.Category, &published,
 		&out.GUID, &out.Magnet, &out.Ed2k, &out.Ed2kHash, torrentDest, &out.TorrentSize, &torrentFetched,
 		&firstSeen, &lastSeen, &out.TimesSeen, &favorite, &hidden,
-		&out.Protocol, payloadDest, &out.PayloadType, &downloadedAt}
+		&out.Protocol, payloadDest, &out.PayloadType, &downloadedAt, &freeleech}
 	dest = append(dest, extra...)
 	if err := scanner.Scan(dest...); err != nil {
 		return Release{}, err
@@ -1628,5 +1643,7 @@ func scanReleaseExtra(scanner interface{ Scan(...any) error }, list bool, extra 
 	}
 	out.Favorite = favorite != 0
 	out.Hidden = hidden != 0
+	out.FreeleechKnown = freeleech >= 0
+	out.Freeleech = freeleech > 0
 	return out, nil
 }
