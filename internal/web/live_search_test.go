@@ -46,6 +46,34 @@ func TestReleasesPageShowsLiveSearchAndBulkGrab(t *testing.T) {
 	}
 }
 
+// The page carries two search forms with different jobs: one asks the sites
+// now, the other reads what indexarr has already stored. Two identical
+// "Search" buttons made the reader guess which one did what, so each form has
+// its own heading, its own field label and its own button label.
+func TestReleasesPageKeepsTheTwoSearchesApart(t *testing.T) {
+	env := newTestEnv(t)
+	body := get(t, env.handler, "/releases?lang=en").Body.String()
+	for _, want := range []string{
+		`aria-labelledby="release-live-heading"`,
+		`aria-labelledby="release-catalog-heading"`,
+		`id="release-live-heading">Live search on indexers</h2>`,
+		`id="release-catalog-heading">Search the catalogue</h2>`,
+		`<label for="live_q">Words to look for</label>`,
+		`<label for="q">Title or words</label>`,
+		`>Search live</button>`,
+		`>Search the catalogue</button>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("releases page missing %q", want)
+		}
+	}
+	// The catalogue form must not go back to the generic label shared with the
+	// global search in the sidebar.
+	if strings.Contains(body, `<button class="btn primary" type="submit">Search</button>`) {
+		t.Error("the catalogue search kept a plain Search button")
+	}
+}
+
 func TestLiveSearchRejectsMissingTerms(t *testing.T) {
 	env := newTestEnv(t)
 	token, cookie := csrfFrom(t, env.handler, "/releases")

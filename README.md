@@ -196,9 +196,10 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
 - **Guided first start** that asks for the address the apps must use; it can
   be reopened from Settings.
 - **Home** with source status, latest releases and runs.
-- **Search** with manual live search: free text, TV, movies, music and books,
-  IMDb/TMDb/TVDb ids, selection of multiple indexers, categories, filters,
-  saved searches and **bulk send** to clients.
+- **Search** with two separate searches, each with its own heading and button:
+  **live on the indexers** (free text, TV, movies, music and books,
+  IMDb/TMDb/TVDb ids, selection of multiple indexers, categories) and **the
+  stored catalogue** (filters, saved searches and **bulk send** to clients).
 - **Indexers** with a single list, Run/Test/Run all/Test all/Test problems,
   detail, edit, clone, JSON export/import, feed discovery and cookie import.
 - **App** to connect and synchronize Sonarr, Radarr, Lidarr, Readarr,
@@ -423,7 +424,7 @@ App synchronization, per-app profiles, multiple API keys and live search:
 | Page | Content |
 | --- | --- |
 | **Home** | Totals, indexer status, latest releases, runs and problems |
-| **Search** (`/releases`) | Manual live search (text, TV, movies, music, books, external IDs), `-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab; detail with magnet, `.torrent` and `.nzb` |
+| **Search** (`/releases`) | Two searches: live on the indexers (text, TV, movies, music, books, external IDs) and the stored catalogue (`-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab); detail with magnet, `.torrent` and `.nzb` |
 | **Indexers** | Single list, Run/Test/Run all/Test all/Test problems, detail with Site access, edit, clone, JSON export/import, feed discovery and cookie import; each source can have its own request timeout |
 | **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian and the generic Servarr-compatible type; sync, per-app profile, snapshots and download clients |
 | **Statistics** (`/activity`) | Incoming requests, overview per app and indexer, downloads served per source, update history, new releases, per-host network counters |

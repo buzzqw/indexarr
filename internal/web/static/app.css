@@ -2031,6 +2031,9 @@ table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; 
 /* A note under a filter bar takes its own line, so the buttons stay on the
    controls' line instead of dropping to the bottom of the note. */
 .filters > .help { flex-basis: 100%; }
+/* Two search forms can sit on the same page: the heading of each takes a line
+   of its own, so the controls below are read as part of that search. */
+.filters > .field.filters-head { flex: 1 1 100%; max-width: 100%; }
 /* A form's buttons never touch the field above them. */
 .field + .actions { margin-top: 0.75rem; }
 

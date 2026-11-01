@@ -6,10 +6,10 @@
   </div>
 </section>
 
-<form class="filters live-search" id="release-live-search" method="post" action="/releases/live">
+<form class="filters live-search" id="release-live-search" method="post" action="/releases/live" role="search" aria-labelledby="release-live-heading">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <div class="field grow">
-    <h2>{{T "releases.liveTitle"}}</h2>
+  <div class="field grow filters-head">
+    <h2 id="release-live-heading">{{T "releases.liveTitle"}}</h2>
     <p class="help">{{T "releases.liveIntro"}}</p>
   </div>
   <div class="field">
@@ -24,7 +24,7 @@
     <p class="help">{{T "releases.liveModeHelp"}}</p>
   </div>
   <div class="field grow">
-    <label for="live_q">{{T "releases.searchLabel"}}</label>
+    <label for="live_q">{{T "releases.liveQueryLabel"}}</label>
     <input id="live_q" name="q" type="search" value="{{.LiveForm.Query}}" placeholder="{{T "releases.searchPlaceholder"}}" autocomplete="off" spellcheck="false" title="{{T "releases.liveQueryHelp"}}">
     <p class="help">{{T "releases.liveQueryHelp"}}</p>
   </div>
@@ -153,7 +153,11 @@
 
 {{if .LiveError}}<p class="flash err" role="alert">{{.LiveError}}</p>{{end}}
 
-<form class="filters" id="release-filters" method="get" action="/releases" data-live-search role="search">
+<form class="filters" id="release-filters" method="get" action="/releases" data-live-search role="search" aria-labelledby="release-catalog-heading">
+  <div class="field filters-head">
+    <h2 id="release-catalog-heading">{{T "releases.catalogTitle"}}</h2>
+    <p class="help">{{T "releases.catalogIntro"}}</p>
+  </div>
   <div class="field grow">
     <label for="q">{{T "releases.searchLabel"}}</label>
     <input id="q" name="q" type="search" value="{{.Query}}" placeholder="{{T "releases.searchPlaceholder"}}" autocomplete="off" spellcheck="false">
@@ -207,7 +211,7 @@
     </select>
   </div>
   <div class="field actions-field">
-    <button class="btn primary" type="submit">{{T "shell.searchButton"}}</button>
+    <button class="btn primary" type="submit" title="{{T "releases.catalogIntro"}}">{{T "releases.catalogSubmit"}}</button>
     <a class="btn" href="/releases">{{T "common.reset"}}</a>
   </div>
   <details class="filter-advanced" id="release-advanced-filters">
