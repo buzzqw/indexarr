@@ -521,7 +521,7 @@ type Server struct {
 	hostMu     sync.Mutex
 	hostCache  []string
 	hostLoaded bool
-	statusOK  bool
+	statusOK   bool
 	// definitions caches the parsed YAML of stored definitions by id and
 	// content hash. The zero value is usable, so test servers built with a
 	// struct literal work unchanged.

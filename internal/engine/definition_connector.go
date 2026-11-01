@@ -797,7 +797,7 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 				}
 				return nil, err
 			}
-			response, err = c.fetchSearchPage(ctx, request, build, &relogged)
+			page, empty, err := c.fetchSearchPage(ctx, request, build, &relogged)
 			release()
 			if errors.Is(err, errSearchRefused) && len(items) > 0 {
 				// The first pages already answered: keep them.
@@ -806,6 +806,13 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 			if err != nil {
 				return nil, err
 			}
+			if empty {
+				// A status the definition lists as "no results": a valid
+				// search with no matches. The source is not broken and the
+				// page is not cached, so a later change is seen at once.
+				break
+			}
+			response = page
 			c.storeSearchPage(cacheKey, response)
 		}
 
@@ -1990,13 +1997,14 @@ func torrentFilename(title string) string {
 }
 
 // fetchSearchPage reads one search page. It logs in again once when the site
-// answers as a guest or with 401/403, and turns the site's refusal page
-// (search.blocked) into an error instead of an empty result.
-func (c *DefinitionConnector) fetchSearchPage(ctx context.Context, request *http.Request, build func() (*http.Request, error), relogged *bool) (*Response, error) {
+// answers as a guest or with 401/403, turns the site's refusal page
+// (search.blocked) into an error instead of an empty result, and reports a
+// status listed in search.empty_status as "no results" instead of a failure.
+func (c *DefinitionConnector) fetchSearchPage(ctx context.Context, request *http.Request, build func() (*http.Request, error), relogged *bool) (*Response, bool, error) {
 	stamp := c.session.loginStamp()
 	response, err := c.do(ctx, request)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// A forum that keeps one session per account answers the search as a
@@ -2006,13 +2014,13 @@ func (c *DefinitionConnector) fetchSearchPage(ctx context.Context, request *http
 	if response.Status < 400 && !*relogged && c.sessionLost(response) {
 		*relogged = true
 		if err := c.reLoginAfter(ctx, stamp); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if request, err = build(); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if response, err = c.do(ctx, request); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
@@ -2020,18 +2028,21 @@ func (c *DefinitionConnector) fetchSearchPage(ctx context.Context, request *http
 		c.canReLogin() && !*relogged {
 		*relogged = true
 		if err := c.forceReLogin(ctx); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if request, err = build(); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if response, err = c.do(ctx, request); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
+	if searchEmptyStatus(c.def.Search.EmptyStatus, response.Status) {
+		return response, true, nil
+	}
 	if response.Status >= 400 {
-		return nil, fmt.Errorf("definition %q: search returned HTTP %d", c.def.Meta.ID, response.Status)
+		return nil, false, fmt.Errorf("definition %q: search returned HTTP %d", c.def.Meta.ID, response.Status)
 	}
 	if blocked := c.def.Search.Blocked; blocked != nil {
 		if present, err := conditionMatches(*blocked, response); err == nil && present {
@@ -2040,11 +2051,22 @@ func (c *DefinitionConnector) fetchSearchPage(ctx context.Context, request *http
 				message = "the site refused the search"
 			}
 			c.noteSearchRefused()
-			return nil, fmt.Errorf("definition %q: %w: %s", c.def.Meta.ID, errSearchRefused, strings.Join(strings.Fields(message), " "))
+			return nil, false, fmt.Errorf("definition %q: %w: %s", c.def.Meta.ID, errSearchRefused, strings.Join(strings.Fields(message), " "))
 		}
 		c.noteSearchAccepted()
 	}
-	return response, nil
+	return response, false, nil
+}
+
+// searchEmptyStatus reports whether status is one the definition lists as a
+// valid search with no results.
+func searchEmptyStatus(statuses []int, status int) bool {
+	for _, candidate := range statuses {
+		if candidate == status {
+			return true
+		}
+	}
+	return false
 }
 
 // expandsTopicFiles reports whether the search opens every topic and turns its

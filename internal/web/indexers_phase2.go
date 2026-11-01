@@ -2808,18 +2808,18 @@ type indexerDetailView struct {
 	// A failing source follows an escalating retry schedule; RetryPaused
 	// means the 96 hour step already failed and the scheduler waits for the
 	// operator.
-	RetryFailures       int
-	RetryPaused         bool
-	RetryNext           time.Time
-	HasRetryNext        bool
-	FrequencyLabel      string
-	FrequencySource     string
-	HasState            bool
-	State               store.IndexerState
+	RetryFailures   int
+	RetryPaused     bool
+	RetryNext       time.Time
+	HasRetryNext    bool
+	FrequencyLabel  string
+	FrequencySource string
+	HasState        bool
+	State           store.IndexerState
 	// CircuitOpen reports that the live breaker of this source is open and the
 	// next request would be refused; the Overview tab then offers "Riprendi
 	// ora", the manual reset of the cooldown.
-	CircuitOpen bool
+	CircuitOpen         bool
 	Stats               detailStatView
 	Categories          []string
 	FilterRows          []indexerConfigEntry

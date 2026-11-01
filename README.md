@@ -326,6 +326,12 @@ and does not appear in the user list.
 definition, but the format is not executed at runtime and the derived
 definitions do not enter the catalog.
 
+**"No results" is not a failure**: a definition can list the HTTP statuses its
+site uses for a valid search with no matches (`search.empty_status: [404]`).
+The search then returns zero rows instead of an error, so a source is not
+marked as broken and its circuit breaker is not touched. Without the
+declaration the same answer stays an error: a moved endpoint must be visible.
+
 Details, edge cases and diagnostics: [Compatibility](https://github.com/buzzqw/indexarr/wiki/Compatibility).
 
 ## Requirements

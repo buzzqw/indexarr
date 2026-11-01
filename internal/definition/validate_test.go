@@ -203,6 +203,17 @@ func TestAuthValidation(t *testing.T) {
 			fragment: "search.blocked: needs a selector",
 		},
 		{
+			name: "search.empty_status outside the HTTP error range",
+			extra: `search:
+  request: { get: /search }
+  response:
+    rows: { selector: tr }
+    fields: { title: { selector: a } }
+  empty_status: [200]
+`,
+			fragment: "search.empty_status: each status must be between 400 and 599",
+		},
+		{
 			name: "search.interval without cache",
 			extra: `search:
   request: { get: /search }

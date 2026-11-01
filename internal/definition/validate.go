@@ -364,6 +364,12 @@ func validateSearch(search Search, add func(string, ...any)) {
 	if search.Blocked != nil && search.Blocked.Contains != "" && search.Blocked.Selector == "" {
 		add("search.blocked.contains: needs a selector")
 	}
+	for _, status := range search.EmptyStatus {
+		if status < 400 || status > 599 {
+			add("search.empty_status: each status must be between 400 and 599")
+			break
+		}
+	}
 	if search.Cache < 0 {
 		add("search.cache: must not be negative")
 	}

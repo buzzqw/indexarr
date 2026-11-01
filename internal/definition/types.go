@@ -300,6 +300,12 @@ type Search struct {
 	// a few minutes" box). The search then fails with that message instead
 	// of reporting no results.
 	Blocked *Condition `yaml:"blocked,omitempty" json:"blocked,omitempty"`
+	// EmptyStatus lists the HTTP statuses a site uses for a valid search with
+	// no matches, typically 404 on a search path that renders "nothing found".
+	// With the status listed the search returns no results: the source is not
+	// reported as broken and the response is not cached. An unlisted status
+	// keeps failing, so a moved endpoint is still visible as a problem.
+	EmptyStatus []int `yaml:"empty_status,omitempty" json:"empty_status,omitempty"`
 	// Cache keeps the result pages of the same request for this long. A site
 	// with a flood control answers one search every few minutes, while Gextto
 	// and the Arr ask the same series once per episode: without the cache

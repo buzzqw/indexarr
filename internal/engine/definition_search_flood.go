@@ -539,10 +539,15 @@ func (c *DefinitionConnector) sendDeferredSearchOnce(ctx context.Context, entry 
 	}
 	relogged := false
 	sent := time.Now()
-	response, err := c.fetchSearchPage(ctx, request, build, &relogged)
+	response, empty, err := c.fetchSearchPage(ctx, request, build, &relogged)
 	release()
 	if err != nil {
 		return 0, sent, err
+	}
+	if empty {
+		// The site answered "no results" with the status the definition
+		// lists: nothing to cache, and the next identical request asks again.
+		return 0, sent, nil
 	}
 	c.storeSearchPage(key, response)
 	return int64(len(response.Body)), sent, nil
