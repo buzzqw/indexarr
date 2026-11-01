@@ -1197,6 +1197,8 @@
   "release.hideRelease": "Nascondi release",
   "release.imdb": "IMDb",
   "release.infohash": "Infohash",
+  "release.languages": "Lingue",
+  "release.languagesTip": "Le lingue audio dichiarate dalla sorgente per questa release. Vuoto significa che la sorgente non lo dice.",
   "release.lastSeen": "Ultima apparizione",
   "release.magnetTitle": "Magnet",
   "release.metadata": "Metadati",

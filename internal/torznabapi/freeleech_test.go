@@ -65,3 +65,37 @@ func attrValue(body, name string) string {
 	}
 	return rest[:end]
 }
+
+// TestWriteItemEmitsEveryLanguage proves the language metadata reaches the
+// client in the shape it reads: one `language` attribute per language, with
+// the English name (Sonarr maps it with IsoLanguages.FindByName). A release
+// without a declared language omits the attribute instead of guessing.
+func TestWriteItemEmitsEveryLanguage(t *testing.T) {
+	base := store.Release{
+		ID:        1,
+		Title:     "Film.2024.ITA.ENG.1080p",
+		Magnet:    "magnet:?xt=urn:btih:1111111111111111111111111111111111111111",
+		InfoHash:  "1111111111111111111111111111111111111111",
+		Size:      1_000,
+		Languages: "Italian,English",
+	}
+	var b bytes.Buffer
+	(&Server{}).writeItem(&b, "http://example", nil, "key", base, store.ReleaseProvenance{})
+	body := b.String()
+	if got := strings.Count(body, `<torznab:attr name="language"`); got != 2 {
+		t.Fatalf("language attributes = %d, want 2: %s", got, body)
+	}
+	if got := attrValue(body, "language"); got != "Italian" {
+		t.Errorf("first language = %q, want Italian", got)
+	}
+	if !strings.Contains(body, `<torznab:attr name="language" value="English"/>`) {
+		t.Errorf("the second language is missing: %s", body)
+	}
+
+	base.Languages = ""
+	b.Reset()
+	(&Server{}).writeItem(&b, "http://example", nil, "key", base, store.ReleaseProvenance{})
+	if strings.Contains(b.String(), `name="language"`) {
+		t.Errorf("a release with no declared language still carries the attribute: %s", b.String())
+	}
+}

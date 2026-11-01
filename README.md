@@ -169,6 +169,11 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
 - `caps`, `search`, `tvsearch`, `movie`, `music`, `book` and `get` functions.
 - `.torrent` and `.nzb` download, pagination, standard categories, season,
   episode and external ids.
+- **Audio languages** per release: a definition that reads them emits one
+  `language` attribute per language, with the English name the *arr clients
+  map (Sonarr/Radarr `IsoLanguages.FindByName`), so a custom format can match
+  a release whose title does not say it. A source that does not declare them
+  omits the attribute instead of guessing from the title.
 - **Live search** on every query (on by default): the enabled sources that can
   search are asked at that moment, what arrives in time is saved and merged
   with the cache; the aggregated endpoint returns one row per release.
@@ -489,6 +494,11 @@ command list and the package structure:
   `Restart=always` it is automatic, otherwise it must be restarted manually.
 - Seeders not reported by the indexer (for example MirCrew) remain unknown: the
   `seeders` attribute is omitted in the Torznab response instead of being 0.
+- Languages come from the definition's optional `languages` row field, which
+  may carry codes or names ("ita, eng"); the stored list is the English names,
+  and the Torznab output is one `language` attribute each. The web search
+  filter by language still reads the title, because most catalog definitions
+  do not expose the field yet.
 - Freeleech is per release when the source states it: `freeleechknown=1` and
   `freeleech` are emitted, and `downloadvolumefactor` is 0/1. When the source
   says nothing the configured download factor is the fallback. A release a

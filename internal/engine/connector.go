@@ -118,12 +118,18 @@ type Item struct {
 	// free one (or the other way round).
 	Freeleech      bool
 	FreeleechKnown bool
-	Categories     []int
-	Published      time.Time
-	IMDbID         string
-	TMDbID         string
-	TVDbID         string
-	Attributes     map[string]string
+	// Languages lists the audio languages the source declared for this
+	// release, as English names ("English", "Italian") because that is what
+	// the *arr clients map (Sonarr's IsoLanguages.FindByName). A definition
+	// fills it from its optional `languages` row field; an empty slice means
+	// "the source does not say" and the Torznab output omits the attribute.
+	Languages  []string
+	Categories []int
+	Published  time.Time
+	IMDbID     string
+	TMDbID     string
+	TVDbID     string
+	Attributes map[string]string
 }
 
 // Capabilities describes what an indexer can search.

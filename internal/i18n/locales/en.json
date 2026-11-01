@@ -1197,6 +1197,8 @@
   "release.hideRelease": "Hide release",
   "release.imdb": "IMDb",
   "release.infohash": "Infohash",
+  "release.languages": "Languages",
+  "release.languagesTip": "The audio languages the source declared for this release. Empty means the source does not say.",
   "release.lastSeen": "Last seen",
   "release.magnetTitle": "Magnet",
   "release.metadata": "Metadata",

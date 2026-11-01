@@ -1197,6 +1197,8 @@
   "release.hideRelease": "隐藏资源",
   "release.imdb": "IMDb",
   "release.infohash": "Infohash",
+  "release.languages": "语言",
+  "release.languagesTip": "来源为此发布声明的音频语言。留空表示来源未说明。",
   "release.lastSeen": "最近出现",
   "release.magnetTitle": "磁力链接",
   "release.metadata": "元数据",

@@ -924,6 +924,7 @@ func (s *Store) ensureReleaseColumns() error {
 		{"freeleech", "INTEGER NOT NULL DEFAULT -1"},
 		{"ed2k_link", "TEXT NOT NULL DEFAULT ''"},
 		{"ed2k_hash", "TEXT NOT NULL DEFAULT ''"},
+		{"languages", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		exists, err := s.columnExists("releases", column.name)
 		if err != nil {

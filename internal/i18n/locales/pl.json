@@ -1197,6 +1197,8 @@
   "release.hideRelease": "Ukryj wydanie",
   "release.imdb": "IMDb",
   "release.infohash": "Infohash",
+  "release.languages": "Języki",
+  "release.languagesTip": "Języki audio zadeklarowane przez źródło dla tego wydania. Puste oznacza, że źródło tego nie podaje.",
   "release.lastSeen": "Ostatnie wystąpienie",
   "release.magnetTitle": "Magnet",
   "release.metadata": "Metadane",

@@ -13,6 +13,7 @@
     <dt>{{T "releases.colSize"}}</dt><dd>{{sizeOrDash .Release.Size}}</dd>
     <dt>{{T "releases.category"}}</dt><dd>{{if .Release.Category}}{{catName .Release.Category}} <span class="muted">({{.Release.Category}})</span>{{else}}—{{end}}</dd>
     <dt>{{T "release.seedersLeechers"}}</dt><dd>{{numOrDash .Release.Seeders}} / {{numOrDash .Release.Leechers}}</dd>
+    <dt title="{{T "release.languagesTip"}}">{{T "release.languages"}}</dt><dd>{{if .Release.Languages}}{{.Release.Languages}}{{else}}<span class="muted">{{T "common.none"}}</span>{{end}}</dd>
     <dt>{{T "release.infohash"}}</dt><dd>{{if .Release.InfoHash}}<code>{{.Release.InfoHash}}</code>{{else}}<span class="muted">{{T "release.unknown"}}</span>{{end}}</dd>
     <dt>{{T "release.ed2k"}}</dt><dd>{{if .Release.Ed2k}}<code>{{.Release.Ed2k}}</code>{{else}}<span class="muted">{{T "common.none"}}</span>{{end}}</dd>
     <dt>{{T "release.ed2kHash"}}</dt><dd>{{if .Release.Ed2kHash}}<code>{{.Release.Ed2kHash}}</code>{{else}}<span class="muted">{{T "common.none"}}</span>{{end}}</dd>

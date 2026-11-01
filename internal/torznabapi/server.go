@@ -1862,7 +1862,34 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 	}
 	writeAttrInt(b, "downloadvolumefactor", int64(downloadFactor))
 	writeAttrInt(b, "uploadvolumefactor", int64(uploadFactor))
+	// The audio languages the source declared, one attribute each: the *arr
+	// clients read every `language` attribute and map the English name
+	// (Sonarr's IsoLanguages.FindByName). A release without them omits the
+	// attribute instead of guessing from the title.
+	for _, language := range releaseLanguages(release.Languages) {
+		writeAttr(b, "language", language)
+	}
 	b.WriteString(`</item>`)
+}
+
+// releaseLanguages splits the stored comma-separated list, drops empty parts
+// and bounds the number of attributes one item can carry.
+func releaseLanguages(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	out := make([]string, 0, 4)
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		out = append(out, part)
+		if len(out) == 8 {
+			break
+		}
+	}
+	return out
 }
 
 func (s *Server) writeXML(w http.ResponseWriter, body []byte) {

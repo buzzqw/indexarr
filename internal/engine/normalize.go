@@ -382,6 +382,7 @@ func (c *DefinitionConnector) normalizeRowWith(raw map[string]string, responseUR
 		IMDbID:     strings.TrimSpace(raw["imdbid"]),
 		TMDbID:     strings.TrimSpace(raw["tmdbid"]),
 		TVDbID:     strings.TrimSpace(raw["tvdbid"]),
+		Languages:  parseLanguages(raw["languages"], raw["language"]),
 	}
 	if season := strings.TrimSpace(raw["season"]); season != "" {
 		if item.Attributes == nil {
@@ -525,4 +526,79 @@ func normalizeMonthNames(raw string) string {
 		}
 		return token
 	})
+}
+
+// languageNames maps the codes a site or a definition may use to the English
+// name the *arr clients look up (Sonarr's IsoLanguages.FindByName). The name is
+// the value Torznab carries, so a definition can write either "ita" or
+// "Italian" and the app still recognises it.
+var languageNames = map[string]string{
+	"en": "English", "eng": "English", "english": "English",
+	"it": "Italian", "ita": "Italian", "italian": "Italian", "italiano": "Italian",
+	"fr": "French", "fra": "French", "fre": "French", "french": "French", "français": "French",
+	"de": "German", "deu": "German", "ger": "German", "german": "German", "deutsch": "German",
+	"es": "Spanish", "spa": "Spanish", "spanish": "Spanish", "español": "Spanish",
+	"pt": "Portuguese", "por": "Portuguese", "portuguese": "Portuguese",
+	"nl": "Dutch", "nld": "Dutch", "dut": "Dutch", "dutch": "Dutch",
+	"ru": "Russian", "rus": "Russian", "russian": "Russian",
+	"ja": "Japanese", "jpn": "Japanese", "japanese": "Japanese",
+	"zh": "Chinese", "chi": "Chinese", "zho": "Chinese", "chinese": "Chinese",
+	"ko": "Korean", "kor": "Korean", "korean": "Korean",
+	"pl": "Polish", "pol": "Polish", "polish": "Polish",
+	"sv": "Swedish", "swe": "Swedish", "swedish": "Swedish",
+	"no": "Norwegian", "nor": "Norwegian", "norwegian": "Norwegian",
+	"da": "Danish", "dan": "Danish", "danish": "Danish",
+	"fi": "Finnish", "fin": "Finnish", "finnish": "Finnish",
+	"tr": "Turkish", "tur": "Turkish", "turkish": "Turkish",
+	"ar": "Arabic", "ara": "Arabic", "arabic": "Arabic",
+	"he": "Hebrew", "heb": "Hebrew", "hebrew": "Hebrew",
+	"hi": "Hindi", "hin": "Hindi", "hindi": "Hindi",
+	"th": "Thai", "tha": "Thai", "thai": "Thai",
+	"cs": "Czech", "ces": "Czech", "cze": "Czech", "czech": "Czech",
+	"hu": "Hungarian", "hun": "Hungarian", "hungarian": "Hungarian",
+	"ro": "Romanian", "ron": "Romanian", "rum": "Romanian", "romanian": "Romanian",
+	"el": "Greek", "ell": "Greek", "gre": "Greek", "greek": "Greek",
+	"uk": "Ukrainian", "ukr": "Ukrainian", "ukrainian": "Ukrainian",
+	"vi": "Vietnamese", "vie": "Vietnamese", "vietnamese": "Vietnamese",
+	"id": "Indonesian", "ind": "Indonesian", "indonesian": "Indonesian",
+	"ms": "Malay", "msa": "Malay", "may": "Malay", "malay": "Malay",
+	"bg": "Bulgarian", "bul": "Bulgarian", "bulgarian": "Bulgarian",
+	"hr": "Croatian", "hrv": "Croatian", "croatian": "Croatian",
+	"sr": "Serbian", "srp": "Serbian", "serbian": "Serbian",
+	"sk": "Slovak", "slk": "Slovak", "slo": "Slovak", "slovak": "Slovak",
+	"sl": "Slovenian", "slv": "Slovenian", "slovenian": "Slovenian",
+	"et": "Estonian", "est": "Estonian", "estonian": "Estonian",
+	"lv": "Latvian", "lav": "Latvian", "latvian": "Latvian",
+	"lt": "Lithuanian", "lit": "Lithuanian", "lithuanian": "Lithuanian",
+	"fa": "Persian", "fas": "Persian", "per": "Persian", "persian": "Persian",
+}
+
+// maxLanguages bounds what a single row can declare: a page that lists every
+// audio track of a movie must not turn one release into a long attribute list.
+const maxLanguages = 8
+
+// parseLanguages turns the text of a definition row field into English names.
+// Sites separate them with a comma, a slash or a semicolon ("English, French",
+// "ITA/ENG"), and definitions may write codes or names. Unknown tokens are
+// dropped: the client ignores them anyway, and a wrong name is worse than no
+// attribute.
+func parseLanguages(values ...string) []string {
+	seen := make(map[string]bool, 4)
+	out := make([]string, 0, 4)
+	for _, raw := range values {
+		for _, token := range strings.FieldsFunc(raw, func(r rune) bool {
+			return r == ',' || r == ';' || r == '/' || r == '|'
+		}) {
+			name := languageNames[strings.ToLower(strings.TrimSpace(token))]
+			if name == "" || seen[name] {
+				continue
+			}
+			seen[name] = true
+			out = append(out, name)
+			if len(out) == maxLanguages {
+				return out
+			}
+		}
+	}
+	return out
 }
