@@ -83,11 +83,16 @@ func (s *Server) handleProwlarrIndexerList(w http.ResponseWriter, r *http.Reques
 // clients that read /api/v1/indexerstatus (a dashboard, gextto) use it to skip
 // a source that is paused or failing instead of waiting for a timeout.
 type prowlarrIndexerStatus struct {
-	IndexerID         int64  `json:"indexerId"`
-	DisabledTill      string `json:"disabledTill,omitempty"`
+	IndexerID    int64  `json:"indexerId"`
+	DisabledTill string `json:"disabledTill,omitempty"`
+	// MostRecentFailure and InitialFailure are timestamps in Prowlarr's
+	// resource, so they stay timestamps here too.
 	MostRecentFailure string `json:"mostRecentFailure,omitempty"`
 	InitialFailure    string `json:"initialFailure,omitempty"`
-	EscalationLevel   int    `json:"escalationLevel"`
+	// Message is an indexarr extension: the reason of the last failure, which
+	// Prowlarr only writes in its own log. A client that does not know it
+	// ignores it.
+	Message string `json:"message,omitempty"`
 }
 
 // handleProwlarrIndexerStatus lists the sources with a failure entry, exactly
@@ -118,7 +123,7 @@ func (s *Server) handleProwlarrIndexerStatus(w http.ResponseWriter, r *http.Requ
 		if s.manager != nil {
 			if state.Circuit == string(engine.BreakerOpen) || s.manager.CircuitState(indexer.ID, indexer.Slug) == engine.BreakerOpen {
 				calm = false
-				entry.MostRecentFailure = "paused after repeated failures"
+				entry.Message = "paused after repeated failures"
 				if until, ok := s.manager.CircuitOpenUntil(indexer.ID, indexer.Slug); ok && entry.DisabledTill == "" {
 					entry.DisabledTill = until.UTC().Format(time.RFC3339)
 				}
@@ -126,9 +131,12 @@ func (s *Server) handleProwlarrIndexerStatus(w http.ResponseWriter, r *http.Requ
 		}
 		if message := strings.TrimSpace(state.LastError); message != "" {
 			calm = false
-			entry.MostRecentFailure = message
+			entry.Message = message
 		}
 		if !calm {
+			if !state.UpdatedAt.IsZero() {
+				entry.MostRecentFailure = state.UpdatedAt.UTC().Format(time.RFC3339)
+			}
 			out = append(out, entry)
 		}
 	}

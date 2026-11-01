@@ -162,8 +162,13 @@ search:
 	if rows[0].IndexerID != failing {
 		t.Fatalf("indexerId = %d, want %d (healthy = %d)", rows[0].IndexerID, failing, healthy)
 	}
-	if rows[0].MostRecentFailure != "search returned HTTP 503" {
-		t.Errorf("mostRecentFailure = %q", rows[0].MostRecentFailure)
+	if rows[0].Message != "search returned HTTP 503" {
+		t.Errorf("message = %q", rows[0].Message)
+	}
+	// Prowlarr's resource keeps timestamps in these two fields, so a client
+	// that parses them as dates must not receive a sentence.
+	if _, err := time.Parse(time.RFC3339, rows[0].MostRecentFailure); err != nil {
+		t.Errorf("mostRecentFailure = %q, want a timestamp", rows[0].MostRecentFailure)
 	}
 	if rows[0].DisabledTill != until.Format(time.RFC3339) {
 		t.Errorf("disabledTill = %q, want %q", rows[0].DisabledTill, until.Format(time.RFC3339))

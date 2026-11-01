@@ -186,7 +186,8 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
   Prowlarr-compatible endpoints that dashboards (Homepage, Organizr) read:
   `/api/v1/system/status`, `/api/v1/health`, `/api/v1/indexer`,
   `/api/v1/indexer/{id}` and `/api/v1/indexerstatus` (the sources with a
-  failure entry, with the time the next attempt is allowed).
+  failure entry, in Prowlarr's shape: the timestamps and, in the extra
+  `message` field, the reason, since Prowlarr keeps it only in its log).
 
 ### Web interface
 
