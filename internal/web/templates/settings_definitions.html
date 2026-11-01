@@ -27,7 +27,7 @@
         <td>{{if .Family}}<span class="chip">{{.Family}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
         <td>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</td>
         <td><span class="chip {{stateClass .State}}">{{stateLabel .State}}</span></td>
-        <td>{{if .Builtin}}{{T "definitions.catalogOrigin"}}{{else}}{{T "definitions.localOrigin"}}{{end}}</td>
+        <td>{{if .Builtin}}{{T "definitions.catalogOrigin"}}{{else if .Remote}}{{T "definitions.remoteOrigin"}}{{else}}{{T "definitions.localOrigin"}}{{end}}</td>
         <td>{{if .HashShort}}<code title="{{.Hash}}">{{.HashShort}}</code>{{else}}<span class="muted">—</span>{{end}}</td>
         <td>{{date .UpdatedAt}}</td>
         <td>{{if .Indexers}}<a href="/definitions/{{.ID}}">{{.Indexers}}</a>{{else}}0{{end}}</td>

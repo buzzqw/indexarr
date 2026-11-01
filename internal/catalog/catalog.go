@@ -53,6 +53,10 @@ const (
 	OriginBuiltin = "builtin"
 	// OriginLocal marks a definition created or edited by the user.
 	OriginLocal = "local"
+	// OriginRemote marks a definition read from a catalog address with
+	// Import: the embedded catalog must never overwrite it, otherwise an
+	// update would be undone by the next start.
+	OriginRemote = "remote"
 )
 
 var (
@@ -170,7 +174,7 @@ func Sync(ctx context.Context, st *store.Store) (int, error) {
 	written := 0
 	for _, entry := range entries {
 		if current, ok := byID[entry.ID]; ok {
-			if current.Origin == OriginLocal {
+			if current.Origin == OriginLocal || current.Origin == OriginRemote {
 				continue
 			}
 			if current.Hash == entry.Hash {

@@ -49,7 +49,11 @@ type definitionRow struct {
 	Indexers   int
 	ParseError string
 	Builtin    bool
-	Derived    bool
+	// Remote marks a definition read from a catalog address (origin
+	// "remote"): it is not the operator's own document, but the embedded
+	// catalog does not overwrite it either.
+	Remote  bool
+	Derived bool
 }
 
 type definitionsPage struct {
@@ -62,6 +66,25 @@ func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
 	data := definitionsPage{base: s.newBaseT(r, "definitions.title", "definitions")}
 	data.CatalogRows, data.LocalRows = s.definitionRows(r.Context(), &data.base)
 	s.render(w, r, "definitions", data, http.StatusOK)
+}
+
+// definitionImport reads a catalog from an address (index.json plus
+// definitions/<id>.yaml) and stores its definitions, so a site fix reaches this
+// installation without a new release. The operator's own definitions are never
+// touched; the embedded catalog does not overwrite what this action stored.
+func (s *Server) definitionImport(w http.ResponseWriter, r *http.Request) {
+	raw := strings.TrimSpace(r.FormValue("url"))
+	result, err := catalog.Import(r.Context(), s.store, raw)
+	if err != nil {
+		s.log.Warn("import remote catalog", "component", "indexarr", "subsystem", "web", "error", err)
+		redirect(w, r, "/definitions", "", s.translate(r, "definitions.remoteFailed", err.Error()))
+		return
+	}
+	s.log.Info("remote catalog imported",
+		"component", "indexarr", "subsystem", "web",
+		"written", result.Written, "unchanged", result.Unchanged, "problems", len(result.Problems))
+	redirect(w, r, "/definitions",
+		s.translate(r, "definitions.remoteDone", result.Written, result.Unchanged, len(result.Problems)), "")
 }
 
 // definitionRows builds the catalog/local tables used by the old Definitions
@@ -85,6 +108,11 @@ func (s *Server) definitionRows(ctx context.Context, data *base) ([]definitionRo
 	for _, def := range defs {
 		seen[def.ID] = true
 		row := s.definitionRowFromStore(def, counts[def.ID])
+		if def.Origin == catalog.OriginRemote {
+			row.Remote = true
+			localRows = append(localRows, row)
+			continue
+		}
 		if def.Origin == catalog.OriginBuiltin {
 			row.Builtin = true
 			catalogRows = append(catalogRows, row)

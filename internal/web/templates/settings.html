@@ -948,6 +948,18 @@
       </div>
     </div>
     <p class="help">{{T "definitions.advancedHelp"}}</p>
+    <div class="panel-head"><h2>{{T "definitions.remoteTitle"}}</h2><span class="muted">{{T "definitions.remoteHint"}}</span></div>
+    <p class="help">{{T "definitions.remoteHelp"}}</p>
+    <form class="form" method="post" action="/definitions/import">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <div class="field grow">
+        <label for="remote_catalog_url" title="{{T "tip.definitionsRemote"}}">{{T "definitions.remoteURL"}}</label>
+        <input id="remote_catalog_url" name="url" type="url" required value="" placeholder="{{T "definitions.remoteURLPlaceholder"}}" title="{{T "tip.definitionsRemote"}}">
+      </div>
+      <div class="actions form-actions">
+        <button class="btn" type="submit" title="{{T "tip.definitionsRemote"}}">{{T "definitions.remoteAction"}}</button>
+      </div>
+    </form>
     <div class="panel-head"><h2>{{T "definitions.catalog"}}</h2><span class="muted">{{T "definitions.catalogHint"}}</span></div>
     {{template "definition_table" .CatalogRows}}
     <div class="panel-head"><h2>{{T "definitions.local"}}</h2><span class="muted">{{T "definitions.localHint"}}</span></div>

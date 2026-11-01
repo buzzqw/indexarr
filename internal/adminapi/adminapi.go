@@ -95,6 +95,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/v2/catalog", s.handleCatalogList)
 	mux.HandleFunc("POST /api/v2/catalog/sync", s.handleCatalogSync)
+	mux.HandleFunc("POST /api/v2/catalog/import", s.handleCatalogImport)
 
 	mux.HandleFunc("GET /api/v2/indexers", s.handleIndexerList)
 	mux.HandleFunc("POST /api/v2/indexers", s.handleIndexerCreate)

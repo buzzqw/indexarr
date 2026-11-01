@@ -504,6 +504,9 @@ func (s *Store) migrate() error {
 	// The indexer protocol CHECK must accept ed2k before any eD2k indexer can
 	// be created. It is a table rebuild, so it runs after every additive
 	// migration and before the indexes.
+	if err := s.applyRemoteOriginMigration(context.Background()); err != nil {
+		return err
+	}
 	if err := s.applyEd2kProtocolMigration(context.Background()); err != nil {
 		return err
 	}

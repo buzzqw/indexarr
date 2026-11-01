@@ -183,7 +183,18 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
   `status=healthy|failing|unknown` (the same health model as the web UI) and
   `test=passed|failed` (the last health check). `status=enabled|disabled`
   keeps working.
+- **Per-request override of the saved "freeleech only"**: `freeleech=0` (or
+  `ignore_filters=1`) returns everything for that call, `freeleech=1` asks for
+  free releases even when the source is not configured for it, and the source
+  setting stays untouched. `freeleech=1` has no effect on a definition that
+  cannot mark free releases: returning nothing would be a lie, not a filter.
 - Multiple API keys, per-key revocation and per-key rate limit.
+- **Remote catalog**: *Settings → Advanced → Definitions* (and
+  `POST /api/v2/catalog/import`) reads a catalog directory from an address —
+  `index.json` plus `definitions/<id>.yaml` — validates every document and
+  stores the ones that changed. A site fix no longer needs a new release; the
+  definitions you created or edited are never touched, and the embedded
+  catalog never overwrites what the import wrote.
 - Administrative JSON API on `/api/v2/`, with the read-only
   Prowlarr-compatible endpoints that dashboards (Homepage, Organizr) read:
   `/api/v1/system/status`, `/api/v1/health`, `/api/v1/indexer`,
@@ -230,7 +241,8 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
   vault.
 - Query/grab limits, minimum seeders, seed ratio and seed time.
 - Priority, tags, interval and User-Agent per source.
-- **Freeleech only** when the definition supports it.
+- **Freeleech only** when the definition supports it; a client can override it
+  for a single Torznab request (`freeleech=0|1`, `ignore_filters=1`).
 - **Import cookie** from the Firefox profile for sites that bind the session to
   the browser, such as IPTorrents.
 

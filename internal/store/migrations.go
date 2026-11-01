@@ -64,9 +64,15 @@ const (
 	// behaves exactly as before; a site whose first answer is slow can get a
 	// longer window without slowing every other source.
 	indexarr2IndexerTimeoutVersion = 23
+	// indexarr2RemoteOriginVersion widens the definitions.origin CHECK to
+	// 'remote', the origin of a definition read from a catalog address: the
+	// embedded catalog must not overwrite it, otherwise an update without a
+	// new release would be undone by the next start. SQLite cannot alter a
+	// CHECK constraint in place, so the table is rebuilt.
+	indexarr2RemoteOriginVersion = 24
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2IndexerTimeoutVersion
+	latestSchemaVersion = indexarr2RemoteOriginVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -496,6 +502,76 @@ func (s *Store) applyEd2kProtocolMigration(ctx context.Context) error {
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit migration %d: %w", indexarr2Ed2kProtocolVersion, err)
+	}
+	return nil
+}
+
+// applyRemoteOriginMigration rebuilds the definitions table so its origin
+// CHECK accepts 'remote'. It follows applyEd2kProtocolMigration: one dedicated
+// connection, foreign keys disabled, a new table filled from the old one and
+// renamed over it, so the indexers that reference definitions keep pointing at
+// the same rows.
+func (s *Store) applyRemoteOriginMigration(ctx context.Context) error {
+	applied, err := s.migrationApplied(ctx, indexarr2RemoteOriginVersion)
+	if err != nil {
+		return err
+	}
+	if applied {
+		return nil
+	}
+	conn, err := s.db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("begin migration %d: %w", indexarr2RemoteOriginVersion, err)
+	}
+	defer conn.Close()
+	if _, err := conn.ExecContext(ctx, `PRAGMA foreign_keys=OFF`); err != nil {
+		return fmt.Errorf("disable foreign keys: %w", err)
+	}
+	defer func() {
+		_, _ = conn.ExecContext(context.WithoutCancel(ctx), `PRAGMA foreign_keys=ON`)
+	}()
+
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin migration %d: %w", indexarr2RemoteOriginVersion, err)
+	}
+	defer tx.Rollback()
+
+	statements := []string{
+		`CREATE TABLE definitions_new (
+			id             TEXT PRIMARY KEY,
+			schema_version INTEGER NOT NULL DEFAULT 1,
+			family         TEXT    NOT NULL DEFAULT '',
+			state          TEXT    NOT NULL DEFAULT 'bozza'
+				CHECK (state IN ('bozza', 'verificata', 'stabile', 'degradata')),
+			origin         TEXT    NOT NULL DEFAULT 'local'
+				CHECK (origin IN ('builtin', 'catalog', 'local', 'remote')),
+			author         TEXT    NOT NULL DEFAULT '',
+			body           TEXT    NOT NULL,
+			hash           TEXT    NOT NULL,
+			updated_at     INTEGER NOT NULL DEFAULT 0
+		)`,
+		`INSERT INTO definitions_new(id, schema_version, family, state, origin,
+			author, body, hash, updated_at)
+		 SELECT id, schema_version, family, state, origin, author, body, hash,
+			updated_at FROM definitions`,
+		`DROP TABLE definitions`,
+		`ALTER TABLE definitions_new RENAME TO definitions`,
+		`CREATE INDEX IF NOT EXISTS definitions_family ON definitions(family)`,
+		`CREATE INDEX IF NOT EXISTS definitions_state ON definitions(state)`,
+	}
+	for _, statement := range statements {
+		if _, err := tx.ExecContext(ctx, statement); err != nil {
+			return fmt.Errorf("migration %d (%s): %w", indexarr2RemoteOriginVersion, "remote origin", err)
+		}
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO schema_migrations(version, name, applied_at) VALUES(?, ?, ?)`,
+		indexarr2RemoteOriginVersion, "remote origin", time.Now().Unix()); err != nil {
+		return fmt.Errorf("record migration %d: %w", indexarr2RemoteOriginVersion, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit migration %d: %w", indexarr2RemoteOriginVersion, err)
 	}
 	return nil
 }
