@@ -615,6 +615,15 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 25 repairs the titles a site handed out with the wrong
+	// charset, together with the search title and the magnet name built from
+	// them: the bytes are all there, only read as Latin-1/CP1252 (see
+	// textutil.RepairDoubleEncoded). Only the rows the repair changes are
+	// touched.
+	if err := s.applyMigration(context.Background(), indexarr2TitleMojibakeVersion,
+		"double encoded titles", repairDoubleEncodedTitles); err != nil {
+		return err
+	}
 	// Migration 23 gives one indexer its own request timeout. The fetch
 	// timeout is shared, so before this the only way to give a slow site a
 	// longer window was to slow down every source; zero keeps the global one.

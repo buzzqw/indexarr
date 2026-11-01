@@ -149,6 +149,11 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		}
 
 		item := raw
+		// A site that read its own page with the wrong charset hands out a
+		// title whose bytes are all there but read as Latin-1 («Ð‘Ð¾Ð»…» for
+		// «Боль…»). Repair it once, before the release key, the search title
+		// and the magnet name are built from it, so every copy agrees.
+		item.Title = textutil.RepairDoubleEncoded(item.Title)
 		if item.Published.IsZero() {
 			// A feed item without a date is not discarded: its first sighting
 			// is the publication date indexarr can defend.

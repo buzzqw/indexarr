@@ -949,6 +949,10 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			return stored, ctx.Err()
 		}
 		item := raw
+		// The same repair as the full run: a title that a site handed out
+		// double encoded must not reach the cache, the search title or the
+		// magnet name.
+		item.Title = textutil.RepairDoubleEncoded(item.Title)
 		usenet := item.Protocol == engine.ProtocolUsenet ||
 			(strings.EqualFold(strings.TrimSpace(indexer.Protocol), "usenet") && item.Protocol == "")
 		hash := itemHash(item)

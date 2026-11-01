@@ -5,9 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/buzzqw/indexarr/internal/textutil"
 )
 
 // indexarr2FoundationVersion is the first numbered migration. The legacy
@@ -70,9 +73,13 @@ const (
 	// new release would be undone by the next start. SQLite cannot alter a
 	// CHECK constraint in place, so the table is rebuilt.
 	indexarr2RemoteOriginVersion = 24
+	// indexarr2TitleMojibakeVersion repairs the release titles a site handed
+	// out with the UTF-8 bytes read as Latin-1/CP1252 (LimeTorrents does it):
+	// the bytes are all there, only read with the wrong charset.
+	indexarr2TitleMojibakeVersion = 25
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2RemoteOriginVersion
+	latestSchemaVersion = indexarr2TitleMojibakeVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -574,4 +581,87 @@ func (s *Store) applyRemoteOriginMigration(ctx context.Context) error {
 		return fmt.Errorf("commit migration %d: %w", indexarr2RemoteOriginVersion, err)
 	}
 	return nil
+}
+
+// repairDoubleEncodedTitles rewrites the release titles a site served with the
+// wrong charset, and the search title and magnet name built from them, so a
+// client that adds the release by magnet shows the readable name before the
+// metadata arrives. Only a row the repair actually changes is touched; a row
+// whose dedup key was built from its title is left alone, because repairing the
+// title would change that key and the release would come back as a new one on
+// the next sighting.
+func repairDoubleEncodedTitles(tx *sql.Tx) error {
+	rows, err := tx.Query(`
+		SELECT id, title, search_title, magnet
+		FROM releases
+		WHERE dedup_key NOT LIKE 'title:%' AND title GLOB '*[^ -~]*'`)
+	if err != nil {
+		return err
+	}
+	type repair struct {
+		id     int64
+		title  string
+		search string
+		magnet string
+	}
+	var repairs []repair
+	for rows.Next() {
+		var id int64
+		var title, search, magnet string
+		if err := rows.Scan(&id, &title, &search, &magnet); err != nil {
+			rows.Close()
+			return err
+		}
+		fixed := textutil.RepairDoubleEncoded(title)
+		if fixed == title {
+			continue
+		}
+		if search != "" {
+			search = textutil.NormalizeTitle(fixed)
+		}
+		repairs = append(repairs, repair{
+			id:     id,
+			title:  fixed,
+			search: search,
+			magnet: repairMagnetName(magnet, title, fixed),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	for _, item := range repairs {
+		if _, err := tx.Exec(`UPDATE releases SET title = ?, search_title = ?, magnet = ? WHERE id = ?`,
+			item.title, item.search, item.magnet, item.id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// repairMagnetName replaces the display name of a magnet link when it is the
+// broken title, and leaves every other parameter byte for byte as it is.
+func repairMagnetName(magnet, oldTitle, newTitle string) string {
+	lower := strings.ToLower(magnet)
+	if !strings.HasPrefix(lower, "magnet:") {
+		return magnet
+	}
+	for _, prefix := range []string{"?dn=", "&dn="} {
+		at := strings.Index(lower, prefix)
+		if at < 0 {
+			continue
+		}
+		start := at + len(prefix)
+		value := magnet[start:]
+		if end := strings.IndexByte(value, '&'); end >= 0 {
+			value = value[:end]
+		}
+		decoded, err := url.QueryUnescape(value)
+		if err != nil || strings.TrimSpace(decoded) != strings.TrimSpace(oldTitle) {
+			return magnet
+		}
+		return magnet[:start] + url.QueryEscape(newTitle) + magnet[start+len(value):]
+	}
+	return magnet
 }
