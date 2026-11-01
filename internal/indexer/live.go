@@ -71,6 +71,9 @@ type LiveQuery struct {
 	// this to share one wait budget between them. Other clients send one
 	// query and keep the full window.
 	App string
+	// FreeleechOnly overrides the source's saved "freeleech only" for this
+	// request: nil keeps it, false ignores it, true asks for free releases.
+	FreeleechOnly *bool
 }
 
 // LiveIndexerResult is what one indexer did during a live search. Mode is the
@@ -764,21 +767,22 @@ func planLiveSearch(caps engine.Capabilities, req LiveQuery) (livePlan, bool, st
 	plan := livePlan{
 		mode: mode,
 		request: engine.SearchRequest{
-			Mode:        mode,
-			Query:       query,
-			Season:      req.Season,
-			Episode:     req.Episode,
-			Year:        req.Year,
-			IMDbID:      strings.TrimSpace(req.IMDbID),
-			TMDbID:      strings.TrimSpace(req.TMDbID),
-			TVDbID:      strings.TrimSpace(req.TVDbID),
-			Artist:      strings.TrimSpace(req.Artist),
-			Album:       strings.TrimSpace(req.Album),
-			Author:      strings.TrimSpace(req.Author),
-			Title:       strings.TrimSpace(req.Title),
-			Categories:  categories,
-			Limit:       req.Limit,
-			SkipDetails: true,
+			Mode:          mode,
+			Query:         query,
+			Season:        req.Season,
+			Episode:       req.Episode,
+			Year:          req.Year,
+			IMDbID:        strings.TrimSpace(req.IMDbID),
+			TMDbID:        strings.TrimSpace(req.TMDbID),
+			TVDbID:        strings.TrimSpace(req.TVDbID),
+			Artist:        strings.TrimSpace(req.Artist),
+			Album:         strings.TrimSpace(req.Album),
+			Author:        strings.TrimSpace(req.Author),
+			Title:         strings.TrimSpace(req.Title),
+			Categories:    categories,
+			Limit:         req.Limit,
+			SkipDetails:   true,
+			FreeleechOnly: req.FreeleechOnly,
 		},
 	}
 	if plan.request.Limit <= 0 {

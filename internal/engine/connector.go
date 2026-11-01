@@ -191,6 +191,14 @@ type SearchRequest struct {
 	// FirstPageOnly stops after the first result page. The live fan-out uses
 	// it for uploader lists, which are not query-relevant and must be cheap.
 	FirstPageOnly bool
+	// FreeleechOnly overrides the per-indexer "freeleech only" setting for
+	// this request only. Nil keeps the setting; false ignores it, which is
+	// what a client asks when it wants the whole site even though the source
+	// is configured for freeleech; true asks for free releases even when the
+	// setting is off. An override that asks for freeleech has no effect on a
+	// definition that cannot mark it: returning nothing would be a lie, not
+	// a filter.
+	FreeleechOnly *bool
 }
 
 // LatestRequest asks for recent releases, optionally in specific categories.

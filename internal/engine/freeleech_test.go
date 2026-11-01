@@ -104,3 +104,47 @@ func TestFreeleechOnlyDropsRowsWithoutTheMarker(t *testing.T) {
 		t.Error("site-side freeleech filter must not drop rows")
 	}
 }
+
+// TestFreeleechOverridePerRequest is the client-side escape hatch of a saved
+// filter: with the source configured "freeleech only", one API call can ask
+// for everything; the other way round, one call can ask for free releases
+// only. A definition that cannot mark them is never emptied.
+func TestFreeleechOverridePerRequest(t *testing.T) {
+	def := loadTestDefinition(t, "pagination.yaml", "http://127.0.0.1:1")
+	def.Search.Response.Fields["freeleech"] = definition.Field{Selector: definition.Selector{".free"}}
+	connector, err := NewDefinitionConnector(DefinitionConfig{
+		Definition: def,
+		Settings:   map[string]string{"freeleech": "true"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fields := def.Search.Response.Fields
+	paid, ok, err := connector.normalizeRow(map[string]string{
+		"title":    "Paid release",
+		"details":  "/details/2",
+		"download": "/download/2.torrent",
+	}, nil)
+	if err != nil || !ok {
+		t.Fatalf("normalizeRow = %+v, ok=%v, err=%v", paid, ok, err)
+	}
+
+	off := false
+	on := true
+	if connector.keepsFreeleechRequest(paid, fields, nil) {
+		t.Error("the saved setting must still drop a paid row")
+	}
+	if !connector.keepsFreeleechRequest(paid, fields, &off) {
+		t.Error("freeleech=0 must ignore the saved setting")
+	}
+	if connector.keepsFreeleechRequest(paid, fields, &on) {
+		t.Error("freeleech=1 must drop a paid row")
+	}
+
+	// A definition that does not mark freeleech cannot honour freeleech=1:
+	// keeping the rows is the only honest answer.
+	delete(fields, "freeleech")
+	if !connector.keepsFreeleechRequest(paid, fields, &on) {
+		t.Error("freeleech=1 emptied a site that cannot mark free releases")
+	}
+}

@@ -830,7 +830,7 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 				return nil, err
 			}
 			observeNormalize(ctx, NormalizeObservation{OK: ok})
-			if ok && c.keepsFreeleech(item, c.def.Search.Response.Fields) {
+			if ok && c.keepsFreeleechRequest(item, c.def.Search.Response.Fields, req.FreeleechOnly) {
 				annotateQuery(&item, req)
 				items = append(items, item)
 			}
@@ -1840,6 +1840,23 @@ func (c *DefinitionConnector) freeleechOnly(fields map[string]definition.Field) 
 // the response described by fields.
 func (c *DefinitionConnector) keepsFreeleech(item Item, fields map[string]definition.Field) bool {
 	return !c.freeleechOnly(fields) || item.Freeleech
+}
+
+// keepsFreeleechRequest is keepsFreeleech with the per-request override of a
+// client. Ignoring the saved choice always works; asking for freeleech works
+// only when the response marks it, because otherwise every row would be
+// dropped for a reason the site never stated.
+func (c *DefinitionConnector) keepsFreeleechRequest(item Item, fields map[string]definition.Field, override *bool) bool {
+	if override == nil {
+		return c.keepsFreeleech(item, fields)
+	}
+	if !*override {
+		return true
+	}
+	if _, marks := fields["freeleech"]; !marks {
+		return true
+	}
+	return item.Freeleech
 }
 
 func (c *DefinitionConnector) buildCapabilities() Capabilities {

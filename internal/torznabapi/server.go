@@ -305,6 +305,11 @@ type searchOutcome struct {
 func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, settings store.Settings, apiKey, base, mode, app string) searchOutcome {
 	out := searchOutcome{Status: http.StatusOK, Mode: mode,
 		Query: strings.TrimSpace(query.Get("q"))}
+	// A client can override the source's saved "freeleech only" for one
+	// request: Prowlarr's saved filters applied to every API call are a
+	// recurring complaint, and duplicating an indexer to get one unfiltered
+	// search is not a workaround anyone should need.
+	freeleech := freeleechOverride(query)
 	aggregate := isAggregateSlug(slug)
 	var selection releaseSelection
 	var err error
@@ -395,7 +400,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			wait = timeout
 		}
 		waitCtx, cancel := context.WithTimeout(ctx, wait)
-		s.liveWait(waitCtx, liveQueryFor(mode, filter, app), wait)
+		s.liveWait(waitCtx, liveQueryFor(mode, filter, app, freeleech), wait)
 		cancel()
 	}
 	// The aggregated endpoint fuses a bounded window below and replaces the
@@ -435,7 +440,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			wait = timeout
 		}
 		liveCtx, cancel := context.WithTimeout(ctx, wait)
-		liveResult, liveErr := s.liveSearch(liveCtx, liveQueryFor(mode, filter, app))
+		liveResult, liveErr := s.liveSearch(liveCtx, liveQueryFor(mode, filter, app, freeleech))
 		cancel()
 		out.Live = liveResult.Indexers
 		for _, result := range liveResult.Indexers {
@@ -815,25 +820,52 @@ func liveQueryEligible(mode string, filter store.Filter) bool {
 // liveQueryFor builds the manager query from the app-facing filter. The first
 // page and the offset pages must use exactly the same fields so the second
 // page finds the workers of the first.
-func liveQueryFor(mode string, filter store.Filter, app string) indexer.LiveQuery {
+func liveQueryFor(mode string, filter store.Filter, app string, freeleech *bool) indexer.LiveQuery {
 	return indexer.LiveQuery{
-		Mode:       mode,
-		Query:      filter.Query,
-		Season:     filter.Season,
-		Episode:    filter.Episode,
-		Year:       filter.Year,
-		IMDbID:     filter.IMDbID,
-		TMDbID:     filter.TMDbID,
-		TVDbID:     filter.TVDbID,
-		Artist:     filter.Artist,
-		Album:      filter.Album,
-		Author:     filter.Author,
-		Title:      filter.Title,
-		Categories: standardCategoryIDs(filter.Categories),
-		Limit:      filter.Limit,
-		IndexerIDs: filter.IndexerIDs,
-		App:        app,
+		Mode:          mode,
+		Query:         filter.Query,
+		Season:        filter.Season,
+		Episode:       filter.Episode,
+		Year:          filter.Year,
+		IMDbID:        filter.IMDbID,
+		TMDbID:        filter.TMDbID,
+		TVDbID:        filter.TVDbID,
+		Artist:        filter.Artist,
+		Album:         filter.Album,
+		Author:        filter.Author,
+		Title:         filter.Title,
+		Categories:    standardCategoryIDs(filter.Categories),
+		Limit:         filter.Limit,
+		IndexerIDs:    filter.IndexerIDs,
+		App:           app,
+		FreeleechOnly: freeleech,
 	}
+}
+
+// freeleechOverride reads the per-request override of a source's saved
+// "freeleech only":
+//
+//	freeleech=0        ignore the saved choice for this request
+//	freeleech=1        ask for free releases even if the source does not
+//	ignore_filters=1   same as freeleech=0, the wording Prowlarr users asked for
+//
+// An unknown value is ignored instead of failing the search: a client that
+// sends something else must still receive its results.
+func freeleechOverride(query url.Values) *bool {
+	switch strings.ToLower(strings.TrimSpace(query.Get("freeleech"))) {
+	case "0", "false", "no", "off":
+		off := false
+		return &off
+	case "1", "true", "yes", "on":
+		on := true
+		return &on
+	}
+	switch strings.ToLower(strings.TrimSpace(query.Get("ignore_filters"))) {
+	case "1", "true", "yes", "on":
+		off := false
+		return &off
+	}
+	return nil
 }
 
 // intersectIndexerIDs keeps the request selection when present, otherwise the
