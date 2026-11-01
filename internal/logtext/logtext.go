@@ -48,10 +48,13 @@ var rules = []struct {
 	{Blocked, []string{"cloudflare", "challenge", "just a moment", "ddos-guard", "captcha", "403", "forbidden", "flaresolverr"}},
 	{RateLimit, []string{"429", "too many requests", "rate limit", "grab limit", "query limit"}},
 	{Auth, []string{"401", "unauthorized", "login", "credential", "password", "not logged", "session expired", "authentication"}},
+	// Before Timeout: the resolver reports its own deadline as an I/O timeout,
+	// and the operator looking for "too slow" would miss a name that does not
+	// resolve.
+	{DNS, []string{"no such host", "server misbehaving", "name resolution", "lookup "}},
 	{Timeout, []string{"deadline exceeded", "timeout", "timed out"}},
 	{Canceled, []string{"context canceled", "operation was canceled"}},
 	{Refused, []string{"connection refused"}},
-	{DNS, []string{"no such host", "server misbehaving", "name resolution", "lookup "}},
 	{TLS, []string{"x509", "certificate", "tls:", "tls handshake"}},
 	{Reset, []string{"connection reset", "broken pipe", "unexpected eof", "eof", "connection closed", "network is unreachable", "no route to host"}},
 	{Server, []string{"500", "502", "503", "504", "520", "521", "522", "523", "524", "bad gateway", "service unavailable", "internal server error", "gateway"}},

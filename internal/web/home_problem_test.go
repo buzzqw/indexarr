@@ -30,6 +30,24 @@ func TestFloodErrorsHaveTheirOwnProblem(t *testing.T) {
 	}
 }
 
+// The dashboard uses the same classifier as the log: a cause that has its own
+// sentence there must not read as "Unexpected error" in Home.
+func TestCausesUseTheSameClassifierAsTheLog(t *testing.T) {
+	cases := map[string]string{
+		"indexer torrentgalaxy-littlemouse: fetch: request failed: engine: rate limited by indexer":          "home.problem.rateLimit",
+		"indexer extto: fetch: request failed: engine: resolve \"extto.org\": lookup extto.org: i/o timeout": "home.problem.dns",
+		"definition \"bitsearch\": search returned HTTP 500":                                                 "home.problem.http",
+		"definition \"mircrew\": search: parse: no rows matched selector":                                    "home.problem.parse",
+		"indexer test: request blocked by a cloudflare challenge: HTTP 403":                                  "home.problem.cloudflare",
+		"indexer test: fetch: request failed: engine: circuit breaker open":                                  "home.problem.circuit",
+	}
+	for message, want := range cases {
+		if got := explainIndexerError(message, ""); got != want {
+			t.Errorf("explainIndexerError(%q) = %q, want %q", message, got, want)
+		}
+	}
+}
+
 // A concrete cause without a %d must not carry the failure count: the Home
 // template passes it to Sprintf only when Count is non-zero.
 func TestConcreteProblemCausesDoNotCarryACount(t *testing.T) {

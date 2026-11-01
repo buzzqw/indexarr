@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -232,7 +233,11 @@ func Assess(in Input, thresholds Thresholds) Assessment {
 		hard = true
 		assessment.Reasons = append(assessment.Reasons, Reason{Code: ReasonCircuit})
 	}
-	if strings.TrimSpace(in.LastError) != "" {
+	// A stored error is the current state only while nothing newer succeeded.
+	// The health check can clear it at the source; this keeps a status that
+	// was written before the fix (or by a path that does not write the state)
+	// from showing a site as broken while its newest execution was clean.
+	if strings.TrimSpace(in.LastError) != "" && !latestCleanOutcome(outcomes) {
 		hard = true
 		assessment.Reasons = append(assessment.Reasons, Reason{Code: ReasonLastError})
 	}
@@ -444,6 +449,24 @@ func outcomeFailed(outcome Outcome) bool {
 	return strings.EqualFold(strings.TrimSpace(outcome.Status), "error")
 }
 
+// latestCleanOutcome reports whether the newest execution that actually
+// contacted the site says the site answered. A search is left out because it
+// can be served from the catalogue without asking the site, and a canceled or
+// paused execution says nothing either way, so neither can confirm or
+// contradict a stored error.
+func latestCleanOutcome(outcomes []Outcome) bool {
+	if len(outcomes) == 0 {
+		return false
+	}
+	latest := outcomes[0]
+	switch strings.ToLower(strings.TrimSpace(latest.Kind)) {
+	case "run", "latest", "health":
+	default:
+		return false
+	}
+	return !outcomeFailed(latest) && !outcomeCanceled(latest) && !outcomePaused(latest)
+}
+
 func outcomeCanceled(outcome Outcome) bool {
 	return strings.EqualFold(strings.TrimSpace(outcome.Status), "canceled")
 }
@@ -537,6 +560,12 @@ func New(cfg Config) (*Checker, error) {
 
 // RunOnce checks every enabled indexer once. Individual failures are reported
 // in the results and do not abort the pass.
+//
+// The sources that share a definition are checked one after the other, not at
+// the same time: a definition is one site, and several of its filters (the
+// TorrentGalaxy uploaders are thirteen) probed together answer each other with
+// a rate limit that then looks like a fault. Different definitions still run
+// in parallel, three at a time.
 func (c *Checker) RunOnce(ctx context.Context) ([]Result, error) {
 	indexers, err := c.store.ListIndexers(ctx)
 	if err != nil {
@@ -547,17 +576,22 @@ func (c *Checker) RunOnce(ctx context.Context) ([]Result, error) {
 	results := make([]Result, len(indexers))
 	sem := make(chan struct{}, 3)
 	var wg sync.WaitGroup
-	for i, item := range indexers {
-		if !item.Enabled {
-			continue
-		}
+	for _, group := range checkGroups(indexers) {
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(slot int, row store.Indexer) {
+		go func(group []checkTarget) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[slot] = c.checkOne(ctx, row)
-		}(i, item)
+			for position, target := range group {
+				if ctx.Err() != nil {
+					return
+				}
+				if position > 0 {
+					c.pauseSibling(ctx)
+				}
+				results[target.slot] = c.checkOne(ctx, target.indexer)
+			}
+		}(group)
 	}
 	wg.Wait()
 	if err := ctx.Err(); err != nil {
@@ -586,6 +620,54 @@ func (c *Checker) RunOnce(ctx context.Context) ([]Result, error) {
 // model already treats it as neutral, so it must not become a warning either.
 func healthCheckCanceled(err error) bool {
 	return errors.Is(err, context.Canceled)
+}
+
+// checkTarget is one enabled source, with the slot its result belongs to.
+type checkTarget struct {
+	slot    int
+	indexer store.Indexer
+}
+
+// checkGroups puts the enabled sources of one definition in the same group,
+// keeping the order of the indexer list. A source without a definition gets a
+// group of its own, so it never waits for an unrelated site.
+func checkGroups(indexers []store.Indexer) [][]checkTarget {
+	order := make([]string, 0, len(indexers))
+	groups := make(map[string][]checkTarget, len(indexers))
+	for slot, indexer := range indexers {
+		if !indexer.Enabled {
+			continue
+		}
+		key := strings.TrimSpace(indexer.DefinitionID)
+		if key == "" {
+			key = "#" + strconv.FormatInt(indexer.ID, 10)
+		}
+		if _, ok := groups[key]; !ok {
+			order = append(order, key)
+		}
+		groups[key] = append(groups[key], checkTarget{slot: slot, indexer: indexer})
+	}
+	out := make([][]checkTarget, 0, len(order))
+	for _, key := range order {
+		out = append(out, groups[key])
+	}
+	return out
+}
+
+// siblingCheckPause keeps two checks of the same site apart. The per-host rate
+// limit already spaces the requests, but a single second between the filters
+// of one definition is what the sites that count requests per minute need.
+const siblingCheckPause = time.Second
+
+// pauseSibling waits between two checks of the same definition, or returns at
+// once when indexarr is shutting down.
+func (c *Checker) pauseSibling(ctx context.Context) {
+	timer := time.NewTimer(siblingCheckPause)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
 }
 
 func (c *Checker) checkOne(ctx context.Context, row store.Indexer) Result {

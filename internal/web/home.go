@@ -9,6 +9,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/backup"
 	"github.com/buzzqw/indexarr/internal/health"
+	"github.com/buzzqw/indexarr/internal/logtext"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -178,27 +179,41 @@ func homeProblemCode(view indexerHealthView) (string, int) {
 
 // explainIndexerError maps a raw error into a catalog key. Unknown errors keep
 // the generic sentence; the full text stays in the indexer detail and logs.
+// The codes come from logtext, the same classifier the log uses, so a cause
+// cannot be "too many requests" in the log and "unexpected" on the dashboard.
 func explainIndexerError(message, circuit string) string {
 	text := strings.ToLower(message)
 	switch {
 	case circuit == "open":
 		return "home.problem.circuit"
-	case strings.Contains(text, "429"):
-		return "home.problem.rateLimit"
-	case strings.Contains(text, "flood") || strings.Contains(text, "search refused by the site"):
-		return "home.problem.flood"
-	case strings.Contains(text, "401") || strings.Contains(text, "403") ||
-		strings.Contains(text, "credential") || strings.Contains(text, "unauthor"):
-		return "home.problem.denied"
 	case strings.Contains(text, "cloudflare") || strings.Contains(text, "challenge"):
 		return "home.problem.cloudflare"
-	case strings.Contains(text, "no such host") || strings.Contains(text, "dns") ||
-		strings.Contains(text, "connection refused") || strings.Contains(text, "connect:"):
-		return "home.problem.dns"
-	case strings.Contains(text, "timeout") || strings.Contains(text, "deadline"):
+	case strings.Contains(text, "401") || strings.Contains(text, "403") ||
+		strings.Contains(text, "credential") || strings.Contains(text, "unauthor") ||
+		strings.Contains(text, "login"):
+		// A 401/403 on a private site is a session, not the anti-bot page:
+		// ask for the credentials.
+		return "home.problem.denied"
+	}
+	switch logtext.Problem(message) {
+	case logtext.Timeout:
 		return "home.problem.timeout"
-	case strings.Contains(text, "http"):
+	case logtext.RateLimit, logtext.Queue:
+		return "home.problem.rateLimit"
+	case logtext.Flood:
+		return "home.problem.flood"
+	case logtext.Blocked:
+		return "home.problem.cloudflare"
+	case logtext.Auth:
+		return "home.problem.denied"
+	case logtext.DNS, logtext.Refused, logtext.Reset, logtext.TLS:
+		return "home.problem.dns"
+	case logtext.Server, logtext.NotFound:
 		return "home.problem.http"
+	case logtext.Breaker:
+		return "home.problem.circuit"
+	case logtext.Parse:
+		return "home.problem.parse"
 	default:
 		return "home.problem.unknown"
 	}

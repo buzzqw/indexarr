@@ -58,16 +58,25 @@ func redactError(err error, values []string) error {
 // refused: the source was not contacted, so the row is not a failure.
 const StatusPaused = "paused"
 
+// StatusCanceled is the history status of an execution indexarr itself stopped:
+// a shutdown, or a caller whose deadline ended. It says nothing about the site.
+const StatusCanceled = "canceled"
+
 // statusFor classifies an operation. A caller cancellation wins over every
 // other classification because it says why the run actually stopped. A
 // Cloudflare challenge is "blocked": it is not a generic failure and it has
 // its own cause and remedy in the interface.
+//
+// A deadline that the caller did not set is not a cancellation: the source ran
+// out of time while waiting for the site, so it is a failure. The HTTP client
+// and the connector both surface it as context.DeadlineExceeded, and treating
+// it as "canceled" hid every slow site from the health model.
 func statusFor(ctx context.Context, err error) string {
 	if ctx != nil && ctx.Err() != nil {
-		return "canceled"
+		return StatusCanceled
 	}
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return "canceled"
+	if errors.Is(err, context.Canceled) {
+		return StatusCanceled
 	}
 	if errors.Is(err, engine.ErrChallenge) {
 		return "blocked"
@@ -75,7 +84,7 @@ func statusFor(ctx context.Context, err error) string {
 	if errors.Is(err, engine.ErrSearchDeferred) {
 		// Not sent at all: the site's flood interval had no free slot and the
 		// search waits in the background queue. The site did not fail.
-		return "canceled"
+		return StatusCanceled
 	}
 	if errors.Is(err, engine.ErrBreakerOpen) {
 		// The per-source breaker refused the request before it was sent: the

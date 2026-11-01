@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -79,6 +80,27 @@ func TestRequestErrorNamesTheNetworkFailure(t *testing.T) {
 				t.Errorf("error leaks the address: %q", text)
 			}
 		})
+	}
+}
+
+// A resolver that misses its own deadline reports I/O timeout and also
+// satisfies context.DeadlineExceeded. Reading that as "the site is too slow"
+// sent the operator to the wrong place: the name never resolved.
+func TestRequestErrorNamesAResolverTimeout(t *testing.T) {
+	connector := &DefinitionConnector{}
+	resolveErr := fmt.Errorf("engine: resolve %q: %w", "extto.org",
+		&net.DNSError{Err: "i/o timeout", Name: "extto.org", IsTimeout: true})
+	err := connector.requestError(resolveErr)
+	if !strings.Contains(err.Error(), "name resolution failed") {
+		t.Errorf("resolver timeout = %q, want a name resolution failure", err)
+	}
+	if strings.Contains(err.Error(), "timed out") {
+		t.Errorf("resolver timeout = %q, want it not to blame the site", err)
+	}
+	// A request that really ran out of time keeps its own cause.
+	timeout := connector.requestError(fmt.Errorf("engine: request extto.org: %w", context.DeadlineExceeded))
+	if !strings.Contains(timeout.Error(), "request timed out") {
+		t.Errorf("request timeout = %q, want request timed out", timeout)
 	}
 }
 

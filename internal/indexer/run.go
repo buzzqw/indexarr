@@ -821,6 +821,12 @@ func (m *Manager) finishRun(ctx context.Context, indexerID int64, slug, query st
 		if !isBreakerText(previousError) {
 			state.LastError = previousError
 		}
+	case status == StatusCanceled:
+		// indexarr stopped this run (shutdown, pause, deferred search): it
+		// says nothing about the site, so it neither creates nor clears the
+		// error the operator already sees. The row stays in the history with
+		// its reason.
+		state.LastError = previousError
 	default:
 		state.LastError = m.redact(indexerID, errorText(runErr))
 	}

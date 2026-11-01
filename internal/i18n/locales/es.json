@@ -432,6 +432,7 @@
   "home.problem.errors": "%d comprobaciones fallidas seguidas: abre el indexador para ver los detalles.",
   "home.problem.flood": "El sitio limita las búsquedas (control de flood): indexarr las pone en cola y las envía cuando el sitio lo permite.",
   "home.problem.http": "El sitio devolvió un error.",
+  "home.problem.parse": "La página ha cambiado: el diseño del sitio ya no coincide con la definición.",
   "home.problem.rateLimit": "El sitio limita las peticiones (HTTP 429).",
   "home.problem.timeout": "El sitio tarda demasiado en responder.",
   "home.problem.unknown": "Error inesperado: abre el indexador para ver los detalles.",

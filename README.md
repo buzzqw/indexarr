@@ -245,6 +245,13 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
   for a single Torznab request (`freeleech=0|1`, `ignore_filters=1`).
 - **Import cookie** from the Firefox profile for sites that bind the session to
   the browser, such as IPTorrents.
+- **A problem is what is happening now**: the stored error of a source is
+  cleared as soon as a health check or a run succeeds, so a timeout from hours
+  ago does not keep the dashboard red, and every cause (rate limit, flood
+  control, DNS, page changed) has its own sentence instead of "unexpected
+  error". The filters of one site are checked one after the other, so several
+  sources on the same host do not ask the site for everything at the same
+  second.
 
 ### \*arr apps
 

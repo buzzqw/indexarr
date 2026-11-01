@@ -43,6 +43,32 @@ func lowCompleteness() Outcome {
 	}
 }
 
+// TestCheckGroupsKeepTheFiltersOfOneSiteTogether locks the order of a health
+// pass: the filters of one definition are checked one after the other, because
+// probing them at the same time makes the site answer with a rate limit.
+func TestCheckGroupsKeepTheFiltersOfOneSiteTogether(t *testing.T) {
+	rows := []store.Indexer{
+		{ID: 1, DefinitionID: "torrentgalaxy", Enabled: true},
+		{ID: 2, DefinitionID: "extto", Enabled: true},
+		{ID: 3, DefinitionID: "torrentgalaxy", Enabled: true},
+		{ID: 4, DefinitionID: "extto", Enabled: false},
+		{ID: 5, DefinitionID: "", Enabled: true},
+		{ID: 6, DefinitionID: "", Enabled: true},
+	}
+	groups := checkGroups(rows)
+	want := [][]int64{{1, 3}, {2}, {5}, {6}}
+	if len(groups) != len(want) {
+		t.Fatalf("groups = %d, want %d: %#v", len(groups), len(want), groups)
+	}
+	for i, group := range groups {
+		for j, target := range group {
+			if target.indexer.ID != want[i][j] {
+				t.Errorf("group %d[%d] = %d, want %d", i, j, target.indexer.ID, want[i][j])
+			}
+		}
+	}
+}
+
 func TestNextStateTransitions(t *testing.T) {
 	thresholds := DefaultThresholds()
 	cases := []struct {
@@ -106,6 +132,21 @@ func TestAssessUsesOneModel(t *testing.T) {
 	}
 	if got := Assess(Input{Enabled: true, Outcomes: []Outcome{clean(4), failed()}}, thresholds); got.State != StateOK {
 		t.Errorf("recovered site = %q, want ok", got.State)
+	}
+	// A stored error older than the newest clean execution is no longer the
+	// current state: a site that answers now must not stay red because a run
+	// failed before the last check.
+	recovered := Assess(Input{Enabled: true, LastError: "request timed out", Outcomes: []Outcome{clean(4)}}, thresholds)
+	if recovered.State != StateOK || len(recovered.Reasons) != 0 {
+		t.Errorf("stale error = %q %#v, want ok", recovered.State, recovered.Reasons)
+	}
+	// The last row being a failure, or saying nothing (canceled), keeps the
+	// stored error actionable.
+	if got := Assess(Input{Enabled: true, LastError: "boom", Outcomes: []Outcome{failed()}}, thresholds); got.State != StateProblem {
+		t.Errorf("failure after error = %q, want problem", got.State)
+	}
+	if got := Assess(Input{Enabled: true, LastError: "boom", Outcomes: []Outcome{{Kind: "run", Status: "canceled"}}}, thresholds); got.State != StateProblem {
+		t.Errorf("canceled after error = %q, want problem", got.State)
 	}
 
 	degraded := Assess(Input{Enabled: true, Outcomes: []Outcome{emptyOutcome(), emptyOutcome(), emptyOutcome()}}, thresholds)

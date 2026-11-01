@@ -432,6 +432,7 @@
   "home.problem.errors": "%d Prüfungen in Folge fehlgeschlagen: Indexer für Details öffnen.",
   "home.problem.flood": "Die Seite begrenzt Suchanfragen (Flood-Control): indexarr stellt sie in die Warteschlange und sendet sie, wenn die Seite es zulässt.",
   "home.problem.http": "Die Seite hat einen Fehler zurückgegeben.",
+  "home.problem.parse": "Die Seite hat sich geändert: Das Layout passt nicht mehr zur Definition.",
   "home.problem.rateLimit": "Die Seite begrenzt Anfragen (HTTP 429).",
   "home.problem.timeout": "Die Seite antwortet zu langsam.",
   "home.problem.unknown": "Unerwarteter Fehler: Indexer für Details öffnen.",

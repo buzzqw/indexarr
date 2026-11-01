@@ -16,6 +16,9 @@ func TestProblem(t *testing.T) {
 		`definition "ddunlimited": search refused by the site: Al momento non ti è permesso fare ricerche`:                                                                                                Flood,
 		"dial tcp 1.2.3.4:443: connect: connection refused":               Refused,
 		"dial tcp: lookup example.invalid: no such host":                  DNS,
+		// The resolver reports its own deadline as an I/O timeout: the cause is
+		// the name, not a site that answers slowly.
+		"lookup www.example.org: i/o timeout":                             DNS,
 		"x509: certificate has expired":                                   TLS,
 		"HTTP 403: Just a moment...":                                      Blocked,
 		"engine: challenge page detected":                                 Blocked,

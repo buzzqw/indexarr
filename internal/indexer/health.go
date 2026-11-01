@@ -61,6 +61,13 @@ func (m *Manager) Health(ctx context.Context, indexerID int64) (HealthResult, er
 		}
 	}
 	m.recordHistory(ctx, indexer.ID, "health", result.Query, statusFor(ctx, err), started, 0, err, stats)
+	if err == nil {
+		// A passing check is proof that the site answers now. Without this the
+		// error a previous run left behind stayed on the badge until the next
+		// scheduled run, which can be hours away: the source looked broken
+		// while every later check passed.
+		m.clearStateError(context.WithoutCancel(ctx), indexer.ID)
+	}
 	return result, err
 }
 

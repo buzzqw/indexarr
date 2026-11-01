@@ -1353,8 +1353,6 @@ func (c *DefinitionConnector) requestError(err error) error {
 	switch {
 	case errors.Is(err, context.Canceled):
 		return fmt.Errorf("request canceled: %w", context.Canceled)
-	case errors.Is(err, context.DeadlineExceeded):
-		return fmt.Errorf("request timed out: %w", context.DeadlineExceeded)
 	case errors.Is(err, ErrBreakerOpen):
 		return fmt.Errorf("request failed: %w", ErrBreakerOpen)
 	case errors.Is(err, ErrRateLimited):
@@ -1368,12 +1366,23 @@ func (c *DefinitionConnector) requestError(err error) error {
 		// so it is safe to keep and it tells the operator whether FlareSolverr
 		// was missing, unreachable or simply did not solve the check.
 		return fmt.Errorf("request blocked by a cloudflare challenge: %w", err)
-	default:
-		if kind := networkFailure(err); kind != "" {
-			return errors.New("request failed: " + kind)
-		}
-		return errors.New("request failed")
 	}
+	// A name that cannot be resolved is reported as such, even when the
+	// resolver timed out and the error also wraps context.DeadlineExceeded:
+	// "the site is too slow" sent the operator looking at the wrong place.
+	// A plain timeout stays a timeout, with the sentinel the rest of the code
+	// checks.
+	kind := networkFailure(err)
+	if kind != "" && kind != "timed out" {
+		return errors.New("request failed: " + kind)
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return fmt.Errorf("request timed out: %w", context.DeadlineExceeded)
+	}
+	if kind == "timed out" {
+		return errors.New("request failed: timed out")
+	}
+	return errors.New("request failed")
 }
 
 // networkFailure names the kind of a transport failure without the host or

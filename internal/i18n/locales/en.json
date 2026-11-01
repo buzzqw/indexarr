@@ -432,6 +432,7 @@
   "home.problem.errors": "%d checks failed in a row: open the indexer for details.",
   "home.problem.flood": "The site limits searches (flood control): indexarr queues them and sends them when the site allows it.",
   "home.problem.http": "The site returned an error.",
+  "home.problem.parse": "The page changed: the site layout no longer matches the definition.",
   "home.problem.rateLimit": "The site is limiting requests (HTTP 429).",
   "home.problem.timeout": "The site is too slow to answer.",
   "home.problem.unknown": "Unexpected error: open the indexer to see the details.",

@@ -49,12 +49,28 @@ func TestProductionCopyHasNoFalseAlarms(t *testing.T) {
 	if status.Level == "danger" {
 		t.Fatalf("production copy is in danger: %#v", status)
 	}
-	if status.ProblemIndexers > 2 {
-		t.Fatalf("production copy shows %d false indexer problems: %#v", status.ProblemIndexers, status.Problems)
+	// A rate limit, a flood control, a timeout or a paused breaker is the
+	// site's own answer, not a mistake of the model: it depends on how busy
+	// the host is when the copy is taken. The check fails on the causes that
+	// only a bug can produce on a working installation, and on a pile of
+	// problems that no single site condition explains.
+	transient := map[string]bool{
+		"home.problem.rateLimit": true, "home.problem.flood": true,
+		"home.problem.timeout": true, "home.problem.circuit": true,
 	}
+	permanent := 0
 	for _, problem := range status.Problems {
-		if problem.Code == "home.problem.completeness" || problem.Code == "home.problem.zero" {
+		switch {
+		case transient[problem.Code]:
+		case problem.Code == "home.problem.completeness" || problem.Code == "home.problem.zero":
 			t.Errorf("site characteristic still counted as a problem: %#v", problem)
+		case problem.Code == "home.problem.unknown":
+			t.Errorf("a cause without its own explanation: %#v", problem)
+		default:
+			permanent++
 		}
+	}
+	if permanent > 2 {
+		t.Fatalf("production copy shows %d indexer problems: %#v", permanent, status.Problems)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/engine"
 )
@@ -25,5 +26,23 @@ func TestStatusForBreakerOpenIsPaused(t *testing.T) {
 	}
 	if got := statusFor(context.Background(), nil); got != "ok" {
 		t.Errorf("statusFor(nil) = %q, want ok", got)
+	}
+}
+
+// TestStatusForTimeoutIsAFailure keeps every slow source in the health model.
+// The connector reports a request that ran out of time as
+// context.DeadlineExceeded; when that was read as "canceled" the failure streak
+// never grew and the run row disappeared from the counters.
+func TestStatusForTimeoutIsAFailure(t *testing.T) {
+	timeout := fmt.Errorf("indexer extto: fetch: request timed out: %w", context.DeadlineExceeded)
+	if got := statusFor(context.Background(), timeout); got != "error" {
+		t.Errorf("statusFor(timeout) = %q, want error", got)
+	}
+	// A deadline of the caller is still indexarr stopping the run.
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	<-ctx.Done()
+	if got := statusFor(ctx, context.DeadlineExceeded); got != StatusCanceled {
+		t.Errorf("statusFor(caller deadline) = %q, want %q", got, StatusCanceled)
 	}
 }

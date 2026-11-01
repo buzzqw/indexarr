@@ -246,6 +246,35 @@ func TestRunCanceledRecordsCanceled(t *testing.T) {
 	}
 }
 
+// A run indexarr stopped says nothing about the site: it must not replace the
+// error the operator already sees with its own cancellation text.
+func TestCanceledRunKeepsThePreviousError(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	server := newSearchServer(t)
+	manager := newTestManager(t, st, v)
+	indexerID := seedNative(t, st, v, server.URL, true)
+
+	if err := st.UpsertIndexerState(context.Background(), store.IndexerState{
+		IndexerID: indexerID, Circuit: "closed", LastError: "old failure",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := manager.Run(ctx, indexerID); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run error = %v, want context.Canceled", err)
+	}
+	state, err := st.GetIndexerState(context.Background(), indexerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.LastError != "old failure" {
+		t.Fatalf("last error = %q, want the previous error kept", state.LastError)
+	}
+}
+
 func TestRunKeepsItemWithoutDate(t *testing.T) {
 	st := newTestStore(t)
 	v := newTestVault(t, 1)
@@ -352,6 +381,34 @@ search:
 	}
 	if stats.Seen == 0 || stats.New == 0 {
 		t.Fatalf("seen=%d new=%d: a fixed query must not be constrained by the whole category list", stats.Seen, stats.New)
+	}
+}
+
+// A passing health check is proof that the site answers: the error a previous
+// run left behind must not keep the source red until the next scheduled run.
+func TestHealthCheckClearsOldError(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	server := newSearchServer(t)
+	manager := newTestManager(t, st, v)
+	indexerID := seedNative(t, st, v, server.URL, true)
+	ctx := context.Background()
+	if err := st.UpsertIndexerState(ctx, store.IndexerState{
+		IndexerID: indexerID, Circuit: "closed",
+		LastError: `indexer extto: fetch: request timed out: context deadline exceeded`,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := manager.Health(ctx, indexerID); err != nil {
+		t.Fatalf("Health: %v", err)
+	}
+	state, err := st.GetIndexerState(ctx, indexerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.LastError != "" {
+		t.Fatalf("last error = %q, want it cleared by a passing health check", state.LastError)
 	}
 }
 

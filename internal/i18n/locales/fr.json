@@ -432,6 +432,7 @@
   "home.problem.errors": "%d vérifications échouées d'affilée : ouvrez l'indexeur pour les détails.",
   "home.problem.flood": "Le site limite les recherches (flood control) : indexarr les met en file et les envoie quand le site l'autorise.",
   "home.problem.http": "Le site a renvoyé une erreur.",
+  "home.problem.parse": "La page a changé : la mise en page du site ne correspond plus à la définition.",
   "home.problem.rateLimit": "Le site limite les requêtes (HTTP 429).",
   "home.problem.timeout": "Le site met trop de temps à répondre.",
   "home.problem.unknown": "Erreur inattendue : ouvrez l'indexeur pour les détails.",

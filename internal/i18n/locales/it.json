@@ -432,6 +432,7 @@
   "home.problem.errors": "%d controlli falliti di seguito: apri l'indexer per i dettagli.",
   "home.problem.flood": "Il sito limita le ricerche (flood control): indexarr le mette in coda e le invia quando il sito lo consente.",
   "home.problem.http": "Il sito ha restituito un errore.",
+  "home.problem.parse": "La pagina è cambiata: il layout del sito non corrisponde più alla definizione.",
   "home.problem.rateLimit": "Il sito limita le richieste (HTTP 429).",
   "home.problem.timeout": "Il sito è troppo lento a rispondere.",
   "home.problem.unknown": "Errore imprevisto: apri l'indexer per i dettagli.",

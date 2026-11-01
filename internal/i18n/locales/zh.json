@@ -432,6 +432,7 @@
   "home.problem.errors": "连续 %d 次检查失败：打开索引器查看详情。",
   "home.problem.flood": "站点限制了搜索频率（flood control）：indexarr 会将搜索排队，并在站点允许时发送。",
   "home.problem.http": "站点返回了错误。",
+  "home.problem.parse": "页面已更改：站点布局与定义不再匹配。",
   "home.problem.rateLimit": "站点正在限制请求 (HTTP 429)。",
   "home.problem.timeout": "站点响应过慢。",
   "home.problem.unknown": "意外错误：打开索引器查看详情。",

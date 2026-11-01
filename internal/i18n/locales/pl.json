@@ -432,6 +432,7 @@
   "home.problem.errors": "%d kontroli z rzędu nie powiodło się: otwórz indekser, aby zobaczyć szczegóły.",
   "home.problem.flood": "Witryna ogranicza wyszukiwania (flood control): indexarr kolejkuje je i wysyła, gdy witryna na to pozwala.",
   "home.problem.http": "Witryna zwróciła błąd.",
+  "home.problem.parse": "Strona się zmieniła: układ witryny nie pasuje już do definicji.",
   "home.problem.rateLimit": "Witryna ogranicza żądania (HTTP 429).",
   "home.problem.timeout": "Witryna odpowiada zbyt wolno.",
   "home.problem.unknown": "Nieoczekiwany błąd: otwórz indekser, aby zobaczyć szczegóły.",
