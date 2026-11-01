@@ -594,7 +594,8 @@ func repairDoubleEncodedTitles(tx *sql.Tx) error {
 	rows, err := tx.Query(`
 		SELECT id, title, search_title, magnet
 		FROM releases
-		WHERE dedup_key NOT LIKE 'title:%' AND title GLOB '*[^ -~]*'`)
+		WHERE dedup_key NOT LIKE 'title:%'
+			AND (title GLOB '*[^ -~]*' OR magnet GLOB '*[^ -~]*')`)
 	if err != nil {
 		return err
 	}
@@ -613,17 +614,18 @@ func repairDoubleEncodedTitles(tx *sql.Tx) error {
 			return err
 		}
 		fixed := textutil.RepairDoubleEncoded(title)
-		if fixed == title {
+		fixedMagnet := repairMagnetName(magnet)
+		if fixed == title && fixedMagnet == magnet {
 			continue
 		}
-		if search != "" {
+		if fixed != title && search != "" {
 			search = textutil.NormalizeTitle(fixed)
 		}
 		repairs = append(repairs, repair{
 			id:     id,
 			title:  fixed,
 			search: search,
-			magnet: repairMagnetName(magnet, title, fixed),
+			magnet: fixedMagnet,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -640,9 +642,11 @@ func repairDoubleEncodedTitles(tx *sql.Tx) error {
 	return nil
 }
 
-// repairMagnetName replaces the display name of a magnet link when it is the
-// broken title, and leaves every other parameter byte for byte as it is.
-func repairMagnetName(magnet, oldTitle, newTitle string) string {
+// repairMagnetName repairs the display name of a magnet link when the name
+// itself is double encoded, and leaves every other parameter byte for byte as
+// it is. The name is compared with nothing: a site's magnet often keeps the
+// spacing the listing collapsed, so the name is repaired on its own.
+func repairMagnetName(magnet string) string {
 	lower := strings.ToLower(magnet)
 	if !strings.HasPrefix(lower, "magnet:") {
 		return magnet
@@ -658,10 +662,14 @@ func repairMagnetName(magnet, oldTitle, newTitle string) string {
 			value = value[:end]
 		}
 		decoded, err := url.QueryUnescape(value)
-		if err != nil || strings.TrimSpace(decoded) != strings.TrimSpace(oldTitle) {
+		if err != nil {
 			return magnet
 		}
-		return magnet[:start] + url.QueryEscape(newTitle) + magnet[start+len(value):]
+		fixed := textutil.RepairDoubleEncoded(decoded)
+		if fixed == decoded {
+			return magnet
+		}
+		return magnet[:start] + url.QueryEscape(fixed) + magnet[start+len(value):]
 	}
 	return magnet
 }

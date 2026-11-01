@@ -28,6 +28,9 @@ func TestRepairDoubleEncodedTitlesMigration(t *testing.T) {
 			t.Fatalf("insert %s: %v", key, err)
 		}
 	}
+	// The magnet name keeps the spacing the listing collapsed: the repair must
+	// not depend on the two strings being equal.
+	magnet = strings.Replace(magnet, url.QueryEscape(broken), url.QueryEscape(strings.ReplaceAll(broken, " ", "   ")), 1)
 	insert("guid:broken", broken, textutil.NormalizeTitle(broken), magnet)
 	insert("guid:good", "Большой Бак Big Buck Bunny", textutil.NormalizeTitle("Большой Бак Big Buck Bunny"), "")
 	insert("title:keyed", broken, textutil.NormalizeTitle(broken), "")
@@ -72,7 +75,7 @@ func TestRepairDoubleEncodedTitlesMigration(t *testing.T) {
 	}
 	dn := magnetValue[strings.Index(magnetValue, "&dn=")+len("&dn="):]
 	dn = dn[:strings.IndexByte(dn, '&')]
-	if decoded, err := url.QueryUnescape(dn); err != nil || decoded != want {
+	if decoded, err := url.QueryUnescape(dn); err != nil || strings.Join(strings.Fields(decoded), " ") != want {
 		t.Errorf("magnet name = %q (%v), want %q", decoded, err, want)
 	}
 
