@@ -4,6 +4,7 @@
       {
         "identifier": "pubmed-PMC4119369",
         "item_size": 959498,
+        "language": "eng",
         "mediatype": "texts",
         "publicdate": "2014-10-10T23:21:44Z",
         "title": "Effects of diclofenac and celecoxib on osteoclastogenesis during alveolar bone healing, in vivo."
@@ -18,6 +19,7 @@
       {
         "identifier": "pubmed-PMC3940002",
         "item_size": 12869785,
+        "language": "eng",
         "mediatype": "texts",
         "publicdate": "2014-10-23T20:24:53Z",
         "title": "Evaluation of canine and feline leishmaniasis by the association of blood culture, immunofluorescent antibody test and polymerase chain reaction."
@@ -39,6 +41,7 @@
       {
         "identifier": "lordstest18841980000lync",
         "item_size": 989029732,
+        "language": "eng",
         "mediatype": "texts",
         "publicdate": "2023-02-07T02:29:32Z",
         "title": "The Lord's test, 1884-1989"
@@ -46,6 +49,7 @@
       {
         "identifier": "microsoft-internet-explorer-6.0-service-pack-1-6.00.2800.1067-2002-07-beta-5-windows-2000-windows-xp",
         "item_size": 34368798,
+        "language": "eng",
         "mediatype": "software",
         "publicdate": "2020-12-04T22:19:52Z",
         "title": "Microsoft Internet Explorer 6.0 Service Pack Betas"
@@ -53,6 +57,7 @@
       {
         "identifier": "plugin.video.mykodibuildwizard_20170311",
         "item_size": 259071,
+        "language": "English",
         "mediatype": "texts",
         "publicdate": "2017-03-11T21:32:08Z",
         "title": "plugin.video.mykodibuildwizard"

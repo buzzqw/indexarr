@@ -46,9 +46,12 @@ search:
     type: json
     rows: { path: books }
     fields:
-      title:    { path: title, filters: [trim] }
-      details:  { path: url_librivox, type: url }
-      category: { path: language, type: category }
+      title:     { path: title, filters: [trim] }
+      details:   { path: url_librivox, type: url }
+      category:  { path: language, type: category }
+      # The API names the language of the recording ("English"): the release
+      # carries it to the Torznab clients instead of leaving it to the title.
+      languages: { path: language, filters: [trim] }
     required: [title, details]
 
 download:

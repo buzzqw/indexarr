@@ -156,6 +156,24 @@ func TestInternetArchiveFixture(t *testing.T) {
 			t.Errorf("%q: categories = %v, want exactly one", item.Title, item.Categories)
 		}
 	}
+	// `language` is an ISO code, a name, or missing: what the engine maps is
+	// English, what it does not know is left out, and a missing field stays
+	// "not stated" instead of becoming an empty string.
+	withLanguages := 0
+	for _, item := range items {
+		if len(item.Languages) == 0 {
+			continue
+		}
+		withLanguages++
+		for _, language := range item.Languages {
+			if language != "English" {
+				t.Errorf("%q: language = %q, want English", item.Title, language)
+			}
+		}
+	}
+	if withLanguages != 5 {
+		t.Errorf("items with a language = %d, want the 5 with the field in the fixture", withLanguages)
+	}
 }
 
 func TestEZTVFixture(t *testing.T) {
@@ -264,6 +282,9 @@ func TestLibriVoxFixture(t *testing.T) {
 	}
 	if len(item.Categories) != 1 || item.Categories[0] != 3030 {
 		t.Errorf("categories = %v, want 3030", item.Categories)
+	}
+	if len(item.Languages) != 1 || item.Languages[0] != "English" {
+		t.Errorf("languages = %v, want [English] from the API", item.Languages)
 	}
 }
 

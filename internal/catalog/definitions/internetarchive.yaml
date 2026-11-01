@@ -3,6 +3,7 @@
 # Written from the public JSON response captured on 2026-10-23 in
 # fixtures/internetarchive/search.json
 # (https://archive.org/advancedsearch.php?q=test+AND+(mediatype:texts+OR+mediatype:software)&fl=identifier,title,mediatype,publicdate,item_size&rows=10&output=json).
+# `language` was added to `fl` on 2026-11-01 and captured in the same fixture.
 # Every item page links an archive torrent at
 # /download/<identifier>/<identifier>_archive.torrent; the download section
 # reads that link while searching. The query is restricted to texts and
@@ -39,7 +40,7 @@ search:
     get: /advancedsearch.php
     params:
       q: "{{ query.keywords }} AND (mediatype:texts OR mediatype:software)"
-      fl: "identifier,title,mediatype,publicdate,item_size"
+      fl: "identifier,title,mediatype,publicdate,item_size,language"
       rows: "20"
       output: json
   pagination: { type: page, start: 1, step: 1, max_pages: 1, param: page }
@@ -52,6 +53,9 @@ search:
       size:     { path: item_size, type: size }
       category: { path: mediatype, type: category }
       date:     { path: publicdate, type: date }
+      # `language` is the ISO code ("eng") or the name ("English"), and some
+      # items do not have it: the engine maps what it knows and omits the rest.
+      languages: { path: language }
     required: [title, details]
 
 download:
