@@ -172,6 +172,23 @@ func (p *Politeness) observe(host string, status int, header http.Header) {
 	}
 }
 
+// ResetHost forgets the breaker state and the counters of one host. It is the
+// manual counterpart of the automatic cooldown: the operator says the site is
+// back and the next request must be attempted, not refused.
+func (p *Politeness) ResetHost(host string) {
+	if p == nil {
+		return
+	}
+	host = hostKey(host)
+	if host == "" {
+		return
+	}
+	p.breaker.reset(host)
+	p.mu.Lock()
+	delete(p.metrics, host)
+	p.mu.Unlock()
+}
+
 // HostMetrics returns a copy of the per-host counters, sorted by host. It is
 // safe to call while requests are in flight.
 func (p *Politeness) HostMetrics() []HostMetric {

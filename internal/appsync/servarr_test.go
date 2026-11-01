@@ -622,3 +622,51 @@ func TestServarrAddWithoutSchemaUsesMinimalPayload(t *testing.T) {
 		t.Errorf("priority = %d", got)
 	}
 }
+
+// TestServarrGenericKindFollowsTheSameContract proves the generic kind is not
+// a special case: a fork that speaks the Servarr v3 indexer API is driven
+// exactly like Sonarr, and a fork that only exposes v1 is detected by probing
+// /system/status, so Chaptarr, Listenarr, Gamarr and the next one work without
+// a new adapter in the code.
+func TestServarrGenericKindFollowsTheSameContract(t *testing.T) {
+	t.Parallel()
+
+	for _, version := range []string{"v3", "v1"} {
+		mux := http.NewServeMux()
+		if version == "v1" {
+			// A v1-only app answers 404 to the v3 probe.
+			mux.HandleFunc("/api/v3/system/status", func(w http.ResponseWriter, r *http.Request) {
+				http.NotFound(w, r)
+			})
+		}
+		mux.HandleFunc("/api/"+version+"/system/status", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`{"appName":"Chaptarr","version":"1.4.0"}`))
+		})
+		mux.HandleFunc("/api/"+version+"/indexer", func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(`[{"id":1,"name":"indexarr · Alpha","implementation":"Torznab",
+				"configContract":"TorznabSettings","priority":25,
+				"fields":[{"name":"baseUrl","value":"https://alpha.example/torznab/alpha"}]}]`))
+		})
+		site := httptest.NewServer(mux)
+		t.Cleanup(site.Close)
+
+		client, err := New(Config{Kind: KindServarr, URL: site.URL, APIKey: testAppKey, Name: "Chaptarr"})
+		if err != nil {
+			t.Fatalf("%s: New: %v", version, err)
+		}
+		label, err := client.Test(context.Background())
+		if err != nil {
+			t.Fatalf("%s: Test: %v", version, err)
+		}
+		if label != "Chaptarr 1.4.0" {
+			t.Errorf("%s: label = %q, want the app name and version", version, label)
+		}
+		remote, err := client.ListIndexers(context.Background())
+		if err != nil {
+			t.Fatalf("%s: ListIndexers: %v", version, err)
+		}
+		if len(remote) != 1 || remote[0].Name != "indexarr · Alpha" {
+			t.Fatalf("%s: remote = %+v", version, remote)
+		}
+	}
+}

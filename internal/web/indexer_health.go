@@ -219,11 +219,17 @@ func (s *Server) healthProblems(r *http.Request, view indexerHealthView) []uiPro
 		seen[reason.Code] = true
 		switch reason.Code {
 		case health.ReasonCircuit:
-			out = append(out, uiProblem{
+			problem := uiProblem{
 				Text:        s.translate(r, "idx.problem.circuit"),
-				ActionLabel: s.translate(r, "idx.problem.genericAction"),
-				ActionURL:   detail,
-			})
+				ActionLabel: s.translate(r, "idx.problem.circuitAction"),
+				ActionPost:  detail + "/resume",
+				ActionTitle: s.translate(r, "idx.problem.circuitTip"),
+				CSRF:        csrfToken(r.Context()),
+			}
+			if r.URL.Path == "/indexers" {
+				problem.ActionReturn = "/indexers"
+			}
+			out = append(out, problem)
 		case health.ReasonLastError:
 			raw := strings.TrimSpace(view.State.LastError)
 			if raw == "" && view.LastRun != nil {

@@ -2,8 +2,8 @@
 
 **Self-hosted torrent and Usenet indexer, Torznab/Newznab compatible.**
 indexarr builds a local index of releases, keeps it up to date and exposes it
-to Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian or any
-Torznab client. It was created to replace Jackett and Prowlarr in the daily
+to Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian, the other
+managers of the Servarr family or any Torznab client. It was created to replace Jackett and Prowlarr in the daily
 workflow: native sources, SQLite cache, live search, app synchronization and a
 complete web interface, with no mandatory external services.
 
@@ -14,7 +14,7 @@ Transmission, Deluge, rTorrent, SABnzbd, NZBGet, aMule and others.
 ```
 Native sources / RSS / Newznab ──► scheduler ──► normalization ──► SQLite
                                                                       │
-       Sonarr / Radarr / Lidarr / Readarr ◄── Torznab / Newznab ──────┤
+  Sonarr / Radarr / Lidarr / Readarr and forks ◄── Torznab / Newznab ─┤
                           Browser ◄── web UI SSR + JSON API ──────────┘
 ```
 
@@ -191,7 +191,9 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
 - **Indexers** with a single list, Run/Test/Run all/Test all/Test problems,
   detail, edit, clone, JSON export/import, feed discovery and cookie import.
 - **App** to connect and synchronize Sonarr, Radarr, Lidarr, Readarr,
-  Whisparr, Mylar3 and LazyLibrarian, and to manage the download clients.
+  Whisparr, Mylar3 and LazyLibrarian, the generic **Servarr-compatible** type
+  for the forks of the family (Chaptarr, Listenarr, Gamarr, Sportarr, ...), and
+  to manage the download clients.
 - **Statistics** with app requests, the overview per app and indexer,
   downloads, run history, new releases and network counters.
 - **Logs** with the system (process) log only.
@@ -222,7 +224,11 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
 
 ### \*arr apps
 
-- Sync to Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3 and LazyLibrarian.
+- Sync to Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3 and LazyLibrarian,
+  plus the generic **Servarr-compatible** type: a fork of the family works
+  without waiting for a new version of indexarr.
+- **Resume now** on a source paused after repeated failures: the pause is
+  cleared from the page, without editing or recreating the indexer.
 - Levels **Disabled**, **Add/remove only** and **Full sync**.
 - Per-application profile: RSS, automatic search, interactive search, minimum
   seeders and Torznab categories to send.
@@ -402,7 +408,7 @@ App synchronization, per-app profiles, multiple API keys and live search:
 | **Home** | Totals, indexer status, latest releases, runs and problems |
 | **Search** (`/releases`) | Manual live search (text, TV, movies, music, books, external IDs), `-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab; detail with magnet, `.torrent` and `.nzb` |
 | **Indexers** | Single list, Run/Test/Run all/Test all/Test problems, detail with Site access, edit, clone, JSON export/import, feed discovery and cookie import; each source can have its own request timeout |
-| **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian; sync, per-app profile, snapshots and download clients |
+| **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian and the generic Servarr-compatible type; sync, per-app profile, snapshots and download clients |
 | **Statistics** (`/activity`) | Incoming requests, overview per app and indexer, downloads served per source, update history, new releases, per-host network counters |
 | **Logs** (`/logs`) | System log with filters and runtime level |
 | **Settings** | Sections General, Network (FlareSolverr, per-host rate limit), Security, Notifications, **Rules** (blocklist by infohash, title, regex, source or category), **Backup**, **Maintenance** (integrity, vacuum, optimize/checkpoint, reindex, deduplication, `.torrent` cleanup, retention, purge per indexer, restore), Advanced (circuit breaker, live search, downloads through indexarr, definitions, proxies) and Updates |

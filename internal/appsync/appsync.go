@@ -37,13 +37,20 @@ const (
 	KindWhisparr      Kind = "whisparr"
 	KindMylar3        Kind = "mylar3"
 	KindLazyLibrarian Kind = "lazylibrarian"
+	// KindServarr is any other application that speaks the Servarr indexer
+	// API: the forks and the new managers of the same family (Chaptarr,
+	// Listenarr, Gamarr, Sportarr, ...). Keeping them out of the enum made
+	// every fork a code change, a review and a release; the generic kind
+	// follows the same /indexer, /indexer/schema and /system/status contract
+	// and lets the operator choose the categories the application needs.
+	KindServarr Kind = "servarr"
 )
 
 // Valid reports whether k is one of the supported applications.
 func (k Kind) Valid() bool {
 	switch k {
 	case KindSonarr, KindRadarr, KindLidarr, KindReadarr, KindWhisparr,
-		KindMylar3, KindLazyLibrarian:
+		KindMylar3, KindLazyLibrarian, KindServarr:
 		return true
 	default:
 		return false
@@ -53,7 +60,7 @@ func (k Kind) Valid() bool {
 // UsesServarrAPI reports whether k is driven through the Servarr v3 API.
 func (k Kind) UsesServarrAPI() bool {
 	switch k {
-	case KindSonarr, KindRadarr, KindLidarr, KindReadarr, KindWhisparr:
+	case KindSonarr, KindRadarr, KindLidarr, KindReadarr, KindWhisparr, KindServarr:
 		return true
 	default:
 		return false
@@ -76,6 +83,8 @@ func (k Kind) displayName() string {
 		return "Mylar3"
 	case KindLazyLibrarian:
 		return "LazyLibrarian"
+	case KindServarr:
+		return "Servarr-compatible"
 	default:
 		return string(k)
 	}

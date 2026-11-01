@@ -2816,6 +2816,10 @@ type indexerDetailView struct {
 	FrequencySource     string
 	HasState            bool
 	State               store.IndexerState
+	// CircuitOpen reports that the live breaker of this source is open and the
+	// next request would be refused; the Overview tab then offers "Riprendi
+	// ora", the manual reset of the cooldown.
+	CircuitOpen bool
 	Stats               detailStatView
 	Categories          []string
 	FilterRows          []indexerConfigEntry
@@ -3008,6 +3012,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	data.Health = healthView.Assessment
 	data.State = healthView.State
 	data.HasState = healthView.HasState
+	data.CircuitOpen = healthView.State.Circuit == string(engine.BreakerOpen)
 	data.LastRun = healthView.LastRun
 	history, _ := s.store.ListIndexerHistory(r.Context(), in.ID, 200)
 	now := time.Now()
@@ -3522,6 +3527,33 @@ func (s *Server) indexerReduceFrequency(w http.ResponseWriter, r *http.Request) 
 	}
 	redirect(w, r, target,
 		s.translate(r, "idx.frequencyReduced", current.Name, intervalEveryLabel(requestLanguage(r), next)), "")
+}
+
+// indexerResumeCircuit implements the "Riprendi ora" action of a source whose
+// circuit breaker is open. The breaker lives in memory and has a bounded
+// cooldown; the operator can clear it at once, without editing, deleting and
+// recreating the source. The automatic schedule and the query budget are left
+// as they are: this only allows the next request to be attempted.
+func (s *Server) indexerResumeCircuit(w http.ResponseWriter, r *http.Request) {
+	if s.native == nil {
+		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.serviceUnavailable"))
+		return
+	}
+	id, err := pathID(r)
+	if err != nil {
+		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.invalidID"))
+		return
+	}
+	target := frequencyReturnPath(r.FormValue("return"), id)
+	indexer, err := s.native.ResetCircuit(r.Context(), id)
+	if err != nil {
+		redirect(w, r, target, "", s.indexerErrorMessage(r, err))
+		return
+	}
+	s.log.Info("circuit breaker cleared by hand",
+		"component", "indexarr", "subsystem", "web",
+		"indexer", indexer.Slug, "indexer_id", indexer.ID)
+	redirect(w, r, target, s.translate(r, "idx.resume.done", indexer.Name), "")
 }
 
 func (s *Server) indexerDuplicate(w http.ResponseWriter, r *http.Request) {

@@ -327,6 +327,26 @@ func (t *Transport) BreakerState(key string) BreakerState {
 	return t.breaker.State(key)
 }
 
+// ResetBreaker clears the per-indexer breaker of one key, so the next request
+// is attempted immediately. The host budget is reset separately, with
+// ResetHost: a source shares its host with its mirrors and with the legacy
+// client.
+func (t *Transport) ResetBreaker(key string) {
+	if t == nil || t.breaker == nil {
+		return
+	}
+	t.breaker.reset(key)
+}
+
+// ResetHost clears the per-host breaker and counters. It is safe on a nil
+// transport, so callers do not have to branch on an optional transport.
+func (t *Transport) ResetHost(host string) {
+	if t == nil {
+		return
+	}
+	t.polite.ResetHost(host)
+}
+
 func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request, maxBody int64, statusAsResponse, ipv4Fallback bool) (*Response, error) {
 	if ctx == nil {
 		return nil, errors.New("engine: nil context")

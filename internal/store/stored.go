@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -230,9 +232,13 @@ func (s *Store) PruneStoredReleases(ctx context.Context, before time.Time) (int6
 // applications that consume this indexer: Sonarr asks TV (5000), Radarr movies
 // (2000), Lidarr audio, Readarr books and Whisparr adult. A stored source uses
 // these roots so a periodic read follows what the apps really search.
+//
+// An application of the generic "servarr" kind has no fixed root: the roots
+// come from the categories the operator selected for it, so a comics app with
+// 7030 still reads books and a games app with 1000 still reads console.
 func (s *Store) LinkedAppCategoryRoots(ctx context.Context, indexerID int64) ([]int, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT DISTINCT a.kind FROM applications a
+		SELECT DISTINCT a.kind, a.categories FROM applications a
 		JOIN app_indexers ai ON ai.application_id = a.id
 		WHERE ai.indexer_id = ?`, indexerID)
 	if err != nil {
@@ -242,8 +248,8 @@ func (s *Store) LinkedAppCategoryRoots(ctx context.Context, indexerID int64) ([]
 	seen := map[int]bool{}
 	var out []int
 	for rows.Next() {
-		var kind string
-		if err := rows.Scan(&kind); err != nil {
+		var kind, categories string
+		if err := rows.Scan(&kind, &categories); err != nil {
 			return nil, err
 		}
 		root := 0
@@ -258,11 +264,26 @@ func (s *Store) LinkedAppCategoryRoots(ctx context.Context, indexerID int64) ([]
 			root = 7000
 		case "whisparr":
 			root = 6000
+		default:
+			// The generic kind, and any kind added later, follow the
+			// selection: every selected category contributes its root.
+			for _, part := range strings.Split(categories, ",") {
+				id, convErr := strconv.Atoi(strings.TrimSpace(part))
+				if convErr != nil || id <= 0 {
+					continue
+				}
+				if level := id / 1000 * 1000; level > 0 && !seen[level] {
+					seen[level] = true
+					out = append(out, level)
+				}
+			}
+			continue
 		}
 		if root > 0 && !seen[root] {
 			seen[root] = true
 			out = append(out, root)
 		}
 	}
+	sort.Ints(out)
 	return out, rows.Err()
 }

@@ -21,13 +21,17 @@ type applicationOption struct {
 }
 
 // applicationKindOptions lists the downstream applications indexarr can keep
-// in sync. The values match syncjob/appsync.
+// in sync. The values match syncjob/appsync. "servarr" is the generic entry
+// for the forks and the new managers of the same family (Chaptarr, Listenarr,
+// Gamarr, Sportarr, ...): they speak the same indexer API, so a new fork does
+// not need a release of its own.
 var applicationKindOptions = []applicationOption{
 	{"sonarr", "Sonarr"},
 	{"radarr", "Radarr"},
 	{"lidarr", "Lidarr"},
 	{"readarr", "Readarr"},
 	{"whisparr", "Whisparr"},
+	{"servarr", "Servarr-compatible"},
 	{"mylar3", "Mylar3"},
 	{"lazylibrarian", "LazyLibrarian"},
 }

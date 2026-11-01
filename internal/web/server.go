@@ -706,6 +706,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /indexers/{id}/delete", s.indexerUnifiedDelete)
 	ui.HandleFunc("POST /indexers/{id}/toggle", s.indexerToggle)
 	ui.HandleFunc("POST /indexers/{id}/frequency", s.indexerReduceFrequency)
+	ui.HandleFunc("POST /indexers/{id}/resume", s.indexerResumeCircuit)
 	ui.HandleFunc("POST /indexers/{id}/duplicate", s.indexerDuplicate)
 	ui.HandleFunc("POST /indexers/{id}/test", s.indexerUnifiedTest)
 	ui.HandleFunc("POST /indexers/{id}/run", s.indexerUnifiedRun)

@@ -167,3 +167,67 @@ func TestCircuitBreakerKeysAreIndependent(t *testing.T) {
 		t.Errorf("key b allow = %v, want nil", err)
 	}
 }
+
+// TestCircuitBreakerResetAllowsTheNextRequest is the manual "resume now"
+// action: the cooldown is cut short and the failure count starts over, so one
+// new error cannot reopen the breaker at once.
+func TestCircuitBreakerResetAllowsTheNextRequest(t *testing.T) {
+	clock := newFakeClock()
+	breaker := newCircuitBreaker(clock, 2, time.Hour)
+
+	breaker.failure("idx")
+	breaker.failure("idx")
+	if got := breaker.State("idx"); got != BreakerOpen {
+		t.Fatalf("state = %q, want open", got)
+	}
+	breaker.reset("idx")
+	if got := breaker.State("idx"); got != BreakerClosed {
+		t.Fatalf("state after reset = %q, want closed", got)
+	}
+	if err := breaker.allow("idx"); err != nil {
+		t.Fatalf("allow after reset: %v", err)
+	}
+	breaker.failure("idx")
+	if got := breaker.State("idx"); got != BreakerClosed {
+		t.Fatalf("one failure after reset reopened the breaker: %q", got)
+	}
+}
+
+// TestPolitenessResetHostClearsTheBudget proves the host breaker and the
+// counters are forgotten together: a source that shares its host with a mirror
+// is not refused because of the other one's failures.
+func TestPolitenessResetHostClearsTheBudget(t *testing.T) {
+	clock := newFakeClock()
+	polite := NewPoliteness(0, 1, 1, time.Hour, clock)
+
+	polite.failure("example.test")
+	polite.noteStatus("example.test", 429)
+	if got := polite.breaker.State("example.test"); got != BreakerOpen {
+		t.Fatalf("state = %q, want open", got)
+	}
+	polite.ResetHost("Example.Test.")
+	if got := polite.breaker.State("example.test"); got != BreakerClosed {
+		t.Fatalf("state after reset = %q, want closed", got)
+	}
+	if metrics := polite.HostMetrics(); len(metrics) != 0 {
+		t.Fatalf("metrics after reset = %+v, want none", metrics)
+	}
+}
+
+// TestTransportResetBreakerAndHost checks the two entry points the manager
+// uses: the per-indexer key and the shared host budget.
+func TestTransportResetBreakerAndHost(t *testing.T) {
+	clock := newFakeClock()
+	transport := NewTransport(TransportConfig{FailureThreshold: 1, Cooldown: time.Hour, Clock: clock})
+
+	transport.ResetBreaker("slug")
+	transport.ResetHost("example.test")
+	transport.breaker.failure("slug")
+	if got := transport.BreakerState("slug"); got != BreakerOpen {
+		t.Fatalf("state = %q, want open", got)
+	}
+	transport.ResetBreaker("slug")
+	if got := transport.BreakerState("slug"); got != BreakerClosed {
+		t.Fatalf("state after reset = %q, want closed", got)
+	}
+}

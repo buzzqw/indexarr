@@ -107,6 +107,16 @@ func (b *circuitBreaker) failure(key string) {
 	}
 }
 
+// reset forgets everything about one key. It backs the manual "try again now"
+// action of the interface: the next request probes the site immediately instead
+// of waiting for the cooldown, and a stale failure count cannot reopen the
+// breaker on its first error.
+func (b *circuitBreaker) reset(key string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.entries, key)
+}
+
 // openUntil keeps the breaker open until an explicit time, used for
 // Retry-After. A time already in the past allows an immediate probe.
 func (b *circuitBreaker) openUntil(key string, until time.Time) {

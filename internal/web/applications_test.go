@@ -509,3 +509,52 @@ func TestNormalizeTagFilter(t *testing.T) {
 		t.Error("filter is not valid UTF-8")
 	}
 }
+
+// TestApplicationCreateGenericServarr is the ecosystem entry point: a fork of
+// the Servarr family (Chaptarr, Listenarr, Gamarr, Sportarr, ...) is connected
+// with the generic kind, its label is shown, and the form explains it. Without
+// this, every new fork would need a new kind in the code.
+func TestApplicationCreateGenericServarr(t *testing.T) {
+	env, _ := newApplicationEnv(t, false)
+	token, cookie := csrfFrom(t, env.handler, "/applications/new")
+
+	values := applicationValues(token, "Chaptarr", "http://chaptarr:8787", "secret", "full")
+	values.Set("kind", "servarr")
+	recorder := postForm(t, env.handler, "/applications", values, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("create status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	apps, err := env.store.ListApplications(context.Background())
+	if err != nil || len(apps) != 1 {
+		t.Fatalf("applications = %#v, %v", apps, err)
+	}
+	if apps[0].Kind != "servarr" {
+		t.Fatalf("kind = %q, want servarr", apps[0].Kind)
+	}
+
+	list := get(t, env.handler, "/applications")
+	if !strings.Contains(list.Body.String(), "Servarr-compatible") {
+		t.Error("the list does not name the generic kind")
+	}
+	form := get(t, env.handler, "/applications/new")
+	if !strings.Contains(form.Body.String(), `value="servarr"`) {
+		t.Error("the form does not offer the generic kind")
+	}
+	if !strings.Contains(form.Body.String(), "Chaptarr, Listenarr, Gamarr, Sportarr") {
+		t.Error("the form does not explain which apps use the generic kind")
+	}
+}
+
+// TestApplicationRejectsUnknownKind keeps the generic kind from becoming a
+// hole: only the listed values are accepted.
+func TestApplicationRejectsUnknownKind(t *testing.T) {
+	env, _ := newApplicationEnv(t, false)
+	token, cookie := csrfFrom(t, env.handler, "/applications/new")
+
+	values := applicationValues(token, "Mystery", "http://mystery:1234", "secret", "full")
+	values.Set("kind", "prowlarr")
+	recorder := postForm(t, env.handler, "/applications", values, cookie)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", recorder.Code, recorder.Body.String())
+	}
+}

@@ -65,6 +65,13 @@
   <div class="panel-body">
     <p class="help">{{T "idx.health.help"}}</p>
     <p class="health-verdict" role="status">{{.Verdict.Text}}</p>
+    {{if .CircuitOpen}}
+    <form class="problem-form" method="post" action="/indexers/{{.Indexer.ID}}/resume">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn small" type="submit" title="{{T "tip.indexerResume"}}">{{T "idx.resume.action"}}</button>
+    </form>
+    <p class="help">{{T "idx.resume.help"}}</p>
+    {{end}}
     {{if .RetryPaused}}<p class="flash warn" role="alert">{{T "idx.retry.paused" .RetryFailures}}</p>{{end}}
     {{if .ProblemDetail}}
     <div class="field">

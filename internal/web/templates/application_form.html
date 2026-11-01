@@ -27,6 +27,7 @@
       <select id="kind" name="kind" required>
         {{range .Kinds}}<option value="{{.Value}}"{{if eq .Value $.Kind}} selected{{end}}>{{.Label}}</option>{{end}}
       </select>
+      <p class="help">{{T "application.kindHelp"}}</p>
     </div>
     <div class="field grow">
       <label for="url" title="{{T "tip.appURL"}}">{{T "application.url"}}</label>

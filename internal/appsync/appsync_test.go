@@ -26,6 +26,7 @@ func TestKindValidAndUsesServarrAPI(t *testing.T) {
 		{KindWhisparr, true, true},
 		{KindMylar3, true, false},
 		{KindLazyLibrarian, true, false},
+		{KindServarr, true, true},
 		{Kind("prowlarr"), false, false},
 		{Kind(""), false, false},
 	}
@@ -74,7 +75,7 @@ func TestNewDispatchAndValidation(t *testing.T) {
 	t.Parallel()
 
 	for _, kind := range []Kind{KindSonarr, KindRadarr, KindLidarr, KindReadarr,
-		KindWhisparr, KindMylar3, KindLazyLibrarian} {
+		KindWhisparr, KindMylar3, KindLazyLibrarian, KindServarr} {
 		client, err := New(Config{Kind: kind, URL: "http://127.0.0.1:8080", APIKey: "key"})
 		if err != nil {
 			t.Fatalf("New(%s) returned error: %v", kind, err)

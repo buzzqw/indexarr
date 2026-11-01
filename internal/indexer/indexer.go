@@ -989,6 +989,64 @@ func (m *Manager) CircuitState(indexerID int64, slug string) engine.BreakerState
 	return transport.BreakerState(slug)
 }
 
+// ResetCircuit clears the live breaker of one source, both the per-indexer
+// entry and the per-host entry it shares with its mirrors, so the next request
+// is attempted at once. It is the manual answer to a paused source: the
+// automatic cooldown is bounded but the operator may know the site is back.
+// It never touches the stored state or the query budget.
+func (m *Manager) ResetCircuit(ctx context.Context, indexerID int64) (store.Indexer, error) {
+	indexer, err := m.store.GetIndexer(ctx, indexerID)
+	if err != nil {
+		return store.Indexer{}, err
+	}
+	m.mu.Lock()
+	entry, ok := m.cache[indexerID]
+	m.mu.Unlock()
+
+	transport := m.transport
+	if ok && entry.transport != nil {
+		transport = entry.transport
+	}
+	if transport == nil {
+		return indexer, nil
+	}
+	transport.ResetBreaker(indexer.Slug)
+	if host := m.indexerHost(indexer, entry, ok); host != "" {
+		transport.ResetHost(host)
+	}
+	return indexer, nil
+}
+
+// indexerHost reports the hostname the source is talking to: the address of
+// the cached connector (the mirror it moved to, when it moved), or the
+// configured address when no connector has been built yet.
+func (m *Manager) indexerHost(indexer store.Indexer, entry cachedConnector, cached bool) string {
+	if cached && entry.connector != nil {
+		if active, ok := entry.connector.(interface{ ActiveBaseURL() *url.URL }); ok {
+			if base := active.ActiveBaseURL(); base != nil && base.Hostname() != "" {
+				return base.Hostname()
+			}
+		}
+	}
+	config, err := decodeConfig(indexer.ConfigJSON)
+	if err != nil {
+		return ""
+	}
+	settings := settingsFromConfig(config)
+	applyDefaults(indexer, nil, settings)
+	for _, key := range []string{"base_url", "url", "site"} {
+		raw := strings.TrimSpace(settings[key])
+		if raw == "" {
+			continue
+		}
+		parsed, parseErr := url.Parse(raw)
+		if parseErr == nil && parsed.Hostname() != "" {
+			return parsed.Hostname()
+		}
+	}
+	return ""
+}
+
 // ActiveBaseURL reports the address a source is using now, read from the
 // connector already in the cache: the definition's first address, or the
 // mirror it moved to when that one stopped answering. It never builds a
