@@ -676,8 +676,12 @@ func TestDDUnlimitedBackgroundSendRetriesPastABurstBlock(t *testing.T) {
 	}
 	request := engine.SearchRequest{Mode: engine.ModeSearch, Query: "retry", Limit: 1, FirstPageOnly: true, SkipDetails: true}
 
-	// A deadline this short leaves no turn: the search goes to the queue.
-	short, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	// Any deadline below the 15 s turn margin leaves no turn, so the search
+	// goes to the queue. Two seconds instead of a few milliseconds: the login
+	// uses the same context, and under -race with the whole suite running two
+	// local round trips can take longer than 20 ms (CI ran this once and saw a
+	// request timeout instead of the deferred answer).
+	short, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	_, err = connector.Search(short, request)
 	cancel()
 	if !errors.Is(err, engine.ErrSearchDeferred) {
