@@ -24,6 +24,43 @@ type Politeness struct {
 
 	mu      sync.Mutex
 	metrics map[string]*hostCounters
+
+	throttleMu sync.Mutex
+	throttles  map[string]*hostThrottle
+}
+
+// Adaptive pacing after a rate limit. The base budget (rate and burst) is the
+// operator's; these constants are what the process learns on its own when a
+// site says 429. Scheduled reads (a periodic run) are spaced out, while a live
+// app search keeps its normal window: the site's answer to a burst is already
+// handled by the breaker.
+const (
+	// hostSpacingMin is the first pause added between two scheduled requests
+	// to a host that answered 429.
+	hostSpacingMin = 2 * time.Second
+	// hostSpacingMax caps that pause, so a long crawl becomes slow instead of
+	// a burst and still finishes.
+	hostSpacingMax = 30 * time.Second
+	// hostSpacingRecoverAfter is the number of good answers that halves the
+	// pause: a site that stops complaining is not punished forever.
+	hostSpacingRecoverAfter = 20
+	// hostCooldownCap bounds the growing cooldown of a host that keeps saying
+	// 429. Ten minutes is the configured base; a site that repeats the answer
+	// is asking for hours, not for another probe every ten minutes.
+	hostCooldownCap = 6 * time.Hour
+)
+
+// hostThrottle is what the process learnt about one host after a 429.
+type hostThrottle struct {
+	// spacing is the extra pause before the next scheduled request.
+	spacing time.Duration
+	// last is when the current scheduled slot was taken.
+	last time.Time
+	// strikes counts the consecutive throttled answers; it grows the cooldown.
+	strikes int
+	// good counts the answers since the last throttle; enough of them halve
+	// the spacing again.
+	good int
 }
 
 // HostMetric is a thread-safe snapshot of the counters for one host. It never
@@ -56,11 +93,12 @@ func NewPoliteness(rate float64, burst, threshold int, cooldown time.Duration, c
 		cooldown = defaultCooldown
 	}
 	return &Politeness{
-		limiter:  newHostLimiter(rate, burst, clock),
-		breaker:  newCircuitBreaker(clock, threshold, cooldown),
-		clock:    clock,
-		cooldown: cooldown,
-		metrics:  make(map[string]*hostCounters),
+		limiter:   newHostLimiter(rate, burst, clock),
+		breaker:   newCircuitBreaker(clock, threshold, cooldown),
+		clock:     clock,
+		cooldown:  cooldown,
+		metrics:   make(map[string]*hostCounters),
+		throttles: make(map[string]*hostThrottle),
 	}
 }
 
@@ -143,6 +181,104 @@ func (p *Politeness) release(host string) {
 	p.breaker.release(hostKey(host))
 }
 
+// beforeScheduled waits the learned spacing of a host before a scheduled read.
+// It is called after the breaker admitted the request, so a refused probe never
+// holds a slot. Live app searches do not pass through here: their deadline is
+// short and the breaker already protects the site from a burst.
+func (p *Politeness) beforeScheduled(ctx context.Context, host string) error {
+	if p == nil {
+		return nil
+	}
+	host = hostKey(host)
+	p.throttleMu.Lock()
+	entry := p.throttle(host)
+	now := p.clock.Now()
+	var wait time.Duration
+	if entry.spacing > 0 && !entry.last.IsZero() {
+		if next := entry.last.Add(entry.spacing); next.After(now) {
+			wait = next.Sub(now)
+		}
+	}
+	entry.last = now.Add(wait)
+	p.throttleMu.Unlock()
+	if wait <= 0 {
+		return nil
+	}
+	return sleepClock(ctx, p.clock, wait)
+}
+
+// cooldownFor turns the base cooldown of one throttled answer into the real
+// one. A host that keeps saying 429 gets twice as long each time, up to
+// hostCooldownCap; a Retry-After longer than that is still honoured by the
+// caller.
+func (p *Politeness) cooldownFor(host string, base time.Duration) time.Duration {
+	if p == nil {
+		return base
+	}
+	host = hostKey(host)
+	p.throttleMu.Lock()
+	defer p.throttleMu.Unlock()
+	entry := p.throttle(host)
+	entry.strikes++
+	entry.good = 0
+	switch {
+	case entry.spacing <= 0:
+		entry.spacing = hostSpacingMin
+	case entry.spacing < hostSpacingMax:
+		entry.spacing *= 2
+		if entry.spacing > hostSpacingMax {
+			entry.spacing = hostSpacingMax
+		}
+	}
+	wait := base
+	for i := 1; i < entry.strikes && wait < hostCooldownCap; i++ {
+		wait *= 2
+	}
+	if wait > hostCooldownCap {
+		wait = hostCooldownCap
+	}
+	if wait < base {
+		wait = base
+	}
+	return wait
+}
+
+// recoverHost records a good answer. After enough of them the extra spacing is
+// halved, so a host that was merely busy returns to the normal budget.
+func (p *Politeness) recoverHost(host string) {
+	if p == nil {
+		return
+	}
+	host = hostKey(host)
+	p.throttleMu.Lock()
+	defer p.throttleMu.Unlock()
+	entry := p.throttle(host)
+	if entry.spacing <= 0 {
+		return
+	}
+	entry.good++
+	if entry.good < hostSpacingRecoverAfter {
+		return
+	}
+	entry.good = 0
+	entry.spacing /= 2
+	if entry.spacing < hostSpacingMin {
+		entry.spacing = 0
+		entry.strikes = 0
+	}
+}
+
+// throttle returns the entry of one host. It must be called with throttleMu
+// held.
+func (p *Politeness) throttle(host string) *hostThrottle {
+	entry := p.throttles[host]
+	if entry == nil {
+		entry = &hostThrottle{}
+		p.throttles[host] = entry
+	}
+	return entry
+}
+
 // observe records the response. Retry-After on 429/503 opens the host breaker;
 // 5xx counts as a failure; 4xx is recorded but does not trip the breaker.
 func (p *Politeness) observe(host string, status int, header http.Header) {
@@ -154,20 +290,22 @@ func (p *Politeness) observe(host string, status int, header http.Header) {
 	case http.StatusTooManyRequests:
 		p.noteStatus(host, status)
 		now := p.clock.Now()
-		wait := retryAfter(header.Get("Retry-After"), now, p.cooldown)
+		wait := p.cooldownFor(host, retryAfter(header.Get("Retry-After"), now, p.cooldown))
 		p.breaker.openUntil(host, now.Add(wait))
 	case http.StatusServiceUnavailable:
 		now := p.clock.Now()
-		wait := retryAfter(header.Get("Retry-After"), now, p.cooldown)
+		wait := p.cooldownFor(host, retryAfter(header.Get("Retry-After"), now, p.cooldown))
 		p.breaker.openUntil(host, now.Add(wait))
 	case http.StatusForbidden:
 		p.noteStatus(host, status)
+		p.recoverHost(host)
 		p.breaker.success(host)
 	default:
 		if status >= 500 {
 			p.breaker.failure(host)
 			return
 		}
+		p.recoverHost(host)
 		p.breaker.success(host)
 	}
 }
@@ -187,6 +325,9 @@ func (p *Politeness) ResetHost(host string) {
 	p.mu.Lock()
 	delete(p.metrics, host)
 	p.mu.Unlock()
+	p.throttleMu.Lock()
+	delete(p.throttles, host)
+	p.throttleMu.Unlock()
 }
 
 // HostMetrics returns a copy of the per-host counters, sorted by host. It is

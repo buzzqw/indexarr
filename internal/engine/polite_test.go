@@ -288,3 +288,132 @@ func TestPolitenessMetrics(t *testing.T) {
 		t.Errorf("broken.example = %#v, want one breaker-open and state open", got)
 	}
 }
+
+// TestPolitenessRepeated429GrowsTheHostCooldown covers the learned backoff: a
+// site that keeps answering 429 is probed less and less often, instead of
+// every ten minutes for ever.
+func TestPolitenessRepeated429GrowsTheHostCooldown(t *testing.T) {
+	clock := newFakeClock()
+	polite := NewPoliteness(0, 1, 99, time.Minute, clock)
+	base := &fakeRoundTripper{
+		respond: func(req *http.Request) *http.Response {
+			return &http.Response{
+				StatusCode: http.StatusTooManyRequests,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader("slow down")),
+				Request:    req,
+			}
+		},
+	}
+	roundTripper := polite.RoundTripper(base)
+	host := "https://again.example/one"
+
+	// First 429: the configured cooldown, one minute.
+	if _, err := roundTripper.RoundTrip(politeRequest(t, host)); err != nil {
+		t.Fatalf("first request: %v", err)
+	}
+	clock.Advance(time.Minute)
+	// The half-open probe is admitted and answered 429 again: from now the
+	// cooldown is two minutes, not one.
+	if _, err := roundTripper.RoundTrip(politeRequest(t, host)); err != nil {
+		t.Fatalf("probe: %v", err)
+	}
+	clock.Advance(time.Minute + time.Second)
+	if _, err := roundTripper.RoundTrip(politeRequest(t, host)); !errors.Is(err, ErrBreakerOpen) {
+		t.Fatalf("request at 61s = %v, want ErrBreakerOpen with the doubled cooldown", err)
+	}
+	clock.Advance(time.Minute)
+	if _, err := roundTripper.RoundTrip(politeRequest(t, host)); err != nil {
+		t.Fatalf("request at the doubled cooldown: %v", err)
+	}
+}
+
+// TestPolitenessSpacesScheduledReadsAfter429 covers the other half of the
+// backoff: a periodic run of a site that answered 429 is spaced out, while a
+// live app search keeps its own window.
+func TestPolitenessSpacesScheduledReadsAfter429(t *testing.T) {
+	clock := newFakeClock()
+	polite := NewPoliteness(0, 1, 99, time.Minute, clock)
+	host := "spaced.example"
+	polite.observe(host, http.StatusTooManyRequests, nil)
+	// The breaker is irrelevant here: measure only the learned spacing.
+	polite.breaker.reset(host)
+
+	ctx := context.Background()
+	start := clock.Now()
+	if err := polite.beforeScheduled(ctx, host); err != nil {
+		t.Fatalf("first scheduled read: %v", err)
+	}
+	if el := clock.Now().Sub(start); el != 0 {
+		t.Fatalf("first scheduled read waited %s, want no wait", el)
+	}
+	start = clock.Now()
+	if err := polite.beforeScheduled(ctx, host); err != nil {
+		t.Fatalf("second scheduled read: %v", err)
+	}
+	if got := clock.Now().Sub(start); got != hostSpacingMin {
+		t.Fatalf("second scheduled read waited %s, want %s", got, hostSpacingMin)
+	}
+
+	// A live request does not pay the scheduled spacing.
+	liveStart := clock.Now()
+	if err := polite.before(ctx, host); err != nil {
+		t.Fatalf("live request: %v", err)
+	}
+	if got := clock.Now().Sub(liveStart); got != 0 {
+		t.Fatalf("live request waited %s, want 0", got)
+	}
+}
+
+// TestTransportAppliesTheScheduleSpacingOnlyToFeeds locks the split between
+// the two paths: a periodic read (DoFeed, or a context marked as scheduled)
+// waits the learned spacing, a live app search does not.
+func TestTransportAppliesTheScheduleSpacingOnlyToFeeds(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "ok")
+	}))
+	defer server.Close()
+
+	clock := newFakeClock()
+	polite := NewPoliteness(0, 1, 99, time.Minute, clock)
+	transport := newLocalTransport(TransportConfig{Clock: clock, Politeness: polite})
+	host := "127.0.0.1"
+	polite.observe(host, http.StatusTooManyRequests, nil)
+	polite.breaker.reset(host)
+
+	ctx := context.Background()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+	if _, err := transport.DoFeed(ctx, "feed", req); err != nil {
+		t.Fatalf("first feed request: %v", err)
+	}
+
+	// A live search in between neither waits nor consumes the feed slot.
+	liveStart := clock.Now()
+	live, _ := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+	if _, err := transport.Do(ctx, "live", live); err != nil {
+		t.Fatalf("live request: %v", err)
+	}
+	if got := clock.Now().Sub(liveStart); got != 0 {
+		t.Fatalf("live request waited %s, want 0", got)
+	}
+
+	start := clock.Now()
+	second, _ := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+	if _, err := transport.DoFeed(ctx, "feed", second); err != nil {
+		t.Fatalf("second feed request: %v", err)
+	}
+	if got := clock.Now().Sub(start); got != hostSpacingMin {
+		t.Fatalf("second feed request waited %s, want %s", got, hostSpacingMin)
+	}
+
+	// A context marked as scheduled pays the same spacing through Do.
+	marked := WithScheduledRead(ctx)
+	start = clock.Now()
+	third, _ := http.NewRequestWithContext(marked, http.MethodGet, server.URL, nil)
+	if _, err := transport.Do(marked, "health", third); err != nil {
+		t.Fatalf("scheduled Do: %v", err)
+	}
+	if got := clock.Now().Sub(start); got != hostSpacingMin {
+		t.Fatalf("scheduled Do waited %s, want %s", got, hostSpacingMin)
+	}
+}

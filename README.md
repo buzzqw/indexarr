@@ -144,11 +144,19 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
 - **eD2k** sources (`protocol: ed2k`) with `ed2k://` links.
 - Each source has its own interval, starts immediately on first boot, retries
   with backoff and can be slowed down with **Reduce the frequency** after an
-  HTTP 429.
+  HTTP 429. A failure may delay a source but never makes it run sooner than
+  its own interval.
+- **One site, one voice**: the sources that share a definition (the thirteen
+  TorrentGalaxy uploaders, the ExtTo channels) take turns inside the site's
+  interval, and a periodic pass reads at most one of them at a time. The site
+  never receives thirteen crawls in the same minute.
 - **Mirrors**: when a site's address is gone, the request moves to the next
   address of the definition and stays there.
-- **Per-host rate limit** and **circuit breaker**: a host that keeps failing
-  is paused and retried by itself; forum flood controls (DDUnlimited,
+- **Per-host rate limit**, **circuit breaker** and **learned pace**: a host
+  that keeps failing is paused and retried by itself; after a 429 the periodic
+  runs of that host are spaced further apart and the pause grows (10 minutes,
+  20, 40, up to six hours) instead of poking the site every ten minutes, while
+  a live app search keeps its own window. Forum flood controls (DDUnlimited,
   ilDraGoNeRo) are respected with a queued search lane.
 
 ### Cache and search
@@ -249,9 +257,10 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
   cleared as soon as a health check or a run succeeds, so a timeout from hours
   ago does not keep the dashboard red, and every cause (rate limit, flood
   control, DNS, page changed) has its own sentence instead of "unexpected
-  error". The filters of one site are checked one after the other, so several
-  sources on the same host do not ask the site for everything at the same
-  second.
+  error". The health check and the periodic runs keep the sources of one site
+  apart: they are checked one after the other, and even when several are due
+  only one is read per tick, so a site is never asked for everything at the
+  same second.
 
 ### \*arr apps
 

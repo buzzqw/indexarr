@@ -42,6 +42,9 @@ func (m *Manager) Health(ctx context.Context, indexerID int64) (HealthResult, er
 			stats.discardParse()
 		}
 	})
+	// A health check is a periodic probe: it pays the per-host spacing learned
+	// after a rate limit, like a scheduled run.
+	ctx = engine.WithScheduledRead(ctx)
 	items, err := connector.Search(ctx, engine.SearchRequest{
 		Mode:  engine.ModeSearch,
 		Query: result.Query,

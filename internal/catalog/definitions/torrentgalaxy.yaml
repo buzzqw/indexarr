@@ -72,7 +72,10 @@ search:
 latest:
   request:
     get: "/get-posts/user:{{ settings.uploader }}/"
-  pagination: { type: page, start: 1, step: 1, max_pages: 10, param: page, stop_when: empty_rows }
+  # Three pages are enough for a user feed read every one or two hours, and
+  # they keep the crawl short: the site answers 429 when one uploader costs ten
+  # pages. The periodic walk still stops early on an empty page.
+  pagination: { type: page, start: 1, step: 1, max_pages: 3, param: page, stop_when: empty_rows }
 
 download:
   resolve_on: search

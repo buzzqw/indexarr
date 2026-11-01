@@ -12,6 +12,7 @@ import (
 	"errors"
 	"log/slog"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -242,8 +243,15 @@ func (r *Runner) runDuePass(ctx context.Context) {
 		r.logger.Warn("native: load retry states", "error", err)
 		lastRuns = map[int64]store.RunRetryState{}
 	}
-	candidates := dueIndexers(indexers, lastRuns, settings.DefaultInterval(), time.Now())
-	outcomes := r.runCandidates(ctx, sortCandidates(candidates))
+	now := time.Now()
+	due := sortCandidates(dueIndexers(indexers, lastRuns, settings.DefaultInterval(), now))
+	candidates := paceSiteCandidates(due, indexers, lastRuns, settings.DefaultInterval(), now)
+	if deferred := len(due) - len(candidates); deferred > 0 {
+		// The sources of one site take turns: the next tick serves the next
+		// channel instead of asking the site for all of them at once.
+		r.logger.Debug("native: sources wait for their turn on the site", "deferred", deferred)
+	}
+	outcomes := r.runCandidates(ctx, candidates)
 	if ctx.Err() != nil {
 		return
 	}
@@ -295,25 +303,25 @@ func RetryExhausted(failures int) bool {
 
 // dueIndexers filters the enabled indexers whose next run is due. A positive
 // IntervalSeconds overrides the global interval; zero uses the global one. A
-// source with consecutive failed runs follows retryDelays instead of its
-// normal cadence; after the last step it is left alone until an edit or a
-// successful test resets the streak.
+// source with consecutive failed runs follows retryDelays, but a failure never
+// makes it run sooner than its own interval: a site that said 429 must not be
+// asked again in less time than its normal cadence. After the last step the
+// source is left alone until an edit or a successful test resets the streak.
+//
+// The sources of one site (one definition) are staggered inside their own
+// interval, so thirteen TorrentGalaxy uploaders on a two hour cadence do not
+// all become due in the same minute.
 func dueIndexers(indexers []store.Indexer, states map[int64]store.RunRetryState, global time.Duration, now time.Time) []store.Indexer {
 	if global < minInterval {
 		global = minInterval
 	}
+	stagger := siteStagger(indexers, global)
 	out := make([]store.Indexer, 0, len(indexers))
 	for _, indexerRow := range indexers {
 		if !indexerRow.Enabled {
 			continue
 		}
-		interval := global
-		if indexerRow.IntervalSeconds > 0 {
-			interval = time.Duration(indexerRow.IntervalSeconds) * time.Second
-			if interval < minInterval {
-				interval = minInterval
-			}
-		}
+		interval := effectiveInterval(indexerRow, global)
 		state := states[indexerRow.ID]
 		failures := state.Failures
 		// An edit after the last failure is the operator saying "I fixed it":
@@ -329,16 +337,134 @@ func dueIndexers(indexers []store.Indexer, states map[int64]store.RunRetryState,
 		due := interval
 		if failures > 0 {
 			due = retryDelays[failures-1]
-		}
-		if storedSourceConfig(indexerRow.ConfigJSON) && failures == 0 {
-			// Stored sources get a small deterministic stagger so several
-			// sites never fire at the same minute; a retry is not staggered.
-			due += time.Duration(storedJitter(indexerRow.ID)) * time.Second
+			if due < interval {
+				due = interval
+			}
+		} else {
+			// Spread the sources of one site inside its interval. The offset
+			// is deterministic: a restart reshuffles nothing.
+			due += stagger[indexerRow.ID]
+			if storedSourceConfig(indexerRow.ConfigJSON) {
+				// Stored sources get a small extra stagger so several sites
+				// never fire at the same minute; a retry is not staggered.
+				due += time.Duration(storedJitter(indexerRow.ID)) * time.Second
+			}
 		}
 		if last := state.LastRun; !last.IsZero() && now.Before(last.Add(due)) {
 			continue
 		}
 		out = append(out, indexerRow)
+	}
+	return out
+}
+
+// effectiveInterval is the cadence of one source: its own when set, the global
+// one otherwise. It never goes below minInterval.
+func effectiveInterval(indexerRow store.Indexer, global time.Duration) time.Duration {
+	interval := indexerRow.IntervalSeconds
+	if interval <= 0 {
+		return global
+	}
+	due := time.Duration(interval) * time.Second
+	if due < minInterval {
+		return minInterval
+	}
+	return due
+}
+
+// siteKey groups the sources that talk to the same site. A definition is one
+// site: its uploader channels, its latest list and its search share the host
+// and the host's request budget. A source without a definition is its own
+// site, so it never waits for an unrelated one.
+func siteKey(indexerRow store.Indexer) string {
+	if key := strings.TrimSpace(indexerRow.DefinitionID); key != "" {
+		return key
+	}
+	return "#" + strconv.FormatInt(indexerRow.ID, 10)
+}
+
+// siteStagger returns how long after its own interval each source of a site
+// becomes due. The members of a site are ordered by ID and spread evenly over
+// the interval, so a site with N channels is read N times per interval instead
+// of N times in the same minute. A single source has no offset.
+func siteStagger(indexers []store.Indexer, global time.Duration) map[int64]time.Duration {
+	out := make(map[int64]time.Duration)
+	groups := make(map[string][]store.Indexer)
+	order := make([]string, 0, len(indexers))
+	for _, indexerRow := range indexers {
+		if !indexerRow.Enabled {
+			continue
+		}
+		key := siteKey(indexerRow)
+		if _, ok := groups[key]; !ok {
+			order = append(order, key)
+		}
+		groups[key] = append(groups[key], indexerRow)
+	}
+	for _, key := range order {
+		group := groups[key]
+		if len(group) < 2 {
+			continue
+		}
+		sort.Slice(group, func(i, j int) bool { return group[i].ID < group[j].ID })
+		for position, indexerRow := range group {
+			interval := effectiveInterval(indexerRow, global)
+			out[indexerRow.ID] = interval * time.Duration(position) / time.Duration(len(group))
+		}
+	}
+	return out
+}
+
+// minSiteGap is the shortest pause between two scheduled runs of one site,
+// whatever its interval and number of channels. The scheduler ticks every
+// minute, so this is also "one scheduled run per site per tick".
+const minSiteGap = time.Minute
+
+// paceSiteCandidates keeps the due sources of one site apart. The interval is
+// divided among the site's channels: with N channels and an interval I, a site
+// receives one run every I/N, which is exactly the cadence the stagger gives
+// them. The check also covers a burst (a restart, a long pass) where several
+// channels are due at once: only the first runs now, the others wait for their
+// turn instead of being sent together to a site that answers 429.
+func paceSiteCandidates(candidates []store.Indexer, all []store.Indexer, states map[int64]store.RunRetryState, global time.Duration, now time.Time) []store.Indexer {
+	if len(candidates) == 0 {
+		return candidates
+	}
+	counts := make(map[string]int, len(all))
+	for _, indexerRow := range all {
+		if indexerRow.Enabled {
+			counts[siteKey(indexerRow)]++
+		}
+	}
+	lastRun := make(map[string]time.Time, len(all))
+	for _, indexerRow := range all {
+		state, ok := states[indexerRow.ID]
+		if !ok || state.LastRun.IsZero() {
+			continue
+		}
+		key := siteKey(indexerRow)
+		if state.LastRun.After(lastRun[key]) {
+			lastRun[key] = state.LastRun
+		}
+	}
+	out := make([]store.Indexer, 0, len(candidates))
+	for _, indexerRow := range candidates {
+		key := siteKey(indexerRow)
+		if counts[key] < 2 {
+			out = append(out, indexerRow)
+			continue
+		}
+		gap := effectiveInterval(indexerRow, global) / time.Duration(counts[key])
+		if gap < minSiteGap {
+			gap = minSiteGap
+		}
+		if last := lastRun[key]; !last.IsZero() && now.Sub(last) < gap {
+			continue
+		}
+		out = append(out, indexerRow)
+		// The site is served now: another of its channels waits for the next
+		// tick even when the runs of this pass are quick.
+		lastRun[key] = now
 	}
 	return out
 }

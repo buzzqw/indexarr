@@ -581,13 +581,107 @@ func TestDueIndexersRunsIndexerWithoutHistory(t *testing.T) {
 	}
 }
 
+// TestDueIndexersStaggersTheSourcesOfOneSite covers the rotation: with one
+// interval and three channels of the same definition, only the channel whose
+// own slot has elapsed becomes due.
+func TestDueIndexersStaggersTheSourcesOfOneSite(t *testing.T) {
+	now := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	indexers := []store.Indexer{
+		{ID: 10, Enabled: true, DefinitionID: "site"},
+		{ID: 11, Enabled: true, DefinitionID: "site"},
+		{ID: 12, Enabled: true, DefinitionID: "site"},
+	}
+	states := map[int64]store.RunRetryState{
+		10: {LastRun: now.Add(-3 * time.Hour)},
+		11: {LastRun: now.Add(-3 * time.Hour)},
+		12: {LastRun: now.Add(-3 * time.Hour)},
+	}
+	due := dueIndexers(indexers, states, 3*time.Hour, now)
+	if len(due) != 1 || due[0].ID != 10 {
+		t.Fatalf("due = %+v, want only the first slot", due)
+	}
+	// The first channel has just run: its own interval restarts, so at the
+	// next slot only the second channel is due.
+	states[10] = store.RunRetryState{LastRun: now}
+	due = dueIndexers(indexers, states, 3*time.Hour, now.Add(time.Hour))
+	if len(due) != 1 || due[0].ID != 11 {
+		t.Fatalf("due after one hour = %+v, want the second slot", due)
+	}
+	states[11] = store.RunRetryState{LastRun: now.Add(time.Hour)}
+	due = dueIndexers(indexers, states, 3*time.Hour, now.Add(2*time.Hour))
+	if len(due) != 1 || due[0].ID != 12 {
+		t.Fatalf("due after two hours = %+v, want the third slot", due)
+	}
+	if got := siteStagger(indexers, 3*time.Hour); got[10] != 0 || got[11] != time.Hour || got[12] != 2*time.Hour {
+		t.Fatalf("stagger = %+v, want one hour per slot", got)
+	}
+}
+
+// TestDueIndexersNeverRunsSoonerThanTheIntervalAfterAFailure locks the rule
+// that a failure may delay a source but must never accelerate it: the first
+// retry step is one hour, and a source read every two hours that answers 429
+// was being asked again after one.
+func TestDueIndexersNeverRunsSoonerThanTheIntervalAfterAFailure(t *testing.T) {
+	now := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	indexerRow := store.Indexer{ID: 1, Enabled: true, IntervalSeconds: 7200}
+	states := map[int64]store.RunRetryState{
+		1: {LastRun: now.Add(-90 * time.Minute), Failures: 1},
+	}
+	if due := dueIndexers([]store.Indexer{indexerRow}, states, time.Hour, now); len(due) != 0 {
+		t.Fatalf("due = %+v, want the source to wait its own two hours", due)
+	}
+	states[1] = store.RunRetryState{LastRun: now.Add(-2 * time.Hour), Failures: 1}
+	if due := dueIndexers([]store.Indexer{indexerRow}, states, time.Hour, now); len(due) != 1 {
+		t.Fatalf("due at the interval = %+v, want the source", due)
+	}
+}
+
+// TestPaceSiteCandidatesKeepsTheChannelsOfOneSiteApart covers the scheduler
+// side of the rotation: a site receives one scheduled run every interval/N,
+// and another channel due at the same moment waits for its turn.
+func TestPaceSiteCandidatesKeepsTheChannelsOfOneSiteApart(t *testing.T) {
+	now := time.Date(2026, 10, 23, 12, 0, 0, 0, time.UTC)
+	all := []store.Indexer{
+		{ID: 1, Enabled: true, DefinitionID: "site"},
+		{ID: 2, Enabled: true, DefinitionID: "site"},
+		{ID: 3, Enabled: true, DefinitionID: "site"},
+	}
+	states := map[int64]store.RunRetryState{
+		1: {LastRun: now.Add(-2 * time.Hour)},
+		2: {LastRun: now.Add(-2 * time.Hour)},
+		3: {LastRun: now.Add(-2 * time.Hour)},
+	}
+	out := paceSiteCandidates(all, all, states, 3*time.Hour, now)
+	if len(out) != 1 || out[0].ID != 1 {
+		t.Fatalf("paced = %+v, want only the first channel", out)
+	}
+	// A minute later the site has just been read: nothing new goes out.
+	states[1] = store.RunRetryState{LastRun: now}
+	out = paceSiteCandidates(all, all, states, 3*time.Hour, now.Add(time.Minute))
+	if len(out) != 0 {
+		t.Fatalf("paced after a minute = %+v, want the site to wait", out)
+	}
+	// After the site's share of the interval (one hour) the next channel runs.
+	// The first channel is not in the due list: its own interval has restarted.
+	out = paceSiteCandidates([]store.Indexer{all[1]}, all, states, 3*time.Hour, now.Add(time.Hour))
+	if len(out) != 1 || out[0].ID != 2 {
+		t.Fatalf("paced after the site gap = %+v, want the second channel", out)
+	}
+	// A site with a single source is never held back.
+	alone := []store.Indexer{{ID: 9, Enabled: true, DefinitionID: "alone"}}
+	if out := paceSiteCandidates(alone, alone, nil, time.Hour, now); len(out) != 1 {
+		t.Fatalf("single source paced = %+v, want it to run", out)
+	}
+}
+
 func TestDuePassSkipsRecentlyRunIndexer(t *testing.T) {
 	st, runner := newHarness(t, 2, nil)
 	tracker := &inflightTracker{}
 	server := newNativeServer(t, 0, tracker)
 	addNativeDefinition(t, st, "due-native", server.URL)
+	addNativeDefinition(t, st, "due-other", server.URL)
 	recentID := createIndexer(t, st, "due-native", "due-recent", "Due Recent", nativeConfig(server.URL), true)
-	createIndexer(t, st, "due-native", "due-pending", "Due Pending", nativeConfig(server.URL), true)
+	createIndexer(t, st, "due-other", "due-pending", "Due Pending", nativeConfig(server.URL), true)
 	if _, err := st.RecordIndexerHistory(context.Background(), store.IndexerHistory{
 		IndexerID: recentID, Kind: "run", Status: "ok", StartedAt: time.Now(),
 	}); err != nil {
@@ -597,6 +691,24 @@ func TestDuePassSkipsRecentlyRunIndexer(t *testing.T) {
 	runner.runDuePass(context.Background())
 	if got := tracker.requests.Load(); got != 1 {
 		t.Fatalf("requests = %d, want only the indexer without a recent run", got)
+	}
+}
+
+// TestDuePassRunsOneSourcePerSitePerTick covers the alternation: thirteen
+// uploader channels of one site must not be crawled in the same pass, even
+// when all of them are due.
+func TestDuePassRunsOneSourcePerSitePerTick(t *testing.T) {
+	st, runner := newHarness(t, 2, nil)
+	tracker := &inflightTracker{}
+	server := newNativeServer(t, 0, tracker)
+	addNativeDefinition(t, st, "due-site", server.URL)
+	createIndexer(t, st, "due-site", "due-one", "Due One", nativeConfig(server.URL), true)
+	createIndexer(t, st, "due-site", "due-two", "Due Two", nativeConfig(server.URL), true)
+	createIndexer(t, st, "due-site", "due-three", "Due Three", nativeConfig(server.URL), true)
+
+	runner.runDuePass(context.Background())
+	if got := tracker.requests.Load(); got != 1 {
+		t.Fatalf("requests = %d, want one source of the site per tick", got)
 	}
 }
 

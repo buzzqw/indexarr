@@ -276,12 +276,15 @@ func (t *Transport) Do(ctx context.Context, breakerKey string, req *http.Request
 	if req == nil {
 		return nil, errors.New("engine: nil request")
 	}
-	return t.do(ctx, breakerKey, req, t.cfg.MaxBodyBytes, false, false)
+	return t.do(ctx, breakerKey, req, t.cfg.MaxBodyBytes, false, false, false)
 }
 
 // DoFeed is Do with an IPv4 fallback for feed requests. The fallback is kept
 // out of live searches: retrying a slow host there would spend the fan-out
 // budget and look like a rate-limit problem to the source.
+//
+// It is also the scheduled read path: after a 429 the per-host spacing learned
+// by the shared Politeness is applied here, never to a live app search.
 func (t *Transport) DoFeed(ctx context.Context, breakerKey string, req *http.Request) (*Response, error) {
 	if t == nil {
 		return nil, errors.New("engine: nil transport")
@@ -289,7 +292,26 @@ func (t *Transport) DoFeed(ctx context.Context, breakerKey string, req *http.Req
 	if req == nil {
 		return nil, errors.New("engine: nil request")
 	}
-	return t.do(ctx, breakerKey, req, t.cfg.MaxBodyBytes, false, true)
+	return t.do(ctx, breakerKey, req, t.cfg.MaxBodyBytes, false, true, true)
+}
+
+// scheduledReadKey marks a request as a periodic read: a scheduled run or a
+// health check. The transport pays the per-host spacing learned after a rate
+// limit for it, while a live app search keeps its own short window.
+type scheduledReadKey struct{}
+
+// WithScheduledRead marks ctx as a periodic read.
+func WithScheduledRead(ctx context.Context) context.Context {
+	if ctx == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, scheduledReadKey{}, true)
+}
+
+// isScheduledRead reports whether ctx was marked by WithScheduledRead.
+func isScheduledRead(ctx context.Context) bool {
+	marked, _ := ctx.Value(scheduledReadKey{}).(bool)
+	return marked
 }
 
 // Download fetches rawURL as a GET with an optional size limit (0 means the
@@ -315,7 +337,7 @@ func (t *Transport) Download(ctx context.Context, breakerKey, rawURL string, max
 	if err != nil {
 		return nil, fmt.Errorf("engine: build download request: %w", err)
 	}
-	return t.do(ctx, breakerKey, req, maxBytes, true, false)
+	return t.do(ctx, breakerKey, req, maxBytes, true, false, false)
 }
 
 // BreakerState reports the circuit breaker state for an indexer key. Unknown
@@ -356,7 +378,7 @@ func (t *Transport) ResetHost(host string) {
 	t.polite.ResetHost(host)
 }
 
-func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request, maxBody int64, statusAsResponse, ipv4Fallback bool) (*Response, error) {
+func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request, maxBody int64, statusAsResponse, ipv4Fallback, scheduled bool) (*Response, error) {
 	if ctx == nil {
 		return nil, errors.New("engine: nil context")
 	}
@@ -385,6 +407,16 @@ func (t *Transport) do(ctx context.Context, breakerKey string, req *http.Request
 		// per-indexer breaker refuses the request.
 		t.polite.release(host)
 		return nil, fmt.Errorf("engine: breaker %q: %w", key, err)
+	}
+	if scheduled || isScheduledRead(ctx) {
+		// A periodic run pays the extra spacing learned after a rate limit.
+		// The request already owns the breaker probe, so a cancellation
+		// releases it instead of counting as a failure.
+		if err := t.polite.beforeScheduled(ctx, host); err != nil {
+			t.breaker.release(key)
+			t.polite.release(host)
+			return nil, fmt.Errorf("engine: request %s: %w", host, err)
+		}
 	}
 
 	outgoing := req.Clone(ctx)
