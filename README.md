@@ -173,7 +173,9 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
   `language` attribute per language, with the English name the *arr clients
   map (Sonarr/Radarr `IsoLanguages.FindByName`), so a custom format can match
   a release whose title does not say it. A source that does not declare them
-  omits the attribute instead of guessing from the title.
+  omits the attribute instead of guessing from the title. A Torznab/Newznab
+  source keeps the languages and the freeleech flag it reads from upstream, so
+  a chain indexarr → indexarr (or Prowlarr → indexarr) does not lose them.
 - **Live search** on every query (on by default): the enabled sources that can
   search are asked at that moment, what arrives in time is saved and merged
   with the cache; the aggregated endpoint returns one row per release.

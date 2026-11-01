@@ -24,9 +24,9 @@ func TestParseLanguagesMapsCodesAndNames(t *testing.T) {
 		{[]string{"italiano", "en"}, []string{"Italian", "English"}},
 	}
 	for _, tc := range cases {
-		got := parseLanguages(tc.in...)
+		got := ParseLanguages(tc.in...)
 		if !slices.Equal(got, tc.want) {
-			t.Errorf("parseLanguages(%v) = %v, want %v", tc.in, got, tc.want)
+			t.Errorf("ParseLanguages(%v) = %v, want %v", tc.in, got, tc.want)
 		}
 	}
 }
@@ -34,7 +34,7 @@ func TestParseLanguagesMapsCodesAndNames(t *testing.T) {
 // TestParseLanguagesIsBounded keeps one page with every audio track from
 // turning a single release into a long attribute list.
 func TestParseLanguagesIsBounded(t *testing.T) {
-	got := parseLanguages("English,French,German,Italian,Spanish,Portuguese,Russian,Japanese,Polish,Dutch")
+	got := ParseLanguages("English,French,German,Italian,Spanish,Portuguese,Russian,Japanese,Polish,Dutch")
 	if len(got) != maxLanguages {
 		t.Fatalf("len = %d, want %d: %v", len(got), maxLanguages, got)
 	}

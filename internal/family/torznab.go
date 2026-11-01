@@ -422,6 +422,10 @@ func (t *Torznab) parseItem(row newznabRSSItem) (engine.Item, bool) {
 	pubDate := strings.TrimSpace(row.PubDate)
 
 	attributes := make(map[string]string, len(row.Attrs)+5)
+	// A release can declare more than one audio language, and each one is a
+	// separate `language` attribute: the map would keep only the last, so they
+	// are collected on the way.
+	var languages []string
 	categories := make([]int, 0, 2)
 	seenCategories := make(map[int]struct{}, 2)
 	addCategory := func(value string) {
@@ -445,6 +449,9 @@ func (t *Torznab) parseItem(row newznabRSSItem) (engine.Item, bool) {
 		attributes[name] = value
 		if name == "category" {
 			addCategory(value)
+		}
+		if name == "language" && value != "" {
+			languages = append(languages, value)
 		}
 	}
 
@@ -519,23 +526,28 @@ func (t *Torznab) parseItem(row newznabRSSItem) (engine.Item, bool) {
 		itemGUID = hash
 	}
 
+	freeleech, freeleechKnown := torznabFreeleech(attributes)
+
 	return engine.Item{
-		Protocol:    engine.ProtocolTorrent,
-		Title:       title,
-		GUID:        itemGUID,
-		DetailsURL:  details,
-		DownloadURL: downloadURL,
-		Magnet:      magnet,
-		InfoHash:    hash,
-		Size:        size,
-		Seeders:     parseInt64(attributes["seeders"]),
-		Leechers:    parseInt64(attributes["leechers"]),
-		Categories:  categories,
-		Published:   parseDate(pubDate),
-		IMDbID:      cleanAttrID(attributes["imdbid"]),
-		TMDbID:      cleanAttrID(attributes["tmdbid"]),
-		TVDbID:      cleanAttrID(attributes["tvdbid"]),
-		Attributes:  attributes,
+		Protocol:       engine.ProtocolTorrent,
+		Freeleech:      freeleech,
+		FreeleechKnown: freeleechKnown,
+		Languages:      engine.ParseLanguages(languages...),
+		Title:          title,
+		GUID:           itemGUID,
+		DetailsURL:     details,
+		DownloadURL:    downloadURL,
+		Magnet:         magnet,
+		InfoHash:       hash,
+		Size:           size,
+		Seeders:        parseInt64(attributes["seeders"]),
+		Leechers:       parseInt64(attributes["leechers"]),
+		Categories:     categories,
+		Published:      parseDate(pubDate),
+		IMDbID:         cleanAttrID(attributes["imdbid"]),
+		TMDbID:         cleanAttrID(attributes["tmdbid"]),
+		TVDbID:         cleanAttrID(attributes["tvdbid"]),
+		Attributes:     attributes,
 	}, true
 }
 
@@ -615,4 +627,28 @@ func withAPIKey(rawURL, apiKey string) string {
 	}
 	parsed.RawQuery = query.Encode()
 	return parsed.String()
+}
+
+// torznabFreeleech reads the download quota an upstream indexer declared. It
+// follows the same attributes indexarr emits itself, so a chain (indexarr →
+// indexarr, or Prowlarr → indexarr) keeps the information: an explicit
+// `freeleechknown=0` means "not stated" and never becomes a paid release,
+// `downloadvolumefactor` 0 or a positive `freeleech`/`neutralleech` marks a
+// free release, and a positive factor marks a paid one.
+func torznabFreeleech(attributes map[string]string) (bool, bool) {
+	if known, err := strconv.Atoi(strings.TrimSpace(attributes["freeleechknown"])); err == nil && known == 0 {
+		return false, false
+	}
+	if factor, err := strconv.ParseFloat(strings.TrimSpace(attributes["downloadvolumefactor"]), 64); err == nil {
+		return factor == 0, true
+	}
+	for _, key := range []string{"freeleech", "neutralleech"} {
+		switch strings.ToLower(strings.TrimSpace(attributes[key])) {
+		case "1", "true", "yes", "free", "on":
+			return true, true
+		case "0", "false", "no", "off":
+			return false, true
+		}
+	}
+	return false, false
 }

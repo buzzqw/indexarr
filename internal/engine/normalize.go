@@ -382,7 +382,7 @@ func (c *DefinitionConnector) normalizeRowWith(raw map[string]string, responseUR
 		IMDbID:     strings.TrimSpace(raw["imdbid"]),
 		TMDbID:     strings.TrimSpace(raw["tmdbid"]),
 		TVDbID:     strings.TrimSpace(raw["tvdbid"]),
-		Languages:  parseLanguages(raw["languages"], raw["language"]),
+		Languages:  ParseLanguages(raw["languages"], raw["language"]),
 	}
 	if season := strings.TrimSpace(raw["season"]); season != "" {
 		if item.Attributes == nil {
@@ -577,12 +577,12 @@ var languageNames = map[string]string{
 // audio track of a movie must not turn one release into a long attribute list.
 const maxLanguages = 8
 
-// parseLanguages turns the text of a definition row field into English names.
+// ParseLanguages turns the text of a definition row field into English names.
 // Sites separate them with a comma, a slash or a semicolon ("English, French",
 // "ITA/ENG"), and definitions may write codes or names. Unknown tokens are
 // dropped: the client ignores them anyway, and a wrong name is worse than no
 // attribute.
-func parseLanguages(values ...string) []string {
+func ParseLanguages(values ...string) []string {
 	seen := make(map[string]bool, 4)
 	out := make([]string, 0, 4)
 	for _, raw := range values {
