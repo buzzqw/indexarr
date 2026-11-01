@@ -502,9 +502,9 @@ command list and the package structure:
   `seeders` attribute is omitted in the Torznab response instead of being 0.
 - Languages come from the definition's optional `languages` row field, which
   may carry codes or names ("ita, eng"); the stored list is the English names,
-  and the Torznab output is one `language` attribute each. The web search
-  filter by language still reads the title, because most catalog definitions
-  do not expose the field yet.
+  and the Torznab output is one `language` attribute each. The web filter by
+  language looks at the declared languages first and falls back to the title,
+  because most catalog definitions do not expose the field yet.
 - Freeleech is per release when the source states it: `freeleechknown=1` and
   `freeleech` are emitted, and `downloadvolumefactor` is 0/1. When the source
   says nothing the configured download factor is the fallback. A release a

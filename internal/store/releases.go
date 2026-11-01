@@ -1379,9 +1379,11 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 	}
 	switch f.Language {
 	case "ita":
-		clauses = append(clauses, `(search_title LIKE '%ita%' OR search_title LIKE '%italian%')`)
+		// The declared languages win over the title: a release whose title
+		// omits "ITA" is found when the source said Italian.
+		clauses = append(clauses, `(languages LIKE '%Italian%' OR search_title LIKE '%ita%' OR search_title LIKE '%italian%')`)
 	case "eng":
-		clauses = append(clauses, `(search_title LIKE '%eng%' OR search_title LIKE '%english%')`)
+		clauses = append(clauses, `(languages LIKE '%English%' OR search_title LIKE '%eng%' OR search_title LIKE '%english%')`)
 	}
 	if f.MinSeeders > 0 || f.MinSize > 0 || f.MaxSize > 0 ||
 		f.Quality != "" || f.SourceQuality != "" || f.Language != "" {

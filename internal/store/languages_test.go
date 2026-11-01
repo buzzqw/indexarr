@@ -76,3 +76,49 @@ func TestReleaseKeepsTheDeclaredLanguages(t *testing.T) {
 		t.Fatalf("SearchReleases = %+v", list)
 	}
 }
+
+// TestLanguageFilterUsesTheDeclaredLanguages proves the filter finds a release
+// whose title does not name the language but whose source declared it: the
+// whole point of carrying the metadata.
+func TestLanguageFilterUsesTheDeclaredLanguages(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	now := time.Unix(1_700_000_000, 0).UTC()
+
+	for _, release := range []Release{
+		{DedupKey: "declared-ita", Title: "Il.Film.2024.1080p.BluRay", SearchTitle: "il film 2024 1080p bluray",
+			Size: 100, Category: "2040", Protocol: "torrent", Languages: "Italian", FirstSeenAt: now, LastSeenAt: now},
+		{DedupKey: "title-ita", Title: "Altro.Film.2024.ITA.1080p", SearchTitle: "altro film 2024 ita 1080p",
+			Size: 100, Category: "2040", Protocol: "torrent", FirstSeenAt: now, LastSeenAt: now},
+		{DedupKey: "english", Title: "Other.Movie.2024.1080p", SearchTitle: "other movie 2024 1080p",
+			Size: 100, Category: "2040", Protocol: "torrent", Languages: "English", FirstSeenAt: now, LastSeenAt: now},
+	} {
+		release := release
+		if _, err := st.UpsertRelease(ctx, &release); err != nil {
+			t.Fatalf("UpsertRelease(%s): %v", release.DedupKey, err)
+		}
+	}
+
+	list, _, err := st.SearchReleases(ctx, Filter{Query: "film", Language: "ita"})
+	if err != nil {
+		t.Fatalf("SearchReleases(ita): %v", err)
+	}
+	got := map[string]bool{}
+	for _, release := range list {
+		got[release.DedupKey] = true
+	}
+	if !got["declared-ita"] || !got["title-ita"] {
+		t.Fatalf("italian results = %v, want the declared and the titled one", got)
+	}
+	if got["english"] {
+		t.Fatalf("the English release matched the Italian filter: %v", got)
+	}
+
+	list, _, err = st.SearchReleases(ctx, Filter{Query: "movie", Language: "eng"})
+	if err != nil {
+		t.Fatalf("SearchReleases(eng): %v", err)
+	}
+	if len(list) != 1 || list[0].DedupKey != "english" {
+		t.Fatalf("english results = %+v", list)
+	}
+}
