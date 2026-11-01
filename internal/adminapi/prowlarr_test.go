@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -93,5 +94,88 @@ health:
 	unauthorized := e.call(http.MethodGet, "/api/v1/indexer", "", "")
 	if unauthorized.status != http.StatusUnauthorized {
 		t.Fatalf("unauthorized status = %d", unauthorized.status)
+	}
+}
+
+// TestProwlarrIndexerStatusListsOnlyFailures mirrors Prowlarr's
+// /api/v1/indexerstatus: a healthy source is not listed, a source whose last
+// run failed is listed with the message and the time it will be retried, so a
+// dashboard (or gextto) can skip it instead of waiting for a timeout.
+func TestProwlarrIndexerStatusListsOnlyFailures(t *testing.T) {
+	e := newEnv(t, true, true)
+	ctx := context.Background()
+
+	body := `schema: 1
+meta:
+  id: status-test
+  name: Status site
+  type: public
+  protocol: torrent
+  urls:
+    - https://example.invalid/
+capabilities:
+  search: [q]
+search:
+  request:
+    get: /
+  response:
+    type: html
+    rows: { selector: "tr" }
+    fields:
+      title: { selector: "a" }
+`
+	if err := e.store.UpsertDefinition(ctx, store.Definition{
+		ID: "status-test", SchemaVersion: 1, State: "verificata", Origin: "local",
+		Author: "test", Body: body, Hash: "status-test-hash",
+	}); err != nil {
+		t.Fatalf("UpsertDefinition: %v", err)
+	}
+	healthy, err := e.store.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "status-test", Protocol: "torrent", Slug: "healthy",
+		Name: "Healthy", Enabled: true, ConfigJSON: `{}`,
+	})
+	if err != nil {
+		t.Fatalf("CreateIndexer healthy: %v", err)
+	}
+	failing, err := e.store.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "status-test", Protocol: "torrent", Slug: "failing",
+		Name: "Failing", Enabled: true, ConfigJSON: `{}`,
+	})
+	if err != nil {
+		t.Fatalf("CreateIndexer failing: %v", err)
+	}
+	until := time.Date(2026, time.November, 1, 12, 30, 0, 0, time.UTC)
+	if err := e.store.UpsertIndexerState(ctx, store.IndexerState{
+		IndexerID:     failing,
+		DisabledUntil: until,
+		LastError:     "search returned HTTP 503",
+	}); err != nil {
+		t.Fatalf("SetIndexerState: %v", err)
+	}
+
+	res := e.do(http.MethodGet, "/api/v1/indexerstatus", "")
+	requireStatus(t, res, http.StatusOK)
+	rows := decodeJSON[[]prowlarrIndexerStatus](t, res.body)
+	if len(rows) != 1 {
+		t.Fatalf("indexerstatus = %+v, want only the failing source", rows)
+	}
+	if rows[0].IndexerID != failing {
+		t.Fatalf("indexerId = %d, want %d (healthy = %d)", rows[0].IndexerID, failing, healthy)
+	}
+	if rows[0].MostRecentFailure != "search returned HTTP 503" {
+		t.Errorf("mostRecentFailure = %q", rows[0].MostRecentFailure)
+	}
+	if rows[0].DisabledTill != until.Format(time.RFC3339) {
+		t.Errorf("disabledTill = %q, want %q", rows[0].DisabledTill, until.Format(time.RFC3339))
+	}
+
+	// A successful run clears the message, and the source leaves the list.
+	if err := e.store.UpsertIndexerState(ctx, store.IndexerState{IndexerID: failing}); err != nil {
+		t.Fatalf("SetIndexerState clear: %v", err)
+	}
+	res = e.do(http.MethodGet, "/api/v1/indexerstatus", "")
+	requireStatus(t, res, http.StatusOK)
+	if rows := decodeJSON[[]prowlarrIndexerStatus](t, res.body); len(rows) != 0 {
+		t.Fatalf("indexerstatus after recovery = %+v, want none", rows)
 	}
 }

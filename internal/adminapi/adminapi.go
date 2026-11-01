@@ -84,6 +84,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/health", s.handleProwlarrHealth)
 	mux.HandleFunc("GET /api/v1/indexer", s.handleProwlarrIndexerList)
 	mux.HandleFunc("GET /api/v1/indexer/{id}", s.handleProwlarrIndexerGet)
+	mux.HandleFunc("GET /api/v1/indexerstatus", s.handleProwlarrIndexerStatus)
 
 	mux.HandleFunc("GET /api/v2/definitions", s.handleDefinitionList)
 	mux.HandleFunc("POST /api/v2/definitions", s.handleDefinitionCreate)

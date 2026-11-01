@@ -327,6 +327,15 @@ func (t *Transport) BreakerState(key string) BreakerState {
 	return t.breaker.State(key)
 }
 
+// BreakerOpenUntil reports when the per-indexer breaker of one key allows the
+// next probe. It is the "disabled till" a dashboard shows for a paused source.
+func (t *Transport) BreakerOpenUntil(key string) (time.Time, bool) {
+	if t == nil || t.breaker == nil {
+		return time.Time{}, false
+	}
+	return t.breaker.openUntilFor(key)
+}
+
 // ResetBreaker clears the per-indexer breaker of one key, so the next request
 // is attempted immediately. The host budget is reset separately, with
 // ResetHost: a source shares its host with its mirrors and with the legacy

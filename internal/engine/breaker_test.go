@@ -231,3 +231,27 @@ func TestTransportResetBreakerAndHost(t *testing.T) {
 		t.Fatalf("state after reset = %q, want closed", got)
 	}
 }
+
+// TestCircuitBreakerOpenUntilReportsTheNextProbe backs the "disabled till" a
+// dashboard reads: the exact instant a paused source is tried again, and
+// nothing at all for a closed one.
+func TestCircuitBreakerOpenUntilReportsTheNextProbe(t *testing.T) {
+	clock := newFakeClock()
+	breaker := newCircuitBreaker(clock, 1, 2*time.Minute)
+
+	if _, ok := breaker.openUntilFor("idx"); ok {
+		t.Fatal("a closed breaker reported a probe time")
+	}
+	breaker.failure("idx")
+	until, ok := breaker.openUntilFor("idx")
+	if !ok {
+		t.Fatal("an open breaker reported no probe time")
+	}
+	if want := clock.Now().Add(2 * time.Minute); !until.Equal(want) {
+		t.Fatalf("probe time = %s, want %s", until, want)
+	}
+	breaker.success("idx")
+	if _, ok := breaker.openUntilFor("idx"); ok {
+		t.Fatal("a source that recovered still reports a probe time")
+	}
+}

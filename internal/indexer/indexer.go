@@ -989,6 +989,23 @@ func (m *Manager) CircuitState(indexerID int64, slug string) engine.BreakerState
 	return transport.BreakerState(slug)
 }
 
+// CircuitOpenUntil reports when a paused source is probed again. It reads the
+// same transport CircuitState uses: the cached connector's private one, or the
+// shared transport.
+func (m *Manager) CircuitOpenUntil(indexerID int64, slug string) (time.Time, bool) {
+	m.mu.Lock()
+	entry, ok := m.cache[indexerID]
+	m.mu.Unlock()
+	transport := m.transport
+	if ok && entry.transport != nil {
+		transport = entry.transport
+	}
+	if transport == nil {
+		return time.Time{}, false
+	}
+	return transport.BreakerOpenUntil(slug)
+}
+
 // ResetCircuit clears the live breaker of one source, both the per-indexer
 // entry and the per-host entry it shares with its mirrors, so the next request
 // is attempted at once. It is the manual answer to a paused source: the

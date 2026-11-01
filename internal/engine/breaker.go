@@ -107,6 +107,19 @@ func (b *circuitBreaker) failure(key string) {
 	}
 }
 
+// openUntilFor reports when an open breaker of one key allows the next probe.
+// Closed and half-open keys report false.
+func (b *circuitBreaker) openUntilFor(key string) (time.Time, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	entry, ok := b.entries[key]
+	if !ok || entry.state != BreakerOpen || entry.openedUntil.IsZero() {
+		return time.Time{}, false
+	}
+	return entry.openedUntil, true
+}
+
 // reset forgets everything about one key. It backs the manual "try again now"
 // action of the interface: the next request probes the site immediately instead
 // of waiting for the cooldown, and a stale failure count cannot reopen the

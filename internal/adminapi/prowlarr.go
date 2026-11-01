@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/definition"
+	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -74,6 +75,62 @@ func (s *Server) handleProwlarrIndexerList(w http.ResponseWriter, r *http.Reques
 	out := make([]prowlarrIndexer, 0, len(indexers))
 	for _, indexer := range indexers {
 		out = append(out, s.prowlarrIndexer(r, indexer))
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// prowlarrIndexerStatus mirrors Prowlarr's IndexerStatusResource. shape: the
+// clients that read /api/v1/indexerstatus (a dashboard, gextto) use it to skip
+// a source that is paused or failing instead of waiting for a timeout.
+type prowlarrIndexerStatus struct {
+	IndexerID         int64  `json:"indexerId"`
+	DisabledTill      string `json:"disabledTill,omitempty"`
+	MostRecentFailure string `json:"mostRecentFailure,omitempty"`
+	InitialFailure    string `json:"initialFailure,omitempty"`
+	EscalationLevel   int    `json:"escalationLevel"`
+}
+
+// handleProwlarrIndexerStatus lists the sources with a failure entry, exactly
+// as Prowlarr does: a paused breaker (disabledTill is the next probe) or a last
+// run that ended in an error. A healthy source is not listed at all.
+func (s *Server) handleProwlarrIndexerStatus(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	indexers, err := s.store.ListIndexers(ctx)
+	if err != nil {
+		s.logger.Error("adminapi: prowlarr indexer status", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	states, err := s.store.IndexerStates(ctx)
+	if err != nil {
+		s.logger.Error("adminapi: prowlarr indexer status states", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	out := make([]prowlarrIndexerStatus, 0)
+	for _, indexer := range indexers {
+		state := states[indexer.ID]
+		entry := prowlarrIndexerStatus{IndexerID: indexer.ID}
+		if !state.DisabledUntil.IsZero() {
+			entry.DisabledTill = state.DisabledUntil.UTC().Format(time.RFC3339)
+		}
+		calm := true
+		if s.manager != nil {
+			if state.Circuit == string(engine.BreakerOpen) || s.manager.CircuitState(indexer.ID, indexer.Slug) == engine.BreakerOpen {
+				calm = false
+				entry.MostRecentFailure = "paused after repeated failures"
+				if until, ok := s.manager.CircuitOpenUntil(indexer.ID, indexer.Slug); ok && entry.DisabledTill == "" {
+					entry.DisabledTill = until.UTC().Format(time.RFC3339)
+				}
+			}
+		}
+		if message := strings.TrimSpace(state.LastError); message != "" {
+			calm = false
+			entry.MostRecentFailure = message
+		}
+		if !calm {
+			out = append(out, entry)
+		}
 	}
 	writeJSON(w, http.StatusOK, out)
 }

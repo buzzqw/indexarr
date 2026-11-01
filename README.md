@@ -183,7 +183,10 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
   keeps working.
 - Multiple API keys, per-key revocation and per-key rate limit.
 - Administrative JSON API on `/api/v2/`, with the read-only
-  Prowlarr-compatible endpoints that dashboards (Homepage, Organizr) read.
+  Prowlarr-compatible endpoints that dashboards (Homepage, Organizr) read:
+  `/api/v1/system/status`, `/api/v1/health`, `/api/v1/indexer`,
+  `/api/v1/indexer/{id}` and `/api/v1/indexerstatus` (the sources with a
+  failure entry, with the time the next attempt is allowed).
 
 ### Web interface
 
