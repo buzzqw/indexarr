@@ -8,13 +8,18 @@ import "strings"
 // Problem codes. The web catalog has one "logs.problem.<code>" and one
 // "logs.advice.<code>" entry for each of them.
 const (
-	Timeout   = "timeout"
-	Canceled  = "canceled"
-	Refused   = "refused"
-	DNS       = "dns"
-	TLS       = "tls"
-	Blocked   = "blocked"
-	Auth      = "auth"
+	Timeout  = "timeout"
+	Canceled = "canceled"
+	Refused  = "refused"
+	DNS      = "dns"
+	TLS      = "tls"
+	Blocked  = "blocked"
+	Auth     = "auth"
+	// LoginForm is a login POST the site refused as a malformed form (a stale
+	// one-shot token), before it judged the credentials.
+	LoginForm = "loginform"
+	// Empty is a search or health query that returned no rows.
+	Empty     = "empty"
 	RateLimit = "rate"
 	Server    = "server"
 	NotFound  = "notfound"
@@ -45,8 +50,11 @@ var rules = []struct {
 	// Before Queue: the flood messages say "queued" and "queue is full".
 	{Flood, []string{"flood interval", "search refused by the site"}},
 	{Queue, []string{"queue full", "waiting for a slot"}},
+	// Before Auth: the site rejected the form token, not the credentials.
+	{LoginForm, []string{"form inviato non è valido", "invalid form", "form token", "csrf", "submitting again"}},
 	{Blocked, []string{"cloudflare", "challenge", "just a moment", "ddos-guard", "captcha", "403", "forbidden", "flaresolverr"}},
 	{RateLimit, []string{"429", "too many requests", "rate limit", "grab limit", "query limit"}},
+	{Empty, []string{"returned 0 items"}},
 	{Auth, []string{"401", "unauthorized", "login", "credential", "password", "not logged", "session expired", "authentication"}},
 	// Before Timeout: the resolver reports its own deadline as an I/O timeout,
 	// and the operator looking for "too slow" would miss a name that does not

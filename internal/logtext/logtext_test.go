@@ -14,24 +14,24 @@ func TestProblem(t *testing.T) {
 		`indexer ddunlimited: search: definition "ddunlimited": search deferred by the flood interval: the site allows one search every 1m5s; queued, the next identical request reads it from the cache`: Flood,
 		`definition "ddunlimited": search deferred by the flood interval: the site allows one search every 1m5s and the queue is full`:                                                                    Flood,
 		`definition "ddunlimited": search refused by the site: Al momento non ti è permesso fare ricerche`:                                                                                                Flood,
-		"dial tcp 1.2.3.4:443: connect: connection refused":               Refused,
-		"dial tcp: lookup example.invalid: no such host":                  DNS,
+		"dial tcp 1.2.3.4:443: connect: connection refused": Refused,
+		"dial tcp: lookup example.invalid: no such host":    DNS,
 		// The resolver reports its own deadline as an I/O timeout: the cause is
 		// the name, not a site that answers slowly.
-		"lookup www.example.org: i/o timeout":                             DNS,
-		"x509: certificate has expired":                                   TLS,
-		"HTTP 403: Just a moment...":                                      Blocked,
-		"engine: challenge page detected":                                 Blocked,
-		"HTTP 429 Too Many Requests":                                      RateLimit,
-		"login failed: invalid password":                                  Auth,
-		"HTTP 502 Bad Gateway":                                            Server,
-		"HTTP 404":                                                        NotFound,
-		"read: connection reset by peer":                                  Reset,
-		"database is locked":                                              DBBusy,
-		"live queue full":                                                 Queue,
+		"lookup www.example.org: i/o timeout": DNS,
+		"x509: certificate has expired":       TLS,
+		"HTTP 403: Just a moment...":          Blocked,
+		"engine: challenge page detected":     Blocked,
+		"HTTP 429 Too Many Requests":          RateLimit,
+		"login failed: invalid password":      Auth,
+		"HTTP 502 Bad Gateway":                Server,
+		"HTTP 404":                            NotFound,
+		"read: connection reset by peer":      Reset,
+		"database is locked":                  DBBusy,
+		"live queue full":                     Queue,
 		`indexer tg: fetch: request failed: engine: circuit breaker open`: Breaker,
 		`engine: breaker "tg": engine: circuit breaker open`:              Breaker,
-		"something odd":                                                   "",
+		"something odd": "",
 	}
 	for input, want := range cases {
 		if got := Problem(input); got != want {
@@ -40,6 +40,21 @@ func TestProblem(t *testing.T) {
 	}
 	if ProblemOf(nil) != "" || ProblemOf(errors.New("i/o timeout")) != Timeout {
 		t.Error("ProblemOf does not follow Problem")
+	}
+}
+
+// The login form and the empty query have causes of their own: neither is a
+// rejected credential and neither is an unknown error.
+func TestProblemRecognisesFormTokensAndEmptyQueries(t *testing.T) {
+	cases := map[string]string{
+		`indexer mircrew: health: login failed: Il form inviato non è valido. Prova a inviarlo di nuovo.`: LoginForm,
+		`indexer corsaro-account: health query "" returned 0 items, want at least 1`:                      Empty,
+		"login failed: invalid password": Auth,
+	}
+	for input, want := range cases {
+		if got := Problem(input); got != want {
+			t.Errorf("Problem(%q) = %q, want %q", input, got, want)
+		}
 	}
 }
 

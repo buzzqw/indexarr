@@ -40,6 +40,8 @@ func TestCausesUseTheSameClassifierAsTheLog(t *testing.T) {
 		"definition \"mircrew\": search: parse: no rows matched selector":                                    "home.problem.parse",
 		"indexer test: request blocked by a cloudflare challenge: HTTP 403":                                  "home.problem.cloudflare",
 		"indexer test: fetch: request failed: engine: circuit breaker open":                                  "home.problem.circuit",
+		`indexer corsaro-account: health query "" returned 0 items, want at least 1`:                         "home.problem.healthZero",
+		`indexer mircrew: health: login failed: Il form inviato non è valido. Prova a inviarlo di nuovo.`:    "home.problem.loginForm",
 	}
 	for message, want := range cases {
 		if got := explainIndexerError(message, ""); got != want {
@@ -60,6 +62,18 @@ func TestConcreteProblemCausesDoNotCarryACount(t *testing.T) {
 	}
 }
 
+// The health-zero sentence has no %d: a failed health check must not print
+// "in the last 0 checks" on Home.
+func TestHealthZeroProblemDoesNotCarryACount(t *testing.T) {
+	view := indexerHealthView{Assessment: health.Assessment{
+		Reasons:   []health.Reason{{Code: health.ReasonErrors, Count: 3}},
+		LastError: `indexer corsaro-account: health query "" returned 0 items, want at least 1`,
+	}}
+	if code, count := homeProblemCode(view); code != "home.problem.healthZero" || count != 0 {
+		t.Fatalf("homeProblemCode = %q/%d, want home.problem.healthZero/0", code, count)
+	}
+}
+
 func TestFloodProblemTextIsLocalized(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/indexers/51", nil)
 	problem := (&Server{}).problemForMessage(request,
@@ -70,5 +84,28 @@ func TestFloodProblemTextIsLocalized(t *testing.T) {
 	}
 	if problem.ActionURL != "/indexers/51" {
 		t.Errorf("flood action = %q, want the indexer page", problem.ActionURL)
+	}
+}
+
+// An empty health query and a rejected login form need their own sentences on
+// the indexer page too: the first is a definition problem, the second is a
+// stale token, and neither is a wrong credential.
+func TestHealthZeroAndLoginFormProblemsAreLocalized(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/indexers/59", nil)
+	cases := []struct {
+		message string
+		key     string
+	}{
+		{`indexer corsaro-account: health query "" returned 0 items, want at least 1`, "idx.problem.healthZero"},
+		{`indexer mircrew: health: login failed: Il form inviato non è valido. Prova a inviarlo di nuovo.`, "idx.problem.loginForm"},
+	}
+	for _, tc := range cases {
+		problem := (&Server{}).problemForMessage(request, store.Indexer{ID: 59}, tc.message)
+		if problem.Text != i18n.T(i18n.EN, tc.key) {
+			t.Errorf("problem text = %q, want %q", problem.Text, i18n.T(i18n.EN, tc.key))
+		}
+		if problem.ActionURL != "/indexers/59" {
+			t.Errorf("problem action = %q, want the indexer page", problem.ActionURL)
+		}
 	}
 }

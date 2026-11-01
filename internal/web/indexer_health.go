@@ -15,6 +15,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/health"
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/logbuffer"
+	"github.com/buzzqw/indexarr/internal/logtext"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -408,6 +409,7 @@ func indexerLogEntryMatches(entry logbuffer.Entry, in store.Indexer) bool {
 // the health model so the model never has to know UI text or error strings.
 func (s *Server) problemForMessage(r *http.Request, in store.Indexer, message string) uiProblem {
 	raw := strings.ToLower(strings.TrimSpace(message))
+	problem := logtext.Problem(message)
 	detail := "/indexers/" + strconv.FormatInt(in.ID, 10)
 	switch {
 	case strings.Contains(raw, "429") || strings.Contains(raw, "rate limit") || strings.Contains(raw, "too many"):
@@ -421,6 +423,18 @@ func (s *Server) problemForMessage(r *http.Request, in store.Indexer, message st
 	case strings.Contains(raw, "flood") || strings.Contains(raw, "search refused by the site"):
 		return uiProblem{
 			Text:        s.translate(r, "idx.problem.flood"),
+			ActionLabel: s.translate(r, "idx.problem.genericAction"),
+			ActionURL:   detail,
+		}
+	case problem == logtext.Empty:
+		return uiProblem{
+			Text:        s.translate(r, "idx.problem.healthZero"),
+			ActionLabel: s.translate(r, "idx.problem.genericAction"),
+			ActionURL:   detail,
+		}
+	case problem == logtext.LoginForm:
+		return uiProblem{
+			Text:        s.translate(r, "idx.problem.loginForm"),
 			ActionLabel: s.translate(r, "idx.problem.genericAction"),
 			ActionURL:   detail,
 		}

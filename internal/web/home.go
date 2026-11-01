@@ -183,9 +183,20 @@ func homeProblemCode(view indexerHealthView) (string, int) {
 // cannot be "too many requests" in the log and "unexpected" on the dashboard.
 func explainIndexerError(message, circuit string) string {
 	text := strings.ToLower(message)
+	problem := logtext.Problem(message)
 	switch {
 	case circuit == "open":
 		return "home.problem.circuit"
+	case problem == logtext.Empty:
+		// A health query that finds nothing is not an unexpected error: the
+		// query in the definition does not suit the site (CorsaroBlu refuses
+		// an empty search parameter). It is a configuration cause, not a
+		// network or credential one.
+		return "home.problem.healthZero"
+	case problem == logtext.LoginForm:
+		// The site rejected the login form itself (a stale one-shot token):
+		// the credentials were never judged, so asking to check them is wrong.
+		return "home.problem.loginForm"
 	case strings.Contains(text, "cloudflare") || strings.Contains(text, "challenge"):
 		return "home.problem.cloudflare"
 	case strings.Contains(text, "401") || strings.Contains(text, "403") ||
@@ -195,7 +206,7 @@ func explainIndexerError(message, circuit string) string {
 		// ask for the credentials.
 		return "home.problem.denied"
 	}
-	switch logtext.Problem(message) {
+	switch problem {
 	case logtext.Timeout:
 		return "home.problem.timeout"
 	case logtext.RateLimit, logtext.Queue:

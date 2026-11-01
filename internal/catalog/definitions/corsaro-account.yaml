@@ -30,7 +30,7 @@ meta:
   description: ilCorSaRoBlu with login and keyword search (account required).
   urls:
     - https://ilcorsaroblu.org/
-  updated: "2026-10-29"
+  updated: "2026-11-01"
 
 settings:
   - name: cookie
@@ -63,10 +63,17 @@ search:
     get: /index.php
     params:
       page: torrents
-      search: "{{ query.keywords }}"
       category: "{{ settings.category }}"
       active: "0"
       options: "0"
+    # The site answers the search page with an error when `search` is present
+    # and empty (corsaro.yaml documents the same behaviour for guests). The
+    # health check and the periodic run send an empty query, so `search` is
+    # emitted through params_multi, which drops empty values: they read the
+    # listing, while a real query still sends the parameter.
+    params_multi:
+      search:
+        - "{{ query.keywords }}"
   pagination: { type: page, start: 1, max_pages: 3, param: pages, stop_when: empty_rows }
   response:
     type: html
