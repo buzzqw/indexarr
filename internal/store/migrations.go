@@ -77,9 +77,13 @@ const (
 	// out with the UTF-8 bytes read as Latin-1/CP1252 (LimeTorrents does it):
 	// the bytes are all there, only read with the wrong charset.
 	indexarr2TitleMojibakeVersion = 25
+	// indexarr2GrabConfirmationVersion stores the completion a download client
+	// reports for a grab. The grab row keeps the delivery time; confirmed_at
+	// and confirmed_by add the evidence that the file really arrived.
+	indexarr2GrabConfirmationVersion = 26
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2TitleMojibakeVersion
+	latestSchemaVersion = indexarr2GrabConfirmationVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

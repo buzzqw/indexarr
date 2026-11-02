@@ -78,6 +78,9 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/v2/health", s.handleHealth)
+	// Download clients report a completed file here, so the Download tab can
+	// tell a release that was only handed over from one that really arrived.
+	mux.HandleFunc("POST /api/v2/downloads/confirm", s.handleDownloadConfirm)
 
 	// Prowlarr-compatible read-only surface for dashboards.
 	mux.HandleFunc("GET /api/v1/system/status", s.handleProwlarrSystemStatus)

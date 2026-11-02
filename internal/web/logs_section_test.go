@@ -261,6 +261,70 @@ func TestLogsDownloadsShowsTheEd2kTileWithoutGrabs(t *testing.T) {
 	}
 }
 
+// A grab a client confirmed as completed is shown as downloaded; one nobody
+// confirmed stays "delivered only". The counter follows the same evidence.
+func TestLogsDownloadsShowsTheConfirmedOutcome(t *testing.T) {
+	env := newNativeEnv(t)
+	ctx := context.Background()
+	now := time.Now()
+	seedDefinition(t, env.store, "confirm-ui", "", `schema: 1
+meta:
+  id: confirm-ui
+  name: confirm-ui
+  type: public
+  protocol: torrent
+  urls: [https://confirm-ui.example/]
+search:
+  request:
+    get: /
+  response:
+    type: html
+`)
+	id := seedPhase2Indexer(t, env.store, "confirm-ui", "confirm-ui", true, `{}`)
+	release := store.Release{
+		DedupKey: "confirm-ui-release",
+		Title:    "Confirmed Show S01E01",
+		InfoHash: "0123456789abcdef0123456789abcdef01234567",
+		Protocol: "torrent",
+	}
+	if _, err := env.store.UpsertRelease(ctx, &release); err != nil {
+		t.Fatalf("UpsertRelease: %v", err)
+	}
+	if err := env.store.MarkReleaseDownloaded(ctx, release.ID); err != nil {
+		t.Fatalf("MarkReleaseDownloaded: %v", err)
+	}
+	if _, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+		IndexerID: id, ReleaseID: release.ID, Kind: "grab",
+		Query: release.Title, Status: "magnet", App: "gextto",
+		StartedAt: now.Add(-2 * time.Minute),
+	}); err != nil {
+		t.Fatalf("RecordIndexerHistory: %v", err)
+	}
+	if _, err := env.store.RecordIndexerHistory(ctx, store.IndexerHistory{
+		IndexerID: id, Kind: "grab", Query: "Delivered Only S01E02",
+		Status: "ok", App: "sonarr", StartedAt: now.Add(-time.Minute),
+	}); err != nil {
+		t.Fatalf("RecordIndexerHistory: %v", err)
+	}
+	if matched, err := env.store.ConfirmDownload(ctx, store.DownloadConfirmation{
+		Protocol: "torrent", Hash: release.InfoHash, Title: release.Title,
+		Client: "gextto", CompletedAt: now,
+	}); err != nil || matched == 0 {
+		t.Fatalf("ConfirmDownload = %d, %v", matched, err)
+	}
+
+	body := get(t, env.handler, "/activity?tab=downloads").Body.String()
+	for _, want := range []string{
+		"Confirmed", "completed by the client",
+		"downloaded", "delivered only", "Confirmed by gextto",
+		"Outcome", "/api/v2/downloads/confirm",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("downloads tab missing %q", want)
+		}
+	}
+}
+
 func TestStatisticsHoldsTheTabsAndLogOnlyTheProcessLog(t *testing.T) {
 	env := newTestEnv(t)
 

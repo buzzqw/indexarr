@@ -635,6 +635,21 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 26 stores the completion a download client reports. The grab
+	// row already records the delivery; these two columns add the evidence that
+	// the file really arrived, and stay zero/empty for a grab nobody confirmed.
+	if err := s.applyMigration(context.Background(), indexarr2GrabConfirmationVersion,
+		"grab confirmation", func(tx *sql.Tx) error {
+			if _, err := tx.Exec(`ALTER TABLE indexer_history
+				ADD COLUMN confirmed_at INTEGER NOT NULL DEFAULT 0`); err != nil {
+				return err
+			}
+			_, err := tx.Exec(`ALTER TABLE indexer_history
+				ADD COLUMN confirmed_by TEXT NOT NULL DEFAULT ''`)
+			return err
+		}); err != nil {
+		return err
+	}
 	// The release table may have been rebuilt by migration 3, which predates
 	// the eD2k columns. Re-apply the idempotent column pass so both a fresh
 	// database and an upgraded one carry them.

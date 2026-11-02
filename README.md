@@ -301,6 +301,12 @@ The default client receives the grabs; from the Releases page you can send
 multiple releases with **Send selected**. The source seed ratio/time travels to
 qBittorrent and to the \*arr apps; the other clients keep their own values.
 
+A delivery is not a completed download. A client that knows when the file
+arrives can report it to `POST /api/v2/downloads/confirm`, with the same API key
+as the Torznab endpoint: the Download tab then shows **downloaded** instead of
+**delivered only**. Gextto already does it; the contract is in
+[Download confirmation](docs/DOWNLOAD_CONFIRMATION.md).
+
 ### Notifications
 
 Independent channels, each with its own encrypted secrets:
@@ -455,7 +461,7 @@ App synchronization, per-app profiles, multiple API keys and live search:
 | **Search** (`/releases`) | Two searches: live on the indexers (text, TV, movies, music, books, external IDs) and the stored catalogue (`-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab); detail with magnet, `.torrent` and `.nzb` |
 | **Indexers** | Single list, Run/Test/Run all/Test all/Test problems, detail with Site access, edit, clone, JSON export/import, feed discovery and cookie import; each source can have its own request timeout |
 | **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian and the generic Servarr-compatible type; sync, per-app profile, snapshots and download clients |
-| **Statistics** (`/activity`) | Incoming requests, overview per app and indexer, downloads served per source, update history, new releases, per-host network counters |
+| **Statistics** (`/activity`) | Incoming requests, overview per app and indexer, downloads served per source, completion reported by the client, update history, new releases, per-host network counters |
 | **Logs** (`/logs`) | System log with filters and runtime level |
 | **Settings** | Sections General, Network (FlareSolverr, per-host rate limit), Security, Notifications, **Rules** (blocklist by infohash, title, regex, source or category), **Backup**, **Maintenance** (integrity, vacuum, optimize/checkpoint, reindex, deduplication, `.torrent` cleanup, retention, purge per indexer, restore), Advanced (circuit breaker, live search, downloads through indexarr, definitions, proxies) and Updates |
 
@@ -558,6 +564,7 @@ the list of supported sources is generated from the catalog and lives in the
 repository.
 
 - [Supported sources](docs/SUPPORTED.md) — every site and connector, with access method and state
+- [Download confirmation](docs/DOWNLOAD_CONFIRMATION.md) — how a client reports a completed download
 - [Wiki home](https://github.com/buzzqw/indexarr/wiki) — index of every page
 - [User manual](https://github.com/buzzqw/indexarr/wiki/User-Manual) — step-by-step guide (English)
 - [Manuale utente](https://github.com/buzzqw/indexarr/wiki/Manuale-Utente) — guida passo passo (italiano)

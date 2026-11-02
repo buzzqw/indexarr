@@ -90,6 +90,7 @@ type logsDownloadsView struct {
 	Magnets       int64
 	NZBs          int64
 	Ed2k          int64
+	Confirmed     int64
 	HasEd2k       bool
 	Sources       []logsGrabSourceRow
 	Grabs         []logsGrabRow
@@ -105,23 +106,27 @@ type logsSourceOption struct {
 }
 
 type logsGrabSourceRow struct {
-	Name     string
-	Total    int64
-	Torrents int64
-	Magnets  int64
-	NZBs     int64
-	Ed2k     int64
-	Share    int
+	Name      string
+	Total     int64
+	Torrents  int64
+	Magnets   int64
+	NZBs      int64
+	Ed2k      int64
+	Confirmed int64
+	Share     int
 }
 
 type logsGrabRow struct {
-	At        time.Time
-	App       string
-	Title     string
-	Source    string
-	Via       string
-	Copy      string
-	CopyTitle string
+	At           time.Time
+	App          string
+	Title        string
+	Source       string
+	Via          string
+	Copy         string
+	CopyTitle    string
+	Confirmed    bool
+	Outcome      string
+	OutcomeTitle string
 }
 
 // logsWindowOption is one selectable time window in the request views.
@@ -437,6 +442,7 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		view.Magnets += stat.Magnets
 		view.NZBs += stat.NZBs
 		view.Ed2k += stat.Ed2k
+		view.Confirmed += stat.Confirmed
 	}
 	view.HasEd2k = view.Ed2k > 0
 	for _, stat := range stats {
@@ -446,7 +452,8 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		}
 		view.Sources = append(view.Sources, logsGrabSourceRow{
 			Name: stat.Name, Total: stat.Total(), Torrents: stat.Torrents,
-			Magnets: stat.Magnets, NZBs: stat.NZBs, Ed2k: stat.Ed2k, Share: share,
+			Magnets: stat.Magnets, NZBs: stat.NZBs, Ed2k: stat.Ed2k,
+			Confirmed: stat.Confirmed, Share: share,
 		})
 	}
 	lang := requestLanguage(r)
@@ -460,6 +467,19 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 			Via:    grabViaLabel(lang, grab.Via),
 		}
 		row.Copy, row.CopyTitle = grabCopyLink(lang, grab, base)
+		if !grab.ConfirmedAt.IsZero() {
+			client := strings.TrimSpace(grab.ConfirmedBy)
+			if client == "" {
+				client = "—"
+			}
+			row.Confirmed = true
+			row.Outcome = s.translate(r, "logs.dl.outcomeConfirmed")
+			row.OutcomeTitle = s.translate(r, "logs.dl.outcomeConfirmedTip",
+				client, grab.ConfirmedAt.Local().Format("2006-01-02 15:04"))
+		} else {
+			row.Outcome = s.translate(r, "logs.dl.outcomeDelivered")
+			row.OutcomeTitle = s.translate(r, "logs.dl.outcomeDeliveredTip")
+		}
 		view.Grabs = append(view.Grabs, row)
 	}
 	return view, nil

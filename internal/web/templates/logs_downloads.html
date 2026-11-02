@@ -27,6 +27,7 @@
 
 <section class="cards" aria-label="{{T "logs.dl.cardsLabel"}}">
   <article class="card" title="{{T "logs.dl.totalHelp"}}"><span class="label">{{T "logs.dl.total"}}</span><strong>{{.Total}}</strong><span class="hint">{{.WindowLabel}}</span></article>
+  <article class="card" title="{{T "logs.dl.confirmedHelp"}}"><span class="label">{{T "logs.dl.confirmed"}}</span><strong>{{.Confirmed}}</strong><span class="hint">{{T "logs.dl.confirmedHint"}}</span></article>
   <article class="card" title="{{T "logs.dl.torrentsHelp"}}"><span class="label">{{T "logs.dl.torrents"}}</span><strong>{{.Torrents}}</strong><span class="hint">{{T "logs.dl.torrentsHint"}}</span></article>
   <article class="card" title="{{T "logs.dl.magnetsHelp"}}"><span class="label">{{T "logs.dl.magnets"}}</span><strong>{{.Magnets}}</strong><span class="hint">{{T "logs.dl.magnetsHint"}}</span></article>
   <article class="card" title="{{T "logs.dl.ed2kHelp"}}"><span class="label">{{T "logs.dl.ed2k"}}</span><strong>{{.Ed2k}}</strong><span class="hint">{{T "logs.dl.ed2kHint"}}</span></article>
@@ -50,6 +51,7 @@
         <tr>
           <th scope="col">{{T "logs.req.source"}}</th>
           <th scope="col" title="{{T "logs.dl.totalHelp"}}">{{T "logs.dl.total"}}</th>
+          <th scope="col" title="{{T "logs.dl.confirmedHelp"}}">{{T "logs.dl.confirmed"}}</th>
           <th scope="col" title="{{T "logs.dl.torrentsHelp"}}">{{T "logs.dl.torrents"}}</th>
           <th scope="col" title="{{T "logs.dl.magnetsHelp"}}">{{T "logs.dl.magnets"}}</th>
           {{if .HasEd2k}}<th scope="col" title="{{T "logs.dl.ed2kHelp"}}">{{T "logs.dl.ed2k"}}</th>{{end}}
@@ -61,6 +63,7 @@
         <tr>
           <td><strong>{{.Name}}</strong></td>
           <td>{{.Total}}</td>
+          <td>{{if .Confirmed}}{{.Confirmed}}{{else}}—{{end}}</td>
           <td>{{.Torrents}}{{if .NZBs}} <span class="sub">+ {{.NZBs}} NZB</span>{{end}}</td>
           <td>{{.Magnets}}</td>
           {{if $.HasEd2k}}<td>{{if .Ed2k}}{{.Ed2k}}{{else}}—{{end}}</td>{{end}}
@@ -87,6 +90,7 @@
           <th scope="col">{{T "logs.dl.release"}}</th>
           <th scope="col">{{T "logs.req.source"}}</th>
           <th scope="col" title="{{T "logs.dl.viaHelp"}}">{{T "logs.dl.via"}}</th>
+          <th scope="col" title="{{T "logs.dl.outcomeHelp"}}">{{T "logs.dl.outcome"}}</th>
         </tr>
       </thead>
       <tbody>
@@ -100,6 +104,7 @@
             {{if .Copy}}<button class="chip copy" type="button" data-copy="{{.Copy}}" title="{{.CopyTitle}}">{{.Via}}</button>
             {{else}}<span class="chip" title="{{.CopyTitle}}">{{.Via}}</span>{{end}}
           </td>
+          <td><span class="chip{{if .Confirmed}} ok{{end}}" title="{{.OutcomeTitle}}">{{.Outcome}}</span></td>
         </tr>
         {{end}}
       </tbody>
@@ -115,6 +120,7 @@
   <div class="panel-head"><h2>{{T "logs.dl.aboutTitle"}}</h2></div>
   <div class="prose">
     <p>{{T "logs.dl.aboutText"}}</p>
+    <p>{{T "logs.dl.confirmText"}}</p>
     <p>{{T "logs.dl.ed2kDirect"}}</p>
     <p>{{T "logs.dl.aboutDecide"}}</p>
   </div>

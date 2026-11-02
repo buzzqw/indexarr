@@ -53,6 +53,8 @@ type GrabStat struct {
 	Magnets   int64
 	NZBs      int64
 	Ed2k      int64
+	// Confirmed is the part of Total whose completion a client reported.
+	Confirmed int64
 }
 
 // Total is every grab of the source.
@@ -66,7 +68,8 @@ func (s *Store) GrabStatsByIndexer(ctx context.Context, since time.Time) ([]Grab
 			SUM(CASE WHEN h.status NOT IN ('magnet', 'nzb', 'ed2k') THEN 1 ELSE 0 END),
 			SUM(CASE WHEN h.status = 'magnet' THEN 1 ELSE 0 END),
 			SUM(CASE WHEN h.status = 'nzb' THEN 1 ELSE 0 END),
-			SUM(CASE WHEN h.status = 'ed2k' THEN 1 ELSE 0 END)
+			SUM(CASE WHEN h.status = 'ed2k' THEN 1 ELSE 0 END),
+			SUM(CASE WHEN h.confirmed_at > 0 THEN 1 ELSE 0 END)
 		FROM indexer_history h
 		JOIN indexers i ON i.id = h.indexer_id
 		WHERE h.kind = 'grab' AND h.started_at >= ?
@@ -79,7 +82,7 @@ func (s *Store) GrabStatsByIndexer(ctx context.Context, since time.Time) ([]Grab
 	var out []GrabStat
 	for rows.Next() {
 		var item GrabStat
-		if err := rows.Scan(&item.IndexerID, &item.Name, &item.Torrents, &item.Magnets, &item.NZBs, &item.Ed2k); err != nil {
+		if err := rows.Scan(&item.IndexerID, &item.Name, &item.Torrents, &item.Magnets, &item.NZBs, &item.Ed2k, &item.Confirmed); err != nil {
 			return nil, fmt.Errorf("scan grab stats: %w", err)
 		}
 		out = append(out, item)
@@ -105,6 +108,10 @@ type Grab struct {
 	InfoHash   string
 	Ed2k       string
 	HasTorrent bool
+	// ConfirmedAt is zero until a download client reports that the file
+	// actually arrived. ConfirmedBy names that client.
+	ConfirmedAt time.Time
+	ConfirmedBy string
 }
 
 // GrabSource is one source that has at least one grab in the history.
@@ -160,7 +167,8 @@ func (s *Store) ListGrabs(ctx context.Context, since time.Time, indexerID int64,
 		SELECT h.id, COALESCE(h.indexer_id, 0), COALESCE(i.name, ''),
 			COALESCE(h.release_id, 0), h.query, h.status, h.app, h.started_at,
 			COALESCE(r.magnet, ''), COALESCE(r.infohash, ''), COALESCE(r.ed2k_link, ''),
-			CASE WHEN length(r.torrent) > 0 THEN 1 ELSE 0 END
+			CASE WHEN length(r.torrent) > 0 THEN 1 ELSE 0 END,
+			COALESCE(h.confirmed_at, 0), COALESCE(h.confirmed_by, '')
 		FROM indexer_history h
 		LEFT JOIN indexers i ON i.id = h.indexer_id
 		LEFT JOIN releases r ON r.id = h.release_id
@@ -174,15 +182,18 @@ func (s *Store) ListGrabs(ctx context.Context, since time.Time, indexerID int64,
 	var out []Grab
 	for rows.Next() {
 		var item Grab
-		var at int64
+		var at, confirmedAt int64
 		var hasTorrent int
 		if err := rows.Scan(&item.ID, &item.IndexerID, &item.IndexerName, &item.ReleaseID,
 			&item.Title, &item.Via, &item.App, &at, &item.Magnet, &item.InfoHash,
-			&item.Ed2k, &hasTorrent); err != nil {
+			&item.Ed2k, &hasTorrent, &confirmedAt, &item.ConfirmedBy); err != nil {
 			return nil, fmt.Errorf("scan grab: %w", err)
 		}
 		item.At = time.Unix(at, 0)
 		item.HasTorrent = hasTorrent > 0
+		if confirmedAt > 0 {
+			item.ConfirmedAt = time.Unix(confirmedAt, 0)
+		}
 		out = append(out, item)
 	}
 	return out, rows.Err()
