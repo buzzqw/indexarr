@@ -237,3 +237,34 @@ func TestOlderRunOrdering(t *testing.T) {
 		t.Error("the earlier run goes first")
 	}
 }
+
+// A local topic never removes a row the site returned: the merge appends what
+// is missing, so a live search can only gain history, never lose a fresh row.
+func TestMergeCatalogItemsKeepsTheSiteRows(t *testing.T) {
+	site := []engine.Item{
+		{Title: "Dark Matter S01", DetailsURL: "https://forum.example/viewtopic.php?t=1", Magnet: "magnet:?xt=urn:btih:aa"},
+		{Title: "Dark Matter S02", DetailsURL: "https://forum.example/viewtopic.php?t=9"},
+	}
+	local := []engine.Item{
+		{Title: "Dark Matter S01 (thread)", DetailsURL: "https://forum.example/viewtopic.php?t=1"},
+		{Title: "Dark Matter S00", DetailsURL: "https://forum.example/viewtopic.php?t=3"},
+	}
+	merged := mergeCatalogItems(site, local, 10)
+	if len(merged) != 3 {
+		t.Fatalf("merged = %d rows, want the 2 site rows plus 1 new topic", len(merged))
+	}
+	for i, want := range site {
+		if merged[i].DetailsURL != want.DetailsURL {
+			t.Errorf("row %d = %q, want the site row %q", i, merged[i].DetailsURL, want.DetailsURL)
+		}
+	}
+	if merged[2].DetailsURL != "https://forum.example/viewtopic.php?t=3" {
+		t.Errorf("the appended row = %q", merged[2].DetailsURL)
+	}
+
+	// The cap counts the site rows too: the history cannot push them out.
+	capped := mergeCatalogItems(site, local, 2)
+	if len(capped) != 2 || capped[1].DetailsURL != site[1].DetailsURL {
+		t.Fatalf("capped = %+v, want the site rows only", capped)
+	}
+}

@@ -222,6 +222,9 @@ func mergeCatalogItems(site, local []engine.Item, limit int) []engine.Item {
 	}
 	out := site
 	for _, item := range local {
+		if limit > 0 && len(out) >= limit {
+			return out
+		}
 		key := strings.TrimSpace(item.DetailsURL)
 		if key == "" {
 			key = strings.ToLower(strings.TrimSpace(item.Title))
@@ -231,9 +234,6 @@ func mergeCatalogItems(site, local []engine.Item, limit int) []engine.Item {
 		}
 		seen[key] = struct{}{}
 		out = append(out, item)
-		if limit > 0 && len(out) >= limit {
-			return out
-		}
 	}
 	return out
 }
