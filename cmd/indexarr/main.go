@@ -22,10 +22,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/adminapi"
-	"github.com/buzzqw/indexarr/internal/backup"
-	"github.com/buzzqw/indexarr/internal/catalog"
 	"github.com/buzzqw/indexarr/internal/config"
-	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	coreengine "github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/family"
 	"github.com/buzzqw/indexarr/internal/feed"
@@ -38,7 +35,6 @@ import (
 	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
-	"github.com/buzzqw/indexarr/internal/syncjob"
 	"github.com/buzzqw/indexarr/internal/vault"
 	"github.com/buzzqw/indexarr/internal/web"
 )
@@ -95,29 +91,10 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "vault" {
 		os.Exit(runVaultCommand(os.Args[2:]))
 	}
-	configPath := flag.String("config", "indexarr.json", "JSON configuration file (created on first start)")
-	listen := flag.String("listen", "", "HTTP listen address, overrides the configuration")
-	dbPath := flag.String("db", "", "SQLite database path, overrides the configuration")
-	showVersion := flag.Bool("version", false, "print the version and exit")
-	flag.Parse()
-
-	if *showVersion {
+	cfg, showVersion := loadStartupConfig()
+	if showVersion {
 		fmt.Printf("indexarr %s\n", version)
 		return
-	}
-	cfg, err := config.Load(*configPath)
-	if err != nil {
-		fatal(err)
-	}
-	if strings.TrimSpace(*listen) != "" {
-		cfg.Listen = strings.TrimSpace(*listen)
-	}
-	if strings.TrimSpace(*dbPath) != "" {
-		absolute, err := filepath.Abs(strings.TrimSpace(*dbPath))
-		if err != nil {
-			fatal(err)
-		}
-		cfg.DBPath = absolute
 	}
 	// Reserve the listen address before the database, the catalog and the
 	// scheduler are loaded. A second instance then fails in milliseconds
@@ -149,91 +126,17 @@ func main() {
 	// Resolve the vault before touching the database: a restore staged as
 	// <db>.restore is applied next, and its secrets must be checked with the
 	// same key afterwards. A missing key never blocks the legacy path.
-	secretVault, keySource, vaultErr := vault.Resolve(vault.ResolveOptions{
-		EnvKey:        os.Getenv("INDEXARR_MASTER_KEY"),
-		EnvKeyFile:    os.Getenv("INDEXARR_MASTER_KEY_FILE"),
-		ConfigPath:    cfg.VaultKeyPath,
-		DBPath:        cfg.DBPath,
-		UserConfigDir: os.UserConfigDir,
-	})
-	if vaultErr != nil {
-		logger.Warn("secrets vault unavailable; native indexers and sealed source secrets are disabled", "error", vaultErr)
-	} else {
-		logger.Info("secrets vault ready", "key_source", keySource.Kind,
-			"key_path", keySource.Path, "key_in_data_dir", keySource.InDataDir)
-		if keySource.InDataDir {
-			logger.Warn("vault key is in the data directory: move it outside, for example with 'indexarr vault move-key -to <path>'",
-				"key_source", keySource.Kind, "key_path", keySource.Path)
-		}
-	}
+	secretVault, keySource := resolveVault(cfg, logger)
 
-	if addr := strings.TrimSpace(os.Getenv("INDEXARR_PPROF")); addr != "" {
-		logger.Warn("pprof endpoint enabled", "addr", addr)
-		go func() {
-			if err := http.ListenAndServe(addr, nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				logger.Error("pprof server stopped", "error", err)
-			}
-		}()
-	}
-	restored := false
-	if applied, err := backup.ApplyPending(cfg.DBPath); err != nil {
-		logger.Error("cannot apply pending restore", "error", err)
-		rejected := cfg.DBPath + ".restore.rejected"
-		_ = os.Remove(rejected)
-		_ = os.Rename(cfg.DBPath+".restore", rejected)
-	} else if applied {
-		restored = true
-		logger.Info("database restored from pending backup")
-	}
+	startPprof(logger)
+	restored := applyPendingRestore(cfg.DBPath, logger)
 
 	st, err := store.Open(cfg.DBPath)
 	if err != nil {
 		fatal(err)
 	}
 	defer st.Close()
-	startupCtx, startupCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	// From here on the settings-level secrets (Telegram token, webhook URL)
-	// are sealed in app_secrets. The migration moves the plaintext rows of an
-	// older installation once, then the plaintext key is gone.
-	if secretVault != nil {
-		st.AttachVault(secretVault)
-		if moved, migrateErr := st.MigrateSettingsSecrets(startupCtx); migrateErr != nil {
-			logger.Warn("cannot move the notification secrets into the vault", "error", migrateErr)
-		} else if moved > 0 {
-			logger.Info("notification secrets moved into the vault", "secrets", moved)
-		}
-	}
-
-	if settings, err := st.LoadSettings(startupCtx); err == nil && settings.LogLevel != "" {
-		levelVar.Set(parseLevel(settings.LogLevel))
-	}
-	if indexers, listErr := st.ListIndexers(startupCtx); listErr == nil {
-		for _, indexer := range indexers {
-			if strings.Contains(indexer.Tags, "__preview") {
-				_ = st.DeleteIndexer(startupCtx, indexer.ID)
-			}
-		}
-	}
-	key, created, err := st.EnsureAPIKey(startupCtx)
-	if err != nil {
-		startupCancel()
-		fatal(err)
-	}
-	if created {
-		logger.Info("generated a Torznab API key", "apikey", maskSecret(key))
-	}
-	if secretVault != nil && restored {
-		opened, verifyErr := verifyRestoredSecrets(startupCtx, st, secretVault)
-		switch {
-		case verifyErr != nil:
-			logger.Error("restored database: the current vault key does not open the stored secrets", "error", verifyErr)
-		case opened == 0:
-			logger.Info("restored database: no sealed secrets to verify")
-		default:
-			logger.Info("restored database: vault key opens the stored secrets", "secrets", opened)
-		}
-	}
-	startupCancel()
+	key := prepareStore(st, secretVault, restored, levelVar, logger)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -245,22 +148,7 @@ func main() {
 	}
 
 	notifier := notify.NewDispatcher(st, logger)
-	if written, syncErr := catalog.Sync(ctx, st); syncErr != nil {
-		logger.Warn("cannot sync the built-in catalog", "error", syncErr)
-	} else if written > 0 {
-		logger.Info("built-in catalog synchronized", "definitions", written)
-		notifier.DispatchAsync(ctx, settings, notify.Event{
-			Kind:   notify.KindCatalogUpdated,
-			Source: "built-in catalog",
-			Count:  written,
-			Path:   "/settings?section=advanced",
-		})
-	}
-	if paired, pairErr := catalog.PairKnownChannels(ctx, st); pairErr != nil {
-		logger.Warn("cannot pair known feed/search channels", "error", pairErr)
-	} else if paired > 0 {
-		logger.Info("paired feed/search channels", "indexers", paired)
-	}
+	syncCatalog(ctx, st, notifier, settings, logger)
 
 	// One per-host budget is shared by the native transport and the legacy
 	// RSS/HTML/Torznab client, so a host never receives the rate twice.
@@ -314,57 +202,15 @@ func main() {
 		indexerService = nil
 	}
 
-	var syncService *syncjob.Service
-	if secretVault != nil {
-		baseURL := strings.TrimSpace(settings.PublicURL)
-		if baseURL == "" {
-			baseURL = displayURL(cfg.Listen)
-			logger.Warn("public_url is empty; app sync will advertise a local address",
-				"base_url", baseURL)
-		}
-		syncService, err = syncjob.New(syncjob.Config{
-			Store: st, Vault: secretVault, Logger: logger, BaseURL: baseURL,
-		})
-		if err != nil {
-			logger.Warn("app sync disabled", "error", err)
-			syncService = nil
-		} else {
-			syncService.Start(ctx)
-		}
-	}
+	syncService := startAppSync(ctx, st, secretVault, settings, cfg.Listen, logger)
 
-	var downloadResolver func(context.Context, int64) ([]byte, string, string, error)
 	var grabGuard func(context.Context, int64) error
 	var grabRecord func(context.Context, int64, int64, string) error
 	if indexerManager != nil {
 		grabGuard = indexerManager.CheckGrab
 		grabRecord = indexerManager.RecordGrab
 	}
-	if indexerManager != nil && secretVault != nil {
-		resolver, resolverErr := downloadproxy.New(downloadproxy.Config{
-			Store: st, Vault: secretVault, Manager: indexerManager, Notifier: notifier,
-		})
-		if resolverErr != nil {
-			logger.Warn("download proxy disabled", "error", resolverErr)
-		} else {
-			downloadResolver = func(ctx context.Context, id int64) ([]byte, string, string, error) {
-				payload, err := resolver.Resolve(ctx, id)
-				if err != nil {
-					return nil, "", "", err
-				}
-				if len(payload.Body) == 0 {
-					if magnet := strings.TrimSpace(payload.Magnet); magnet != "" {
-						return []byte(magnet), "application/x-magnet", "", nil
-					}
-					if link := strings.TrimSpace(payload.Ed2k); link != "" {
-						return []byte(link), "application/x-ed2k", "", nil
-					}
-					return nil, "", "", errors.New("payload unavailable")
-				}
-				return payload.Body, payload.ContentType, payload.Filename, nil
-			}
-		}
-	}
+	downloadResolver := newDownloadResolver(st, secretVault, indexerManager, notifier, logger)
 
 	var nativeRunner *native.Runner
 	if indexerManager != nil {
@@ -403,10 +249,8 @@ func main() {
 	// first pass starts shortly after boot (so a fresh upgrade cleans the
 	// existing rows) and repeats every six hours; the enrichment step then
 	// recovers the missing infohashes within a per-site budget.
-	if st != nil {
-		go dedupeLoop(ctx, st, indexerManager, logger)
-		go backfillReleaseFiles(ctx, st, logger)
-	}
+	go dedupeLoop(ctx, st, indexerManager, logger)
+	go backfillReleaseFiles(ctx, st, logger)
 
 	var adminHandler http.Handler
 	adminServer, err := adminapi.New(adminapi.Config{
@@ -451,27 +295,7 @@ func main() {
 
 	<-ctx.Done()
 	logger.Info("shutting down")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		logger.Warn("HTTP shutdown", "error", err)
-	}
-	if nativeRunner != nil {
-		nativeRunner.Wait()
-	}
-	if syncService != nil {
-		syncService.Wait()
-	}
-	if healthChecker != nil {
-		healthChecker.Wait()
-	}
-	// Close the FlareSolverr browsers owned by the cached connectors. A
-	// stopped indexarr must not leave Chromium running behind it.
-	if indexerManager != nil {
-		sessionCtx, sessionCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		indexerManager.CloseAll(sessionCtx)
-		sessionCancel()
-	}
+	shutdown(httpServer, nativeRunner, syncService, healthChecker, indexerManager, logger)
 	logger.Info("stopped")
 }
 
