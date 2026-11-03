@@ -202,13 +202,3 @@ func hasTag(raw, want string) bool {
 	}
 	return false
 }
-
-func withoutTag(raw, drop string) []string {
-	out := []string{}
-	for _, tag := range splitTagList(raw) {
-		if !strings.EqualFold(strings.TrimSpace(tag), drop) {
-			out = append(out, tag)
-		}
-	}
-	return out
-}

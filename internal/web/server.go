@@ -106,8 +106,8 @@ var templateSets = newTemplateCache()
 
 var pageNames = []string{
 	"dashboard", "releases", "release",
-	"run", "rules", "settings", "maintenance", "discover", "error",
-	"definitions", "definition", "definition_form", "indexers", "indexer", "indexer_form", "cookie_import",
+	"run", "settings", "discover", "error",
+	"definition", "definition_form", "indexers", "indexer", "indexer_form", "cookie_import",
 	"applications", "application_form", "activity", "logs_section", "setup", "proxies",
 	"download_client_form", "site_preview", "smartfeed_form", "store_warning",
 }
@@ -649,6 +649,34 @@ func (s *Server) migrateLegacyDownloadClient() {
 
 // Handler builds the complete route table.
 func (s *Server) Handler() http.Handler {
+	ui := s.uiRoutes()
+
+	outer := http.NewServeMux()
+	// Torznab clients authenticate with their own API key: the UI's Basic
+	// authentication must not wrap these routes.
+	outer.Handle("/api", s.torznab)
+	outer.Handle("/api/v2.0/", s.torznab)
+	outer.Handle("/newznab/api", s.torznab)
+	outer.Handle("/torznab/api", s.torznab)
+	outer.Handle("/torznab/", s.torznab)
+	outer.Handle("/dl/", s.torznab)
+	if s.admin != nil {
+		outer.Handle("/api/v2/", s.admin)
+		outer.Handle("/api/v1/", s.admin)
+	}
+	outer.HandleFunc("POST /pair", s.browserCookieImport)
+	outer.HandleFunc("GET /healthz", s.healthz)
+	outer.HandleFunc("GET /metrics", s.metrics)
+	outer.HandleFunc("GET /sw.js", s.serviceWorker)
+	outer.Handle("GET /static/", withCompression(http.HandlerFunc(s.serveStatic)))
+	outer.Handle("/", s.authenticate(s.withCSRF(withCompression(ui))))
+	return s.trustedHosts(outer)
+}
+
+// uiRoutes is the route table of the web interface: every page, form action
+// and link the templates point to resolves here. The routes sit behind the
+// login, the CSRF check and compression applied by Handler.
+func (s *Server) uiRoutes() *http.ServeMux {
 	ui := http.NewServeMux()
 	ui.HandleFunc("GET /{$}", s.dashboard)
 	ui.HandleFunc("GET /setup", s.setupPage)
@@ -691,6 +719,8 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("POST /indexers/catalog/try", s.indexerCatalogTry)
 	ui.HandleFunc("POST /indexers/catalog/preview/add", s.indexerCatalogPreviewAdd)
 	ui.HandleFunc("POST /indexers/catalog/preview/cancel", s.indexerCatalogPreviewCancel)
+	ui.HandleFunc("POST /indexers/store/confirm", s.indexerStoreConfirm)
+	ui.HandleFunc("POST /indexers/store/cancel", s.indexerStoreCancel)
 	ui.HandleFunc("GET /indexers/export", s.indexersExport)
 	ui.HandleFunc("POST /indexers/import", s.indexersImport)
 	ui.HandleFunc("GET /indexers/discover", s.indexersDiscover)
@@ -762,27 +792,7 @@ func (s *Server) Handler() http.Handler {
 	ui.HandleFunc("GET /maintenance/backups/{name}", s.maintenanceBackupDownload)
 	ui.HandleFunc("POST /maintenance/backups/{name}/delete", s.maintenanceBackupDelete)
 	ui.HandleFunc("POST /maintenance/restore", s.maintenanceRestore)
-
-	outer := http.NewServeMux()
-	// Torznab clients authenticate with their own API key: the UI's Basic
-	// authentication must not wrap these routes.
-	outer.Handle("/api", s.torznab)
-	outer.Handle("/api/v2.0/", s.torznab)
-	outer.Handle("/newznab/api", s.torznab)
-	outer.Handle("/torznab/api", s.torznab)
-	outer.Handle("/torznab/", s.torznab)
-	outer.Handle("/dl/", s.torznab)
-	if s.admin != nil {
-		outer.Handle("/api/v2/", s.admin)
-		outer.Handle("/api/v1/", s.admin)
-	}
-	outer.HandleFunc("POST /pair", s.browserCookieImport)
-	outer.HandleFunc("GET /healthz", s.healthz)
-	outer.HandleFunc("GET /metrics", s.metrics)
-	outer.HandleFunc("GET /sw.js", s.serviceWorker)
-	outer.Handle("GET /static/", withCompression(http.HandlerFunc(s.serveStatic)))
-	outer.Handle("/", s.authenticate(s.withCSRF(withCompression(ui))))
-	return s.trustedHosts(outer)
+	return ui
 }
 
 // staticFileETags hashes the embedded assets once at startup. The files are
@@ -1157,15 +1167,25 @@ func redirect(w http.ResponseWriter, r *http.Request, path, message, problem str
 	if problem != "" {
 		values.Set("err", problem)
 	}
-	target := path
-	if encoded := values.Encode(); encoded != "" {
-		if strings.Contains(target, "?") {
-			target += "&" + encoded
-		} else {
-			target += "?" + encoded
-		}
+	http.Redirect(w, r, withQuery(path, values.Encode()), http.StatusSeeOther)
+}
+
+// withQuery appends an encoded query to a local path. The query goes before
+// the fragment: "/applications#clients" becomes "/applications?msg=…#clients",
+// otherwise the browser keeps the message in the fragment and never sends it.
+func withQuery(path, encoded string) string {
+	if encoded == "" {
+		return path
 	}
-	http.Redirect(w, r, target, http.StatusSeeOther)
+	fragment := ""
+	if index := strings.IndexByte(path, '#'); index >= 0 {
+		path, fragment = path[:index], path[index:]
+	}
+	separator := "?"
+	if strings.Contains(path, "?") {
+		separator = "&"
+	}
+	return path + separator + encoded + fragment
 }
 
 // redirectTab sends a permanent-style 302 to a tabbed page, keeping the query

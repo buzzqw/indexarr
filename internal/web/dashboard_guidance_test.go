@@ -203,7 +203,7 @@ var handlerKeyPattern = regexp.MustCompile(`(?:translate|newBaseT)\(r, "([^"]+)"
 func TestOwnedTemplatesUseCatalog(t *testing.T) {
 	files := []string{
 		"layout", "dashboard", "indexers", "indexer", "indexer_form",
-		"definitions", "definition", "definition_form", "applications",
+		"definition", "definition_form", "applications",
 		"application_form", "proxies", "activity", "activity_feed",
 		"activity_searches", "indexer_data", "indexer_try", "runs", "logs",
 		"error", "components", "setup", "settings", "settings_definitions",

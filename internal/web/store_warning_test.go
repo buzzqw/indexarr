@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -118,5 +119,30 @@ func TestDashboardShowsStoredCounter(t *testing.T) {
 	}
 	if !strings.Contains(body, "MB") {
 		t.Errorf("home counter has no measured size")
+	}
+}
+
+// The warning page posts to these two routes: they went missing once and the
+// buttons answered 404.
+func TestStoreWarningButtonsReachTheirHandlers(t *testing.T) {
+	env := newTestEnv(t)
+	token, err := env.server.pendingStores.put(pendingStoreEntry{definitionID: "example"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	csrf, cookie := csrfFrom(t, env.handler, "/indexers")
+	cancel := postForm(t, env.handler, "/indexers/store/cancel", url.Values{"csrf": {csrf}, "token": {token}}, cookie)
+	if cancel.Code != http.StatusSeeOther {
+		t.Fatalf("POST /indexers/store/cancel = %d, want 303", cancel.Code)
+	}
+	if location := cancel.Header().Get("Location"); !strings.HasPrefix(location, "/indexers/new?definition=example") {
+		t.Errorf("cancel went to %q, want the form of the definition", location)
+	}
+
+	// The token is spent: the handler refuses it (400, or 503 without the
+	// indexer service of a full daemon), but the route answers.
+	confirm := postForm(t, env.handler, "/indexers/store/confirm", url.Values{"csrf": {csrf}, "token": {token}}, cookie)
+	if confirm.Code == http.StatusNotFound || confirm.Code == http.StatusMethodNotAllowed {
+		t.Fatalf("POST /indexers/store/confirm = %d: the route is missing", confirm.Code)
 	}
 }

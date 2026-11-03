@@ -76,12 +76,6 @@ func (p *pendingStoreSet) take(token string) (pendingStoreEntry, bool) {
 	return entry, ok
 }
 
-func (p *pendingStoreSet) drop(token string) {
-	p.mu.Lock()
-	delete(p.entries, token)
-	p.mu.Unlock()
-}
-
 func (p *pendingStoreSet) pruneLocked() {
 	for token, entry := range p.entries {
 		if p.now().Sub(entry.created) > storeWarningTTL {

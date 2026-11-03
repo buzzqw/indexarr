@@ -162,21 +162,6 @@ func (s *Server) completeness(r *http.Request, metrics store.RunMetrics) []compl
 	return out
 }
 
-func (s *Server) missingFieldPhrase(r *http.Request, key string) string {
-	switch key {
-	case "size":
-		return s.translate(r, "idx.data.problemSize")
-	case "seeders":
-		return s.translate(r, "idx.data.problemSeeders")
-	case "category":
-		return s.translate(r, "idx.data.problemCategory")
-	case "date":
-		return s.translate(r, "idx.data.problemDate")
-	default:
-		return s.translate(r, "idx.data.problemHash")
-	}
-}
-
 func (s *Server) sampleView(r *http.Request, sample store.IndexerSample) *indexerSampleView {
 	view := &indexerSampleView{
 		RequestURL: feed.RedactURL(sample.RequestURL),
@@ -274,13 +259,6 @@ func durationLabel(value time.Duration) string {
 		return value.String()
 	}
 	return value.Round(time.Millisecond).String()
-}
-
-// renderRunChart draws the 7-day new/discarded series as inline SVG. It uses
-// no library and no client-side code; the server writes every rectangle.
-func renderRunChart(points []store.RunSeriesPoint) htmltemplate.HTML {
-	now := time.Now()
-	return renderRunChartWindow(points, now.Add(-dataChartDays*24*time.Hour), now)
 }
 
 // renderRunChartWindow positions every run on a real time axis: two runs an

@@ -9,23 +9,6 @@ import (
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
-type rulesPage struct {
-	base
-	Rules []store.BlocklistRule
-}
-
-func (s *Server) rulesPage(w http.ResponseWriter, r *http.Request) {
-	rules, err := s.store.ListBlocklist(r.Context())
-	if err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-	s.render(w, r, "rules", rulesPage{
-		base:  s.newBase(r, "rules.title", "rules"),
-		Rules: rules,
-	}, http.StatusOK)
-}
-
 func (s *Server) rulesAdd(w http.ResponseWriter, r *http.Request) {
 	kind := strings.TrimSpace(r.FormValue("kind"))
 	value := strings.TrimSpace(r.FormValue("value"))
@@ -44,7 +27,7 @@ func (s *Server) rulesAdd(w http.ResponseWriter, r *http.Request) {
 func (s *Server) rulesDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := pathID(r)
 	if err != nil {
-		redirect(w, r, "/rules", "", s.translate(r, "rules.invalidID"))
+		redirect(w, r, "/settings?section=rules", "", s.translate(r, "rules.invalidID"))
 		return
 	}
 	if _, err := s.store.DeleteBlocklistRule(r.Context(), id); err != nil {

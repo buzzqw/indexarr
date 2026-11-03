@@ -56,18 +56,6 @@ type definitionRow struct {
 	Derived bool
 }
 
-type definitionsPage struct {
-	base
-	CatalogRows []definitionRow
-	LocalRows   []definitionRow
-}
-
-func (s *Server) definitionsPage(w http.ResponseWriter, r *http.Request) {
-	data := definitionsPage{base: s.newBaseT(r, "definitions.title", "definitions")}
-	data.CatalogRows, data.LocalRows = s.definitionRows(r.Context(), &data.base)
-	s.render(w, r, "definitions", data, http.StatusOK)
-}
-
 // definitionImport reads a catalog from an address (index.json plus
 // definitions/<id>.yaml) and stores its definitions, so a site fix reaches this
 // installation without a new release. The operator's own definitions are never
@@ -77,13 +65,13 @@ func (s *Server) definitionImport(w http.ResponseWriter, r *http.Request) {
 	result, err := catalog.Import(r.Context(), s.store, raw)
 	if err != nil {
 		s.log.Warn("import remote catalog", "component", "indexarr", "subsystem", "web", "error", err)
-		redirect(w, r, "/definitions", "", s.translate(r, "definitions.remoteFailed", err.Error()))
+		redirect(w, r, "/settings?section=advanced#definitions", "", s.translate(r, "definitions.remoteFailed", err.Error()))
 		return
 	}
 	s.log.Info("remote catalog imported",
 		"component", "indexarr", "subsystem", "web",
 		"written", result.Written, "unchanged", result.Unchanged, "problems", len(result.Problems))
-	redirect(w, r, "/definitions",
+	redirect(w, r, "/settings?section=advanced#definitions",
 		s.translate(r, "definitions.remoteDone", result.Written, result.Unchanged, len(result.Problems)), "")
 }
 
@@ -379,14 +367,6 @@ func validationProblems(err error, fallback string) []string {
 }
 
 // ------------------------------------------------------------------- helpers
-
-func definitionName(def store.Definition) string {
-	parsed, err := definition.Parse([]byte(def.Body))
-	if err != nil || strings.TrimSpace(parsed.Meta.Name) == "" {
-		return def.ID
-	}
-	return parsed.Meta.Name
-}
 
 type indexerConfigEntry struct {
 	Key   string

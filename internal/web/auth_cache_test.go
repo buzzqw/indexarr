@@ -14,8 +14,10 @@ func TestVerifiedLoginsCachesOnlySuccess(t *testing.T) {
 	if len(cache.seen) != 0 {
 		t.Fatal("a failed login was cached")
 	}
-	if !cache.verify("admin", "secret", encoded) || !cache.verify("admin", "secret", encoded) {
-		t.Fatal("right password rejected")
+	for attempt := 1; attempt <= 2; attempt++ {
+		if !cache.verify("admin", "secret", encoded) {
+			t.Fatalf("right password rejected on attempt %d", attempt)
+		}
 	}
 	if len(cache.seen) != 1 {
 		t.Fatalf("cache entries = %d, want 1", len(cache.seen))
