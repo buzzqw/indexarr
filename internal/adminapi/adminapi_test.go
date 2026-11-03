@@ -659,3 +659,50 @@ func TestIndexerSensitiveURLIsSealed(t *testing.T) {
 		t.Fatalf("sealed URL = %q, want the original", value)
 	}
 }
+
+// The API applies the same indexer rules as the web interface: before it had
+// its own copy, which accepted a Prowlarr endpoint, an unknown proxy and
+// silently dropped the request timeout.
+func TestIndexerAPIAppliesTheInterfaceRules(t *testing.T) {
+	e := newEnv(t, true, true)
+	e.createDefinition("alpha", "Alpha Tracker")
+
+	res := e.do(http.MethodPost, "/api/v2/indexers", jsonBody(map[string]any{
+		"definition_id": "alpha",
+		"name":          "Through Prowlarr",
+		"settings":      map[string]any{"url": "http://prowlarr.lan:9696/15/api"},
+	}))
+	requireStatus(t, res, http.StatusBadRequest)
+
+	res = e.do(http.MethodPost, "/api/v2/indexers", jsonBody(map[string]any{
+		"definition_id": "alpha",
+		"name":          "Missing Proxy",
+		"proxy_id":      999,
+	}))
+	requireStatus(t, res, http.StatusBadRequest)
+
+	res = e.do(http.MethodPost, "/api/v2/indexers", jsonBody(map[string]any{
+		"definition_id":           "alpha",
+		"name":                    "Bad Timeout",
+		"request_timeout_seconds": 2,
+	}))
+	requireStatus(t, res, http.StatusBadRequest)
+
+	created := e.createIndexer(map[string]any{
+		"definition_id":           "alpha",
+		"name":                    "Slow Site",
+		"request_timeout_seconds": 90,
+	})
+	row, err := e.store.GetIndexer(context.Background(), created.ID)
+	if err != nil {
+		t.Fatalf("GetIndexer: %v", err)
+	}
+	if row.RequestTimeoutSeconds != 90 {
+		t.Fatalf("request timeout = %d, want 90", row.RequestTimeoutSeconds)
+	}
+
+	res = e.do(http.MethodPut, fmt.Sprintf("/api/v2/indexers/%d", created.ID), jsonBody(map[string]any{
+		"settings": map[string]any{"url": "http://jackett.lan:9117/api/v2.0/indexers/all/results/torznab"},
+	}))
+	requireStatus(t, res, http.StatusBadRequest)
+}

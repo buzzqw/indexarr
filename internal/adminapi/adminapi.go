@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/buzzqw/indexarr/internal/indexer"
+	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/syncjob"
@@ -49,6 +50,9 @@ type Server struct {
 	logger      *slog.Logger
 	version     string
 	notifier    *notify.Dispatcher
+	// indexers holds the rules for creating and editing an indexer, shared
+	// with the web interface.
+	indexers *indexersvc.Service
 }
 
 // New builds an admin API server. A store is required; every other field is
@@ -61,7 +65,12 @@ func New(cfg Config) (*Server, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
+	indexers, err := indexersvc.New(indexersvc.Config{Store: cfg.Store, Vault: cfg.Vault, Manager: cfg.Manager})
+	if err != nil {
+		return nil, err
+	}
 	return &Server{
+		indexers:    indexers,
 		store:       cfg.Store,
 		vault:       cfg.Vault,
 		manager:     cfg.Manager,

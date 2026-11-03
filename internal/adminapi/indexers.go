@@ -1,7 +1,6 @@
 package adminapi
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -11,15 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/engine"
-	"github.com/buzzqw/indexarr/internal/feed"
+	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/store"
 )
-
-var secretFragments = []string{
-	"api_key", "apikey", "token", "password", "passkey", "secret", "cookie",
-}
 
 type indexerRequest struct {
 	DefinitionID              string         `json:"definition_id"`
@@ -37,6 +31,7 @@ type indexerRequest struct {
 	SeedTimeMinutes           *int           `json:"seed_time_minutes"`
 	SeasonPackSeedTimeMinutes *int           `json:"season_pack_seed_time_minutes"`
 	IntervalSeconds           *int           `json:"interval_seconds"`
+	RequestTimeoutSeconds     *int           `json:"request_timeout_seconds"`
 	Settings                  map[string]any `json:"settings"`
 }
 
@@ -162,174 +157,12 @@ func (s *Server) handleIndexerCreate(w http.ResponseWriter, r *http.Request) {
 	if !decodeRequest(w, r, &req) {
 		return
 	}
-	ctx := r.Context()
-
-	definitionID := strings.TrimSpace(req.DefinitionID)
-	name := strings.TrimSpace(req.Name)
-	if definitionID == "" {
-		writeError(w, http.StatusBadRequest, "definition_id is required")
-		return
-	}
-	if name == "" {
-		writeError(w, http.StatusBadRequest, "name is required")
-		return
-	}
-
-	def, err := s.store.GetDefinition(ctx, definitionID)
+	created, err := s.indexers.Create(r.Context(), req.input())
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusBadRequest, "definition not found")
-			return
-		}
-		s.logger.Error("adminapi: get definition for indexer", "id", definitionID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
+		s.writeIndexerError(w, "create", err)
 		return
 	}
-
-	protocol := strings.ToLower(strings.TrimSpace(req.Protocol))
-	parsed, err := definition.Parse([]byte(def.Body))
-	if err != nil {
-		s.logger.Error("adminapi: parse stored definition", "id", definitionID, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	if protocol == "" {
-		protocol = strings.ToLower(strings.TrimSpace(parsed.Meta.Protocol))
-	}
-	if !validProtocol(protocol) {
-		writeError(w, http.StatusBadRequest, "protocol must be torrent, usenet or ed2k")
-		return
-	}
-
-	provided := make(map[string]string, len(req.Settings))
-	for key, value := range req.Settings {
-		provided[key] = strings.TrimSpace(settingText(value))
-	}
-	hasSetting := func(name string) bool { return provided[name] != "" }
-	for _, setting := range parsed.Settings {
-		if setting.Required && !parsed.LoginSatisfied(setting.Name, hasSetting) {
-			writeError(w, http.StatusBadRequest, "missing required setting: "+setting.Name)
-			return
-		}
-	}
-
-	slug := normalizeSlug(req.Slug)
-	if slug == "" {
-		slug = normalizeSlug(name)
-	}
-	if slug == "" {
-		writeError(w, http.StatusBadRequest, "slug is required")
-		return
-	}
-	if err := s.ensureSlugAvailable(ctx, slug, 0); err != nil {
-		s.writeSlugError(w, err)
-		return
-	}
-
-	public, secrets, _, err := splitSettings(req.Settings)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if len(secrets) > 0 && s.vault == nil {
-		writeError(w, http.StatusServiceUnavailable, "vault not configured")
-		return
-	}
-	sealed, err := s.sealSecrets(secrets)
-	if err != nil {
-		s.logger.Error("adminapi: seal indexer secrets", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	configJSON, err := json.Marshal(public)
-	if err != nil {
-		s.logger.Error("adminapi: encode indexer config", "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-
-	enabled := true
-	if req.Enabled != nil {
-		enabled = *req.Enabled
-	}
-	priority := 25
-	if req.Priority != nil {
-		priority = *req.Priority
-	}
-	queryLimit, grabLimit := 0, 0
-	if req.QueryLimit != nil {
-		queryLimit = *req.QueryLimit
-	}
-	if req.GrabLimit != nil {
-		grabLimit = *req.GrabLimit
-	}
-	interval, err := intervalFromRequest(req.IntervalSeconds, parsed.Meta.Interval.Duration())
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if msg := s.validateIndexerCriteria(ctx, req.ProxyID, req.QueryLimit, req.GrabLimit,
-		req.MinSeeders, req.SeedRatio, req.SeedTimeMinutes, req.SeasonPackSeedTimeMinutes); msg != "" {
-		writeError(w, http.StatusBadRequest, msg)
-		return
-	}
-	criteria := criteriaFromRequest(req)
-
-	id, err := s.store.CreateIndexer(ctx, store.Indexer{
-		DefinitionID:              definitionID,
-		Protocol:                  protocol,
-		Slug:                      slug,
-		Name:                      name,
-		Enabled:                   enabled,
-		Priority:                  priority,
-		ConfigJSON:                string(configJSON),
-		Tags:                      joinTags(req.Tags),
-		QueryLimit:                queryLimit,
-		GrabLimit:                 grabLimit,
-		ProxyID:                   criteria.proxyID,
-		MinSeeders:                criteria.minSeeders,
-		SeedRatio:                 criteria.seedRatio,
-		SeedTimeMinutes:           criteria.seedTimeMinutes,
-		SeasonPackSeedTimeMinutes: criteria.seasonPackSeedTimeMinutes,
-		IntervalSeconds:           interval,
-	})
-	if err != nil {
-		if isUniqueError(err) {
-			writeError(w, http.StatusConflict, "indexer slug already exists")
-			return
-		}
-		s.logger.Error("adminapi: create indexer", "name", name, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-
-	for key, value := range sealed {
-		if err := s.store.PutSecret(ctx, store.Secret{
-			IndexerID:  id,
-			Key:        key,
-			Nonce:      value.nonce,
-			Ciphertext: value.ciphertext,
-		}); err != nil {
-			s.logger.Error("adminapi: store indexer secret", "indexer_id", id, "error", err)
-			_ = s.store.DeleteIndexer(ctx, id)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-	}
-
-	in, err := s.store.GetIndexer(ctx, id)
-	if err != nil {
-		s.logger.Error("adminapi: get created indexer", "id", id, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	resp, err := s.indexerResponse(r, in)
-	if err != nil {
-		s.logger.Error("adminapi: indexer response", "id", id, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	writeJSON(w, http.StatusCreated, resp)
+	s.writeIndexer(w, r, http.StatusCreated, created)
 }
 
 func (s *Server) handleIndexerUpdate(w http.ResponseWriter, r *http.Request) {
@@ -342,205 +175,81 @@ func (s *Server) handleIndexerUpdate(w http.ResponseWriter, r *http.Request) {
 	if !decodeRequest(w, r, &req) {
 		return
 	}
-	ctx := r.Context()
-
-	in, err := s.store.GetIndexer(ctx, id)
+	updated, err := s.indexers.Update(r.Context(), id, req.input())
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "indexer not found")
-			return
-		}
-		s.logger.Error("adminapi: get indexer for update", "id", id, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
+		s.writeIndexerError(w, "update", err)
 		return
 	}
+	s.writeIndexer(w, r, http.StatusOK, updated)
+}
 
-	if definitionID := strings.TrimSpace(req.DefinitionID); definitionID != "" && definitionID != in.DefinitionID {
-		if _, err := s.store.GetDefinition(ctx, definitionID); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				writeError(w, http.StatusBadRequest, "definition not found")
-				return
-			}
-			s.logger.Error("adminapi: get definition for indexer update", "id", definitionID, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
+// input turns the JSON body into the form the indexer service validates, the
+// same one the web interface submits. A proxy_id of zero or less removes the
+// proxy; settings are sent as text, as the interface sends them.
+func (req indexerRequest) input() indexersvc.Input {
+	in := indexersvc.Input{
+		DefinitionID:              req.DefinitionID,
+		Name:                      req.Name,
+		Slug:                      req.Slug,
+		Protocol:                  req.Protocol,
+		Priority:                  req.Priority,
+		Tags:                      req.Tags,
+		Enabled:                   req.Enabled,
+		IntervalSeconds:           req.IntervalSeconds,
+		RequestTimeoutSeconds:     req.RequestTimeoutSeconds,
+		QueryLimit:                req.QueryLimit,
+		GrabLimit:                 req.GrabLimit,
+		MinSeeders:                req.MinSeeders,
+		SeedRatio:                 req.SeedRatio,
+		SeedTimeMinutes:           req.SeedTimeMinutes,
+		SeasonPackSeedTimeMinutes: req.SeasonPackSeedTimeMinutes,
+	}
+	if req.ProxyID != nil {
+		if *req.ProxyID > 0 {
+			id := *req.ProxyID
+			in.ProxyID = &id
+		} else {
+			in.ClearProxy = true
 		}
-		in.DefinitionID = definitionID
 	}
-	if name := strings.TrimSpace(req.Name); name != "" {
-		in.Name = name
-	}
-	if req.Slug != "" {
-		slug := normalizeSlug(req.Slug)
-		if slug == "" {
-			writeError(w, http.StatusBadRequest, "slug is required")
-			return
-		}
-		if err := s.ensureSlugAvailable(ctx, slug, in.ID); err != nil {
-			s.writeSlugError(w, err)
-			return
-		}
-		in.Slug = slug
-	}
-	if protocol := strings.ToLower(strings.TrimSpace(req.Protocol)); protocol != "" {
-		if !validProtocol(protocol) {
-			writeError(w, http.StatusBadRequest, "protocol must be torrent, usenet or ed2k")
-			return
-		}
-		in.Protocol = protocol
-	}
-	if req.Priority != nil {
-		in.Priority = *req.Priority
-	}
-	if req.Enabled != nil {
-		in.Enabled = *req.Enabled
-	}
-	if req.QueryLimit != nil {
-		in.QueryLimit = *req.QueryLimit
-	}
-	if req.GrabLimit != nil {
-		in.GrabLimit = *req.GrabLimit
-	}
-	if msg := s.validateIndexerCriteria(ctx, req.ProxyID, req.QueryLimit, req.GrabLimit,
-		req.MinSeeders, req.SeedRatio, req.SeedTimeMinutes, req.SeasonPackSeedTimeMinutes); msg != "" {
-		writeError(w, http.StatusBadRequest, msg)
-		return
-	}
-	criteria := criteriaFromRequest(req)
-	if criteria.proxySet {
-		in.ProxyID = criteria.proxyID
-	}
-	if criteria.minSeedersSet {
-		in.MinSeeders = criteria.minSeeders
-	}
-	if criteria.seedRatioSet {
-		in.SeedRatio = criteria.seedRatio
-	}
-	if criteria.seedTimeSet {
-		in.SeedTimeMinutes = criteria.seedTimeMinutes
-	}
-	if criteria.seasonPackSet {
-		in.SeasonPackSeedTimeMinutes = criteria.seasonPackSeedTimeMinutes
-	}
-	if req.IntervalSeconds != nil {
-		interval, err := intervalFromRequest(req.IntervalSeconds, 0)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		in.IntervalSeconds = interval
-	}
-	if req.Tags != nil {
-		in.Tags = joinTags(req.Tags)
-	}
-
-	var sealed map[string]sealedSecret
-	var deleteKeys []string
 	if req.Settings != nil {
-		config, err := decodeConfig(in.ConfigJSON)
-		if err != nil {
-			s.logger.Error("adminapi: decode indexer config", "id", id, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
+		in.Settings = make(map[string]string, len(req.Settings))
+		for key, value := range req.Settings {
+			in.Settings[key] = settingText(value)
 		}
-		public, secrets, deletes, err := splitSettings(req.Settings)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		existing, err := s.store.ListSecrets(ctx, id)
-		if err != nil {
-			s.logger.Error("adminapi: list indexer secrets", "id", id, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		existingSecrets := make(map[string]bool, len(existing))
-		for _, secret := range existing {
-			existingSecrets[secret.Key] = true
-		}
-		for key := range secrets {
-			delete(config, key)
-		}
-		for key, value := range public {
-			if existingSecrets[key] {
-				deletes = append(deletes, key)
-			}
-			if value == nil || settingText(value) == "" {
-				delete(config, key)
-				continue
-			}
-			config[key] = value
-		}
-		configJSON, err := json.Marshal(config)
-		if err != nil {
-			s.logger.Error("adminapi: encode indexer config", "id", id, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		in.ConfigJSON = string(configJSON)
-
-		if len(secrets) > 0 && s.vault == nil {
-			writeError(w, http.StatusServiceUnavailable, "vault not configured")
-			return
-		}
-		sealed, err = s.sealSecrets(secrets)
-		if err != nil {
-			s.logger.Error("adminapi: seal indexer secrets", "id", id, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		deleteKeys = deletes
 	}
+	return in
+}
 
-	if err := s.store.UpdateIndexer(ctx, in); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "indexer not found")
-			return
-		}
-		if isUniqueError(err) {
-			writeError(w, http.StatusConflict, "indexer slug already exists")
-			return
-		}
-		s.logger.Error("adminapi: update indexer", "id", id, "error", err)
+// writeIndexerError maps an error of the indexer service to its status: the
+// caller's mistakes are 4xx with the service's message, everything else is
+// logged and answered as an internal error.
+func (s *Server) writeIndexerError(w http.ResponseWriter, operation string, err error) {
+	switch {
+	case errors.Is(err, indexersvc.ErrIndexerNotFound):
+		writeError(w, http.StatusNotFound, "indexer not found")
+	case errors.Is(err, indexersvc.ErrDefinitionNotFound):
+		writeError(w, http.StatusBadRequest, "definition not found")
+	case errors.Is(err, indexersvc.ErrSlugTaken):
+		writeError(w, http.StatusConflict, "indexer slug already exists")
+	case errors.Is(err, indexersvc.ErrVaultRequired):
+		writeError(w, http.StatusServiceUnavailable, "vault not configured")
+	case errors.Is(err, indexersvc.ErrInvalidInput), errors.Is(err, indexersvc.ErrManagerEndpoint):
+		writeError(w, http.StatusBadRequest, err.Error())
+	default:
+		s.logger.Error("adminapi: "+operation+" indexer", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal error")
-		return
 	}
-	for key, value := range sealed {
-		if err := s.store.PutSecret(ctx, store.Secret{
-			IndexerID:  id,
-			Key:        key,
-			Nonce:      value.nonce,
-			Ciphertext: value.ciphertext,
-		}); err != nil {
-			s.logger.Error("adminapi: update indexer secret", "indexer_id", id, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-	}
-	for _, key := range deleteKeys {
-		if err := s.store.DeleteSecret(ctx, id, key); err != nil {
-			s.logger.Error("adminapi: delete indexer secret", "indexer_id", id, "error", err)
-			writeError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-	}
-	if s.manager != nil {
-		s.manager.Invalidate(id)
-	}
+}
 
-	updated, err := s.store.GetIndexer(ctx, id)
+func (s *Server) writeIndexer(w http.ResponseWriter, r *http.Request, status int, in store.Indexer) {
+	resp, err := s.indexerResponse(r, in)
 	if err != nil {
-		s.logger.Error("adminapi: get updated indexer", "id", id, "error", err)
+		s.logger.Error("adminapi: indexer response", "id", in.ID, "error", err)
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
-	resp, err := s.indexerResponse(r, updated)
-	if err != nil {
-		s.logger.Error("adminapi: indexer response", "id", id, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
+	writeJSON(w, status, resp)
 }
 
 func (s *Server) handleIndexerDelete(w http.ResponseWriter, r *http.Request) {
@@ -697,65 +406,6 @@ func (s *Server) handleIndexerRun(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type indexerCriteria struct {
-	proxyID                   *int64
-	proxySet                  bool
-	minSeeders                int
-	minSeedersSet             bool
-	seedRatio                 float64
-	seedRatioSet              bool
-	seedTimeMinutes           int
-	seedTimeSet               bool
-	seasonPackSeedTimeMinutes int
-	seasonPackSet             bool
-}
-
-func criteriaFromRequest(req indexerRequest) indexerCriteria {
-	out := indexerCriteria{}
-	if req.ProxyID != nil {
-		out.proxySet = true
-		if *req.ProxyID > 0 {
-			id := *req.ProxyID
-			out.proxyID = &id
-		}
-	}
-	if req.MinSeeders != nil {
-		out.minSeeders, out.minSeedersSet = *req.MinSeeders, true
-	}
-	if req.SeedRatio != nil {
-		out.seedRatio, out.seedRatioSet = *req.SeedRatio, true
-	}
-	if req.SeedTimeMinutes != nil {
-		out.seedTimeMinutes, out.seedTimeSet = *req.SeedTimeMinutes, true
-	}
-	if req.SeasonPackSeedTimeMinutes != nil {
-		out.seasonPackSeedTimeMinutes, out.seasonPackSet = *req.SeasonPackSeedTimeMinutes, true
-	}
-	return out
-}
-
-func (s *Server) validateIndexerCriteria(ctx context.Context, proxyID *int64,
-	queryLimit, grabLimit, minSeeders *int, seedRatio *float64,
-	seedTime, seasonPack *int) string {
-	for _, value := range []*int{queryLimit, grabLimit, minSeeders, seedTime, seasonPack} {
-		if value != nil && *value < 0 {
-			return "limits and seed criteria must be zero or positive"
-		}
-	}
-	if seedRatio != nil && *seedRatio < 0 {
-		return "seed_ratio must be zero or positive"
-	}
-	if proxyID != nil && *proxyID > 0 {
-		if _, err := s.store.GetProxy(ctx, *proxyID); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return "proxy not found"
-			}
-			return "internal error"
-		}
-	}
-	return ""
-}
-
 func (s *Server) indexerExists(w http.ResponseWriter, r *http.Request, id int64) bool {
 	if _, err := s.store.GetIndexer(r.Context(), id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -797,113 +447,6 @@ func (s *Server) indexerResponse(r *http.Request, in store.Indexer) (indexerResp
 	}, nil
 }
 
-type sealedSecret struct {
-	nonce      []byte
-	ciphertext []byte
-}
-
-func (s *Server) sealSecrets(values map[string]string) (map[string]sealedSecret, error) {
-	if len(values) == 0 {
-		return nil, nil
-	}
-	if s.vault == nil {
-		return nil, errors.New("vault not configured")
-	}
-	out := make(map[string]sealedSecret, len(values))
-	for key, value := range values {
-		nonce, ciphertext, err := s.vault.Seal(value)
-		if err != nil {
-			return nil, err
-		}
-		out[key] = sealedSecret{nonce: nonce, ciphertext: ciphertext}
-	}
-	return out, nil
-}
-
-func (s *Server) ensureSlugAvailable(ctx context.Context, slug string, self int64) error {
-	in, err := s.store.GetIndexerBySlug(ctx, slug)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		return err
-	}
-	if in.ID != self {
-		return errSlugTaken
-	}
-	return nil
-}
-
-var errSlugTaken = errors.New("indexer slug already exists")
-
-func (s *Server) writeSlugError(w http.ResponseWriter, err error) {
-	if errors.Is(err, errSlugTaken) {
-		writeError(w, http.StatusConflict, "indexer slug already exists")
-		return
-	}
-	s.logger.Error("adminapi: check indexer slug", "error", err)
-	writeError(w, http.StatusInternalServerError, "internal error")
-}
-
-func splitSettings(settings map[string]any) (public map[string]any, secrets map[string]string, deletes []string, err error) {
-	public = make(map[string]any)
-	secrets = make(map[string]string)
-	for key, raw := range settings {
-		key = strings.TrimSpace(key)
-		if key == "" {
-			return nil, nil, nil, errors.New("settings: key must not be empty")
-		}
-		if isSecretSetting(key, settingText(raw)) {
-			value := settingText(raw)
-			if value == "" {
-				deletes = append(deletes, key)
-				continue
-			}
-			secrets[key] = value
-			continue
-		}
-		public[key] = raw
-	}
-	return public, secrets, deletes, nil
-}
-
-func isSecretKey(key string) bool {
-	lower := strings.ToLower(strings.TrimSpace(key))
-	for _, fragment := range secretFragments {
-		if strings.Contains(lower, fragment) {
-			return true
-		}
-	}
-	return false
-}
-
-func isURLSettingKey(key string) bool {
-	lower := strings.ToLower(strings.TrimSpace(key))
-	return lower == "url" || lower == "feed" ||
-		strings.HasSuffix(lower, "_url") || strings.HasSuffix(lower, "_uri")
-}
-
-func isSecretSetting(key, value string) bool {
-	return isSecretKey(key) || (isURLSettingKey(key) && feed.IsSensitiveURL(value))
-}
-
-// intervalFromRequest mirrors the indexersvc rule for the API: nil uses the
-// definition suggestion, zero keeps the global default and a positive value
-// must be at least one minute.
-func intervalFromRequest(requested *int, suggested time.Duration) (int, error) {
-	if requested == nil {
-		if suggested >= time.Minute {
-			return int(suggested / time.Second), nil
-		}
-		return 0, nil
-	}
-	seconds := *requested
-	if seconds < 0 || (seconds > 0 && seconds < 60) {
-		return 0, errors.New("interval_seconds must be 0 or at least 60")
-	}
-	return seconds, nil
-}
-
 func settingText(value any) string {
 	switch typed := value.(type) {
 	case nil:
@@ -923,22 +466,6 @@ func settingText(value any) string {
 		}
 		return string(encoded)
 	}
-}
-
-func normalizeSlug(raw string) string {
-	var b strings.Builder
-	dash := false
-	for _, r := range strings.ToLower(strings.TrimSpace(raw)) {
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
-			b.WriteRune(r)
-			dash = false
-		case b.Len() > 0 && !dash:
-			b.WriteByte('-')
-			dash = true
-		}
-	}
-	return strings.Trim(b.String(), "-")
 }
 
 func splitTags(raw string) []string {
@@ -964,23 +491,4 @@ func splitTags(raw string) []string {
 		}
 	}
 	return out
-}
-
-func joinTags(tags []string) string {
-	out := make([]string, 0, len(tags))
-	for _, tag := range tags {
-		if tag = strings.TrimSpace(tag); tag != "" {
-			out = append(out, tag)
-		}
-	}
-	return strings.Join(out, ",")
-}
-
-func validProtocol(protocol string) bool {
-	return protocol == "torrent" || protocol == "usenet" || protocol == "ed2k"
-}
-
-func isUniqueError(err error) bool {
-	text := strings.ToLower(err.Error())
-	return strings.Contains(text, "unique constraint") || strings.Contains(text, "constraint failed: indexers.slug")
 }

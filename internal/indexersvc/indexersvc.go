@@ -39,7 +39,25 @@ var (
 	ErrIndexerNotFound = errors.New("indexer not found")
 	// ErrSlugTaken marks a duplicate indexer slug.
 	ErrSlugTaken = errors.New("indexer slug already exists")
+	// ErrInvalidInput marks an error in the submitted values (a missing
+	// field, an out-of-range number, a setting the definition refuses), as
+	// opposed to a failure of the store or the vault. errors.Is matches it.
+	ErrInvalidInput = errors.New("invalid indexer input")
 )
+
+// inputError is a validation message. Its text is the message alone, so the
+// interface shows it as written; errors.Is(err, ErrInvalidInput) recognises
+// it.
+type inputError struct{ message string }
+
+func (e *inputError) Error() string        { return e.message }
+func (e *inputError) Is(target error) bool { return target == ErrInvalidInput }
+
+func invalid(message string) error { return &inputError{message: message} }
+
+func invalidf(format string, args ...any) error {
+	return &inputError{message: fmt.Sprintf(format, args...)}
+}
 
 // Config wires the service to the store, the vault and the runtime manager.
 type Config struct {
@@ -104,11 +122,11 @@ type Input struct {
 func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 	definitionID := strings.TrimSpace(in.DefinitionID)
 	if definitionID == "" {
-		return store.Indexer{}, errors.New("definition_id is required")
+		return store.Indexer{}, invalid("definition_id is required")
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return store.Indexer{}, errors.New("name is required")
+		return store.Indexer{}, invalid("name is required")
 	}
 
 	parsed, err := s.parseDefinition(ctx, definitionID)
@@ -121,7 +139,7 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 		protocol = strings.ToLower(strings.TrimSpace(parsed.Meta.Protocol))
 	}
 	if !validProtocol(protocol) {
-		return store.Indexer{}, errors.New("protocol must be torrent, usenet or ed2k")
+		return store.Indexer{}, invalid("protocol must be torrent, usenet or ed2k")
 	}
 
 	settings := normalizeSettings(in.Settings)
@@ -132,7 +150,7 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 	for _, setting := range parsed.Settings {
 		if setting.Required && !parsed.LoginSatisfied(setting.Name, hasSetting) &&
 			!(in.AllowPendingCookie && (strings.EqualFold(strings.TrimSpace(setting.Name), "cookie") || parsed.CookieCovers(setting.Name))) {
-			return store.Indexer{}, fmt.Errorf("missing required setting: %s", setting.Name)
+			return store.Indexer{}, invalidf("missing required setting: %s", setting.Name)
 		}
 	}
 	stored := truthySetting(settings["store_latest"])
@@ -148,7 +166,7 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 		slug = NormalizeSlug(name)
 	}
 	if slug == "" {
-		return store.Indexer{}, errors.New("slug is required")
+		return store.Indexer{}, invalid("slug is required")
 	}
 	if err := s.ensureSlugAvailable(ctx, slug, 0); err != nil {
 		return store.Indexer{}, err
@@ -195,6 +213,9 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 	}
 	criteria, err := criteriaFromInput(in)
 	if err != nil {
+		return store.Indexer{}, err
+	}
+	if err := s.checkProxy(ctx, criteria.proxyID); err != nil {
 		return store.Indexer{}, err
 	}
 
@@ -272,7 +293,7 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 	if in.Slug != "" {
 		slug := NormalizeSlug(in.Slug)
 		if slug == "" {
-			return store.Indexer{}, errors.New("slug is required")
+			return store.Indexer{}, invalid("slug is required")
 		}
 		if err := s.ensureSlugAvailable(ctx, slug, current.ID); err != nil {
 			return store.Indexer{}, err
@@ -281,7 +302,7 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 	}
 	if protocol := strings.ToLower(strings.TrimSpace(in.Protocol)); protocol != "" {
 		if !validProtocol(protocol) {
-			return store.Indexer{}, errors.New("protocol must be torrent, usenet or ed2k")
+			return store.Indexer{}, invalid("protocol must be torrent, usenet or ed2k")
 		}
 		current.Protocol = protocol
 	}
@@ -310,6 +331,9 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 	}
 	criteria, err := criteriaFromInput(in)
 	if err != nil {
+		return store.Indexer{}, err
+	}
+	if err := s.checkProxy(ctx, criteria.proxyID); err != nil {
 		return store.Indexer{}, err
 	}
 	if criteria.proxySet {
@@ -501,6 +525,20 @@ func (s *Service) ensureSlugAvailable(ctx context.Context, slug string, self int
 	return nil
 }
 
+// checkProxy refuses a proxy id that does not exist. Nil (no proxy) passes.
+func (s *Service) checkProxy(ctx context.Context, proxyID *int64) error {
+	if proxyID == nil {
+		return nil
+	}
+	if _, err := s.store.GetProxy(ctx, *proxyID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return invalid("proxy not found")
+		}
+		return err
+	}
+	return nil
+}
+
 // invalidate drops the runtime connector of an indexer after a change.
 func (s *Service) invalidate(id int64) {
 	if s.manager != nil {
@@ -585,7 +623,7 @@ func validateRequired(parsed *definition.Definition, provided map[string]string,
 		if allowPendingCookie && (strings.EqualFold(strings.TrimSpace(setting.Name), "cookie") || parsed.CookieCovers(setting.Name)) {
 			continue
 		}
-		return fmt.Errorf("missing required setting: %s", setting.Name)
+		return invalidf("missing required setting: %s", setting.Name)
 	}
 	return nil
 }
@@ -642,7 +680,7 @@ func splitSettings(settings map[string]string) (public map[string]string, secret
 	secrets = make(map[string]string)
 	for key, value := range settings {
 		if strings.TrimSpace(key) == "" {
-			return nil, nil, nil, errors.New("settings: key must not be empty")
+			return nil, nil, nil, invalid("settings: key must not be empty")
 		}
 		if IsSecretSetting(key, value) {
 			if value == "" {
@@ -689,9 +727,6 @@ func IsSecretSetting(key, value string) bool {
 	return IsURLSettingKey(key) && feed.IsSensitiveURL(value)
 }
 
-// resolveInterval returns the effective per-indexer interval. Nil means "use
-// the definition suggestion when it has one"; an explicit zero means the
-// global default. A positive value below one minute is rejected.
 // truthySetting is the boolean interpretation of a public config value.
 func truthySetting(raw string) bool {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
@@ -716,10 +751,10 @@ func validateStoredSwitch(parsed *definition.Definition, stored bool) error {
 		return nil
 	}
 	if parsed == nil || !parsed.HasLatestList() {
-		return errors.New("this site has no latest list and cannot be memorised")
+		return invalid("this site has no latest list and cannot be memorised")
 	}
 	if parsed.Meta.HasLatest() {
-		return errors.New("this site already publishes a feed: use its normal updates")
+		return invalid("this site already publishes a feed: use its normal updates")
 	}
 	return nil
 }
@@ -731,6 +766,9 @@ func storedInterval() int {
 	return int(seconds)
 }
 
+// resolveInterval returns the effective per-indexer interval. Nil means "use
+// the definition suggestion when it has one"; an explicit zero means the
+// global default. A positive value below one minute is rejected.
 func resolveInterval(requested *int, suggested time.Duration) (int, error) {
 	if requested == nil {
 		if suggested >= time.Minute {
@@ -740,7 +778,7 @@ func resolveInterval(requested *int, suggested time.Duration) (int, error) {
 	}
 	seconds := *requested
 	if seconds < 0 || (seconds > 0 && seconds < 60) {
-		return 0, errors.New("interval_seconds must be 0 or at least 60")
+		return 0, invalid("interval_seconds must be 0 or at least 60")
 	}
 	return seconds, nil
 }
@@ -754,7 +792,7 @@ func resolveRequestTimeout(seconds int) (int, error) {
 		return 0, nil
 	}
 	if seconds < 5 || seconds > 300 {
-		return 0, errors.New("request_timeout_seconds must be 0 or between 5 and 300")
+		return 0, invalid("request_timeout_seconds must be 0 or between 5 and 300")
 	}
 	return seconds, nil
 }
@@ -819,37 +857,37 @@ func criteriaFromInput(in Input) (criteriaValues, error) {
 	}
 	if in.QueryLimit != nil {
 		if *in.QueryLimit < 0 {
-			return out, errors.New("query_limit must be zero or positive")
+			return out, invalid("query_limit must be zero or positive")
 		}
 		out.queryLimit, out.querySet = *in.QueryLimit, true
 	}
 	if in.GrabLimit != nil {
 		if *in.GrabLimit < 0 {
-			return out, errors.New("grab_limit must be zero or positive")
+			return out, invalid("grab_limit must be zero or positive")
 		}
 		out.grabLimit, out.grabSet = *in.GrabLimit, true
 	}
 	if in.MinSeeders != nil {
 		if *in.MinSeeders < 0 {
-			return out, errors.New("min_seeders must be zero or positive")
+			return out, invalid("min_seeders must be zero or positive")
 		}
 		out.minSeeders, out.minSeedersSet = *in.MinSeeders, true
 	}
 	if in.SeedRatio != nil {
 		if *in.SeedRatio < 0 {
-			return out, errors.New("seed_ratio must be zero or positive")
+			return out, invalid("seed_ratio must be zero or positive")
 		}
 		out.seedRatio, out.seedRatioSet = *in.SeedRatio, true
 	}
 	if in.SeedTimeMinutes != nil {
 		if *in.SeedTimeMinutes < 0 {
-			return out, errors.New("seed_time_minutes must be zero or positive")
+			return out, invalid("seed_time_minutes must be zero or positive")
 		}
 		out.seedTimeMinutes, out.seedTimeSet = *in.SeedTimeMinutes, true
 	}
 	if in.SeasonPackSeedTimeMinutes != nil {
 		if *in.SeasonPackSeedTimeMinutes < 0 {
-			return out, errors.New("season_pack_seed_time_minutes must be zero or positive")
+			return out, invalid("season_pack_seed_time_minutes must be zero or positive")
 		}
 		out.seasonPackSeedTimeMinutes, out.seasonPackSet = *in.SeasonPackSeedTimeMinutes, true
 	}
