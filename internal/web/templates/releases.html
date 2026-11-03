@@ -6,7 +6,7 @@
   </div>
 </section>
 
-<form class="filters live-search" id="release-live-search" method="post" action="/releases/live" role="search" aria-labelledby="release-live-heading">
+<form class="filters live-search search-grid" id="release-live-search" method="post" action="/releases/live" role="search" aria-labelledby="release-live-heading">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <div class="field grow filters-head">
     <h2 id="release-live-heading">{{T "releases.liveTitle"}}</h2>
@@ -46,7 +46,7 @@
     </select>
     <p class="help">{{T "releases.liveCategoryHelp"}}</p>
   </div>
-  <div class="field">
+  <div class="field wide">
     <label for="live_indexers">{{T "releases.indexer"}}</label>
     <select id="live_indexers" name="indexers" multiple size="4" title="{{T "releases.liveIndexersHelp"}}">
       {{range .LiveIndexers}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>{{end}}
@@ -94,7 +94,7 @@
         <input id="live_author" name="author" type="text" value="{{.LiveForm.Author}}" title="{{T "releases.liveAuthorHelp"}}">
         <p class="help">{{T "releases.liveAuthorHelp"}}</p>
       </div>
-      <div class="field">
+      <div class="field wide">
         <label for="live_title">{{T "releases.liveTitleField"}}</label>
         <input id="live_title" name="title" type="text" value="{{.LiveForm.Title}}" title="{{T "releases.liveTitleFieldHelp"}}">
         <p class="help">{{T "releases.liveTitleFieldHelp"}}</p>
@@ -153,7 +153,7 @@
 
 {{if .LiveError}}<p class="flash err" role="alert">{{.LiveError}}</p>{{end}}
 
-<form class="filters" id="release-filters" method="get" action="/releases" data-live-search role="search" aria-labelledby="release-catalog-heading">
+<form class="filters search-grid" id="release-filters" method="get" action="/releases" data-live-search role="search" aria-labelledby="release-catalog-heading">
   <div class="field filters-head">
     <h2 id="release-catalog-heading">{{T "releases.catalogTitle"}}</h2>
     <p class="help">{{T "releases.catalogIntro"}}</p>
