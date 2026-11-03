@@ -29,6 +29,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/syncjob"
+	"github.com/buzzqw/indexarr/internal/textutil"
 	"github.com/buzzqw/indexarr/internal/torznabapi"
 	"github.com/buzzqw/indexarr/internal/vault"
 )
@@ -121,8 +122,11 @@ var templateFuncMap = template.FuncMap{
 		}
 		return "v" + version
 	},
-	"bytes":      humanBytes,
-	"megabytes":  func(value int64) string { return fmt.Sprintf("%.1f MB", float64(value)/(1024*1024)) },
+	"bytes":     humanBytes,
+	"megabytes": func(value int64) string { return fmt.Sprintf("%.1f MB", float64(value)/(1024*1024)) },
+	// languages fills the datalist of the language filter. The filter is free
+	// text: these are only the names the sources most often declare.
+	"languages":  textutil.CommonLanguages,
 	"date":       humanDate,
 	"dateOnly":   humanDateOnly,
 	"ago":        humanAgo,

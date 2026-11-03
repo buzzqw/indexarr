@@ -1,0 +1,239 @@
+package indexer
+
+import (
+	"context"
+	"errors"
+	"io"
+	"log/slog"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/buzzqw/indexarr/internal/definition"
+	"github.com/buzzqw/indexarr/internal/engine"
+	"github.com/buzzqw/indexarr/internal/store"
+)
+
+// fakeCatalogConnector answers the catalogue requests of the tests and lets
+// the site search fail, so the local history is the only answer.
+type fakeCatalogConnector struct {
+	pages  map[string]engine.CatalogResult
+	forums []definition.CatalogForum
+	search error
+}
+
+func (f *fakeCatalogConnector) Capabilities() engine.Capabilities {
+	return engine.Capabilities{
+		Protocol: engine.ProtocolTorrent,
+		Modes:    []engine.Mode{engine.ModeSearch},
+		Params:   map[engine.Mode][]string{engine.ModeSearch: {"q"}},
+	}
+}
+
+func (f *fakeCatalogConnector) Search(context.Context, engine.SearchRequest) ([]engine.Item, error) {
+	if f.search != nil {
+		return nil, f.search
+	}
+	return nil, nil
+}
+
+func (f *fakeCatalogConnector) Latest(context.Context, engine.LatestRequest) ([]engine.Item, error) {
+	return nil, nil
+}
+
+func (f *fakeCatalogConnector) Download(context.Context, engine.Item) (engine.Payload, error) {
+	return engine.Payload{}, errors.New("not used")
+}
+
+func (f *fakeCatalogConnector) Test(context.Context) (engine.TestResult, error) {
+	return engine.TestResult{}, nil
+}
+
+func (f *fakeCatalogConnector) Catalog(_ context.Context, req engine.CatalogRequest) (engine.CatalogResult, error) {
+	key := req.Forum + ":" + strconv.Itoa(req.Start)
+	if page, ok := f.pages[key]; ok {
+		return page, nil
+	}
+	return engine.CatalogResult{}, nil
+}
+
+func (f *fakeCatalogConnector) CatalogForums() []definition.CatalogForum { return f.forums }
+
+const catalogTestDefinition = `schema: 1
+meta: { id: forum, name: Forum, type: private, protocol: torrent, urls: ["https://forum.example/"] }
+capabilities: { search: [q] }
+search:
+  request: { get: /search.php }
+  response:
+    type: html
+    rows: { selector: "li" }
+    fields:
+      title: { selector: "a" }
+    required: [title]
+catalog:
+  forums:
+    - { id: "52", standard: 5040 }
+    - { id: "26", standard: 2040 }
+  request: { get: /viewforum.php }
+  forum_param: f
+  start_param: start
+  page_size: 2
+  response:
+    type: html
+    rows: { selector: "li" }
+    fields:
+      title: { selector: "a" }
+      details: { selector: "a", attr: href, type: url }
+    required: [title, details]
+`
+
+func newCatalogTestManager(t *testing.T, connector *fakeCatalogConnector) (*Manager, *store.Store, int64) {
+	t.Helper()
+	st := newTestStore(t)
+	seedDefinition(t, st, "forum", "native", catalogTestDefinition)
+	def, err := st.GetDefinition(context.Background(), "forum")
+	if err != nil {
+		t.Fatalf("GetDefinition: %v", err)
+	}
+	id, err := st.CreateIndexer(context.Background(), store.Indexer{
+		DefinitionID: def.ID,
+		Protocol:     "torrent",
+		Slug:         "forum",
+		Name:         "Forum",
+		Enabled:      true,
+		ConfigJSON:   `{"url":"https://forum.example/"}`,
+	})
+	if err != nil {
+		t.Fatalf("CreateIndexer: %v", err)
+	}
+	row, err := st.GetIndexer(context.Background(), id)
+	if err != nil {
+		t.Fatalf("GetIndexer: %v", err)
+	}
+	manager := &Manager{
+		store: st,
+		cache: map[int64]cachedConnector{
+			id: {key: connectorKey(def, row), connector: connector},
+		},
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	return manager, st, id
+}
+
+// The walk reads the forum that ran longest ago, stores the page and moves the
+// cursor forward; a short page sends the cursor back to the top so the next
+// pass starts again.
+func TestRunCatalogPageWalksEveryForum(t *testing.T) {
+	ctx := context.Background()
+	connector := &fakeCatalogConnector{
+		forums: []definition.CatalogForum{{ID: "52", Standard: 5040}, {ID: "26", Standard: 2040}},
+		pages: map[string]engine.CatalogResult{
+			"52:0": {Entries: []engine.CatalogEntry{
+				{Title: "Serie A", URL: "https://forum.example/viewtopic.php?t=1", Forum: "52", Standard: 5040},
+				{Title: "Serie B", URL: "https://forum.example/viewtopic.php?t=2", Forum: "52", Standard: 5040},
+			}, More: true},
+			"52:2": {Entries: []engine.CatalogEntry{
+				{Title: "Serie C", URL: "https://forum.example/viewtopic.php?t=3", Forum: "52", Standard: 5040},
+			}, More: false},
+			"26:0": {Entries: []engine.CatalogEntry{
+				{Title: "Film", URL: "https://forum.example/viewtopic.php?t=4", Forum: "26", Standard: 2040},
+			}, More: false},
+		},
+	}
+	manager, st, indexerID := newCatalogTestManager(t, connector)
+
+	first, err := manager.RunCatalogPage(ctx, indexerID)
+	if err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+	if first.Forum != "52" || first.Start != 0 || first.Topics != 2 || first.Added != 2 || first.NextStart != 2 || first.Finished {
+		t.Fatalf("first page = %+v", first)
+	}
+	if count, _ := st.TopicCount(ctx, indexerID); count != 2 {
+		t.Fatalf("topics = %d, want 2", count)
+	}
+
+	// The other forum was never read, so it is the next one.
+	second, err := manager.RunCatalogPage(ctx, indexerID)
+	if err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+	if second.Forum != "26" || second.Start != 0 || !second.Finished || second.NextStart != 0 {
+		t.Fatalf("second page = %+v", second)
+	}
+
+	// Back to the first forum, continuing from the saved cursor.
+	third, err := manager.RunCatalogPage(ctx, indexerID)
+	if err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+	if third.Forum != "52" || third.Start != 2 || !third.Finished || third.NextStart != 0 {
+		t.Fatalf("third page = %+v", third)
+	}
+	if count, _ := st.TopicCount(ctx, indexerID); count != 4 {
+		t.Fatalf("topics = %d, want 4 (2 + 1 + 1)", count)
+	}
+}
+
+// A search that the site refuses is answered from the history: the threads are
+// found locally and the page is not left empty.
+func TestSearchFallsBackToTheTopicHistory(t *testing.T) {
+	ctx := context.Background()
+	connector := &fakeCatalogConnector{
+		forums: []definition.CatalogForum{{ID: "52", Standard: 5040}},
+		pages: map[string]engine.CatalogResult{
+			"52:0": {Entries: []engine.CatalogEntry{
+				{Title: "Dark Matter S01 1080p", URL: "https://forum.example/viewtopic.php?t=1", Forum: "52", Standard: 5040},
+				{Title: "Dark Matter S02 1080p", URL: "https://forum.example/viewtopic.php?t=2", Forum: "52", Standard: 5040},
+			}},
+		},
+		search: errors.New("search refused by the site"),
+	}
+	manager, _, indexerID := newCatalogTestManager(t, connector)
+	if _, err := manager.RunCatalogPage(ctx, indexerID); err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+
+	items, err := manager.Search(ctx, indexerID, engine.SearchRequest{Mode: engine.ModeSearch, Query: "Dark Matter"})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("items = %d, want the 2 stored topics: %+v", len(items), items)
+	}
+	for _, item := range items {
+		if item.DetailsURL == "" {
+			t.Errorf("item %q has no topic address", item.Title)
+		}
+		if len(item.Categories) != 1 || item.Categories[0] != 5040 {
+			t.Errorf("item %q categories = %v, want 5040", item.Title, item.Categories)
+		}
+	}
+
+	// The live search still answers with the site's row when there is one:
+	// the local topic is only added when the site did not return it.
+	connector.search = nil
+	items, err = manager.Search(ctx, indexerID, engine.SearchRequest{Mode: engine.ModeSearch, Query: "Dark Matter"})
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("items = %d, want the 2 stored topics", len(items))
+	}
+}
+
+func TestOlderRunOrdering(t *testing.T) {
+	now := time.Now()
+	if olderRun(time.Time{}, time.Time{}) {
+		t.Error("two never-read forums keep their order")
+	}
+	if !olderRun(time.Time{}, now) {
+		t.Error("a never-read forum is older than a read one")
+	}
+	if olderRun(now, time.Time{}) {
+		t.Error("a read forum is not older than a never-read one")
+	}
+	if !olderRun(now.Add(-time.Hour), now) {
+		t.Error("the earlier run goes first")
+	}
+}

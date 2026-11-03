@@ -196,7 +196,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	}
 	quality := choiceValue(query.Get("quality"), "2160p", "1080p", "720p", "480p")
 	sourceQuality := choiceValue(query.Get("source_quality"), "webdl", "bluray", "hdtv")
-	language := choiceValue(query.Get("language"), "ita", "eng")
+	language := languageFilterValue(query.Get("language"))
 	include, exclude, parseErr := parseSearchTerms(searchQuery, regexMode)
 
 	minSeedersText := ""

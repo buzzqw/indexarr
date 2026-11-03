@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"unicode"
 )
 
 func choiceValue(raw string, allowed ...string) string {
@@ -14,6 +15,35 @@ func choiceValue(raw string, allowed ...string) string {
 		}
 	}
 	return ""
+}
+
+// languageFilterValue keeps the free-text language the user typed: the filter
+// is no longer a list of two codes, so anything a source may declare must
+// survive. Only the characters a language name can contain are kept, and the
+// value is capped so a pasted paragraph cannot end up in the query.
+func languageFilterValue(raw string) string {
+	raw = strings.TrimSpace(raw)
+	var b strings.Builder
+	space := false
+	runes := 0
+	for _, r := range raw {
+		if runes >= 40 {
+			break
+		}
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '\'' || r == '_' || r == '/':
+			b.WriteRune(r)
+			space = false
+			runes++
+		case unicode.IsSpace(r):
+			if !space && b.Len() > 0 {
+				b.WriteByte(' ')
+				space = true
+				runes++
+			}
+		}
+	}
+	return strings.TrimSpace(b.String())
 }
 
 func (s *Server) savedSearchAdd(w http.ResponseWriter, r *http.Request) {

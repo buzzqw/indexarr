@@ -1377,13 +1377,23 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 	case "hdtv":
 		clauses = append(clauses, `search_title LIKE '%hdtv%'`)
 	}
-	switch f.Language {
-	case "ita":
-		// The declared languages win over the title: a release whose title
-		// omits "ITA" is found when the source said Italian.
-		clauses = append(clauses, `(languages LIKE '%Italian%' OR search_title LIKE '%ita%' OR search_title LIKE '%italian%')`)
-	case "eng":
-		clauses = append(clauses, `(languages LIKE '%English%' OR search_title LIKE '%eng%' OR search_title LIKE '%english%')`)
+	// The language filter is free text: a code ("ita"), the English name
+	// ("Italian") or the name in another language all reach the same declared
+	// languages, and the title is read as a fallback because most sources put
+	// the language there and declare nothing.
+	if f.Language != "" {
+		if needles := textutil.LanguageNeedles(f.Language); len(needles) > 0 {
+			parts := make([]string, 0, 2*len(needles))
+			for _, needle := range needles {
+				parts = append(parts, `languages LIKE ? ESCAPE '\'`)
+				args = append(args, "%"+escapeLike(needle)+"%")
+			}
+			for _, needle := range needles {
+				parts = append(parts, `search_title LIKE ? ESCAPE '\'`)
+				args = append(args, "%"+escapeLike(strings.ToLower(needle))+"%")
+			}
+			clauses = append(clauses, "("+strings.Join(parts, " OR ")+")")
+		}
 	}
 	if f.MinSeeders > 0 || f.MinSize > 0 || f.MaxSize > 0 ||
 		f.Quality != "" || f.SourceQuality != "" || f.Language != "" {

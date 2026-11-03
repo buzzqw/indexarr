@@ -134,7 +134,11 @@ func (m *Manager) recordHistory(ctx context.Context, indexerID int64, kind, quer
 // limit. A rejected attempt is not written for Search/Latest, and canceled
 // rows are excluded by CountIndexerQueries: the count reflects requests that
 // really left for the site.
-var queryHistoryKinds = []string{"search", "latest", "run"}
+var queryHistoryKinds = []string{"search", "latest", "run", "catalog"}
+
+// catalogSearchLimit caps how many stored topics one search adds to its
+// results: the history is a fallback, not a second catalogue.
+const catalogSearchLimit = 10
 
 // deferredSearchObserver returns the callback the definition connector calls
 // for every search page the background worker sends. Without these rows a
@@ -270,6 +274,23 @@ func (m *Manager) Search(ctx context.Context, indexerID int64, req engine.Search
 		stats.Seen = len(items)
 		for _, item := range items {
 			stats.observeItem(item, capture.secrets)
+		}
+	}
+	// A site that keeps a local topic history answers from it as well: the
+	// threads and series already read are found even when the site's own
+	// search refuses the request or knows only the first page.
+	if local, localErr := m.catalogItems(ctx, indexer, req.Query, catalogSearchLimit); localErr != nil {
+		m.logger.Debug("indexer: topic history lookup", "indexer", indexer.Slug, "error", localErr)
+	} else if len(local) > 0 {
+		if err != nil {
+			m.logger.Debug("indexer: answered from the topic history after a failed search",
+				"indexer", indexer.Slug, "error", err)
+			items = local
+			stats.Seen = len(items)
+			err = nil
+		} else {
+			items = mergeCatalogItems(items, local, 0)
+			stats.Seen = len(items)
 		}
 	}
 	m.recordHistory(ctx, indexer.ID, "search", req.Query, statusFor(ctx, err), started, 0, err, stats)

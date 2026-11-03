@@ -118,6 +118,30 @@ search:
       date:     { selector: "time", attr: datetime, type: date }
     required: [title, details]
 
+# The forum keeps a long history of threads: the periodic pass of the native
+# runner walks one listing page at a time (one page per run, the forum that
+# waited longest first) and stores the titles locally. A search then finds a
+# title even when search.php refuses the request or knows only the first page,
+# and the topic is opened (and thanked, only if needed) at grab time like any
+# other row of this definition.
+catalog:
+  forums:
+    - { id: "51", standard: 5040 }
+    - { id: "52", standard: 5040 }
+    - { id: "26", standard: 2040 }
+  request:
+    get: /viewforum.php
+  forum_param: f
+  start_param: start
+  page_size: 50
+  response:
+    type: html
+    rows: { selector: "ul.topiclist.topics > li.row" }
+    fields:
+      title:   { selector: "a.topictitle", filters: [trim] }
+      details: { selector: "a.topictitle", attr: href, type: url }
+    required: [title, details]
+
 download:
   resolve_on: grab
   from: details

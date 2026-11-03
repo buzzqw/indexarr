@@ -834,16 +834,36 @@ input[readonly] { background: var(--surface-2); }
    explains. */
 .filter-advanced-body > .help { grid-column: 1 / -1; }
 .filter-advanced-body > .field.wide { grid-column: span 2; }
+/* The catalogue filters are six short controls: they fill one row, and the
+   checkboxes take a row of their own instead of dropping into the numeric
+   grid where their labels wrapped. */
+.filter-advanced-body.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.filter-checks {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: 0.6rem 1rem;
+}
+@media (max-width: 820px) {
+  .filter-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .filter-checks { grid-template-columns: minmax(0, 1fr); }
+}
 
 @media (max-width: 1100px) {
   .filter-advanced-body { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .filter-advanced-body.six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .filter-advanced-body > .field.wide { grid-column: span 1; }
 }
 @media (max-width: 820px) {
-  .filter-advanced-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filter-advanced-body,
+  .filter-advanced-body.six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
-  .filter-advanced-body { grid-template-columns: minmax(0, 1fr); }
+  .filter-advanced-body,
+  .filter-advanced-body.six { grid-template-columns: minmax(0, 1fr); }
   .filter-advanced-body > .field.wide { grid-column: auto; }
 }
 
@@ -1229,15 +1249,14 @@ pre.yaml {
 .releases-table td { white-space: nowrap; }
 .releases-table td { overflow: hidden; text-overflow: ellipsis; }
 /* Headers keep their full label: no ellipsis and enough room for the longest
-   translation. The title column has no fixed width, so it takes the rest. */
+   translation. The title column has no fixed width, so it takes the rest: the
+   other columns only need room for their value, not for a sentence. */
 .releases-table th { overflow: visible; text-overflow: clip; }
 .releases-table th:nth-child(1) { width: 2.2rem; }
-.releases-table th:nth-child(3) { width: 7rem; }
-.releases-table th:nth-child(4) { width: 5.5rem; }
-.releases-table th:nth-child(5) { width: 11rem; }
-.releases-table th:nth-child(6) { width: 6.5rem; }
-.releases-table th:nth-child(6) { width: 13rem; }
-.releases-table th:nth-child(7) { width: 6.5rem; }
+.releases-table th:nth-child(3) { width: 6rem; }
+.releases-table th:nth-child(4) { width: 5rem; }
+.releases-table th:nth-child(5) { width: 8.5rem; }
+.releases-table th:nth-child(6) { width: 12rem; }
 .releases-table td.release-title { overflow: hidden; }
 .releases-table td.release-actions-cell { overflow: visible; }
 .releases-table .release-title-link,
@@ -2102,7 +2121,7 @@ table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; 
 .guide-actions > form > .btn:only-of-type { width: 100%; }
 .guide-try .btn { flex: 1 1 auto; }
 /* A checkbox in a filter bar sits on the controls' line, not on the labels'. */
-.filters .field.checkbox:not(:has(.help)) { align-self: flex-end; min-height: var(--control-h); align-content: center; }
+.filters:not(.search-grid) .field.checkbox:not(:has(.help)) { align-self: flex-end; min-height: var(--control-h); align-content: center; }
 /* An empty state inside a card keeps the card's side margin. */
 .panel > .empty-state { margin: var(--pad-y) var(--pad-x); }
 /* An "Advanced" block between two cards does not stick to the next one. */

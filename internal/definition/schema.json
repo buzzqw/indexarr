@@ -48,6 +48,9 @@
     "latest": {
       "$ref": "#/$defs/latest"
     },
+    "catalog": {
+      "$ref": "#/$defs/catalog"
+    },
     "download": {
       "$ref": "#/$defs/download"
     },
@@ -543,6 +546,58 @@
           "type": "boolean",
           "default": true,
           "description": "Stop after a page made entirely of cached rows; set false for cheap lists that need a full backfill."
+        }
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "forums",
+        "request"
+      ],
+      "properties": {
+        "forums": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Forum listings walked page by page to keep a local history of topics.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "standard": {
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 8999
+              }
+            }
+          }
+        },
+        "request": {
+          "$ref": "#/$defs/request"
+        },
+        "response": {
+          "$ref": "#/$defs/response"
+        },
+        "forum_param": {
+          "type": "string",
+          "description": "Query parameter that selects the forum."
+        },
+        "start_param": {
+          "type": "string",
+          "description": "Query parameter that selects the first row of the page."
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Rows per listing page; a shorter page ends the walk."
         }
       }
     },

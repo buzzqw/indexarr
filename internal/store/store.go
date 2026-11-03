@@ -656,6 +656,13 @@ func (s *Store) migrate() error {
 	if err := s.ensureReleaseColumns(); err != nil {
 		return err
 	}
+	// Migration 27 keeps the local topic history of a forum definition: the
+	// threads and series read slowly from the listings, plus one cursor per
+	// forum so a restart resumes where the walk stopped.
+	if err := s.applyMigration(context.Background(), indexarr2TopicIndexVersion,
+		"topic history", topicIndexMigration); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

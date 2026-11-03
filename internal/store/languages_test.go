@@ -122,3 +122,49 @@ func TestLanguageFilterUsesTheDeclaredLanguages(t *testing.T) {
 		t.Fatalf("english results = %+v", list)
 	}
 }
+
+// The language filter is free text. A code ("ita"), the English name, the
+// Italian name of the language and a language the table does not know must all
+// work: the previous two fixed cases silently ignored anything else.
+func TestLanguageFilterAcceptsAnyLanguage(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	now := time.Unix(1_700_000_000, 0).UTC()
+	for _, release := range []Release{
+		{DedupKey: "french-declared", Title: "Le.Film.2024.1080p", SearchTitle: "le film 2024 1080p",
+			Size: 100, Category: "2040", Protocol: "torrent", Languages: "French", FirstSeenAt: now, LastSeenAt: now},
+		{DedupKey: "klingon-declared", Title: "Qul.2024.1080p", SearchTitle: "qul 2024 1080p",
+			Size: 100, Category: "2040", Protocol: "torrent", Languages: "Klingon", FirstSeenAt: now, LastSeenAt: now},
+		{DedupKey: "japanese-title", Title: "Anime.2024.JPN.1080p", SearchTitle: "anime 2024 jpn 1080p",
+			Size: 100, Category: "2040", Protocol: "torrent", FirstSeenAt: now, LastSeenAt: now},
+	} {
+		release := release
+		if _, err := st.UpsertRelease(ctx, &release); err != nil {
+			t.Fatalf("UpsertRelease(%s): %v", release.DedupKey, err)
+		}
+	}
+	for _, test := range []struct {
+		filter string
+		want   string
+	}{
+		{"francese", "french-declared"},
+		{"French", "french-declared"},
+		{"fra", "french-declared"},
+		{"klingon", "klingon-declared"},
+		{"jpn", "japanese-title"},
+	} {
+		list, _, err := st.SearchReleases(ctx, Filter{Language: test.filter})
+		if err != nil {
+			t.Fatalf("SearchReleases(%q): %v", test.filter, err)
+		}
+		found := false
+		for _, release := range list {
+			if release.DedupKey == test.want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("filter %q did not return %s: %+v", test.filter, test.want, list)
+		}
+	}
+}

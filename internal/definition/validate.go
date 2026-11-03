@@ -215,6 +215,9 @@ func (d *Definition) Validate() error {
 	if d.Latest != nil {
 		validateLatest(d.Latest, d.Search, add)
 	}
+	if d.Catalog != nil {
+		validateCatalog(d.Catalog, d.Search, add)
+	}
 
 	if d.Download != nil {
 		validateDownload(d.Download, d, add)
@@ -480,6 +483,44 @@ func validateLatest(latest *Latest, search Search, add func(string, ...any)) {
 	}
 	if len(search.Response.Fields) == 0 {
 		add("latest.response: is required when search.response has no fields")
+	}
+}
+
+// validateCatalog checks the optional topic history of a forum definition.
+// One forum is one cursor, so the list cannot be empty, and the page must name
+// its URL and the fields that give a topic a title and an address.
+func validateCatalog(catalog *Catalog, search Search, add func(string, ...any)) {
+	if len(catalog.Forums) == 0 {
+		add("catalog.forums: at least one forum is required")
+	}
+	seen := make(map[string]int, len(catalog.Forums))
+	for i, forum := range catalog.Forums {
+		id := strings.TrimSpace(forum.ID)
+		if id == "" {
+			add("catalog.forums[%d].id: is required", i)
+		} else if first, ok := seen[id]; ok {
+			add("catalog.forums[%d].id: duplicate of catalog.forums[%d] (%q)", i, first, id)
+		} else {
+			seen[id] = i
+		}
+		if forum.Standard != 0 && (forum.Standard < 1000 || forum.Standard > 8999) {
+			add("catalog.forums[%d].standard: must be between 1000 and 8999 (got %d)", i, forum.Standard)
+		}
+	}
+	if catalog.Request.Get != "" && catalog.Request.Post != "" {
+		add("catalog.request: get and post are mutually exclusive")
+	} else if catalog.Request.Get == "" && catalog.Request.Post == "" {
+		add("catalog.request: must have get or post")
+	}
+	if catalog.PageSize < 0 {
+		add("catalog.page_size: must be >= 0")
+	}
+	if len(catalog.Response.Fields) == 0 && len(search.Response.Fields) == 0 {
+		add("catalog.response: is required when search.response has no fields")
+		return
+	}
+	if len(catalog.Response.Fields) > 0 {
+		validateResponse(catalog.Response, "catalog.response", add)
 	}
 }
 

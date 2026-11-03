@@ -81,9 +81,13 @@ const (
 	// reports for a grab. The grab row keeps the delivery time; confirmed_at
 	// and confirmed_by add the evidence that the file really arrived.
 	indexarr2GrabConfirmationVersion = 26
+	// indexarr2TopicIndexVersion keeps the local history of a forum's topics
+	// (threads and series) with one cursor per forum, so the walk resumes
+	// after a restart and a search can answer from it.
+	indexarr2TopicIndexVersion = 27
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2GrabConfirmationVersion
+	latestSchemaVersion = indexarr2TopicIndexVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

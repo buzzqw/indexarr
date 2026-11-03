@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -37,6 +38,14 @@ type hostRequestView struct {
 
 // indexerAccessRow is one required credential of a source: whether the vault
 // or the public configuration already holds it.
+// topicCursorView is one forum of the local topic history on the indexer
+// page: the address of the next page and whether the walk reached the end.
+type topicCursorView struct {
+	Forum     string
+	NextStart int
+	Done      bool
+}
+
 type indexerAccessRow struct {
 	Name       string
 	Label      string
@@ -121,7 +130,11 @@ type indexerDetailView struct {
 	SiteAddress string
 	// ActiveMirror is the definition address the connector uses now, set only
 	// when it moved away from the first one because that one stopped answering.
-	ActiveMirror   string
+	ActiveMirror string
+	// TopicCount is how many threads and series the local history holds for
+	// this indexer; TopicCursors says how far the slow walk has gone.
+	TopicCount     int64
+	TopicCursors   []topicCursorView
 	ProblemDetail  string
 	ProblemAt      time.Time
 	HasProblemAt   bool
@@ -270,6 +283,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		}
 	}
 	data.Badges = s.indexerBadges(r, in, def)
+	data.TopicCount, data.TopicCursors = s.topicHistory(r.Context(), in.ID)
 	healthView := s.loadIndexerHealth(r.Context(), in, def, nil)
 	data.Health = healthView.Assessment
 	data.State = healthView.State
@@ -580,4 +594,39 @@ func sameHost(a, b string) bool {
 		return false
 	}
 	return strings.EqualFold(left.Hostname(), right.Hostname())
+}
+
+// topicHistory reads the local topic history of one indexer. A source without
+// a catalog has no rows and the page shows nothing extra.
+func (s *Server) topicHistory(ctx context.Context, indexerID int64) (int64, []topicCursorView) {
+	count, err := s.store.TopicCount(ctx, indexerID)
+	if err != nil || count == 0 {
+		return 0, nil
+	}
+	cursors, err := s.store.TopicCursors(ctx, indexerID)
+	if err != nil {
+		return count, nil
+	}
+	forums := make([]string, 0, len(cursors))
+	for forum := range cursors {
+		forums = append(forums, forum)
+	}
+	sort.Slice(forums, func(i, j int) bool {
+		left, errLeft := strconv.Atoi(forums[i])
+		right, errRight := strconv.Atoi(forums[j])
+		if errLeft == nil && errRight == nil {
+			return left < right
+		}
+		return forums[i] < forums[j]
+	})
+	out := make([]topicCursorView, 0, len(forums))
+	for _, forum := range forums {
+		cursor := cursors[forum]
+		out = append(out, topicCursorView{
+			Forum:     forum,
+			NextStart: cursor.NextStart,
+			Done:      cursor.NextStart == 0,
+		})
+	}
+	return count, out
 }

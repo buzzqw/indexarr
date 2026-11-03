@@ -83,6 +83,10 @@ type RunOutcome struct {
 	Stats     *indexer.RunStats
 	Err       error
 	Duration  time.Duration
+	// Catalog marks a run that read one page of a forum's topic history.
+	// Its rows are threads, not releases, so they never raise a new-release
+	// notification.
+	Catalog bool
 }
 
 // Runner periodically runs every native indexer. It is safe to call RunOnce
@@ -272,6 +276,10 @@ func (r *Runner) latestIndexers(ctx context.Context, indexers []store.Indexer) [
 				"indexer", indexerRow.Slug, "error", r.managerRedacted(indexerRow.ID, err))
 			out = append(out, indexerRow)
 		case latest:
+			out = append(out, indexerRow)
+		case r.manager.CatalogSupported(ctx, indexerRow):
+			// A forum that keeps a topic history has no release list to read,
+			// but it still has pages to walk on its own slow schedule.
 			out = append(out, indexerRow)
 		}
 	}
@@ -771,6 +779,11 @@ func (r *Runner) runOne(ctx context.Context, indexerRow store.Indexer) (outcome 
 		outcome.Reason = ReasonDisabled
 		return outcome
 	}
+	// A forum with a topic history is walked slowly instead of read as a list
+	// of new releases: the page is a listing of threads, not a release list.
+	if r.manager.CatalogSupported(ctx, indexerRow) {
+		return r.runCatalog(ctx, indexerRow)
+	}
 	if latest, err := r.manager.LatestSupported(ctx, indexerRow); err == nil && !latest {
 		outcome.Skipped = true
 		outcome.Reason = ReasonSearchOnly
@@ -790,6 +803,43 @@ func (r *Runner) runOne(ctx context.Context, indexerRow store.Indexer) (outcome 
 		outcome.Reason = ReasonPaused
 	default:
 		outcome.Err = runErr
+	}
+	r.afterRun(ctx, indexerRow, outcome)
+	return outcome
+}
+
+// runCatalog reads one page of the indexer's topic history. It reports the
+// topics of the page as seen/new so the run log keeps the same shape as a
+// latest run; nothing is notified, because a thread is not a new release.
+func (r *Runner) runCatalog(ctx context.Context, indexerRow store.Indexer) (outcome RunOutcome) {
+	started := time.Now()
+	outcome = RunOutcome{
+		IndexerID: indexerRow.ID,
+		Slug:      indexerRow.Slug,
+		Name:      indexerRow.Name,
+	}
+	defer func() {
+		outcome.Duration = time.Since(started)
+		if r.onResult != nil {
+			r.onResult(outcome)
+		}
+		r.logOutcome(outcome)
+	}()
+
+	outcome.Catalog = true
+	page, err := r.manager.RunCatalogPage(ctx, indexerRow.ID)
+	switch {
+	case errors.Is(err, engine.ErrBreakerOpen):
+		outcome.Skipped = true
+		outcome.Reason = ReasonPaused
+	case err != nil:
+		outcome.Err = err
+	default:
+		outcome.Stats = &indexer.RunStats{Seen: page.Topics, New: page.Added}
+		r.logger.Info("native: topic history page",
+			"component", "native", "indexer", indexerRow.Slug,
+			"forum", page.Forum, "start", page.Start,
+			"topics", page.Topics, "new", page.Added, "finished", page.Finished)
 	}
 	r.afterRun(ctx, indexerRow, outcome)
 	return outcome
@@ -865,7 +915,7 @@ func (r *Runner) notifyNewReleases(ctx context.Context, outcomes []RunOutcome) {
 	var names []string
 	var titles []string
 	for _, outcome := range outcomes {
-		if outcome.Stats == nil || outcome.Stats.New <= 0 {
+		if outcome.Catalog || outcome.Stats == nil || outcome.Stats.New <= 0 {
 			continue
 		}
 		total += outcome.Stats.New

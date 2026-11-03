@@ -29,6 +29,7 @@ type Definition struct {
 	Session      *Session     `yaml:"session,omitempty" json:"session,omitempty"`
 	Search       Search       `yaml:"search,omitempty" json:"search,omitempty"`
 	Latest       *Latest      `yaml:"latest,omitempty" json:"latest,omitempty"`
+	Catalog      *Catalog     `yaml:"catalog,omitempty" json:"catalog,omitempty"`
 	Download     *Download    `yaml:"download,omitempty" json:"download,omitempty"`
 	Health       *Health      `yaml:"health,omitempty" json:"health,omitempty"`
 	Tests        []Test       `yaml:"tests,omitempty" json:"tests,omitempty"`
@@ -145,6 +146,41 @@ type Latest struct {
 // StopsWhenKnown reports the early-stop policy for a latest list.
 func (l *Latest) StopsWhenKnown() bool {
 	return l == nil || l.StopWhenKnown == nil || *l.StopWhenKnown
+}
+
+// Catalog describes a forum listing that is walked page by page to keep a
+// local history of the topics the site publishes: the threads and the series
+// that a search can find even when the forum's own search does not answer.
+// The walk is slow on purpose and resumes from a stored cursor, so the whole
+// forum is indexed over days without hammering the site.
+type Catalog struct {
+	// Forums are the listing pages to walk. One forum is one cursor.
+	Forums []CatalogForum `yaml:"forums" json:"forums"`
+	// Request is the page template. It reads {{ forum }} and {{ start }} and
+	// the two parameter names below, so the same block fits any forum.
+	Request Request `yaml:"request" json:"request"`
+	// Response parses one listing page. It normally extracts the title and the
+	// topic URL; an empty Response falls back to search.response.
+	Response Response `yaml:"response" json:"response"`
+	// ForumParam and StartParam name the query parameters that select the
+	// forum and the first row of the page.
+	ForumParam string `yaml:"forum_param,omitempty" json:"forum_param,omitempty"`
+	StartParam string `yaml:"start_param,omitempty" json:"start_param,omitempty"`
+	// PageSize is how many topics one listing page holds: the cursor advances
+	// by it and a page with fewer rows marks the end of the forum.
+	PageSize int `yaml:"page_size,omitempty" json:"page_size,omitempty"`
+}
+
+// HasCatalog reports whether the definition keeps a local topic history.
+func (d *Definition) HasCatalog() bool {
+	return d != nil && d.Catalog != nil && len(d.Catalog.Forums) > 0
+}
+
+// CatalogForum is one listing of a catalog walk.
+type CatalogForum struct {
+	ID string `yaml:"id" json:"id"`
+	// Standard is the Torznab category every topic of the forum belongs to.
+	Standard int `yaml:"standard,omitempty" json:"standard,omitempty"`
 }
 
 // LatestCategory is one standard-to-site category mapping of a latest list.

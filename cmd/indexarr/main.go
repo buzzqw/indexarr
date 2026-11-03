@@ -91,6 +91,9 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "vault" {
 		os.Exit(runVaultCommand(os.Args[2:]))
 	}
+	if len(os.Args) > 1 && os.Args[1] == "topics" {
+		os.Exit(runTopicsCommand(os.Args[2:]))
+	}
 	cfg, showVersion := loadStartupConfig()
 	if showVersion {
 		fmt.Printf("indexarr %s\n", version)

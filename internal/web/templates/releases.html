@@ -139,7 +139,7 @@
           </td>
           <td>{{.Mode}}</td>
           <td>{{textOrDash .Query}}</td>
-          <td>{{num .Results}}</td>
+          <td>{{.Results}}</td>
           <td>{{duration .Duration}}</td>
         </tr>
         {{else}}
@@ -219,7 +219,7 @@
       <span>{{T "releases.filters"}}</span>
       {{if gt .AdvancedFilterCount 0}}<span class="chip">{{if eq .AdvancedFilterCount 1}}{{T "releases.activeFilter"}}{{else}}{{T "releases.activeFilters" .AdvancedFilterCount}}{{end}}</span>{{end}}
     </summary>
-    <div class="filter-advanced-body">
+    <div class="filter-advanced-body six">
     <div class="field">
       <label for="quality">{{T "releases.resolution"}}</label>
       <select id="quality" name="quality">
@@ -241,11 +241,11 @@
     </div>
     <div class="field">
       <label for="language">{{T "releases.languageFilter"}}</label>
-      <select id="language" name="language">
-        <option value=""{{if eq .Language ""}} selected{{end}}>{{T "releases.anyLanguage"}}</option>
-        <option value="ita"{{if eq .Language "ita"}} selected{{end}}>{{T "releases.langItalian"}}</option>
-        <option value="eng"{{if eq .Language "eng"}} selected{{end}}>{{T "releases.langEnglish"}}</option>
-      </select>
+      <input id="language" name="language" type="text" list="language-suggestions" value="{{.Language}}" placeholder="{{T "releases.anyLanguage"}}" autocomplete="off" spellcheck="false">
+      <datalist id="language-suggestions">
+        {{range languages}}<option value="{{.}}"></option>{{end}}
+      </datalist>
+      <p class="help">{{T "releases.languageHelp"}}</p>
     </div>
     <div class="field small">
       <label for="min_seeders">{{T "releases.minSeeders"}}</label>
@@ -259,6 +259,7 @@
       <label for="max_size_mb">{{T "releases.maxSize"}}</label>
       <input id="max_size_mb" name="max_size_mb" type="number" min="0" value="{{.MaxSizeText}}">
     </div>
+    <div class="filter-checks">
     <div class="field checkbox">
       <input id="favorites" name="favorites" type="checkbox" value="1"{{if .FavoritesOnly}} checked{{end}}>
       <label for="favorites">{{T "releases.favorites"}}</label>
@@ -276,6 +277,7 @@
       <input id="duplicates" name="duplicates" type="checkbox" value="1"{{if .ShowDuplicates}} checked{{end}}>
       <label for="duplicates">{{T "releases.showDuplicates"}}</label>
       <p class="help">{{T "releases.showDuplicatesHelp"}}</p>
+    </div>
     </div>
     </div>
   </details>
