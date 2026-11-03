@@ -583,14 +583,6 @@ func (c *DefinitionConnector) extractDownloadCandidates(response *Response) ([]r
 	return nil, nil
 }
 
-func (c *DefinitionConnector) extractDownloadTarget(response *Response, target definition.DownloadTarget) (resolvedDownload, bool, error) {
-	results, ok, err := c.extractDownloadTargets(response, target)
-	if err != nil || !ok || len(results) == 0 {
-		return resolvedDownload{}, ok, err
-	}
-	return results[0], true, nil
-}
-
 func (c *DefinitionConnector) extractDownloadTargets(response *Response, target definition.DownloadTarget) ([]resolvedDownload, bool, error) {
 	if target.Magnet != nil {
 		values, err := c.extractDetailFields(response, *target.Magnet, target.All)

@@ -36,7 +36,6 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		query = queryFromConfig(config)
 	}
 	var payloadBytes int64
-	var downloadProblem error
 	var capture *runCapture
 	defer func() {
 		if err == nil && capture != nil {
@@ -77,8 +76,6 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	// client later asks for the download.
 	smartfeedSource := strings.EqualFold(strings.TrimSpace(indexer.DefinitionID), smartfeed.DefinitionID) ||
 		settingBool(settingString(config["smartfeed"]))
-	var nativePair store.Indexer
-	var hasNativePair, pairLoaded bool
 
 	categories := categoriesFromValue(config["categories"])
 	// A memorised search-only site follows the categories the linked apps
@@ -137,12 +134,24 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 		return stats, fmt.Errorf("indexer %s: load blocklist: %w", indexer.Slug, err)
 	}
 	matcher := store.NewBlocklistMatcher(rules)
+	seen := make(map[string]struct{}, len(items))
+	pass := &torrentPass{
+		indexer:         indexer,
+		config:          config,
+		connector:       connector,
+		stats:           stats,
+		seen:            seen,
+		matcher:         matcher,
+		rules:           runRules,
+		payloadBytes:    &payloadBytes,
+		storedSource:    storedSource,
+		smartfeedSource: smartfeedSource,
+	}
 
 	indexerProtocol := engine.Protocol(strings.ToLower(strings.TrimSpace(indexer.Protocol)))
 	usenet := indexerProtocol == engine.ProtocolUsenet
 	ed2k := indexerProtocol == engine.ProtocolEd2k
 	usenetItems, torrentItems := 0, 0
-	seen := make(map[string]struct{}, len(items))
 	for _, raw := range items {
 		if err := ctx.Err(); err != nil {
 			return stats, err
@@ -175,213 +184,244 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			continue
 		}
 		torrentItems++
-		hash := itemHash(item)
-		if hash != "" {
-			item.InfoHash = hash
-		}
-		magnet := strings.TrimSpace(item.Magnet)
-		if magnet == "" && hash != "" {
-			magnet = feed.MagnetFromHash(hash, item.Title)
-		}
-		item.Magnet = magnet
-		pending := smartfeedSource && strings.EqualFold(strings.TrimSpace(item.Attributes[smartfeed.AttributePending]), "true")
-
-		if key := itemIdentity(item); key != "" {
-			if _, duplicate := seen[key]; duplicate {
-				stats.duplicate()
-				continue
-			}
-			seen[key] = struct{}{}
-		}
-
-		if tooOld, excluded, tooSmall := runRules.reject(item); tooOld || excluded || tooSmall {
-			switch {
-			case tooOld:
-				stats.discardTooOld()
-			case tooSmall:
-				stats.discardOther()
-			default:
-				stats.discardCategory()
-			}
-			continue
-		}
-
-		category := itemCategory(item)
-		if _, match := matcher.Match(hash, item.Title, indexer.Name, category); match {
-			stats.Blocked++
-			continue
-		}
-
-		var torrent []byte
-		if magnet == "" && strings.TrimSpace(item.DownloadURL) != "" &&
-			stats.Torrents < m.maxTorrents {
-			payload, downloadErr := connector.Download(ctx, item)
-			if downloadErr != nil {
-				if ctx.Err() != nil {
-					return stats, ctx.Err()
-				}
-				m.logger.Warn("indexer: torrent download failed",
-					"indexer", indexer.Slug,
-					"error", m.redact(indexer.ID, downloadErr.Error()))
-				stats.discardOther()
-				continue
-			}
-			payloadBytes += int64(len(payload.Body))
-			if payload.Magnet != "" {
-				magnet = payload.Magnet
-				if fromMagnet := feed.MagnetHash(payload.Magnet); fromMagnet != "" {
-					hash = fromMagnet
-				}
-			}
-			if len(payload.Body) > 0 {
-				torrent = payload.Body
-				if hash == "" && item.Protocol != engine.ProtocolUsenet {
-					if computed, hashErr := feed.InfoHash(payload.Body); hashErr == nil {
-						hash = computed
-					}
-				}
-				stats.Torrents++
-			}
-			if magnet == "" && hash != "" {
-				magnet = feed.MagnetFromHash(hash, item.Title)
-			}
-			item.Magnet = magnet
-			item.InfoHash = hash
-
-			// The .torrent may have revealed an infohash that an infohash rule
-			// could not match before the download.
-			if _, match := matcher.Match(hash, item.Title, indexer.Name, category); match {
-				stats.Blocked++
-				continue
-			}
-		}
-
-		if magnet == "" && len(torrent) == 0 && !pending {
-			stats.discardNoLink()
-			continue
-		}
-
-		dedupKey := releaseKey(hash, item, indexer.Slug)
-		if dedupKey == "" {
-			stats.discardOther()
-			continue
-		}
-
-		// The pending topic points at the native MirCrew indexer, not at the
-		// RSS channel: opening the topic and thanking it belong to the grab.
-		// Nothing is downloaded or opened here, so a poll can never thank.
-		downloadRef := ""
-		if pending {
-			if !pairLoaded {
-				nativePair, hasNativePair = m.smartfeedNativePair(ctx, indexer, config)
-				pairLoaded = true
-			}
-			if hasNativePair && m.vault != nil {
-				if ref, refErr := SealDownloadRef(m.vault, nativePair.ID, item); refErr == nil {
-					downloadRef = ref
-				} else {
-					m.logger.Warn("indexer: seal Smartfeed topic reference",
-						"indexer", indexer.Slug, "error", refErr)
-				}
-			}
-		}
-
-		now := time.Now()
-		release := &store.Release{
-			DedupKey:       dedupKey,
-			InfoHash:       hash,
-			IMDbID:         item.IMDbID,
-			TMDbID:         item.TMDbID,
-			TVDbID:         item.TVDbID,
-			Title:          item.Title,
-			SearchTitle:    textutil.NormalizeTitle(item.Title),
-			Size:           item.Size,
-			Seeders:        item.Seeders,
-			Leechers:       item.Leechers,
-			Freeleech:      item.Freeleech,
-			FreeleechKnown: item.FreeleechKnown,
-			Languages:      strings.Join(item.Languages, ", "),
-			Category:       category,
-			PublishedAt:    item.Published,
-			GUID:           item.GUID,
-			Magnet:         magnet,
-			Torrent:        torrent,
-			Protocol:       "torrent",
-			FirstSeenAt:    now,
-			LastSeenAt:     now,
-		}
-		if len(torrent) > 0 {
-			release.TorrentFetchedAt = now
-		}
-
-		// Stored sources apply the cautious §1g merge: same normalized title,
-		// size within rounding tolerance and compatible dates become one row
-		// with an extra source, never a second release. The live search keeps
-		// its own path unchanged.
-		if storedSource {
-			if dup, found, dupErr := m.store.FindStoredDuplicate(ctx, *release); dupErr != nil {
-				m.logger.Warn("indexer: find stored duplicate",
-					"indexer", indexer.Slug, "error", m.redact(indexer.ID, dupErr.Error()))
-			} else if found {
-				release.DedupKey = dup.DedupKey
-				if release.InfoHash == "" {
-					release.InfoHash = dup.InfoHash
-				}
-			}
-		}
-
-		isNew, storeErr := m.store.UpsertRelease(ctx, release)
-		if storeErr != nil {
-			return stats, fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr)
-		}
-		if isNew {
-			stats.New++
-		} else {
-			stats.Updated++
-		}
-		if len(torrent) > 0 {
-			if meta, metaErr := feed.ParseTorrent(torrent); metaErr == nil && len(meta.Files) > 0 {
-				files := make([]store.ReleaseFile, 0, len(meta.Files))
-				for _, file := range meta.Files {
-					files = append(files, store.ReleaseFile{Path: file.Path, Size: file.Size})
-				}
-				if filesErr := m.store.ReplaceReleaseFiles(ctx, release.ID, files); filesErr != nil {
-					m.logger.Warn("indexer: store torrent file names",
-						"indexer", indexer.Slug, "release_id", release.ID,
-						"error", m.redact(indexer.ID, filesErr.Error()))
-				}
-			}
-		}
-
-		if provenanceErr := m.store.RecordReleaseSource(ctx, store.ReleaseSource{
-			ReleaseID:   release.ID,
-			IndexerID:   indexer.ID,
-			FirstSeenAt: release.FirstSeenAt,
-			LastSeenAt:  release.LastSeenAt,
-			Seeders:     item.Seeders,
-			Leechers:    item.Leechers,
-			DownloadRef: downloadRef,
-		}); provenanceErr != nil {
-			m.logger.Warn("indexer: record release source",
-				"indexer", indexer.Slug,
-				"release_id", release.ID,
-				"error", m.redact(indexer.ID, provenanceErr.Error()))
-		}
-
-		if len(stats.Items) < maxRunItems {
-			stats.Items = append(stats.Items, item)
+		if err := m.runTorrentItem(ctx, pass, item); err != nil {
+			return stats, err
 		}
 	}
 
-	if downloadProblem != nil {
-		return stats, downloadProblem
-	}
 	if indexer.DefinitionID == "rss" && usenetItems > 0 && torrentItems == 0 && indexer.Protocol != "usenet" {
 		_ = m.store.SetIndexerProtocol(ctx, indexer.ID, "usenet")
 	} else if indexer.DefinitionID == "rss" && torrentItems > 0 && usenetItems == 0 && indexer.Protocol != "torrent" {
 		_ = m.store.SetIndexerProtocol(ctx, indexer.ID, "torrent")
 	}
 	return stats, nil
+}
+
+// torrentPass is what runTorrentItem needs from the run it belongs to.
+type torrentPass struct {
+	indexer      store.Indexer
+	config       map[string]any
+	connector    engine.Connector
+	stats        *RunStats
+	seen         map[string]struct{}
+	matcher      *store.BlocklistMatcher
+	rules        runFilter
+	payloadBytes *int64
+	// storedSource applies the cautious merge of memorised sources.
+	storedSource bool
+	// smartfeedSource marks a MirCrew Smartfeed channel, whose items are
+	// pending topics.
+	smartfeedSource bool
+	// The native MirCrew indexer paired with a Smartfeed channel, read once
+	// at the first pending topic.
+	pairLoaded    bool
+	hasNativePair bool
+	nativePair    store.Indexer
+}
+
+// runTorrentItem stores one torrent release: identity and filters first, then
+// the .torrent when the item has no magnet, then the release, its file list
+// and its source. A skipped item returns nil; only a store failure or a
+// cancelled run stops the pass.
+func (m *Manager) runTorrentItem(ctx context.Context, pass *torrentPass, item engine.Item) error {
+	indexer, stats := pass.indexer, pass.stats
+	hash := itemHash(item)
+	if hash != "" {
+		item.InfoHash = hash
+	}
+	magnet := strings.TrimSpace(item.Magnet)
+	if magnet == "" && hash != "" {
+		magnet = feed.MagnetFromHash(hash, item.Title)
+	}
+	item.Magnet = magnet
+	pending := pass.smartfeedSource && strings.EqualFold(strings.TrimSpace(item.Attributes[smartfeed.AttributePending]), "true")
+
+	if key := itemIdentity(item); key != "" {
+		if _, duplicate := pass.seen[key]; duplicate {
+			stats.duplicate()
+			return nil
+		}
+		pass.seen[key] = struct{}{}
+	}
+
+	if tooOld, excluded, tooSmall := pass.rules.reject(item); tooOld || excluded || tooSmall {
+		switch {
+		case tooOld:
+			stats.discardTooOld()
+		case tooSmall:
+			stats.discardOther()
+		default:
+			stats.discardCategory()
+		}
+		return nil
+	}
+
+	category := itemCategory(item)
+	if _, match := pass.matcher.Match(hash, item.Title, indexer.Name, category); match {
+		stats.Blocked++
+		return nil
+	}
+
+	var torrent []byte
+	if magnet == "" && strings.TrimSpace(item.DownloadURL) != "" &&
+		stats.Torrents < m.maxTorrents {
+		payload, downloadErr := pass.connector.Download(ctx, item)
+		if downloadErr != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			m.logger.Warn("indexer: torrent download failed",
+				"indexer", indexer.Slug,
+				"error", m.redact(indexer.ID, downloadErr.Error()))
+			stats.discardOther()
+			return nil
+		}
+		*pass.payloadBytes += int64(len(payload.Body))
+		if payload.Magnet != "" {
+			magnet = payload.Magnet
+			if fromMagnet := feed.MagnetHash(payload.Magnet); fromMagnet != "" {
+				hash = fromMagnet
+			}
+		}
+		if len(payload.Body) > 0 {
+			torrent = payload.Body
+			if hash == "" && item.Protocol != engine.ProtocolUsenet {
+				if computed, hashErr := feed.InfoHash(payload.Body); hashErr == nil {
+					hash = computed
+				}
+			}
+			stats.Torrents++
+		}
+		if magnet == "" && hash != "" {
+			magnet = feed.MagnetFromHash(hash, item.Title)
+		}
+		item.Magnet = magnet
+		item.InfoHash = hash
+
+		// The .torrent may have revealed an infohash that an infohash rule
+		// could not match before the download.
+		if _, match := pass.matcher.Match(hash, item.Title, indexer.Name, category); match {
+			stats.Blocked++
+			return nil
+		}
+	}
+
+	if magnet == "" && len(torrent) == 0 && !pending {
+		stats.discardNoLink()
+		return nil
+	}
+
+	dedupKey := releaseKey(hash, item, indexer.Slug)
+	if dedupKey == "" {
+		stats.discardOther()
+		return nil
+	}
+
+	// The pending topic points at the native MirCrew indexer, not at the
+	// RSS channel: opening the topic and thanking it belong to the grab.
+	// Nothing is downloaded or opened here, so a poll can never thank.
+	downloadRef := ""
+	if pending {
+		if !pass.pairLoaded {
+			pass.nativePair, pass.hasNativePair = m.smartfeedNativePair(ctx, indexer, pass.config)
+			pass.pairLoaded = true
+		}
+		if pass.hasNativePair && m.vault != nil {
+			if ref, refErr := SealDownloadRef(m.vault, pass.nativePair.ID, item); refErr == nil {
+				downloadRef = ref
+			} else {
+				m.logger.Warn("indexer: seal Smartfeed topic reference",
+					"indexer", indexer.Slug, "error", refErr)
+			}
+		}
+	}
+
+	now := time.Now()
+	release := &store.Release{
+		DedupKey:       dedupKey,
+		InfoHash:       hash,
+		IMDbID:         item.IMDbID,
+		TMDbID:         item.TMDbID,
+		TVDbID:         item.TVDbID,
+		Title:          item.Title,
+		SearchTitle:    textutil.NormalizeTitle(item.Title),
+		Size:           item.Size,
+		Seeders:        item.Seeders,
+		Leechers:       item.Leechers,
+		Freeleech:      item.Freeleech,
+		FreeleechKnown: item.FreeleechKnown,
+		Languages:      strings.Join(item.Languages, ", "),
+		Category:       category,
+		PublishedAt:    item.Published,
+		GUID:           item.GUID,
+		Magnet:         magnet,
+		Torrent:        torrent,
+		Protocol:       "torrent",
+		FirstSeenAt:    now,
+		LastSeenAt:     now,
+	}
+	if len(torrent) > 0 {
+		release.TorrentFetchedAt = now
+	}
+
+	// Stored sources apply the cautious §1g merge: same normalized title,
+	// size within rounding tolerance and compatible dates become one row
+	// with an extra source, never a second release. The live search keeps
+	// its own path unchanged.
+	if pass.storedSource {
+		if dup, found, dupErr := m.store.FindStoredDuplicate(ctx, *release); dupErr != nil {
+			m.logger.Warn("indexer: find stored duplicate",
+				"indexer", indexer.Slug, "error", m.redact(indexer.ID, dupErr.Error()))
+		} else if found {
+			release.DedupKey = dup.DedupKey
+			if release.InfoHash == "" {
+				release.InfoHash = dup.InfoHash
+			}
+		}
+	}
+
+	isNew, storeErr := m.store.UpsertRelease(ctx, release)
+	if storeErr != nil {
+		return fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr)
+	}
+	if isNew {
+		stats.New++
+	} else {
+		stats.Updated++
+	}
+	if len(torrent) > 0 {
+		if meta, metaErr := feed.ParseTorrent(torrent); metaErr == nil && len(meta.Files) > 0 {
+			files := make([]store.ReleaseFile, 0, len(meta.Files))
+			for _, file := range meta.Files {
+				files = append(files, store.ReleaseFile{Path: file.Path, Size: file.Size})
+			}
+			if filesErr := m.store.ReplaceReleaseFiles(ctx, release.ID, files); filesErr != nil {
+				m.logger.Warn("indexer: store torrent file names",
+					"indexer", indexer.Slug, "release_id", release.ID,
+					"error", m.redact(indexer.ID, filesErr.Error()))
+			}
+		}
+	}
+
+	if provenanceErr := m.store.RecordReleaseSource(ctx, store.ReleaseSource{
+		ReleaseID:   release.ID,
+		IndexerID:   indexer.ID,
+		FirstSeenAt: release.FirstSeenAt,
+		LastSeenAt:  release.LastSeenAt,
+		Seeders:     item.Seeders,
+		Leechers:    item.Leechers,
+		DownloadRef: downloadRef,
+	}); provenanceErr != nil {
+		m.logger.Warn("indexer: record release source",
+			"indexer", indexer.Slug,
+			"release_id", release.ID,
+			"error", m.redact(indexer.ID, provenanceErr.Error()))
+	}
+
+	if len(stats.Items) < maxRunItems {
+		stats.Items = append(stats.Items, item)
+	}
+	return nil
 }
 
 // runUsenetItem stores one Usenet release. There is no infohash: the GUID is

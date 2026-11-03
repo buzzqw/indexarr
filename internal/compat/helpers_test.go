@@ -409,12 +409,6 @@ func requireNoAttr(t *testing.T, item rssItem, name string) {
 	}
 }
 
-func xmlEscape(value string) string {
-	var builder strings.Builder
-	_ = xml.EscapeText(&builder, []byte(value))
-	return builder.String()
-}
-
 func formatID(id int64) string {
 	return strconv.FormatInt(id, 10)
 }

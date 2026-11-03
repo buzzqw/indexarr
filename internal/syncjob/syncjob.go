@@ -644,9 +644,7 @@ func (s *Service) desiredIndexers(ctx context.Context, indexarrKey string, app s
 			continue
 		}
 		selected = append(selected, indexer)
-		for _, label := range splitTags(indexer.Tags) {
-			labels = append(labels, label)
-		}
+		labels = append(labels, splitTags(indexer.Tags)...)
 	}
 	tagIDs, err := resolveTagIDs(ctx, client, labels)
 	if err != nil {

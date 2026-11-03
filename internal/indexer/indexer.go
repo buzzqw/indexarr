@@ -7,8 +7,6 @@ package indexer
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1122,9 +1120,4 @@ func errorText(err error) string {
 		text = text[:500] + "…"
 	}
 	return text
-}
-
-func hashText(value string) string {
-	sum := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(sum[:])
 }

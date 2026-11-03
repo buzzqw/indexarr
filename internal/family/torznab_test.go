@@ -359,7 +359,7 @@ func TestTorznabCapsCache(t *testing.T) {
 	}
 
 	connector.capsMu.Lock()
-	connector.capsAt = time.Now().Add(-2 * torznabCapsTTL)
+	connector.capsAt = time.Now().Add(-2 * newznabCapsTTL)
 	connector.capsMu.Unlock()
 	if _, err := connector.Caps(context.Background()); err != nil {
 		t.Fatalf("Caps after expiry: %v", err)
@@ -370,7 +370,7 @@ func TestTorznabCapsCache(t *testing.T) {
 
 	fail.Store(true)
 	connector.capsMu.Lock()
-	connector.capsAt = time.Now().Add(-2 * torznabCapsTTL)
+	connector.capsAt = time.Now().Add(-2 * newznabCapsTTL)
 	connector.capsMu.Unlock()
 	_, err = connector.Caps(context.Background())
 	if err == nil {

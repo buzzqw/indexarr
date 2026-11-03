@@ -23,8 +23,7 @@ func TestProxyCRUD(t *testing.T) {
 
 	list := e.do(http.MethodGet, "/api/v2/proxies", "")
 	requireStatus(t, list, http.StatusOK)
-	var rows []proxyResponse
-	rows = decodeJSON[[]proxyResponse](t, list.body)
+	rows := decodeJSON[[]proxyResponse](t, list.body)
 	if len(rows) != 1 || rows[0].ID != proxy.ID {
 		t.Fatalf("list = %+v", rows)
 	}

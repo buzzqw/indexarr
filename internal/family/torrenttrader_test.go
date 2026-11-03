@@ -78,17 +78,6 @@ func (l *trackerRequestLog) find(method, path string) (trackerRequest, bool) {
 	return trackerRequest{}, false
 }
 
-func (l *trackerRequestLog) queryValues(key string) []string {
-	var out []string
-	for _, entry := range l.all() {
-		if entry.Method != http.MethodGet || entry.Query == nil {
-			continue
-		}
-		out = append(out, entry.Query.Get(key))
-	}
-	return out
-}
-
 func (l *trackerRequestLog) queryValuesFor(path, key string) []string {
 	var out []string
 	for _, entry := range l.all() {

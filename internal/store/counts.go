@@ -21,13 +21,15 @@ type countsCache struct {
 	mu  sync.Mutex
 	rev uint64
 
-	statsOK bool
-	statsAt time.Time
-	stats   Stats
+	stats cachedSnapshot[Stats]
+	home  cachedSnapshot[HomeActivity]
+}
 
-	homeOK bool
-	homeAt time.Time
-	home   HomeActivity
+// cachedSnapshot is one value of countsCache with the time it was read.
+type cachedSnapshot[T any] struct {
+	ok    bool
+	at    time.Time
+	value T
 }
 
 // CountsRevision returns the current counter revision. The web layer uses it
@@ -43,62 +45,46 @@ func (s *Store) CountsRevision() uint64 {
 func (s *Store) InvalidateCounts() {
 	s.counts.mu.Lock()
 	s.counts.rev++
-	s.counts.statsOK = false
-	s.counts.homeOK = false
+	s.counts.stats.ok = false
+	s.counts.home.ok = false
 	s.counts.mu.Unlock()
 }
 
 // CachedStats is LoadStats with a short TTL, used by every read path
 // (/healthz, Home, metrics, maintenance, probe).
 func (s *Store) CachedStats(ctx context.Context) (Stats, error) {
-	now := time.Now()
-	s.counts.mu.Lock()
-	if s.counts.statsOK && now.Sub(s.counts.statsAt) < countsTTL {
-		out := s.counts.stats
-		s.counts.mu.Unlock()
-		return out, nil
-	}
-	rev := s.counts.rev
-	s.counts.mu.Unlock()
-
-	stats, err := s.LoadStats(ctx)
-	if err != nil {
-		return stats, err
-	}
-
-	s.counts.mu.Lock()
-	if s.counts.rev == rev {
-		s.counts.stats = stats
-		s.counts.statsOK = true
-		s.counts.statsAt = now
-	}
-	s.counts.mu.Unlock()
-	return stats, nil
+	return cachedCount(s, &s.counts.stats, func() (Stats, error) { return s.LoadStats(ctx) })
 }
 
 // CachedHomeActivity is LoadHomeActivity with the same short TTL.
 func (s *Store) CachedHomeActivity(ctx context.Context) (HomeActivity, error) {
+	return cachedCount(s, &s.counts.home, func() (HomeActivity, error) { return s.LoadHomeActivity(ctx) })
+}
+
+// cachedCount returns the snapshot while it is younger than countsTTL, and
+// otherwise loads it again. The query runs without the lock; its result is
+// kept only if no write invalidated the counters in the meantime, so a slow
+// read never stores a number older than the write that followed it.
+func cachedCount[T any](s *Store, snapshot *cachedSnapshot[T], load func() (T, error)) (T, error) {
 	now := time.Now()
 	s.counts.mu.Lock()
-	if s.counts.homeOK && now.Sub(s.counts.homeAt) < countsTTL {
-		out := s.counts.home
+	if snapshot.ok && now.Sub(snapshot.at) < countsTTL {
+		out := snapshot.value
 		s.counts.mu.Unlock()
 		return out, nil
 	}
 	rev := s.counts.rev
 	s.counts.mu.Unlock()
 
-	activity, err := s.LoadHomeActivity(ctx)
+	value, err := load()
 	if err != nil {
-		return activity, err
+		return value, err
 	}
 
 	s.counts.mu.Lock()
 	if s.counts.rev == rev {
-		s.counts.home = activity
-		s.counts.homeOK = true
-		s.counts.homeAt = now
+		*snapshot = cachedSnapshot[T]{ok: true, at: now, value: value}
 	}
 	s.counts.mu.Unlock()
-	return activity, nil
+	return value, nil
 }

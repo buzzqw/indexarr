@@ -42,15 +42,6 @@ func (r *queryRecorder) add(values url.Values) {
 	r.mu.Unlock()
 }
 
-func (r *queryRecorder) at(index int) url.Values {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if index < 0 || index >= len(r.values) {
-		return nil
-	}
-	return r.values[index]
-}
-
 func (r *queryRecorder) last() url.Values {
 	r.mu.Lock()
 	defer r.mu.Unlock()

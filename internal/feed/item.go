@@ -41,10 +41,8 @@ type Item struct {
 // 32-character base32 form and returns the lowercase hexadecimal form.
 func NormalizeInfoHash(raw string) string {
 	value := strings.TrimSpace(raw)
-	lower := strings.ToLower(value)
-	if strings.HasPrefix(lower, "urn:btih:") {
+	if strings.HasPrefix(strings.ToLower(value), "urn:btih:") {
 		value = value[len("urn:btih:"):]
-		lower = strings.ToLower(value)
 	}
 	if len(value) == 40 {
 		if _, err := hex.DecodeString(strings.ToLower(value)); err == nil {

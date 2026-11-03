@@ -570,77 +570,55 @@ func parseModeParams(value *yaml.Node) []string {
 }
 
 func (c *rawConditions) UnmarshalYAML(value *yaml.Node) error {
-	if isNullNode(value) {
-		*c = nil
-		return nil
-	}
-	if value.Kind == yaml.AliasNode && value.Alias != nil {
-		value = value.Alias
-	}
-	switch value.Kind {
-	case yaml.ScalarNode:
-		*c = rawConditions{{Selector: scalarText(value)}}
-	case yaml.MappingNode:
-		var condition rawCondition
-		if err := value.Decode(&condition); err != nil {
-			return err
-		}
-		*c = rawConditions{condition}
-	case yaml.SequenceNode:
-		out := make(rawConditions, 0, len(value.Content))
-		for _, item := range value.Content {
-			if item.Kind == yaml.ScalarNode {
-				out = append(out, rawCondition{Selector: scalarText(item)})
-				continue
-			}
-			var condition rawCondition
-			if err := item.Decode(&condition); err != nil {
-				return err
-			}
-			out = append(out, condition)
-		}
-		*c = out
-	default:
-		return &yaml.TypeError{Errors: []string{"condition: expected a scalar, mapping or list"}}
-	}
-	return nil
+	out, err := decodeOneOrMany(value, func(text string) rawCondition { return rawCondition{Selector: text} }, "condition")
+	*c = out
+	return err
 }
 
 func (p *rawPaths) UnmarshalYAML(value *yaml.Node) error {
+	out, err := decodeOneOrMany(value, func(text string) rawSearchPath { return rawSearchPath{Path: text} }, "search.paths")
+	*p = out
+	return err
+}
+
+// decodeOneOrMany reads a field Cardigann writes in three shapes: a scalar
+// (fromScalar builds the item), one mapping, or a list mixing both. A null
+// node gives a nil slice.
+func decodeOneOrMany[T any](value *yaml.Node, fromScalar func(string) T, field string) ([]T, error) {
 	if isNullNode(value) {
-		*p = nil
-		return nil
+		return nil, nil
 	}
 	if value.Kind == yaml.AliasNode && value.Alias != nil {
 		value = value.Alias
 	}
-	switch value.Kind {
-	case yaml.ScalarNode:
-		*p = rawPaths{{Path: scalarText(value)}}
-	case yaml.MappingNode:
-		var path rawSearchPath
-		if err := value.Decode(&path); err != nil {
-			return err
+	decode := func(node *yaml.Node) (T, error) {
+		if node.Kind == yaml.ScalarNode {
+			return fromScalar(scalarText(node)), nil
 		}
-		*p = rawPaths{path}
-	case yaml.SequenceNode:
-		out := make(rawPaths, 0, len(value.Content))
-		for _, item := range value.Content {
-			if item.Kind == yaml.ScalarNode {
-				out = append(out, rawSearchPath{Path: scalarText(item)})
-				continue
-			}
-			var path rawSearchPath
-			if err := item.Decode(&path); err != nil {
-				return err
-			}
-			out = append(out, path)
-		}
-		*p = out
-	default:
-		return &yaml.TypeError{Errors: []string{"search.paths: expected a scalar, mapping or list"}}
+		var item T
+		err := node.Decode(&item)
+		return item, err
 	}
-	return nil
+	switch value.Kind {
+	case yaml.ScalarNode, yaml.MappingNode:
+		item, err := decode(value)
+		if err != nil {
+			return nil, err
+		}
+		return []T{item}, nil
+	case yaml.SequenceNode:
+		out := make([]T, 0, len(value.Content))
+		for _, node := range value.Content {
+			item, err := decode(node)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, item)
+		}
+		return out, nil
+	default:
+		return nil, &yaml.TypeError{Errors: []string{field + ": expected a scalar, mapping or list"}}
+	}
 }
 
 func (r *rawRows) UnmarshalYAML(value *yaml.Node) error {

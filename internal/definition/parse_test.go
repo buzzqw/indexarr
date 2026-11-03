@@ -284,7 +284,7 @@ func TestFingerprint(t *testing.T) {
 	}
 
 	body := []byte("schema: 1\n")
-	if Fingerprint(body) != Fingerprint(body) {
+	if first, second := Fingerprint(body), Fingerprint(body); first != second {
 		t.Error("fingerprint is not stable")
 	}
 	if Fingerprint(body) == Fingerprint([]byte("schema: 1\n\n")) {

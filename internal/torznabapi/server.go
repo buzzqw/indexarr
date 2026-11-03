@@ -877,11 +877,7 @@ func intersectIndexerIDs(selected, allowed []int64) []int64 {
 		allowedSet[id] = struct{}{}
 	}
 	if len(selected) == 0 {
-		out := make([]int64, 0, len(allowed))
-		for _, id := range allowed {
-			out = append(out, id)
-		}
-		return out
+		return append(make([]int64, 0, len(allowed)), allowed...)
 	}
 	out := make([]int64, 0, len(selected))
 	for _, id := range selected {

@@ -5,19 +5,11 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/buzzqw/indexarr/internal/engine"
-)
-
-const (
-	newznabBreakerFallback = "newznab"
-	newznabCapsTTL         = time.Hour
 )
 
 // NewznabConfig configures a generic Newznab API client. BaseURL is the API
@@ -34,14 +26,7 @@ type NewznabConfig struct {
 // Newznab is the generic Newznab connector used by Usenet indexers and by
 // presets that expose a Newznab-compatible API.
 type Newznab struct {
-	cfg     NewznabConfig
-	base    *url.URL
-	baseURL string
-	breaker string
-
-	capsMu sync.Mutex
-	caps   *Caps
-	capsAt time.Time
+	*newznabAPI
 }
 
 // CapsCategory is one Newznab category and, at most, one level of children.
@@ -67,178 +52,16 @@ type Caps struct {
 
 // NewNewznab validates cfg and builds a connector.
 func NewNewznab(cfg NewznabConfig) (*Newznab, error) {
-	base, err := parseBaseURL(cfg.BaseURL)
+	api, err := newNewznabAPI("newznab", engine.ProtocolUsenet, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("newznab: %w", err)
-	}
-	cfg.BaseURL = strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
-	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
-	if cfg.Transport == nil {
-		cfg.Transport = engine.NewTransport(engine.TransportConfig{UserAgent: cfg.UserAgent})
-	}
-	cfg.Indexer.Protocol = engine.ProtocolUsenet
-	cfg.Categories = append([]int(nil), cfg.Categories...)
-
-	breaker := strings.TrimSpace(cfg.Indexer.Slug)
-	if breaker == "" {
-		breaker = newznabBreakerFallback
-	}
-
-	return &Newznab{
-		cfg:     cfg,
-		base:    base,
-		baseURL: cfg.BaseURL,
-		breaker: breaker,
-	}, nil
-}
-
-// Capabilities implements engine.Connector. Until a caps document has been
-// fetched it advertises every Newznab search mode with its usual parameters.
-func (n *Newznab) Capabilities() engine.Capabilities {
-	n.capsMu.Lock()
-	cached := n.caps.clone()
-	n.capsMu.Unlock()
-
-	caps := engine.Capabilities{
-		Protocol: engine.ProtocolUsenet,
-		Modes: []engine.Mode{
-			engine.ModeSearch,
-			engine.ModeTV,
-			engine.ModeMovie,
-			engine.ModeMusic,
-			engine.ModeBook,
-		},
-		Params:     defaultNewznabParams(),
-		Categories: append([]int(nil), n.cfg.Categories...),
-	}
-	if cached == nil {
-		return caps
-	}
-
-	if cached.Modes != nil {
-		caps.Modes = cached.Modes
-	}
-	if cached.Params != nil {
-		caps.Params = cached.Params
-	}
-	if ids := flattenCapsCategories(cached.Categories); len(ids) > 0 {
-		caps.Categories = ids
-	}
-	return caps
-}
-
-// Caps fetches and parses the Newznab caps document. Results are cached for
-// one hour; any failure invalidates the cache so the next call retries.
-func (n *Newznab) Caps(ctx context.Context) (*Caps, error) {
-	n.capsMu.Lock()
-	defer n.capsMu.Unlock()
-
-	now := time.Now()
-	if n.caps != nil && now.Sub(n.capsAt) < newznabCapsTTL {
-		return n.caps.clone(), nil
-	}
-	n.caps = nil
-
-	values := url.Values{}
-	values.Set("t", "caps")
-	if n.cfg.APIKey != "" {
-		values.Set("apikey", n.cfg.APIKey)
-	}
-	resp, err := n.get(ctx, values, "newznab: caps request")
-	if err != nil {
-		n.capsAt = time.Time{}
 		return nil, err
 	}
-	if resp.Status < 200 || resp.Status >= 300 {
-		n.capsAt = time.Time{}
-		return nil, fmt.Errorf("newznab: caps failed with HTTP status %d", resp.Status)
-	}
-	parsed, err := ParseCaps(resp.Body)
-	if err != nil {
-		n.capsAt = time.Time{}
-		return nil, fmt.Errorf("newznab: parse caps: %s", redact(err.Error(), n.cfg.APIKey))
-	}
-	n.caps = parsed
-	n.capsAt = now
-	return parsed.clone(), nil
+	return &Newznab{newznabAPI: api}, nil
 }
 
 // Search implements engine.Connector.
 func (n *Newznab) Search(ctx context.Context, req engine.SearchRequest) ([]engine.Item, error) {
-	mode := req.Mode
-	if mode == "" {
-		mode = engine.ModeSearch
-	}
-	if !mode.Valid() {
-		return nil, fmt.Errorf("newznab: unsupported search mode %q", mode)
-	}
-
-	categories := req.Categories
-	if len(categories) == 0 {
-		categories = n.cfg.Categories
-	}
-
-	values := url.Values{}
-	values.Set("t", string(mode))
-	if q := strings.TrimSpace(req.Query); q != "" {
-		values.Set("q", q)
-	}
-	if req.Season > 0 {
-		values.Set("season", strconv.Itoa(req.Season))
-	}
-	if req.Episode > 0 {
-		values.Set("ep", strconv.Itoa(req.Episode))
-	}
-	if id := strings.TrimSpace(req.IMDbID); id != "" {
-		values.Set("imdbid", id)
-	}
-	if id := strings.TrimSpace(req.TVDbID); id != "" {
-		values.Set("tvdbid", id)
-	}
-	if id := strings.TrimSpace(req.TMDbID); id != "" {
-		values.Set("tmdbid", id)
-	}
-	if id := strings.TrimSpace(req.RID); id != "" {
-		values.Set("rid", id)
-	}
-	if artist := strings.TrimSpace(req.Artist); artist != "" {
-		values.Set("artist", artist)
-	}
-	if album := strings.TrimSpace(req.Album); album != "" {
-		values.Set("album", album)
-	}
-	if author := strings.TrimSpace(req.Author); author != "" {
-		values.Set("author", author)
-	}
-	if title := strings.TrimSpace(req.Title); title != "" {
-		values.Set("title", title)
-	}
-	if cat := joinCategories(categories); cat != "" {
-		values.Set("cat", cat)
-	}
-	if req.Limit > 0 {
-		values.Set("limit", strconv.Itoa(req.Limit))
-	}
-	if req.Offset > 0 {
-		values.Set("offset", strconv.Itoa(req.Offset))
-	}
-	values.Set("extended", "1")
-	if n.cfg.APIKey != "" {
-		values.Set("apikey", n.cfg.APIKey)
-	}
-
-	resp, err := n.get(ctx, values, "newznab: search request")
-	if err != nil {
-		return nil, err
-	}
-	if resp.Status < 200 || resp.Status >= 300 {
-		return nil, fmt.Errorf("newznab: search failed with HTTP status %d", resp.Status)
-	}
-	items, err := n.parseItems(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("newznab: search: %s", redact(err.Error(), n.cfg.APIKey))
-	}
-	return items, nil
+	return n.search(ctx, req, n.parseItem)
 }
 
 // Latest implements engine.Connector by searching within the requested
@@ -295,90 +118,7 @@ func (n *Newznab) Download(ctx context.Context, item engine.Item) (engine.Payloa
 // Test implements engine.Connector. Download is skipped because it would
 // consume a real release.
 func (n *Newznab) Test(ctx context.Context) (engine.TestResult, error) {
-	result := engine.TestResult{}
-
-	reach := func() error {
-		values := url.Values{}
-		values.Set("t", "caps")
-		resp, err := n.get(ctx, values, "newznab: reach request")
-		if err != nil {
-			return err
-		}
-		if !reachableStatus(resp.Status) {
-			return fmt.Errorf("unexpected HTTP status %d", resp.Status)
-		}
-		return nil
-	}
-	addPhase(&result, "reach", reach)
-
-	caps := func() error {
-		n.resetCaps()
-		_, err := n.Caps(ctx)
-		return err
-	}
-	addPhase(&result, "caps", caps)
-
-	search := func() error {
-		_, err := n.Search(ctx, engine.SearchRequest{
-			Mode:  engine.ModeSearch,
-			Query: "test",
-			Limit: 1,
-		})
-		return err
-	}
-	addPhase(&result, "search", search)
-
-	result.OK = true
-	for _, phase := range result.Phases {
-		if !phase.OK {
-			result.OK = false
-		}
-	}
-	if err := ctx.Err(); err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
-func (n *Newznab) resetCaps() {
-	n.capsMu.Lock()
-	n.caps = nil
-	n.capsAt = time.Time{}
-	n.capsMu.Unlock()
-}
-
-func (n *Newznab) get(ctx context.Context, values url.Values, operation string) (*engine.Response, error) {
-	target, err := withQuery(n.baseURL, values)
-	if err != nil {
-		return nil, fmt.Errorf("%s: build request: %w", operation, err)
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-	if err != nil {
-		return nil, fmt.Errorf("%s: build request: %s", operation, redact(err.Error(), n.cfg.APIKey))
-	}
-	req.Header.Set("Accept", "application/xml, application/rss+xml;q=0.9, */*;q=0.8")
-	if n.cfg.UserAgent != "" {
-		req.Header.Set("User-Agent", n.cfg.UserAgent)
-	}
-	resp, err := n.cfg.Transport.Do(ctx, n.breaker, req)
-	if err != nil {
-		return nil, redactError(operation, err, n.cfg.APIKey)
-	}
-	return resp, nil
-}
-
-func (n *Newznab) parseItems(body []byte) ([]engine.Item, error) {
-	rows, err := parseNewznabRSS(body)
-	if err != nil {
-		return nil, err
-	}
-	items := make([]engine.Item, 0, len(rows))
-	for _, row := range rows {
-		if item, ok := n.parseItem(row); ok {
-			items = append(items, item)
-		}
-	}
-	return items, nil
+	return n.test(ctx, n.Search)
 }
 
 func (n *Newznab) parseItem(row newznabRSSItem) (engine.Item, bool) {

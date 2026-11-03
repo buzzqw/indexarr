@@ -128,8 +128,8 @@ func parseExtToListing(ctx context.Context, client *http.Client, document *xhtml
 			if !strings.HasPrefix(strings.ToLower(href), "magnet:") {
 				return
 			}
-			title := strings.TrimSpace(htmlNodeText(node))
-			if title = titleFromMagnet(href); title == "" {
+			title := titleFromMagnet(href)
+			if title == "" {
 				title = strings.TrimSpace(htmlNodeText(node))
 			}
 			if title != "" {

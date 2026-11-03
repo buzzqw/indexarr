@@ -109,11 +109,9 @@ func (c *converter) rewriteTemplate(label, source string, critical, queryMode bo
 			}
 			branch := ""
 			if chooseThen {
-				stop := len(source)
+				stop := actions[endIndex].start
 				if elseIndex >= 0 {
 					stop = actions[elseIndex].start
-				} else {
-					stop = actions[endIndex].start
 				}
 				branch = source[action.end:stop]
 			} else if elseIndex >= 0 {

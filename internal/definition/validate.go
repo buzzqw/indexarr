@@ -49,11 +49,6 @@ var (
 		"cookie":  true,
 		"token":   true,
 	}
-	allowedResponseTypes = map[string]bool{
-		"html": true,
-		"json": true,
-		"xml":  true,
-	}
 	allowedPaginationTypes = map[string]bool{
 		"none":   true,
 		"page":   true,

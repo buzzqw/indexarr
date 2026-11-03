@@ -114,11 +114,6 @@ var nonGroups = map[string]bool{
 // would trade CPU for a memory leak.
 const featureCacheMax = 2048
 
-type featureCacheEntry struct {
-	key      string
-	features Features
-}
-
 var parsedTitles = struct {
 	sync.RWMutex
 	entries map[string]Features
