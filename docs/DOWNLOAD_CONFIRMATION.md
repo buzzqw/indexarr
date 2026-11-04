@@ -93,6 +93,26 @@ history API that carries the hash and a completed flag, so a small bridge can
 post the same JSON. Polling those APIs from indexarr is a separate feature and
 is not required by this contract.
 
+## Reading the Download tab
+
+*Statistics → Download* shows the same evidence in three places:
+
+- the **Confirmed** counter is how many grabs of the window a client reported
+  as completed;
+- the **Downloads per source** table repeats that count for each source, next
+  to its total, so a source that delivers a lot but is never confirmed stands
+  out;
+- **Latest downloads** lists one row per grab with the **Outcome** column:
+  *downloaded* means confirmed, *delivered only* means nobody reported the
+  completion.
+
+The **Outcome** filter narrows the latest list to *confirmed* or *delivered
+only*; the counters and the per-source table stay on the whole window, so the
+selection shows *which* grabs those numbers are made of without changing them.
+The confirmed counts in the table and the counter are links: they open the same
+list already filtered to that source and to the confirmed outcome. The source
+and outcome filters survive a change of the time window.
+
 ## What this does not cover
 
 - A magnet used directly from the feed never reaches indexarr, so there is

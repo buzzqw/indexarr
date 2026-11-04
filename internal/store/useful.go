@@ -147,9 +147,40 @@ func (s *Store) GrabSources(ctx context.Context) ([]GrabSource, error) {
 	return out, rows.Err()
 }
 
+// GrabOutcome selects the grabs of the Download list by confirmation state.
+// The zero value keeps every grab.
+type GrabOutcome int
+
+const (
+	// GrabOutcomeAll lists both confirmed and delivered-only grabs.
+	GrabOutcomeAll GrabOutcome = iota
+	// GrabOutcomeConfirmed lists the grabs a client reported as completed.
+	GrabOutcomeConfirmed
+	// GrabOutcomeDelivered lists the grabs nobody confirmed.
+	GrabOutcomeDelivered
+)
+
+// grabOutcomeClause appends the condition for one outcome to a WHERE clause.
+func grabOutcomeClause(outcome GrabOutcome) string {
+	switch outcome {
+	case GrabOutcomeConfirmed:
+		return ` AND h.confirmed_at > 0`
+	case GrabOutcomeDelivered:
+		return ` AND (h.confirmed_at IS NULL OR h.confirmed_at = 0)`
+	default:
+		return ""
+	}
+}
+
 // ListGrabs returns the newest grabs since the given instant. indexerID zero
 // means every source.
 func (s *Store) ListGrabs(ctx context.Context, since time.Time, indexerID int64, limit, offset int) ([]Grab, error) {
+	return s.ListGrabsByOutcome(ctx, since, indexerID, GrabOutcomeAll, limit, offset)
+}
+
+// ListGrabsByOutcome returns the newest grabs since the given instant, filtered
+// by source (indexerID zero means every source) and by confirmation state.
+func (s *Store) ListGrabsByOutcome(ctx context.Context, since time.Time, indexerID int64, outcome GrabOutcome, limit, offset int) ([]Grab, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 50
 	}
@@ -162,6 +193,7 @@ func (s *Store) ListGrabs(ctx context.Context, since time.Time, indexerID int64,
 		where += ` AND h.indexer_id = ?`
 		args = append(args, indexerID)
 	}
+	where += grabOutcomeClause(outcome)
 	args = append(args, limit, offset)
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT h.id, COALESCE(h.indexer_id, 0), COALESCE(i.name, ''),
@@ -202,12 +234,19 @@ func (s *Store) ListGrabs(ctx context.Context, since time.Time, indexerID int64,
 // CountGrabs counts the grabs since the given instant. indexerID zero means
 // every source.
 func (s *Store) CountGrabs(ctx context.Context, since time.Time, indexerID int64) (int64, error) {
-	query := `SELECT COUNT(*) FROM indexer_history WHERE kind = 'grab' AND started_at >= ?`
+	return s.CountGrabsByOutcome(ctx, since, indexerID, GrabOutcomeAll)
+}
+
+// CountGrabsByOutcome counts the grabs since the given instant, filtered by
+// source (indexerID zero means every source) and by confirmation state.
+func (s *Store) CountGrabsByOutcome(ctx context.Context, since time.Time, indexerID int64, outcome GrabOutcome) (int64, error) {
+	query := `SELECT COUNT(*) FROM indexer_history h WHERE h.kind = 'grab' AND h.started_at >= ?`
 	args := []any{sinceUnix(since)}
 	if indexerID > 0 {
-		query += ` AND indexer_id = ?`
+		query += ` AND h.indexer_id = ?`
 		args = append(args, indexerID)
 	}
+	query += grabOutcomeClause(outcome)
 	var count int64
 	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count grabs: %w", err)

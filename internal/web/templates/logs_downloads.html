@@ -20,6 +20,13 @@
     </select>
     <p class="help">{{T "logs.dl.sourceFilterHelp"}}</p>
   </div>
+  <div class="field">
+    <label for="downloads_outcome">{{T "logs.dl.outcomeFilter"}}</label>
+    <select id="downloads_outcome" name="outcome">
+      {{range .Outcomes}}<option value="{{.Key}}"{{if .Active}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <p class="help">{{T "logs.dl.outcomeFilterHelp"}}</p>
+  </div>
   <div class="field actions-field">
     <button class="btn primary" type="submit">{{T "logs.apply"}}</button>
   </div>
@@ -27,7 +34,7 @@
 
 <section class="cards" aria-label="{{T "logs.dl.cardsLabel"}}">
   <article class="card" title="{{T "logs.dl.totalHelp"}}"><span class="label">{{T "logs.dl.total"}}</span><strong>{{.Total}}</strong><span class="hint">{{.WindowLabel}}</span></article>
-  <article class="card" title="{{T "logs.dl.confirmedHelp"}}"><span class="label">{{T "logs.dl.confirmed"}}</span><strong>{{.Confirmed}}</strong><span class="hint">{{T "logs.dl.confirmedHint"}}</span></article>
+  <article class="card" title="{{T "logs.dl.confirmedHelp"}}"><span class="label">{{T "logs.dl.confirmed"}}</span><strong>{{if .Confirmed}}<a class="link" href="{{.ConfirmedURL}}" title="{{T "logs.dl.confirmedListTip"}}">{{.Confirmed}}</a>{{else}}0{{end}}</strong><span class="hint">{{T "logs.dl.confirmedHint"}}</span></article>
   <article class="card" title="{{T "logs.dl.torrentsHelp"}}"><span class="label">{{T "logs.dl.torrents"}}</span><strong>{{.Torrents}}</strong><span class="hint">{{T "logs.dl.torrentsHint"}}</span></article>
   <article class="card" title="{{T "logs.dl.magnetsHelp"}}"><span class="label">{{T "logs.dl.magnets"}}</span><strong>{{.Magnets}}</strong><span class="hint">{{T "logs.dl.magnetsHint"}}</span></article>
   <article class="card" title="{{T "logs.dl.ed2kHelp"}}"><span class="label">{{T "logs.dl.ed2k"}}</span><strong>{{.Ed2k}}</strong><span class="hint">{{T "logs.dl.ed2kHint"}}</span></article>
@@ -63,7 +70,7 @@
         <tr>
           <td><strong>{{.Name}}</strong></td>
           <td>{{.Total}}</td>
-          <td>{{if .Confirmed}}{{.Confirmed}}{{else}}—{{end}}</td>
+          <td>{{if .Confirmed}}<a class="link" href="{{.ConfirmedURL}}" title="{{T "logs.dl.confirmedSourceTip" .Name}}">{{.Confirmed}}</a>{{else}}—{{end}}</td>
           <td>{{.Torrents}}{{if .NZBs}} <span class="sub">+ {{.NZBs}} NZB</span>{{end}}</td>
           <td>{{.Magnets}}</td>
           {{if $.HasEd2k}}<td>{{if .Ed2k}}{{.Ed2k}}{{else}}—{{end}}</td>{{end}}
@@ -112,7 +119,7 @@
   </div>
   {{template "pager" .Pager}}
   {{else}}
-  <p class="empty">{{T "logs.dl.empty"}}</p>
+  <p class="empty">{{.EmptyText}}</p>
   {{end}}
 </section>
 

@@ -89,6 +89,63 @@ func TestSourceDownloadStatsCountsGrabs(t *testing.T) {
 	}
 }
 
+// The Download list can be narrowed to the grabs a client confirmed or to the
+// ones that were only delivered, and the counter follows the same filter.
+func TestListAndCountGrabsByOutcome(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	mustCreateDefinition(t, st, "outcome-def")
+	indexerID := mustCreateIndexer(t, st, "outcome-def", "outcome-one", "Outcome One")
+
+	confirmed := Release{
+		DedupKey: "outcome-confirmed",
+		Title:    "Outcome Show S01E01",
+		InfoHash: "0123456789abcdef0123456789abcdef01234567",
+		Protocol: "torrent",
+	}
+	if _, err := st.UpsertRelease(ctx, &confirmed); err != nil {
+		t.Fatalf("UpsertRelease: %v", err)
+	}
+	now := time.Now()
+	for _, row := range []IndexerHistory{
+		{IndexerID: indexerID, ReleaseID: confirmed.ID, Kind: "grab", Status: "magnet", Query: confirmed.Title, App: "gextto", StartedAt: now.Add(-2 * time.Minute)},
+		{IndexerID: indexerID, Kind: "grab", Status: "ok", Query: "Outcome Show S01E02", App: "sonarr", StartedAt: now.Add(-time.Minute)},
+	} {
+		if _, err := st.RecordIndexerHistory(ctx, row); err != nil {
+			t.Fatalf("RecordIndexerHistory: %v", err)
+		}
+	}
+	if _, err := st.ConfirmDownload(ctx, DownloadConfirmation{
+		Protocol: "torrent", Hash: confirmed.InfoHash, Title: confirmed.Title,
+		Client: "gextto", CompletedAt: now,
+	}); err != nil {
+		t.Fatalf("ConfirmDownload: %v", err)
+	}
+
+	since := now.Add(-time.Hour)
+	all, err := st.ListGrabsByOutcome(ctx, since, 0, GrabOutcomeAll, 50, 0)
+	if err != nil || len(all) != 2 {
+		t.Fatalf("ListGrabsByOutcome(all) = %d, %v", len(all), err)
+	}
+	confirmedRows, err := st.ListGrabsByOutcome(ctx, since, 0, GrabOutcomeConfirmed, 50, 0)
+	if err != nil || len(confirmedRows) != 1 || confirmedRows[0].Title != confirmed.Title || confirmedRows[0].ConfirmedAt.IsZero() {
+		t.Fatalf("ListGrabsByOutcome(confirmed) = %+v, %v", confirmedRows, err)
+	}
+	deliveredRows, err := st.ListGrabsByOutcome(ctx, since, 0, GrabOutcomeDelivered, 50, 0)
+	if err != nil || len(deliveredRows) != 1 || deliveredRows[0].Title != "Outcome Show S01E02" || !deliveredRows[0].ConfirmedAt.IsZero() {
+		t.Fatalf("ListGrabsByOutcome(delivered) = %+v, %v", deliveredRows, err)
+	}
+	for outcome, want := range map[GrabOutcome]int64{GrabOutcomeAll: 2, GrabOutcomeConfirmed: 1, GrabOutcomeDelivered: 1} {
+		if count, err := st.CountGrabsByOutcome(ctx, since, 0, outcome); err != nil || count != want {
+			t.Errorf("CountGrabsByOutcome(%v) = %d, %v, want %d", outcome, count, err, want)
+		}
+	}
+	// An unknown outcome behaves like the unfiltered list.
+	if count, err := st.CountGrabsByOutcome(ctx, since, 0, GrabOutcome(99)); err != nil || count != 2 {
+		t.Errorf("CountGrabsByOutcome(unknown) = %d, %v, want 2", count, err)
+	}
+}
+
 // A grab row carries the release it delivered so the Download tab can copy the
 // link; the stored magnet is filled only when it was missing.
 func TestListGrabsCarriesTheReleaseLink(t *testing.T) {

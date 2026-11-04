@@ -85,17 +85,21 @@ type logsDownloadsView struct {
 	Windows       []logsWindowOption
 	SourceID      int64
 	SourceOptions []logsSourceOption
+	Outcome       string
+	Outcomes      []logsOutcomeOption
 	Total         int64
 	Torrents      int64
 	Magnets       int64
 	NZBs          int64
 	Ed2k          int64
 	Confirmed     int64
+	ConfirmedURL  string
 	HasEd2k       bool
 	Sources       []logsGrabSourceRow
 	Grabs         []logsGrabRow
 	Pager         pager
 	ProxyMagnets  bool
+	EmptyText     string
 }
 
 // logsSourceOption is one entry of the source filter.
@@ -105,7 +109,15 @@ type logsSourceOption struct {
 	Active bool
 }
 
+// logsOutcomeOption is one entry of the outcome filter.
+type logsOutcomeOption struct {
+	Key    string
+	Label  string
+	Active bool
+}
+
 type logsGrabSourceRow struct {
+	ID        int64
 	Name      string
 	Total     int64
 	Torrents  int64
@@ -113,7 +125,10 @@ type logsGrabSourceRow struct {
 	NZBs      int64
 	Ed2k      int64
 	Confirmed int64
-	Share     int
+	// ConfirmedURL opens the latest downloads filtered to this source and to
+	// the confirmed outcome, so the number can be checked row by row.
+	ConfirmedURL string
+	Share        int
 }
 
 type logsGrabRow struct {
@@ -170,6 +185,32 @@ func statSince(key string, now time.Time) time.Time {
 	}
 }
 
+// normalizeGrabOutcome maps the outcome query value to the store filter. An
+// unknown value means every outcome.
+func normalizeGrabOutcome(raw string) store.GrabOutcome {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "confirmed":
+		return store.GrabOutcomeConfirmed
+	case "delivered":
+		return store.GrabOutcomeDelivered
+	default:
+		return store.GrabOutcomeAll
+	}
+}
+
+// grabOutcomeKey is the query value of an outcome, used by the select and by
+// the links that open the list already filtered.
+func grabOutcomeKey(outcome store.GrabOutcome) string {
+	switch outcome {
+	case store.GrabOutcomeConfirmed:
+		return "confirmed"
+	case store.GrabOutcomeDelivered:
+		return "delivered"
+	default:
+		return ""
+	}
+}
+
 func windowLabelKey(key string) string {
 	switch key {
 	case "7d":
@@ -183,8 +224,9 @@ func windowLabelKey(key string) string {
 	}
 }
 
-// statWindows builds the option list used by both tabs. It keeps the current
-// tab and the errors filter in the links.
+// statWindows builds the option list used by both tabs. It keeps the filters of
+// the current tab (the errors filter, the source and the outcome) so changing
+// the window does not reset them.
 func (s *Server) statWindows(r *http.Request, tab, selected string, onlyErrors bool) ([]logsWindowOption, string) {
 	options := make([]logsWindowOption, 0, len(statWindowKeys))
 	selectedLabel := ""
@@ -192,8 +234,11 @@ func (s *Server) statWindows(r *http.Request, tab, selected string, onlyErrors b
 		values := r.URL.Query()
 		values.Set("tab", tab)
 		values.Set("window", key)
+		values.Del("page")
 		if onlyErrors {
 			values.Set("status", "errors")
+		} else {
+			values.Del("status")
 		}
 		label := s.translate(r, windowLabelKey(key))
 		if key == selected {
@@ -390,16 +435,24 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 	}
 	offset := (page - 1) * logsGrabPageSize
 	sourceID := int64Param(r.URL.Query().Get("source"), 0)
+	outcome := normalizeGrabOutcome(r.URL.Query().Get("outcome"))
 
 	allStats, err := s.store.GrabStatsByIndexer(r.Context(), since)
 	if err != nil {
 		return nil, err
 	}
+	// The counters stay on the window and the source: the outcome filter only
+	// narrows the latest-downloads list, so its numbers do not move when the
+	// reader asks to see which grabs are confirmed.
 	total, err := s.store.CountGrabs(r.Context(), since, sourceID)
 	if err != nil {
 		return nil, err
 	}
-	grabs, err := s.store.ListGrabs(r.Context(), since, sourceID, logsGrabPageSize, offset)
+	filteredTotal, err := s.store.CountGrabsByOutcome(r.Context(), since, sourceID, outcome)
+	if err != nil {
+		return nil, err
+	}
+	grabs, err := s.store.ListGrabsByOutcome(r.Context(), since, sourceID, outcome, logsGrabPageSize, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -417,9 +470,32 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		WindowLabel:  selectedLabel,
 		Windows:      windows,
 		SourceID:     sourceID,
+		Outcome:      grabOutcomeKey(outcome),
 		Total:        total,
-		Pager:        newPager(r, "/activity", total, logsGrabPageSize, offset),
+		Pager:        newPager(r, "/activity", filteredTotal, logsGrabPageSize, offset),
 		ProxyMagnets: settings.TorznabProxyMagnets,
+	}
+	for _, key := range []string{"", "confirmed", "delivered"} {
+		labelKey := "logs.dl.allOutcomes"
+		switch key {
+		case "confirmed":
+			labelKey = "logs.dl.confirmed"
+		case "delivered":
+			labelKey = "logs.dl.outcomeDelivered"
+		}
+		view.Outcomes = append(view.Outcomes, logsOutcomeOption{
+			Key:    key,
+			Label:  s.translate(r, labelKey),
+			Active: key == view.Outcome,
+		})
+	}
+	switch outcome {
+	case store.GrabOutcomeConfirmed:
+		view.EmptyText = s.translate(r, "logs.dl.emptyConfirmed")
+	case store.GrabOutcomeDelivered:
+		view.EmptyText = s.translate(r, "logs.dl.emptyDelivered")
+	default:
+		view.EmptyText = s.translate(r, "logs.dl.empty")
 	}
 	for _, source := range sources {
 		view.SourceOptions = append(view.SourceOptions, logsSourceOption{
@@ -445,15 +521,16 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		view.Confirmed += stat.Confirmed
 	}
 	view.HasEd2k = view.Ed2k > 0
+	view.ConfirmedURL = grabConfirmedURL(window, sourceID)
 	for _, stat := range stats {
 		share := 0
 		if total > 0 {
 			share = int(stat.Total() * 100 / total)
 		}
 		view.Sources = append(view.Sources, logsGrabSourceRow{
-			Name: stat.Name, Total: stat.Total(), Torrents: stat.Torrents,
+			ID: stat.IndexerID, Name: stat.Name, Total: stat.Total(), Torrents: stat.Torrents,
 			Magnets: stat.Magnets, NZBs: stat.NZBs, Ed2k: stat.Ed2k,
-			Confirmed: stat.Confirmed, Share: share,
+			Confirmed: stat.Confirmed, ConfirmedURL: grabConfirmedURL(window, stat.IndexerID), Share: share,
 		})
 	}
 	lang := requestLanguage(r)
@@ -483,6 +560,19 @@ func (s *Server) logsDownloads(r *http.Request) (*logsDownloadsView, error) {
 		view.Grabs = append(view.Grabs, row)
 	}
 	return view, nil
+}
+
+// grabConfirmedURL opens the latest downloads filtered to the confirmed
+// outcome, optionally for one source, keeping the selected window.
+func grabConfirmedURL(window string, sourceID int64) string {
+	values := url.Values{}
+	values.Set("tab", "downloads")
+	values.Set("window", window)
+	values.Set("outcome", "confirmed")
+	if sourceID > 0 {
+		values.Set("source", strconv.FormatInt(sourceID, 10))
+	}
+	return "/activity?" + values.Encode()
 }
 
 // grabCopyLink is the value the "delivered as" chip writes to the clipboard:

@@ -318,10 +318,34 @@ search:
 		"Confirmed", "completed by the client",
 		"downloaded", "delivered only", "Confirmed by gextto",
 		"Outcome", "/api/v2/downloads/confirm",
+		`name="outcome"`, "All outcomes", "outcome=confirmed",
+		"outcome=confirmed&amp;source=",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("downloads tab missing %q", want)
 		}
+	}
+
+	// The outcome filter narrows the list: the two grabs stay in the window,
+	// but each selection shows only its own.
+	confirmedOnly := get(t, env.handler, "/activity?tab=downloads&window=all&outcome=confirmed").Body.String()
+	if !strings.Contains(confirmedOnly, "Confirmed Show S01E01") {
+		t.Error("the confirmed filter hid the confirmed download")
+	}
+	if strings.Contains(confirmedOnly, "Delivered Only S01E02") {
+		t.Error("the confirmed filter kept a delivered-only download")
+	}
+	deliveredOnly := get(t, env.handler, "/activity?tab=downloads&window=all&outcome=delivered").Body.String()
+	if !strings.Contains(deliveredOnly, "Delivered Only S01E02") {
+		t.Error("the delivered filter hid the delivered-only download")
+	}
+	if strings.Contains(deliveredOnly, "Confirmed Show S01E01") {
+		t.Error("the delivered filter kept a confirmed download")
+	}
+
+	// The form keeps the outcome selected, so changing the window keeps it.
+	if !strings.Contains(confirmedOnly, `<option value="confirmed" selected>`) {
+		t.Error("the outcome select lost the active filter")
 	}
 }
 
