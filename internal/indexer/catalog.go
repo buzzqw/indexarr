@@ -17,6 +17,10 @@ import (
 // history.
 var ErrNoCatalog = errors.New("indexer: no topic catalog")
 
+// catalogForumFailuresBeforeSkip is how many failed pages a forum may have
+// before the walk stops asking it.
+const catalogForumFailuresBeforeSkip = 3
+
 // catalogConnector is the part of a definition connector the topic history
 // needs. It is a separate interface so every other connector stays unchanged.
 type catalogConnector interface {
@@ -103,6 +107,20 @@ func (m *Manager) RunCatalogPage(ctx context.Context, indexerID int64) (outcome 
 
 	result, err := catalog.Catalog(ctx, engine.CatalogRequest{Forum: forum.ID, Start: cursor.NextStart})
 	if err != nil {
+		// A page that fails (a restricted or removed forum, a block) must not
+		// hold the walk hostage: the forum still counts as read, so the next
+		// page goes to another one, and three failures in a row skip it.
+		saveErr := m.store.SaveTopicCursor(ctx, store.TopicCursor{
+			IndexerID: indexerID,
+			ForumID:   forum.ID,
+			NextStart: cursor.NextStart,
+			Runs:      cursor.Runs + 1,
+			Failures:  cursor.Failures + 1,
+			LastRunAt: time.Now(),
+		})
+		if saveErr != nil {
+			return outcome, saveErr
+		}
 		return outcome, fmt.Errorf("indexer %s: catalog: %w", indexer.Slug, err)
 	}
 	stats.Seen = len(result.Entries)
@@ -143,6 +161,7 @@ func (m *Manager) RunCatalogPage(ctx context.Context, indexerID int64) (outcome 
 		ForumID:   forum.ID,
 		NextStart: next,
 		Runs:      cursor.Runs + 1,
+		Failures:  0,
 		LastRunAt: now,
 	})
 	if saveErr != nil {
@@ -157,8 +176,20 @@ func (m *Manager) RunCatalogPage(ctx context.Context, indexerID int64) (outcome 
 // weight 5 gets five pages for every page of a forum of weight 1, and no forum
 // is ever starved. Equal scores go to the forum that ran longest ago.
 func nextCatalogForum(forums []definition.CatalogForum, cursors map[string]store.TopicCursor) definition.CatalogForum {
-	chosen := forums[0]
-	for _, forum := range forums[1:] {
+	// A forum that failed three times in a row is skipped, unless every forum
+	// is skipped: then the walk starts again from the one that waited longest
+	// (with the next attempt its failure counter is cleared by a success).
+	eligible := make([]definition.CatalogForum, 0, len(forums))
+	for _, forum := range forums {
+		if cursors[forum.ID].Failures < catalogForumFailuresBeforeSkip {
+			eligible = append(eligible, forum)
+		}
+	}
+	if len(eligible) == 0 {
+		eligible = forums
+	}
+	chosen := eligible[0]
+	for _, forum := range eligible[1:] {
 		left := catalogScore(cursors[forum.ID], forum.CatalogWeight())
 		right := catalogScore(cursors[chosen.ID], chosen.CatalogWeight())
 		switch {

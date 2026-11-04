@@ -89,9 +89,13 @@ const (
 	// the sections that matter (series and movies) receive more pages than
 	// the rest of the forum without starving it.
 	indexarr2TopicWeightVersion = 28
+	// indexarr2TopicFailuresVersion counts the failed pages of every forum: a
+	// forum that answers 403 or 404 three times is skipped, so one broken
+	// section cannot hold the whole walk.
+	indexarr2TopicFailuresVersion = 29
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2TopicWeightVersion
+	latestSchemaVersion = indexarr2TopicFailuresVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

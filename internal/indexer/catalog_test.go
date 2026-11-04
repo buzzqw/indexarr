@@ -22,6 +22,7 @@ type fakeCatalogConnector struct {
 	pages  map[string]engine.CatalogResult
 	forums []definition.CatalogForum
 	search error
+	fail   map[string]error
 	delay  time.Duration
 	active atomic.Int32
 	max    atomic.Int32
@@ -69,6 +70,11 @@ func (f *fakeCatalogConnector) Catalog(_ context.Context, req engine.CatalogRequ
 		time.Sleep(f.delay)
 	}
 	key := req.Forum + ":" + strconv.Itoa(req.Start)
+	if f.fail != nil {
+		if err, ok := f.fail[key]; ok {
+			return engine.CatalogResult{}, err
+		}
+	}
 	if page, ok := f.pages[key]; ok {
 		return page, nil
 	}
@@ -376,5 +382,55 @@ func TestCatalogWeightFavoursSeriesAndMovies(t *testing.T) {
 	}
 	if picks["51"] != 50 || picks["39"] != 10 {
 		t.Fatalf("picks = %v, want 50 pages of the series and 10 of the rest", picks)
+	}
+}
+
+// A forum that keeps failing must not hold the walk: every failed page counts
+// as a read, and after three failures the walk asks another forum.
+func TestRunCatalogPageSkipsAFailingForum(t *testing.T) {
+	ctx := context.Background()
+	connector := &fakeCatalogConnector{
+		forums: []definition.CatalogForum{
+			{ID: "50", Standard: 2040, Weight: 5},
+			{ID: "39", Standard: 7020},
+		},
+		fail: map[string]error{
+			"50:0": errors.New("catalog returned HTTP 403"),
+		},
+		pages: map[string]engine.CatalogResult{
+			"39:0": {PageSize: 25, More: true, Entries: []engine.CatalogEntry{
+				{Title: "Libro", URL: "https://forum.example/viewtopic.php?t=9", Forum: "39", Standard: 7020},
+			}},
+		},
+	}
+	manager, st, indexerID := newCatalogTestManager(t, connector)
+
+	failures := 0
+	for i := 0; i < 3; i++ {
+		if _, err := manager.RunCatalogPage(ctx, indexerID); err != nil {
+			failures++
+		}
+	}
+	if failures != 3 {
+		t.Fatalf("failed pages = %d, want 3", failures)
+	}
+	cursors, err := st.TopicCursors(ctx, indexerID)
+	if err != nil {
+		t.Fatalf("TopicCursors: %v", err)
+	}
+	if got := cursors["50"].Failures; got != catalogForumFailuresBeforeSkip {
+		t.Fatalf("forum 50 failures = %d, want %d", got, catalogForumFailuresBeforeSkip)
+	}
+	if got := cursors["50"].Runs; got != 3 {
+		t.Fatalf("forum 50 runs = %d, want 3 (a failed page still counts)", got)
+	}
+
+	// The fourth page goes to the healthy forum.
+	outcome, err := manager.RunCatalogPage(ctx, indexerID)
+	if err != nil {
+		t.Fatalf("RunCatalogPage after the skip: %v", err)
+	}
+	if outcome.Forum != "39" || outcome.Topics != 1 {
+		t.Fatalf("outcome = %+v, want the healthy forum", outcome)
 	}
 }

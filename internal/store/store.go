@@ -673,6 +673,17 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 29 counts the failed pages of every forum: a section that
+	// answers 403 or 404 is skipped after three tries instead of stopping the
+	// whole walk.
+	if err := s.applyMigration(context.Background(), indexarr2TopicFailuresVersion,
+		"topic history failures", func(tx *sql.Tx) error {
+			_, err := tx.Exec(`ALTER TABLE topic_index_cursors
+				ADD COLUMN failures INTEGER NOT NULL DEFAULT 0`)
+			return err
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

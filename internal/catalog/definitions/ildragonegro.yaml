@@ -173,7 +173,6 @@ catalog:
     - { id: "78", standard: 2045, weight: 5 }   # Film - 4k
     - { id: "66", standard: 2000, weight: 5 }   # Film - Sub Ita
     - { id: "47", standard: 2000, weight: 5 }   # Film - Richieste evase
-    - { id: "132", standard: 2000, weight: 5 }  # Pack video
     - { id: "63", standard: 2000 }              # Cartoon & Anime - Film
     - { id: "61", standard: 5070 }              # Cartoon & Anime - Serie
     - { id: "88", standard: 5070 }              # Cartoon & Anime - Sub Ita
