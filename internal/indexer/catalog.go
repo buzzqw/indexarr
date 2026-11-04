@@ -221,7 +221,7 @@ func nextCatalogForum(forums []definition.CatalogForum, cursors map[string]store
 // first page: a forum selected by "start" (not a fixed index topic) whose
 // cursor already moved past the top.
 func catalogHasFrontPage(forum definition.CatalogForum, nextStart int) bool {
-	return strings.TrimSpace(forum.URL) == "" && nextStart > 0
+	return forum.RefreshesFront() && strings.TrimSpace(forum.URL) == "" && nextStart > 0
 }
 
 func catalogScore(cursor store.TopicCursor, weight int) float64 {

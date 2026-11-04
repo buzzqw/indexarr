@@ -191,6 +191,16 @@ type CatalogForum struct {
 	// with weight 1. The sections that matter (the series and the movies)
 	// take most of the walk; the rest of the forum follows.
 	Weight int `yaml:"weight,omitempty" json:"weight,omitempty"`
+	// Front re-reads the first page of the listing at every pass, where a
+	// topic with a new episode lands. It defaults to true; a section of
+	// finished series has nothing to refresh and sets it to false.
+	Front *bool `yaml:"front,omitempty" json:"front,omitempty"`
+}
+
+// RefreshesFront reports whether the walk re-reads the first page of the
+// listing: the place where an updated topic appears.
+func (f CatalogForum) RefreshesFront() bool {
+	return f.Front == nil || *f.Front
 }
 
 // CatalogWeight returns the page budget of one forum: absent or invalid

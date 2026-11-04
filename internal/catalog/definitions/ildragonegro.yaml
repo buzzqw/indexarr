@@ -167,16 +167,16 @@ catalog:
     - { id: "46", standard: 5040, weight: 5 }   # Serie TV - HD/4k
     - { id: "45", standard: 5030, weight: 5 }   # Serie TV - SD
     - { id: "79", standard: 5040, weight: 5 }   # Serie TV - Sub Ita
-    - { id: "75", standard: 5040, weight: 5 }   # Serie TV - Richieste evase
+    - { id: "75", standard: 5040, weight: 5, front: false }   # Serie TV - Richieste evase
     - { id: "50", standard: 2040, weight: 5 }   # Film - HD
     - { id: "77", standard: 2030, weight: 5 }   # Film - SD
     - { id: "78", standard: 2045, weight: 5 }   # Film - 4k
     - { id: "66", standard: 2000, weight: 5 }   # Film - Sub Ita
-    - { id: "47", standard: 2000, weight: 5 }   # Film - Richieste evase
+    - { id: "47", standard: 2000, weight: 5, front: false }   # Film - Richieste evase
     - { id: "63", standard: 2000 }              # Cartoon & Anime - Film
     - { id: "61", standard: 5070 }              # Cartoon & Anime - Serie
     - { id: "88", standard: 5070 }              # Cartoon & Anime - Sub Ita
-    - { id: "81", standard: 5070 }              # Cartoon & Anime - Richieste evase
+    - { id: "81", standard: 5070, front: false }              # Cartoon & Anime - Richieste evase
     - { id: "41", standard: 3000 }              # Musica - Artisti stranieri
     - { id: "42", standard: 3000 }              # Musica - Artisti italiani
     - { id: "89", standard: 3000 }              # Musica - Compilation
@@ -184,7 +184,7 @@ catalog:
     - { id: "91", standard: 4050 }              # Videogiochi - PC
     - { id: "94", standard: 4050 }              # Videogiochi - Collection
     - { id: "59", standard: 4050 }              # Videogiochi - Modding
-    - { id: "71", standard: 4050 }              # Videogiochi - Richieste evase
+    - { id: "71", standard: 4050, front: false }              # Videogiochi - Richieste evase
     - { id: "96", standard: 4000 }              # Software - Windows OS
     - { id: "119", standard: 4000 }             # Software - Linux OS
     - { id: "20", standard: 4000 }              # Software - Windows App
@@ -198,8 +198,8 @@ catalog:
     - { id: "133", standard: 7010 }             # Libreria - Periodici
     - { id: "92", standard: 5080 }              # Altri video - Documentari
     - { id: "93", standard: 5040 }              # Altri video - TV Show
-    - { id: "86", standard: 8000 }              # Altri video - Richieste evase
-    - { id: "69", standard: 7000 }              # Libreria - Richieste evase
+    - { id: "86", standard: 8000, front: false }              # Altri video - Richieste evase
+    - { id: "69", standard: 7000, front: false }              # Libreria - Richieste evase
   request:
     get: /viewforum.php
   forum_param: f

@@ -23,6 +23,7 @@ type fakeCatalogConnector struct {
 	forums   []definition.CatalogForum
 	search   error
 	searches atomic.Int32
+	calls    atomic.Int32
 	fail     map[string]error
 	delay    time.Duration
 	active   atomic.Int32
@@ -60,6 +61,7 @@ func (f *fakeCatalogConnector) Test(context.Context) (engine.TestResult, error) 
 }
 
 func (f *fakeCatalogConnector) Catalog(_ context.Context, req engine.CatalogRequest) (engine.CatalogResult, error) {
+	f.calls.Add(1)
 	current := f.active.Add(1)
 	for {
 		seen := f.max.Load()
@@ -481,5 +483,34 @@ func TestRunCatalogPageRefreshesTheFirstPage(t *testing.T) {
 	}
 	if len(found) != 1 || found[0].Title != "Serie A S01-S02" {
 		t.Fatalf("the refreshed title is missing: %+v", found)
+	}
+}
+
+// A section of finished series has nothing that moves to the top: its first
+// page is not re-read, so the pass costs one request instead of two.
+func TestRunCatalogPageSkipsTheFrontPageWhenNotNeeded(t *testing.T) {
+	ctx := context.Background()
+	noFront := false
+	connector := &fakeCatalogConnector{
+		forums: []definition.CatalogForum{{ID: "52", Standard: 5040, Weight: 5, Front: &noFront}},
+		pages: map[string]engine.CatalogResult{
+			"52:0": {PageSize: 25, More: true, Entries: []engine.CatalogEntry{
+				{Title: "Serie A", URL: "https://forum.example/viewtopic.php?t=1", Forum: "52", Standard: 5040},
+			}},
+			"52:25": {PageSize: 25, More: true, Entries: []engine.CatalogEntry{
+				{Title: "Serie B", URL: "https://forum.example/viewtopic.php?t=2", Forum: "52", Standard: 5040},
+			}},
+		},
+	}
+	manager, _, indexerID := newCatalogTestManager(t, connector)
+	if _, err := manager.RunCatalogPage(ctx, indexerID); err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+	before := connector.calls.Load()
+	if _, err := manager.RunCatalogPage(ctx, indexerID); err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+	if got := connector.calls.Load() - before; got != 1 {
+		t.Fatalf("requests for the pass = %d, want 1 (no front page)", got)
 	}
 }

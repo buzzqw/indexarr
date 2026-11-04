@@ -131,7 +131,7 @@ catalog:
   # list) and the request/staff sections are not walked.
   forums:
     - { id: "51", standard: 5040, weight: 5 }   # Stagioni in corso
-    - { id: "52", standard: 5040, weight: 5 }   # Stagioni complete
+    - { id: "52", standard: 5040, weight: 5, front: false }   # Stagioni complete: finished series, no new episodes
     - { id: "28", standard: 5040, weight: 5 }   # Serie TV
     - { id: "30", standard: 5040, weight: 5 }   # TV Show
     - { id: "26", standard: 2040, weight: 5 }   # Film

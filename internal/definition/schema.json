@@ -564,9 +564,6 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "id"
-            ],
             "properties": {
               "id": {
                 "type": "string",
@@ -576,8 +573,39 @@
                 "type": "integer",
                 "minimum": 1000,
                 "maximum": 8999
+              },
+              "url": {
+                "type": "string",
+                "description": "Fixed page (an index topic) read as it is."
+              },
+              "next": {
+                "type": "string",
+                "description": "Selector of the link to the following page of a fixed list."
+              },
+              "weight": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 20,
+                "description": "Pages this forum gets for every page of a forum of weight 1."
+              },
+              "front": {
+                "type": "boolean",
+                "default": true,
+                "description": "Re-read the first page of the listing at every pass; false for sections of finished series."
               }
-            }
+            },
+            "anyOf": [
+              {
+                "required": [
+                  "id"
+                ]
+              },
+              {
+                "required": [
+                  "url"
+                ]
+              }
+            ]
           }
         },
         "request": {
