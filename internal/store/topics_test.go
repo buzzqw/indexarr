@@ -113,3 +113,35 @@ func TestTopicCursorsRoundTrip(t *testing.T) {
 		t.Fatalf("cursors after DeleteTopics = %v", cursors)
 	}
 }
+
+// A catalogue page is a scheduled run: it must set the last run time and the
+// retry schedule of its indexer, otherwise the source stays due at every tick
+// and the forum is read once a minute.
+func TestCatalogRunSetsTheRetryState(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	mustCreateDefinition(t, st, "forum-def")
+	indexerID := mustCreateIndexer(t, st, "forum-def", "forum", "Forum")
+
+	started := time.Now().Add(-2 * time.Hour)
+	if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+		IndexerID: indexerID, Kind: "catalog", Status: "error",
+		Query: "52 start=0", StartedAt: started,
+	}); err != nil {
+		t.Fatalf("RecordIndexerHistory: %v", err)
+	}
+	last, err := st.LastRunTimes(ctx)
+	if err != nil {
+		t.Fatalf("LastRunTimes: %v", err)
+	}
+	if got := last[indexerID]; got.IsZero() || !got.Equal(started.Truncate(time.Second)) {
+		t.Fatalf("LastRunTimes = %v, want the catalogue run at %v", got, started.Truncate(time.Second))
+	}
+	states, err := st.RunRetryStates(ctx)
+	if err != nil {
+		t.Fatalf("RunRetryStates: %v", err)
+	}
+	if state := states[indexerID]; state.Failures != 1 {
+		t.Fatalf("RunRetryStates failures = %d, want 1", state.Failures)
+	}
+}

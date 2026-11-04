@@ -730,7 +730,7 @@ func (s *Store) RunRetryStates(ctx context.Context) (map[int64]RunRetryState, er
 			SELECT indexer_id, status, started_at,
 				ROW_NUMBER() OVER (PARTITION BY indexer_id ORDER BY started_at DESC, id DESC) AS rn
 			FROM indexer_history
-			WHERE kind = 'run' AND indexer_id IS NOT NULL
+			WHERE kind IN ('run', 'catalog') AND indexer_id IS NOT NULL
 		) WHERE rn <= 9
 		ORDER BY indexer_id, started_at DESC, rn`)
 	if err != nil {
@@ -774,7 +774,7 @@ func (s *Store) RunRetryStates(ctx context.Context) (map[int64]RunRetryState, er
 		SELECT indexer_id, MAX(started_at)
 		FROM indexer_history
 		WHERE indexer_id IS NOT NULL AND status = 'ok'
-			AND kind IN ('run', 'search', 'latest', 'health', 'test')
+			AND kind IN ('run', 'catalog', 'search', 'latest', 'health', 'test')
 		GROUP BY indexer_id`)
 	if err != nil {
 		return nil, fmt.Errorf("run retry successes: %w", err)
@@ -808,7 +808,7 @@ func (s *Store) LastRunTimes(ctx context.Context) (map[int64]time.Time, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT indexer_id, MAX(started_at)
 		FROM indexer_history
-		WHERE kind = 'run' AND indexer_id IS NOT NULL
+		WHERE kind IN ('run', 'catalog') AND indexer_id IS NOT NULL
 		GROUP BY indexer_id`)
 	if err != nil {
 		return nil, fmt.Errorf("last run times: %w", err)
