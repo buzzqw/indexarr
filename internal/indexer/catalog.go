@@ -63,6 +63,7 @@ func (m *Manager) catalogDefinition(ctx context.Context, indexer store.Indexer) 
 // row, ready for the next pass. The page is counted against the indexer's
 // daily query limit, because it is a request to the site.
 func (m *Manager) RunCatalogPage(ctx context.Context, indexerID int64) (outcome CatalogOutcome, err error) {
+	defer m.lockRun(indexerID)()
 	started := time.Now()
 	outcome = CatalogOutcome{IndexerID: indexerID}
 	stats := &RunStats{}
@@ -125,7 +126,11 @@ func (m *Manager) RunCatalogPage(ctx context.Context, indexerID int64) (outcome 
 	}
 	outcome.Topics = len(topics)
 	outcome.Added = added
-	next := cursor.NextStart + len(result.Entries)
+	pageSize := result.PageSize
+	if pageSize <= 0 {
+		pageSize = len(result.Entries)
+	}
+	next := cursor.NextStart + pageSize
 	if !result.More || len(result.Entries) == 0 {
 		// The listing is over: the next pass starts again from the top and
 		// finds the threads that were already known.

@@ -287,8 +287,10 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 			// The Log section embeds the process log.
 			files = append(files, "templates/logs.html")
 		case "indexer":
-			// The detail page embeds the Data tab and the Sonarr/Radarr try form.
-			files = append(files, "templates/indexer_data.html", "templates/indexer_try.html")
+			// The detail page embeds the Data and History tabs and the
+			// Sonarr/Radarr try form.
+			files = append(files, "templates/indexer_data.html", "templates/indexer_try.html",
+				"templates/indexer_history.html")
 		case "settings":
 			// Settings → Advanced keeps the Definitions table.
 			files = append(files, "templates/settings_definitions.html")
@@ -745,6 +747,7 @@ func (s *Server) uiRoutes() *http.ServeMux {
 	ui.HandleFunc("POST /indexers/{id}/duplicate", s.indexerDuplicate)
 	ui.HandleFunc("POST /indexers/{id}/test", s.indexerUnifiedTest)
 	ui.HandleFunc("POST /indexers/{id}/run", s.indexerUnifiedRun)
+	ui.HandleFunc("POST /indexers/{id}/history/run", s.indexerHistoryRun)
 	ui.HandleFunc("GET /applications", s.applicationsPage)
 	ui.HandleFunc("GET /applications/new", s.applicationNew)
 	ui.HandleFunc("POST /applications", s.applicationCreate)

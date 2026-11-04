@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/indexersvc"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -23,7 +24,8 @@ func (s *Server) indexerAction(w http.ResponseWriter, r *http.Request, run bool)
 		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.invalidID"))
 		return
 	}
-	if _, err := s.store.GetIndexer(r.Context(), id); err != nil {
+	indexerRow, err := s.store.GetIndexer(r.Context(), id)
+	if err != nil {
 		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.notFound"))
 		return
 	}
@@ -42,7 +44,16 @@ func (s *Server) indexerAction(w http.ResponseWriter, r *http.Request, run bool)
 		return
 	}
 	if run {
-		stats, runErr := s.native.Run(r.Context(), id)
+		var stats *indexer.RunStats
+		var runErr error
+		if def, ok := s.parsedDefinition(r.Context(), indexerRow.DefinitionID); ok && def.HasCatalog() && s.sched != nil {
+			// A forum with a topic history has no release list: the manual
+			// update walks one page, exactly as the periodic pass does.
+			outcome, outcomeErr := s.sched.RunIndexer(r.Context(), id)
+			stats, runErr = outcome.Stats, outcomeErr
+		} else {
+			stats, runErr = s.native.Run(r.Context(), id)
+		}
 		if stats != nil {
 			data.Run = stats
 			if len(stats.Items) > 20 {
@@ -69,6 +80,31 @@ func (s *Server) indexerAction(w http.ResponseWriter, r *http.Request, run bool)
 		data = refreshed
 	}
 	s.render(w, r, "indexer", data, http.StatusOK)
+}
+
+// indexerHistoryRun reads one page of the local topic history now, the same
+// step the periodic pass takes, and reports what the page held.
+func (s *Server) indexerHistoryRun(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		redirect(w, r, "/indexers", "", s.translate(r, "indexer.error.invalidID"))
+		return
+	}
+	path := "/indexers/" + strconv.FormatInt(id, 10) + "?tab=history"
+	if s.sched == nil {
+		redirect(w, r, path, "", s.translate(r, "indexer.error.nativeEngineRun"))
+		return
+	}
+	outcome, runErr := s.sched.RunIndexer(r.Context(), id)
+	if runErr != nil {
+		redirect(w, r, path, "", s.translate(r, "indexer.runFailed", runErr.Error()))
+		return
+	}
+	topics, added := 0, 0
+	if outcome.Stats != nil {
+		topics, added = outcome.Stats.Seen, outcome.Stats.New
+	}
+	redirect(w, r, path, s.translate(r, "idx.history.readDone", topics, added), "")
 }
 
 func (s *Server) indexerUnifiedDelete(w http.ResponseWriter, r *http.Request) {

@@ -37,7 +37,7 @@
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn primary" type="submit" title="{{T "tip.indexerTest"}}">{{T "idx.test"}}</button>
     </form>
-    {{if .Latest}}
+    {{if or .Latest .HasTopicHistory}}
     <form method="post" action="/indexers/{{.Indexer.ID}}/run">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn" type="submit" title="{{T "tip.indexerRun"}}">{{T "idx.updateNow"}}</button>
@@ -58,10 +58,13 @@
 <nav class="tabs" aria-label="{{T "idx.detail.tabsLabel"}}">
   <a class="tab{{if eq .Tab "overview"}} active{{end}}" href="/indexers/{{.Indexer.ID}}"{{if eq .Tab "overview"}} aria-current="page"{{end}}>{{T "idx.detail.overview"}}</a>
   <a class="tab{{if eq .Tab "data"}} active{{end}}" href="/indexers/{{.Indexer.ID}}?tab=data"{{if eq .Tab "data"}} aria-current="page"{{end}}>{{T "idx.detail.data"}}</a>
+  {{if .HasTopicHistory}}<a class="tab{{if eq .Tab "history"}} active{{end}}" href="/indexers/{{.Indexer.ID}}?tab=history"{{if eq .Tab "history"}} aria-current="page"{{end}}>{{T "idx.detail.history"}}</a>{{end}}
 </nav>
 
 {{if eq .Tab "data"}}
 {{template "indexer_data_body" .}}
+{{else if eq .Tab "history"}}
+{{template "indexer_history_body" .}}
 {{else}}
 
 <section class="panel health-panel" id="health">

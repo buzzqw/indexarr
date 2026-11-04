@@ -95,6 +95,12 @@ type Manager struct {
 	liveFlightMu sync.Mutex
 	liveFlights  map[string]*liveFlight
 
+	// runLocks serializes the full runs of one indexer. A manual update and
+	// the scheduled pass can otherwise log in at the same time: the forum
+	// invalidates the form token of the first request and both fail.
+	runLocksMu sync.Mutex
+	runLocks   map[int64]*sync.Mutex
+
 	// liveSem is the global fan-out limit shared by every Torznab request.
 	liveSem chan struct{}
 
@@ -1120,4 +1126,21 @@ func errorText(err error) string {
 		text = text[:500] + "…"
 	}
 	return text
+}
+
+// lockRun waits for the full run of one indexer to finish and returns the
+// release function. The lock is per indexer: two sources still run together.
+func (m *Manager) lockRun(indexerID int64) func() {
+	m.runLocksMu.Lock()
+	if m.runLocks == nil {
+		m.runLocks = make(map[int64]*sync.Mutex)
+	}
+	lock := m.runLocks[indexerID]
+	if lock == nil {
+		lock = &sync.Mutex{}
+		m.runLocks[indexerID] = lock
+	}
+	m.runLocksMu.Unlock()
+	lock.Lock()
+	return lock.Unlock
 }

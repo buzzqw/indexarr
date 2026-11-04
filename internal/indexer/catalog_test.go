@@ -6,6 +6,8 @@ import (
 	"io"
 	"log/slog"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -20,7 +22,12 @@ type fakeCatalogConnector struct {
 	pages  map[string]engine.CatalogResult
 	forums []definition.CatalogForum
 	search error
+	delay  time.Duration
+	active atomic.Int32
+	max    atomic.Int32
 }
+
+func (f *fakeCatalogConnector) peak() int32 { return f.max.Load() }
 
 func (f *fakeCatalogConnector) Capabilities() engine.Capabilities {
 	return engine.Capabilities{
@@ -50,6 +57,17 @@ func (f *fakeCatalogConnector) Test(context.Context) (engine.TestResult, error) 
 }
 
 func (f *fakeCatalogConnector) Catalog(_ context.Context, req engine.CatalogRequest) (engine.CatalogResult, error) {
+	current := f.active.Add(1)
+	for {
+		seen := f.max.Load()
+		if current <= seen || f.max.CompareAndSwap(seen, current) {
+			break
+		}
+	}
+	defer f.active.Add(-1)
+	if f.delay > 0 {
+		time.Sleep(f.delay)
+	}
 	key := req.Forum + ":" + strconv.Itoa(req.Start)
 	if page, ok := f.pages[key]; ok {
 		return page, nil
@@ -266,5 +284,75 @@ func TestMergeCatalogItemsKeepsTheSiteRows(t *testing.T) {
 	capped := mergeCatalogItems(site, local, 2)
 	if len(capped) != 2 || capped[1].DetailsURL != site[1].DetailsURL {
 		t.Fatalf("capped = %+v, want the site rows only", capped)
+	}
+}
+
+// The page holds a few rows more than the topics (announcements and stickies
+// are skipped), so the cursor must advance by the site's page size and not by
+// the number of stored entries: otherwise every page would overlap the next.
+func TestRunCatalogPageAdvancesByTheSitePageSize(t *testing.T) {
+	ctx := context.Background()
+	var start int
+	connector := &fakeCatalogConnector{
+		forums: []definition.CatalogForum{{ID: "52", Standard: 5040}},
+		pages: map[string]engine.CatalogResult{
+			"52:0": {PageSize: 25, More: true, Entries: []engine.CatalogEntry{
+				{Title: "Serie A", URL: "https://forum.example/viewtopic.php?t=1", Forum: "52", Standard: 5040},
+				{Title: "Serie B", URL: "https://forum.example/viewtopic.php?t=2", Forum: "52", Standard: 5040},
+			}},
+			"52:25": {PageSize: 25, More: false, Entries: []engine.CatalogEntry{
+				{Title: "Serie C", URL: "https://forum.example/viewtopic.php?t=3", Forum: "52", Standard: 5040},
+			}},
+		},
+	}
+	manager, _, indexerID := newCatalogTestManager(t, connector)
+	first, err := manager.RunCatalogPage(ctx, indexerID)
+	if err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+	if first.NextStart != 25 || first.Finished {
+		t.Fatalf("first page = %+v, want the next start at 25", first)
+	}
+	second, err := manager.RunCatalogPage(ctx, indexerID)
+	if err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+	start = second.Start
+	if start != 25 || !second.Finished || second.NextStart != 0 {
+		t.Fatalf("second page = %+v, want start 25 and a finished forum", second)
+	}
+}
+
+// A manual page read and the scheduled pass must not log in at the same time:
+// the forum invalidates the first form token and both fail.
+func TestRunCatalogPageIsSerializedPerIndexer(t *testing.T) {
+	ctx := context.Background()
+	connector := &fakeCatalogConnector{
+		forums: []definition.CatalogForum{{ID: "52", Standard: 5040}},
+		pages: map[string]engine.CatalogResult{
+			"52:0": {PageSize: 25, More: true, Entries: []engine.CatalogEntry{
+				{Title: "Serie A", URL: "https://forum.example/viewtopic.php?t=1", Forum: "52", Standard: 5040},
+			}},
+			"52:25": {PageSize: 25, More: true, Entries: []engine.CatalogEntry{
+				{Title: "Serie B", URL: "https://forum.example/viewtopic.php?t=2", Forum: "52", Standard: 5040},
+			}},
+		},
+	}
+	connector.delay = 40 * time.Millisecond
+	manager, _, indexerID := newCatalogTestManager(t, connector)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := manager.RunCatalogPage(ctx, indexerID); err != nil {
+				t.Errorf("RunCatalogPage: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+	if got := connector.peak(); got != 1 {
+		t.Fatalf("concurrent catalogue requests = %d, want 1 (serialized per indexer)", got)
 	}
 }

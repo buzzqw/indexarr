@@ -133,10 +133,13 @@ catalog:
     get: /viewforum.php
   forum_param: f
   start_param: start
-  page_size: 50
+  # The site shows 25 topics per page; announcements and stickies are extra
+  # rows that repeat on every page, so the selector drops them and the cursor
+  # still advances by the site's page size.
+  page_size: 25
   response:
     type: html
-    rows: { selector: "ul.topiclist.topics > li.row" }
+    rows: { selector: 'ul.topiclist.topics > li.row:not([class*="announce"]):not([class*="sticky"])' }
     fields:
       title:   { selector: "a.topictitle", filters: [trim] }
       details: { selector: "a.topictitle", attr: href, type: url }

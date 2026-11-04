@@ -241,3 +241,24 @@ func (s *Store) DeleteTopics(ctx context.Context, indexerID int64) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM topic_index_cursors WHERE indexer_id = ?`, indexerID)
 	return err
 }
+
+// TopicCountsByForum returns how many topics the history holds for each forum
+// of one indexer.
+func (s *Store) TopicCountsByForum(ctx context.Context, indexerID int64) (map[string]int64, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT forum_id, COUNT(*) FROM topic_index
+		WHERE indexer_id = ? GROUP BY forum_id`, indexerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[string]int64)
+	for rows.Next() {
+		var forum string
+		var count int64
+		if err := rows.Scan(&forum, &count); err != nil {
+			return nil, err
+		}
+		out[forum] = count
+	}
+	return out, rows.Err()
+}

@@ -1,0 +1,42 @@
+{{define "indexer_history_body"}}
+<section class="panel" id="topic-history">
+  <div class="panel-head">
+    <h2>{{T "idx.history.title"}}</h2>
+    {{if .TopicCount}}<span class="chip">{{T "idx.history.count" .TopicCount}}</span>{{end}}
+  </div>
+  <div class="panel-body">
+    <p class="help">{{T "idx.history.help"}}</p>
+    {{if .TopicCursors}}
+    <div class="table-scroll">
+      <table class="compact">
+        <thead>
+          <tr>
+            <th scope="col">{{T "idx.history.forum"}}</th>
+            <th scope="col">{{T "idx.history.topics"}}</th>
+            <th scope="col">{{T "idx.history.next"}}</th>
+            <th scope="col">{{T "idx.history.last"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .TopicCursors}}
+          <tr>
+            <td>{{.Forum}}</td>
+            <td>{{.Topics}}</td>
+            <td>{{if .Done}}{{T "idx.history.done"}}{{else}}{{.NextStart}}{{end}}</td>
+            <td>{{if .LastRun.IsZero}}—{{else}}<span title="{{date .LastRun}}">{{ago .LastRun}}</span>{{end}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <p class="muted">{{T "idx.history.empty"}}</p>
+    {{end}}
+    <form class="form-actions" method="post" action="/indexers/{{.Indexer.ID}}/history/run">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button class="btn primary" type="submit" title="{{T "idx.history.readTip"}}">{{T "idx.history.read"}}</button>
+    </form>
+    <p class="help">{{T "idx.history.interval" .FrequencyLabel}}</p>
+  </div>
+</section>
+{{end}}

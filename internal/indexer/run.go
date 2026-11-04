@@ -21,6 +21,7 @@ import (
 // Run executes one indexer into the release cache and records history and
 // state. It never touches the legacy sources table.
 func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, err error) {
+	defer m.lockRun(indexerID)()
 	started := time.Now()
 	stats = &RunStats{}
 

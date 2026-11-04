@@ -39,11 +39,13 @@ type hostRequestView struct {
 // indexerAccessRow is one required credential of a source: whether the vault
 // or the public configuration already holds it.
 // topicCursorView is one forum of the local topic history on the indexer
-// page: the address of the next page and whether the walk reached the end.
+// page: how many topics are stored, the next page and when it was read.
 type topicCursorView struct {
 	Forum     string
+	Topics    int64
 	NextStart int
 	Done      bool
+	LastRun   time.Time
 }
 
 type indexerAccessRow struct {
@@ -133,21 +135,25 @@ type indexerDetailView struct {
 	ActiveMirror string
 	// TopicCount is how many threads and series the local history holds for
 	// this indexer; TopicCursors says how far the slow walk has gone.
-	TopicCount     int64
-	TopicCursors   []topicCursorView
-	ProblemDetail  string
-	ProblemAt      time.Time
-	HasProblemAt   bool
-	LogRows        []indexerLogRow
-	AppLog         []logView
-	RunsLink       string
-	AppLogLink     string
-	AccessFields   []indexerAccessRow
-	AccessMethods  []accessMethodView
-	AccessURLKey   bool
-	MissingAccess  []string
-	AccessEditLink string
-	ListReturn     string
+	TopicCount   int64
+	TopicCursors []topicCursorView
+	// HasTopicHistory reports that the definition declares a catalog, so the
+	// page offers the History tab and a manual page read even before the
+	// first page is stored.
+	HasTopicHistory bool
+	ProblemDetail   string
+	ProblemAt       time.Time
+	HasProblemAt    bool
+	LogRows         []indexerLogRow
+	AppLog          []logView
+	RunsLink        string
+	AppLogLink      string
+	AccessFields    []indexerAccessRow
+	AccessMethods   []accessMethodView
+	AccessURLKey    bool
+	MissingAccess   []string
+	AccessEditLink  string
+	ListReturn      string
 }
 
 func (s *Server) indexerUnifiedDetail(w http.ResponseWriter, r *http.Request) {
@@ -170,6 +176,8 @@ func (s *Server) indexerUnifiedDetail(w http.ResponseWriter, r *http.Request) {
 			s.renderError(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
+	case "history":
+		data.Tab = "history"
 	default:
 		data.Tab = "overview"
 	}
@@ -283,6 +291,9 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		}
 	}
 	data.Badges = s.indexerBadges(r, in, def)
+	if def != nil {
+		data.HasTopicHistory = def.HasCatalog()
+	}
 	data.TopicCount, data.TopicCursors = s.topicHistory(r.Context(), in.ID)
 	healthView := s.loadIndexerHealth(r.Context(), in, def, nil)
 	data.Health = healthView.Assessment
@@ -607,6 +618,10 @@ func (s *Server) topicHistory(ctx context.Context, indexerID int64) (int64, []to
 	if err != nil {
 		return count, nil
 	}
+	counts, err := s.store.TopicCountsByForum(ctx, indexerID)
+	if err != nil {
+		return count, nil
+	}
 	forums := make([]string, 0, len(cursors))
 	for forum := range cursors {
 		forums = append(forums, forum)
@@ -624,8 +639,10 @@ func (s *Server) topicHistory(ctx context.Context, indexerID int64) (int64, []to
 		cursor := cursors[forum]
 		out = append(out, topicCursorView{
 			Forum:     forum,
+			Topics:    counts[forum],
 			NextStart: cursor.NextStart,
 			Done:      cursor.NextStart == 0,
+			LastRun:   cursor.LastRunAt,
 		})
 	}
 	return count, out

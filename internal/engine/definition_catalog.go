@@ -35,8 +35,12 @@ type CatalogEntry struct {
 // CatalogResult is one listing page.
 type CatalogResult struct {
 	Entries []CatalogEntry
-	// More is false when the page held fewer rows than page_size, which is
-	// how a forum says that the list is over.
+	// PageSize is the site's page size: the cursor advances by it, because
+	// the page holds a few rows more than the topics (announcements and
+	// stickies) that the definition skips.
+	PageSize int
+	// More is true while a page still lists topics. The walk asks one page
+	// more than the last one: it comes back empty and closes the forum.
 	More bool
 }
 
@@ -112,6 +116,7 @@ func (c *DefinitionConnector) Catalog(ctx context.Context, req CatalogRequest) (
 	build := func() (*http.Request, error) {
 		return c.newRequest(ctx, method, target, nil)
 	}
+	stamp := c.session.loginStamp()
 	request, err := build()
 	if err != nil {
 		return CatalogResult{}, err
@@ -120,16 +125,31 @@ func (c *DefinitionConnector) Catalog(ctx context.Context, req CatalogRequest) (
 	if err != nil {
 		return CatalogResult{}, err
 	}
-	if (response.Status == http.StatusUnauthorized || response.Status == http.StatusForbidden) && c.canReLogin() {
+	// A forum that keeps one session per account answers as a guest once the
+	// account logged in elsewhere: 200, the login page, no topics. The missing
+	// auth.logged_in marker tells it apart from an empty forum.
+	relogged := false
+	if response.Status < 400 && c.sessionLost(response) {
+		relogged = true
+		if err := c.reLoginAfter(ctx, stamp); err != nil {
+			return CatalogResult{}, err
+		}
+		if request, err = build(); err != nil {
+			return CatalogResult{}, err
+		}
+		if response, err = c.doFeed(ctx, request); err != nil {
+			return CatalogResult{}, err
+		}
+	}
+	if (response.Status == http.StatusUnauthorized || response.Status == http.StatusForbidden) &&
+		c.canReLogin() && !relogged {
 		if err := c.forceReLogin(ctx); err != nil {
 			return CatalogResult{}, err
 		}
-		request, err = build()
-		if err != nil {
+		if request, err = build(); err != nil {
 			return CatalogResult{}, err
 		}
-		response, err = c.doFeed(ctx, request)
-		if err != nil {
+		if response, err = c.doFeed(ctx, request); err != nil {
 			return CatalogResult{}, err
 		}
 	}
@@ -145,7 +165,7 @@ func (c *DefinitionConnector) Catalog(ctx context.Context, req CatalogRequest) (
 	if err != nil {
 		return CatalogResult{}, err
 	}
-	result := CatalogResult{More: len(rows) >= pageSize}
+	result := CatalogResult{PageSize: pageSize}
 	for _, raw := range rows {
 		item, ok, err := c.normalizeRowWith(raw, response.URL, spec)
 		if err != nil {
@@ -173,6 +193,7 @@ func (c *DefinitionConnector) Catalog(ctx context.Context, req CatalogRequest) (
 			Standard: standard,
 		})
 	}
+	result.More = len(result.Entries) > 0
 	return result, nil
 }
 

@@ -43,7 +43,7 @@ catalog:
   page_size: 2
   response:
     type: html
-    rows: { selector: "ul.topiclist.topics > li.row" }
+    rows: { selector: 'ul.topiclist.topics > li.row:not([class*="announce"]):not([class*="sticky"])' }
     fields:
       title: { selector: "a.topictitle", filters: [trim] }
       details: { selector: "a.topictitle", attr: href, type: url }
@@ -79,7 +79,9 @@ func TestDefinitionCatalogReadsOnePage(t *testing.T) {
 		}
 		seen = r.URL.Query()
 		writeBody(t, w, []byte(`<ul class="topiclist topics">
+			<li class="row bg1 global-announce"><a class="topictitle" href="/viewtopic.php?t=7">Comunicazione</a></li>
 			<li class="row"><a class="topictitle" href="/viewtopic.php?t=1">Serie A</a></li>
+			<li class="row sticky"><a class="topictitle" href="/viewtopic.php?t=8">Regole</a></li>
 			<li class="row"><a class="topictitle" href="/viewtopic.php?t=2">Serie B</a></li>
 		</ul>`))
 	}))
@@ -109,15 +111,26 @@ func TestDefinitionCatalogReadsOnePage(t *testing.T) {
 	if result.Entries[0].Forum != "52" || result.Entries[0].Standard != 5040 {
 		t.Errorf("entry = %+v, want forum 52 category 5040", result.Entries[0])
 	}
+	if result.PageSize != 2 {
+		t.Errorf("page size = %d, want 2", result.PageSize)
+	}
 	if !result.More {
-		t.Error("a full page must say that more rows follow")
+		t.Error("a page with topics must say that more rows follow")
+	}
+	for _, entry := range result.Entries {
+		if strings.Contains(entry.Title, "Comunicazione") || strings.Contains(entry.Title, "Regole") {
+			t.Errorf("an announcement or a sticky topic was stored: %+v", entry)
+		}
 	}
 }
 
-func TestDefinitionCatalogShortPageEndsTheForum(t *testing.T) {
+func TestDefinitionCatalogEmptyPageEndsTheForum(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Past the last page the forum still shows the announcements and the
+		// stickies, and no topic at all: the walk is over.
 		writeBody(t, w, []byte(`<ul class="topiclist topics">
-			<li class="row"><a class="topictitle" href="/viewtopic.php?t=9">Ultima</a></li>
+			<li class="row bg1 global-announce"><a class="topictitle" href="/viewtopic.php?t=7">Comunicazione</a></li>
+			<li class="row sticky"><a class="topictitle" href="/viewtopic.php?t=8">Regole</a></li>
 		</ul>`))
 	}))
 	defer server.Close()
@@ -127,14 +140,11 @@ func TestDefinitionCatalogShortPageEndsTheForum(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Catalog: %v", err)
 	}
-	if len(result.Entries) != 1 {
-		t.Fatalf("entries = %d, want 1", len(result.Entries))
+	if len(result.Entries) != 0 {
+		t.Fatalf("entries = %d, want 0", len(result.Entries))
 	}
 	if result.More {
-		t.Error("a page shorter than page_size finishes the forum")
-	}
-	if result.Entries[0].Standard != 2040 {
-		t.Errorf("category = %d, want 2040", result.Entries[0].Standard)
+		t.Error("a page with no topic finishes the forum")
 	}
 }
 
