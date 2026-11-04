@@ -436,3 +436,50 @@ func TestRunCatalogPageSkipsAFailingForum(t *testing.T) {
 		t.Fatalf("outcome = %+v, want the healthy forum", outcome)
 	}
 }
+
+// A topic that receives a new episode moves to the top of the listing: the
+// first page is re-read at every pass, so its title refreshes even while the
+// cursor is deep in the forum.
+func TestRunCatalogPageRefreshesTheFirstPage(t *testing.T) {
+	ctx := context.Background()
+	connector := &fakeCatalogConnector{
+		forums: []definition.CatalogForum{{ID: "50", Standard: 2040, Weight: 5}},
+		pages: map[string]engine.CatalogResult{
+			"50:0": {PageSize: 25, More: true, Entries: []engine.CatalogEntry{
+				{Title: "Serie A", URL: "https://forum.example/viewtopic.php?t=1", Forum: "50", Standard: 2040},
+				{Title: "Serie B", URL: "https://forum.example/viewtopic.php?t=2", Forum: "50", Standard: 2040},
+			}},
+			"50:25": {PageSize: 25, More: true, Entries: []engine.CatalogEntry{
+				{Title: "Serie C", URL: "https://forum.example/viewtopic.php?t=3", Forum: "50", Standard: 2040},
+			}},
+		},
+	}
+	manager, st, indexerID := newCatalogTestManager(t, connector)
+	if _, err := manager.RunCatalogPage(ctx, indexerID); err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+
+	// New episodes arrive in the topic of serie A and the listing shows the
+	// new title on its first page.
+	connector.pages["50:0"] = engine.CatalogResult{PageSize: 25, More: true, Entries: []engine.CatalogEntry{
+		{Title: "Serie A S01-S02", URL: "https://forum.example/viewtopic.php?t=1", Forum: "50", Standard: 2040},
+		{Title: "Serie B", URL: "https://forum.example/viewtopic.php?t=2", Forum: "50", Standard: 2040},
+	}}
+	outcome, err := manager.RunCatalogPage(ctx, indexerID)
+	if err != nil {
+		t.Fatalf("RunCatalogPage: %v", err)
+	}
+	if outcome.Start != 25 {
+		t.Fatalf("start = %d, want the cursor at 25", outcome.Start)
+	}
+	if outcome.Topics != 3 {
+		t.Fatalf("topics read = %d, want the cursor page plus the front page", outcome.Topics)
+	}
+	found, err := st.SearchTopics(ctx, indexerID, []string{"s01"}, 10)
+	if err != nil {
+		t.Fatalf("SearchTopics: %v", err)
+	}
+	if len(found) != 1 || found[0].Title != "Serie A S01-S02" {
+		t.Fatalf("the refreshed title is missing: %+v", found)
+	}
+}

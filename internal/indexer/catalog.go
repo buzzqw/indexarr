@@ -123,10 +123,25 @@ func (m *Manager) RunCatalogPage(ctx context.Context, indexerID int64) (outcome 
 		}
 		return outcome, fmt.Errorf("indexer %s: catalog: %w", indexer.Slug, err)
 	}
-	stats.Seen = len(result.Entries)
-	topics := make([]store.Topic, 0, len(result.Entries))
+	entries := result.Entries
+	// The listing is sorted by last post, so a topic that receives a new
+	// episode moves to the first page. That page is re-read at every pass, in
+	// addition to the page the cursor is on: otherwise a thread updated today
+	// would show its old title until the walk comes back to the top, which on
+	// a big forum takes weeks.
+	if catalogHasFrontPage(forum, cursor.NextStart) {
+		front, frontErr := catalog.Catalog(ctx, engine.CatalogRequest{Forum: forum.ID, Start: 0})
+		if frontErr != nil {
+			m.logger.Debug("indexer: catalogue front page",
+				"indexer", indexer.Slug, "forum", forum.ID, "error", frontErr)
+		} else {
+			entries = append(front.Entries, entries...)
+		}
+	}
+	stats.Seen = len(entries)
+	topics := make([]store.Topic, 0, len(entries))
 	now := time.Now()
-	for _, entry := range result.Entries {
+	for _, entry := range entries {
 		topics = append(topics, store.Topic{
 			IndexerID:   indexerID,
 			ForumID:     forum.ID,
@@ -200,6 +215,13 @@ func nextCatalogForum(forums []definition.CatalogForum, cursors map[string]store
 		}
 	}
 	return chosen
+}
+
+// catalogHasFrontPage reports whether the walk of this forum can re-read its
+// first page: a forum selected by "start" (not a fixed index topic) whose
+// cursor already moved past the top.
+func catalogHasFrontPage(forum definition.CatalogForum, nextStart int) bool {
+	return strings.TrimSpace(forum.URL) == "" && nextStart > 0
 }
 
 func catalogScore(cursor store.TopicCursor, weight int) float64 {
