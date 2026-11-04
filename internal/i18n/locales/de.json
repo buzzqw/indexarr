@@ -2776,5 +2776,20 @@
   "indexerForm.liveOnMissHelp": "Nur für Foren mit Themenverlauf. Fehlt der Titel, fragt indexarr die Seite ab, weiterhin im Anti-Flood-Abstand. Ausgeschaltet antwortet es nur aus dem Verlauf: neue Themen erscheinen nach dem nächsten Durchlauf, ohne Sperrrisiko.",
   "idx.topics.historyOnly": "App-Suchen nutzen nur den Themenverlauf: Fehlt ein Titel, fragt indexarr die Seite nicht ab.",
   "idx.topics.liveOnMiss": "Ist ein Titel nicht im Verlauf, ist die Live-Suche erlaubt, weiterhin im Anti-Flood-Abstand.",
-  "idx.topics.modeTip": "Änderbar unter Bearbeiten → Erweitert."
+  "idx.topics.modeTip": "Änderbar unter Bearbeiten → Erweitert.",
+  "indexerForm.navLabel": "Abschnitte des Indexer-Formulars",
+  "indexerForm.sectionIdentity": "Identität und Adresse",
+  "indexerForm.sectionIdentityHelp": "Name, Adresse und ob die Quelle aktiv ist.",
+  "indexerForm.sectionSearch": "Suche und Inhalt",
+  "indexerForm.sectionSearchHelp": "Was die Quelle liefert, welche Kategorien sie speist und wie der Forum-Verlauf genutzt wird.",
+  "indexerForm.sectionSchedule": "Aktualisierung",
+  "indexerForm.sectionScheduleHelp": "Wie oft indexarr die Quelle liest und wie lange es auf eine Antwort wartet.",
+  "indexerForm.groupRouting": "Identität und Routing",
+  "indexerForm.groupRoutingHelp": "Protokoll, interner Name, Priorität und Tags für die Apps.",
+  "indexerForm.groupLimits": "Limits und Seeding",
+  "indexerForm.groupLimitsHelp": "Tägliche Such- und Grab-Limits sowie die in die Apps kopierten Seed-Kriterien.",
+  "indexerForm.groupNetwork": "Netzwerk und Anti-Bot",
+  "indexerForm.groupNetworkHelp": "Proxy, User-Agent, private Adressen und Cloudflare-Löser.",
+  "indexerForm.groupDefinition": "Definitionseinstellungen",
+  "indexerForm.groupDefinitionHelp": "Optionale Werte dieser Definition. Sie sind nicht bei jeder Quelle nötig."
 }

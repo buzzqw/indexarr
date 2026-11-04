@@ -2776,5 +2776,20 @@
   "indexerForm.liveOnMissHelp": "Only for forums with a topic history. On a miss indexarr asks the site, still paced by the flood interval. Off, it answers only from the history: new threads appear after the next topic walk, without risking a block.",
   "idx.topics.historyOnly": "App searches use only the topic history: when a title is missing, indexarr does not ask the site.",
   "idx.topics.liveOnMiss": "If a title is not in the topic history, the online search is allowed, still at the anti-flood interval.",
-  "idx.topics.modeTip": "Change this in Edit → Advanced."
+  "idx.topics.modeTip": "Change this in Edit → Advanced.",
+  "indexerForm.navLabel": "Indexer form sections",
+  "indexerForm.sectionIdentity": "Identity and address",
+  "indexerForm.sectionIdentityHelp": "Name, address and whether the source is active.",
+  "indexerForm.sectionSearch": "Search and content",
+  "indexerForm.sectionSearchHelp": "What the source returns, which categories it feeds and how the forum history is used.",
+  "indexerForm.sectionSchedule": "Updates",
+  "indexerForm.sectionScheduleHelp": "How often indexarr reads the source and how long it waits for an answer.",
+  "indexerForm.groupRouting": "Identity and routing",
+  "indexerForm.groupRoutingHelp": "Protocol, internal name, priority and tags used by the apps.",
+  "indexerForm.groupLimits": "Limits and seeding",
+  "indexerForm.groupLimitsHelp": "Daily query and grab limits, and the seed criteria copied to the apps.",
+  "indexerForm.groupNetwork": "Network and anti-bot",
+  "indexerForm.groupNetworkHelp": "Proxy, user agent, private addresses and the Cloudflare solver.",
+  "indexerForm.groupDefinition": "Definition settings",
+  "indexerForm.groupDefinitionHelp": "Optional values declared by this definition. They are not needed on every source."
 }

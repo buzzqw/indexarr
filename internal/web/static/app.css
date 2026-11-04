@@ -1013,6 +1013,42 @@ input[readonly] { background: var(--surface-2); }
   margin: 1rem 0;
 }
 
+/* The indexer form is long: a short section index and labelled groups keep the
+   common settings visible and the rare ones findable. */
+.form-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.8rem;
+  margin: 0.2rem 0 1rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.form-nav a {
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.form-nav a:hover { text-decoration: underline; }
+.form-section {
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+}
+.form-section:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.form-section > .sub-head { margin-top: 0; }
+.form-group-title {
+  margin: 1.2rem 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.form-group-title:first-of-type { margin-top: 0.2rem; }
+
 .copy-row { display: flex; gap: 0.5rem; align-items: center; }
 .copy-row input { flex: 1 1 auto; }
 .copy-row .btn { flex: 0 0 auto; }

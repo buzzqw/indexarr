@@ -33,10 +33,25 @@
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <input type="hidden" name="definition_id" value="{{.DefinitionID}}">
 
+  <nav class="form-nav" aria-label="{{T "indexerForm.navLabel"}}">
+    <a href="#form-identity">{{T "indexerForm.sectionIdentity"}}</a>
+    <a href="#access">{{T "indexerForm.accessTitle"}}</a>
+    <a href="#form-search">{{T "indexerForm.sectionSearch"}}</a>
+    <a href="#form-schedule">{{T "indexerForm.sectionSchedule"}}</a>
+    <a href="#form-advanced">{{T "component.advanced"}}</a>
+  </nav>
+
+  <section class="form-section" id="form-identity">
+    <h3 class="sub-head">{{T "indexerForm.sectionIdentity"}}</h3>
+    <p class="help">{{T "indexerForm.sectionIdentityHelp"}}</p>
   <div class="form-grid">
     <div class="field grow">
       <label for="name">{{T "idx.name"}}</label>
       <input id="name" name="name" type="text" required maxlength="100" value="{{.Name}}" placeholder="{{T "indexerForm.namePlaceholder"}}">
+    </div>
+    <div class="field checkbox">
+      <input id="enabled" name="enabled" type="checkbox"{{if .Enabled}} checked{{end}}>
+      <label for="enabled">{{T "indexerForm.enabled"}}</label>
     </div>
   </div>
 
@@ -59,6 +74,7 @@
     <p class="help">{{T "indexerForm.urlChoicesHelp"}}</p>
   </div>
   {{end}}
+  </section>
 
   <section class="form-access" id="access">
     <h3 class="sub-head">{{T "indexerForm.accessTitle"}}</h3>
@@ -76,125 +92,11 @@
     {{end}}
   </section>
 
-  {{if .Categories}}{{template "category-picker" .}}{{end}}
-
-  {{range .RequiredFields}}{{template "indexer-setting-field" .}}{{end}}
-
-  <div class="form-grid">
-    <div class="field grow" data-interval-editor>
-      <label for="interval_seconds">{{T "indexerForm.interval"}}</label>
-      <div class="interval-row">
-        <select id="interval_picker" data-interval-picker aria-label="{{T "indexerForm.frequencyQuick"}}" title="{{T "indexerForm.frequencyQuick"}}">
-          {{range .IntervalChoices}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
-        </select>
-        <input id="interval_seconds" name="interval_seconds" type="number" min="0" step="60" value="{{.IntervalSeconds}}" title="{{T "indexerForm.intervalTip"}}">
-        <span class="muted interval-preview" data-interval-preview>{{.FrequencyLabel}}</span>
-      </div>
-      <p class="help">{{T "indexerForm.frequencyHelp"}}</p>
-      <p class="help">{{T "indexerForm.intervalHelp"}}</p>
-    </div>
-    <div class="field grow">
-      <label for="request_timeout_seconds">{{T "indexerForm.requestTimeout"}}</label>
-      <input id="request_timeout_seconds" name="request_timeout_seconds" type="number" min="0" max="300" step="5" value="{{.RequestTimeoutSeconds}}" title="{{T "indexerForm.requestTimeoutTip"}}">
-      <p class="help">{{T "indexerForm.requestTimeoutHelp"}}</p>
-    </div>
-  </div>
-
-  {{if .IndexSources}}
-  <section class="panel" id="index-sources">
-    <div class="panel-head"><h2>{{T "idx.indexSources.title"}}</h2></div>
-    <p class="help">{{T "idx.indexSources.help"}}</p>
-    <ul class="index-sources">
-      {{range .IndexSources}}
-      <li><span>{{.Label}}</span> <a class="link" href="{{.URL}}" target="_blank" rel="noopener noreferrer" title="{{T "idx.indexSources.open"}}">{{.URL}}</a></li>
-      {{end}}
-    </ul>
-  </section>
-  {{end}}
-
-  {{template "advanced-open" (advanced (T "component.advanced"))}}
-    <div class="form-grid">
-      <div class="field">
-        <label for="protocol">{{T "idx.protocol"}}</label>
-        {{if .ProtocolKnown}}
-        <input type="hidden" name="protocol" value="{{.Protocol}}">
-        <p class="readonly-value">{{.ProtocolLabel}}</p>
-        {{else}}
-        <select id="protocol" name="protocol">
-          <option value="torrent"{{if eq .Protocol "torrent"}} selected{{end}}>{{T "idx.protocolTorrentMagnet"}}</option>
-          <option value="usenet"{{if eq .Protocol "usenet"}} selected{{end}}>{{T "idx.protocolUsenet"}}</option>
-          <option value="ed2k"{{if eq .Protocol "ed2k"}} selected{{end}}>{{T "idx.protocolEd2k"}}</option>
-        </select>
-        {{end}}
-        <p class="help">{{T "idx.protocolHelp"}}</p>
-        <p class="help">{{T "tip.clientProtocol"}}</p>
-      </div>
-      <div class="field">
-        <label for="slug">{{T "idx.slug"}}</label>
-        <input id="slug" name="slug" type="text" value="{{.Slug}}" placeholder="{{T "indexerForm.slugPlaceholder"}}">
-      </div>
-      <div class="field">
-        <label for="priority">{{T "idx.priority"}}</label>
-        <input id="priority" name="priority" type="number" value="{{.Priority}}">
-      </div>
-    </div>
-
-    <div class="form-grid">
-      <div class="field grow">
-        <label for="tags" title="{{T "tip.idxTags"}}">{{T "idx.tags"}}</label>
-        <input id="tags" name="tags" type="text" value="{{.Tags}}" placeholder="{{T "indexerForm.tagsPlaceholder"}}" title="{{T "tip.idxTags"}}">
-        <p class="help">{{T "indexerForm.tagsHelp"}}</p>
-      </div>
-      <div class="field grow">
-        <label for="user_agent">{{T "idx.userAgent"}}</label>
-        <input id="user_agent" name="user_agent" type="text" value="{{.UserAgent}}" placeholder="{{T "indexerForm.userAgentPlaceholder"}}">
-      </div>
-    </div>
-
-    <div class="form-grid">
-      <div class="field grow">
-        <label for="proxy_id">{{T "indexerForm.proxy"}}</label>
-        <select id="proxy_id" name="proxy_id">
-          <option value="0">{{T "indexerForm.proxyNone"}}</option>
-          {{range .Proxies}}<option value="{{.ID}}"{{if eq $.ProxyID .ID}} selected{{end}}>{{.Label}}</option>{{end}}
-        </select>
-        <p class="help">{{T "indexerForm.proxyHelp"}} <a href="/proxies">{{T "indexerForm.proxyManage"}}</a></p>
-      </div>
-      <div class="field">
-        <label for="query_limit">{{T "indexerForm.queryLimit"}}</label>
-        <input id="query_limit" name="query_limit" type="number" min="0" step="1" value="{{.QueryLimit}}">
-        <p class="help">{{T "indexerForm.queryLimitHelp"}}</p>
-      </div>
-      <div class="field">
-        <label for="grab_limit">{{T "indexerForm.grabLimit"}}</label>
-        <input id="grab_limit" name="grab_limit" type="number" min="0" step="1" value="{{.GrabLimit}}">
-        <p class="help">{{T "indexerForm.grabLimitHelp"}}</p>
-      </div>
-    </div>
-
-    <div class="form-grid">
-      <div class="field">
-        <label for="min_seeders">{{T "indexerForm.minSeeders"}}</label>
-        <input id="min_seeders" name="min_seeders" type="number" min="0" step="1" value="{{.MinSeeders}}">
-        <p class="help">{{T "indexerForm.minSeedersHelp"}}</p>
-      </div>
-      <div class="field">
-        <label for="seed_ratio">{{T "indexerForm.seedRatio"}}</label>
-        <input id="seed_ratio" name="seed_ratio" type="number" min="0" step="0.1" value="{{printf "%.2f" .SeedRatio}}">
-        <p class="help">{{T "indexerForm.seedRatioHelp"}}</p>
-      </div>
-      <div class="field">
-        <label for="seed_time_minutes">{{T "indexerForm.seedTime"}}</label>
-        <input id="seed_time_minutes" name="seed_time_minutes" type="number" min="0" step="1" value="{{.SeedTimeMinutes}}">
-        <p class="help">{{T "indexerForm.seedTimeHelp"}}</p>
-      </div>
-      <div class="field">
-        <label for="season_pack_seed_time_minutes">{{T "indexerForm.seasonPackSeedTime"}}</label>
-        <input id="season_pack_seed_time_minutes" name="season_pack_seed_time_minutes" type="number" min="0" step="1" value="{{.SeasonPackSeedTimeMinutes}}">
-        <p class="help">{{T "indexerForm.seasonPackSeedTimeHelp"}}</p>
-      </div>
-    </div>
-
+  <section class="form-section" id="form-search">
+    <h3 class="sub-head">{{T "indexerForm.sectionSearch"}}</h3>
+    <p class="help">{{T "indexerForm.sectionSearchHelp"}}</p>
+    {{if .Categories}}{{template "category-picker" .}}{{end}}
+    {{range .RequiredFields}}{{template "indexer-setting-field" .}}{{end}}
     <div class="form-grid">
       <div class="field grow">
         <label for="query">{{T "idx.query"}}</label>
@@ -208,60 +110,11 @@
         <p class="help">{{T "idx.defaultCategoryHelp"}}</p>
       </div>
     </div>
-
-
-    {{range .AdvancedFields}}
-    <div class="field{{if eq .Type "checkbox"}} checkbox{{end}}">
-      <label for="setting_{{.Name}}">{{.Label}}</label>
-      {{if eq .Type "password"}}
-      <div class="secret-field" data-secret-change-field>
-        <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}">
-        {{if .HasSecret}}<button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>{{end}}
-        <button class="btn primary" type="button" data-secret-save hidden>{{T "common.save"}}</button>
-      </div>
-      {{if .HasSecret}}<label class="check muted"><input type="checkbox" name="clear_{{.Name}}"> <span>{{T "indexerForm.removeSecret"}}</span></label>{{end}}
-      {{else if eq .Type "checkbox"}}
-      <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="checkbox"{{if .Checked}} checked{{end}}>
-      {{else if eq .Type "select"}}
-      <select id="setting_{{.Name}}" name="setting_{{.Name}}">
-        {{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
-      </select>
-      {{else}}
-      <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="text" value="{{.Value}}">
-      {{end}}
-      {{if .Help}}<p class="help">{{.Help}}</p>{{end}}
-    </div>
-    {{end}}
-
     <div class="form-grid">
       <div class="field">
-        <label for="challenge">{{T "indexerForm.challenge"}}</label>
-        <select id="challenge" name="challenge">
-          {{range .ChallengeOptions}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
-        </select>
-        <p class="help">{{T "indexerForm.challengeHelp"}}</p>
-      </div>
-      <div class="field">
-        <label for="flaresolverr_url">{{T "indexerForm.flareSolverrURL"}}</label>
-        <input id="flaresolverr_url" name="flaresolverr_url" type="text" inputmode="url" autocomplete="off" spellcheck="false" value="{{.FlareSolverrURL}}" placeholder="{{T "settings.flaresolverrURLPlaceholder"}}">
-        <p class="help">{{T "indexerForm.flareSolverrURLHelp"}}</p>
-      </div>
-      <div class="field">
-        <label for="flaresolverr_timeout">{{T "indexerForm.flareSolverrTimeout"}}</label>
-        <input id="flaresolverr_timeout" name="flaresolverr_timeout" type="number" min="5" max="300" step="1" value="{{.FlareSolverrTimeout}}">
-        <p class="help">{{T "indexerForm.flareSolverrTimeoutHelp"}}</p>
-      </div>
-    </div>
-
-    <div class="form-grid">
-      <div class="field checkbox">
-        <input id="allow_private" name="allow_private" type="checkbox"{{if .AllowPrivate}} checked{{end}}>
-        <label for="allow_private">{{T "idx.allowPrivate"}}</label>
-        <p class="help">{{T "idx.allowPrivateHelp"}}</p>
-      </div>
-      <div class="field checkbox">
-        <input id="enabled" name="enabled" type="checkbox"{{if .Enabled}} checked{{end}}>
-        <label for="enabled">{{T "indexerForm.enabled"}}</label>
+        <label for="min_size_mb">{{T "indexerForm.minSize"}}</label>
+        <input id="min_size_mb" name="min_size_mb" type="number" min="0" max="1048576" step="1" value="{{.MinSize}}" placeholder="0">
+        <p class="help">{{T "indexerForm.minSizeHelp"}}</p>
       </div>
       <div class="field checkbox">
         <input id="store_latest" name="store_latest" type="checkbox"{{if .StoreLatest}} checked{{end}}>
@@ -275,18 +128,199 @@
         <p class="help">{{T "indexerForm.liveOnMissHelp"}}</p>
       </div>
       {{end}}
-      <div class="field">
-        <label for="min_size_mb">{{T "indexerForm.minSize"}}</label>
-        <input id="min_size_mb" name="min_size_mb" type="number" min="0" max="1048576" step="1" value="{{.MinSize}}" placeholder="0">
-        <p class="help">{{T "indexerForm.minSizeHelp"}}</p>
+    </div>
+  </section>
+
+  <section class="form-section" id="form-schedule">
+    <h3 class="sub-head">{{T "indexerForm.sectionSchedule"}}</h3>
+    <p class="help">{{T "indexerForm.sectionScheduleHelp"}}</p>
+    <div class="form-grid">
+      <div class="field grow" data-interval-editor>
+        <label for="interval_seconds">{{T "indexerForm.interval"}}</label>
+        <div class="interval-row">
+          <select id="interval_picker" data-interval-picker aria-label="{{T "indexerForm.frequencyQuick"}}" title="{{T "indexerForm.frequencyQuick"}}">
+            {{range .IntervalChoices}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+          </select>
+          <input id="interval_seconds" name="interval_seconds" type="number" min="0" step="60" value="{{.IntervalSeconds}}" title="{{T "indexerForm.intervalTip"}}">
+          <span class="muted interval-preview" data-interval-preview>{{.FrequencyLabel}}</span>
+        </div>
+        <p class="help">{{T "indexerForm.frequencyHelp"}}</p>
+        <p class="help">{{T "indexerForm.intervalHelp"}}</p>
+      </div>
+      <div class="field grow">
+        <label for="request_timeout_seconds">{{T "indexerForm.requestTimeout"}}</label>
+        <input id="request_timeout_seconds" name="request_timeout_seconds" type="number" min="0" max="300" step="5" value="{{.RequestTimeoutSeconds}}" title="{{T "indexerForm.requestTimeoutTip"}}">
+        <p class="help">{{T "indexerForm.requestTimeoutHelp"}}</p>
       </div>
     </div>
+  </section>
 
-    <div class="field">
-      <label>{{T "setting.proxy.label"}}</label>
-      <p class="muted">{{T "idx.noProxy"}}</p>
+  {{if .IndexSources}}
+  <section class="panel" id="index-sources">
+    <div class="panel-head"><h2>{{T "idx.indexSources.title"}}</h2></div>
+    <p class="help">{{T "idx.indexSources.help"}}</p>
+    <ul class="index-sources">
+      {{range .IndexSources}}
+      <li><span>{{.Label}}</span> <a class="link" href="{{.URL}}" target="_blank" rel="noopener noreferrer" title="{{T "idx.indexSources.open"}}">{{.URL}}</a></li>
+      {{end}}
+    </ul>
+  </section>
+  {{end}}
+
+  <details class="advanced" id="form-advanced">
+    <summary>{{T "component.advanced"}}</summary>
+    <div class="advanced-body">
+
+      <h4 class="form-group-title">{{T "indexerForm.groupRouting"}}</h4>
+      <p class="help">{{T "indexerForm.groupRoutingHelp"}}</p>
+      <div class="form-grid">
+        <div class="field">
+          <label for="protocol">{{T "idx.protocol"}}</label>
+          {{if .ProtocolKnown}}
+          <input type="hidden" name="protocol" value="{{.Protocol}}">
+          <p class="readonly-value">{{.ProtocolLabel}}</p>
+          {{else}}
+          <select id="protocol" name="protocol">
+            <option value="torrent"{{if eq .Protocol "torrent"}} selected{{end}}>{{T "idx.protocolTorrentMagnet"}}</option>
+            <option value="usenet"{{if eq .Protocol "usenet"}} selected{{end}}>{{T "idx.protocolUsenet"}}</option>
+            <option value="ed2k"{{if eq .Protocol "ed2k"}} selected{{end}}>{{T "idx.protocolEd2k"}}</option>
+          </select>
+          {{end}}
+          <p class="help">{{T "idx.protocolHelp"}}</p>
+          <p class="help">{{T "tip.clientProtocol"}}</p>
+        </div>
+        <div class="field">
+          <label for="slug">{{T "idx.slug"}}</label>
+          <input id="slug" name="slug" type="text" value="{{.Slug}}" placeholder="{{T "indexerForm.slugPlaceholder"}}">
+        </div>
+        <div class="field">
+          <label for="priority">{{T "idx.priority"}}</label>
+          <input id="priority" name="priority" type="number" value="{{.Priority}}">
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field grow">
+          <label for="tags" title="{{T "tip.idxTags"}}">{{T "idx.tags"}}</label>
+          <input id="tags" name="tags" type="text" value="{{.Tags}}" placeholder="{{T "indexerForm.tagsPlaceholder"}}" title="{{T "tip.idxTags"}}">
+          <p class="help">{{T "indexerForm.tagsHelp"}}</p>
+        </div>
+      </div>
+
+      <h4 class="form-group-title">{{T "indexerForm.groupLimits"}}</h4>
+      <p class="help">{{T "indexerForm.groupLimitsHelp"}}</p>
+      <div class="form-grid">
+        <div class="field">
+          <label for="query_limit">{{T "indexerForm.queryLimit"}}</label>
+          <input id="query_limit" name="query_limit" type="number" min="0" step="1" value="{{.QueryLimit}}">
+          <p class="help">{{T "indexerForm.queryLimitHelp"}}</p>
+        </div>
+        <div class="field">
+          <label for="grab_limit">{{T "indexerForm.grabLimit"}}</label>
+          <input id="grab_limit" name="grab_limit" type="number" min="0" step="1" value="{{.GrabLimit}}">
+          <p class="help">{{T "indexerForm.grabLimitHelp"}}</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="min_seeders">{{T "indexerForm.minSeeders"}}</label>
+          <input id="min_seeders" name="min_seeders" type="number" min="0" step="1" value="{{.MinSeeders}}">
+          <p class="help">{{T "indexerForm.minSeedersHelp"}}</p>
+        </div>
+        <div class="field">
+          <label for="seed_ratio">{{T "indexerForm.seedRatio"}}</label>
+          <input id="seed_ratio" name="seed_ratio" type="number" min="0" step="0.1" value="{{printf "%.2f" .SeedRatio}}">
+          <p class="help">{{T "indexerForm.seedRatioHelp"}}</p>
+        </div>
+        <div class="field">
+          <label for="seed_time_minutes">{{T "indexerForm.seedTime"}}</label>
+          <input id="seed_time_minutes" name="seed_time_minutes" type="number" min="0" step="1" value="{{.SeedTimeMinutes}}">
+          <p class="help">{{T "indexerForm.seedTimeHelp"}}</p>
+        </div>
+        <div class="field">
+          <label for="season_pack_seed_time_minutes">{{T "indexerForm.seasonPackSeedTime"}}</label>
+          <input id="season_pack_seed_time_minutes" name="season_pack_seed_time_minutes" type="number" min="0" step="1" value="{{.SeasonPackSeedTimeMinutes}}">
+          <p class="help">{{T "indexerForm.seasonPackSeedTimeHelp"}}</p>
+        </div>
+      </div>
+
+      <h4 class="form-group-title">{{T "indexerForm.groupNetwork"}}</h4>
+      <p class="help">{{T "indexerForm.groupNetworkHelp"}}</p>
+      <div class="form-grid">
+        <div class="field grow">
+          <label for="user_agent">{{T "idx.userAgent"}}</label>
+          <input id="user_agent" name="user_agent" type="text" value="{{.UserAgent}}" placeholder="{{T "indexerForm.userAgentPlaceholder"}}">
+        </div>
+        <div class="field grow">
+          <label for="proxy_id">{{T "indexerForm.proxy"}}</label>
+          <select id="proxy_id" name="proxy_id">
+            <option value="0">{{T "indexerForm.proxyNone"}}</option>
+            {{range .Proxies}}<option value="{{.ID}}"{{if eq $.ProxyID .ID}} selected{{end}}>{{.Label}}</option>{{end}}
+          </select>
+          <p class="help">{{T "indexerForm.proxyHelp"}} <a href="/proxies">{{T "indexerForm.proxyManage"}}</a></p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="challenge">{{T "indexerForm.challenge"}}</label>
+          <select id="challenge" name="challenge">
+            {{range .ChallengeOptions}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+          </select>
+          <p class="help">{{T "indexerForm.challengeHelp"}}</p>
+        </div>
+        <div class="field">
+          <label for="flaresolverr_url">{{T "indexerForm.flareSolverrURL"}}</label>
+          <input id="flaresolverr_url" name="flaresolverr_url" type="text" inputmode="url" autocomplete="off" spellcheck="false" value="{{.FlareSolverrURL}}" placeholder="{{T "settings.flaresolverrURLPlaceholder"}}">
+          <p class="help">{{T "indexerForm.flareSolverrURLHelp"}}</p>
+        </div>
+        <div class="field">
+          <label for="flaresolverr_timeout">{{T "indexerForm.flareSolverrTimeout"}}</label>
+          <input id="flaresolverr_timeout" name="flaresolverr_timeout" type="number" min="5" max="300" step="1" value="{{.FlareSolverrTimeout}}">
+          <p class="help">{{T "indexerForm.flareSolverrTimeoutHelp"}}</p>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field checkbox">
+          <input id="allow_private" name="allow_private" type="checkbox"{{if .AllowPrivate}} checked{{end}}>
+          <label for="allow_private">{{T "idx.allowPrivate"}}</label>
+          <p class="help">{{T "idx.allowPrivateHelp"}}</p>
+        </div>
+      </div>
+
+      {{if .AdvancedFields}}
+      <h4 class="form-group-title">{{T "indexerForm.groupDefinition"}}</h4>
+      <p class="help">{{T "indexerForm.groupDefinitionHelp"}}</p>
+      <div class="form-grid">
+        {{range .AdvancedFields}}
+        <div class="field{{if eq .Type "checkbox"}} checkbox{{end}}">
+          <label for="setting_{{.Name}}">{{.Label}}</label>
+          {{if eq .Type "password"}}
+          <div class="secret-field" data-secret-change-field>
+            <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="password" value="" autocomplete="new-password" spellcheck="false" placeholder="{{if .HasSecret}}{{T "indexerForm.passwordConfigured"}}{{else}}{{T "indexerForm.passwordPlaceholder"}}{{end}}">
+            {{if .HasSecret}}<button class="btn" type="button" data-secret-change>{{T "settings.change"}}</button>{{end}}
+            <button class="btn primary" type="button" data-secret-save hidden>{{T "common.save"}}</button>
+          </div>
+          {{if .HasSecret}}<label class="check muted"><input type="checkbox" name="clear_{{.Name}}"> <span>{{T "indexerForm.removeSecret"}}</span></label>{{end}}
+          {{else if eq .Type "checkbox"}}
+          <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="checkbox"{{if .Checked}} checked{{end}}>
+          {{else if eq .Type "select"}}
+          <select id="setting_{{.Name}}" name="setting_{{.Name}}">
+            {{range .Options}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+          </select>
+          {{else}}
+          <input id="setting_{{.Name}}" name="setting_{{.Name}}" type="text" value="{{.Value}}">
+          {{end}}
+          {{if .Help}}<p class="help">{{.Help}}</p>{{end}}
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+
     </div>
-  {{template "advanced-close"}}
+  </details>
 
   <div class="actions form-actions">
     <a class="btn" href="{{if .IsNew}}/indexers{{else}}/indexers/{{.Indexer.ID}}{{end}}">{{T "idx.cancel"}}</a>

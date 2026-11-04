@@ -2776,5 +2776,20 @@
   "indexerForm.liveOnMissHelp": "Tylko dla forów z historią tematów. Przy braku tytułu indexarr odpytuje witrynę, nadal w odstępie anti-flood. Wyłączone odpowiada tylko z historii: nowe tematy pojawią się po następnym odczycie, bez ryzyka blokady.",
   "idx.topics.historyOnly": "Wyszukiwania aplikacji korzystają tylko z historii tematów: gdy tytułu brakuje, indexarr nie odpytuje witryny.",
   "idx.topics.liveOnMiss": "Jeśli tytułu nie ma w historii, wyszukiwanie na żywo jest dozwolone, nadal w odstępie anti-flood.",
-  "idx.topics.modeTip": "Zmienisz w Edytuj → Zaawansowane."
+  "idx.topics.modeTip": "Zmienisz w Edytuj → Zaawansowane.",
+  "indexerForm.navLabel": "Sekcje formularza indeksera",
+  "indexerForm.sectionIdentity": "Tożsamość i adres",
+  "indexerForm.sectionIdentityHelp": "Nazwa, adres i stan źródła.",
+  "indexerForm.sectionSearch": "Wyszukiwanie i treść",
+  "indexerForm.sectionSearchHelp": "Co zwraca źródło, jakie kategorie zasila i jak wykorzystuje historię forum.",
+  "indexerForm.sectionSchedule": "Aktualizacja",
+  "indexerForm.sectionScheduleHelp": "Jak często indexarr czyta źródło i jak długo czeka na odpowiedź.",
+  "indexerForm.groupRouting": "Tożsamość i routing",
+  "indexerForm.groupRoutingHelp": "Protokół, nazwa wewnętrzna, priorytet i tagi używane przez aplikacje.",
+  "indexerForm.groupLimits": "Limity i seed",
+  "indexerForm.groupLimitsHelp": "Dzienne limity wyszukiwań i pobrań oraz kryteria seed kopiowane do aplikacji.",
+  "indexerForm.groupNetwork": "Sieć i anti-bot",
+  "indexerForm.groupNetworkHelp": "Proxy, user agent, adresy prywatne i solver Cloudflare.",
+  "indexerForm.groupDefinition": "Ustawienia definicji",
+  "indexerForm.groupDefinitionHelp": "Opcjonalne wartości tej definicji. Nie są potrzebne w każdym źródle."
 }

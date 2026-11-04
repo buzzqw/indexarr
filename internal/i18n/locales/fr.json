@@ -2776,5 +2776,20 @@
   "indexerForm.liveOnMissHelp": "Uniquement pour les forums avec un historique de sujets. En cas d'absence, indexarr interroge le site en respectant l'intervalle anti-flood. Désactivé, il répond uniquement depuis l'historique : les nouveaux sujets apparaissent après la prochaine lecture, sans risque de blocage.",
   "idx.topics.historyOnly": "Les recherches des applications utilisent uniquement l'historique : si un titre manque, indexarr n'interroge pas le site.",
   "idx.topics.liveOnMiss": "Si un titre n'est pas dans l'historique, la recherche en direct est autorisée, toujours à l'intervalle anti-flood.",
-  "idx.topics.modeTip": "Se modifie dans Modifier → Avancé."
+  "idx.topics.modeTip": "Se modifie dans Modifier → Avancé.",
+  "indexerForm.navLabel": "Sections de la fiche indexeur",
+  "indexerForm.sectionIdentity": "Identité et adresse",
+  "indexerForm.sectionIdentityHelp": "Nom, adresse et état de la source.",
+  "indexerForm.sectionSearch": "Recherche et contenu",
+  "indexerForm.sectionSearchHelp": "Ce que renvoie la source, les catégories qu'elle alimente et l'usage de l'historique du forum.",
+  "indexerForm.sectionSchedule": "Mise à jour",
+  "indexerForm.sectionScheduleHelp": "Fréquence de lecture de la source et délai d'attente d'une réponse.",
+  "indexerForm.groupRouting": "Identité et routage",
+  "indexerForm.groupRoutingHelp": "Protocole, nom interne, priorité et tags utilisés par les applications.",
+  "indexerForm.groupLimits": "Limites et seed",
+  "indexerForm.groupLimitsHelp": "Limites quotidiennes de recherches et de téléchargements, et critères de seed copiés dans les applications.",
+  "indexerForm.groupNetwork": "Réseau et anti-bot",
+  "indexerForm.groupNetworkHelp": "Proxy, user agent, adresses privées et solveur Cloudflare.",
+  "indexerForm.groupDefinition": "Réglages de la définition",
+  "indexerForm.groupDefinitionHelp": "Valeurs facultatives déclarées par cette définition. Elles ne sont pas nécessaires partout."
 }

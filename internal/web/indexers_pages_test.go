@@ -98,7 +98,7 @@ func TestAddCorsaroShowsOnlyNameAndCategories(t *testing.T) {
 	if !strings.Contains(body, "account variant") {
 		t.Error("the public Corsaro form does not explain the missing login fields")
 	}
-	if !strings.Contains(body, `<details class="advanced">`) {
+	if !strings.Contains(body, `class="advanced"`) || !strings.Contains(body, `id="form-advanced"`) {
 		t.Error("the Advanced block is not rendered as a closed detail")
 	}
 	if strings.Contains(body, "legacy-") {

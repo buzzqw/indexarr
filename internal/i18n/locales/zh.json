@@ -2776,5 +2776,20 @@
   "indexerForm.liveOnMissHelp": "仅适用于有主题历史的论坛。未找到时会按防洪水间隔查询站点。关闭后只从历史回答：新主题会在下次遍历后出现，不会冒被封禁的风险。",
   "idx.topics.historyOnly": "应用搜索只使用主题历史：缺少标题时，indexarr 不会查询站点。",
   "idx.topics.liveOnMiss": "如果标题不在主题历史中，允许实时搜索，但仍遵守防洪水间隔。",
-  "idx.topics.modeTip": "在“编辑 → 高级”中修改。"
+  "idx.topics.modeTip": "在“编辑 → 高级”中修改。",
+  "indexerForm.navLabel": "索引器表单分区",
+  "indexerForm.sectionIdentity": "身份与地址",
+  "indexerForm.sectionIdentityHelp": "名称、地址以及来源是否启用。",
+  "indexerForm.sectionSearch": "搜索与内容",
+  "indexerForm.sectionSearchHelp": "来源返回什么、提供哪些分类，以及如何使用论坛历史。",
+  "indexerForm.sectionSchedule": "更新",
+  "indexerForm.sectionScheduleHelp": "indexarr 多久读取一次来源，以及等待响应的时间。",
+  "indexerForm.groupRouting": "身份与路由",
+  "indexerForm.groupRoutingHelp": "协议、内部名称、优先级和应用使用的标签。",
+  "indexerForm.groupLimits": "限制与做种",
+  "indexerForm.groupLimitsHelp": "每日搜索和抓取限制，以及复制到应用的做种条件。",
+  "indexerForm.groupNetwork": "网络与反爬",
+  "indexerForm.groupNetworkHelp": "代理、User-Agent、私有地址和 Cloudflare 解析器。",
+  "indexerForm.groupDefinition": "定义设置",
+  "indexerForm.groupDefinitionHelp": "此定义声明的可选值，并非每个来源都需要。"
 }

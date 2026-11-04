@@ -710,6 +710,22 @@ if ("serviceWorker" in navigator) {
   });
 })();
 
+// The indexer form's section index links to an Advanced block that is closed
+// by default: opening it when the hash points there makes the link useful.
+(() => {
+  const advanced = document.getElementById("form-advanced");
+  if (!advanced) {
+    return;
+  }
+  const openAdvanced = () => {
+    if (window.location.hash === "#form-advanced") {
+      advanced.open = true;
+    }
+  };
+  window.addEventListener("hashchange", openAdvanced);
+  openAdvanced();
+})();
+
 // Every form answers its button at once. The button keeps its name and value
 // (they are part of the POST) but shows "Working…" until the next page.
 (() => {
