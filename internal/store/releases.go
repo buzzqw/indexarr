@@ -1048,9 +1048,23 @@ func (s *Store) DeleteReleases(ctx context.Context, ids []int64) (int64, error) 
 	return res.RowsAffected()
 }
 
-// DeleteAllReleases empties the release cache.
+// DeleteAllReleases empties the release cache, except the history read from a
+// forum: that archive is never deleted by a bulk action.
 func (s *Store) DeleteAllReleases(ctx context.Context) (int64, error) {
-	res, err := s.db.ExecContext(ctx, `DELETE FROM releases`)
+	forumIDs, err := s.forumIndexerIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	query := `DELETE FROM releases`
+	args := []any{}
+	if len(forumIDs) > 0 {
+		placeholders, forumArgs := idPlaceholders(forumIDs)
+		query += ` WHERE NOT EXISTS (
+			SELECT 1 FROM release_sources f
+			WHERE f.release_id = releases.id AND f.indexer_id IN (` + placeholders + `))`
+		args = append(args, forumArgs...)
+	}
+	res, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -1062,9 +1076,21 @@ func (s *Store) DeleteAllReleases(ctx context.Context) (int64, error) {
 // appearance in a feed look new again, and the client could grab the same file
 // twice. Favorites are kept for the same reason.
 func (s *Store) PruneReleases(ctx context.Context, before time.Time) (int64, error) {
-	res, err := s.db.ExecContext(ctx,
-		`DELETE FROM releases WHERE last_seen_at < ? AND last_seen_at > 0
-			AND downloaded_at = 0 AND favorite = 0`, before.Unix())
+	forumIDs, err := s.forumIndexerIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	query := `DELETE FROM releases WHERE last_seen_at < ? AND last_seen_at > 0
+			AND downloaded_at = 0 AND favorite = 0`
+	args := []any{before.Unix()}
+	if len(forumIDs) > 0 {
+		placeholders, forumArgs := idPlaceholders(forumIDs)
+		query += ` AND NOT EXISTS (
+			SELECT 1 FROM release_sources f
+			WHERE f.release_id = releases.id AND f.indexer_id IN (` + placeholders + `))`
+		args = append(args, forumArgs...)
+	}
+	res, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, err
 	}

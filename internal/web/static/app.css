@@ -726,6 +726,34 @@ button.chip:hover, button.chip:focus-visible { color: var(--accent); border-colo
    top of the next entry showing under the last complete one. */
 .search-grid select[multiple] { padding: 0 0.4rem; }
 
+/* One search form: the radio picks the source and the fields of the other
+   source disappear. :has keeps this working without JavaScript; app.js mirrors
+   the rule for browsers that do not support it. */
+.unified-search .search-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 1rem;
+  margin: 0.45rem 0 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.unified-search .search-source legend {
+  padding: 0 0.3rem;
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+.unified-search .search-source .help {
+  flex-basis: 100%;
+  margin: 0;
+}
+.unified-search:has(input[name="source"][value="catalog"]:checked) .live-only,
+.unified-search:has(input[name="source"][value="live"]:checked) .catalog-only {
+  display: none;
+}
+.unified-search [hidden] { display: none !important; }
+
 /* Four columns before the phone layout: the spans of two still fit, and the
    query keeps the room its text needs. */
 @media (max-width: 1100px) {

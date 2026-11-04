@@ -17,7 +17,7 @@ func TestReleasesPageShowsLiveSearchAndBulkGrab(t *testing.T) {
 	insertSearchRelease(t, env.store, "Visible Release 1080p", "5040")
 	body := get(t, env.handler, "/releases?lang=en").Body.String()
 	for _, want := range []string{
-		`action="/releases/live"`,
+		`action="/releases/search"`,
 		`name="mode"`,
 		`name="season"`,
 		`name="episode"`,
@@ -46,31 +46,35 @@ func TestReleasesPageShowsLiveSearchAndBulkGrab(t *testing.T) {
 	}
 }
 
-// The page carries two search forms with different jobs: one asks the sites
-// now, the other reads what indexarr has already stored. Two identical
-// "Search" buttons made the reader guess which one did what, so each form has
-// its own heading, its own field label and its own button label.
-func TestReleasesPageKeepsTheTwoSearchesApart(t *testing.T) {
+// The page has one search form with a source radio: the catalogue reads what
+// indexarr has stored, the live source asks the sites now. The fields of the
+// other source stay in the same form but are hidden.
+func TestReleasesPageHasOneSearchWithASourceChoice(t *testing.T) {
 	env := newTestEnv(t)
 	body := get(t, env.handler, "/releases?lang=en").Body.String()
 	for _, want := range []string{
-		`aria-labelledby="release-live-heading"`,
-		`aria-labelledby="release-catalog-heading"`,
-		`id="release-live-heading">Live search on indexers</h2>`,
-		`id="release-catalog-heading">Search the catalogue</h2>`,
-		`<label for="live_q">Words to look for</label>`,
+		`id="release-search"`,
+		`action="/releases/search"`,
+		`name="source" value="catalog"`,
+		`name="source" value="live"`,
+		`id="release-search-heading">Search</h2>`,
 		`<label for="q">Title or words</label>`,
-		`>Search live</button>`,
-		`>Search the catalogue</button>`,
+		`name="indexers"`,
+		`name="mode"`,
+		`name="season"`,
+		`name="episode"`,
+		`name="year"`,
+		`name="imdbid"`,
+		`name="tmdbid"`,
+		`name="tvdbid"`,
+		`>Search</button>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("releases page missing %q", want)
 		}
 	}
-	// The catalogue form must not go back to the generic label shared with the
-	// global search in the sidebar.
-	if strings.Contains(body, `<button class="btn primary" type="submit">Search</button>`) {
-		t.Error("the catalogue search kept a plain Search button")
+	if strings.Count(body, `action="/releases/search"`) != 1 {
+		t.Error("the page still renders more than one search form")
 	}
 }
 

@@ -496,6 +496,10 @@ if ("serviceWorker" in navigator) {
     let controller = null;
 
     const runSearch = async () => {
+      const source = liveForm.querySelector('input[name="source"]:checked');
+      if (source && source.value !== "catalog") {
+        return;
+      }
       window.clearTimeout(timer);
       if (controller) {
         controller.abort();
@@ -503,6 +507,7 @@ if ("serviceWorker" in navigator) {
       controller = new AbortController();
       const params = new URLSearchParams(new FormData(liveForm));
       params.delete("page");
+      params.delete("csrf");
       liveResults.setAttribute("aria-busy", "true");
       try {
         const response = await fetch("/releases/results?" + params.toString(), {
@@ -536,6 +541,11 @@ if ("serviceWorker" in navigator) {
     liveForm.addEventListener("input", debouncedSearch);
     liveForm.addEventListener("change", runSearch);
     liveForm.addEventListener("submit", (event) => {
+      const source = liveForm.querySelector('input[name="source"]:checked');
+      if (source && source.value !== "catalog") {
+        // The live search must reach the server: it stores what it finds.
+        return;
+      }
       event.preventDefault();
       runSearch();
     });
@@ -600,6 +610,66 @@ if ("serviceWorker" in navigator) {
         select.form.submit();
       }
     });
+  });
+})();
+
+// Native tooltips for every control. Templates may already carry an explicit
+// title; when they do not, the nearest help paragraph of the field explains the
+// control, then its label, then the button text. One pass keeps the whole
+// interface consistent without repeating the same help in every template.
+(() => {
+  const controls = document.querySelectorAll(
+    'input:not([type="hidden"]), select, textarea, button'
+  );
+  const labelFor = (root, controlId) => {
+    if (!controlId) {
+      return null;
+    }
+    return Array.from(root.querySelectorAll("label")).find(
+      (label) => label.htmlFor === controlId
+    ) || null;
+  };
+  controls.forEach((control) => {
+    if (control.title) {
+      return;
+    }
+    const id = control.id;
+    const labelled = labelFor(document, id);
+    if (control.type === "checkbox" || control.type === "radio") {
+      const label = control.closest("label") || labelled;
+      if (label) {
+        control.title = label.textContent.trim();
+      }
+      return;
+    }
+    let text = "";
+    const field = control.closest(".field, .actions-field, .copy-field, .secret-field, form");
+    if (field) {
+      const help = field.querySelector(".help");
+      if (help) {
+        text = help.textContent.trim();
+      }
+      if (!text && id) {
+        const label = labelFor(field, id);
+        if (label) {
+          text = label.textContent.trim();
+        }
+      }
+    }
+    if (!text && labelled) {
+      text = labelled.textContent.trim();
+    }
+    if (!text && control.tagName === "BUTTON") {
+      text = control.textContent.trim();
+    }
+    if (text) {
+      control.title = text;
+    }
+  });
+  document.querySelectorAll("a.btn, .badge, .state").forEach((node) => {
+    if (!node.title && node.textContent.trim()) {
+      node.title = node.textContent.trim();
+    }
   });
 })();
 

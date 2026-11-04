@@ -205,7 +205,7 @@ func TestOwnedTemplatesUseCatalog(t *testing.T) {
 		"layout", "dashboard", "indexers", "indexer", "indexer_form",
 		"definition", "definition_form", "applications",
 		"application_form", "proxies", "activity", "activity_feed",
-		"activity_searches", "indexer_data", "indexer_try", "runs", "logs",
+		"activity_searches", "indexer_data", "runs", "logs",
 		"error", "components", "setup", "settings", "settings_definitions",
 		"download_client_form",
 	}

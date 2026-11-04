@@ -6,15 +6,47 @@
   </div>
 </section>
 
-<form class="filters live-search search-grid" id="release-live-search" method="post" action="/releases/live" role="search" aria-labelledby="release-live-heading">
+<form class="filters search-grid unified-search" id="release-search" method="post" action="/releases/search" data-live-search role="search" aria-labelledby="release-search-heading">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
-  <div class="field grow filters-head">
-    <h2 id="release-live-heading">{{T "releases.liveTitle"}}</h2>
-    <p class="help">{{T "releases.liveIntro"}}</p>
+  <div class="field filters-head">
+    <h2 id="release-search-heading">{{T "releases.searchTitle"}}</h2>
+    <p class="help">{{T "releases.searchIntro"}}</p>
+    <fieldset class="search-source">
+      <legend>{{T "releases.searchSource"}}</legend>
+      <label class="check"><input type="radio" name="source" value="catalog"{{if ne .SearchSource "live"}} checked{{end}}> <span>{{T "releases.catalogTitle"}}</span></label>
+      <label class="check"><input type="radio" name="source" value="live"{{if eq .SearchSource "live"}} checked{{end}}> <span>{{T "releases.liveTitle"}}</span></label>
+      <p class="help">{{T "releases.searchSourceHelp"}}</p>
+    </fieldset>
+    <p class="help catalog-only">{{T "releases.catalogIntro"}}</p>
+    <p class="help live-only">{{T "releases.liveIntro"}}</p>
   </div>
-  <div class="field">
-    <label for="live_mode">{{T "idx.try.mode"}}</label>
-    <select id="live_mode" name="mode" title="{{T "releases.liveModeHelp"}}">
+  <div class="field grow">
+    <label for="q">{{T "releases.searchLabel"}}</label>
+    <input id="q" name="q" type="search" value="{{.Query}}" placeholder="{{T "releases.searchPlaceholder"}}" autocomplete="off" spellcheck="false" title="{{T "releases.queryHelp"}}">
+    <p class="help">{{T "releases.queryHelp"}}</p>
+    <div class="catalog-only">
+      <label class="inline-check" for="regex">
+        <input id="regex" name="regex" type="checkbox" value="1"{{if .Regex}} checked{{end}}>
+        {{T "releases.regex"}}
+      </label>
+      <label class="inline-check" for="files">
+        <input id="files" name="files" type="checkbox" value="1"{{if .FilesOnly}} checked{{end}}>
+        {{T "releases.filesSearch"}}
+      </label>
+      <details class="search-syntax">
+      <summary title="{{T "releases.syntaxTip"}}">{{T "releases.syntaxSummary"}}</summary>
+      <p class="help">
+        {{T "releases.searchHelpExclude"}} <code>{{T "releases.exampleExclude"}}</code>.
+        {{T "releases.searchHelpQuotes"}} <code>{{T "releases.exampleQuotes"}}</code>.
+        {{T "releases.searchHelpPattern"}} <code>{{T "releases.examplePattern"}}</code>.
+        {{T "releases.filesSearchHelp"}}
+      </p>
+    </details>
+    </div>
+  </div>
+  <div class="field live-only">
+    <label for="mode">{{T "idx.try.mode"}}</label>
+    <select id="mode" name="mode" title="{{T "releases.liveModeHelp"}}">
       <option value="search"{{if eq .LiveForm.Mode "search"}} selected{{end}}>{{T "idx.try.modeSearch"}}</option>
       <option value="tvsearch"{{if eq .LiveForm.Mode "tvsearch"}} selected{{end}}>{{T "idx.try.modeSeries"}}</option>
       <option value="movie"{{if eq .LiveForm.Mode "movie"}} selected{{end}}>{{T "idx.try.modeMovie"}}</option>
@@ -23,37 +55,44 @@
     </select>
     <p class="help">{{T "releases.liveModeHelp"}}</p>
   </div>
-  <div class="field grow">
-    <label for="live_q">{{T "releases.liveQueryLabel"}}</label>
-    <input id="live_q" name="q" type="search" value="{{.LiveForm.Query}}" placeholder="{{T "releases.searchPlaceholder"}}" autocomplete="off" spellcheck="false" title="{{T "releases.liveQueryHelp"}}">
-    <p class="help">{{T "releases.liveQueryHelp"}}</p>
-  </div>
-  <div class="field small">
-    <label for="live_year">{{T "releases.liveYear"}}</label>
-    <input id="live_year" name="year" type="number" min="0" value="{{if .LiveForm.Year}}{{.LiveForm.Year}}{{end}}" title="{{T "releases.liveYearHelp"}}">
+  <div class="field small live-only">
+    <label for="year">{{T "releases.liveYear"}}</label>
+    <input id="year" name="year" type="number" min="0" value="{{if .LiveForm.Year}}{{.LiveForm.Year}}{{end}}" title="{{T "releases.liveYearHelp"}}">
     <p class="help">{{T "releases.liveYearHelp"}}</p>
   </div>
   <div class="field">
-    <label for="live_cat">{{T "releases.category"}}</label>
-    <select id="live_cat" name="cat" title="{{T "releases.liveCategoryHelp"}}">
+    <label for="cat">{{T "releases.category"}}</label>
+    <select id="cat" name="cat" title="{{T "releases.liveCategoryHelp"}}">
       <option value="">{{T "releases.allCategories"}}</option>
       {{range categoryGroups}}
       <optgroup label="{{.Top.Name}}">
-        <option value="{{.Top.ID}}"{{if eq $.LiveForm.Category (printf "%d" .Top.ID)}} selected{{end}}>{{.Top.Name}}</option>
-        {{range .Children}}<option value="{{.ID}}"{{if eq $.LiveForm.Category (printf "%d" .ID)}} selected{{end}}>{{.Name}}</option>{{end}}
+        <option value="{{.Top.ID}}"{{if eq $.Category (printf "%d" .Top.ID)}} selected{{end}}>{{.Top.Name}}</option>
+        {{range .Children}}<option value="{{.ID}}"{{if eq $.Category (printf "%d" .ID)}} selected{{end}}>{{.Name}}</option>{{end}}
       </optgroup>
       {{end}}
     </select>
     <p class="help">{{T "releases.liveCategoryHelp"}}</p>
   </div>
   <div class="field wide">
-    <label for="live_indexers">{{T "releases.indexer"}}</label>
-    <select id="live_indexers" name="indexers" multiple size="4" title="{{T "releases.liveIndexersHelp"}}">
+    <label for="indexers">{{T "releases.indexer"}}</label>
+    <select id="indexers" name="indexers" multiple size="4" title="{{T "releases.indexerFilterHelp"}}">
       {{range .LiveIndexers}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>{{end}}
     </select>
-    <p class="help">{{T "releases.liveIndexersHelp"}}</p>
+    <p class="help">{{T "releases.indexerFilterHelp"}}</p>
   </div>
-  <details class="filter-advanced" id="release-live-advanced">
+  <div class="field catalog-only">
+    <label for="sort">{{T "releases.sort"}}</label>
+    <select id="sort" name="sort" title="{{T "releases.sortHelp"}}">
+      <option value="recent"{{if or (eq .Sort "") (eq .Sort "recent")}} selected{{end}}>{{T "releases.sortRecent"}}</option>
+      <option value="seen"{{if eq .Sort "seen"}} selected{{end}}>{{T "releases.sortSeen"}}</option>
+      <option value="popular"{{if eq .Sort "popular"}} selected{{end}}>{{T "releases.sortPopular"}}</option>
+      <option value="grabs"{{if eq .Sort "grabs"}} selected{{end}}>{{T "releases.sortGrabs"}}</option>
+      <option value="seeders"{{if eq .Sort "seeders"}} selected{{end}}>{{T "releases.sortSeeders"}}</option>
+      <option value="size"{{if eq .Sort "size"}} selected{{end}}>{{T "releases.sortSize"}}</option>
+      <option value="title"{{if eq .Sort "title"}} selected{{end}}>{{T "releases.sortTitle"}}</option>
+    </select>
+  </div>
+  <details class="filter-advanced live-only" id="release-live-advanced">
     <summary><span>{{T "releases.filters"}}</span></summary>
     <div class="filter-advanced-body">
       <div class="field small">
@@ -101,11 +140,78 @@
       </div>
     </div>
   </details>
+  <details class="filter-advanced catalog-only" id="release-advanced-filters">
+    <summary>
+      <span>{{T "releases.filters"}}</span>
+      {{if gt .AdvancedFilterCount 0}}<span class="chip">{{if eq .AdvancedFilterCount 1}}{{T "releases.activeFilter"}}{{else}}{{T "releases.activeFilters" .AdvancedFilterCount}}{{end}}</span>{{end}}
+    </summary>
+    <div class="filter-advanced-body six">
+    <div class="field">
+      <label for="quality">{{T "releases.resolution"}}</label>
+      <select id="quality" name="quality" title="{{T "releases.qualityHelp"}}">
+        <option value=""{{if eq .Quality ""}} selected{{end}}>{{T "releases.anyQuality"}}</option>
+        <option value="2160p"{{if eq .Quality "2160p"}} selected{{end}}>{{T "releases.quality2160"}}</option>
+        <option value="1080p"{{if eq .Quality "1080p"}} selected{{end}}>{{T "releases.quality1080"}}</option>
+        <option value="720p"{{if eq .Quality "720p"}} selected{{end}}>{{T "releases.quality720"}}</option>
+        <option value="480p"{{if eq .Quality "480p"}} selected{{end}}>{{T "releases.quality480"}}</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="source_quality">{{T "releases.releaseType"}}</label>
+      <select id="source_quality" name="source_quality" title="{{T "releases.releaseTypeHelp"}}">
+        <option value=""{{if eq .SourceQuality ""}} selected{{end}}>{{T "releases.anyType"}}</option>
+        <option value="webdl"{{if eq .SourceQuality "webdl"}} selected{{end}}>{{T "releases.webdl"}}</option>
+        <option value="bluray"{{if eq .SourceQuality "bluray"}} selected{{end}}>{{T "releases.bluray"}}</option>
+        <option value="hdtv"{{if eq .SourceQuality "hdtv"}} selected{{end}}>{{T "releases.hdtv"}}</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="language">{{T "releases.languageFilter"}}</label>
+      <input id="language" name="language" type="text" title="{{T "releases.languageHelp"}}" list="language-suggestions" value="{{.Language}}" placeholder="{{T "releases.anyLanguage"}}" autocomplete="off" spellcheck="false">
+      <datalist id="language-suggestions">
+        {{range languages}}<option value="{{.}}"></option>{{end}}
+      </datalist>
+      <p class="help">{{T "releases.languageHelp"}}</p>
+    </div>
+    <div class="field small">
+      <label for="min_seeders">{{T "releases.minSeeders"}}</label>
+      <input id="min_seeders" name="min_seeders" type="number" title="{{T "releases.minSeedersHelp"}}" min="0" value="{{.MinSeedersText}}">
+    </div>
+    <div class="field small">
+      <label for="min_size_mb">{{T "releases.minSize"}}</label>
+      <input id="min_size_mb" name="min_size_mb" type="number" title="{{T "releases.minSizeHelp"}}" min="0" value="{{.MinSizeText}}">
+    </div>
+    <div class="field small">
+      <label for="max_size_mb">{{T "releases.maxSize"}}</label>
+      <input id="max_size_mb" name="max_size_mb" type="number" title="{{T "releases.maxSizeHelp"}}" min="0" value="{{.MaxSizeText}}">
+    </div>
+    <div class="filter-checks">
+    <div class="field checkbox">
+      <input id="favorites" name="favorites" type="checkbox" value="1"{{if .FavoritesOnly}} checked{{end}}>
+      <label for="favorites">{{T "releases.favorites"}}</label>
+    </div>
+    <div class="field checkbox">
+      <input id="no_adult" name="no_adult" type="checkbox" value="1"{{if .ExcludeAdult}} checked{{end}}>
+      <label for="no_adult">{{T "releases.excludeAdult"}}</label>
+      <p class="help">{{T "releases.excludeAdultHelp"}}</p>
+    </div>
+    <div class="field checkbox">
+      <input id="hidden" name="hidden" type="checkbox" value="1"{{if .ShowHidden}} checked{{end}}>
+      <label for="hidden">{{T "releases.showHidden"}}</label>
+    </div>
+    <div class="field checkbox">
+      <input id="duplicates" name="duplicates" type="checkbox" value="1"{{if .ShowDuplicates}} checked{{end}}>
+      <label for="duplicates">{{T "releases.showDuplicates"}}</label>
+      <p class="help">{{T "releases.showDuplicatesHelp"}}</p>
+    </div>
+    </div>
+    </div>
+  </details>
   <div class="field actions-field">
-    <button class="btn primary" type="submit" title="{{T "releases.liveFooter"}}">{{T "releases.liveSubmit"}}</button>
+    <button class="btn primary" type="submit" title="{{T "releases.searchSubmitHelp"}}">{{T "releases.searchSubmit"}}</button>
     <a class="btn" href="/releases">{{T "common.reset"}}</a>
   </div>
-  <p class="help live-search-footer">{{T "releases.liveFooter"}}</p>
+  <p class="help live-only live-search-footer">{{T "releases.liveFooter"}}</p>
 </form>
 
 {{if .LivePerformed}}
@@ -150,139 +256,7 @@
   </div>
 </section>
 {{end}}
-
 {{if .LiveError}}<p class="flash err" role="alert">{{.LiveError}}</p>{{end}}
-
-<form class="filters search-grid" id="release-filters" method="get" action="/releases" data-live-search role="search" aria-labelledby="release-catalog-heading">
-  <div class="field filters-head">
-    <h2 id="release-catalog-heading">{{T "releases.catalogTitle"}}</h2>
-    <p class="help">{{T "releases.catalogIntro"}}</p>
-  </div>
-  <div class="field grow">
-    <label for="q">{{T "releases.searchLabel"}}</label>
-    <input id="q" name="q" type="search" value="{{.Query}}" placeholder="{{T "releases.searchPlaceholder"}}" autocomplete="off" spellcheck="false">
-    <label class="inline-check" for="regex">
-      <input id="regex" name="regex" type="checkbox" value="1"{{if .Regex}} checked{{end}}>
-      {{T "releases.regex"}}
-    </label>
-    <label class="inline-check" for="files">
-      <input id="files" name="files" type="checkbox" value="1"{{if .FilesOnly}} checked{{end}}>
-      {{T "releases.filesSearch"}}
-    </label>
-    <details class="search-syntax">
-      <summary title="{{T "releases.syntaxTip"}}">{{T "releases.syntaxSummary"}}</summary>
-      <p class="help">
-        {{T "releases.searchHelpExclude"}} <code>{{T "releases.exampleExclude"}}</code>.
-        {{T "releases.searchHelpQuotes"}} <code>{{T "releases.exampleQuotes"}}</code>.
-        {{T "releases.searchHelpPattern"}} <code>{{T "releases.examplePattern"}}</code>.
-        {{T "releases.filesSearchHelp"}}
-      </p>
-    </details>
-  </div>
-  <div class="field">
-    <label for="indexer">{{T "releases.indexer"}}</label>
-    <select id="indexer" name="indexer">
-      <option value="0">{{T "releases.allIndexers"}}</option>
-      {{range .Indexers}}<option value="{{.ID}}"{{if eq $.Indexer .ID}} selected{{end}}>{{.Name}}</option>{{end}}
-    </select>
-  </div>
-  <div class="field">
-    <label for="cat">{{T "releases.category"}}</label>
-    <select id="cat" name="cat">
-      <option value="">{{T "releases.allCategories"}}</option>
-      {{range categoryGroups}}
-      <optgroup label="{{.Top.Name}}">
-        <option value="{{.Top.ID}}"{{if eq $.Category (printf "%d" .Top.ID)}} selected{{end}}>{{.Top.Name}}</option>
-        {{range .Children}}<option value="{{.ID}}"{{if eq $.Category (printf "%d" .ID)}} selected{{end}}>{{.Name}}</option>{{end}}
-      </optgroup>
-      {{end}}
-    </select>
-  </div>
-  <div class="field">
-    <label for="sort">{{T "releases.sort"}}</label>
-    <select id="sort" name="sort">
-      <option value="recent"{{if or (eq .Sort "") (eq .Sort "recent")}} selected{{end}}>{{T "releases.sortRecent"}}</option>
-      <option value="seen"{{if eq .Sort "seen"}} selected{{end}}>{{T "releases.sortSeen"}}</option>
-      <option value="popular"{{if eq .Sort "popular"}} selected{{end}}>{{T "releases.sortPopular"}}</option>
-      <option value="grabs"{{if eq .Sort "grabs"}} selected{{end}}>{{T "releases.sortGrabs"}}</option>
-      <option value="seeders"{{if eq .Sort "seeders"}} selected{{end}}>{{T "releases.sortSeeders"}}</option>
-      <option value="size"{{if eq .Sort "size"}} selected{{end}}>{{T "releases.sortSize"}}</option>
-      <option value="title"{{if eq .Sort "title"}} selected{{end}}>{{T "releases.sortTitle"}}</option>
-    </select>
-  </div>
-  <div class="field actions-field">
-    <button class="btn primary" type="submit" title="{{T "releases.catalogIntro"}}">{{T "releases.catalogSubmit"}}</button>
-    <a class="btn" href="/releases">{{T "common.reset"}}</a>
-  </div>
-  <details class="filter-advanced" id="release-advanced-filters">
-    <summary>
-      <span>{{T "releases.filters"}}</span>
-      {{if gt .AdvancedFilterCount 0}}<span class="chip">{{if eq .AdvancedFilterCount 1}}{{T "releases.activeFilter"}}{{else}}{{T "releases.activeFilters" .AdvancedFilterCount}}{{end}}</span>{{end}}
-    </summary>
-    <div class="filter-advanced-body six">
-    <div class="field">
-      <label for="quality">{{T "releases.resolution"}}</label>
-      <select id="quality" name="quality">
-        <option value=""{{if eq .Quality ""}} selected{{end}}>{{T "releases.anyQuality"}}</option>
-        <option value="2160p"{{if eq .Quality "2160p"}} selected{{end}}>{{T "releases.quality2160"}}</option>
-        <option value="1080p"{{if eq .Quality "1080p"}} selected{{end}}>{{T "releases.quality1080"}}</option>
-        <option value="720p"{{if eq .Quality "720p"}} selected{{end}}>{{T "releases.quality720"}}</option>
-        <option value="480p"{{if eq .Quality "480p"}} selected{{end}}>{{T "releases.quality480"}}</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="source_quality">{{T "releases.releaseType"}}</label>
-      <select id="source_quality" name="source_quality">
-        <option value=""{{if eq .SourceQuality ""}} selected{{end}}>{{T "releases.anyType"}}</option>
-        <option value="webdl"{{if eq .SourceQuality "webdl"}} selected{{end}}>{{T "releases.webdl"}}</option>
-        <option value="bluray"{{if eq .SourceQuality "bluray"}} selected{{end}}>{{T "releases.bluray"}}</option>
-        <option value="hdtv"{{if eq .SourceQuality "hdtv"}} selected{{end}}>{{T "releases.hdtv"}}</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="language">{{T "releases.languageFilter"}}</label>
-      <input id="language" name="language" type="text" list="language-suggestions" value="{{.Language}}" placeholder="{{T "releases.anyLanguage"}}" autocomplete="off" spellcheck="false">
-      <datalist id="language-suggestions">
-        {{range languages}}<option value="{{.}}"></option>{{end}}
-      </datalist>
-      <p class="help">{{T "releases.languageHelp"}}</p>
-    </div>
-    <div class="field small">
-      <label for="min_seeders">{{T "releases.minSeeders"}}</label>
-      <input id="min_seeders" name="min_seeders" type="number" min="0" value="{{.MinSeedersText}}">
-    </div>
-    <div class="field small">
-      <label for="min_size_mb">{{T "releases.minSize"}}</label>
-      <input id="min_size_mb" name="min_size_mb" type="number" min="0" value="{{.MinSizeText}}">
-    </div>
-    <div class="field small">
-      <label for="max_size_mb">{{T "releases.maxSize"}}</label>
-      <input id="max_size_mb" name="max_size_mb" type="number" min="0" value="{{.MaxSizeText}}">
-    </div>
-    <div class="filter-checks">
-    <div class="field checkbox">
-      <input id="favorites" name="favorites" type="checkbox" value="1"{{if .FavoritesOnly}} checked{{end}}>
-      <label for="favorites">{{T "releases.favorites"}}</label>
-    </div>
-    <div class="field checkbox">
-      <input id="no_adult" name="no_adult" type="checkbox" value="1"{{if .ExcludeAdult}} checked{{end}}>
-      <label for="no_adult">{{T "releases.excludeAdult"}}</label>
-      <p class="help">{{T "releases.excludeAdultHelp"}}</p>
-    </div>
-    <div class="field checkbox">
-      <input id="hidden" name="hidden" type="checkbox" value="1"{{if .ShowHidden}} checked{{end}}>
-      <label for="hidden">{{T "releases.showHidden"}}</label>
-    </div>
-    <div class="field checkbox">
-      <input id="duplicates" name="duplicates" type="checkbox" value="1"{{if .ShowDuplicates}} checked{{end}}>
-      <label for="duplicates">{{T "releases.showDuplicates"}}</label>
-      <p class="help">{{T "releases.showDuplicatesHelp"}}</p>
-    </div>
-    </div>
-    </div>
-  </details>
-</form>
-
 {{if .SavedSearches}}
 <div class="saved-searches" aria-label="{{T "releases.savedSearches"}}">
   <span class="muted">{{T "releases.saved"}}</span>

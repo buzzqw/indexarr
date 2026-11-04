@@ -16,13 +16,23 @@ import (
 // same indexer.Manager path as an app request, then reads only the rows whose
 // last_seen_at moved after the search started.
 func (s *Server) releasesLive(w http.ResponseWriter, r *http.Request) {
-	form := parseLiveSearchForm(r)
+	s.renderLiveSearch(w, r, parseLiveSearchForm(r))
+}
+
+// renderLiveSearch runs the on-demand fan-out and renders the unified search
+// page with the live source selected. releasesLive and the source=live branch
+// of releasesSearch both end here.
+func (s *Server) renderLiveSearch(w http.ResponseWriter, r *http.Request, form liveSearchForm) {
 	indexers, _ := s.store.ListIndexers(r.Context())
 	saved, _ := s.store.ListSavedSearches(r.Context())
 	data := releasesPage{
 		base:          s.newBaseT(r, "releases.title", "releases"),
 		Indexers:      indexers,
 		SavedSearches: saved,
+		SearchSource:  "live",
+		Query:         form.Query,
+		Category:      form.Category,
+		IndexerIDs:    append([]int64(nil), form.IndexerIDs...),
 		LiveForm:      form,
 		LiveIndexers:  liveIndexerOptions(indexers, form.IndexerIDs, false),
 	}

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/buzzqw/indexarr/internal/definition"
 )
 
 // StoredStats is the "Memorizzate: N release, X MB, +Y al giorno" summary of
@@ -56,6 +58,35 @@ func indexerStoredConfig(raw string) bool {
 	}
 	value := strings.TrimSpace(values["store_latest"])
 	return strings.EqualFold(value, "true") || value == "1"
+}
+
+// forumIndexerIDs returns the indexers whose definition keeps a local topic
+// catalogue. What indexarr reads from a forum is history: automatic retention
+// never removes its releases, run samples or history rows, while the operator
+// can still delete an indexer by hand.
+func (s *Store) forumIndexerIDs(ctx context.Context) ([]int64, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT i.id, d.body
+		FROM indexers i
+		JOIN definitions d ON d.id = i.definition_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []int64
+	for rows.Next() {
+		var id int64
+		var body string
+		if err := rows.Scan(&id, &body); err != nil {
+			return nil, err
+		}
+		def, err := definition.Parse([]byte(body))
+		if err != nil || def == nil || !def.HasCatalog() {
+			continue
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }
 
 // StoredStats summarises the releases that belong to at least one stored
@@ -209,6 +240,10 @@ func (s *Store) PruneStoredReleases(ctx context.Context, before time.Time) (int6
 	if len(ids) == 0 {
 		return 0, nil
 	}
+	forumIDs, err := s.forumIndexerIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
 	placeholders, args := idPlaceholders(ids)
 	query := `
 		DELETE FROM releases WHERE id IN (
@@ -218,9 +253,18 @@ func (s *Store) PruneStoredReleases(ctx context.Context, before time.Time) (int6
 			  AND EXISTS (SELECT 1 FROM release_sources rs WHERE rs.release_id = r.id)
 			  AND NOT EXISTS (
 				SELECT 1 FROM release_sources rs
-				WHERE rs.release_id = r.id AND rs.indexer_id NOT IN (` + placeholders + `))
-		)`
+				WHERE rs.release_id = r.id AND rs.indexer_id NOT IN (` + placeholders + `))`
 	allArgs := append([]any{before.Unix()}, args...)
+	if len(forumIDs) > 0 {
+		forumPlaceholders, forumArgs := idPlaceholders(forumIDs)
+		query += `
+			  AND NOT EXISTS (
+				SELECT 1 FROM release_sources f
+				WHERE f.release_id = r.id AND f.indexer_id IN (` + forumPlaceholders + `))`
+		allArgs = append(allArgs, forumArgs...)
+	}
+	query += `
+		)`
 	res, err := s.db.ExecContext(ctx, query, allArgs...)
 	if err != nil {
 		return 0, fmt.Errorf("prune stored releases: %w", err)

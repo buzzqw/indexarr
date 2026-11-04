@@ -768,21 +768,34 @@ type PrunedActivity struct {
 // the cascade), indexer samples and app searches. before is exclusive.
 func (s *Store) PruneActivity(ctx context.Context, before time.Time) (PrunedActivity, error) {
 	var out PrunedActivity
+	forumIDs, err := s.forumIndexerIDs(ctx)
+	if err != nil {
+		return out, fmt.Errorf("prune activity forum sources: %w", err)
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return out, fmt.Errorf("prune activity: begin: %w", err)
 	}
 	defer tx.Rollback()
 
-	res, err := tx.ExecContext(ctx,
-		`DELETE FROM indexer_history WHERE started_at < ?`, before.Unix())
+	historyQuery := `DELETE FROM indexer_history WHERE started_at < ?`
+	samplesQuery := `DELETE FROM indexer_samples WHERE fetched_at < ?`
+	historyArgs := []any{before.Unix()}
+	samplesArgs := []any{before.Unix()}
+	if len(forumIDs) > 0 {
+		placeholders, forumArgs := idPlaceholders(forumIDs)
+		historyQuery += ` AND (indexer_id IS NULL OR indexer_id NOT IN (` + placeholders + `))`
+		samplesQuery += ` AND indexer_id NOT IN (` + placeholders + `)`
+		historyArgs = append(historyArgs, forumArgs...)
+		samplesArgs = append(samplesArgs, forumArgs...)
+	}
+	res, err := tx.ExecContext(ctx, historyQuery, historyArgs...)
 	if err != nil {
 		return out, fmt.Errorf("prune activity history: %w", err)
 	}
 	out.History, _ = res.RowsAffected()
 
-	res, err = tx.ExecContext(ctx,
-		`DELETE FROM indexer_samples WHERE fetched_at < ?`, before.Unix())
+	res, err = tx.ExecContext(ctx, samplesQuery, samplesArgs...)
 	if err != nil {
 		return out, fmt.Errorf("prune activity samples: %w", err)
 	}

@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -103,6 +104,10 @@ type releasesPage struct {
 	AdvancedFilterCount int
 	SavedSearches       []store.SavedSearch
 	CurrentQuery        string
+	// SearchSource is "catalog" or "live": the single search form above the
+	// results uses one radio to choose where the query goes.
+	SearchSource string
+	IndexerIDs   []int64
 	// Live search form and its last outcome. The normal cache search leaves
 	// LivePerformed false and renders only the filter form.
 	LiveForm      liveSearchForm
@@ -149,6 +154,34 @@ func (s *Server) releasesResults(w http.ResponseWriter, r *http.Request) {
 	s.renderReleases(w, r, true)
 }
 
+// releasesSearch is the single POST target of the Search page. One radio picks
+// the source: "live" runs the fan-out now, anything else becomes the normal
+// catalogue URL so pagination and saved searches keep working.
+func (s *Server) releasesSearch(w http.ResponseWriter, r *http.Request) {
+	if choiceValue(r.FormValue("source"), "catalog", "live") == "live" {
+		s.renderLiveSearch(w, r, parseLiveSearchForm(r))
+		return
+	}
+	values := url.Values{}
+	for _, key := range []string{
+		"q", "regex", "files", "cat", "sort", "quality", "source_quality",
+		"language", "min_seeders", "min_size_mb", "max_size_mb",
+		"favorites", "no_adult", "hidden", "duplicates",
+	} {
+		if value := strings.TrimSpace(r.FormValue(key)); value != "" {
+			values.Set(key, value)
+		}
+	}
+	for _, id := range int64List(r.Form["indexers"]) {
+		values.Add("indexers", strconv.FormatInt(id, 10))
+	}
+	target := "/releases"
+	if encoded := values.Encode(); encoded != "" {
+		target += "?" + encoded
+	}
+	redirect(w, r, target, "", "")
+}
+
 func (s *Server) renderReleases(w http.ResponseWriter, r *http.Request, partial bool) {
 	data, err := s.releasesData(r)
 	if err != nil {
@@ -164,6 +197,10 @@ func (s *Server) renderReleases(w http.ResponseWriter, r *http.Request, partial 
 
 func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	query := r.URL.Query()
+	searchSource := choiceValue(query.Get("source"), "catalog", "live")
+	if searchSource == "" {
+		searchSource = "catalog"
+	}
 	searchQuery := strings.TrimSpace(query.Get("q"))
 	regexMode := query.Get("regex") == "1"
 	filesOnly := query.Get("files") == "1"
@@ -176,6 +213,14 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	if indexerID == 0 {
 		// Keep old ?source= links working.
 		indexerID = int64Param(query.Get("source"), 0)
+	}
+	// The unified form uses one multi-select for both sources. The old
+	// ?indexer= link still wins when it is present on its own.
+	indexerIDs := int64List(query["indexers"])
+	if indexerID > 0 {
+		indexerIDs = []int64{indexerID}
+	} else if len(indexerIDs) == 1 {
+		indexerID = indexerIDs[0]
 	}
 	category := strings.TrimSpace(query.Get("cat"))
 	sortMode := query.Get("sort")
@@ -250,6 +295,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	saved, _ := s.store.ListSavedSearches(r.Context())
 	current := query
 	current.Del("page")
+	current.Del("csrf")
 	data := releasesPage{
 		base:                s.newBaseT(r, "releases.title", "releases"),
 		Indexers:            indexers,
@@ -275,9 +321,11 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		AdvancedFilterCount: advancedFilterCount,
 		SavedSearches:       saved,
 		CurrentQuery:        current.Encode(),
+		SearchSource:        searchSource,
+		IndexerIDs:          indexerIDs,
 	}
 	data.LiveForm = liveSearchForm{Mode: "search"}
-	data.LiveIndexers = liveIndexerOptions(indexers, nil, true)
+	data.LiveIndexers = liveIndexerOptions(indexers, indexerIDs, true)
 	if parseErr != nil {
 		data.InvalidRegex = parseErr.Error()
 		data.Pager = newPager(r, "/releases", 0, releasesPerPage, 0)
@@ -286,6 +334,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 
 	filter := store.Filter{
 		IndexerID:     indexerID,
+		IndexerIDs:    indexerIDs,
 		Sort:          sortMode,
 		Limit:         releasesPerPage,
 		Offset:        (page - 1) * releasesPerPage,
@@ -445,4 +494,20 @@ func int64Param(raw string, fallback int64) int64 {
 		return fallback
 	}
 	return value
+}
+
+// int64List turns the repeated indexers= values of the unified search form into
+// a deduplicated selection. Invalid and non-positive values are ignored.
+func int64List(values []string) []int64 {
+	out := make([]int64, 0, len(values))
+	seen := make(map[int64]bool, len(values))
+	for _, raw := range values {
+		value, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+		if err != nil || value <= 0 || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	return out
 }

@@ -54,6 +54,11 @@ type indexerHealthView struct {
 	FeedOnly bool
 	// Latest reports whether the definition publishes periodic latest runs.
 	Latest bool
+	// TestFailure is the newest manual test when it failed and no newer run,
+	// search, latest pass or health check succeeded. The verdict stays about
+	// the automatic work, but the page cannot say "Working" while the source log
+	// right below shows a failed Test without explaining the difference.
+	TestFailure *store.IndexerHistory
 }
 
 // healthBatch carries the state and the health-relevant history of every
@@ -125,6 +130,7 @@ func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer, def *d
 			break
 		}
 	}
+	view.TestFailure = latestFailedTest(history)
 	view.Latest = true
 	if def == nil {
 		def, _ = s.parsedDefinition(ctx, in.DefinitionID)
@@ -144,6 +150,25 @@ func (s *Server) loadIndexerHealth(ctx context.Context, in store.Indexer, def *d
 		FeedOnly:  view.FeedOnly,
 	}, health.DefaultThresholds())
 	return view
+}
+
+// latestFailedTest returns the newest manual test only when it failed and no
+// newer automatic outcome exists. History is newest first, so the first health
+// relevant row decides: a run, search, latest pass or health check after the
+// test means the site answered again and the old test error is history.
+func latestFailedTest(history []store.IndexerHistory) *store.IndexerHistory {
+	for i := range history {
+		switch strings.ToLower(strings.TrimSpace(history[i].Kind)) {
+		case "test":
+			if history[i].Status == "error" {
+				return &history[i]
+			}
+			return nil
+		case "run", "search", "latest", "health":
+			return nil
+		}
+	}
+	return nil
 }
 
 func indexerConfigLatest(configJSON string) (bool, bool) {

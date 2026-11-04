@@ -107,6 +107,7 @@ type indexerDetailView struct {
 	SlowProblem         *uiProblem
 	CatalogState        string
 	Health              health.Assessment
+	TestFailure         *store.IndexerHistory
 	Latest              bool
 	CanImportCookie     bool
 	CookieAlternative   bool
@@ -180,14 +181,6 @@ func (s *Server) indexerUnifiedDetail(w http.ResponseWriter, r *http.Request) {
 		data.Tab = "history"
 	default:
 		data.Tab = "overview"
-	}
-	if r.URL.Query().Get("try") != "" {
-		data.Tab = "overview"
-		data.Try, err = s.buildIndexerTry(r, data.Indexer)
-		if err != nil {
-			s.renderError(w, r, http.StatusInternalServerError, err.Error())
-			return
-		}
 	}
 	s.render(w, r, "indexer", data, http.StatusOK)
 }
@@ -297,6 +290,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	data.TopicCount, data.TopicCursors = s.topicHistory(r.Context(), in.ID)
 	healthView := s.loadIndexerHealth(r.Context(), in, def, nil)
 	data.Health = healthView.Assessment
+	data.TestFailure = healthView.TestFailure
 	data.State = healthView.State
 	data.HasState = healthView.HasState
 	data.CircuitOpen = healthView.State.Circuit == string(engine.BreakerOpen)

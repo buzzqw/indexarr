@@ -289,7 +289,7 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 		case "indexer":
 			// The detail page embeds the Data and History tabs and the
 			// Sonarr/Radarr try form.
-			files = append(files, "templates/indexer_data.html", "templates/indexer_try.html",
+			files = append(files, "templates/indexer_data.html",
 				"templates/indexer_history.html")
 		case "settings":
 			// Settings → Advanced keeps the Definitions table.
@@ -692,6 +692,7 @@ func (s *Server) uiRoutes() *http.ServeMux {
 	ui.HandleFunc("GET /language/{code}", s.setLanguage)
 	ui.HandleFunc("GET /releases", s.releasesPage)
 	ui.HandleFunc("GET /releases/results", s.releasesResults)
+	ui.HandleFunc("POST /releases/search", s.releasesSearch)
 	ui.HandleFunc("POST /releases/live", s.releasesLive)
 	ui.HandleFunc("POST /releases/bulk", s.releasesBulk)
 	ui.HandleFunc("POST /releases/saved", s.savedSearchAdd)

@@ -151,49 +151,6 @@ func TestIndexerDataTabShowsMetricsCompletenessAndRedactedSample(t *testing.T) {
 	}
 }
 
-func TestTryAsAppRendersTheSameXMLAsAPI(t *testing.T) {
-	env := newTestEnv(t)
-	indexerID := seedDataIndexer(t, env, "try-web", "Try Web")
-	seedDataRelease(t, env, indexerID, "try-web-release", "Try Show S01E01 1080p", time.Now().Add(-time.Hour), 30)
-
-	query := url.Values{
-		"try": {"1"}, "mode": {"tvsearch"}, "q": {"Try Show"},
-		"season": {"1"}, "ep": {"1"},
-	}
-	recorder := get(t, env.handler, "/indexers/"+strconv.FormatInt(indexerID, 10)+"?"+query.Encode())
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d: %s", recorder.Code, recorder.Body.String())
-	}
-	page := recorder.Body.String()
-	for _, want := range []string{
-		"Try as Sonarr/Radarr", "Try Show", "Exact Torznab XML",
-		"Try Show S01E01 1080p",
-	} {
-		if !strings.Contains(page, want) {
-			t.Errorf("try panel missing %q", want)
-		}
-	}
-
-	match := regexp.MustCompile(`(?s)<pre class="sample-body">(.*?)</pre>`).FindStringSubmatch(page)
-	if match == nil {
-		t.Fatal("the exact Torznab XML block is missing")
-	}
-	tryXML := html.UnescapeString(match[1])
-
-	apiQuery := url.Values{
-		"t": {"tvsearch"}, "apikey": {env.apiKey}, "q": {"Try Show"},
-		"season": {"1"}, "ep": {"1"},
-	}
-	apiRecorder := get(t, env.handler, "/api?"+apiQuery.Encode())
-	if apiRecorder.Code != http.StatusOK {
-		t.Fatalf("api status = %d: %s", apiRecorder.Code, apiRecorder.Body.String())
-	}
-	if apiRecorder.Body.String() != tryXML {
-		t.Fatalf("the Try panel XML differs from /api\n--- try ---\n%s\n--- api ---\n%s",
-			tryXML, apiRecorder.Body.String())
-	}
-}
-
 func TestActivityFeedAndSearchesPages(t *testing.T) {
 	env := newTestEnv(t)
 	indexerID := seedDataIndexer(t, env, "feed-one", "Feed One")
@@ -321,7 +278,7 @@ func TestSettingsHistoryRetentionField(t *testing.T) {
 func TestDataAndActivityTabsAreTranslatedInEveryLanguage(t *testing.T) {
 	keys := []string{
 		"idx.detail.data", "idx.data.chartTitle", "idx.data.completenessTitle",
-		"idx.data.sampleTitle", "idx.try.title", "activity.feed",
+		"idx.data.sampleTitle", "activity.feed",
 		"activity.searches", "settings.historyRetentionDays",
 	}
 	english := map[string]string{}

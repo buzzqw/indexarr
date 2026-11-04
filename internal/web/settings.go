@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -762,6 +763,11 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 		}
 		removed, err := s.store.DeleteReleasesByIndexer(ctx, indexerID)
 		if err != nil {
+			if errors.Is(err, store.ErrForumHistory) {
+				redirect(w, r, "/settings?section=maintenance", "",
+					s.translate(r, "maintenance.forumKept", indexerRow.Name))
+				return
+			}
 			redirect(w, r, "/settings?section=maintenance", "", err.Error())
 			return
 		}

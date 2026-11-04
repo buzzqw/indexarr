@@ -183,11 +183,24 @@ func (s *Store) Checkpoint(ctx context.Context) (busy, logFrames, checkpointed i
 	return busy, logFrames, checkpointed, nil
 }
 
+// ErrForumHistory means a bulk cleanup tried to remove what indexarr read from
+// a forum. Forum data is an archive and is never deleted automatically.
+var ErrForumHistory = errors.New("store: forum history is kept")
+
 // DeleteReleasesByIndexer removes releases that were seen only through one
 // indexer. A release also supplied by another indexer stays in the cache.
 func (s *Store) DeleteReleasesByIndexer(ctx context.Context, indexerID int64) (int64, error) {
 	if indexerID <= 0 {
 		return 0, errors.New("store: invalid indexer id")
+	}
+	forumIDs, err := s.forumIndexerIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, id := range forumIDs {
+		if id == indexerID {
+			return 0, ErrForumHistory
+		}
 	}
 	res, err := s.db.ExecContext(ctx, `
 		DELETE FROM releases
@@ -207,8 +220,20 @@ func (s *Store) DeleteReleasesByIndexer(ctx context.Context, indexerID int64) (i
 // DeleteReleasesWithoutLinks removes rows that have neither a magnet nor a
 // stored .torrent file, so clients cannot use them.
 func (s *Store) DeleteReleasesWithoutLinks(ctx context.Context) (int64, error) {
-	res, err := s.db.ExecContext(ctx,
-		`DELETE FROM releases WHERE magnet = '' AND torrent IS NULL`)
+	forumIDs, err := s.forumIndexerIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	query := `DELETE FROM releases WHERE magnet = '' AND torrent IS NULL`
+	args := []any{}
+	if len(forumIDs) > 0 {
+		placeholders, forumArgs := idPlaceholders(forumIDs)
+		query += ` AND NOT EXISTS (
+			SELECT 1 FROM release_sources f
+			WHERE f.release_id = releases.id AND f.indexer_id IN (` + placeholders + `))`
+		args = append(args, forumArgs...)
+	}
+	res, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("delete releases without links: %w", err)
 	}
@@ -219,7 +244,20 @@ func (s *Store) DeleteReleasesWithoutLinks(ctx context.Context) (int64, error) {
 
 // DeleteHiddenReleases removes every release hidden from the UI.
 func (s *Store) DeleteHiddenReleases(ctx context.Context) (int64, error) {
-	res, err := s.db.ExecContext(ctx, `DELETE FROM releases WHERE hidden = 1`)
+	forumIDs, err := s.forumIndexerIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	query := `DELETE FROM releases WHERE hidden = 1`
+	args := []any{}
+	if len(forumIDs) > 0 {
+		placeholders, forumArgs := idPlaceholders(forumIDs)
+		query += ` AND NOT EXISTS (
+			SELECT 1 FROM release_sources f
+			WHERE f.release_id = releases.id AND f.indexer_id IN (` + placeholders + `))`
+		args = append(args, forumArgs...)
+	}
+	res, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("delete hidden releases: %w", err)
 	}
