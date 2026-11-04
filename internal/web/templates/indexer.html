@@ -21,8 +21,8 @@
     {{if .CategoryMapped}}<p class="help uploader-note" title="{{T "idx.detail.exttoCategoryTip"}}">{{T "idx.detail.exttoCategory"}}</p>{{end}}
     {{if .TopicCount}}
     <p class="help topic-history" title="{{T "idx.topics.tip"}}">
-      {{T "idx.topics.summary" .TopicCount}} —
-      {{range .TopicCursors}}<span class="chip">{{if .Done}}{{T "idx.topics.cursorDone" .Forum}}{{else}}{{T "idx.topics.cursor" .Forum .NextStart}}{{end}}</span> {{end}}
+      {{T "idx.topics.summary" .TopicCount}}
+      {{if .HasTopicHistory}}· <a class="link" href="/indexers/{{.Indexer.ID}}?tab=history">{{T "idx.detail.history"}}</a>{{end}}
     </p>
     {{end}}
 
@@ -94,7 +94,7 @@
     <p class="help">{{T "idx.health.logHelp"}}</p>
     {{if .LogRows}}
     <div class="table-scroll">
-      <table>
+      <table class="log-table">
         <thead><tr>
           <th scope="col">{{T "runs.started"}}</th>
           <th scope="col">{{T "idx.data.kind"}}</th>
@@ -105,11 +105,11 @@
         <tbody>
           {{range .LogRows}}
           <tr>
-            <td class="nowrap">{{if .Href}}<a href="{{.Href}}">{{date .When}}</a>{{else}}{{date .When}}{{end}}<div class="sub">{{ago .When}}</div></td>
-            <td>{{kindLabel .Kind}}</td>
-            <td>{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else if eq .Status "paused"}}<span class="chip warn">{{T "idx.statusPaused"}}</span>{{else if eq .Status "blocked"}}<span class="chip warn">{{T "idx.statusBlocked"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
-            <td class="error-cell">{{if .Message}}{{.Message}}{{else}}<span class="muted">—</span>{{end}}</td>
-            <td class="nowrap">{{.Latency}}</td>
+            <td class="nowrap log-when">{{if .Href}}<a href="{{.Href}}">{{date .When}}</a>{{else}}{{date .When}}{{end}}<div class="sub">{{ago .When}}</div></td>
+            <td class="log-kind">{{kindLabel .Kind}}</td>
+            <td class="log-result">{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else if eq .Status "paused"}}<span class="chip warn">{{T "idx.statusPaused"}}</span>{{else if eq .Status "blocked"}}<span class="chip warn">{{T "idx.statusBlocked"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
+            <td class="error-cell log-error{{if not .Message}} log-empty{{end}}">{{if .Message}}{{.Message}}{{else}}<span class="muted">—</span>{{end}}</td>
+            <td class="nowrap log-duration">{{.Latency}}</td>
           </tr>
           {{end}}
         </tbody>

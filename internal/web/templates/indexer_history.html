@@ -8,7 +8,7 @@
     <p class="help">{{T "idx.history.help"}}</p>
     {{if .TopicCursors}}
     <div class="table-scroll">
-      <table class="compact">
+      <table class="compact log-table">
         <thead>
           <tr>
             <th scope="col">{{T "idx.history.forum"}}</th>
@@ -20,10 +20,10 @@
         <tbody>
           {{range .TopicCursors}}
           <tr>
-            <td>{{.Forum}}</td>
-            <td>{{.Topics}}</td>
-            <td>{{if .Done}}{{T "idx.history.done"}}{{else}}{{.NextStart}}{{end}}</td>
-            <td>{{if .LastRun.IsZero}}—{{else}}<span title="{{date .LastRun}}">{{ago .LastRun}}</span>{{end}}</td>
+            <td class="hist-forum">{{.Forum}}</td>
+            <td class="log-num hist-topics" data-label="{{T "idx.history.topics"}}">{{.Topics}}</td>
+            <td class="log-num hist-next" data-label="{{T "idx.history.next"}}">{{if .Done}}{{T "idx.history.done"}}{{else}}{{.NextStart}}{{end}}</td>
+            <td class="hist-last">{{if .LastRun.IsZero}}—{{else}}<span title="{{date .LastRun}}">{{ago .LastRun}}</span>{{end}}</td>
           </tr>
           {{end}}
         </tbody>

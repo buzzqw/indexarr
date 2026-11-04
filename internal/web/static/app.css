@@ -2195,3 +2195,86 @@ table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; 
   .donate { right: 12px; padding: 0.55rem; }
   .donate-label { display: none; }
 }
+
+/* The source log and the run list on a phone: one compact card per row, two
+   or three short lines. The generic rule stacks every cell with its label
+   above the value, so ten columns became ten lines and a page of eight runs
+   took dozens of screens. */
+@media (max-width: 720px) {
+  .table-scroll table.log-table,
+  .table-scroll table.log-table tbody { display: block; width: 100%; padding: 0; }
+  .table-scroll table.log-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem 0.6rem;
+    padding: 0.55rem 0.75rem;
+    margin: 0 0 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .table-scroll table.log-table tr:last-child { margin-bottom: 0; }
+  .table-scroll table.log-table td {
+    display: block;
+    width: auto;
+    border: 0;
+    padding: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .table-scroll table.log-table td::before { display: none; content: none; }
+  .table-scroll table.log-table .log-when { order: 1; }
+  .table-scroll table.log-table .log-kind {
+    order: 2;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .table-scroll table.log-table .log-result { order: 3; margin-left: auto; }
+  .table-scroll table.log-table .log-duration {
+    order: 4;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+  .table-scroll table.log-table .log-num {
+    order: 5;
+    color: var(--muted);
+    font-size: 0.78rem;
+  }
+  .table-scroll table.log-table td.log-num::before {
+    content: attr(data-label) " ";
+    display: inline;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .table-scroll table.log-table .log-reasons { order: 6; flex: 1 1 100%; }
+  .table-scroll table.log-table .log-error {
+    order: 7;
+    flex: 1 1 100%;
+    font-size: 0.78rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .table-scroll table.log-table .log-empty { display: none; }
+}
+
+/* The topic history on a phone: the forum and when it was read on the first
+   line, the counters on the second, instead of four stacked cells per forum. */
+@media (max-width: 720px) {
+  .table-scroll table.log-table .hist-forum {
+    order: 1;
+    font-weight: 600;
+  }
+  .table-scroll table.log-table .hist-last {
+    order: 2;
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+}
