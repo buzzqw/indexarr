@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -8,10 +9,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/appsync"
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/store"
+	"github.com/buzzqw/indexarr/internal/syncjob"
 )
 
 // applicationOption is one entry of a select in the application form.
@@ -538,6 +541,39 @@ func (s *Server) applicationSync(w http.ResponseWriter, r *http.Request) {
 		message = s.translate(r, "application.syncDisabled", app.Name)
 	}
 	redirect(w, r, "/applications", message, "")
+}
+
+// applicationTest checks URL and API key of one application without touching
+// its indexers. It is the "verify with Sonarr/Radarr" action of the Apps page.
+func (s *Server) applicationTest(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r)
+	if err != nil {
+		redirect(w, r, "/applications", "", s.translate(r, "application.error.invalidID"))
+		return
+	}
+	app, err := s.store.GetApplication(r.Context(), id)
+	if err != nil {
+		redirect(w, r, "/applications", "", s.applicationErrorMessage(r, err))
+		return
+	}
+	if s.sync == nil {
+		redirect(w, r, "/applications", "", s.translate(r, "application.error.syncUnavailable"))
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	description, err := s.sync.TestApp(ctx, id)
+	if err != nil {
+		s.log.Warn("application connection test failed",
+			"component", "indexarr", "subsystem", "web", "application", app.Name, "error", err)
+		if errors.Is(err, syncjob.ErrApplicationKeyMissing) {
+			redirect(w, r, "/applications", "", s.translate(r, "application.testNoKey", app.Name))
+			return
+		}
+		redirect(w, r, "/applications", "", s.translate(r, "application.testFailed", app.Name, err.Error()))
+		return
+	}
+	redirect(w, r, "/applications", s.translate(r, "application.testOK", description), "")
 }
 
 func (s *Server) applicationsSyncAll(w http.ResponseWriter, r *http.Request) {

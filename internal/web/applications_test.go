@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strconv"
 	"strings"
@@ -556,5 +557,94 @@ func TestApplicationRejectsUnknownKind(t *testing.T) {
 	recorder := postForm(t, env.handler, "/applications", values, cookie)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+// TestApplicationTestButtonChecksTheConnection covers the Verify button: it
+// contacts the app with the stored key and reports the version, without a
+// sync.
+func TestApplicationTestButtonChecksTheConnection(t *testing.T) {
+	env, v := newApplicationEnv(t, true)
+	const appKey = "radarr-test-key"
+	appServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v3/system/status" || r.Header.Get("X-Api-Key") != appKey {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"appName":"Radarr","version":"5.2.1"}`)
+	}))
+	defer appServer.Close()
+
+	sealed, err := v.SealString(appKey)
+	if err != nil {
+		t.Fatalf("SealString: %v", err)
+	}
+	id, err := env.store.CreateApplication(context.Background(), store.Application{
+		Kind: "radarr", Name: "Radarr", URL: appServer.URL, SyncLevel: "full",
+		APIKeyEnc: []byte(sealed),
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+
+	token, cookie := csrfFrom(t, env.handler, "/applications")
+	recorder := postForm(t, env.handler, "/applications/"+strconvI(id)+"/test",
+		url.Values{"csrf": {token}}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("test status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	location, err := url.Parse(recorder.Header().Get("Location"))
+	if err != nil {
+		t.Fatalf("parse location: %v", err)
+	}
+	message := location.Query().Get("msg")
+	if !strings.Contains(message, "Radarr 5.2.1") {
+		t.Errorf("test message = %q, want the app version", message)
+	}
+	if location.Query().Get("err") != "" {
+		t.Errorf("a working test returned an error: %q", location.Query().Get("err"))
+	}
+}
+
+// TestApplicationTestButtonWithoutKeyNamesTheMissingKey keeps the button from
+// showing the internal error when no key is stored.
+func TestApplicationTestButtonWithoutKeyNamesTheMissingKey(t *testing.T) {
+	env, _ := newApplicationEnv(t, true)
+	id, err := env.store.CreateApplication(context.Background(), store.Application{
+		Kind: "sonarr", Name: "Sonarr", URL: "http://sonarr:8989", SyncLevel: "full",
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	token, cookie := csrfFrom(t, env.handler, "/applications")
+	recorder := postForm(t, env.handler, "/applications/"+strconvI(id)+"/test",
+		url.Values{"csrf": {token}}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("test status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	location, err := url.Parse(recorder.Header().Get("Location"))
+	if err != nil {
+		t.Fatalf("parse location: %v", err)
+	}
+	if got := location.Query().Get("err"); !strings.Contains(got, "no saved API key") {
+		t.Errorf("test error = %q, want the missing-key sentence", got)
+	}
+}
+
+// TestApplicationPageExplainsWhoDoesWhat covers the roles panel: Jackett and
+// Prowlarr are named as replaced, while Sonarr and Radarr are the consumers.
+func TestApplicationPageExplainsWhoDoesWhat(t *testing.T) {
+	env := newTestEnv(t)
+	body := get(t, env.handler, "/applications").Body.String()
+	for _, want := range []string{
+		"Who does what",
+		"Not needed: indexarr replaces them",
+		"Sonarr / Radarr",
+		"Jackett / Prowlarr",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("applications page missing %q", want)
+		}
 	}
 }

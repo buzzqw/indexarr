@@ -149,3 +149,19 @@ func TestPagesRenderTheHelpParagraph(t *testing.T) {
 		}
 	}
 }
+
+// TestAddPageSaysJackettAndProwlarrAreOptional keeps the generic Torznab box
+// from reading like the normal way to add a site.
+func TestAddPageSaysJackettAndProwlarrAreOptional(t *testing.T) {
+	env := newNativeEnv(t)
+	body := get(t, env.handler, "/indexers/new").Body.String()
+	for _, want := range []string{
+		"does not need Jackett or Prowlarr",
+		"Existing Torznab endpoint",
+		"the catalogue below",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("add page missing %q", want)
+		}
+	}
+}

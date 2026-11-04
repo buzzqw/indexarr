@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -1482,5 +1483,78 @@ func TestSnapshotRetentionTwenty(t *testing.T) {
 		if snapshot.Reason != store.SnapshotReasonManual {
 			t.Errorf("manual snapshot reason = %q", snapshot.Reason)
 		}
+	}
+}
+
+// TestTestAppReportsVersionWithoutTouchingIndexers covers the Test button of
+// the Apps page: it answers with the app name and version, writes no
+// app_indexers row and does not move last_sync.
+func TestTestAppReportsVersionWithoutTouchingIndexers(t *testing.T) {
+	ctx := context.Background()
+	st := newSyncStore(t, true)
+	v := newSyncVault(t)
+	fake := newFakeServarr(t, testAppKey)
+	appID := createTestApplication(t, st, v, "sonarr", "Sonarr", fake.server.URL, testAppKey, "full")
+	svc := newSyncService(t, st, v, testBaseURL)
+
+	description, err := svc.TestApp(ctx, appID)
+	if err != nil {
+		t.Fatalf("TestApp: %v", err)
+	}
+	if description != "Sonarr 4.0.1" {
+		t.Fatalf("TestApp = %q, want Sonarr 4.0.1", description)
+	}
+	links, err := st.ListAppIndexers(ctx, appID)
+	if err != nil {
+		t.Fatalf("ListAppIndexers: %v", err)
+	}
+	if len(links) != 0 {
+		t.Errorf("TestApp created %d app_indexers rows, want 0", len(links))
+	}
+	app, err := st.GetApplication(ctx, appID)
+	if err != nil {
+		t.Fatalf("GetApplication: %v", err)
+	}
+	if !app.LastSyncAt.IsZero() {
+		t.Errorf("TestApp changed last_sync to %v", app.LastSyncAt)
+	}
+}
+
+// TestTestAppWithoutKeyNamesTheMissingKey keeps the Apps page from showing the
+// internal error when the operator never entered an API key.
+func TestTestAppWithoutKeyNamesTheMissingKey(t *testing.T) {
+	ctx := context.Background()
+	st := newSyncStore(t, true)
+	v := newSyncVault(t)
+	appID, err := st.CreateApplication(ctx, store.Application{
+		Kind: "sonarr", Name: "Sonarr", URL: "http://sonarr:8989", SyncLevel: "full",
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	svc := newSyncService(t, st, v, testBaseURL)
+
+	if _, err := svc.TestApp(ctx, appID); !errors.Is(err, ErrApplicationKeyMissing) {
+		t.Fatalf("TestApp error = %v, want ErrApplicationKeyMissing", err)
+	}
+}
+
+// TestTestAppRedactsTheKey checks that a failed test never echoes the key in
+// the message the page shows.
+func TestTestAppRedactsTheKey(t *testing.T) {
+	ctx := context.Background()
+	st := newSyncStore(t, true)
+	v := newSyncVault(t)
+	fake := newFakeServarr(t, testAppKey)
+	const wrongKey = "wrong-application-key"
+	appID := createTestApplication(t, st, v, "sonarr", "Sonarr", fake.server.URL, wrongKey, "full")
+	svc := newSyncService(t, st, v, testBaseURL)
+
+	_, err := svc.TestApp(ctx, appID)
+	if err == nil {
+		t.Fatal("TestApp with a wrong key succeeded")
+	}
+	if strings.Contains(err.Error(), wrongKey) {
+		t.Fatalf("TestApp error leaked the key: %v", err)
 	}
 }

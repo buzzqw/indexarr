@@ -21,6 +21,18 @@
   <p class="help">{{T "applications.whatText"}}</p>
 </section>
 
+<section class="panel app-roles">
+  <div class="panel-head"><h2>{{T "applications.rolesTitle"}}</h2></div>
+  <dl class="detail detail-grid">
+    <dt>{{T "applications.roleIndexarrName"}}</dt>
+    <dd>{{T "applications.roleIndexarr"}}</dd>
+    <dt>{{T "applications.roleAppsName"}}</dt>
+    <dd>{{T "applications.roleApps"}}</dd>
+    <dt>{{T "applications.roleManagersName"}}</dt>
+    <dd>{{T "applications.roleManagers"}}</dd>
+  </dl>
+</section>
+
 <section class="panel app-ways">
   <div class="panel-head"><h2>{{T "applications.threeWays"}}</h2></div>
   <div class="way-grid">
@@ -70,6 +82,10 @@
           <td class="nowrap">{{date .Application.LastSyncAt}}</td>
           <td>{{if .Application.LastError}}<span class="text-danger" title="{{.Application.LastError}}">{{truncate .Application.LastError 80}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
           <td class="right nowrap">
+            <form method="post" action="/applications/{{.Application.ID}}/test">
+              <input type="hidden" name="csrf" value="{{$.CSRF}}">
+              <button class="btn small" type="submit" title="{{T "tip.appTest"}}">{{T "application.test"}}</button>
+            </form>
             <form method="post" action="/applications/{{.Application.ID}}/sync">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">
               <button class="btn small" type="submit" title="{{T "tip.appSyncNow"}}">{{T "common.sync"}}</button>

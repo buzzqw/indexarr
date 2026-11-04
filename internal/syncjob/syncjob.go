@@ -179,6 +179,43 @@ func (s *Service) SyncApp(ctx context.Context, applicationID int64) (SyncResult,
 	return result, nil
 }
 
+// ErrApplicationKeyMissing reports an application whose API key is not stored.
+// The web interface translates it into a sentence that asks to enter the key,
+// instead of showing the internal error.
+var ErrApplicationKeyMissing = errors.New("syncjob: application has no API key")
+
+// TestApp contacts one application with its stored key and returns the name
+// and version it reports. It does not create or change indexers and it does
+// not update last_sync or last_error: it is the "does this connection work?"
+// check behind the Test button on the Apps page.
+func (s *Service) TestApp(ctx context.Context, applicationID int64) (string, error) {
+	app, err := s.store.GetApplication(ctx, applicationID)
+	if err != nil {
+		return "", err
+	}
+	if s.vault == nil {
+		return "", errors.New("syncjob: vault is not configured; cannot decrypt the application API key")
+	}
+	if len(app.APIKeyEnc) == 0 {
+		return "", fmt.Errorf("%w: %s", ErrApplicationKeyMissing, app.Name)
+	}
+	apiKey, err := s.vault.OpenString(string(app.APIKeyEnc))
+	if err != nil {
+		return "", fmt.Errorf("syncjob: decrypt API key for %q: %w", app.Name, err)
+	}
+	if strings.TrimSpace(apiKey) == "" {
+		return "", fmt.Errorf("%w: %s", ErrApplicationKeyMissing, app.Name)
+	}
+	client, err := s.clientFor(app, apiKey)
+	if err != nil {
+		return "", fmt.Errorf("syncjob: create %s client for %q: %w", app.Kind, app.Name, err)
+	}
+	if client == nil {
+		return "", fmt.Errorf("syncjob: create %s client for %q: no client returned", app.Kind, app.Name)
+	}
+	return client.Test(ctx)
+}
+
 // SyncAll syncs every configured application in name order. One failure does
 // not stop the remaining applications; it is recorded in that application's
 // last_error and in its result.

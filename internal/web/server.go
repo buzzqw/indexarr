@@ -756,6 +756,7 @@ func (s *Server) uiRoutes() *http.ServeMux {
 	ui.HandleFunc("POST /applications/{id}", s.applicationUpdate)
 	ui.HandleFunc("POST /applications/{id}/delete", s.applicationDelete)
 	ui.HandleFunc("POST /applications/{id}/sync", s.applicationSync)
+	ui.HandleFunc("POST /applications/{id}/test", s.applicationTest)
 	ui.HandleFunc("POST /applications/{id}/snapshot", s.applicationSnapshot)
 	ui.HandleFunc("POST /applications/{id}/restore/{snapshot}", s.applicationRestore)
 	ui.HandleFunc("GET /activity", s.activityPage)

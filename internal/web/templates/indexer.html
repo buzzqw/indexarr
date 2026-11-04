@@ -33,6 +33,7 @@
   </div>
   <div class="actions">
     {{if .CanImportCookie}}<a class="btn" href="/indexers/{{.Indexer.ID}}/cookie" title="{{T "tip.cookieImport"}}">{{T "idx.cookie.menu"}}</a>{{end}}
+    <a class="btn" href="#try-as-app" title="{{T "tip.indexerTry"}}">{{T "idx.try.title"}}</a>
     <form method="post" action="/indexers/{{.Indexer.ID}}/test">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn primary" type="submit" title="{{T "tip.indexerTest"}}">{{T "idx.test"}}</button>
@@ -73,6 +74,7 @@
     <span class="chip {{.Verdict.Class}}">{{.Verdict.Label}}</span>
   </div>
   <div class="panel-body">
+    <p class="help">{{T "idx.health.testsHelp"}}</p>
     <p class="help">{{T "idx.health.help"}}</p>
     <p class="health-verdict" role="status">{{.Verdict.Text}}</p>
     {{if .CircuitOpen}}
