@@ -68,7 +68,7 @@ func TestBackupCreateValidateApplyAndPrune(t *testing.T) {
 	entries, _ := os.ReadDir(Dir(dbPath))
 	preRestore := false
 	for _, entry := range entries {
-		if filepath.Ext(entry.Name()) == ".db" && strings.HasPrefix(entry.Name(), "pre-restore-") {
+		if filepath.Ext(entry.Name()) == ".zip" && strings.HasPrefix(entry.Name(), "pre-restore-") {
 			preRestore = true
 		}
 	}

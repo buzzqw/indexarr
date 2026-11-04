@@ -679,7 +679,8 @@
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <div class="field">
         <label for="backup_file">{{T "settings.backupFile"}}</label>
-        <input id="backup_file" name="backup" type="file" accept=".db,application/octet-stream" required>
+        <input id="backup_file" name="backup" type="file" accept=".db,.zip,application/zip,application/octet-stream" required>
+        <p class="help">{{T "settings.backupFileHelp"}}</p>
       </div>
       <div class="actions">
         <button class="btn danger" type="submit">{{T "settings.restoreAction"}}</button>

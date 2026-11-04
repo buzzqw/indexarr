@@ -134,7 +134,7 @@
   "applications.wayAppTitle": "连接应用",
   "applications.wayClientText": "客户端接收 torrent 或 NZB，不是 indexarr 配置的应用。",
   "applications.wayClientTitle": "添加下载客户端",
-  "applications.wayManualText": "适用于只接受 Torznab URL 的应用，例如 gextto 或备用安装。你在那里粘贴地址和 API 密钥；indexarr 不配置该应用。",
+  "applications.wayManualText": "Gextto 不是要连接的应用：是它查询 indexarr。对于它和备用安装，请手动使用 Torznab 地址；indexarr 不会配置该应用。",
   "applications.wayManualTitle": "手动使用 Torznab 地址",
   "applications.whatText": "indexarr 会在应用中创建索引器，在你添加或修改站点时保持更新，并在你在此删除时移除它创建的索引器。无需手动复制地址或密钥。",
   "applications.whatTitle": "连接后 indexarr 会做什么",
@@ -2765,5 +2765,7 @@
   "releases.minSeedersHelp": "只保留做种数至少为该值的发布。",
   "releases.minSizeHelp": "只保留不小于该大小（MB）的发布。",
   "releases.maxSizeHelp": "只保留不大于该大小（MB）的发布。",
-  "maintenance.forumKept": "%s 是论坛来源：其历史记录永远不会删除。"
+  "maintenance.forumKept": "%s 是论坛来源：其历史记录永远不会删除。",
+  "settings.backupFileHelp": "接受 indexarr 创建的 .zip 压缩包或旧的未压缩 .db 文件。",
+  "applications.gexttoNote": "Gextto 不在这里连接：它是通过 Torznab 地址查询 indexarr 的客户端。请使用下方的“手动使用 Torznab 地址”。"
 }

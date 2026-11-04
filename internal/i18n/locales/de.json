@@ -134,7 +134,7 @@
   "applications.wayAppTitle": "App verbinden",
   "applications.wayClientText": "Der Client empfängt Torrent oder NZB. Er ist keine App, die indexarr konfiguriert.",
   "applications.wayClientTitle": "Download-Client hinzufügen",
-  "applications.wayManualText": "Für Apps, die nur eine Torznab-URL akzeptieren, wie gextto oder eine Ersatzinstallation. Dort fügst du Adresse und API-Schlüssel ein; indexarr konfiguriert diese App nicht.",
+  "applications.wayManualText": "Gextto ist keine App zum Verbinden: Es fragt indexarr ab. Für Gextto und eine Ersatzinstallation verwendest du die Torznab-Adresse manuell; indexarr konfiguriert diese App nicht.",
   "applications.wayManualTitle": "Die Torznab-Adresse manuell nutzen",
   "applications.whatText": "indexarr legt die Indexer in der App an, hält sie aktuell, wenn du eine Site hinzufügst oder änderst, und entfernt die von ihm erstellten, wenn du sie hier löschst. Adressen und Schlüssel kopierst du nicht von Hand.",
   "applications.whatTitle": "Was indexarr nach dem Verbinden tut",
@@ -2765,5 +2765,7 @@
   "releases.minSeedersHelp": "Behält nur Releases mit mindestens dieser Anzahl Seeder.",
   "releases.minSizeHelp": "Behält nur Releases mit mindestens dieser Größe in MB.",
   "releases.maxSizeHelp": "Behält nur Releases bis zu dieser Größe in MB.",
-  "maintenance.forumKept": "%s ist eine Forum-Quelle: ihr Verlauf wird nie gelöscht."
+  "maintenance.forumKept": "%s ist eine Forum-Quelle: ihr Verlauf wird nie gelöscht.",
+  "settings.backupFileHelp": "Akzeptiert ein von indexarr erstelltes .zip-Archiv oder eine ältere unkomprimierte .db-Datei.",
+  "applications.gexttoNote": "Gextto wird hier nicht verbunden: Es ist ein Client, der indexarr über die Torznab-Adresse abfragt. Verwende unten „Torznab-Adresse manuell verwenden“."
 }

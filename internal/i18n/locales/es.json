@@ -134,7 +134,7 @@
   "applications.wayAppTitle": "Conectar una app",
   "applications.wayClientText": "El cliente recibe el torrent o el NZB. No es una app que indexarr configure.",
   "applications.wayClientTitle": "Añadir un cliente de descarga",
-  "applications.wayManualText": "Para apps que solo aceptan una URL Torznab, como gextto o una instalación de reserva. Pegas allí la dirección y la API key; indexarr no configura esa app.",
+  "applications.wayManualText": "Gextto no es una app que conectar: es él quien consulta indexarr. Para él, y para una instalación de reserva, usa la dirección Torznab manualmente; indexarr no configura esa app.",
   "applications.wayManualTitle": "Usar la dirección Torznab a mano",
   "applications.whatText": "indexarr crea los indexadores dentro de la app, los mantiene actualizados cuando añades o cambias un sitio, y elimina los que creó cuando los borras aquí. No copias direcciones ni claves a mano.",
   "applications.whatTitle": "Qué hace indexarr tras conectar",
@@ -2765,5 +2765,7 @@
   "releases.minSeedersHelp": "Conserva solo las versiones con al menos este número de seeders.",
   "releases.minSizeHelp": "Conserva solo las versiones de al menos este tamaño, en MB.",
   "releases.maxSizeHelp": "Conserva solo las versiones hasta este tamaño, en MB.",
-  "maintenance.forumKept": "%s es una fuente de foro: su historial nunca se elimina."
+  "maintenance.forumKept": "%s es una fuente de foro: su historial nunca se elimina.",
+  "settings.backupFileHelp": "Acepta un archivo .zip creado por indexarr o un archivo .db antiguo sin comprimir.",
+  "applications.gexttoNote": "Gextto no se conecta aquí: es un cliente que consulta indexarr mediante la dirección Torznab. Usa «Usar la dirección Torznab manualmente» abajo."
 }

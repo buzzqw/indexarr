@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/backup"
@@ -40,7 +41,11 @@ func (s *Server) maintenanceBackupDownload(w http.ResponseWriter, r *http.Reques
 		s.renderError(w, r, http.StatusNotFound, "backup not found")
 		return
 	}
-	w.Header().Set("Content-Type", "application/octet-stream")
+	contentType := "application/octet-stream"
+	if strings.HasSuffix(strings.ToLower(name), ".zip") {
+		contentType = "application/zip"
+	}
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -67,7 +72,7 @@ func (s *Server) maintenanceRestore(w http.ResponseWriter, r *http.Request) {
 	}
 	file, header, err := r.FormFile("backup")
 	if err != nil {
-		redirect(w, r, "/settings?section=backup", "", "Choose a .db backup file")
+		redirect(w, r, "/settings?section=backup", "", "Choose a .db or .zip backup file")
 		return
 	}
 	defer file.Close()

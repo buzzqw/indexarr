@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/adminapi"
+	"github.com/buzzqw/indexarr/internal/backup"
 	"github.com/buzzqw/indexarr/internal/config"
 	coreengine "github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/family"
@@ -143,6 +144,17 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// The old backups are plain .db files. Compress them once in the
+	// background so the next automatic backup is not the only small one; a
+	// file stays until its zip archive validates.
+	go func() {
+		if count, err := backup.CompressExisting(cfg.DBPath); err != nil {
+			logger.Warn("old backup compression failed", "subsystem", "backup", "error", err)
+		} else if count > 0 {
+			logger.Info("old backups compressed", "subsystem", "backup", "count", count)
+		}
+	}()
 
 	settings, err := st.LoadSettings(ctx)
 	if err != nil {

@@ -834,21 +834,14 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) maintenanceBackup(w http.ResponseWriter, r *http.Request) {
-	file, err := os.CreateTemp("", "indexarr-backup-*.db")
+	target, err := backup.Export(r.Context(), s.store, backup.Dir(s.store.Path()))
 	if err != nil {
 		s.renderError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	target := file.Name()
-	_ = file.Close()
-	_ = os.Remove(target)
 	defer os.Remove(target)
-	if err := s.store.BackupTo(r.Context(), target); err != nil {
-		s.renderError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-	name := "indexarr-backup-" + time.Now().Format("20060102-150405") + ".db"
-	w.Header().Set("Content-Type", "application/octet-stream")
+	name := "indexarr-backup-" + time.Now().Format("20060102-150405") + ".zip"
+	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
 	w.Header().Set("Cache-Control", "no-store")
 	http.ServeFile(w, r, filepath.Clean(target))
