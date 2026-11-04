@@ -875,8 +875,7 @@ func (r *Runner) afterRun(ctx context.Context, indexerRow store.Indexer, outcome
 		if settings.AutoDisableAfter > 0 {
 			statuses, err := r.store.RecentIndexerRunStatuses(ctx, indexerRow.ID, settings.AutoDisableAfter)
 			if err == nil && len(statuses) >= settings.AutoDisableAfter && allErrors(statuses) && indexerRow.Enabled {
-				indexerRow.Enabled = false
-				if err := r.store.UpdateIndexer(ctx, indexerRow); err == nil {
+				if err := r.store.SetIndexerEnabled(ctx, indexerRow.ID, false); err == nil {
 					status = notify.StateDisabled
 					r.logger.Warn("native: indexer auto-disabled after repeated failures",
 						"indexer", indexerRow.Slug, "errors", settings.AutoDisableAfter)

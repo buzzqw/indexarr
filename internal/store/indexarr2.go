@@ -434,6 +434,24 @@ func (s *Store) UpdateIndexer(ctx context.Context, in Indexer) error {
 	return nil
 }
 
+// SetIndexerEnabled changes only the enabled flag. The run completion path
+// uses it so an automatic disable cannot write back the rest of an indexer row
+// loaded before the operator changed its settings.
+func (s *Store) SetIndexerEnabled(ctx context.Context, id int64, enabled bool) error {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE indexers SET enabled = ?, updated_at = ? WHERE id = ?`,
+		boolInt(enabled), time.Now().Unix(), id)
+	if err != nil {
+		return fmt.Errorf("set indexer %d enabled=%v: %w", id, enabled, err)
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return fmt.Errorf("indexer %d: %w", id, sql.ErrNoRows)
+	}
+	s.InvalidateCounts()
+	return nil
+}
+
 // ErrIndexerGone means provenance arrived after its indexer was deleted. The
 // live worker treats it as a normal end, not as a database failure.
 var ErrIndexerGone = errors.New("indexer no longer exists")
