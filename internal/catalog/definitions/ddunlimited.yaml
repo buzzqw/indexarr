@@ -193,12 +193,12 @@ search:
   # box says "Nessun argomento o messaggio con questo criterio di ricerca" and
   # "le seguenti parole sono state ignorate": only "non ti è permesso" is a
   # refusal.
-  # Measured on 2026-10-28: one search per account every 57-58 s (refused at
-  # 55 s, accepted at 58 s and 70 s; a refusal does not restart the count).
-  # interval keeps 65 s between two search.php requests; a search without a
-  # slot in time is queued and sent in the background, and its page waits in
-  # the cache for the next Gextto cycle (every 4-6 hours).
-  interval: 65s
+  # The forum asks to wait at least one minute between searches. 90 s keeps a
+  # margin over the measured 57-58 s limit (refused at 55 s, accepted at 58 s
+  # and 70 s; a refusal does not restart the count) and over the login time.
+  # A search without a slot is queued and sent in the background; its page
+  # waits in the cache for the next Gextto cycle (every 4-6 hours).
+  interval: 90s
   cache: 12h
   blocked: { selector: "#message p", contains: "non ti è permesso", message: text }
   response:

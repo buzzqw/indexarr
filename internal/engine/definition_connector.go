@@ -60,6 +60,16 @@ type DefinitionConfig struct {
 	// included, after every change. An empty slice means nothing is pending.
 	// ResumePendingSearches puts a saved queue back after a restart.
 	SavePendingSearches func([]PendingSearch)
+	// LastSearchAt restores the flood clock after a restart: the connector
+	// otherwise starts with a zero time and sends the first queued search
+	// before the site's interval has passed.
+	LastSearchAt time.Time
+	// SearchBlockedUntil restores a refusal pause that was still active when
+	// the previous process stopped.
+	SearchBlockedUntil time.Time
+	// SearchRefusals restores the length of the refusal streak, so the next
+	// refusal doubles the pause instead of restarting from four intervals.
+	SearchRefusals int
 }
 
 var (
@@ -242,6 +252,9 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 		savePending:           cfg.SavePendingSearches,
 		queueCtx:              queueCtx,
 		queueCancel:           queueCancel,
+		searchLast:            cfg.LastSearchAt,
+		searchBlockedUntil:    cfg.SearchBlockedUntil,
+		searchRefusals:        cfg.SearchRefusals,
 	}
 	connector.caps = connector.buildCapabilities()
 	if def.Search.Index != nil {

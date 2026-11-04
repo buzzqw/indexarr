@@ -814,6 +814,49 @@ func (s *Store) PruneActivity(ctx context.Context, before time.Time) (PrunedActi
 	return out, nil
 }
 
+// LastSearchOutcome returns when the newest search actually sent to the site
+// ended, and how many refusal errors in a row it belongs to. Deferred and
+// canceled rows are not sends and are ignored. The connector uses this after a
+// restart to restore the flood interval and the refusal pause.
+func (s *Store) LastSearchOutcome(ctx context.Context, indexerID int64) (time.Time, int, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT started_at, latency_ms, status, error
+		FROM indexer_history
+		WHERE indexer_id = ? AND kind = 'search' AND status IN ('ok', 'error')
+		ORDER BY started_at DESC, id DESC LIMIT 10`, indexerID)
+	if err != nil {
+		return time.Time{}, 0, err
+	}
+	defer rows.Close()
+	var end time.Time
+	refusals := 0
+	for rows.Next() {
+		var started int64
+		var latencyMS int
+		var status, text string
+		if err := rows.Scan(&started, &latencyMS, &status, &text); err != nil {
+			return time.Time{}, 0, err
+		}
+		rowEnd := time.Unix(started, 0).Add(time.Duration(latencyMS) * time.Millisecond)
+		if end.IsZero() {
+			end = rowEnd
+		}
+		if status == "error" && searchRefusalText(text) {
+			refusals++
+			continue
+		}
+		break
+	}
+	return end, refusals, rows.Err()
+}
+
+func searchRefusalText(text string) bool {
+	lower := strings.ToLower(strings.TrimSpace(text))
+	return strings.Contains(lower, "refused by the site") ||
+		strings.Contains(lower, "non ti è permesso") ||
+		strings.Contains(lower, "flood")
+}
+
 // ListFeedReleases returns the newest releases for the "new releases" stream,
 // optionally limited to one indexer, with provenance counts. It is paginated on
 // the server and reads hidden releases out.

@@ -52,6 +52,22 @@ const (
 // page still has to be read after the turn.
 const searchTurnMargin = 15 * time.Second
 
+// SearchRefusalPause is how long the connector must stay quiet after a refusal
+// when the state is rebuilt from history at startup. refusals is the number of
+// consecutive refusals, newest first. The live connector uses the same steps
+// (4, 8, 16, 32 intervals), so a restart does not shorten the pause.
+func SearchRefusalPause(interval time.Duration, refusals int) time.Duration {
+	if interval <= 0 || refusals <= 0 {
+		return 0
+	}
+	steps := searchRefusalBackoff
+	for i := 1; i < refusals && steps < searchRefusalBackoffMax; i++ {
+		steps *= 2
+	}
+	steps = min(steps, searchRefusalBackoffMax)
+	return time.Duration(steps) * interval
+}
+
 // DeferredSearchEvent is one search page the background worker really sent to
 // the site for a deferred search, or tried to send. Err is nil when the page
 // was read and stored in the search cache. Attempt starts at 1.

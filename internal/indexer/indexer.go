@@ -591,6 +591,20 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 	var connector engine.Connector
 	switch name {
 	case "", "definition":
+		// The flood clock lives in memory in the connector. After a restart
+		// the newest search row tells when the site really answered, so a
+		// queued search cannot be sent before the definition's interval and a
+		// refusal pause that was still active is not lost.
+		lastSearchAt, refusals, historyErr := m.store.LastSearchOutcome(ctx, indexer.ID)
+		if historyErr != nil && m.logger != nil {
+			m.logger.Warn("cannot read the last search time",
+				"indexer", indexer.Slug, "error", historyErr)
+		}
+		var blockedUntil time.Time
+		if refusals > 0 {
+			blockedUntil = lastSearchAt.Add(engine.SearchRefusalPause(
+				parsed.Search.Interval.Duration(), refusals))
+		}
 		connector, err = engine.NewDefinitionConnector(engine.DefinitionConfig{
 			Indexer:         ref,
 			Definition:      parsed,
@@ -604,6 +618,9 @@ func (m *Manager) connectorFor(ctx context.Context, indexer store.Indexer) (engi
 				return m.checkQueryLimit(ctx, indexer.ID)
 			},
 			SavePendingSearches: m.pendingSearchSaver(indexer),
+			LastSearchAt:        lastSearchAt,
+			SearchBlockedUntil:  blockedUntil,
+			SearchRefusals:      refusals,
 		})
 		if err != nil {
 			return nil, redactError(fmt.Errorf("indexer %s: build definition connector: %w", indexer.Slug, err), secretValues)
