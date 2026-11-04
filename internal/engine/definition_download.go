@@ -889,3 +889,18 @@ func videoItem(item Item) bool {
 	}
 	return true
 }
+
+// ResolveItems opens the details of the given rows when the definition
+// resolves at search time. It is the entry point for a search answered from
+// the local topic history: the result then carries the same links the site
+// would have returned.
+func (c *DefinitionConnector) ResolveItems(ctx context.Context, items []Item) ([]Item, error) {
+	return c.resolveSearchDetails(ctx, items)
+}
+
+// ResolvesOnSearch reports whether the definition opens the details during a
+// search: a search answered from the local history must then resolve its rows
+// the same way, and fewer rows are worth opening.
+func (c *DefinitionConnector) ResolvesOnSearch() bool {
+	return c.resolvesOnSearch()
+}

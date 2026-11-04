@@ -494,14 +494,21 @@ func validateCatalog(catalog *Catalog, search Search, add func(string, ...any)) 
 		add("catalog.forums: at least one forum is required")
 	}
 	seen := make(map[string]int, len(catalog.Forums))
+	needsRequest := false
 	for i, forum := range catalog.Forums {
 		id := strings.TrimSpace(forum.ID)
+		if id == "" && strings.TrimSpace(forum.URL) != "" {
+			id = strings.TrimSpace(forum.URL)
+		}
 		if id == "" {
-			add("catalog.forums[%d].id: is required", i)
+			add("catalog.forums[%d]: id or url is required", i)
 		} else if first, ok := seen[id]; ok {
-			add("catalog.forums[%d].id: duplicate of catalog.forums[%d] (%q)", i, first, id)
+			add("catalog.forums[%d]: duplicate of catalog.forums[%d] (%q)", i, first, id)
 		} else {
 			seen[id] = i
+		}
+		if strings.TrimSpace(forum.URL) == "" {
+			needsRequest = true
 		}
 		if forum.Standard != 0 && (forum.Standard < 1000 || forum.Standard > 8999) {
 			add("catalog.forums[%d].standard: must be between 1000 and 8999 (got %d)", i, forum.Standard)
@@ -510,10 +517,12 @@ func validateCatalog(catalog *Catalog, search Search, add func(string, ...any)) 
 			add("catalog.forums[%d].weight: must be between 0 and 20 (got %d)", i, forum.Weight)
 		}
 	}
-	if catalog.Request.Get != "" && catalog.Request.Post != "" {
-		add("catalog.request: get and post are mutually exclusive")
-	} else if catalog.Request.Get == "" && catalog.Request.Post == "" {
-		add("catalog.request: must have get or post")
+	if needsRequest {
+		if catalog.Request.Get != "" && catalog.Request.Post != "" {
+			add("catalog.request: get and post are mutually exclusive")
+		} else if catalog.Request.Get == "" && catalog.Request.Post == "" {
+			add("catalog.request: must have get or post")
+		}
 	}
 	if catalog.PageSize < 0 {
 		add("catalog.page_size: must be >= 0")

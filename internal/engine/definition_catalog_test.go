@@ -181,3 +181,75 @@ search:
 		t.Fatal("Catalog without a block must fail")
 	}
 }
+
+// A fixed index topic is read as it is and its "next" link is followed: the
+// DDUnlimited TV list is one topic over three pages, not a forum.
+func TestDefinitionCatalogFollowsAFixedPage(t *testing.T) {
+	var pages []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pages = append(pages, r.URL.String())
+		switch r.URL.Path {
+		case "/viewtopic.php":
+			if r.URL.Query().Get("start") == "2" {
+				writeBody(t, w, []byte(`<div class="postbody">
+					<a class="postlink-local" href="/viewtopic.php?t=30">Serie C</a></div>`))
+				return
+			}
+			writeBody(t, w, []byte(`<div class="postbody">
+				<a class="postlink-local" href="/viewtopic.php?t=10">Serie A</a>
+				<a class="postlink-local" href="/viewtopic.php?t=20">Serie B</a>
+				<a class="right-box right" href="/viewtopic.php?t=61463&amp;start=2">Pagina 2</a></div>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	definitionBody := `schema: 1
+meta: { id: index, name: Index, type: private, protocol: ed2k, urls: ["` + server.URL + `/"] }
+capabilities: { search: [q] }
+search:
+  request: { get: /search.php }
+  response:
+    type: html
+    rows: { selector: "li" }
+    fields:
+      title: { selector: "a" }
+    required: [title]
+catalog:
+  forums:
+    - { id: "tv", url: "/viewtopic.php?t=61463", standard: 5000, next: "a.right-box.right" }
+  page_size: 0
+  response:
+    type: html
+    rows: { selector: 'a.postlink-local[href*="viewtopic.php?t="]' }
+    fields:
+      title:   { self: true, filters: [trim] }
+      details: { self: true, attr: href, type: url }
+    required: [title, details]
+`
+	parsed, err := definition.Parse([]byte(definitionBody))
+	if err != nil {
+		t.Fatalf("parse definition: %v", err)
+	}
+	connector, err := NewDefinitionConnector(DefinitionConfig{
+		Definition: parsed,
+		Transport:  NewTransport(TransportConfig{AllowPrivate: true}),
+	})
+	if err != nil {
+		t.Fatalf("NewDefinitionConnector: %v", err)
+	}
+	result, err := connector.Catalog(context.Background(), CatalogRequest{Forum: "tv"})
+	if err != nil {
+		t.Fatalf("Catalog: %v", err)
+	}
+	if len(result.Entries) != 3 {
+		t.Fatalf("entries = %d, want 3 across two pages", len(result.Entries))
+	}
+	if result.PageSize != 0 || result.More {
+		t.Fatalf("static page result = %+v, want no page size and no more", result)
+	}
+	if len(pages) != 2 {
+		t.Fatalf("pages fetched = %v, want the fixed page and its next", pages)
+	}
+}

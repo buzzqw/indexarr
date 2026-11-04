@@ -255,6 +255,25 @@ func (m *Manager) catalogItems(ctx context.Context, indexer store.Indexer, query
 	return items, nil
 }
 
+// itemResolver is the connector method that opens the details of items whose
+// definition resolves them at search time (DDUnlimited expands a topic into
+// its files). A catalogue answer then looks like the site's own.
+type itemResolver interface {
+	ResolveItems(ctx context.Context, items []engine.Item) ([]engine.Item, error)
+	ResolvesOnSearch() bool
+}
+
+// resolveCatalogItems lets a definition that resolves at search time turn the
+// stored topics into the rows a client expects; the others keep the topic row
+// and open it at grab time.
+func resolveCatalogItems(ctx context.Context, connector engine.Connector, items []engine.Item) ([]engine.Item, error) {
+	resolver, ok := connector.(itemResolver)
+	if !ok || !resolver.ResolvesOnSearch() {
+		return items, nil
+	}
+	return resolver.ResolveItems(ctx, items)
+}
+
 // mergeCatalogItems appends the local topics the site search did not return.
 // A topic already in the site answer keeps the site row: it carries the
 // magnets the site published.

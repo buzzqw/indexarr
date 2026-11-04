@@ -80,6 +80,61 @@ func (c *DefinitionConnector) Catalog(ctx context.Context, req CatalogRequest) (
 	values.scalars["start"] = strconv.Itoa(req.Start)
 	values.scalars["page_size"] = strconv.Itoa(pageSize)
 
+	// A fixed page (an index topic) is read as it is, with no forum or start
+	// parameter; next, when set, follows its pagination.
+	fixedURL := ""
+	fixedNext := ""
+	for _, candidate := range catalog.Forums {
+		if strings.EqualFold(strings.TrimSpace(candidate.ID), forum) ||
+			(candidate.ID == "" && strings.EqualFold(strings.TrimSpace(candidate.URL), forum)) {
+			fixedURL = strings.TrimSpace(candidate.URL)
+			fixedNext = strings.TrimSpace(candidate.Next)
+			break
+		}
+	}
+	if fixedURL == "" && strings.TrimSpace(catalog.Request.Get) == "" && strings.TrimSpace(catalog.Request.Post) == "" {
+		return CatalogResult{}, fmt.Errorf("definition %q: catalog forum %q has no url", c.def.Meta.ID, forum)
+	}
+
+	spec := c.def.Search.Response
+	if len(catalog.Response.Fields) > 0 {
+		spec = catalog.Response
+	}
+	result := CatalogResult{PageSize: pageSize}
+
+	if fixedURL != "" {
+		address := fixedURL
+		for page := 0; page < catalogMaxPages && address != ""; page++ {
+			target, err := c.buildURL(address)
+			if err != nil {
+				return CatalogResult{}, err
+			}
+			request, err := c.newRequest(ctx, http.MethodGet, target, nil)
+			if err != nil {
+				return CatalogResult{}, err
+			}
+			response, err := c.doFeed(ctx, request)
+			if err != nil {
+				return CatalogResult{}, err
+			}
+			if response.Status >= 400 {
+				return CatalogResult{}, fmt.Errorf("definition %q: catalog returned HTTP %d", c.def.Meta.ID, response.Status)
+			}
+			pageEntries, err := c.catalogEntries(ctx, response, spec, forum, standard)
+			if err != nil {
+				return CatalogResult{}, err
+			}
+			result.Entries = append(result.Entries, pageEntries...)
+			address = ""
+			if fixedNext != "" {
+				address, _ = extractHTMLValue(htmlBody(response), fixedNext, "href")
+			}
+		}
+		result.PageSize = 0
+		result.More = false
+		return result, nil
+	}
+
 	pathTemplate := catalog.Request.Post
 	method := http.MethodPost
 	if pathTemplate == "" {
@@ -157,19 +212,30 @@ func (c *DefinitionConnector) Catalog(ctx context.Context, req CatalogRequest) (
 		return CatalogResult{}, fmt.Errorf("definition %q: catalog returned HTTP %d", c.def.Meta.ID, response.Status)
 	}
 
-	spec := c.def.Search.Response
-	if len(catalog.Response.Fields) > 0 {
-		spec = catalog.Response
-	}
-	rows, err := c.extractRowsWith(response, spec)
+	result.Entries, err = c.catalogEntries(ctx, response, spec, forum, standard)
 	if err != nil {
 		return CatalogResult{}, err
 	}
-	result := CatalogResult{PageSize: pageSize}
+	result.More = len(result.Entries) > 0
+	return result, nil
+}
+
+// catalogMaxPages bounds the pages followed from a fixed index topic: the TV
+// list of DDUnlimited has three, and a runaway next link must not read the
+// whole forum in one run.
+const catalogMaxPages = 5
+
+// catalogEntries parses the rows of one catalogue page into entries.
+func (c *DefinitionConnector) catalogEntries(ctx context.Context, response *Response, spec definition.Response, forum string, standard int) ([]CatalogEntry, error) {
+	rows, err := c.extractRowsWith(response, spec)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]CatalogEntry, 0, len(rows))
 	for _, raw := range rows {
 		item, ok, err := c.normalizeRowWith(raw, response.URL, spec)
 		if err != nil {
-			return CatalogResult{}, err
+			return nil, err
 		}
 		observeNormalize(ctx, NormalizeObservation{OK: ok})
 		if !ok {
@@ -186,15 +252,14 @@ func (c *DefinitionConnector) Catalog(ctx context.Context, req CatalogRequest) (
 		if parsed, parseErr := url.Parse(address); parseErr == nil && !parsed.IsAbs() && c.baseURL != nil {
 			absolute = c.baseURL.ResolveReference(parsed).String()
 		}
-		result.Entries = append(result.Entries, CatalogEntry{
+		entries = append(entries, CatalogEntry{
 			Title:    item.Title,
 			URL:      absolute,
 			Forum:    forum,
 			Standard: standard,
 		})
 	}
-	result.More = len(result.Entries) > 0
-	return result, nil
+	return entries, nil
 }
 
 // CatalogForums returns the forum ids of the definition's topic history.

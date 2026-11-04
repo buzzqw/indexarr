@@ -235,6 +235,51 @@ latest:
   # per run; the first page alone missed too many season packs.
   pagination: { type: offset, start: 0, step: 25, max_pages: 2, param: start }
 
+# The local topic history of the two alphabetical indexes: the TV list (one
+# topic, three pages) and the 27 letter topics of the movies. They are read one
+# page per run and stored, so a search answers from them even while the forum
+# refuses search.php (the flood control that made 166 of 222 searches fail).
+# The series get weight 5: the TV list covers every series and is the one that
+# changes most.
+catalog:
+  forums:
+    - { id: "tv", url: "/viewtopic.php?t=61463", standard: 5000, weight: 5, next: "a.right-box.right" }
+    - { id: "movie-#", url: "/viewtopic.php?t=3941487", standard: 2000 }
+    - { id: "movie-A", url: "/viewtopic.php?t=3941486", standard: 2000 }
+    - { id: "movie-B", url: "/viewtopic.php?t=3941485", standard: 2000 }
+    - { id: "movie-C", url: "/viewtopic.php?t=3941484", standard: 2000 }
+    - { id: "movie-D", url: "/viewtopic.php?t=3941483", standard: 2000 }
+    - { id: "movie-E", url: "/viewtopic.php?t=3941482", standard: 2000 }
+    - { id: "movie-F", url: "/viewtopic.php?t=3941481", standard: 2000 }
+    - { id: "movie-G", url: "/viewtopic.php?t=3941480", standard: 2000 }
+    - { id: "movie-H", url: "/viewtopic.php?t=3941479", standard: 2000 }
+    - { id: "movie-I", url: "/viewtopic.php?t=3941478", standard: 2000 }
+    - { id: "movie-J", url: "/viewtopic.php?t=3941477", standard: 2000 }
+    - { id: "movie-K", url: "/viewtopic.php?t=3941476", standard: 2000 }
+    - { id: "movie-L", url: "/viewtopic.php?t=3941475", standard: 2000 }
+    - { id: "movie-M", url: "/viewtopic.php?t=3941474", standard: 2000 }
+    - { id: "movie-N", url: "/viewtopic.php?t=3941473", standard: 2000 }
+    - { id: "movie-O", url: "/viewtopic.php?t=3941472", standard: 2000 }
+    - { id: "movie-P", url: "/viewtopic.php?t=3941471", standard: 2000 }
+    - { id: "movie-Q", url: "/viewtopic.php?t=3941470", standard: 2000 }
+    - { id: "movie-R", url: "/viewtopic.php?t=3941469", standard: 2000 }
+    - { id: "movie-S", url: "/viewtopic.php?t=3941468", standard: 2000 }
+    - { id: "movie-T", url: "/viewtopic.php?t=3941467", standard: 2000 }
+    - { id: "movie-U", url: "/viewtopic.php?t=3941466", standard: 2000 }
+    - { id: "movie-V", url: "/viewtopic.php?t=3941465", standard: 2000 }
+    - { id: "movie-W", url: "/viewtopic.php?t=3941464", standard: 2000 }
+    - { id: "movie-X", url: "/viewtopic.php?t=3941463", standard: 2000 }
+    - { id: "movie-Y", url: "/viewtopic.php?t=3941462", standard: 2000 }
+    - { id: "movie-Z", url: "/viewtopic.php?t=3941461", standard: 2000 }
+  page_size: 0
+  response:
+    type: html
+    rows: { selector: 'a.postlink-local[href*="viewtopic.php?t="]' }
+    fields:
+      title:   { self: true, filters: [trim] }
+      details: { self: true, attr: href, type: url }
+    required: [title, details]
+
 download:
   resolve_on: search
   # One release per eD2k file: a season pack becomes its episodes and a comic

@@ -19,13 +19,14 @@ import (
 // fakeCatalogConnector answers the catalogue requests of the tests and lets
 // the site search fail, so the local history is the only answer.
 type fakeCatalogConnector struct {
-	pages  map[string]engine.CatalogResult
-	forums []definition.CatalogForum
-	search error
-	fail   map[string]error
-	delay  time.Duration
-	active atomic.Int32
-	max    atomic.Int32
+	pages    map[string]engine.CatalogResult
+	forums   []definition.CatalogForum
+	search   error
+	searches atomic.Int32
+	fail     map[string]error
+	delay    time.Duration
+	active   atomic.Int32
+	max      atomic.Int32
 }
 
 func (f *fakeCatalogConnector) peak() int32 { return f.max.Load() }
@@ -39,6 +40,7 @@ func (f *fakeCatalogConnector) Capabilities() engine.Capabilities {
 }
 
 func (f *fakeCatalogConnector) Search(context.Context, engine.SearchRequest) ([]engine.Item, error) {
+	f.searches.Add(1)
 	if f.search != nil {
 		return nil, f.search
 	}
@@ -199,9 +201,9 @@ func TestRunCatalogPageWalksEveryForum(t *testing.T) {
 	}
 }
 
-// A search that the site refuses is answered from the history: the threads are
-// found locally and the page is not left empty.
-func TestSearchFallsBackToTheTopicHistory(t *testing.T) {
+// The history answers first: a title it holds is returned without touching
+// the site, and only a search it cannot answer goes online.
+func TestSearchAnswersFromTheTopicHistoryFirst(t *testing.T) {
 	ctx := context.Background()
 	connector := &fakeCatalogConnector{
 		forums: []definition.CatalogForum{{ID: "52", Standard: 5040}},
@@ -225,6 +227,9 @@ func TestSearchFallsBackToTheTopicHistory(t *testing.T) {
 	if len(items) != 2 {
 		t.Fatalf("items = %d, want the 2 stored topics: %+v", len(items), items)
 	}
+	if got := connector.searches.Load(); got != 0 {
+		t.Fatalf("site searches = %d, want 0: the history answers first", got)
+	}
 	for _, item := range items {
 		if item.DetailsURL == "" {
 			t.Errorf("item %q has no topic address", item.Title)
@@ -234,15 +239,12 @@ func TestSearchFallsBackToTheTopicHistory(t *testing.T) {
 		}
 	}
 
-	// The live search still answers with the site's row when there is one:
-	// the local topic is only added when the site did not return it.
-	connector.search = nil
-	items, err = manager.Search(ctx, indexerID, engine.SearchRequest{Mode: engine.ModeSearch, Query: "Dark Matter"})
-	if err != nil {
-		t.Fatalf("Search: %v", err)
+	// Nothing in the history: the site is asked, and its failure is reported.
+	if _, err := manager.Search(ctx, indexerID, engine.SearchRequest{Mode: engine.ModeSearch, Query: "Unknown Title"}); err == nil {
+		t.Fatal("a search with no local match and a failing site must fail")
 	}
-	if len(items) != 2 {
-		t.Fatalf("items = %d, want the 2 stored topics", len(items))
+	if got := connector.searches.Load(); got != 1 {
+		t.Fatalf("site searches = %d, want 1", got)
 	}
 }
 

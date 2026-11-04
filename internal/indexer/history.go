@@ -267,30 +267,37 @@ func (m *Manager) Search(ctx context.Context, indexerID int64, req engine.Search
 			stats.discardParse()
 		}
 	})
-	items, err := connector.Search(ctx, req)
+	// The local topic history answers first: a title already read from the
+	// forum is returned without touching the site, and only a search that the
+	// history cannot answer goes online. This is what keeps a flood-limited
+	// forum usable and the load on it low.
+	var items []engine.Item
+	limit := catalogSearchLimit
+	if resolver, ok := connector.(itemResolver); ok && resolver.ResolvesOnSearch() {
+		// Opening the details costs one request per row: fewer rows, like the
+		// definition's own index (max_topics 5).
+		limit = 5
+	}
+	local, localErr := m.catalogItems(ctx, indexer, req.Query, limit)
+	if localErr != nil {
+		m.logger.Debug("indexer: topic history lookup", "indexer", indexer.Slug, "error", localErr)
+	}
+	if len(local) > 0 {
+		items, err = resolveCatalogItems(ctx, connector, local)
+		if err != nil {
+			m.logger.Debug("indexer: resolving the topic history", "indexer", indexer.Slug, "error", err)
+			items = local
+			err = nil
+		}
+	} else {
+		items, err = connector.Search(ctx, req)
+	}
 	if err != nil {
 		err = fmt.Errorf("indexer %s: search: %w", indexer.Slug, err)
 	} else {
 		stats.Seen = len(items)
 		for _, item := range items {
 			stats.observeItem(item, capture.secrets)
-		}
-	}
-	// A site that keeps a local topic history answers from it as well: the
-	// threads and series already read are found even when the site's own
-	// search refuses the request or knows only the first page.
-	if local, localErr := m.catalogItems(ctx, indexer, req.Query, catalogSearchLimit); localErr != nil {
-		m.logger.Debug("indexer: topic history lookup", "indexer", indexer.Slug, "error", localErr)
-	} else if len(local) > 0 {
-		if err != nil {
-			m.logger.Debug("indexer: answered from the topic history after a failed search",
-				"indexer", indexer.Slug, "error", err)
-			items = local
-			stats.Seen = len(items)
-			err = nil
-		} else {
-			items = mergeCatalogItems(items, local, 0)
-			stats.Seen = len(items)
 		}
 	}
 	m.recordHistory(ctx, indexer.ID, "search", req.Query, statusFor(ctx, err), started, 0, err, stats)

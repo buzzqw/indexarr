@@ -179,6 +179,12 @@ func (d *Definition) HasCatalog() bool {
 // CatalogForum is one listing of a catalog walk.
 type CatalogForum struct {
 	ID string `yaml:"id" json:"id"`
+	// URL is a fixed page (an index topic) instead of a forum listing. The
+	// walk reads it as it is; no forum or start parameter is sent.
+	URL string `yaml:"url,omitempty" json:"url,omitempty"`
+	// Next follows the link to the following page of a fixed list, so one
+	// run reads the pages of a long index topic.
+	Next string `yaml:"next,omitempty" json:"next,omitempty"`
 	// Standard is the Torznab category every topic of the forum belongs to.
 	Standard int `yaml:"standard,omitempty" json:"standard,omitempty"`
 	// Weight is how many pages this forum gets for every page of a forum

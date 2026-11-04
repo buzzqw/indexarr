@@ -837,6 +837,18 @@ func (r *Runner) runCatalog(ctx context.Context, indexerRow store.Indexer) (outc
 			"forum", page.Forum, "start", page.Start,
 			"topics", page.Topics, "new", page.Added, "finished", page.Finished)
 	}
+	// A source that publishes both a list of new releases and an index keeps
+	// both: the topic history answers searches, the latest list fills the
+	// archive. Two requests per interval, not two schedules.
+	if latest, latestErr := r.manager.LatestSupported(ctx, indexerRow); outcome.Err == nil && latestErr == nil && latest {
+		stats, runErr := r.manager.Run(ctx, indexerRow.ID)
+		if runErr != nil {
+			outcome.Err = runErr
+		} else if stats != nil && outcome.Stats != nil {
+			outcome.Stats.Seen += stats.Seen
+			outcome.Stats.New += stats.New
+		}
+	}
 	r.afterRun(ctx, indexerRow, outcome)
 	return outcome
 }
