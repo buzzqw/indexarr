@@ -123,7 +123,7 @@ search:
   #     letter, each a single page whose first post is a bar of letter links.
   # The engine fetches the lists for the query's mode and letter, matches the
   # title locally and opens only the matching topics. search.php (one search
-  # every 65 s) remains the fallback when the lists have no title.
+  # every 90 s) remains the fallback when the lists have no title.
   # Only topic links are titles: the lists also link users, PMs and forums.
   index:
     forum: /viewforum.php?f=1988
