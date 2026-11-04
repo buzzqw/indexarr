@@ -35,7 +35,7 @@
       <tbody>
         {{range .Releases}}
         <tr>
-          <td><a href="/releases/{{.Release.ID}}">{{truncate .Release.Title 90}}</a></td>
+          <td class="release-cell"><a href="/releases/{{.Release.ID}}" title="{{.Release.Title}}">{{.Release.Title}}</a></td>
           <td class="feed-provenance">
             <span class="chip">{{T "activity.feed.indexerCount" .IndexerCount}}</span>
             {{if .Names}}<span class="sub">{{.Names}}</span>{{end}}

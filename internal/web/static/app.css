@@ -489,6 +489,9 @@ tbody tr:hover { background: var(--surface-2); }
 tbody tr:last-child td { border-bottom: 0; }
 td form { display: inline; }
 td.error-cell { max-width: 26rem; overflow-wrap: anywhere; }
+/* Release names in the lists are shown in full: a torrent name often has no
+   spaces, so the cell may break inside a word instead of clipping the text. */
+td.release-cell { overflow-wrap: anywhere; }
 th.check, td.check { width: 2rem; }
 label.check { display: inline-flex; align-items: center; gap: 0.4rem; }
 label.check input { margin: 0; }

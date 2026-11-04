@@ -325,3 +325,29 @@ func TestVisibilityRefreshIsOnlyOnLiveTabs(t *testing.T) {
 		}
 	}
 }
+
+// The latest-release lists show the whole torrent name: a long one wraps
+// instead of being cut with an ellipsis, because the name is how a release is
+// recognised and copied.
+func TestLatestReleaseListsShowTheFullName(t *testing.T) {
+	env := newTestEnv(t)
+	indexerID := seedDataIndexer(t, env, "long-name", "Long Name")
+	title := "A.Very.Long.Release.Name.With.No.Spaces.S01E01.1080p.AMZN.WEB-DL.ENG.ITA.JAP.H264-GROUP.mkv"
+	seedDataRelease(t, env, indexerID, "long-name", title, time.Now(), 4)
+
+	feed := get(t, env.handler, "/activity?tab=feed").Body.String()
+	if !strings.Contains(feed, title) {
+		t.Errorf("the feed cut the release name: %q missing", title)
+	}
+	detail := get(t, env.handler, "/indexers/"+strconv.FormatInt(indexerID, 10)).Body.String()
+	if !strings.Contains(detail, title) {
+		t.Errorf("the indexer latest releases cut the name: %q missing", title)
+	}
+	if !strings.Contains(detail, `class="release-cell"`) {
+		t.Error("the indexer latest releases lost the wrapping cell")
+	}
+	css := get(t, env.handler, "/static/app.css").Body.String()
+	if !strings.Contains(css, "td.release-cell { overflow-wrap: anywhere; }") {
+		t.Error("the release-cell rule is missing from the stylesheet")
+	}
+}

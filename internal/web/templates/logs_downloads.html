@@ -105,7 +105,7 @@
         <tr>
           <td class="nowrap" title="{{.At.Format "2006-01-02 15:04:05"}}">{{ago .At}}</td>
           <td>{{textOrDash .App}}</td>
-          <td>{{truncate .Title 120}}</td>
+          <td class="release-cell" title="{{.Title}}">{{.Title}}</td>
           <td>{{textOrDash .Source}}</td>
           <td>
             {{if .Copy}}<button class="chip copy" type="button" data-copy="{{.Copy}}" title="{{.CopyTitle}}">{{.Via}}</button>

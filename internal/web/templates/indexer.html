@@ -297,7 +297,7 @@
       <tbody>
         {{range .Releases}}
         <tr>
-          <td><a href="/releases/{{.ID}}">{{truncate .Title 80}}</a></td>
+          <td class="release-cell"><a href="/releases/{{.ID}}" title="{{.Title}}">{{.Title}}</a></td>
           <td>{{sizeOrDash .Size}}</td>
           <td>{{numOrDash .Seeders}}</td>
           <td class="nowrap">{{ago .FirstSeenAt}}</td>
