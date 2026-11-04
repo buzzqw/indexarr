@@ -199,6 +199,10 @@ type SearchRequest struct {
 	// definition that cannot mark it: returning nothing would be a lie, not
 	// a filter.
 	FreeleechOnly *bool
+	// ForceLive lets a manual search reach the site even when the source is a
+	// forum that normally answers only from its topic history. Application
+	// requests leave it false.
+	ForceLive bool
 }
 
 // LatestRequest asks for recent releases, optionally in specific categories.

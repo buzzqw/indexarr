@@ -116,6 +116,7 @@ type indexerDetailView struct {
 	UploaderOnly        bool
 	UploaderMinutes     int
 	CategoryMapped      bool
+	LiveOnMiss          bool
 	Smartfeed           bool
 	SmartfeedUILink     string
 	SmartfeedRSS        bool
@@ -214,6 +215,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	}
 	data.SearchOnly = !data.Latest
 	config := publicConfigMap(in.ConfigJSON)
+	data.LiveOnMiss = truthy(config["live_on_miss"])
 	address := strings.TrimSpace(config["url"])
 	if address == "" {
 		address = strings.TrimSpace(config["site"])

@@ -2771,5 +2771,10 @@
   "releases.filterResults": "Filtrer les résultats",
   "releases.filterResultsPlaceholder": "Filtrer la liste…",
   "releases.filterResultsHelp": "Affiche uniquement les lignes déjà obtenues qui contiennent ce texte. Ne lance pas une nouvelle recherche.",
-  "releases.filterResultsEmpty": "Aucun résultat ne correspond au filtre."
+  "releases.filterResultsEmpty": "Aucun résultat ne correspond au filtre.",
+  "indexerForm.liveOnMiss": "Chercher sur le site si le titre n'est pas dans l'historique",
+  "indexerForm.liveOnMissHelp": "Uniquement pour les forums avec un historique de sujets. En cas d'absence, indexarr interroge le site en respectant l'intervalle anti-flood. Désactivé, il répond uniquement depuis l'historique : les nouveaux sujets apparaissent après la prochaine lecture, sans risque de blocage.",
+  "idx.topics.historyOnly": "Les recherches des applications utilisent uniquement l'historique : si un titre manque, indexarr n'interroge pas le site.",
+  "idx.topics.liveOnMiss": "Si un titre n'est pas dans l'historique, la recherche en direct est autorisée, toujours à l'intervalle anti-flood.",
+  "idx.topics.modeTip": "Se modifie dans Modifier → Avancé."
 }

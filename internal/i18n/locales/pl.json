@@ -2771,5 +2771,10 @@
   "releases.filterResults": "Filtruj wyniki",
   "releases.filterResultsPlaceholder": "Filtruj listę…",
   "releases.filterResultsHelp": "Pokazuje tylko już otrzymane wiersze zawierające ten tekst. Nie uruchamia nowego wyszukiwania.",
-  "releases.filterResultsEmpty": "Żaden wynik nie pasuje do filtra."
+  "releases.filterResultsEmpty": "Żaden wynik nie pasuje do filtra.",
+  "indexerForm.liveOnMiss": "Szukaj na stronie, gdy tytułu nie ma w historii",
+  "indexerForm.liveOnMissHelp": "Tylko dla forów z historią tematów. Przy braku tytułu indexarr odpytuje witrynę, nadal w odstępie anti-flood. Wyłączone odpowiada tylko z historii: nowe tematy pojawią się po następnym odczycie, bez ryzyka blokady.",
+  "idx.topics.historyOnly": "Wyszukiwania aplikacji korzystają tylko z historii tematów: gdy tytułu brakuje, indexarr nie odpytuje witryny.",
+  "idx.topics.liveOnMiss": "Jeśli tytułu nie ma w historii, wyszukiwanie na żywo jest dozwolone, nadal w odstępie anti-flood.",
+  "idx.topics.modeTip": "Zmienisz w Edytuj → Zaawansowane."
 }

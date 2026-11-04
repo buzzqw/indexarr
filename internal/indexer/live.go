@@ -74,6 +74,9 @@ type LiveQuery struct {
 	// FreeleechOnly overrides the source's saved "freeleech only" for this
 	// request: nil keeps it, false ignores it, true asks for free releases.
 	FreeleechOnly *bool
+	// ForceLive is set by the manual search page: a forum that normally
+	// answers only from its topic history may reach the site on a miss.
+	ForceLive bool
 }
 
 // LiveIndexerResult is what one indexer did during a live search. Mode is the
@@ -579,6 +582,7 @@ func (m *Manager) liveOne(reqCtx, workCtx context.Context, indexer store.Indexer
 	outcome.Mode = string(plan.mode)
 	outcome.Fallback = plan.fallback
 	outcome.Query = plan.request.Query
+	plan.request.ForceLive = req.ForceLive
 	if liveFirstPageOnly(indexer.ConfigJSON) {
 		plan.request.FirstPageOnly = true
 	}

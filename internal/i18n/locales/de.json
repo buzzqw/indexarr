@@ -2771,5 +2771,10 @@
   "releases.filterResults": "Ergebnisse filtern",
   "releases.filterResultsPlaceholder": "Liste filtern…",
   "releases.filterResultsHelp": "Zeigt nur die bereits erhaltenen Zeilen, die diesen Text enthalten. Startet keine neue Suche.",
-  "releases.filterResultsEmpty": "Kein Ergebnis entspricht dem Filter."
+  "releases.filterResultsEmpty": "Kein Ergebnis entspricht dem Filter.",
+  "indexerForm.liveOnMiss": "Die Seite durchsuchen, wenn der Titel nicht im Verlauf steht",
+  "indexerForm.liveOnMissHelp": "Nur für Foren mit Themenverlauf. Fehlt der Titel, fragt indexarr die Seite ab, weiterhin im Anti-Flood-Abstand. Ausgeschaltet antwortet es nur aus dem Verlauf: neue Themen erscheinen nach dem nächsten Durchlauf, ohne Sperrrisiko.",
+  "idx.topics.historyOnly": "App-Suchen nutzen nur den Themenverlauf: Fehlt ein Titel, fragt indexarr die Seite nicht ab.",
+  "idx.topics.liveOnMiss": "Ist ein Titel nicht im Verlauf, ist die Live-Suche erlaubt, weiterhin im Anti-Flood-Abstand.",
+  "idx.topics.modeTip": "Änderbar unter Bearbeiten → Erweitert."
 }

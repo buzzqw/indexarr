@@ -71,6 +71,10 @@ func (s *Server) indexerCatalogTry(w http.ResponseWriter, r *http.Request) {
 		Priority:     &priority,
 		Enabled:      &enabled,
 		Tags:         []string{previewTag},
+		// A preview must show real site results even for a forum: its topic
+		// history is empty, so the live fallback is forced for this temporary
+		// row only.
+		Settings: map[string]string{"live_on_miss": "true"},
 	})
 	if err != nil {
 		redirect(w, r, "/indexers/new", "", s.indexerFriendlyError(r, err))

@@ -2771,5 +2771,10 @@
   "releases.filterResults": "筛选结果",
   "releases.filterResultsPlaceholder": "筛选列表…",
   "releases.filterResultsHelp": "仅显示已返回且包含此文本的行，不会重新搜索。",
-  "releases.filterResultsEmpty": "没有结果符合筛选条件。"
+  "releases.filterResultsEmpty": "没有结果符合筛选条件。",
+  "indexerForm.liveOnMiss": "标题不在历史记录中时搜索站点",
+  "indexerForm.liveOnMissHelp": "仅适用于有主题历史的论坛。未找到时会按防洪水间隔查询站点。关闭后只从历史回答：新主题会在下次遍历后出现，不会冒被封禁的风险。",
+  "idx.topics.historyOnly": "应用搜索只使用主题历史：缺少标题时，indexarr 不会查询站点。",
+  "idx.topics.liveOnMiss": "如果标题不在主题历史中，允许实时搜索，但仍遵守防洪水间隔。",
+  "idx.topics.modeTip": "在“编辑 → 高级”中修改。"
 }

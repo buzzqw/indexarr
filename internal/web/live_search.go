@@ -80,6 +80,7 @@ func (s *Server) renderLiveSearch(w http.ResponseWriter, r *http.Request, form l
 		Categories: form.categoryIDs(),
 		Limit:      releasesPerPage,
 		IndexerIDs: form.IndexerIDs,
+		ForceLive:  true,
 	})
 	cancel()
 	data.LivePerformed = true

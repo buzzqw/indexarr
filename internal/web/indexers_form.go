@@ -54,6 +54,8 @@ type compactFormView struct {
 	UserAgent                 string
 	AllowPrivate              bool
 	StoreLatest               bool
+	CatalogSource             bool
+	LiveOnMiss                bool
 	MinSize                   string
 	Challenge                 string
 	ChallengeOptions          []indexerSettingOption
@@ -182,6 +184,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	}
 	data.DefinitionName = parsed.Meta.Name
 	data.Derived = parsed.IsDerived()
+	data.CatalogSource = parsed.HasCatalog()
 	data.CanImportCookie = definitionHasCookie(parsed)
 	data.CookieAlternative = parsed.CookieAlternative()
 	if strings.EqualFold(strings.TrimSpace(parsed.Meta.ID), "corsaro") {
@@ -276,6 +279,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	data.UserAgent = value("user_agent")
 	data.AllowPrivate = truthy(value("allow_private"))
 	data.StoreLatest = truthy(value("store_latest"))
+	data.LiveOnMiss = truthy(value("live_on_miss"))
 	data.MinSize = value("min_size_mb")
 	if data.MinSize == "" && strings.EqualFold(defID, "corsaro-user") {
 		data.MinSize = "50"

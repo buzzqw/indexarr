@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -289,6 +290,14 @@ func (m *Manager) Search(ctx context.Context, indexerID int64, req engine.Search
 			items = local
 			err = nil
 		}
+	} else if isCatalogConnector(connector) && !req.ForceLive && !liveOnMiss(indexer.ConfigJSON) {
+		// A forum that keeps a topic history answers only from it unless the
+		// operator enabled the live fallback. A miss must not become a
+		// search.php request: the next catalogue walk catches the new thread.
+		m.logger.Debug("indexer: topic history miss; online search skipped",
+			"indexer", indexer.Slug, "query", req.Query)
+		items = nil
+		err = nil
 	} else {
 		items, err = connector.Search(ctx, req)
 	}
@@ -305,6 +314,28 @@ func (m *Manager) Search(ctx context.Context, indexerID int64, req engine.Search
 		m.recordSample(context.WithoutCancel(ctx), indexer.ID, capture, stats)
 	}
 	return items, err
+}
+
+// isCatalogConnector reports whether the connector keeps a topic history. A
+// definition without a catalog implements the interface with no forums, so
+// the length check is the real test.
+func isCatalogConnector(connector engine.Connector) bool {
+	catalog, ok := connector.(catalogConnector)
+	return ok && len(catalog.CatalogForums()) > 0
+}
+
+// liveOnMiss reads the per-source fallback flag. It is off by default: the
+// forum answers from the topic history and the walk catches new threads.
+func liveOnMiss(configJSON string) bool {
+	if strings.TrimSpace(configJSON) == "" {
+		return false
+	}
+	var values map[string]string
+	if err := json.Unmarshal([]byte(configJSON), &values); err != nil {
+		return false
+	}
+	value := strings.ToLower(strings.TrimSpace(values["live_on_miss"]))
+	return value == "true" || value == "1"
 }
 
 // Latest runs a latest feed request through the cached connector and records

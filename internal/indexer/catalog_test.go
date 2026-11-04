@@ -117,6 +117,11 @@ catalog:
 
 func newCatalogTestManager(t *testing.T, connector *fakeCatalogConnector) (*Manager, *store.Store, int64) {
 	t.Helper()
+	return newCatalogTestManagerWithConfig(t, connector, `{"url":"https://forum.example/"}`)
+}
+
+func newCatalogTestManagerWithConfig(t *testing.T, connector *fakeCatalogConnector, configJSON string) (*Manager, *store.Store, int64) {
+	t.Helper()
 	st := newTestStore(t)
 	seedDefinition(t, st, "forum", "native", catalogTestDefinition)
 	def, err := st.GetDefinition(context.Background(), "forum")
@@ -129,7 +134,7 @@ func newCatalogTestManager(t *testing.T, connector *fakeCatalogConnector) (*Mana
 		Slug:         "forum",
 		Name:         "Forum",
 		Enabled:      true,
-		ConfigJSON:   `{"url":"https://forum.example/"}`,
+		ConfigJSON:   configJSON,
 	})
 	if err != nil {
 		t.Fatalf("CreateIndexer: %v", err)
@@ -241,8 +246,34 @@ func TestSearchAnswersFromTheTopicHistoryFirst(t *testing.T) {
 		}
 	}
 
-	// Nothing in the history: the site is asked, and its failure is reported.
-	if _, err := manager.Search(ctx, indexerID, engine.SearchRequest{Mode: engine.ModeSearch, Query: "Unknown Title"}); err == nil {
+	// Nothing in the history and the live fallback off (the default): the
+	// site is not touched and the search is simply empty.
+	items, err = manager.Search(ctx, indexerID, engine.SearchRequest{Mode: engine.ModeSearch, Query: "Unknown Title"})
+	if err != nil {
+		t.Fatalf("a history-only miss must not fail: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("history-only miss returned %d items, want 0", len(items))
+	}
+	if got := connector.searches.Load(); got != 0 {
+		t.Fatalf("site searches = %d, want 0: a history-only source must not touch the site", got)
+	}
+}
+
+// TestSearchMissGoesOnlineWhenLiveOnMissIsEnabled keeps the explicit fallback:
+// a source that asks for it still reaches the site on a local miss.
+func TestSearchMissGoesOnlineWhenLiveOnMissIsEnabled(t *testing.T) {
+	ctx := context.Background()
+	connector := &fakeCatalogConnector{
+		forums: []definition.CatalogForum{{ID: "52", Standard: 5040}},
+		search: errors.New("search refused by the site"),
+	}
+	manager, _, indexerID := newCatalogTestManagerWithConfig(t, connector,
+		`{"url":"https://forum.example/","live_on_miss":"true"}`)
+
+	if _, err := manager.Search(ctx, indexerID, engine.SearchRequest{
+		Mode: engine.ModeSearch, Query: "Unknown Title",
+	}); err == nil {
 		t.Fatal("a search with no local match and a failing site must fail")
 	}
 	if got := connector.searches.Load(); got != 1 {

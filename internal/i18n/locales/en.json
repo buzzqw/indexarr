@@ -2771,5 +2771,10 @@
   "releases.filterResults": "Filter results",
   "releases.filterResultsPlaceholder": "Filter the list…",
   "releases.filterResultsHelp": "Shows only the rows already returned that contain this text. It does not run a new search.",
-  "releases.filterResultsEmpty": "No result matches the filter."
+  "releases.filterResultsEmpty": "No result matches the filter.",
+  "indexerForm.liveOnMiss": "Search the site when the title is not in the history",
+  "indexerForm.liveOnMissHelp": "Only for forums with a topic history. On a miss indexarr asks the site, still paced by the flood interval. Off, it answers only from the history: new threads appear after the next topic walk, without risking a block.",
+  "idx.topics.historyOnly": "App searches use only the topic history: when a title is missing, indexarr does not ask the site.",
+  "idx.topics.liveOnMiss": "If a title is not in the topic history, the online search is allowed, still at the anti-flood interval.",
+  "idx.topics.modeTip": "Change this in Edit → Advanced."
 }

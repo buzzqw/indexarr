@@ -2771,5 +2771,10 @@
   "releases.filterResults": "Filtra i risultati",
   "releases.filterResultsPlaceholder": "Filtra l'elenco…",
   "releases.filterResultsHelp": "Mostra solo le righe già ottenute che contengono questo testo. Non esegue una nuova ricerca.",
-  "releases.filterResultsEmpty": "Nessun risultato corrisponde al filtro."
+  "releases.filterResultsEmpty": "Nessun risultato corrisponde al filtro.",
+  "indexerForm.liveOnMiss": "Cerca online se il titolo non è nello storico",
+  "indexerForm.liveOnMissHelp": "Solo per i forum con storico dei topic. Se il titolo non c'è, indexarr interroga il sito, sempre rispettando l'intervallo anti-flood. Disattivato, risponde solo dallo storico: le novità compaiono dopo il prossimo aggiornamento dei topic, senza rischiare un blocco.",
+  "idx.topics.historyOnly": "Le ricerche delle app usano solo lo storico: se un titolo manca, indexarr non interroga il sito.",
+  "idx.topics.liveOnMiss": "Se un titolo non è nello storico, la ricerca online è consentita, sempre rispettando l'intervallo anti-flood.",
+  "idx.topics.modeTip": "Si cambia in Modifica → Avanzate."
 }
