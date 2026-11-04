@@ -36,6 +36,10 @@ type indexerLogRow struct {
 	Kind    string
 	Status  string
 	Message string
+	// Problem is the friendly, translated explanation for a known transient
+	// cause (a name that does not resolve, a timeout). The template shows it
+	// with the raw Message in the tooltip.
+	Problem string
 	Latency string
 	Href    string
 }
@@ -385,6 +389,18 @@ func indexerLogRows(history []store.IndexerHistory, limit int) []indexerLogRow {
 	return out
 }
 
+// transientLogMessage turns a known temporary failure into one reassuring
+// sentence for the source log. The raw error stays available as a tooltip, so
+// diagnostics are not lost.
+func (s *Server) transientLogMessage(r *http.Request, message string) string {
+	switch logtext.Problem(message) {
+	case logtext.DNS:
+		return s.translate(r, "idx.problem.dns")
+	default:
+		return ""
+	}
+}
+
 // indexerAppLog returns the newest process log lines that belong to one
 // source. Matching uses the attributes the engine writes (indexer, source,
 // indexer_id) and falls back to the slug in the message.
@@ -481,6 +497,12 @@ func (s *Server) problemForMessage(r *http.Request, in store.Indexer, message st
 			Text:        s.translate(r, "idx.problem.sessionEndpoint"),
 			ActionLabel: s.translate(r, "idx.problem.sessionEndpointAction"),
 			ActionURL:   "/settings?section=network",
+		}
+	case problem == logtext.DNS:
+		return uiProblem{
+			Text:        s.translate(r, "idx.problem.dns"),
+			ActionLabel: s.translate(r, "idx.problem.genericAction"),
+			ActionURL:   detail,
 		}
 	case strings.Contains(raw, "timeout") || strings.Contains(raw, "deadline") ||
 		strings.Contains(raw, "no such host") || strings.Contains(raw, "connection refused") ||

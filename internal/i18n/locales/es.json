@@ -428,7 +428,7 @@
   "home.problem.cloudflare": "Cloudflare está bloqueando el sitio.",
   "home.problem.completeness": "Faltan algunos campos: Sonarr no puede ordenar bien estas publicaciones.",
   "home.problem.denied": "Acceso denegado: revisa las credenciales.",
-  "home.problem.dns": "No se puede acceder al sitio.",
+  "home.problem.dns": "El nombre del sitio no se resuelve ahora. Suele ser temporal: indexarr vuelve a intentarlo solo.",
   "home.problem.errors": "%d comprobaciones fallidas seguidas: abre el indexador para ver los detalles.",
   "home.problem.flood": "El sitio limita las búsquedas (control de flood): indexarr las pone en cola y las envía cuando el sitio lo permite.",
   "home.problem.healthZero": "La comprobación de salud no encontró resultados: la consulta de la definición no se ajusta al sitio.",
@@ -2307,9 +2307,9 @@
   "logs.problem.refused": "El servicio rechazó la conexión: está apagado o el puerto es incorrecto.",
   "logs.problemShort.refused": "Conexión rechazada",
   "logs.advice.refused": "Comprueba que el servicio (sitio, proxy, FlareSolverr o cliente de descargas) esté encendido y que la dirección y el puerto sean correctos.",
-  "logs.problem.dns": "El nombre del sitio no se resuelve: el dominio cambió o el DNS no está accesible.",
+  "logs.problem.dns": "El nombre del sitio no se resuelve ahora: suele ser un problema DNS temporal.",
   "logs.problemShort.dns": "Dirección desconocida",
-  "logs.advice.dns": "Comprueba si el sitio se mudó a un dominio nuevo y actualiza la dirección de la fuente, o revisa la red y el DNS de esta máquina.",
+  "logs.advice.dns": "Espera: indexarr vuelve a intentarlo solo. Si continúa, comprueba si el sitio se ha mudado a un dominio nuevo o si la red y el DNS de esta máquina funcionan.",
   "logs.problem.tls": "La conexión segura falló: el certificado del sitio no es válido o ha caducado.",
   "logs.problemShort.tls": "Problema de certificado",
   "logs.advice.tls": "A menudo es el propio sitio el que tiene un problema y lo arregla pronto. Si usa un certificado autofirmado, revisa la dirección (http/https).",
@@ -2791,5 +2791,6 @@
   "indexerForm.groupNetwork": "Red y anti-bot",
   "indexerForm.groupNetworkHelp": "Proxy, user agent, direcciones privadas y solucionador de Cloudflare.",
   "indexerForm.groupDefinition": "Ajustes de la definición",
-  "indexerForm.groupDefinitionHelp": "Valores opcionales declarados por esta definición. No hacen falta en todas las fuentes."
+  "indexerForm.groupDefinitionHelp": "Valores opcionales declarados por esta definición. No hacen falta en todas las fuentes.",
+  "idx.problem.dns": "El nombre del sitio no se ha resuelto en este momento. Suele ser temporal: indexarr vuelve a intentarlo solo. Si continúa, revisa la red y el DNS."
 }

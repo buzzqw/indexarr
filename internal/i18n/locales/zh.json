@@ -428,7 +428,7 @@
   "home.problem.cloudflare": "Cloudflare 正在阻止该站点。",
   "home.problem.completeness": "缺少部分字段：Sonarr 无法很好地排序这些发布。",
   "home.problem.denied": "访问被拒绝：请检查凭据。",
-  "home.problem.dns": "无法访问该站点。",
+  "home.problem.dns": "当前无法解析站点名称。通常是临时问题：indexarr 会自动重试。",
   "home.problem.errors": "连续 %d 次检查失败：打开索引器查看详情。",
   "home.problem.flood": "站点限制了搜索频率（flood control）：indexarr 会将搜索排队，并在站点允许时发送。",
   "home.problem.healthZero": "健康检查未找到结果：定义中的搜索查询不适合该站点。",
@@ -2307,9 +2307,9 @@
   "logs.problem.refused": "服务拒绝了连接：服务未运行或端口错误。",
   "logs.problemShort.refused": "连接被拒绝",
   "logs.advice.refused": "检查该服务（网站、代理、FlareSolverr 或下载客户端）是否在运行，以及地址和端口是否正确。",
-  "logs.problem.dns": "无法解析网站域名：域名已更改或 DNS 不可达。",
+  "logs.problem.dns": "当前无法解析站点名称：通常是临时 DNS 问题。",
   "logs.problemShort.dns": "地址未知",
-  "logs.advice.dns": "检查网站是否迁移到新域名并更新来源地址，或检查本机的网络和 DNS。",
+  "logs.advice.dns": "请稍候：indexarr 会自动重试。如果持续出现，请检查站点是否更换了域名，或本机网络和 DNS 是否正常。",
   "logs.problem.tls": "安全连接失败：网站证书无效或已过期。",
   "logs.problemShort.tls": "证书问题",
   "logs.advice.tls": "通常是网站自身的问题，很快会修复。如果网站使用自签名证书，请检查地址（http/https）。",
@@ -2791,5 +2791,6 @@
   "indexerForm.groupNetwork": "网络与反爬",
   "indexerForm.groupNetworkHelp": "代理、User-Agent、私有地址和 Cloudflare 解析器。",
   "indexerForm.groupDefinition": "定义设置",
-  "indexerForm.groupDefinitionHelp": "此定义声明的可选值，并非每个来源都需要。"
+  "indexerForm.groupDefinitionHelp": "此定义声明的可选值，并非每个来源都需要。",
+  "idx.problem.dns": "当前无法解析站点名称。通常是临时问题：indexarr 会自动重试。如果持续出现，请检查网络和 DNS。"
 }

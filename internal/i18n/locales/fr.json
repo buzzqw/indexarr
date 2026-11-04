@@ -428,7 +428,7 @@
   "home.problem.cloudflare": "Cloudflare bloque le site.",
   "home.problem.completeness": "Des champs manquent : Sonarr ne peut pas bien classer ces sorties.",
   "home.problem.denied": "Accès refusé : vérifiez les identifiants.",
-  "home.problem.dns": "Le site est injoignable.",
+  "home.problem.dns": "Le nom du site ne se résout pas pour le moment. Généralement temporaire : indexarr réessaie tout seul.",
   "home.problem.errors": "%d vérifications échouées d'affilée : ouvrez l'indexeur pour les détails.",
   "home.problem.flood": "Le site limite les recherches (flood control) : indexarr les met en file et les envoie quand le site l'autorise.",
   "home.problem.healthZero": "Le contrôle de santé n'a trouvé aucun résultat : la requête de la définition ne convient pas au site.",
@@ -2307,9 +2307,9 @@
   "logs.problem.refused": "Le service a refusé la connexion : il est arrêté ou le port est incorrect.",
   "logs.problemShort.refused": "Connexion refusée",
   "logs.advice.refused": "Vérifiez que le service (site, proxy, FlareSolverr ou client de téléchargement) fonctionne et que l'adresse et le port sont corrects.",
-  "logs.problem.dns": "Le nom du site ne se résout pas : le domaine a changé ou le DNS est injoignable.",
+  "logs.problem.dns": "Le nom du site ne se résout pas pour le moment : généralement un problème DNS temporaire.",
   "logs.problemShort.dns": "Adresse inconnue",
-  "logs.advice.dns": "Vérifiez si le site a changé de domaine et mettez à jour l'adresse de la source, ou contrôlez le réseau et le DNS de cette machine.",
+  "logs.advice.dns": "Attendez : indexarr réessaie tout seul. Si cela persiste, vérifiez si le site a déménagé vers un nouveau domaine ou si le réseau et le DNS de cette machine fonctionnent.",
   "logs.problem.tls": "La connexion sécurisée a échoué : le certificat du site est invalide ou expiré.",
   "logs.problemShort.tls": "Problème de certificat",
   "logs.advice.tls": "Souvent le site lui-même a un problème et le corrige vite. S'il utilise un certificat auto-signé, vérifiez l'adresse (http/https).",
@@ -2791,5 +2791,6 @@
   "indexerForm.groupNetwork": "Réseau et anti-bot",
   "indexerForm.groupNetworkHelp": "Proxy, user agent, adresses privées et solveur Cloudflare.",
   "indexerForm.groupDefinition": "Réglages de la définition",
-  "indexerForm.groupDefinitionHelp": "Valeurs facultatives déclarées par cette définition. Elles ne sont pas nécessaires partout."
+  "indexerForm.groupDefinitionHelp": "Valeurs facultatives déclarées par cette définition. Elles ne sont pas nécessaires partout.",
+  "idx.problem.dns": "Le nom du site n'a pas pu être résolu pour le moment. C'est généralement temporaire : indexarr réessaie tout seul. Si cela persiste, vérifiez le réseau et le DNS."
 }

@@ -428,7 +428,7 @@
   "home.problem.cloudflare": "Cloudflare sta bloccando il sito.",
   "home.problem.completeness": "Mancano alcuni campi: Sonarr non può ordinare bene queste release.",
   "home.problem.denied": "Accesso rifiutato: controlla le credenziali.",
-  "home.problem.dns": "Il sito non è raggiungibile.",
+  "home.problem.dns": "Il nome del sito non si risolve in questo momento. Di solito è temporaneo: indexarr riprova da solo.",
   "home.problem.errors": "%d controlli falliti di seguito: apri l'indexer per i dettagli.",
   "home.problem.flood": "Il sito limita le ricerche (flood control): indexarr le mette in coda e le invia quando il sito lo consente.",
   "home.problem.healthZero": "Il controllo di salute non ha trovato risultati: la query della definizione non è adatta al sito.",
@@ -2307,9 +2307,9 @@
   "logs.problem.refused": "Il servizio ha rifiutato la connessione: è spento o la porta è sbagliata.",
   "logs.problemShort.refused": "Connessione rifiutata",
   "logs.advice.refused": "Verifica che il servizio (sito, proxy, FlareSolverr o client di download) sia acceso e che indirizzo e porta siano corretti.",
-  "logs.problem.dns": "Il nome del sito non si risolve: il dominio è cambiato o il DNS non è raggiungibile.",
+  "logs.problem.dns": "Il nome del sito non si risolve in questo momento: di solito è un problema DNS temporaneo.",
   "logs.problemShort.dns": "Indirizzo sconosciuto",
-  "logs.advice.dns": "Controlla se il sito si è spostato su un nuovo dominio e aggiorna l'indirizzo della fonte, oppure verifica rete e DNS di questa macchina.",
+  "logs.advice.dns": "Attendi: indexarr riprova da solo. Se continua, controlla se il sito si è spostato su un nuovo dominio o se rete e DNS di questa macchina funzionano.",
   "logs.problem.tls": "La connessione sicura non è riuscita: il certificato del sito non è valido o è scaduto.",
   "logs.problemShort.tls": "Problema di certificato",
   "logs.advice.tls": "Spesso è il sito ad avere un problema e lo risolve presto. Se il sito usa un certificato autofirmato, controlla l'indirizzo (http/https).",
@@ -2791,5 +2791,6 @@
   "indexerForm.groupNetwork": "Rete e anti-bot",
   "indexerForm.groupNetworkHelp": "Proxy, user agent, indirizzi privati e risolutore Cloudflare.",
   "indexerForm.groupDefinition": "Impostazioni della definizione",
-  "indexerForm.groupDefinitionHelp": "Valori facoltativi dichiarati da questa definizione. Non servono su ogni sorgente."
+  "indexerForm.groupDefinitionHelp": "Valori facoltativi dichiarati da questa definizione. Non servono su ogni sorgente.",
+  "idx.problem.dns": "Il nome del sito non si è risolto in questo momento. Di solito è un errore temporaneo: indexarr riprova da solo. Se continua, controlla rete e DNS."
 }

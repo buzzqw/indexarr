@@ -428,7 +428,7 @@
   "home.problem.cloudflare": "Cloudflare blockiert die Seite.",
   "home.problem.completeness": "Einige Felder fehlen: Sonarr kann diese Releases nicht gut sortieren.",
   "home.problem.denied": "Zugriff verweigert: Zugangsdaten prüfen.",
-  "home.problem.dns": "Die Seite ist nicht erreichbar.",
+  "home.problem.dns": "Der Seitenname löst sich gerade nicht auf. Meist vorübergehend: indexarr versucht es selbst erneut.",
   "home.problem.errors": "%d Prüfungen in Folge fehlgeschlagen: Indexer für Details öffnen.",
   "home.problem.flood": "Die Seite begrenzt Suchanfragen (Flood-Control): indexarr stellt sie in die Warteschlange und sendet sie, wenn die Seite es zulässt.",
   "home.problem.healthZero": "Die Gesundheitsprüfung hat keine Ergebnisse gefunden: Die Suchabfrage der Definition passt nicht zur Seite.",
@@ -2307,9 +2307,9 @@
   "logs.problem.refused": "Der Dienst hat die Verbindung abgelehnt: er ist aus oder der Port ist falsch.",
   "logs.problemShort.refused": "Verbindung abgelehnt",
   "logs.advice.refused": "Prüfe, ob der Dienst (Website, Proxy, FlareSolverr oder Download-Client) läuft und Adresse und Port stimmen.",
-  "logs.problem.dns": "Der Name der Website lässt sich nicht auflösen: die Domain hat sich geändert oder DNS ist nicht erreichbar.",
+  "logs.problem.dns": "Der Seitenname löst sich gerade nicht auf: meist ein vorübergehendes DNS-Problem.",
   "logs.problemShort.dns": "Adresse unbekannt",
-  "logs.advice.dns": "Prüfe, ob die Website auf eine neue Domain umgezogen ist, und aktualisiere die Quelladresse, oder prüfe Netzwerk und DNS dieses Rechners.",
+  "logs.advice.dns": "Abwarten: indexarr versucht es selbst erneut. Wenn es bleibt, prüfe, ob die Seite auf eine neue Domain umgezogen ist oder ob Netzwerk und DNS dieser Maschine funktionieren.",
   "logs.problem.tls": "Die sichere Verbindung ist fehlgeschlagen: das Zertifikat der Website ist ungültig oder abgelaufen.",
   "logs.problemShort.tls": "Zertifikatsproblem",
   "logs.advice.tls": "Oft hat die Website selbst ein Problem und behebt es bald. Nutzt sie ein selbst signiertes Zertifikat, prüfe die Adresse (http/https).",
@@ -2791,5 +2791,6 @@
   "indexerForm.groupNetwork": "Netzwerk und Anti-Bot",
   "indexerForm.groupNetworkHelp": "Proxy, User-Agent, private Adressen und Cloudflare-Löser.",
   "indexerForm.groupDefinition": "Definitionseinstellungen",
-  "indexerForm.groupDefinitionHelp": "Optionale Werte dieser Definition. Sie sind nicht bei jeder Quelle nötig."
+  "indexerForm.groupDefinitionHelp": "Optionale Werte dieser Definition. Sie sind nicht bei jeder Quelle nötig.",
+  "idx.problem.dns": "Der Seitenname ließ sich gerade nicht auflösen. Das ist meist vorübergehend: indexarr versucht es selbst erneut. Wenn es bleibt, Netzwerk und DNS prüfen."
 }

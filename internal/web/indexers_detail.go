@@ -348,6 +348,9 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 		}
 	}
 	data.LogRows = indexerLogRows(history, 8)
+	for i := range data.LogRows {
+		data.LogRows[i].Problem = s.transientLogMessage(r, data.LogRows[i].Message)
+	}
 	data.AppLog = logViews(requestLanguage(r), s.indexerAppLog(in, 10), map[string]string{strings.ToLower(in.Slug): in.Name})
 	runsValues := url.Values{}
 	runsValues.Set("tab", "runs")

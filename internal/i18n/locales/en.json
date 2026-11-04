@@ -428,7 +428,7 @@
   "home.problem.cloudflare": "Cloudflare is blocking the site.",
   "home.problem.completeness": "Some fields are missing: Sonarr cannot rank these releases well.",
   "home.problem.denied": "Access refused: check the credentials.",
-  "home.problem.dns": "The site cannot be reached.",
+  "home.problem.dns": "The site name does not resolve right now. Usually temporary: indexarr retries by itself.",
   "home.problem.errors": "%d checks failed in a row: open the indexer for details.",
   "home.problem.flood": "The site limits searches (flood control): indexarr queues them and sends them when the site allows it.",
   "home.problem.healthZero": "The health check found no results: the definition's search query does not suit the site.",
@@ -2307,9 +2307,9 @@
   "logs.problem.refused": "The service refused the connection: it is off or the port is wrong.",
   "logs.problemShort.refused": "Connection refused",
   "logs.advice.refused": "Check that the service (site, proxy, FlareSolverr or download client) is running and that address and port are right.",
-  "logs.problem.dns": "The site name cannot be resolved: the domain changed or DNS is not reachable.",
+  "logs.problem.dns": "The site name does not resolve right now: usually a temporary DNS problem.",
   "logs.problemShort.dns": "Unknown address",
-  "logs.advice.dns": "Check whether the site moved to a new domain and update the source address, or check the network and DNS of this machine.",
+  "logs.advice.dns": "Wait: indexarr retries by itself. If it persists, check whether the site moved to a new domain or whether this machine's network and DNS work.",
   "logs.problem.tls": "The secure connection failed: the site certificate is invalid or expired.",
   "logs.problemShort.tls": "Certificate problem",
   "logs.advice.tls": "Often the site itself has a problem and fixes it soon. If the site uses a self-signed certificate, check the address (http/https).",
@@ -2791,5 +2791,6 @@
   "indexerForm.groupNetwork": "Network and anti-bot",
   "indexerForm.groupNetworkHelp": "Proxy, user agent, private addresses and the Cloudflare solver.",
   "indexerForm.groupDefinition": "Definition settings",
-  "indexerForm.groupDefinitionHelp": "Optional values declared by this definition. They are not needed on every source."
+  "indexerForm.groupDefinitionHelp": "Optional values declared by this definition. They are not needed on every source.",
+  "idx.problem.dns": "The site name could not be resolved right now. This is usually temporary: indexarr retries by itself. If it persists, check the network and DNS."
 }
