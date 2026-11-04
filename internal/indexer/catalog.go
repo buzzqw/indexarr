@@ -142,6 +142,7 @@ func (m *Manager) RunCatalogPage(ctx context.Context, indexerID int64) (outcome 
 		IndexerID: indexerID,
 		ForumID:   forum.ID,
 		NextStart: next,
+		Runs:      cursor.Runs + 1,
 		LastRunAt: now,
 	})
 	if saveErr != nil {
@@ -151,17 +152,30 @@ func (m *Manager) RunCatalogPage(ctx context.Context, indexerID int64) (outcome 
 	return outcome, nil
 }
 
-// nextCatalogForum picks the forum to read: the one that ran longest ago, so
-// the walk spreads evenly over the forums of the definition. A forum that was
-// never read is older than every forum that was.
+// nextCatalogForum picks the forum to read. The series and the movies carry a
+// higher weight: a forum is chosen by (pages read + 1) / weight, so a forum of
+// weight 5 gets five pages for every page of a forum of weight 1, and no forum
+// is ever starved. Equal scores go to the forum that ran longest ago.
 func nextCatalogForum(forums []definition.CatalogForum, cursors map[string]store.TopicCursor) definition.CatalogForum {
 	chosen := forums[0]
 	for _, forum := range forums[1:] {
-		if olderRun(cursors[forum.ID].LastRunAt, cursors[chosen.ID].LastRunAt) {
+		left := catalogScore(cursors[forum.ID], forum.CatalogWeight())
+		right := catalogScore(cursors[chosen.ID], chosen.CatalogWeight())
+		switch {
+		case left < right:
+			chosen = forum
+		case left == right && olderRun(cursors[forum.ID].LastRunAt, cursors[chosen.ID].LastRunAt):
 			chosen = forum
 		}
 	}
 	return chosen
+}
+
+func catalogScore(cursor store.TopicCursor, weight int) float64 {
+	if weight <= 0 {
+		weight = 1
+	}
+	return float64(cursor.Runs+1) / float64(weight)
 }
 
 func olderRun(candidate, current time.Time) bool {

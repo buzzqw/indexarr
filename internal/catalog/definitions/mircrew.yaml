@@ -125,10 +125,31 @@ search:
 # and the topic is opened (and thanked, only if needed) at grab time like any
 # other row of this definition.
 catalog:
+  # The history is for the series and the movies first, HD or SD alike: those
+  # forums carry weight 5, so they get five pages for every page of the rest of
+  # the forum. Link forums (phpBB answers them with a search page, not a topic
+  # list) and the request/staff sections are not walked.
   forums:
-    - { id: "51", standard: 5040 }
-    - { id: "52", standard: 5040 }
-    - { id: "26", standard: 2040 }
+    - { id: "51", standard: 5040, weight: 5 }   # Stagioni in corso
+    - { id: "52", standard: 5040, weight: 5 }   # Stagioni complete
+    - { id: "28", standard: 5040, weight: 5 }   # Serie TV
+    - { id: "30", standard: 5040, weight: 5 }   # TV Show
+    - { id: "26", standard: 2040, weight: 5 }   # Film
+    - { id: "25", standard: 2040, weight: 5 }   # Video Releases
+    - { id: "31", standard: 2040, weight: 5 }   # Teatro
+    - { id: "33", standard: 5070 }              # Animazione Releases
+    - { id: "35", standard: 5070 }              # Anime - Serie
+    - { id: "37", standard: 5070 }              # Cartoon - Serie
+    - { id: "46", standard: 3000 }              # Musica - Audio
+    - { id: "47", standard: 3000 }              # Musica - Video
+    - { id: "39", standard: 7020 }              # Libreria Releases
+    - { id: "40", standard: 7020 }              # E-Books
+    - { id: "42", standard: 7030 }              # Comics
+    - { id: "43", standard: 7010 }              # Edicola
+    - { id: "65", standard: 4050 }              # Games & Software Releases
+    - { id: "66", standard: 4050 }              # Games - PC
+    - { id: "63", standard: 2000 }              # Videocorsi
+    - { id: "12", standard: 2000 }              # Pir8 Channel
   request:
     get: /viewforum.php
   forum_param: f

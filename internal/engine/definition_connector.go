@@ -1659,6 +1659,16 @@ func (c *DefinitionConnector) loginLocked(ctx context.Context) error {
 			}
 			c.session.SetValue(name, value)
 		}
+		// The browser may already hold a valid session: the login page then
+		// answers with the logged-in page and carries no form to submit.
+		// Posting the empty fields would make the forum reject the form; the
+		// logout link is the proof that there is nothing to do.
+		if auth.Success != nil {
+			if matched, matchErr := conditionMatches(*auth.Success, response); matchErr == nil && matched {
+				c.session.markLoggedIn(c.now())
+				return nil
+			}
+		}
 	}
 	if last == nil {
 		return c.loginError("no response")

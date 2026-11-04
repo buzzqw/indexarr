@@ -181,6 +181,19 @@ type CatalogForum struct {
 	ID string `yaml:"id" json:"id"`
 	// Standard is the Torznab category every topic of the forum belongs to.
 	Standard int `yaml:"standard,omitempty" json:"standard,omitempty"`
+	// Weight is how many pages this forum gets for every page of a forum
+	// with weight 1. The sections that matter (the series and the movies)
+	// take most of the walk; the rest of the forum follows.
+	Weight int `yaml:"weight,omitempty" json:"weight,omitempty"`
+}
+
+// CatalogWeight returns the page budget of one forum: absent or invalid
+// values mean one, like a forum without a preference.
+func (f CatalogForum) CatalogWeight() int {
+	if f.Weight <= 0 {
+		return 1
+	}
+	return f.Weight
 }
 
 // LatestCategory is one standard-to-site category mapping of a latest list.

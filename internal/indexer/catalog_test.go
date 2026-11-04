@@ -356,3 +356,25 @@ func TestRunCatalogPageIsSerializedPerIndexer(t *testing.T) {
 		t.Fatalf("concurrent catalogue requests = %d, want 1 (serialized per indexer)", got)
 	}
 }
+
+// The series and the movies get five pages for every page of the rest of the
+// forum, and the rest is never starved: over a full cycle the ratio is 5:1.
+func TestCatalogWeightFavoursSeriesAndMovies(t *testing.T) {
+	forums := []definition.CatalogForum{
+		{ID: "51", Standard: 5040, Weight: 5},
+		{ID: "39", Standard: 7020},
+	}
+	cursors := map[string]store.TopicCursor{}
+	picks := map[string]int{}
+	for i := 0; i < 60; i++ {
+		forum := nextCatalogForum(forums, cursors)
+		picks[forum.ID]++
+		cursor := cursors[forum.ID]
+		cursor.Runs++
+		cursor.LastRunAt = time.Unix(int64(1_700_000_000+i*60), 0)
+		cursors[forum.ID] = cursor
+	}
+	if picks["51"] != 50 || picks["39"] != 10 {
+		t.Fatalf("picks = %v, want 50 pages of the series and 10 of the rest", picks)
+	}
+}

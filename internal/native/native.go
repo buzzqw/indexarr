@@ -818,13 +818,9 @@ func (r *Runner) runCatalog(ctx context.Context, indexerRow store.Indexer) (outc
 		Slug:      indexerRow.Slug,
 		Name:      indexerRow.Name,
 	}
-	defer func() {
-		outcome.Duration = time.Since(started)
-		if r.onResult != nil {
-			r.onResult(outcome)
-		}
-		r.logOutcome(outcome)
-	}()
+	// runOne owns the report (duration, OnResult, log line): this walk only
+	// fills the outcome, or the same run would be logged twice.
+	defer func() { outcome.Duration = time.Since(started) }()
 
 	outcome.Catalog = true
 	page, err := r.manager.RunCatalogPage(ctx, indexerRow.ID)

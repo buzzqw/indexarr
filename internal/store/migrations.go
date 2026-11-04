@@ -85,9 +85,13 @@ const (
 	// (threads and series) with one cursor per forum, so the walk resumes
 	// after a restart and a search can answer from it.
 	indexarr2TopicIndexVersion = 27
+	// indexarr2TopicWeightVersion counts the pages read for every forum, so
+	// the sections that matter (series and movies) receive more pages than
+	// the rest of the forum without starving it.
+	indexarr2TopicWeightVersion = 28
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2TopicIndexVersion
+	latestSchemaVersion = indexarr2TopicWeightVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

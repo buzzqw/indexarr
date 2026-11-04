@@ -32,6 +32,9 @@ type TopicCursor struct {
 	IndexerID int64
 	ForumID   string
 	NextStart int
+	// Runs is how many pages this forum has read; the weighted walk compares
+	// it with the forum's weight.
+	Runs      int64
 	LastRunAt time.Time
 	DoneAt    time.Time
 }
@@ -184,7 +187,7 @@ func (s *Store) TopicCount(ctx context.Context, indexerID int64) (int64, error) 
 
 // TopicCursors returns the walk state of every forum of one indexer.
 func (s *Store) TopicCursors(ctx context.Context, indexerID int64) (map[string]TopicCursor, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT forum_id, next_start, last_run_at, done_at
+	rows, err := s.db.QueryContext(ctx, `SELECT forum_id, next_start, runs, last_run_at, done_at
 		FROM topic_index_cursors WHERE indexer_id = ?`, indexerID)
 	if err != nil {
 		return nil, err
@@ -195,7 +198,7 @@ func (s *Store) TopicCursors(ctx context.Context, indexerID int64) (map[string]T
 		var cursor TopicCursor
 		var last, done int64
 		cursor.IndexerID = indexerID
-		if err := rows.Scan(&cursor.ForumID, &cursor.NextStart, &last, &done); err != nil {
+		if err := rows.Scan(&cursor.ForumID, &cursor.NextStart, &cursor.Runs, &last, &done); err != nil {
 			return nil, err
 		}
 		cursor.LastRunAt = time.Unix(last, 0)
@@ -219,13 +222,14 @@ func (s *Store) SaveTopicCursor(ctx context.Context, cursor TopicCursor) error {
 		done = cursor.DoneAt.Unix()
 	}
 	_, err := s.db.ExecContext(ctx, `INSERT INTO topic_index_cursors
-		(indexer_id, forum_id, next_start, last_run_at, done_at)
-		VALUES (?, ?, ?, ?, ?)
+		(indexer_id, forum_id, next_start, runs, last_run_at, done_at)
+		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT(indexer_id, forum_id) DO UPDATE SET
 			next_start = excluded.next_start,
+			runs = excluded.runs,
 			last_run_at = excluded.last_run_at,
 			done_at = excluded.done_at`,
-		cursor.IndexerID, strings.TrimSpace(cursor.ForumID), cursor.NextStart, last.Unix(), done)
+		cursor.IndexerID, strings.TrimSpace(cursor.ForumID), cursor.NextStart, cursor.Runs, last.Unix(), done)
 	return err
 }
 

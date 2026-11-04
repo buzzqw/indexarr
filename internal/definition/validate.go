@@ -506,6 +506,9 @@ func validateCatalog(catalog *Catalog, search Search, add func(string, ...any)) 
 		if forum.Standard != 0 && (forum.Standard < 1000 || forum.Standard > 8999) {
 			add("catalog.forums[%d].standard: must be between 1000 and 8999 (got %d)", i, forum.Standard)
 		}
+		if forum.Weight < 0 || forum.Weight > 20 {
+			add("catalog.forums[%d].weight: must be between 0 and 20 (got %d)", i, forum.Weight)
+		}
 	}
 	if catalog.Request.Get != "" && catalog.Request.Post != "" {
 		add("catalog.request: get and post are mutually exclusive")

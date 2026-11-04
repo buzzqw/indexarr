@@ -663,6 +663,16 @@ func (s *Store) migrate() error {
 		"topic history", topicIndexMigration); err != nil {
 		return err
 	}
+	// Migration 28 counts the pages read for every forum, so a weighted walk
+	// can favour the series and the movies without starving the rest.
+	if err := s.applyMigration(context.Background(), indexarr2TopicWeightVersion,
+		"topic history weight", func(tx *sql.Tx) error {
+			_, err := tx.Exec(`ALTER TABLE topic_index_cursors
+				ADD COLUMN runs INTEGER NOT NULL DEFAULT 0`)
+			return err
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.
