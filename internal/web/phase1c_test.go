@@ -321,9 +321,10 @@ func TestReleaseAdvancedFiltersPanel(t *testing.T) {
 	body := get(t, env.handler, "/releases").Body.String()
 	for _, want := range []string{
 		`id="release-advanced-filters"`,
-		`<details class="filter-advanced"`,
+		`<details class="filter-advanced catalog-only"`,
 		">Filters</span>",
-		"All indexers",
+		`name="indexers"`,
+		"One or more sites",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("advanced filter panel missing %q", want)
@@ -338,7 +339,7 @@ func TestReleaseAdvancedFiltersPanel(t *testing.T) {
 		t.Error("the closed panel does not count three active filters")
 	}
 	italian := get(t, env.handler, "/releases?lang=it&min_seeders=5").Body.String()
-	if !strings.Contains(italian, "1 filtro attivo") || !strings.Contains(italian, "Tutti gli indexer") {
+	if !strings.Contains(italian, "1 filtro attivo") || !strings.Contains(italian, "Uno o più siti") {
 		t.Error("the Italian active-filter count or indexer label is missing")
 	}
 }

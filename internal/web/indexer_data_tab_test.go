@@ -2,10 +2,8 @@ package web
 
 import (
 	"context"
-	"html"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"

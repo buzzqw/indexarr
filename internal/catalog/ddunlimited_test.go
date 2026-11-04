@@ -320,8 +320,8 @@ func TestDDUnlimitedSearchCacheFloodControlAndGuestSearch(t *testing.T) {
 // identical request reads it from the cache.
 func TestDDUnlimitedFloodIntervalQueuesTheSearchesWithoutASlot(t *testing.T) {
 	def := parseDefinition(t, "ddunlimited")
-	if got := def.Search.Interval.Duration(); got != 65*time.Second {
-		t.Fatalf("ddunlimited search.interval = %s, want 65s", got)
+	if got := def.Search.Interval.Duration(); got != 90*time.Second {
+		t.Fatalf("ddunlimited search.interval = %s, want 90s", got)
 	}
 	const interval = 300 * time.Millisecond
 	var mu sync.Mutex
