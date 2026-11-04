@@ -6,6 +6,13 @@
   {{if .InvalidRegex}}{{T "releases.noResults"}}{{else}}{{T "releases.found" .Pager.Total}}{{end}}
 </p>
 
+<div class="results-filter">
+  <label for="release-results-filter">{{T "releases.filterResults"}}</label>
+  <input id="release-results-filter" type="search" placeholder="{{T "releases.filterResultsPlaceholder"}}" autocomplete="off" title="{{T "releases.filterResultsHelp"}}" data-results-filter>
+  <span class="muted" data-results-filter-count></span>
+</div>
+<p class="muted results-filter-empty" data-results-filter-empty hidden>{{T "releases.filterResultsEmpty"}}</p>
+
 <form method="post" action="/releases/bulk">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <section class="panel">

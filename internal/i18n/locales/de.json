@@ -2767,5 +2767,9 @@
   "releases.maxSizeHelp": "Behält nur Releases bis zu dieser Größe in MB.",
   "maintenance.forumKept": "%s ist eine Forum-Quelle: ihr Verlauf wird nie gelöscht.",
   "settings.backupFileHelp": "Akzeptiert ein von indexarr erstelltes .zip-Archiv oder eine ältere unkomprimierte .db-Datei.",
-  "applications.gexttoNote": "Gextto wird hier nicht verbunden: Es ist ein Client, der indexarr über die Torznab-Adresse abfragt. Verwende unten „Torznab-Adresse manuell verwenden“."
+  "applications.gexttoNote": "Gextto wird hier nicht verbunden: Es ist ein Client, der indexarr über die Torznab-Adresse abfragt. Verwende unten „Torznab-Adresse manuell verwenden“.",
+  "releases.filterResults": "Ergebnisse filtern",
+  "releases.filterResultsPlaceholder": "Liste filtern…",
+  "releases.filterResultsHelp": "Zeigt nur die bereits erhaltenen Zeilen, die diesen Text enthalten. Startet keine neue Suche.",
+  "releases.filterResultsEmpty": "Kein Ergebnis entspricht dem Filter."
 }

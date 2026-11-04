@@ -486,6 +486,43 @@ if ("serviceWorker" in navigator) {
     });
   }
 
+  // Filter the rows already returned by the search. It never asks the server
+  // and keeps working after the results fragment is replaced.
+  const resultsContainer = document.getElementById("releases-results");
+  if (resultsContainer) {
+    const applyResultFilter = (input) => {
+      const needle = input.value.trim().toLowerCase();
+      const rows = Array.from(resultsContainer.querySelectorAll(".releases-table tbody tr"))
+        .filter((row) => row.querySelector(".release-title-link"));
+      let shown = 0;
+      rows.forEach((row) => {
+        const match = !needle || row.textContent.toLowerCase().includes(needle);
+        row.hidden = !match;
+        if (match) {
+          shown++;
+        }
+      });
+      const counter = resultsContainer.querySelector("[data-results-filter-count]");
+      if (counter) {
+        counter.textContent = needle ? shown + " / " + rows.length : "";
+      }
+      const empty = resultsContainer.querySelector("[data-results-filter-empty]");
+      if (empty) {
+        empty.hidden = !needle || shown > 0 || rows.length === 0;
+      }
+    };
+    document.addEventListener("input", (event) => {
+      const input = event.target.closest("[data-results-filter]");
+      if (input) {
+        applyResultFilter(input);
+      }
+    });
+    const initial = resultsContainer.querySelector("[data-results-filter]");
+    if (initial) {
+      applyResultFilter(initial);
+    }
+  }
+
   // Live release search: debounce typing, abort the previous request and swap
   // only the results fragment. Without JavaScript the same form still submits
   // normally to /releases.

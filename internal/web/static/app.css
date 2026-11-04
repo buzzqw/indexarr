@@ -829,6 +829,17 @@ input[readonly] { background: var(--surface-2); }
 }
 
 .search-status { margin: 0 0 0.55rem; }
+.results-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+}
+.results-filter label { font-size: 0.8rem; }
+.results-filter input { max-width: 320px; }
+.results-filter .muted { font-size: 0.8rem; }
+.results-filter-empty { margin: 0 0 0.6rem; }
 .search-syntax > summary { cursor: pointer; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
 .search-syntax[open] > summary { margin-bottom: 0.3rem; }
 #releases-results[aria-busy="true"] { opacity: 0.55; }

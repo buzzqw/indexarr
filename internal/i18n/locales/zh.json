@@ -2767,5 +2767,9 @@
   "releases.maxSizeHelp": "只保留不大于该大小（MB）的发布。",
   "maintenance.forumKept": "%s 是论坛来源：其历史记录永远不会删除。",
   "settings.backupFileHelp": "接受 indexarr 创建的 .zip 压缩包或旧的未压缩 .db 文件。",
-  "applications.gexttoNote": "Gextto 不在这里连接：它是通过 Torznab 地址查询 indexarr 的客户端。请使用下方的“手动使用 Torznab 地址”。"
+  "applications.gexttoNote": "Gextto 不在这里连接：它是通过 Torznab 地址查询 indexarr 的客户端。请使用下方的“手动使用 Torznab 地址”。",
+  "releases.filterResults": "筛选结果",
+  "releases.filterResultsPlaceholder": "筛选列表…",
+  "releases.filterResultsHelp": "仅显示已返回且包含此文本的行，不会重新搜索。",
+  "releases.filterResultsEmpty": "没有结果符合筛选条件。"
 }
