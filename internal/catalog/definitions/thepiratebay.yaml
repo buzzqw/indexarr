@@ -17,10 +17,14 @@ meta:
   protocol: torrent
   author: indexarr
   description: Public The Pirate Bay JSON search API (apibay.org).
+  # Only the JSON API belongs here. meta.urls[1:] are failover mirrors, so the
+  # human site (thepiratebay.org) must stay out: it has no /q.php and answers
+  # the request with a redirect to index.html, which is HTML. Once the
+  # connector moved there it had no reason to move back and every search
+  # failed with "json: decode response: invalid character '<'".
   urls:
     - https://apibay.org/
-    - https://thepiratebay.org/
-  updated: "2026-10-23"
+  updated: "2026-11-05"
   latest: false
 
 categories:

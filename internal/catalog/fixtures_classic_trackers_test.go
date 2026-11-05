@@ -134,6 +134,19 @@ func TestThePirateBayFixture(t *testing.T) {
 	}
 }
 
+// The human site has no /q.php: as a failover mirror it answered the search
+// with a redirect to index.html, and the connector stayed there, so every
+// later search failed to decode HTML as JSON. Only the API host is allowed.
+func TestThePirateBayHasNoHTMLMirror(t *testing.T) {
+	def := parseDefinition(t, "thepiratebay")
+	if len(def.Meta.URLs) != 1 {
+		t.Fatalf("meta.urls = %v, want only the JSON API", def.Meta.URLs)
+	}
+	if got := strings.TrimSuffix(def.Meta.URLs[0], "/"); got != "https://apibay.org" {
+		t.Fatalf("meta.urls[0] = %q, want https://apibay.org", def.Meta.URLs[0])
+	}
+}
+
 func TestTorrentsCSVFixture(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/service/search" {

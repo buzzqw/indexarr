@@ -13074,6 +13074,37 @@
     "scheduled": true
   },
   {
+    "id": "jk-thepiratebay",
+    "name": "The Pirate Bay",
+    "description": "The Pirate Bay (TPB) is the galaxy’s most resilient Public BitTorrent site",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "da-provvi",
+    "hosts": [
+      "thepiratebay.org"
+    ],
+    "url": "https://thepiratebay.org/",
+    "usage": 1,
+    "source": "jackett",
+    "evidence": "GET https://thepiratebay.org/index.html -\u003e HTTP 200, 5276 bytes, title \"Download music, movies, games, software! The Pirate Bay - The galaxy's most resilient BitTorrent site\", checked 2026-10-25",
+    "reachable": true,
+    "proposable": true,
+    "latest": false
+  },
+  {
     "id": "jk-theplace",
     "name": "The Place",
     "description": "ThePlace (TP) is a Private Torrent Tracker for SEDUCTION / SELF-IMPROVEMENT E-LEARNING",
@@ -16467,8 +16498,7 @@
     ],
     "state": "verificata",
     "hosts": [
-      "apibay.org",
-      "thepiratebay.org"
+      "apibay.org"
     ],
     "url": "https://apibay.org/",
     "usage": 1,

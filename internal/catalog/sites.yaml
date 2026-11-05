@@ -9595,6 +9595,30 @@ sites:
       checked: "2026-10-25"
       evidence: GET https://theoldschool.cc/login -> HTTP 200, 5517 bytes, title "Se connecter - The Old School", checked 2026-10-25; private, no account used
       note: 'family unit3d (possible): live GET markers on https://theoldschool.cc/'
+    - id: jk-thepiratebay
+      name: The Pirate Bay
+      description: The Pirate Bay (TPB) is the galaxy’s most resilient Public BitTorrent site
+      url: https://thepiratebay.org/
+      urls:
+        - https://thepiratebay.org/
+      type: public
+      language: en-US
+      categories:
+        - movies
+        - tv
+        - music
+        - books
+        - games
+        - software
+        - xxx
+      state: verificata
+      usage: 1
+      required:
+        - url
+      source: jackett
+      source_id: thepiratebay
+      checked: "2026-10-25"
+      evidence: GET https://thepiratebay.org/index.html -> HTTP 200, 5276 bytes, title "Download music, movies, games, software! The Pirate Bay - The galaxy's most resilient BitTorrent site", checked 2026-10-25
     - id: jk-theplace
       name: The Place
       description: ThePlace (TP) is a Private Torrent Tracker for SEDUCTION / SELF-IMPROVEMENT E-LEARNING
