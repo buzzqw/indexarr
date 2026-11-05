@@ -9,6 +9,7 @@
 
 <form class="panel form" method="post" action="{{if .IsNew}}/download-clients{{else}}/download-clients/{{.Client.ID}}{{end}}">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <input type="hidden" name="id" value="{{if not .IsNew}}{{.Client.ID}}{{end}}">
   <div class="form-grid">
     <div class="field grow">
       <label for="client_name">{{T "client.name"}}</label>
@@ -31,6 +32,7 @@
           <li><strong>{{clientKind "downloadstation"}}</strong>: {{clientHelp "client.help.downloadstation"}}</li>
           <li><strong>{{clientKind "nzbvortex"}}</strong>: {{clientHelp "client.help.nzbvortex"}}</li>
           <li><strong>{{clientKind "hadouken"}}</strong>: {{clientHelp "client.help.hadouken"}}</li>
+          <li><strong>{{clientKind "gextto"}}</strong>: {{clientHelp "client.help.gextto"}}</li>
         </ul>
       </details>
     </div>
@@ -103,7 +105,12 @@
   </div>
   <div class="actions form-actions">
     <a class="btn" href="/applications#clients">{{T "common.cancel"}}</a>
+    <button class="btn" type="submit" formaction="/download-clients/test" formtarget="_blank" data-client-test
+      data-pending="{{T "client.testing"}}" data-failed="{{T "client.testNetworkFailed"}}"
+      title="{{T "client.testFormTip"}}">{{T "client.testForm"}}</button>
     <button class="btn primary" type="submit">{{T "client.save"}}</button>
   </div>
+  <p class="help">{{T "client.testFormHelp"}}</p>
+  <p class="flash" role="status" data-client-test-status hidden></p>
 </form>
 {{end}}

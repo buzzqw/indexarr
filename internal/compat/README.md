@@ -62,9 +62,9 @@ goldens are reproducible on any machine.
   refresh: they require a scheduler or external services.
 - Full native Newznab: this suite verifies the Newznab shape compatible with
   the \*arr and the `.nzb` download, not a separate Usenet protocol.
-- Download clients (qBittorrent, Transmission, SABnzbd, NZBGet, Deluge,
-  rTorrent): covered by `internal/downloadclient`; here only the payload served
-  by indexarr is verified.
+- Download clients (qBittorrent, Gextto / gx-torrent, Transmission, SABnzbd,
+  NZBGet, Deluge, rTorrent): covered by `internal/downloadclient`; here only the
+  payload served by indexarr is verified.
 - Compatibility with real versions of the \*arr: the suite uses the schema and
   requests of the v3/v1 APIs, not real Sonarr/Radarr/Lidarr binaries.
 

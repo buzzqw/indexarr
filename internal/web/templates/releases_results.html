@@ -12,6 +12,7 @@
   <span class="muted" data-results-filter-count></span>
 </div>
 <p class="muted results-filter-empty" data-results-filter-empty hidden>{{T "releases.filterResultsEmpty"}}</p>
+<p class="help">{{T "releases.externalSearchHelp"}}</p>
 
 <form method="post" action="/releases/bulk">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
@@ -47,6 +48,8 @@
                 {{else}}<span class="muted">—</span>{{end}}
                 {{with magnetFor .}}<button class="btn small" type="button" data-copy="{{.}}" title="{{T "releases.copyMagnetTip"}}">{{T "release.copyMagnet"}}</button>{{end}}
                 {{if .Ed2k}}<button class="btn small" type="button" data-copy="{{.Ed2k}}" title="{{T "release.copyEd2kTip"}}">{{T "release.copyEd2k"}}</button>{{end}}
+                <a class="btn small" href="{{tmdbSearch .Title}}" target="_blank" rel="noopener noreferrer" title="{{T "releases.tmdbSearchTip"}}">{{T "release.tmdb"}}</a>
+                <a class="btn small" href="{{tvdbSearch .Title}}" target="_blank" rel="noopener noreferrer" title="{{T "releases.tvdbSearchTip"}}">{{T "release.tvdb"}}</a>
               </span>
             </td>
           </tr>

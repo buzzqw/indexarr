@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -227,6 +228,49 @@ func TestDownloadClientFormLifecycle(t *testing.T) {
 	}
 	if remaining, _ := env.store.ListDownloadClients(context.Background()); len(remaining) != 0 {
 		t.Errorf("clients after delete = %#v", remaining)
+	}
+}
+
+// The new-client page offers gx-torrent and a test that runs before saving.
+func TestDownloadClientFormListsGexttoAndTestsWithoutSaving(t *testing.T) {
+	env := newTestEnv(t)
+	page := get(t, env.handler, "/download-clients/new").Body.String()
+	for _, want := range []string{"Gextto / gx-torrent", "Test client"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("new client form missing %q", want)
+		}
+	}
+	if !strings.Contains(page, `formaction="/download-clients/test"`) {
+		t.Error("new client form has no test action")
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v2/app/version" {
+			_, _ = w.Write([]byte("v4.6.7"))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	token, cookie := csrfFrom(t, env.handler, "/download-clients/new")
+	recorder := postForm(t, env.handler, "/download-clients/test", url.Values{
+		"csrf":     {token},
+		"id":       {""},
+		"name":     {"Gextto"},
+		"kind":     {"gextto"},
+		"protocol": {"torrent"},
+		"url":      {server.URL},
+		"enabled":  {"on"},
+	}, cookie)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("test = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), "Gextto / gx-torrent v4.6.7") {
+		t.Errorf("test result missing version: %s", recorder.Body.String())
+	}
+	if clients, _ := env.store.ListDownloadClients(context.Background()); len(clients) != 0 {
+		t.Errorf("the test saved a client: %#v", clients)
 	}
 }
 

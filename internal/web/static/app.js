@@ -603,6 +603,50 @@ if ("serviceWorker" in navigator) {
   });
 })();
 
+// Download client form: test the values without leaving the form, so a typed
+// password is not lost. Without JavaScript the same button submits the form
+// and the server renders the same result on the page.
+(() => {
+  const button = document.querySelector("[data-client-test]");
+  const status = document.querySelector("[data-client-test-status]");
+  if (!button || !status || !button.form) {
+    return;
+  }
+  button.addEventListener("click", async (event) => {
+    const form = button.form;
+    if (!form.reportValidity()) {
+      return;
+    }
+    event.preventDefault();
+    status.hidden = false;
+    status.classList.remove("ok", "err");
+    status.textContent = button.dataset.pending || "";
+    try {
+      const response = await fetch(button.getAttribute("formaction") || "/download-clients/test", {
+        method: "POST",
+        // URL-encoded, not multipart: the CSRF middleware reads the token from
+        // the body of url-encoded posts.
+        body: new URLSearchParams(new FormData(form)),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-Requested-With": "fetch",
+          Accept: "application/json",
+        },
+        credentials: "same-origin",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!payload) {
+        throw new Error("HTTP " + response.status);
+      }
+      status.textContent = payload.message || "";
+      status.classList.add(payload.ok ? "ok" : "err");
+    } catch (error) {
+      status.textContent = button.dataset.failed || "";
+      status.classList.add("err");
+    }
+  });
+})();
+
 // Per-source refresh interval: the list of common choices only fills the
 // number field that is actually submitted. Without JavaScript the field still
 // accepts any value, so the form never depends on this enhancement.

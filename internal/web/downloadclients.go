@@ -2,9 +2,11 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +32,7 @@ var downloadClientKindLabels = map[string]string{
 	"downloadstation":  "Synology Download Station",
 	"nzbvortex":        "NZBVortex",
 	"hadouken":         "Hadouken",
+	"gextto":           "Gextto / gx-torrent",
 }
 
 // clientHelpFallback carries the English text of help keys that are not in the
@@ -44,6 +47,7 @@ var clientHelpFallback = map[string]string{
 	"client.help.downloadstation":  "Logs in through auth.cgi and creates tasks through task.cgi. Enter the NAS address, username and password; the save path becomes destination. Category is not used.",
 	"client.help.nzbvortex":        "Uses the API under /api and an API key. It accepts .nzb files only; the category becomes the group name.",
 	"client.help.hadouken":         "Uses JSON-RPC under /api. Enter its address, username and password; the category becomes the label.",
+	"client.help.gextto":           "Uses the qBittorrent-compatible /api/v2 endpoint served by gx-torrent and Gextto. Enter the daemon address; leave the password empty when the Web UI is open on the LAN, or use an API key when one is configured.",
 	"client.help.url":              "Blackhole leaves this empty. The other new clients use the address of their API, for example http://192.168.1.30:6800.",
 	"client.help.savePath":         "Blackhole: the folder that receives the files. Aria2: the dir option. Flood and Download Station: the destination. Other clients ignore it.",
 	"client.help.apiKey":           "Aria2 accepts its RPC secret here or in the password field. SABnzbd, NZBGet and NZBVortex use the API key.",
@@ -108,7 +112,7 @@ func (s *Server) downloadClientForm(r *http.Request, title string, client store.
 		base:            s.newBaseT(r, title, "applications"),
 		IsNew:           isNew,
 		Client:          client,
-		Kinds:           []string{"qbittorrent", "transmission", "deluge", "rtorrent", "sabnzbd", "nzbget", "amule", "torrentblackhole", "usenetblackhole", "aria2", "utorrent", "flood", "downloadstation", "nzbvortex", "hadouken"},
+		Kinds:           []string{"qbittorrent", "transmission", "deluge", "rtorrent", "gextto", "sabnzbd", "nzbget", "amule", "torrentblackhole", "usenetblackhole", "aria2", "utorrent", "flood", "downloadstation", "nzbvortex", "hadouken"},
 		KindName:        downloadClientKindLabel(client.Kind),
 		HasPassword:     client.PasswordEnc != "",
 		HasAPIKey:       client.APIKeyEnc != "",
@@ -307,6 +311,140 @@ func (s *Server) downloadClientDefault(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	redirect(w, r, "/applications#clients", s.translate(r, "client.defaultSet"), "")
+}
+
+// downloadClientTestForm tests the values currently typed in the new/edit
+// form, before they are saved. It accepts the same fields as the create form;
+// the hidden id, when present, preserves the stored secrets that the empty
+// password and API-key fields mean to keep.
+func (s *Server) downloadClientTestForm(w http.ResponseWriter, r *http.Request) {
+	current := store.DownloadClient{Enabled: true}
+	if raw := strings.TrimSpace(r.FormValue("id")); raw != "" {
+		if id, err := strconv.ParseInt(raw, 10, 64); err == nil && id > 0 {
+			if stored, err := s.store.GetDownloadClient(r.Context(), id); err == nil {
+				current = stored
+			}
+		}
+	}
+	isNew := current.ID == 0
+	title := "client.titleNew"
+	if !isNew {
+		title = "client.titleEdit"
+	}
+	cfg, problems := s.downloadClientTestConfig(r, current)
+	message := ""
+	ok := false
+	status := http.StatusOK
+	if len(problems) > 0 {
+		message = strings.Join(problems, " ")
+		status = http.StatusBadRequest
+	} else {
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+		description, err := downloadclient.Test(ctx, cfg)
+		if err != nil {
+			s.log.Warn("download client form test failed", "kind", cfg.Kind, "error", err)
+			message = s.translate(r, "client.testFailed", err.Error())
+		} else {
+			ok = true
+			message = s.translate(r, "client.testOK", description)
+		}
+	}
+
+	if wantsJSON(r) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": ok, "message": message})
+		return
+	}
+
+	in := s.downloadClientFormValues(r, current)
+	page := s.downloadClientForm(r, title, in, isNew)
+	if ok {
+		page.Message = message
+	} else {
+		page.Error = message
+	}
+	s.render(w, r, "download_client_form", page, status)
+}
+
+// downloadClientFormValues keeps the non-secret fields the operator typed so a
+// server-rendered test result shows the same form. Secrets are never copied
+// back into the HTML: the stored markers come from the saved client.
+func (s *Server) downloadClientFormValues(r *http.Request, current store.DownloadClient) store.DownloadClient {
+	in := current
+	in.Name = strings.TrimSpace(r.FormValue("name"))
+	in.Kind = strings.ToLower(strings.TrimSpace(r.FormValue("kind")))
+	in.Protocol = strings.ToLower(strings.TrimSpace(r.FormValue("protocol")))
+	in.URL = strings.TrimRight(strings.TrimSpace(r.FormValue("url")), "/")
+	in.Username = strings.TrimSpace(r.FormValue("username"))
+	in.Category = strings.TrimSpace(r.FormValue("category"))
+	in.SavePath = strings.TrimSpace(r.FormValue("save_path"))
+	in.Paused = r.FormValue("paused") != ""
+	in.Enabled = r.FormValue("enabled") != ""
+	in.IsDefault = r.FormValue("is_default") != ""
+	if in.Protocol == "" {
+		in.Protocol = store.DefaultDownloadClientProtocol(in.Kind)
+	}
+	return in
+}
+
+// downloadClientTestConfig builds the configuration from the form without
+// sealing or saving the secrets. An empty field means "use the stored value".
+func (s *Server) downloadClientTestConfig(r *http.Request, current store.DownloadClient) (downloadclient.Config, []string) {
+	kind := strings.ToLower(strings.TrimSpace(r.FormValue("kind")))
+	rawURL := strings.TrimRight(strings.TrimSpace(r.FormValue("url")), "/")
+	var problems []string
+	if !validDownloadClientKind(kind) {
+		problems = append(problems, s.translate(r, "client.error.kind"))
+	}
+	parsed, err := url.Parse(rawURL)
+	if blackholeKind(kind) {
+		if strings.TrimSpace(r.FormValue("save_path")) == "" {
+			problems = append(problems, s.clientHelp(r, "client.error.savePath"))
+		}
+		if rawURL != "" && (err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "") {
+			problems = append(problems, s.translate(r, "client.error.url"))
+		}
+	} else if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		problems = append(problems, s.translate(r, "client.error.url"))
+	}
+
+	password := r.FormValue("password")
+	if password == "" && r.FormValue("password_remove") == "" && current.PasswordEnc != "" {
+		opened, err := s.openSecret(current.PasswordEnc)
+		if err != nil {
+			problems = append(problems, err.Error())
+		} else {
+			password = opened
+		}
+	}
+	apiKey := strings.TrimSpace(r.FormValue("api_key"))
+	if apiKey == "" && r.FormValue("api_key_remove") == "" && current.APIKeyEnc != "" {
+		opened, err := s.openSecret(current.APIKeyEnc)
+		if err != nil {
+			problems = append(problems, err.Error())
+		} else {
+			apiKey = opened
+		}
+	}
+	if kind == "amule" && password == "" {
+		problems = append(problems, s.translate(r, "client.error.amulePassword"))
+	}
+
+	return downloadclient.Config{
+		Kind: kind, URL: rawURL,
+		Username: strings.TrimSpace(r.FormValue("username")),
+		Password: password, APIKey: apiKey,
+		Category: strings.TrimSpace(r.FormValue("category")),
+		SavePath: strings.TrimSpace(r.FormValue("save_path")),
+		Paused:   r.FormValue("paused") != "",
+	}, problems
+}
+
+func wantsJSON(r *http.Request) bool {
+	return strings.Contains(strings.ToLower(r.Header.Get("Accept")), "application/json") ||
+		strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Requested-With")), "fetch")
 }
 
 func (s *Server) downloadClientTest(w http.ResponseWriter, r *http.Request) {

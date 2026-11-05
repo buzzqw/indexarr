@@ -4,8 +4,9 @@
 // RPC endpoint, Deluge through its JSON-RPC API, rTorrent through XML-RPC,
 // SABnzbd through its HTTP API and NZBGet through its JSON-RPC API. The
 // expanded set adds Blackhole folders, Aria2, uTorrent, Flood, Synology
-// Download Station, NZBVortex and Hadouken. All are optional: when the feature
-// is disabled the release page hides the button.
+// Download Station, NZBVortex, Hadouken and Gextto / gx-torrent (through the
+// qBittorrent-compatible Web API v2). All are optional: when the feature is
+// disabled the release page hides the button.
 package downloadclient
 
 import (
@@ -41,6 +42,9 @@ const (
 	KindDownloadStation  = "downloadstation"
 	KindNZBVortex        = "nzbvortex"
 	KindHadouken         = "hadouken"
+	// KindGextto is the standalone gx-torrent daemon and the Gextto torrent
+	// engine they share: both expose the qBittorrent Web API v2 subset.
+	KindGextto = "gextto"
 )
 
 // Config is the saved download-client configuration. SABnzbd uses APIKey as
@@ -127,6 +131,8 @@ func New(cfg Config) (Client, error) {
 		return newNZBVortex(cfg)
 	case KindHadouken:
 		return newHadouken(cfg)
+	case KindGextto:
+		return newGextto(cfg)
 	case "", KindNone:
 		return nil, fmt.Errorf("no download client configured")
 	default:
@@ -211,6 +217,7 @@ var (
 	_ Client = (*downloadStationClient)(nil)
 	_ Client = (*nzbVortexClient)(nil)
 	_ Client = (*hadoukenClient)(nil)
+	_ Client = (*gexttoClient)(nil)
 
 	_ Tester = (*clientFuncs)(nil)
 	_ Tester = (*delugeClient)(nil)
@@ -225,6 +232,7 @@ var (
 	_ Tester = (*downloadStationClient)(nil)
 	_ Tester = (*nzbVortexClient)(nil)
 	_ Tester = (*hadoukenClient)(nil)
+	_ Tester = (*gexttoClient)(nil)
 )
 
 func (c *clientFuncs) Send(ctx context.Context, item Item) error {
@@ -252,6 +260,12 @@ func addTransmissionItem(ctx context.Context, cfg Config, item Item) error {
 }
 
 func qbLogin(ctx context.Context, client *http.Client, base string, cfg Config) error {
+	return qbLoginAs(ctx, client, base, "qBittorrent", cfg)
+}
+
+// qbLoginAs logs into a qBittorrent-compatible API. The label distinguishes
+// qBittorrent from the clients that speak the same API (Gextto / gx-torrent).
+func qbLoginAs(ctx context.Context, client *http.Client, base, label string, cfg Config) error {
 	login := url.Values{}
 	login.Set("username", cfg.Username)
 	login.Set("password", cfg.Password)
@@ -264,13 +278,13 @@ func qbLogin(ctx context.Context, client *http.Client, base string, cfg Config) 
 	request.Header.Set("Referer", base)
 	response, err := client.Do(request)
 	if err != nil {
-		return requestError("qBittorrent login", err, base, cfg.Password)
+		return requestError(label+" login", err, base, cfg.Password)
 	}
 	body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
 	response.Body.Close()
 	if response.StatusCode != http.StatusOK || !strings.EqualFold(strings.TrimSpace(string(body)), "Ok.") {
-		return fmt.Errorf("qBittorrent login failed (HTTP %d): %s",
-			response.StatusCode, redactText(string(body), 300, cfg.Password))
+		return fmt.Errorf("%s login failed (HTTP %d): %s",
+			label, response.StatusCode, redactText(string(body), 300, cfg.Password))
 	}
 	return nil
 }
@@ -285,6 +299,14 @@ func testQBittorrent(ctx context.Context, cfg Config) (string, error) {
 	if err := qbLogin(ctx, client, base, cfg); err != nil {
 		return "", err
 	}
+	version, err := qbVersion(ctx, client, base, "qBittorrent", cfg)
+	if err != nil {
+		return "", err
+	}
+	return "qBittorrent " + version, nil
+}
+
+func qbVersion(ctx context.Context, client *http.Client, base, label string, cfg Config) (string, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/v2/app/version", nil)
 	if err != nil {
 		return "", err
@@ -292,19 +314,19 @@ func testQBittorrent(ctx context.Context, cfg Config) (string, error) {
 	request.Header.Set("Referer", base)
 	response, err := client.Do(request)
 	if err != nil {
-		return "", requestError("qBittorrent version", err, base, cfg.Password)
+		return "", requestError(label+" version", err, base, cfg.Password)
 	}
 	body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
 	response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("qBittorrent version failed (HTTP %d): %s",
-			response.StatusCode, redactText(string(body), 300, cfg.Password))
+		return "", fmt.Errorf("%s version failed (HTTP %d): %s",
+			label, response.StatusCode, redactText(string(body), 300, cfg.Password))
 	}
 	version := strings.TrimSpace(string(body))
 	if version == "" {
 		version = "unknown"
 	}
-	return "qBittorrent " + version, nil
+	return version, nil
 }
 
 func addQBittorrent(ctx context.Context, cfg Config, release store.Release) error {
@@ -312,27 +334,37 @@ func addQBittorrent(ctx context.Context, cfg Config, release store.Release) erro
 	if base == "" {
 		return fmt.Errorf("qBittorrent URL is empty")
 	}
-	if len(release.Torrent) == 0 && strings.TrimSpace(release.Magnet) == "" {
-		return fmt.Errorf("release has neither a .torrent nor a magnet")
-	}
 	jar, _ := cookiejar.New(nil)
 	client := newHTTPClient(jar)
 	if err := qbLogin(ctx, client, base, cfg); err != nil {
 		return err
 	}
+	return qbAdd(ctx, client, base, "qBittorrent", cfg, Item{
+		Title:   release.Title,
+		Magnet:  release.Magnet,
+		Torrent: release.Torrent,
+	})
+}
+
+// qbAdd posts one item to the qBittorrent-compatible torrents/add endpoint.
+// It is shared by qBittorrent and Gextto / gx-torrent.
+func qbAdd(ctx context.Context, client *http.Client, base, label string, cfg Config, item Item) error {
+	if len(item.Torrent) == 0 && strings.TrimSpace(item.Magnet) == "" {
+		return fmt.Errorf("release has neither a .torrent nor a magnet")
+	}
 
 	var payload bytes.Buffer
 	writer := multipart.NewWriter(&payload)
-	if len(release.Torrent) > 0 {
-		part, err := writer.CreateFormFile("torrents", torrentFilename(release.Title))
+	if len(item.Torrent) > 0 {
+		part, err := writer.CreateFormFile("torrents", torrentFilename(item.Title))
 		if err != nil {
 			return err
 		}
-		if _, err := part.Write(release.Torrent); err != nil {
+		if _, err := part.Write(item.Torrent); err != nil {
 			return err
 		}
 	} else {
-		_ = writer.WriteField("urls", release.Magnet)
+		_ = writer.WriteField("urls", item.Magnet)
 	}
 	if cfg.Category != "" {
 		_ = writer.WriteField("category", cfg.Category)
@@ -359,13 +391,13 @@ func addQBittorrent(ctx context.Context, cfg Config, release store.Release) erro
 	add.Header.Set("Referer", base)
 	added, err := client.Do(add)
 	if err != nil {
-		return requestError("qBittorrent add", err, base, cfg.Password)
+		return requestError(label+" add", err, base, cfg.Password)
 	}
 	addedBody, _ := io.ReadAll(io.LimitReader(added.Body, 4096))
 	added.Body.Close()
 	if added.StatusCode != http.StatusOK || !strings.EqualFold(strings.TrimSpace(string(addedBody)), "Ok.") {
-		return fmt.Errorf("qBittorrent add failed (HTTP %d): %s",
-			added.StatusCode, redactText(string(addedBody), 300, cfg.Password))
+		return fmt.Errorf("%s add failed (HTTP %d): %s",
+			label, added.StatusCode, redactText(string(addedBody), 300, cfg.Password))
 	}
 	return nil
 }

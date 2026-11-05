@@ -179,6 +179,15 @@ var templateFuncMap = template.FuncMap{
 		}
 		return ""
 	},
+	// External metadata: the two buttons on every result open a search on the
+	// public site with the release title. They are searches, not API calls:
+	// indexarr needs no TMDb/TVDb key for them.
+	"tmdbSearch": func(title string) template.URL {
+		return template.URL("https://www.themoviedb.org/search?query=" + url.QueryEscape(strings.TrimSpace(title)))
+	},
+	"tvdbSearch": func(title string) template.URL {
+		return template.URL("https://thetvdb.com/search?query=" + url.QueryEscape(strings.TrimSpace(title)))
+	},
 	"truncate": func(text string, max int) string {
 		runes := []rune(text)
 		if len(runes) <= max {
@@ -789,6 +798,7 @@ func (s *Server) uiRoutes() *http.ServeMux {
 	ui.HandleFunc("GET /download-clients", s.downloadClientsRedirect)
 	ui.HandleFunc("GET /download-clients/new", s.downloadClientNew)
 	ui.HandleFunc("POST /download-clients", s.downloadClientCreate)
+	ui.HandleFunc("POST /download-clients/test", s.downloadClientTestForm)
 	ui.HandleFunc("GET /download-clients/{id}/edit", s.downloadClientEdit)
 	ui.HandleFunc("POST /download-clients/{id}", s.downloadClientUpdate)
 	ui.HandleFunc("POST /download-clients/{id}/delete", s.downloadClientDelete)

@@ -587,7 +587,7 @@ func TestNewExtendedKindsImplementTester(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	defer server.Close()
 	for _, kind := range []string{KindTorrentBlackhole, KindUsenetBlackhole, KindAria2,
-		KindUTorrent, KindFlood, KindDownloadStation, KindNZBVortex, KindHadouken} {
+		KindUTorrent, KindFlood, KindDownloadStation, KindNZBVortex, KindHadouken, KindGextto} {
 		client, err := Build(Config{Kind: kind, URL: server.URL, SavePath: testScratch(t)})
 		if err != nil {
 			t.Errorf("Build(%s): %v", kind, err)
