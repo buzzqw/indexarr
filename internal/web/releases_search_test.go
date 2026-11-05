@@ -142,3 +142,27 @@ func TestReleasesFileNamesAndAdultFilter(t *testing.T) {
 		t.Error("the adult filter hid a non-adult release")
 	}
 }
+
+// The TMDB and TVDB buttons search the title a person would type, not the
+// release name with its resolution, codec and group.
+func TestReleaseMetadataSearchUsesTheDerivedTitle(t *testing.T) {
+	env := newTestEnv(t)
+	insertSearchRelease(t, env.store,
+		"Mr-9.Do.or.Die.2023.1080p.ITA-ENG.BluRay.x265.AAC-V3SP4EV3R.mkv", "2040")
+	insertSearchRelease(t, env.store,
+		"Goodrich Il padre dell anno 2024 1080p H264 iTA EnG AC3 Sub E", "2040")
+	body := get(t, env.handler, "/releases").Body.String()
+	for _, want := range []string{
+		"https://www.themoviedb.org/search?query=mr-9%20do%20or%20die",
+		"https://thetvdb.com/search?query=mr-9%20do%20or%20die",
+		"https://www.themoviedb.org/search?query=goodrich",
+		"https://thetvdb.com/search?query=goodrich",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("release actions missing %q", want)
+		}
+	}
+	if strings.Contains(body, "themoviedb.org/search?query=mr-9.do.or.die") {
+		t.Error("the TMDB link still uses the raw release name")
+	}
+}

@@ -19,6 +19,7 @@ import (
 
 	"github.com/buzzqw/indexarr/internal/catalog"
 	"github.com/buzzqw/indexarr/internal/categories"
+	"github.com/buzzqw/indexarr/internal/dedup"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/i18n"
@@ -113,6 +114,24 @@ var pageNames = []string{
 	"download_client_form", "site_preview", "smartfeed_form", "store_warning",
 }
 
+// metadataSearchTitle is the human title typed into the TMDB and TVDB search
+// boxes. A release name carries a lot of noise; when the cleaned title is
+// empty (a name made only of technical tags) the original is the honest
+// fallback.
+func metadataSearchTitle(title string) string {
+	if clean := dedup.SearchName(title); clean != "" {
+		return clean
+	}
+	return strings.TrimSpace(title)
+}
+
+// metadataSearchQuery escapes the title with %20 instead of "+": the value is
+// rendered inside an HTML attribute, where "+" would become &#43; in the
+// source. Browsers decode either form, but %20 keeps the link readable.
+func metadataSearchQuery(title string) string {
+	return strings.ReplaceAll(url.QueryEscape(metadataSearchTitle(title)), "+", "%20")
+}
+
 var templateFuncMap = template.FuncMap{
 	// displayVersion adds the "v" only when the build tag lacks it: git
 	// describe already returns "v2.1.3", which the sidebar showed as "vv2.1.3".
@@ -183,10 +202,10 @@ var templateFuncMap = template.FuncMap{
 	// public site with the release title. They are searches, not API calls:
 	// indexarr needs no TMDb/TVDb key for them.
 	"tmdbSearch": func(title string) template.URL {
-		return template.URL("https://www.themoviedb.org/search?query=" + url.QueryEscape(strings.TrimSpace(title)))
+		return template.URL("https://www.themoviedb.org/search?query=" + metadataSearchQuery(title))
 	},
 	"tvdbSearch": func(title string) template.URL {
-		return template.URL("https://thetvdb.com/search?query=" + url.QueryEscape(strings.TrimSpace(title)))
+		return template.URL("https://thetvdb.com/search?query=" + metadataSearchQuery(title))
 	},
 	"truncate": func(text string, max int) string {
 		runes := []rune(text)

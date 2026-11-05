@@ -2104,6 +2104,14 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 .health-panel .sub-head:not(:first-child) { margin-top: 1.3rem; }
 .release-actions { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
 
+/* Wide screens keep download, magnets and metadata searches on one line, so a
+   result row stays one line tall. The action column grows to fit the widest
+   case; below this width the buttons wrap again instead of overflowing. */
+@media (min-width: 1000px) {
+  .releases-table th:nth-child(6) { width: 21rem; }
+  .release-actions { flex-wrap: nowrap; }
+}
+
 /* Edit form: the credential block is the first thing after the address. */
 .form-access {
   margin: 0.2rem 0 1rem;

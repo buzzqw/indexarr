@@ -461,7 +461,7 @@ App synchronization, per-app profiles, multiple API keys and live search:
 | Page | Content |
 | --- | --- |
 | **Home** | Totals, indexer status, latest releases, runs and problems |
-| **Search** (`/releases`) | Two searches: live on the indexers (text, TV, movies, music, books, external IDs) and the stored catalogue (`-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab); detail with magnet, `.torrent` and `.nzb`, plus TMDB/TVDB search buttons on every row |
+| **Search** (`/releases`) | Two searches: live on the indexers (text, TV, movies, music, books, external IDs) and the stored catalogue (`-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab); detail with magnet, `.torrent` and `.nzb`, plus TMDB/TVDB search buttons on every row with the title cleaned of technical tags and localized titles |
 | **Indexers** | Single list, Run/Test/Run all/Test all/Test problems, detail with Site access, edit, clone, JSON export/import, feed discovery and cookie import; each source can have its own request timeout |
 | **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian and the generic Servarr-compatible type; sync, per-app profile, snapshots and download clients |
 | **Statistics** (`/activity`) | Incoming requests, overview per app and indexer, downloads served per source, completion reported by the client, update history, new releases, per-host network counters |
