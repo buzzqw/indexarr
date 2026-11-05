@@ -557,9 +557,11 @@ func (s *Server) downloadClientTest(w http.ResponseWriter, r *http.Request) {
 	description, err := downloadclient.Test(ctx, cfg)
 	if err != nil {
 		s.log.Warn("download client test failed", "client", client.Name, "kind", client.Kind, "error", err)
+		_ = s.store.RecordDownloadClientTest(r.Context(), client.ID, err.Error())
 		redirect(w, r, "/applications#clients", "", s.translate(r, "client.testFailed", err.Error()))
 		return
 	}
+	_ = s.store.RecordDownloadClientTest(r.Context(), client.ID, "")
 	redirect(w, r, "/applications#clients", s.translate(r, "client.testOK", description), "")
 }
 
@@ -585,6 +587,28 @@ func (s *Server) downloadClientConfig(client store.DownloadClient) (downloadclie
 // protocol exists it falls back to the default, then to the legacy single
 // setting so existing installations keep sending releases.
 func (s *Server) resolveDownloadClient(ctx context.Context, protocol string) (downloadclient.Config, string, error) {
+	return s.resolveDownloadClientFor(ctx, protocol, 0)
+}
+
+// resolveDownloadClientFor applies the per-indexer pin first: when the source
+// that supplied the release names a client, that client wins, provided it is
+// enabled and speaks the release protocol. Otherwise the protocol rule runs.
+func (s *Server) resolveDownloadClientFor(ctx context.Context, protocol string, indexerID int64) (downloadclient.Config, string, error) {
+	if indexerID > 0 {
+		if indexer, err := s.store.GetIndexer(ctx, indexerID); err == nil && indexer.DownloadClientID > 0 {
+			if client, err := s.store.GetDownloadClient(ctx, indexer.DownloadClientID); err == nil &&
+				client.Enabled && strings.EqualFold(client.Protocol, protocol) {
+				cfg, err := s.downloadClientConfig(client)
+				if err == nil {
+					name := client.Name
+					if name == "" {
+						name = downloadClientKindLabel(client.Kind)
+					}
+					return cfg, name, nil
+				}
+			}
+		}
+	}
 	clients, err := s.store.ListDownloadClients(ctx)
 	if err != nil {
 		return downloadclient.Config{}, "", err

@@ -180,6 +180,7 @@
           <th scope="col">{{T "client.protocol"}}</th>
           <th scope="col">{{T "client.address"}}</th>
           <th scope="col">{{T "client.default"}}</th>
+          <th scope="col">{{T "client.lastTest"}}</th>
           <th scope="col" class="right">{{T "common.actions"}}</th>
         </tr>
       </thead>
@@ -193,6 +194,12 @@
           <td>{{T .ProtocolKey}}</td>
           <td><code>{{.Host}}</code></td>
           <td>{{if .Client.IsDefault}}<span class="chip ok">{{T "client.defaultChip"}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+          <td class="nowrap">
+            {{if .Client.LastTestAt}}
+              <span title="{{.Client.LastTestError}}">{{ago .Client.LastTestAt}}</span>
+              {{if .Client.LastTestError}}<span class="chip danger" title="{{.Client.LastTestError}}">{{T "client.testFailedShort"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}
+            {{else}}<span class="muted">{{T "client.neverTested"}}</span>{{end}}
+          </td>
           <td class="right nowrap">
             <form method="post" action="/download-clients/{{.Client.ID}}/test">
               <input type="hidden" name="csrf" value="{{$.CSRF}}">

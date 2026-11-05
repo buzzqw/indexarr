@@ -684,6 +684,29 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 30 lets an indexer choose its own download client. Zero keeps
+	// the protocol-wide rule, so every existing row is unchanged.
+	if err := s.applyMigration(context.Background(), indexarr2IndexerClientVersion,
+		"indexer download client", func(tx *sql.Tx) error {
+			_, err := tx.Exec(`ALTER TABLE indexers
+				ADD COLUMN download_client_id INTEGER NOT NULL DEFAULT 0`)
+			return err
+		}); err != nil {
+		return err
+	}
+	// Migration 31 keeps the outcome of the last test of a download client.
+	if err := s.applyMigration(context.Background(), indexarr2ClientTestVersion,
+		"download client test status", func(tx *sql.Tx) error {
+			if _, err := tx.Exec(`ALTER TABLE download_clients
+				ADD COLUMN last_test_at INTEGER NOT NULL DEFAULT 0`); err != nil {
+				return err
+			}
+			_, err := tx.Exec(`ALTER TABLE download_clients
+				ADD COLUMN last_test_error TEXT NOT NULL DEFAULT ''`)
+			return err
+		}); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.

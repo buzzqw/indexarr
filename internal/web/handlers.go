@@ -77,6 +77,8 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 type releasesPage struct {
 	base
 	Releases       []store.Release
+	Provenance     map[int64]store.ReleaseProvenance
+	ReturnURL      string
 	Indexers       []store.Indexer
 	Pager          pager
 	Query          string
@@ -368,7 +370,26 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	}
 	data.Releases = releases
 	data.Pager = newPager(r, "/releases", total, releasesPerPage, filter.Offset)
+	data.ReturnURL = "/releases"
+	if data.CurrentQuery != "" {
+		data.ReturnURL += "?" + data.CurrentQuery
+	}
+	if ids := releaseIDs(releases); len(ids) > 0 {
+		provenance, err := s.store.ReleaseProvenance(r.Context(), ids)
+		if err != nil {
+			return data, err
+		}
+		data.Provenance = provenance
+	}
 	return data, nil
+}
+
+func releaseIDs(releases []store.Release) []int64 {
+	ids := make([]int64, 0, len(releases))
+	for _, release := range releases {
+		ids = append(ids, release.ID)
+	}
+	return ids
 }
 
 type releasePage struct {
@@ -391,7 +412,11 @@ func (s *Server) releasePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clientName := ""
-	if cfg, name, err := s.resolveDownloadClient(r.Context(), release.Protocol); err == nil {
+	indexerID := int64(0)
+	if found, ok, lookupErr := s.store.IndexerForRelease(r.Context(), release.ID); lookupErr == nil && ok {
+		indexerID = found.ID
+	}
+	if cfg, name, err := s.resolveDownloadClientFor(r.Context(), release.Protocol, indexerID); err == nil {
 		_ = cfg
 		clientName = name
 	}

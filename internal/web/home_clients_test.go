@@ -519,3 +519,32 @@ func TestEd2kTopicResolvedToMagnetBecomesTorrent(t *testing.T) {
 		t.Errorf("eD2k topic = %q %q", release.Protocol, release.Ed2k)
 	}
 }
+
+func TestDownloadClientListShowsLastTest(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	id, err := env.store.CreateDownloadClient(ctx, store.DownloadClient{
+		Name: "qBittorrent", Kind: "qbittorrent", Protocol: "torrent",
+		URL: "http://127.0.0.1:8080", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := env.store.RecordDownloadClientTest(ctx, id, "connection refused"); err != nil {
+		t.Fatal(err)
+	}
+	page := get(t, env.handler, "/applications?lang=en").Body.String()
+	for _, want := range []string{"Last test", "failed", "connection refused"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("client list missing %q", want)
+		}
+	}
+	if err := env.store.RecordDownloadClientTest(ctx, id, ""); err != nil {
+		t.Fatal(err)
+	}
+	page = get(t, env.handler, "/applications?lang=en").Body.String()
+	row := regexp.MustCompile(`(?s)<strong>qBittorrent.*?</tr>`).FindString(page)
+	if !strings.Contains(row, `class="chip ok">ok</span>`) {
+		t.Error("a successful test does not show the ok chip")
+	}
+}

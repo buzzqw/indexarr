@@ -26,12 +26,22 @@
       <a class="tab{{if eq .State "disabled"}} active{{end}}" href="{{.ListURL "disabled" .Protocol}}">{{T "idx.filterDisabled"}} <span class="chip">{{.Disabled}}</span></a>
       <a class="tab{{if eq .Protocol "usenet"}} active{{end}}" href="{{.ListURL .State "usenet"}}" title="{{T "tip.clientProtocol"}}">{{T "idx.protocolUsenet"}} <span class="chip">{{.Usenet}}</span></a>
     </nav>
-    {{if and (eq .State "problem") (gt .Problems 0)}}
-    <form class="toolbar-action" method="post" action="/indexers/test-problems">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <button class="btn small" type="submit" title="{{T "idx.testProblemsTip"}}">{{T "idx.testProblems"}}</button>
-    </form>
-    {{end}}
+    <div class="toolbar-actions">
+      <form class="toolbar-action" method="post" action="/indexers/test-all">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button class="btn small" type="submit" title="{{T "indexers.testAllTip"}}">{{T "indexers.testAll"}}</button>
+      </form>
+      <form class="toolbar-action" method="post" action="/indexers/run-all" data-confirm="{{T "indexers.runAllConfirm"}}">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button class="btn small" type="submit" title="{{T "indexers.runAllTip"}}">{{T "indexers.runAll"}}</button>
+      </form>
+      {{if and (eq .State "problem") (gt .Problems 0)}}
+      <form class="toolbar-action" method="post" action="/indexers/test-problems">
+        <input type="hidden" name="csrf" value="{{.CSRF}}">
+        <button class="btn small" type="submit" title="{{T "idx.testProblemsTip"}}">{{T "idx.testProblems"}}</button>
+      </form>
+      {{end}}
+    </div>
   </div>
 
   <form id="indexer-bulk" method="post" action="/indexers/bulk" class="bulk-form">

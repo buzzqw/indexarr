@@ -25,23 +25,30 @@ func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	release = s.openEd2kTopic(r.Context(), release)
-	cfg, clientName, err := s.resolveDownloadClient(r.Context(), release.Protocol)
+	// The source that supplied the release decides which client receives it,
+	// and its share limits travel with the release: a private tracker asks for
+	// a ratio, and the client that receives the magnet must know it. A missing
+	// provenance leaves the client's defaults untouched.
+	indexerID := int64(0)
+	var source store.Indexer
+	if found, ok, lookupErr := s.store.IndexerForRelease(r.Context(), release.ID); lookupErr == nil && ok {
+		indexerID = found.ID
+		source = found
+	}
+	cfg, clientName, err := s.resolveDownloadClientFor(r.Context(), release.Protocol, indexerID)
 	if err != nil {
-		redirect(w, r, "/releases/"+fmt.Sprint(id), "", s.translate(r, "release.noClient"))
+		redirect(w, r, releaseReturnURL(r, id), "", s.translate(r, "release.noClient"))
 		return
 	}
-	// The indexer's share limits travel with the release: a private tracker
-	// asks for a ratio, and the client that receives the magnet must know it.
-	// A missing provenance leaves the client's defaults untouched.
-	if found, ok, lookupErr := s.store.IndexerForRelease(r.Context(), release.ID); lookupErr == nil && ok {
-		cfg.SeedRatio = found.SeedRatio
-		cfg.SeedTimeMinutes = found.SeedTimeMinutes
+	if source.ID != 0 {
+		cfg.SeedRatio = source.SeedRatio
+		cfg.SeedTimeMinutes = source.SeedTimeMinutes
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 	defer cancel()
 	if err := downloadclient.Add(ctx, cfg, release); err != nil {
 		s.log.Warn("send to download client failed", "component", "indexarr", "subsystem", "downloadclient", "release_id", id, "client", cfg.Kind, "error", err)
-		redirect(w, r, "/releases/"+fmt.Sprint(id), "", s.translate(r, "release.sendFailed", err.Error()))
+		redirect(w, r, releaseReturnURL(r, id), "", s.translate(r, "release.sendFailed", err.Error()))
 		return
 	}
 	s.log.Info("release sent to download client", "release_id", id, "client", cfg.Kind, "title", release.Title)
@@ -52,7 +59,18 @@ func (s *Server) releaseSend(w http.ResponseWriter, r *http.Request) {
 		s.recordGrab(r.Context(), release, indexer.GrabViaEd2k)
 	}
 	s.notifyGrabSuccess(r.Context(), release)
-	redirect(w, r, "/releases/"+fmt.Sprint(id), s.translate(r, "release.sentTo", clientName), "")
+	redirect(w, r, releaseReturnURL(r, id), s.translate(r, "release.sentTo", clientName), "")
+}
+
+// releaseReturnURL keeps the operator on the results page when a row button
+// sent the release. Only a local /releases path is accepted, so the parameter
+// cannot turn the form into an open redirect.
+func releaseReturnURL(r *http.Request, id int64) string {
+	raw := strings.TrimSpace(r.FormValue("return"))
+	if strings.HasPrefix(raw, "/releases") && !strings.HasPrefix(raw, "//") {
+		return raw
+	}
+	return "/releases/" + fmt.Sprint(id)
 }
 
 // releaseDownload hands an eD2k release to the browser through indexarr, so the

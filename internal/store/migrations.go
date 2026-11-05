@@ -93,9 +93,15 @@ const (
 	// forum that answers 403 or 404 three times is skipped, so one broken
 	// section cannot hold the whole walk.
 	indexarr2TopicFailuresVersion = 29
+	// indexarr2IndexerClientVersion lets one indexer pick its own download
+	// client instead of the protocol-wide rule.
+	indexarr2IndexerClientVersion = 30
+	// indexarr2ClientTestVersion stores the last test of a download client,
+	// so the list can show a state instead of a flash that disappears.
+	indexarr2ClientTestVersion = 31
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2TopicFailuresVersion
+	latestSchemaVersion = indexarr2ClientTestVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (

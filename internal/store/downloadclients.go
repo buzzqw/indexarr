@@ -29,8 +29,36 @@ type DownloadClient struct {
 	Paused        bool
 	Enabled       bool
 	IsDefault     bool
+	// LastTestAt and LastTestError keep the outcome of the last connectivity
+	// test. The list shows them instead of a message that disappears.
+	LastTestAt    time.Time
+	LastTestError string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+}
+
+const downloadClientColumns = `id, name, kind, protocol, url,
+	username, COALESCE(password_enc, ''), COALESCE(apikey_enc, ''), category,
+	save_path, paused, enabled, is_default, last_test_at, last_test_error,
+	created_at, updated_at`
+
+func scanDownloadClient(scanner interface{ Scan(...any) error }) (DownloadClient, error) {
+	var c DownloadClient
+	var paused, enabled, isDefault int
+	var lastTest, created, updated int64
+	if err := scanner.Scan(&c.ID, &c.Name, &c.Kind, &c.Protocol, &c.URL,
+		&c.Username, &c.PasswordEnc, &c.APIKeyEnc, &c.Category,
+		&c.SavePath, &paused, &enabled, &isDefault, &lastTest, &c.LastTestError,
+		&created, &updated); err != nil {
+		return DownloadClient{}, err
+	}
+	c.Paused = paused != 0
+	c.Enabled = enabled != 0
+	c.IsDefault = isDefault != 0
+	c.LastTestAt = unixTime(lastTest)
+	c.CreatedAt = unixTime(created)
+	c.UpdatedAt = unixTime(updated)
+	return c, nil
 }
 
 // Download clients share the protocol vocabulary of indexers.
@@ -72,9 +100,7 @@ func normalizeDownloadClient(in DownloadClient) DownloadClient {
 
 // ListDownloadClients returns every configured client, oldest first.
 func (s *Store) ListDownloadClients(ctx context.Context) ([]DownloadClient, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, name, kind, protocol, url,
-		username, COALESCE(password_enc, ''), COALESCE(apikey_enc, ''), category,
-		save_path, paused, enabled, is_default, created_at, updated_at
+	rows, err := s.db.QueryContext(ctx, `SELECT `+downloadClientColumns+`
 		FROM download_clients ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("list download clients: %w", err)
@@ -82,19 +108,10 @@ func (s *Store) ListDownloadClients(ctx context.Context) ([]DownloadClient, erro
 	defer rows.Close()
 	var out []DownloadClient
 	for rows.Next() {
-		var c DownloadClient
-		var paused, enabled, isDefault int
-		var created, updated int64
-		if err := rows.Scan(&c.ID, &c.Name, &c.Kind, &c.Protocol, &c.URL,
-			&c.Username, &c.PasswordEnc, &c.APIKeyEnc, &c.Category,
-			&c.SavePath, &paused, &enabled, &isDefault, &created, &updated); err != nil {
+		c, err := scanDownloadClient(rows)
+		if err != nil {
 			return nil, err
 		}
-		c.Paused = paused != 0
-		c.Enabled = enabled != 0
-		c.IsDefault = isDefault != 0
-		c.CreatedAt = unixTime(created)
-		c.UpdatedAt = unixTime(updated)
 		out = append(out, c)
 	}
 	return out, rows.Err()
@@ -102,27 +119,14 @@ func (s *Store) ListDownloadClients(ctx context.Context) ([]DownloadClient, erro
 
 // GetDownloadClient reads one client by id.
 func (s *Store) GetDownloadClient(ctx context.Context, id int64) (DownloadClient, error) {
-	var c DownloadClient
-	var paused, enabled, isDefault int
-	var created, updated int64
-	err := s.db.QueryRowContext(ctx, `SELECT id, name, kind, protocol, url,
-		username, COALESCE(password_enc, ''), COALESCE(apikey_enc, ''), category,
-		save_path, paused, enabled, is_default, created_at, updated_at
-		FROM download_clients WHERE id = ?`, id).
-		Scan(&c.ID, &c.Name, &c.Kind, &c.Protocol, &c.URL, &c.Username,
-			&c.PasswordEnc, &c.APIKeyEnc, &c.Category, &c.SavePath, &paused,
-			&enabled, &isDefault, &created, &updated)
+	c, err := scanDownloadClient(s.db.QueryRowContext(ctx,
+		`SELECT `+downloadClientColumns+` FROM download_clients WHERE id = ?`, id))
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return c, fmt.Errorf("download client not found")
+			return DownloadClient{}, fmt.Errorf("download client not found")
 		}
-		return c, err
+		return DownloadClient{}, err
 	}
-	c.Paused = paused != 0
-	c.Enabled = enabled != 0
-	c.IsDefault = isDefault != 0
-	c.CreatedAt = unixTime(created)
-	c.UpdatedAt = unixTime(updated)
 	return c, nil
 }
 
@@ -210,6 +214,21 @@ func (s *Store) UpdateDownloadClient(ctx context.Context, in DownloadClient) err
 	return s.ensureDownloadClientDefault(ctx)
 }
 
+// RecordDownloadClientTest stores the outcome of a connectivity test. An empty
+// message means the last test succeeded.
+func (s *Store) RecordDownloadClientTest(ctx context.Context, id int64, message string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE download_clients
+		SET last_test_at = ?, last_test_error = ? WHERE id = ?`,
+		time.Now().Unix(), strings.TrimSpace(message), id)
+	if err != nil {
+		return fmt.Errorf("record download client test: %w", err)
+	}
+	if affected, _ := res.RowsAffected(); affected == 0 {
+		return fmt.Errorf("download client not found")
+	}
+	return nil
+}
+
 // ensureDownloadClientDefault promotes the first enabled client when no row is
 // marked as the default.
 func (s *Store) ensureDownloadClientDefault(ctx context.Context) error {
@@ -269,27 +288,15 @@ func (s *Store) DownloadClientForProtocol(ctx context.Context, protocol string) 
 	if protocol != ProtocolUsenet && protocol != ProtocolEd2k {
 		protocol = ProtocolTorrent
 	}
-	var c DownloadClient
-	var paused, enabled, isDefault int
-	var created, updated int64
-	err := s.db.QueryRowContext(ctx, `SELECT id, name, kind, protocol, url,
-		username, COALESCE(password_enc, ''), COALESCE(apikey_enc, ''), category,
-		save_path, paused, enabled, is_default, created_at, updated_at
-		FROM download_clients WHERE enabled = 1 AND protocol = ?
-		ORDER BY is_default DESC, id LIMIT 1`, protocol).
-		Scan(&c.ID, &c.Name, &c.Kind, &c.Protocol, &c.URL, &c.Username,
-			&c.PasswordEnc, &c.APIKeyEnc, &c.Category, &c.SavePath, &paused,
-			&enabled, &isDefault, &created, &updated)
+	c, err := scanDownloadClient(s.db.QueryRowContext(ctx,
+		`SELECT `+downloadClientColumns+` FROM download_clients
+		WHERE enabled = 1 AND protocol = ?
+		ORDER BY is_default DESC, id LIMIT 1`, protocol))
 	if err == nil {
-		c.Paused = paused != 0
-		c.Enabled = enabled != 0
-		c.IsDefault = isDefault != 0
-		c.CreatedAt = unixTime(created)
-		c.UpdatedAt = unixTime(updated)
 		return c, nil
 	}
 	if err != sql.ErrNoRows {
-		return c, err
+		return DownloadClient{}, err
 	}
-	return c, fmt.Errorf("no %s download client configured", protocol)
+	return DownloadClient{}, fmt.Errorf("no %s download client configured", protocol)
 }

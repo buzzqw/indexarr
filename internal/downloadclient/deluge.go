@@ -10,6 +10,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // delugeClient talks to the Deluge Web UI JSON-RPC endpoint.
@@ -69,6 +70,54 @@ func (c *delugeClient) Test(ctx context.Context) (string, error) {
 		return fmt.Sprintf("Deluge OK (%d torrents)", len(byHash)), nil
 	}
 	return fmt.Sprintf("Deluge OK (%d torrents)", len(hashes)), nil
+}
+
+func (c *delugeClient) Queue(ctx context.Context) ([]QueueItem, error) {
+	if err := c.login(ctx); err != nil {
+		return nil, err
+	}
+	raw, _, err := c.call(ctx, "web.update_ui", []any{
+		[]string{"name", "total_size", "progress", "download_rate", "upload_rate", "eta", "state"},
+		map[string]any{},
+	})
+	if err != nil {
+		return nil, err
+	}
+	var result struct {
+		Torrents map[string]struct {
+			Name         string  `json:"name"`
+			TotalSize    int64   `json:"total_size"`
+			Progress     float64 `json:"progress"`
+			DownloadRate int64   `json:"download_rate"`
+			UploadRate   int64   `json:"upload_rate"`
+			ETA          int64   `json:"eta"`
+			State        string  `json:"state"`
+		} `json:"torrents"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, fmt.Errorf("Deluge queue response: %w", err)
+	}
+	items := make([]QueueItem, 0, len(result.Torrents))
+	for hash, row := range result.Torrents {
+		progress := clampProgress(row.Progress / 100)
+		done := int64(float64(row.TotalSize) * progress)
+		eta := time.Duration(0)
+		if row.ETA > 0 {
+			eta = time.Duration(row.ETA) * time.Second
+		}
+		items = append(items, QueueItem{
+			Name:      row.Name,
+			Hash:      hash,
+			Size:      row.TotalSize,
+			Done:      done,
+			Progress:  progress,
+			SpeedDown: row.DownloadRate,
+			SpeedUp:   row.UploadRate,
+			ETA:       eta,
+			State:     row.State,
+		})
+	}
+	return items, nil
 }
 
 func (c *delugeClient) login(ctx context.Context) error {

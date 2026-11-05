@@ -209,3 +209,122 @@ search:
 		t.Error("the release was not marked downloaded")
 	}
 }
+
+// A row button sends one release and returns to the same filtered results
+// page instead of the detail page.
+func TestReleaseSendReturnsToTheResultsPage(t *testing.T) {
+	env := newTestEnv(t)
+	client := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v2/auth/login", "/api/v2/torrents/add":
+			_, _ = w.Write([]byte("Ok."))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer client.Close()
+
+	settings, err := env.store.LoadSettings(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.DownloadClient = "qbittorrent"
+	settings.DownloadClientURL = client.URL
+	if err := env.store.SaveSettings(context.Background(), settings); err != nil {
+		t.Fatal(err)
+	}
+	insertSearchRelease(t, env.store, "Return Test 1080p", "5040")
+	releases, _, err := env.store.SearchReleases(context.Background(), store.Filter{})
+	if err != nil || len(releases) != 1 {
+		t.Fatalf("releases = %d, %v", len(releases), err)
+	}
+	token, cookie := csrfFrom(t, env.handler, "/releases")
+	recorder := postForm(t, env.handler, "/releases/"+strconvI(releases[0].ID)+"/send",
+		url.Values{"csrf": {token}, "return": {"/releases?q=Return"}}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("send status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	location := recorder.Header().Get("Location")
+	if !strings.HasPrefix(location, "/releases?q=Return&msg=") {
+		t.Errorf("Location = %q, want the results page", location)
+	}
+}
+
+// A source can pin one download client: the release from that indexer goes
+// there even when another client is the protocol default.
+func TestReleaseSendUsesThePerIndexerClient(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	var aAdded, bAdded bool
+	serverA := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v2/auth/login":
+			_, _ = w.Write([]byte("Ok."))
+		case "/api/v2/torrents/add":
+			aAdded = true
+			_, _ = w.Write([]byte("Ok."))
+		}
+	}))
+	defer serverA.Close()
+	serverB := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v2/auth/login":
+			_, _ = w.Write([]byte("Ok."))
+		case "/api/v2/torrents/add":
+			bAdded = true
+			_, _ = w.Write([]byte("Ok."))
+		}
+	}))
+	defer serverB.Close()
+
+	clientA, err := env.store.CreateDownloadClient(ctx, store.DownloadClient{
+		Name: "Default", Kind: "qbittorrent", Protocol: "torrent",
+		URL: serverA.URL, Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientB, err := env.store.CreateDownloadClient(ctx, store.DownloadClient{
+		Name: "Pinned", Kind: "qbittorrent", Protocol: "torrent",
+		URL: serverB.URL, Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if clientA == clientB {
+		t.Fatal("the two clients share an id")
+	}
+	seedHomeDefinition(t, env, "pinned-def")
+	indexerID, err := env.store.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "pinned-def", Protocol: "torrent", Slug: "pinned",
+		Name: "Pinned source", Enabled: true, Priority: 25,
+		DownloadClientID: clientB, ConfigJSON: "{}",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	insertSearchRelease(t, env.store, "Pinned Release 1080p", "5040")
+	releases, _, err := env.store.SearchReleases(ctx, store.Filter{})
+	if err != nil || len(releases) != 1 {
+		t.Fatalf("releases = %d, %v", len(releases), err)
+	}
+	now := time.Now()
+	if err := env.store.RecordReleaseSource(ctx, store.ReleaseSource{
+		ReleaseID: releases[0].ID, IndexerID: indexerID, FirstSeenAt: now, LastSeenAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	token, cookie := csrfFrom(t, env.handler, "/releases")
+	recorder := postForm(t, env.handler, "/releases/"+strconvI(releases[0].ID)+"/send",
+		url.Values{"csrf": {token}}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("send status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if aAdded {
+		t.Error("the default client received a release pinned to another client")
+	}
+	if !bAdded {
+		t.Error("the pinned client did not receive the release")
+	}
+}

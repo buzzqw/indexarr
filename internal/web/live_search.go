@@ -230,16 +230,22 @@ func (s *Server) releasesGrab(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		release = s.openEd2kTopic(r.Context(), release)
-		cfg, _, err := s.resolveDownloadClient(r.Context(), release.Protocol)
+		indexerID := int64(0)
+		var source store.Indexer
+		if found, ok, lookupErr := s.store.IndexerForRelease(r.Context(), release.ID); lookupErr == nil && ok {
+			indexerID = found.ID
+			source = found
+		}
+		cfg, _, err := s.resolveDownloadClientFor(r.Context(), release.Protocol, indexerID)
 		if err != nil {
 			failed++
 			s.log.Warn("bulk grab: no download client", "component", "indexarr",
 				"subsystem", "web", "release_id", id, "protocol", release.Protocol, "error", err)
 			continue
 		}
-		if found, ok, lookupErr := s.store.IndexerForRelease(r.Context(), release.ID); lookupErr == nil && ok {
-			cfg.SeedRatio = found.SeedRatio
-			cfg.SeedTimeMinutes = found.SeedTimeMinutes
+		if source.ID != 0 {
+			cfg.SeedRatio = source.SeedRatio
+			cfg.SeedTimeMinutes = source.SeedTimeMinutes
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 		addErr := downloadclient.Add(ctx, cfg, release)

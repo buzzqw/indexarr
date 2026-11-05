@@ -57,6 +57,10 @@ var (
 
 	// ErrTestAllRunning is returned when a background test pass is active.
 	ErrTestAllRunning = errors.New("native: test pass already running")
+
+	// ErrRunAllRunning is returned when a full update pass is already queued:
+	// a second click must not launch another pass and double the requests.
+	ErrRunAllRunning = errors.New("native: update pass already running")
 )
 
 // Config configures a Runner. Store and Manager are required; every other
@@ -105,6 +109,7 @@ type Runner struct {
 	backupRunning atomic.Bool
 	backupRetry   atomic.Int64
 	testingAll    atomic.Bool
+	runningAll    atomic.Bool
 	lastSeeders   time.Time
 }
 
@@ -632,8 +637,12 @@ dispatch:
 // RunAll starts a full pass in the background and returns how many enabled
 // indexers will run. It is the "Run all" button of the indexer page.
 func (r *Runner) RunAll(ctx context.Context) (int, error) {
+	if !r.runningAll.CompareAndSwap(false, true) {
+		return 0, ErrRunAllRunning
+	}
 	indexers, err := r.store.ListIndexers(ctx)
 	if err != nil {
+		r.runningAll.Store(false)
 		return 0, err
 	}
 	indexers = r.latestIndexers(ctx, indexers)
@@ -644,10 +653,12 @@ func (r *Runner) RunAll(ctx context.Context) (int, error) {
 		}
 	}
 	if enabled == 0 {
+		r.runningAll.Store(false)
 		return 0, nil
 	}
 	runCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Minute)
 	go func() {
+		defer r.runningAll.Store(false)
 		defer cancel()
 		r.runPass(runCtx)
 	}()

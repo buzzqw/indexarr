@@ -33,6 +33,10 @@ func (s *Server) indexersTestAll(w http.ResponseWriter, r *http.Request) {
 	}
 	count, err := s.sched.TestAll(r.Context())
 	if err != nil {
+		if errors.Is(err, native.ErrTestAllRunning) {
+			redirect(w, r, "/indexers", "", s.translate(r, "idx.testAlreadyRunning"))
+			return
+		}
 		redirect(w, r, "/indexers", "", err.Error())
 		return
 	}
@@ -93,6 +97,10 @@ func (s *Server) indexersRunAll(w http.ResponseWriter, r *http.Request) {
 	}
 	count, err := s.sched.RunAll(r.Context())
 	if err != nil {
+		if errors.Is(err, native.ErrRunAllRunning) {
+			redirect(w, r, "/indexers", "", s.translate(r, "idx.runAllAlreadyRunning"))
+			return
+		}
 		redirect(w, r, "/indexers", "", err.Error())
 		return
 	}
@@ -108,6 +116,7 @@ type indexerJSON struct {
 	Protocol        string `json:"protocol"`
 	Enabled         bool   `json:"enabled"`
 	Priority        int    `json:"priority"`
+	DownloadClient  string `json:"download_client,omitempty"`
 	IntervalSeconds int    `json:"interval_seconds,omitempty"`
 	// RequestTimeoutSeconds is the per-indexer request timeout; zero keeps the
 	// global one.
@@ -130,6 +139,15 @@ func (s *Server) indexersExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payload := indexersJSON{Version: 1, Indexers: make([]indexerJSON, 0, len(indexers))}
+	clients, _ := s.store.ListDownloadClients(r.Context())
+	clientNames := make(map[int64]string, len(clients))
+	for _, client := range clients {
+		name := client.Name
+		if strings.TrimSpace(name) == "" {
+			name = downloadClientKindLabel(client.Kind)
+		}
+		clientNames[client.ID] = name
+	}
 	for _, in := range indexers {
 		settings := map[string]string{}
 		decoder := json.NewDecoder(strings.NewReader(strings.TrimSpace(in.ConfigJSON)))
@@ -156,6 +174,7 @@ func (s *Server) indexersExport(w http.ResponseWriter, r *http.Request) {
 			Protocol:              in.Protocol,
 			Enabled:               in.Enabled,
 			Priority:              in.Priority,
+			DownloadClient:        clientNames[in.DownloadClientID],
 			IntervalSeconds:       in.IntervalSeconds,
 			RequestTimeoutSeconds: in.RequestTimeoutSeconds,
 			Tags:                  splitTagList(in.Tags),
@@ -210,6 +229,15 @@ func (s *Server) indexersImport(w http.ResponseWriter, r *http.Request) {
 		slugs[strings.ToLower(in.Slug)] = true
 		names[strings.ToLower(in.Name)] = true
 	}
+	clients, _ := s.store.ListDownloadClients(r.Context())
+	clientIDs := make(map[string]int64, len(clients))
+	for _, client := range clients {
+		name := client.Name
+		if strings.TrimSpace(name) == "" {
+			name = downloadClientKindLabel(client.Kind)
+		}
+		clientIDs[strings.ToLower(name)] = client.ID
+	}
 
 	imported, skipped, invalid := 0, 0, 0
 	for index, entry := range payload.Indexers {
@@ -235,6 +263,10 @@ func (s *Server) indexersImport(w http.ResponseWriter, r *http.Request) {
 		enabled := entry.Enabled
 		interval := entry.IntervalSeconds
 		requestTimeout := entry.RequestTimeoutSeconds
+		var downloadClientID *int64
+		if clientID, ok := clientIDs[strings.ToLower(strings.TrimSpace(entry.DownloadClient))]; ok {
+			downloadClientID = &clientID
+		}
 		if _, err := s.svc.Create(r.Context(), indexersvc.Input{
 			DefinitionID:          entry.DefinitionID,
 			Name:                  name,
@@ -243,6 +275,7 @@ func (s *Server) indexersImport(w http.ResponseWriter, r *http.Request) {
 			Priority:              &priority,
 			Tags:                  entry.Tags,
 			Enabled:               &enabled,
+			DownloadClientID:      downloadClientID,
 			IntervalSeconds:       &interval,
 			RequestTimeoutSeconds: &requestTimeout,
 			Settings:              entry.Settings,

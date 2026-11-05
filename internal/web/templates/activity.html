@@ -17,6 +17,9 @@
   <a class="tab{{if eq .Tab "downloads"}} active{{end}}" href="/activity?tab=downloads"{{if eq .Tab "downloads"}} aria-current="page"{{end}} title="{{T "logs.tab.downloadsHelp"}}">
     {{T "logs.tab.downloads"}}{{if .GrabsToday}} <span class="chip ok" title="{{T "logs.tab.downloadsToday" .GrabsToday}}">{{.GrabsToday}}</span>{{end}}
   </a>
+  <a class="tab{{if eq .Tab "queue"}} active{{end}}" href="/activity?tab=queue"{{if eq .Tab "queue"}} aria-current="page"{{end}} title="{{T "activity.queueTabHelp"}}">
+    {{T "activity.queue"}}{{if and .Queue .Queue.Total}} <span class="chip ok">{{.Queue.Total}}</span>{{end}}
+  </a>
   <a class="tab{{if eq .Tab "runs"}} active{{end}}" href="/activity?tab=runs"{{if eq .Tab "runs"}} aria-current="page"{{end}} title="{{T "activity.runsHelp"}}">
     {{T "activity.runs"}}{{if eq .Tab "runs"}} <span class="chip">{{len .Runs.Runs}}</span>{{end}}
   </a>
@@ -28,19 +31,22 @@
   </a>
 </nav>
 
-<section class="panel" id="logs-guide">
-  <div class="panel-head"><h2>{{T "logs.guideTitle"}}</h2></div>
-  <ol class="guide-steps">
-    <li><strong>{{T "logs.tab.requests"}}</strong> — {{T "logs.guideStep1"}} <a href="/activity?tab=requests">{{T "logs.guideOpen"}}</a></li>
-    <li><strong>{{T "logs.tab.internal"}}</strong> — {{T "logs.guideStep2"}} <a href="/logs">{{T "logs.guideOpen"}}</a></li>
-    <li><strong>{{T "logs.tab.stats"}}</strong> — {{T "logs.guideStep3"}} <a href="/activity?tab=stats">{{T "logs.guideOpen"}}</a></li>
-    <li><strong>{{T "logs.tab.downloads"}}</strong> — {{T "logs.guideStep4"}} <a href="/activity?tab=downloads">{{T "logs.guideOpen"}}</a></li>
-    <li><strong>{{T "activity.runs"}}</strong> — {{T "activity.guideRuns"}} <a href="/activity?tab=runs">{{T "logs.guideOpen"}}</a></li>
-    <li><strong>{{T "activity.feed"}}</strong> — {{T "activity.guideFeed"}} <a href="/activity?tab=feed">{{T "logs.guideOpen"}}</a></li>
-    <li><strong>{{T "activity.network"}}</strong> — {{T "activity.guideNetwork"}} <a href="/activity?tab=network">{{T "logs.guideOpen"}}</a></li>
-  </ol>
-  <p class="help">{{T "logs.guideHelp"}}</p>
-</section>
+<details class="advanced" id="logs-guide" data-page-help data-page-help-storage="indexarr.help.activityGuide">
+  <summary title="{{T "logs.guideHelp"}}">{{T "logs.guideTitle"}}</summary>
+  <div class="advanced-body">
+    <ol class="guide-steps">
+      <li><strong>{{T "logs.tab.requests"}}</strong> — {{T "logs.guideStep1"}} <a href="/activity?tab=requests">{{T "logs.guideOpen"}}</a></li>
+      <li><strong>{{T "logs.tab.internal"}}</strong> — {{T "logs.guideStep2"}} <a href="/logs">{{T "logs.guideOpen"}}</a></li>
+      <li><strong>{{T "logs.tab.stats"}}</strong> — {{T "logs.guideStep3"}} <a href="/activity?tab=stats">{{T "logs.guideOpen"}}</a></li>
+      <li><strong>{{T "logs.tab.downloads"}}</strong> — {{T "logs.guideStep4"}} <a href="/activity?tab=downloads">{{T "logs.guideOpen"}}</a></li>
+      <li><strong>{{T "activity.queue"}}</strong> — {{T "activity.guideQueue"}} <a href="/activity?tab=queue">{{T "logs.guideOpen"}}</a></li>
+      <li><strong>{{T "activity.runs"}}</strong> — {{T "activity.guideRuns"}} <a href="/activity?tab=runs">{{T "logs.guideOpen"}}</a></li>
+      <li><strong>{{T "activity.feed"}}</strong> — {{T "activity.guideFeed"}} <a href="/activity?tab=feed">{{T "logs.guideOpen"}}</a></li>
+      <li><strong>{{T "activity.network"}}</strong> — {{T "activity.guideNetwork"}} <a href="/activity?tab=network">{{T "logs.guideOpen"}}</a></li>
+    </ol>
+    <p class="help">{{T "logs.guideHelp"}}</p>
+  </div>
+</details>
 
 {{if eq .Tab "requests"}}
 {{template "logs_requests_body" .Requests}}
@@ -48,6 +54,64 @@
 {{template "logs_stats_body" .Stats}}
 {{else if eq .Tab "downloads"}}
 {{template "logs_downloads_body" .Downloads}}
+{{else if eq .Tab "queue"}}
+<section class="panel" id="download-queue">
+  <div class="panel-head">
+    <h2>{{T "activity.queueTitle"}}</h2>
+    {{if .Queue}}<span class="muted">{{T "activity.queueRefreshed" (date .Queue.RefreshedAt)}}</span>{{end}}
+  </div>
+  <p class="help">{{T "activity.queueHelp"}}</p>
+  {{if .Queue}}{{range .Queue.Clients}}
+  <div class="queue-client">
+    <div class="queue-client-head">
+      <h3>{{.Name}}</h3>
+      <span class="muted">{{.KindLabel}}</span>
+      {{if .Err}}<span class="chip danger" title="{{.Err}}">{{T "activity.queueError"}}</span>
+      {{else if .Unsupported}}<span class="chip">{{T "activity.queueUnsupported"}}</span>
+      {{else}}<span class="chip ok">{{T "activity.queueItems" (len .Items)}}</span>{{end}}
+    </div>
+    {{if .Items}}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{{T "activity.queueName"}}</th>
+            <th scope="col">{{T "activity.queueProgress"}}</th>
+            <th scope="col">{{T "activity.queueSize"}}</th>
+            <th scope="col">{{T "activity.queueSpeed"}}</th>
+            <th scope="col">{{T "activity.queueETA"}}</th>
+            <th scope="col">{{T "activity.queueState"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Items}}
+          <tr>
+            <td class="release-title" title="{{.Name}}">{{.Name}}</td>
+            <td>
+              <div class="queue-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{percent .Done .Size}}"><span style="width: {{pct .Done .Size}}"></span></div>
+              <span class="muted">{{pct .Done .Size}}</span>
+            </td>
+            <td class="nowrap">{{sizeOrDash .Size}}</td>
+            <td class="nowrap">{{if .SpeedDown}}{{speed .SpeedDown}}{{else}}—{{end}}</td>
+            <td class="nowrap">{{if .ETA}}{{duration .ETA}}{{else}}—{{end}}</td>
+            <td><span class="chip">{{.State}}</span></td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else if .Err}}
+    <p class="flash err" role="alert">{{.Err}}</p>
+    {{else if .Unsupported}}
+    <p class="muted">{{T "activity.queueUnsupportedHelp"}}</p>
+    {{else}}
+    <p class="muted">{{T "activity.queueEmpty"}}</p>
+    {{end}}
+  </div>
+  {{else}}
+  <p class="empty">{{T "activity.queueNoClients"}}</p>
+  {{end}}{{end}}
+</section>
 {{else if eq .Tab "feed"}}
 {{template "activity_feed_body" .Feed}}
 {{else if eq .Tab "network"}}

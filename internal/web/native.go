@@ -708,6 +708,18 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 	if err != nil {
 		return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.proxy"))
 	}
+	var downloadClientID *int64
+	if values, present := r.Form["download_client_id"]; present {
+		value := int64(0)
+		if raw := strings.TrimSpace(firstValue(values)); raw != "" && raw != "0" {
+			parsed, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil || parsed < 0 {
+				return indexersvc.Input{}, errors.New(s.translate(r, "indexerForm.error.downloadClient"))
+			}
+			value = parsed
+		}
+		downloadClientID = &value
+	}
 	criteria := map[string]*int{
 		"query_limit":                   nil,
 		"grab_limit":                    nil,
@@ -771,6 +783,7 @@ func (s *Server) indexerInputFromForm(r *http.Request, parsed *definition.Defini
 		Settings:                  settings,
 		ProxyID:                   proxyID,
 		ClearProxy:                clearProxy,
+		DownloadClientID:          downloadClientID,
 		QueryLimit:                criteria["query_limit"],
 		GrabLimit:                 criteria["grab_limit"],
 		MinSeeders:                criteria["min_seeders"],

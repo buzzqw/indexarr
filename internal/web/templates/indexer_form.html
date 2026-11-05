@@ -245,6 +245,19 @@
         </div>
       </div>
 
+      <h4 class="form-group-title">{{T "indexerForm.groupDownload"}}</h4>
+      <p class="help">{{T "indexerForm.groupDownloadHelp"}}</p>
+      <div class="form-grid">
+        <div class="field grow">
+          <label for="download_client_id">{{T "indexerForm.downloadClient"}}</label>
+          <select id="download_client_id" name="download_client_id">
+            <option value="0">{{T "indexerForm.downloadClientAuto"}}</option>
+            {{range .DownloadClients}}<option value="{{.ID}}"{{if eq $.DownloadClientID .ID}} selected{{end}}>{{.Label}}</option>{{end}}
+          </select>
+          <p class="help">{{T "indexerForm.downloadClientHelp"}}</p>
+        </div>
+      </div>
+
       <h4 class="form-group-title">{{T "indexerForm.groupNetwork"}}</h4>
       <p class="help">{{T "indexerForm.groupNetworkHelp"}}</p>
       <div class="form-grid">

@@ -107,8 +107,11 @@ type Input struct {
 	AllowPendingCookie bool
 	// Optional indexer management fields. Nil means "leave unchanged" on
 	// update; Create treats nil as zero.
-	ProxyID                   *int64
-	ClearProxy                bool
+	ProxyID    *int64
+	ClearProxy bool
+	// DownloadClientID pins the indexer to one client. Nil leaves an update
+	// unchanged; zero means "automatic by protocol".
+	DownloadClientID          *int64
 	QueryLimit                *int
 	GrabLimit                 *int
 	MinSeeders                *int
@@ -219,6 +222,10 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 		return store.Indexer{}, err
 	}
 
+	downloadClientID := int64(0)
+	if in.DownloadClientID != nil {
+		downloadClientID = *in.DownloadClientID
+	}
 	id, err := s.store.CreateIndexer(ctx, store.Indexer{
 		DefinitionID:              definitionID,
 		Protocol:                  protocol,
@@ -226,6 +233,7 @@ func (s *Service) Create(ctx context.Context, in Input) (store.Indexer, error) {
 		Name:                      name,
 		Enabled:                   enabled,
 		Priority:                  priority,
+		DownloadClientID:          downloadClientID,
 		ConfigJSON:                configJSON,
 		Tags:                      joinTags(in.Tags),
 		IntervalSeconds:           interval,
@@ -308,6 +316,9 @@ func (s *Service) Update(ctx context.Context, id int64, in Input) (store.Indexer
 	}
 	if in.Priority != nil {
 		current.Priority = *in.Priority
+	}
+	if in.DownloadClientID != nil {
+		current.DownloadClientID = *in.DownloadClientID
 	}
 	if in.IntervalSeconds != nil {
 		interval, err := resolveInterval(in.IntervalSeconds, 0)

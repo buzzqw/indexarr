@@ -31,11 +31,14 @@ type Indexer struct {
 	Name         string
 	Enabled      bool
 	Priority     int
-	ConfigJSON   string
-	Tags         string
-	ProxyID      *int64
-	QueryLimit   int
-	GrabLimit    int
+	// DownloadClientID pins this indexer to one download client. Zero keeps
+	// the protocol-wide rule.
+	DownloadClientID int64
+	ConfigJSON       string
+	Tags             string
+	ProxyID          *int64
+	QueryLimit       int
+	GrabLimit        int
 	// Seed criteria copied to the *arr applications by the app sync. Zero
 	// means "leave the application default".
 	MinSeeders                int
@@ -175,7 +178,7 @@ const definitionColumns = `id, schema_version, family, state, origin, author,
 	body, hash, updated_at`
 
 const indexerColumns = `id, definition_id, protocol, slug, name, enabled, priority,
-	config_json, tags, proxy_id, query_limit, grab_limit,
+	download_client_id, config_json, tags, proxy_id, query_limit, grab_limit,
 	min_seeders, seed_ratio, seed_time_minutes, season_pack_seed_time_minutes,
 	interval_seconds, request_timeout_seconds, created_at, updated_at`
 
@@ -315,13 +318,13 @@ func createIndexer(ctx context.Context, db dbExecer, in Indexer) (int64, error) 
 	var id int64
 	err := db.QueryRowContext(ctx, `
 		INSERT INTO indexers(definition_id, protocol, slug, name, enabled, priority,
-			config_json, proxy_id, tags, query_limit, grab_limit,
+			download_client_id, config_json, proxy_id, tags, query_limit, grab_limit,
 			min_seeders, seed_ratio, seed_time_minutes, season_pack_seed_time_minutes,
 			interval_seconds, request_timeout_seconds, created_at, updated_at)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		RETURNING id`,
 		in.DefinitionID, in.Protocol, strings.TrimSpace(in.Slug), strings.TrimSpace(in.Name),
-		boolInt(in.Enabled), in.Priority, in.ConfigJSON, proxy, in.Tags,
+		boolInt(in.Enabled), in.Priority, in.DownloadClientID, in.ConfigJSON, proxy, in.Tags,
 		in.QueryLimit, in.GrabLimit, in.MinSeeders, in.SeedRatio,
 		in.SeedTimeMinutes, in.SeasonPackSeedTimeMinutes,
 		in.IntervalSeconds, in.RequestTimeoutSeconds, created.Unix(), updated.Unix()).Scan(&id)
@@ -382,9 +385,9 @@ func scanIndexer(scanner interface{ Scan(...any) error }) (Indexer, error) {
 	var proxy sql.NullInt64
 	var created, updated int64
 	if err := scanner.Scan(&out.ID, &out.DefinitionID, &out.Protocol, &out.Slug,
-		&out.Name, &enabled, &out.Priority, &out.ConfigJSON, &out.Tags, &proxy,
-		&out.QueryLimit, &out.GrabLimit, &out.MinSeeders, &out.SeedRatio,
-		&out.SeedTimeMinutes, &out.SeasonPackSeedTimeMinutes,
+		&out.Name, &enabled, &out.Priority, &out.DownloadClientID, &out.ConfigJSON,
+		&out.Tags, &proxy, &out.QueryLimit, &out.GrabLimit, &out.MinSeeders,
+		&out.SeedRatio, &out.SeedTimeMinutes, &out.SeasonPackSeedTimeMinutes,
 		&out.IntervalSeconds, &out.RequestTimeoutSeconds, &created, &updated); err != nil {
 		return Indexer{}, err
 	}
@@ -412,14 +415,14 @@ func (s *Store) UpdateIndexer(ctx context.Context, in Indexer) error {
 	}
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE indexers SET definition_id = ?, protocol = ?, slug = ?, name = ?,
-			enabled = ?, priority = ?, config_json = ?, proxy_id = ?, tags = ?,
-			query_limit = ?, grab_limit = ?,
+			enabled = ?, priority = ?, download_client_id = ?, config_json = ?,
+			proxy_id = ?, tags = ?, query_limit = ?, grab_limit = ?,
 			min_seeders = ?, seed_ratio = ?, seed_time_minutes = ?,
 			season_pack_seed_time_minutes = ?, interval_seconds = ?,
 			request_timeout_seconds = ?, updated_at = ?
 		WHERE id = ?`,
 		in.DefinitionID, in.Protocol, strings.TrimSpace(in.Slug), strings.TrimSpace(in.Name),
-		boolInt(in.Enabled), in.Priority, in.ConfigJSON, proxy, in.Tags,
+		boolInt(in.Enabled), in.Priority, in.DownloadClientID, in.ConfigJSON, proxy, in.Tags,
 		in.QueryLimit, in.GrabLimit, in.MinSeeders, in.SeedRatio,
 		in.SeedTimeMinutes, in.SeasonPackSeedTimeMinutes,
 		in.IntervalSeconds, in.RequestTimeoutSeconds, time.Now().Unix(), in.ID)

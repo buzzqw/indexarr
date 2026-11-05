@@ -142,6 +142,7 @@ var templateFuncMap = template.FuncMap{
 		return "v" + version
 	},
 	"bytes":     humanBytes,
+	"speed":     func(value int64) string { return humanBytes(value) + "/s" },
 	"megabytes": func(value int64) string { return fmt.Sprintf("%.1f MB", float64(value)/(1024*1024)) },
 	// languages fills the datalist of the language filter. The filter is free
 	// text: these are only the names the sources most often declare.
@@ -178,6 +179,7 @@ var templateFuncMap = template.FuncMap{
 		return value
 	},
 	"add":  func(a, b int) int { return a + b },
+	"dec":  func(value int) int { return value - 1 },
 	"sub":  func(a, b int64) int64 { return a - b },
 	"mulf": func(a float64, b float64) float64 { return a * b },
 	"pct": func(value, total int64) string {
@@ -185,6 +187,12 @@ var templateFuncMap = template.FuncMap{
 			return "0%"
 		}
 		return strconv.FormatInt(value*100/total, 10) + "%"
+	},
+	"percent": func(value, total int64) int64 {
+		if total <= 0 {
+			return 0
+		}
+		return value * 100 / total
 	},
 	"eq": func(a, b any) bool { return fmt.Sprint(a) == fmt.Sprint(b) },
 	// safeURL marks an already validated link scheme as trusted. Magnet links

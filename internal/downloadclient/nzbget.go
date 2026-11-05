@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -33,6 +34,47 @@ func (c *nzbgetClient) Send(ctx context.Context, item Item) error {
 		return c.appendURL(ctx, item)
 	}
 	return fmt.Errorf("NZBGet needs an .nzb or an NZB URL")
+}
+
+func (c *nzbgetClient) Queue(ctx context.Context) ([]QueueItem, error) {
+	raw, err := c.call(ctx, "listgroups", nil)
+	if err != nil {
+		return nil, err
+	}
+	var rows []struct {
+		ID              int64  `json:"NZBID"`
+		Name            string `json:"NZBName"`
+		FileSizeMB      int64  `json:"FileSizeMB"`
+		RemainingSizeMB int64  `json:"RemainingSizeMB"`
+		Status          string `json:"Status"`
+		DownloadRate    int64  `json:"DownloadRate"`
+	}
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		return nil, fmt.Errorf("NZBGet queue response: %w", err)
+	}
+	items := make([]QueueItem, 0, len(rows))
+	for _, row := range rows {
+		total := row.FileSizeMB * 1024 * 1024
+		left := row.RemainingSizeMB * 1024 * 1024
+		done := total - left
+		if done < 0 {
+			done = 0
+		}
+		progress := 0.0
+		if total > 0 {
+			progress = float64(done) / float64(total)
+		}
+		items = append(items, QueueItem{
+			Name:      row.Name,
+			Hash:      strconv.FormatInt(row.ID, 10),
+			Size:      total,
+			Done:      done,
+			Progress:  clampProgress(progress),
+			SpeedDown: row.DownloadRate,
+			State:     row.Status,
+		})
+	}
+	return items, nil
 }
 
 func (c *nzbgetClient) append(ctx context.Context, item Item) error {

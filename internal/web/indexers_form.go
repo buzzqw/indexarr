@@ -42,6 +42,8 @@ type compactFormView struct {
 	Tags                      string
 	ProxyID                   int64
 	Proxies                   []proxyOption
+	DownloadClientID          int64
+	DownloadClients           []indexerClientOption
 	QueryLimit                int
 	GrabLimit                 int
 	MinSeeders                int
@@ -98,6 +100,12 @@ type indexSourceView struct {
 	URL   string
 }
 
+// indexerClientOption is one row of the per-indexer download client selector.
+type indexerClientOption struct {
+	ID    int64
+	Label string
+}
+
 func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current *store.Indexer, in *indexersvc.Input, problems []string, prefillURL string) (compactFormView, error) {
 	data := compactFormView{
 		base:          s.newBaseT(r, "idx.formTitle", "indexers", defID),
@@ -126,6 +134,7 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		if current.ProxyID != nil {
 			data.ProxyID = *current.ProxyID
 		}
+		data.DownloadClientID = current.DownloadClientID
 	}
 	if current != nil {
 		data.IntervalSeconds = current.IntervalSeconds
@@ -172,12 +181,32 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		if in.ClearProxy {
 			data.ProxyID = 0
 		}
+		if in.DownloadClientID != nil {
+			data.DownloadClientID = *in.DownloadClientID
+		}
 	}
 	proxies, err := s.proxyOptions(r)
 	if err != nil {
 		return compactFormView{}, err
 	}
 	data.Proxies = proxies
+	clients, err := s.store.ListDownloadClients(r.Context())
+	if err == nil {
+		for _, client := range clients {
+			label := client.Name
+			if strings.TrimSpace(label) == "" {
+				label = downloadClientKindLabel(client.Kind)
+			}
+			label += " · " + downloadClientKindLabel(client.Kind)
+			if !client.Enabled {
+				label += " (" + s.translate(r, "client.disabled") + ")"
+			}
+			data.DownloadClients = append(data.DownloadClients, indexerClientOption{
+				ID:    client.ID,
+				Label: label,
+			})
+		}
+	}
 	parsed, _, err := s.loadDefinitionForForm(r, defID)
 	if err != nil {
 		return compactFormView{}, err

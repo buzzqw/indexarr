@@ -8,7 +8,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // sabnzbdClient talks to the SABnzbd HTTP API.
@@ -69,6 +71,83 @@ func (c *sabnzbdClient) Test(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("SABnzbd version response is empty")
 	}
 	return "SABnzbd " + response.Version, nil
+}
+
+func (c *sabnzbdClient) Queue(ctx context.Context) ([]QueueItem, error) {
+	query := url.Values{}
+	query.Set("mode", "queue")
+	query.Set("t", "queue")
+	query.Set("output", "json")
+	query.Set("apikey", c.apiKey())
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		c.endpoint+"?"+query.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	body, err := c.do(request)
+	if err != nil {
+		return nil, err
+	}
+	var response struct {
+		Queue struct {
+			Slots []struct {
+				NZOID      string `json:"nzo_id"`
+				Filename   string `json:"filename"`
+				Percentage string `json:"percentage"`
+				MB         string `json:"mb"`
+				MBLeft     string `json:"mbleft"`
+				TimeLeft   string `json:"timeleft"`
+				Status     string `json:"status"`
+			} `json:"slots"`
+		} `json:"queue"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("SABnzbd queue response: %w", err)
+	}
+	items := make([]QueueItem, 0, len(response.Queue.Slots))
+	for _, slot := range response.Queue.Slots {
+		total := megabytes(slot.MB)
+		left := megabytes(slot.MBLeft)
+		done := total - left
+		if done < 0 {
+			done = 0
+		}
+		progress, _ := strconv.ParseFloat(strings.TrimSpace(slot.Percentage), 64)
+		items = append(items, QueueItem{
+			Name:     slot.Filename,
+			Hash:     slot.NZOID,
+			Size:     total,
+			Done:     done,
+			Progress: clampProgress(progress / 100),
+			ETA:      clockDuration(slot.TimeLeft),
+			State:    slot.Status,
+		})
+	}
+	return items, nil
+}
+
+func megabytes(raw string) int64 {
+	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || value <= 0 {
+		return 0
+	}
+	return int64(value * 1024 * 1024)
+}
+
+func clockDuration(raw string) time.Duration {
+	parts := strings.Split(strings.TrimSpace(raw), ":")
+	if len(parts) == 0 {
+		return 0
+	}
+	seconds := int64(0)
+	for _, part := range parts {
+		value, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+		if err != nil || value < 0 {
+			return 0
+		}
+		seconds = seconds*60 + value
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 func (c *sabnzbdClient) addURL(ctx context.Context, item Item) error {

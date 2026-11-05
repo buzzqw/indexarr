@@ -1666,6 +1666,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 .indexer-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--border); }
 .indexer-search { display: flex; gap: 0.4rem; flex: 1 1 20rem; max-width: 28rem; }
 .indexer-search input { flex: 1 1 auto; min-width: 0; }
+.toolbar-actions { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .filter-tabs { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
 .filter-tabs .tab { display: inline-flex; align-items: center; gap: 0.3rem; }
 .bulk-bar {
@@ -2364,3 +2365,11 @@ table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; 
     font-size: 0.75rem;
   }
 }
+
+/* Live download queue: one block per client, one row per download. */
+.queue-client { padding: 0.8rem 1.1rem 1rem; border-top: 1px solid var(--border); }
+.queue-client:first-of-type { border-top: 0; }
+.queue-client-head { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; margin-bottom: 0.55rem; }
+.queue-client-head h3 { margin: 0; font-size: 1rem; }
+.queue-progress { width: 100%; min-width: 7rem; height: 0.5rem; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-bottom: 0.2rem; }
+.queue-progress span { display: block; height: 100%; background: var(--accent); }

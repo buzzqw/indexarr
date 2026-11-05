@@ -16,6 +16,7 @@
 
 <form method="post" action="/releases/bulk">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <input type="hidden" name="return" value="{{.ReturnURL}}">
   <section class="panel">
     <div class="table-scroll">
       <table class="releases-table">
@@ -34,7 +35,7 @@
           <tr>
             <td class="check"><input type="checkbox" name="ids" value="{{.ID}}" aria-label="{{T "releases.selectRelease" .Title}}"></td>
             <td class="release-title">
-              <a class="release-title-link" href="/releases/{{.ID}}" title="{{.Title}}">{{.Title}}</a>{{if .Favorite}} <span class="chip" title="{{T "releases.favorite"}}">★</span>{{end}}{{if .HasTorrent}} <span class="chip">{{T "releases.torrent"}}</span>{{end}}
+              <a class="release-title-link" href="/releases/{{.ID}}" title="{{.Title}}">{{.Title}}</a>{{if .Favorite}} <span class="chip" title="{{T "releases.favorite"}}">★</span>{{end}}{{if .HasTorrent}} <span class="chip">{{T "releases.torrent"}}</span>{{end}}{{with index $.Provenance .ID}}{{if .BestIndexerName}} <span class="badge soft" title="{{range $i, $name := .Names}}{{if $i}} · {{end}}{{$name}}{{end}}">{{.BestIndexerName}}{{if gt .Indexers 1}} +{{dec .Indexers}}{{end}}</span>{{end}}{{end}}
               <span class="release-meta">{{T "releases.leechersInline" (numOrDash .Leechers)}} · {{if .Category}}{{catName .Category}}{{else}}—{{end}}</span>
             </td>
             <td class="nowrap">{{sizeOrDash .Size}}</td>
@@ -46,6 +47,7 @@
                 {{else if .Magnet}}<a class="btn small primary" href="{{safeURL .Magnet}}" title="{{T "releases.magnetLink"}}">{{T "releases.download"}}</a>
                 {{else if .Ed2k}}<a class="btn small primary" href="/releases/{{.ID}}/download" title="{{T "release.ed2k"}}">{{T "releases.download"}}</a>
                 {{else}}<span class="muted">—</span>{{end}}
+                <button class="btn small" type="submit" formaction="/releases/{{.ID}}/send" title="{{T "releases.sendTip"}}">{{T "releases.send"}}</button>
                 {{with magnetFor .}}<button class="btn small" type="button" data-copy="{{.}}" title="{{T "releases.copyMagnetTip"}}">{{T "release.copyMagnet"}}</button>{{end}}
                 {{if .Ed2k}}<button class="btn small" type="button" data-copy="{{.Ed2k}}" title="{{T "release.copyEd2kTip"}}">{{T "release.copyEd2k"}}</button>{{end}}
                 <a class="btn small" href="{{tmdbSearch .Title}}" target="_blank" rel="noopener noreferrer" title="{{T "releases.tmdbSearchTip"}}">{{T "release.tmdb"}}</a>

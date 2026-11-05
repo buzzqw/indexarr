@@ -413,3 +413,47 @@ func TestSettingLabelsExistInAllLocales(t *testing.T) {
 		}
 	}
 }
+
+// The indexer toolbar exposes the two mass actions whose routes already
+// existed: Test all and Run all. Run all asks for confirmation and says that
+// the per-site anti-flood rules still apply.
+func TestIndexerToolbarOffersTestAndRunAll(t *testing.T) {
+	env := newTestEnv(t)
+	body := get(t, env.handler, "/indexers?lang=en").Body.String()
+	for _, want := range []string{
+		`action="/indexers/test-all"`,
+		`action="/indexers/run-all"`,
+		`data-confirm="Queue an update for all enabled indexers?`,
+		"Test all",
+		"Run all",
+		"anti-flood",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("indexer toolbar missing %q", want)
+		}
+	}
+}
+
+// The indexer form can pin one download client; the automatic choice remains
+// the default.
+func TestIndexerFormOffersPerIndexerDownloadClient(t *testing.T) {
+	env := newNativeEnv(t)
+	seedDefinition(t, env.store, "client-form", "", phase2Definition(
+		"client-form", "", "public", []string{"https://client-form.example/"}, "", ""))
+	if _, err := env.store.CreateDownloadClient(context.Background(), store.DownloadClient{
+		Name: "Pinned client", Kind: "qbittorrent", Protocol: "torrent",
+		URL: "http://127.0.0.1:8080", Enabled: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	body := get(t, env.handler, "/indexers/new?definition=client-form&lang=en").Body.String()
+	for _, want := range []string{
+		`name="download_client_id"`,
+		"Automatic by protocol",
+		"Pinned client",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("indexer form missing %q", want)
+		}
+	}
+}

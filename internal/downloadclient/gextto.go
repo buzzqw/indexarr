@@ -60,6 +60,14 @@ func (c *gexttoClient) Send(ctx context.Context, item Item) error {
 	return qbAdd(ctx, client, c.base(), "Gextto / gx-torrent", c.cfg, item)
 }
 
+func (c *gexttoClient) Queue(ctx context.Context) ([]QueueItem, error) {
+	client := c.httpClient()
+	if err := c.login(ctx, client); err != nil {
+		return nil, err
+	}
+	return qbQueue(ctx, client, c.base(), c.cfg)
+}
+
 func (c *gexttoClient) Test(ctx context.Context) (string, error) {
 	client := c.httpClient()
 	if err := c.login(ctx, client); err != nil {

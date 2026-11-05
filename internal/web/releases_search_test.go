@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -164,5 +165,42 @@ func TestReleaseMetadataSearchUsesTheDerivedTitle(t *testing.T) {
 	}
 	if strings.Contains(body, "themoviedb.org/search?query=mr-9.do.or.die") {
 		t.Error("the TMDB link still uses the raw release name")
+	}
+}
+
+// Every row names the source that supplied the release and offers a direct
+// send without opening the detail page.
+func TestReleaseRowsShowSourceAndSendButton(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	seedHomeDefinition(t, env, "row-source-def")
+	indexerID, err := env.store.CreateIndexer(ctx, store.Indexer{
+		DefinitionID: "row-source-def", Protocol: "torrent", Slug: "row-source",
+		Name: "Source One", Enabled: true, Priority: 25, ConfigJSON: "{}",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	insertSearchRelease(t, env.store, "Source Release 1080p", "5040")
+	releases, _, err := env.store.SearchReleases(ctx, store.Filter{})
+	if err != nil || len(releases) != 1 {
+		t.Fatalf("releases = %d, %v", len(releases), err)
+	}
+	now := time.Now()
+	if err := env.store.RecordReleaseSource(ctx, store.ReleaseSource{
+		ReleaseID: releases[0].ID, IndexerID: indexerID, FirstSeenAt: now, LastSeenAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	body := get(t, env.handler, "/releases?lang=en").Body.String()
+	for _, want := range []string{
+		"Source One",
+		`formaction="/releases/` + strconv.FormatInt(releases[0].ID, 10) + `/send"`,
+		`name="return" value="/releases?lang=en"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("release row missing %q", want)
+		}
 	}
 }

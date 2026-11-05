@@ -219,14 +219,17 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
   **live on the indexers** (free text, TV, movies, music and books,
   IMDb/TMDb/TVDb ids, selection of multiple indexers, categories) and **the
   stored catalogue** (filters, saved searches and **bulk send** to clients).
+  Every result names its source and can be sent to the client from the row.
 - **Indexers** with a single list, Run/Test/Run all/Test all/Test problems,
   detail, edit, clone, JSON export/import, feed discovery and cookie import.
+  The mass actions keep each site's interval and anti-flood limit.
 - **App** to connect and synchronize Sonarr, Radarr, Lidarr, Readarr,
   Whisparr, Mylar3 and LazyLibrarian, the generic **Servarr-compatible** type
   for the forks of the family (Chaptarr, Listenarr, Gamarr, Sportarr, ...), and
-  to manage the download clients.
+  to manage the download clients. A source can pin its own download client.
 - **Statistics** with app requests, the overview per app and indexer,
-  downloads, run history, new releases and network counters.
+  downloads, the read-only live queue of the configured clients, run history,
+  new releases and network counters.
 - **Logs** with the system (process) log only.
 - **Settings** for configuration, with the **Rules** (blocklist),
   **Backup** and **Maintenance** sections.
@@ -301,10 +304,17 @@ Supported:
 The new-client form fills the name with the selected client and updates the
 gray examples for the address, username, category and save folder as soon as
 the type changes. The **Test client** button checks the address, credentials
-and type with the values typed above, before saving. The default
-client receives the grabs; from the Releases page you can send
-multiple releases with **Send selected**. The source seed ratio/time travels to
-qBittorrent and to the \*arr apps; the other clients keep their own values.
+and type with the values typed above, before saving; the client list keeps the
+last test time and result. The default client receives the grabs; each indexer
+can pin its own client, and from the Releases page you can send one release
+from its row or several with **Send selected**. The source seed ratio/time
+travels to qBittorrent and to the \*arr apps; the other clients keep their own
+values.
+
+Statistics → **Queue** reads the live queue of qBittorrent, Gextto /
+gx-torrent, Transmission, Deluge, SABnzbd and NZBGet. It is read-only: progress,
+speed and ETA are what the client reports. The other client types show a note
+instead of pretending the queue is empty.
 
 A delivery is not a completed download. A client that knows when the file
 arrives can report it to `POST /api/v2/downloads/confirm`, with the same API key
@@ -463,10 +473,10 @@ App synchronization, per-app profiles, multiple API keys and live search:
 | Page | Content |
 | --- | --- |
 | **Home** | Totals, indexer status, latest releases, runs and problems |
-| **Search** (`/releases`) | Two searches: live on the indexers (text, TV, movies, music, books, external IDs) and the stored catalogue (`-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab); detail with magnet, `.torrent` and `.nzb`, plus TMDB/TVDB search buttons on every row with the title cleaned of technical tags and localized titles |
+| **Search** (`/releases`) | Two searches: live on the indexers (text, TV, movies, music, books, external IDs) and the stored catalogue (`-xxx` exclusion, regex, advanced filters, saved searches, favorites/hidden, bulk grab); detail with magnet, `.torrent` and `.nzb`, plus TMDB/TVDB search buttons on every row with the title cleaned of technical tags and localized titles, the source indexer and a direct **Send** action |
 | **Indexers** | Single list, Run/Test/Run all/Test all/Test problems, detail with Site access, edit, clone, JSON export/import, feed discovery and cookie import; each source can have its own request timeout |
 | **App** | Sonarr, Radarr, Lidarr, Readarr, Whisparr, Mylar3, LazyLibrarian and the generic Servarr-compatible type; sync, per-app profile, snapshots and download clients |
-| **Statistics** (`/activity`) | Incoming requests, overview per app and indexer, downloads served per source, completion reported by the client, update history, new releases, per-host network counters |
+| **Statistics** (`/activity`) | Incoming requests, overview per app and indexer, downloads served per source, completion reported by the client, the live **Queue** of the configured clients, update history, new releases, per-host network counters |
 | **Logs** (`/logs`) | System log with filters and runtime level |
 | **Settings** | Sections General, Network (FlareSolverr, per-host rate limit), Security, Notifications, **Rules** (blocklist by infohash, title, regex, source or category), **Backup**, **Maintenance** (integrity, vacuum, optimize/checkpoint, reindex, deduplication, `.torrent` cleanup, retention, purge per indexer, restore), Advanced (circuit breaker, live search, downloads through indexarr, definitions, proxies) and Updates |
 
@@ -556,8 +566,9 @@ command list and the package structure:
 - The catalog does not yet have native definitions for individual Usenet
   sites: the generic Newznab path is complete, site coverage grows with the
   catalog.
-- Download clients do not yet have a per-indexer selection or a
-  priority/round-robin among clients of the same protocol.
+- Download clients can be pinned per indexer, but there is no
+  priority/round-robin among clients of the same protocol: the default, then
+  the oldest enabled client, is chosen.
 - Notifications have a single global set of events: there is not yet an
   event × channel matrix.
 - SMTP supports STARTTLS, not implicit TLS on port 465.

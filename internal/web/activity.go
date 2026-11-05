@@ -1,12 +1,16 @@
 package web
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/downloadclient"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/i18n"
 	"github.com/buzzqw/indexarr/internal/logtext"
@@ -93,12 +97,87 @@ type activityPage struct {
 	Requests    *logsRequestsView
 	Stats       *logsStatsView
 	Downloads   *logsDownloadsView
+	Queue       *queueView
 	HostMetrics []engine.HostMetric
 	// TotalRequests and ErrorRequests feed the Requests tab chips, GrabsToday
 	// the Downloads one.
 	TotalRequests int64
 	ErrorRequests int64
 	GrabsToday    int64
+}
+
+// queueView is the live queue of every enabled client. It is read-only: the
+// page never adds, removes or changes a download.
+type queueView struct {
+	Clients     []queueClientView
+	Total       int
+	RefreshedAt time.Time
+}
+
+type queueClientView struct {
+	ID          int64
+	Name        string
+	Kind        string
+	KindLabel   string
+	Items       []downloadclient.QueueItem
+	Err         string
+	Unsupported bool
+}
+
+func (s *Server) queueData(r *http.Request) *queueView {
+	view := &queueView{RefreshedAt: time.Now()}
+	clients, err := s.store.ListDownloadClients(r.Context())
+	if err != nil {
+		return view
+	}
+	results := make(chan queueClientView, len(clients))
+	var wg sync.WaitGroup
+	for _, client := range clients {
+		if !client.Enabled {
+			continue
+		}
+		wg.Add(1)
+		go func(client store.DownloadClient) {
+			defer wg.Done()
+			item := queueClientView{
+				ID: client.ID, Name: client.Name, Kind: client.Kind,
+				KindLabel: downloadClientKindLabel(client.Kind),
+			}
+			if strings.TrimSpace(item.Name) == "" {
+				item.Name = item.KindLabel
+			}
+			cfg, err := s.downloadClientConfig(client)
+			if err != nil {
+				item.Err = err.Error()
+				results <- item
+				return
+			}
+			ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+			defer cancel()
+			items, err := downloadclient.Queue(ctx, cfg)
+			switch {
+			case errors.Is(err, downloadclient.ErrQueueUnsupported):
+				item.Unsupported = true
+			case err != nil:
+				item.Err = err.Error()
+			default:
+				item.Items = items
+			}
+			results <- item
+		}(client)
+	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+	for item := range results {
+		view.Clients = append(view.Clients, item)
+		view.Total += len(item.Items)
+	}
+	sort.Slice(view.Clients, func(i, j int) bool {
+		return strings.ToLower(view.Clients[i].Name) < strings.ToLower(view.Clients[j].Name)
+	})
+	return view
 }
 
 func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +198,7 @@ func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
 		// Searches was the same table as Requests, without the counters.
 		redirectTab(w, r, "/activity", "requests")
 		return
-	case "requests", "stats", "downloads", "runs", "feed", "network":
+	case "requests", "stats", "downloads", "queue", "runs", "feed", "network":
 	default:
 		tab = "requests"
 	}
@@ -154,6 +233,9 @@ func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data.Downloads = view
+	case "queue":
+		data.Queue = s.queueData(r)
+		data.LiveRefresh = 15
 	case "feed":
 		feed, err := s.activityFeed(r)
 		if err != nil {

@@ -95,15 +95,17 @@ func New(cfg Config) (Client, error) {
 	switch normalizeKind(cfg.Kind) {
 	case KindQBittorrent:
 		return &clientFuncs{
-			cfg:  cfg,
-			send: addQBittorrentItem,
-			test: testQBittorrent,
+			cfg:   cfg,
+			send:  addQBittorrentItem,
+			test:  testQBittorrent,
+			queue: queueQBittorrent,
 		}, nil
 	case KindTransmission:
 		return &clientFuncs{
-			cfg:  cfg,
-			send: addTransmissionItem,
-			test: testTransmission,
+			cfg:   cfg,
+			send:  addTransmissionItem,
+			test:  testTransmission,
+			queue: queueTransmission,
 		}, nil
 	case KindDeluge:
 		return newDeluge(cfg)
@@ -198,9 +200,10 @@ func normalizeKind(kind string) string {
 
 // clientFuncs adapts the existing function-style clients to Client.
 type clientFuncs struct {
-	cfg  Config
-	send func(context.Context, Config, Item) error
-	test func(context.Context, Config) (string, error)
+	cfg   Config
+	send  func(context.Context, Config, Item) error
+	test  func(context.Context, Config) (string, error)
+	queue func(context.Context, Config) ([]QueueItem, error)
 }
 
 var (
@@ -233,6 +236,12 @@ var (
 	_ Tester = (*nzbVortexClient)(nil)
 	_ Tester = (*hadoukenClient)(nil)
 	_ Tester = (*gexttoClient)(nil)
+
+	_ QueueReader = (*clientFuncs)(nil)
+	_ QueueReader = (*delugeClient)(nil)
+	_ QueueReader = (*gexttoClient)(nil)
+	_ QueueReader = (*sabnzbdClient)(nil)
+	_ QueueReader = (*nzbgetClient)(nil)
 )
 
 func (c *clientFuncs) Send(ctx context.Context, item Item) error {
@@ -241,6 +250,13 @@ func (c *clientFuncs) Send(ctx context.Context, item Item) error {
 
 func (c *clientFuncs) Test(ctx context.Context) (string, error) {
 	return c.test(ctx, c.cfg)
+}
+
+func (c *clientFuncs) Queue(ctx context.Context) ([]QueueItem, error) {
+	if c.queue == nil {
+		return nil, ErrQueueUnsupported
+	}
+	return c.queue(ctx, c.cfg)
 }
 
 func addQBittorrentItem(ctx context.Context, cfg Config, item Item) error {
