@@ -6,7 +6,7 @@ Every source listed here is shipped with indexarr: no proxy, no external
 definition file to keep in sync. The catalog has no index of its own — it
 describes how to read the sites you configure.
 
-**102 site definitions** plus 8 generic connectors: 86 verified, 2 degraded and 14 draft. A draft is usable but not production-ready.
+**102 site definitions** plus 8 generic connectors: 85 verified, 3 degraded and 14 draft. A draft is usable but not production-ready.
 
 When a definition is added, removed or changes state, this file is
 regenerated in the same commit (`make supported-list`); the catalog test fails
@@ -113,7 +113,7 @@ while it is stale, so the list cannot describe a catalog that no longer exists.
 | [TorrentGalaxyClone](https://torrentgalaxy.info/) | None | en | verified | — |
 | [TorrentLeech](https://www.torrentleech.org/) | Account | en | draft | — |
 | [TorrentLeech (RSS)](https://rss.torrentleech.org/) | Endpoint | en | draft | — |
-| [TorrentProject2](https://torrentproject.cc/) | None | en | verified | — |
+| [TorrentProject2](https://torrentproject.cc/) | None | en | degraded | — |
 | [TorrentsCSV](https://torrents-csv.com/) | None | en | verified | — |
 | [Torrentsome](https://torrentsome269.com/) | None | ko | degraded | — |
 | [Torrenttip](https://torrenttip249.top/) | None | ko | verified | — |

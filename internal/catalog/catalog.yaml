@@ -411,9 +411,9 @@ definitions:
     note: "Public TorrentKitty search; magnet in the result row, real fixture."
   - id: torrentproject2
     file: definitions/torrentproject2.yaml
-    state: verificata
+    state: degradata
     author: indexarr
-    note: "Public TorrentProject2 search; magnet decoded from the mylink.cloud detail link, real fixture."
+    note: "On 2026-11-05 the root answers 404 and /?t=test answers Cloudflare 521; torrentproject.se is a casino page. Re-read the live successor before offering it."
   - id: rutracker
     file: definitions/rutracker.yaml
     state: verificata

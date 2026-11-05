@@ -16604,7 +16604,6 @@
     ],
     "state": "verificata",
     "hosts": [
-      "torrent9.to",
       "www7.torrent9.to"
     ],
     "url": "https://www7.torrent9.to/",
@@ -16901,13 +16900,13 @@
     "language": "en-US",
     "type": "public",
     "protocol": "torrent",
-    "state": "verificata",
+    "state": "degradata",
     "hosts": [
       "torrentproject.cc"
     ],
     "url": "https://torrentproject.cc/",
     "source": "native",
-    "proposable": true,
+    "proposable": false,
     "latest": false
   },
   {

@@ -84,7 +84,6 @@ func TestBuiltinsValid(t *testing.T) {
 		"aniliberty":         true,
 		"0magnet":            true,
 		"torrentkitty":       true,
-		"torrentproject2":    true,
 		"rutracker":          true,
 		"anibt":              true,
 		"sukebei":            true,
@@ -130,8 +129,9 @@ func TestBuiltinsValid(t *testing.T) {
 	// found the site broken, so it is hidden from users until someone re-reads
 	// it. It is neither verified nor a draft.
 	degraded := map[string]bool{
-		"torrentbyte": true,
-		"torrentsome": true,
+		"torrentbyte":     true,
+		"torrentsome":     true,
+		"torrentproject2": true,
 	}
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {

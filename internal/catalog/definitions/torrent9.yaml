@@ -15,10 +15,13 @@ meta:
   protocol: torrent
   author: indexarr
   description: Public Torrent9 French search; magnets from the release page.
+  # Only the working search host belongs here. torrent9.to is a redirect to
+  # www7.torrent9.to's home page: as a failover mirror it would answer the
+  # POST with the home page instead of the search results, so the connector
+  # would keep reading the wrong page.
   urls:
     - https://www7.torrent9.to/
-    - https://torrent9.to/
-  updated: "2026-10-23"
+  updated: "2026-11-05"
   latest: false
 
 categories:

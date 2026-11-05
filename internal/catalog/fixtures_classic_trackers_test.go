@@ -147,6 +147,19 @@ func TestThePirateBayHasNoHTMLMirror(t *testing.T) {
 	}
 }
 
+// torrent9.to redirects the search POST to the www7 home page: as a mirror it
+// answered with the wrong page, not with the results. Keep only the host that
+// serves /search_torrent/.
+func TestTorrent9HasNoHomePageMirror(t *testing.T) {
+	def := parseDefinition(t, "torrent9")
+	if len(def.Meta.URLs) != 1 {
+		t.Fatalf("meta.urls = %v, want only the search host", def.Meta.URLs)
+	}
+	if got := strings.TrimSuffix(def.Meta.URLs[0], "/"); got != "https://www7.torrent9.to" {
+		t.Fatalf("meta.urls[0] = %q, want https://www7.torrent9.to", def.Meta.URLs[0])
+	}
+}
+
 func TestTorrentsCSVFixture(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/service/search" {

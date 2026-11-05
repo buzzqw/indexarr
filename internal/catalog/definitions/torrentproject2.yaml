@@ -1,10 +1,15 @@
-# VERIFICATA (verified). TorrentProject2 public search.
+# DEGRADATA (degraded). TorrentProject2 public search.
 #
 # Written from the public search page captured on 2026-10-25 in
 # fixtures/torrentproject2/search.html (https://torrentproject.cc/?t=matrix)
 # and the public detail fixture detail.html. The result row has title,
 # detail link, health and size; the detail page exposes a mylink.cloud link
 # whose `url` query parameter is the magnet.
+#
+# On 2026-11-05 the site is gone: GET https://torrentproject.cc/ answers 404,
+# GET /?t=test answers Cloudflare 521 (origin down), and torrentproject.se is
+# a Swedish casino page, so the domain did not move there. Re-read the live
+# successor before offering this definition again.
 schema: 1
 
 meta:
