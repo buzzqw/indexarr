@@ -7,18 +7,24 @@
   <a class="btn" href="/applications#clients">{{T "common.back"}}</a>
 </section>
 
-<form class="panel form" method="post" action="{{if .IsNew}}/download-clients{{else}}/download-clients/{{.Client.ID}}{{end}}">
+<form class="panel form" method="post" action="{{if .IsNew}}/download-clients{{else}}/download-clients/{{.Client.ID}}{{end}}" data-client-auto-name="{{if and .IsNew (eq .Client.Name .Defaults.NamePlaceholder)}}1{{end}}">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <input type="hidden" name="id" value="{{if not .IsNew}}{{.Client.ID}}{{end}}">
   <div class="form-grid">
     <div class="field grow">
       <label for="client_name">{{T "client.name"}}</label>
-      <input id="client_name" name="name" type="text" required value="{{.Client.Name}}" placeholder="{{T "client.namePlaceholder"}}">
+      <input id="client_name" name="name" type="text" required value="{{.Client.Name}}" placeholder="{{.Defaults.NamePlaceholder}}">
     </div>
     <div class="field">
       <label for="client_kind">{{T "client.kind"}}</label>
       <select id="client_kind" name="kind" data-client-kind title="{{T "tip.clientKind"}}">
-        {{range .Kinds}}<option value="{{.}}"{{if eq $.Client.Kind .}} selected{{end}}>{{clientKind .}}</option>{{end}}
+        {{range .Kinds}}<option value="{{.Value}}"
+          data-client-name="{{.NamePlaceholder}}"
+          data-client-address="{{.URLPlaceholder}}"
+          data-client-username="{{.UsernamePlaceholder}}"
+          data-client-category="{{.CategoryPlaceholder}}"
+          data-client-save-path="{{.SavePathPlaceholder}}"
+          {{if eq $.Client.Kind .Value}} selected{{end}}>{{.Label}}</option>{{end}}
       </select>
       <p class="help">{{T "client.kindHelp"}}</p>
       <details class="advanced">
@@ -47,14 +53,14 @@
   </div>
   <div class="field grow">
     <label for="client_url">{{T "client.url"}}</label>
-    <input id="client_url" name="url" type="url"{{if .URLRequired}} required{{end}} value="{{.Client.URL}}" placeholder="{{T "client.urlPlaceholder"}}">
+    <input id="client_url" name="url" type="url"{{if .URLRequired}} required{{end}} value="{{.Client.URL}}" placeholder="{{.Defaults.URLPlaceholder}}">
     <p class="help">{{T "client.urlHelp"}}</p>
     <p class="help">{{clientHelp "client.help.url"}}</p>
   </div>
   <div class="form-grid">
     <div class="field">
       <label for="client_username">{{T "client.username"}}</label>
-      <input id="client_username" name="username" type="text" value="{{.Client.Username}}" autocomplete="username">
+      <input id="client_username" name="username" type="text" value="{{.Client.Username}}" placeholder="{{.Defaults.UsernamePlaceholder}}" autocomplete="username">
     </div>
     <div class="field">
       <label for="client_password">{{T "client.password"}}</label>
@@ -78,12 +84,12 @@
   <div class="form-grid">
     <div class="field">
       <label for="client_category">{{T "client.category"}}</label>
-      <input id="client_category" name="category" type="text" value="{{.Client.Category}}" placeholder="{{T "client.categoryPlaceholder"}}">
+      <input id="client_category" name="category" type="text" value="{{.Client.Category}}" placeholder="{{.Defaults.CategoryPlaceholder}}">
       <p class="help">{{clientHelp "client.help.category"}}</p>
     </div>
     <div class="field">
       <label for="client_save_path">{{T "client.savePath"}}</label>
-      <input id="client_save_path" name="save_path" type="text" value="{{.Client.SavePath}}" placeholder="{{T "client.savePathPlaceholder"}}">
+      <input id="client_save_path" name="save_path" type="text" value="{{.Client.SavePath}}" placeholder="{{.Defaults.SavePathPlaceholder}}">
       <p class="help">{{clientHelp "client.help.savePath"}}</p>
     </div>
   </div>

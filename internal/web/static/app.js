@@ -598,9 +598,49 @@ if ("serviceWorker" in navigator) {
     return;
   }
   const protocolFor = { sabnzbd: "usenet", nzbget: "usenet", amule: "ed2k", usenetblackhole: "usenet", nzbvortex: "usenet" };
+  const fields = {
+    name: document.getElementById("client_name"),
+    url: document.getElementById("client_url"),
+    username: document.getElementById("client_username"),
+    category: document.getElementById("client_category"),
+    savePath: document.getElementById("client_save_path"),
+  };
+  const form = kind.form;
+  let autoName = Boolean(form && form.dataset.clientAutoName === "1");
+  if (fields.name) {
+    fields.name.addEventListener("input", () => {
+      autoName = false;
+    });
+  }
+  const applyKind = () => {
+    const option = kind.options[kind.selectedIndex];
+    if (!option) {
+      return;
+    }
+    if (fields.name && autoName) {
+      fields.name.value = option.dataset.clientName || "";
+    }
+    if (fields.name) {
+      fields.name.placeholder = option.dataset.clientName || "";
+    }
+    if (fields.url) {
+      fields.url.placeholder = option.dataset.clientAddress || "";
+    }
+    if (fields.username) {
+      fields.username.placeholder = option.dataset.clientUsername || "";
+    }
+    if (fields.category) {
+      fields.category.placeholder = option.dataset.clientCategory || "";
+    }
+    if (fields.savePath) {
+      fields.savePath.placeholder = option.dataset.clientSavePath || "";
+    }
+  };
   kind.addEventListener("change", () => {
     protocol.value = protocolFor[kind.value] || "torrent";
+    applyKind();
   });
+  applyKind();
 })();
 
 // Download client form: test the values without leaving the form, so a typed

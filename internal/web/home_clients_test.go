@@ -235,7 +235,17 @@ func TestDownloadClientFormLifecycle(t *testing.T) {
 func TestDownloadClientFormListsGexttoAndTestsWithoutSaving(t *testing.T) {
 	env := newTestEnv(t)
 	page := get(t, env.handler, "/download-clients/new").Body.String()
-	for _, want := range []string{"Gextto / gx-torrent", "Test client"} {
+	for _, want := range []string{
+		"Gextto / gx-torrent", "Test client",
+		`value="qBittorrent"`,
+		`placeholder="http://127.0.0.1:8080"`,
+		`placeholder="admin"`,
+		`placeholder="indexarr"`,
+		`placeholder="/downloads"`,
+		`data-client-address="http://127.0.0.1:5000"`,
+		`data-client-address="not used"`,
+		`data-client-save-path="/downloads/watch"`,
+	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("new client form missing %q", want)
 		}

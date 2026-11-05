@@ -298,8 +298,10 @@ Supported:
 | Usenet Blackhole | Usenet | writes `.nzb` to a folder |
 | aMule | eD2k | Web API, `ed2k://` links |
 
-The client form has a **Test client** button that checks the address,
-credentials and type with the values typed above, before saving. The default
+The new-client form fills the name with the selected client and updates the
+gray examples for the address, username, category and save folder as soon as
+the type changes. The **Test client** button checks the address, credentials
+and type with the values typed above, before saving. The default
 client receives the grabs; from the Releases page you can send
 multiple releases with **Send selected**. The source seed ratio/time travels to
 qBittorrent and to the \*arr apps; the other clients keep their own values.

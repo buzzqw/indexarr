@@ -15,6 +15,48 @@ import (
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
+// downloadClientKindOrder is the order of the type selector. Gextto follows
+// the other torrent clients because it speaks the same API.
+var downloadClientKindOrder = []string{
+	"qbittorrent", "transmission", "deluge", "rtorrent", "gextto",
+	"sabnzbd", "nzbget", "amule", "torrentblackhole", "usenetblackhole",
+	"aria2", "utorrent", "flood", "downloadstation", "nzbvortex", "hadouken",
+}
+
+// downloadClientKindDefault carries the standard values shown in gray in the
+// form. They are examples, not saved values: an empty input keeps them as its
+// placeholder.
+type downloadClientKindDefault struct {
+	Name     string
+	URL      string
+	URLKey   string
+	Username string
+	Category string
+	SavePath string
+}
+
+// downloadClientKindDefaults are the usual addresses and folders of each
+// client. When a client is local, the loopback address is the one that makes
+// the form immediately useful; the operator changes the host for a NAS.
+var downloadClientKindDefaults = map[string]downloadClientKindDefault{
+	"qbittorrent":      {Name: "qBittorrent", URL: "http://127.0.0.1:8080", Username: "admin", Category: "indexarr", SavePath: "/downloads"},
+	"transmission":     {Name: "Transmission", URL: "http://127.0.0.1:9091", Username: "admin", SavePath: "/downloads"},
+	"deluge":           {Name: "Deluge", URL: "http://127.0.0.1:8112", SavePath: "/downloads"},
+	"rtorrent":         {Name: "rTorrent", URL: "http://127.0.0.1:8080/RPC2", Username: "admin", SavePath: "/downloads"},
+	"gextto":           {Name: "Gextto / gx-torrent", URL: "http://127.0.0.1:5000", Username: "admin", Category: "indexarr", SavePath: "/downloads"},
+	"sabnzbd":          {Name: "SABnzbd", URL: "http://127.0.0.1:8080", Category: "indexarr", SavePath: "/downloads"},
+	"nzbget":           {Name: "NZBGet", URL: "http://127.0.0.1:6789", Username: "nzbget", Category: "indexarr", SavePath: "/downloads"},
+	"amule":            {Name: "aMule", URL: "http://127.0.0.1:4711"},
+	"torrentblackhole": {Name: "Torrent Blackhole", URLKey: "client.urlNotUsed", SavePath: "/downloads/watch"},
+	"usenetblackhole":  {Name: "Usenet Blackhole", URLKey: "client.urlNotUsed", SavePath: "/downloads/watch"},
+	"aria2":            {Name: "Aria2", URL: "http://127.0.0.1:6800", SavePath: "/downloads"},
+	"utorrent":         {Name: "uTorrent", URL: "http://127.0.0.1:8080/gui/", Username: "admin"},
+	"flood":            {Name: "Flood", URL: "http://127.0.0.1:3000", Username: "admin", Category: "indexarr", SavePath: "/downloads"},
+	"downloadstation":  {Name: "Synology Download Station", URL: "http://127.0.0.1:5000", Username: "admin", SavePath: "/downloads"},
+	"nzbvortex":        {Name: "NZBVortex", URL: "http://127.0.0.1:4321", Category: "indexarr", SavePath: "/downloads"},
+	"hadouken":         {Name: "Hadouken", URL: "http://127.0.0.1:7890", Username: "admin", Category: "indexarr", SavePath: "/downloads"},
+}
+
 // downloadClientKindLabels are product names: they are not translated.
 var downloadClientKindLabels = map[string]string{
 	"qbittorrent":      "qBittorrent",
@@ -48,7 +90,8 @@ var clientHelpFallback = map[string]string{
 	"client.help.nzbvortex":        "Uses the API under /api and an API key. It accepts .nzb files only; the category becomes the group name.",
 	"client.help.hadouken":         "Uses JSON-RPC under /api. Enter its address, username and password; the category becomes the label.",
 	"client.help.gextto":           "Uses the qBittorrent-compatible /api/v2 endpoint served by gx-torrent and Gextto. Enter the daemon address; leave the password empty when the Web UI is open on the LAN, or use an API key when one is configured.",
-	"client.help.url":              "Blackhole leaves this empty. The other new clients use the address of their API, for example http://192.168.1.30:6800.",
+	"client.urlNotUsed":            "not used",
+	"client.help.url":              "Blackhole leaves this empty. The other clients use the address of their API; the gray example is the standard one for the selected client.",
 	"client.help.savePath":         "Blackhole: the folder that receives the files. Aria2: the dir option. Flood and Download Station: the destination. Other clients ignore it.",
 	"client.help.apiKey":           "Aria2 accepts its RPC secret here or in the password field. SABnzbd, NZBGet and NZBVortex use the API key.",
 	"client.help.category":         "Flood uses it as a tag, NZBVortex as a group and Hadouken as a label. Other clients ignore it.",
@@ -95,11 +138,45 @@ type downloadClientRow struct {
 	ProtocolKey string
 }
 
+// downloadClientKindOption is one row of the type selector, with the gray
+// examples the form shows when the operator picks it.
+type downloadClientKindOption struct {
+	Value               string
+	Label               string
+	NamePlaceholder     string
+	URLPlaceholder      string
+	UsernamePlaceholder string
+	CategoryPlaceholder string
+	SavePathPlaceholder string
+}
+
+func downloadClientKindOptions(lang i18n.Language) []downloadClientKindOption {
+	options := make([]downloadClientKindOption, 0, len(downloadClientKindOrder))
+	for _, kind := range downloadClientKindOrder {
+		defaults := downloadClientKindDefaults[kind]
+		url := defaults.URL
+		if defaults.URLKey != "" {
+			url = clientHelpText(lang, defaults.URLKey)
+		}
+		options = append(options, downloadClientKindOption{
+			Value:               kind,
+			Label:               downloadClientKindLabel(kind),
+			NamePlaceholder:     defaults.Name,
+			URLPlaceholder:      url,
+			UsernamePlaceholder: defaults.Username,
+			CategoryPlaceholder: defaults.Category,
+			SavePathPlaceholder: defaults.SavePath,
+		})
+	}
+	return options
+}
+
 type downloadClientFormPage struct {
 	base
 	IsNew           bool
 	Client          store.DownloadClient
-	Kinds           []string
+	Kinds           []downloadClientKindOption
+	Defaults        downloadClientKindOption
 	KindName        string
 	HasPassword     bool
 	HasAPIKey       bool
@@ -108,11 +185,20 @@ type downloadClientFormPage struct {
 }
 
 func (s *Server) downloadClientForm(r *http.Request, title string, client store.DownloadClient, isNew bool) downloadClientFormPage {
+	kinds := downloadClientKindOptions(requestLanguage(r))
+	defaults := kinds[0]
+	for _, option := range kinds {
+		if option.Value == client.Kind {
+			defaults = option
+			break
+		}
+	}
 	return downloadClientFormPage{
 		base:            s.newBaseT(r, title, "applications"),
 		IsNew:           isNew,
 		Client:          client,
-		Kinds:           []string{"qbittorrent", "transmission", "deluge", "rtorrent", "gextto", "sabnzbd", "nzbget", "amule", "torrentblackhole", "usenetblackhole", "aria2", "utorrent", "flood", "downloadstation", "nzbvortex", "hadouken"},
+		Kinds:           kinds,
+		Defaults:        defaults,
 		KindName:        downloadClientKindLabel(client.Kind),
 		HasPassword:     client.PasswordEnc != "",
 		HasAPIKey:       client.APIKeyEnc != "",
@@ -126,7 +212,10 @@ func (s *Server) downloadClientsRedirect(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) downloadClientNew(w http.ResponseWriter, r *http.Request) {
-	client := store.DownloadClient{Kind: "qbittorrent", Protocol: "torrent", Enabled: true}
+	client := store.DownloadClient{
+		Kind: "qbittorrent", Protocol: "torrent", Enabled: true,
+		Name: downloadClientKindLabel("qbittorrent"),
+	}
 	s.render(w, r, "download_client_form", s.downloadClientForm(r, "client.titleNew", client, true), http.StatusOK)
 }
 
