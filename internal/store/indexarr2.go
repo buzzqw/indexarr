@@ -739,6 +739,12 @@ type RunRetryState struct {
 	LastRun     time.Time
 	LastSuccess time.Time
 	Failures    int
+	// Paused is true when the newest run was refused by the breaker: the
+	// source was not contacted, so the interval must not postpone its retry.
+	Paused bool
+	// PausedUntil is when the live breaker allows the next probe. The
+	// scheduler fills it from the manager; the store leaves it zero.
+	PausedUntil time.Time
 }
 
 // RunRetryStates returns the retry picture for every indexer. The scheduler
@@ -768,6 +774,7 @@ func (s *Store) RunRetryStates(ctx context.Context) (map[int64]RunRetryState, er
 		state := out[id]
 		if state.LastRun.IsZero() {
 			state.LastRun = unixTime(started)
+			state.Paused = strings.EqualFold(strings.TrimSpace(status), "paused")
 			counting[id] = true
 		}
 		if counting[id] {

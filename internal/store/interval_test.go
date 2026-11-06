@@ -150,4 +150,7 @@ func TestRunRetryStatesIgnoresPausedRows(t *testing.T) {
 	if got := states[id].Failures; got != 2 {
 		t.Fatalf("failures = %d, want 2 (the pause must be transparent)", got)
 	}
+	if !states[id].Paused {
+		t.Fatal("the newest row is paused, the scheduler must retry it at the breaker")
+	}
 }

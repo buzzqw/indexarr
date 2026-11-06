@@ -252,6 +252,7 @@ func (r *Runner) runDuePass(ctx context.Context) {
 		r.logger.Warn("native: load retry states", "error", err)
 		lastRuns = map[int64]store.RunRetryState{}
 	}
+	r.markPausedUntil(indexers, lastRuns)
 	now := time.Now()
 	due := sortCandidates(dueIndexers(indexers, lastRuns, settings.DefaultInterval(), now))
 	candidates := paceSiteCandidates(due, indexers, lastRuns, settings.DefaultInterval(), now)
@@ -347,6 +348,17 @@ func dueIndexers(indexers []store.Indexer, states map[int64]store.RunRetryState,
 			// RunOnce/RunAll still work, and Test resets the streak.
 			continue
 		}
+		// A paused run was refused by the breaker before contacting the site,
+		// so it says nothing about the next interval. Retry when the live
+		// cooldown allows it; otherwise a source would sleep a whole interval
+		// after every 429, which is why the list stayed red even when the site
+		// had already answered again.
+		if state.Paused {
+			if state.PausedUntil.IsZero() || !now.Before(state.PausedUntil) {
+				out = append(out, indexerRow)
+			}
+			continue
+		}
 		due := interval
 		if failures > 0 {
 			due = retryDelays[failures-1]
@@ -369,6 +381,25 @@ func dueIndexers(indexers []store.Indexer, states map[int64]store.RunRetryState,
 		out = append(out, indexerRow)
 	}
 	return out
+}
+
+// markPausedUntil fills the instant the live breaker allows the next probe for
+// the sources whose newest run was refused. The scheduler then retries them
+// when the host cooldown ends instead of waiting for their normal interval.
+func (r *Runner) markPausedUntil(indexers []store.Indexer, states map[int64]store.RunRetryState) {
+	if r.manager == nil {
+		return
+	}
+	for _, indexerRow := range indexers {
+		state, ok := states[indexerRow.ID]
+		if !ok || !state.Paused {
+			continue
+		}
+		if until, open := r.manager.CircuitOpenUntil(indexerRow); open {
+			state.PausedUntil = until
+			states[indexerRow.ID] = state
+		}
+	}
 }
 
 // effectiveInterval is the cadence of one source: its own when set, the global

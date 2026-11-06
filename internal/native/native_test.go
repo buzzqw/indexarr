@@ -935,3 +935,39 @@ func TestDueIndexersFollowsTheRetrySchedule(t *testing.T) {
 		t.Fatalf("edited source is not due: %+v", due)
 	}
 }
+
+// TestDueIndexersRetriesAPausedSourceAtTheCooldown covers the recovery after a
+// 429: the refused attempt did not contact the site, so it must not postpone
+// the source by a whole interval. The live breaker's instant is the retry
+// time; when it has passed, the source is due at the next tick.
+func TestDueIndexersRetriesAPausedSourceAtTheCooldown(t *testing.T) {
+	now := time.Now()
+	indexerRow := store.Indexer{
+		ID: 1, DefinitionID: "tgx", Slug: "tgx", Enabled: true,
+		IntervalSeconds: 7200, // two hours: without the pause rule it is not due
+	}
+	cases := []struct {
+		name  string
+		state store.RunRetryState
+		want  int
+	}{
+		{"breaker still open", store.RunRetryState{
+			LastRun: now.Add(-time.Minute), Paused: true,
+			PausedUntil: now.Add(10 * time.Minute),
+		}, 0},
+		{"cooldown ended", store.RunRetryState{
+			LastRun: now.Add(-time.Minute), Paused: true,
+			PausedUntil: now.Add(-time.Second),
+		}, 1},
+		{"breaker already closed", store.RunRetryState{
+			LastRun: now.Add(-time.Minute), Paused: true,
+		}, 1},
+	}
+	for _, tc := range cases {
+		states := map[int64]store.RunRetryState{1: tc.state}
+		due := dueIndexers([]store.Indexer{indexerRow}, states, time.Hour, now)
+		if len(due) != tc.want {
+			t.Errorf("%s: due = %+v, want %d", tc.name, due, tc.want)
+		}
+	}
+}
