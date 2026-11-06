@@ -24,7 +24,7 @@
   </p>
   <ul class="home-problems">
     {{range .Status.Problems}}
-    <li class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span><strong>{{.Name}}</strong> — {{if .Count}}{{T .Code .Count}}{{else}}{{T .Code}}{{end}}{{if not .Since.IsZero}} <span class="problem-since muted">· {{since .Since}}</span>{{end}}</span> <a class="problem-action" href="{{.ActionURL}}">{{T .ActionKey}}</a></li>
+    <li class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span><strong>{{.Name}}</strong> — {{if .Count}}{{T .Code .Count}}{{else}}{{T .Code}}{{end}}{{if not .Since.IsZero}} <span class="problem-since muted">· {{since .Since}}</span>{{end}}{{if .HasResumeAt}} <span class="problem-since muted">· {{T "home.problem.resume" (date .ResumeAt) (until .ResumeAt)}}</span>{{end}}</span> <a class="problem-action" href="{{.ActionURL}}">{{T .ActionKey}}</a></li>
     {{end}}
   </ul>
   {{else}}

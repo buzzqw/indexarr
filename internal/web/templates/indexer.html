@@ -86,6 +86,7 @@
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button class="btn small" type="submit" title="{{T "tip.indexerResume"}}">{{T "idx.resume.action"}}</button>
     </form>
+    {{if .HasResumeAt}}<p class="help">{{T "idx.resume.at" (date .ResumeAt) (until .ResumeAt)}}</p>{{end}}
     <p class="help">{{T "idx.resume.help"}}</p>
     {{end}}
     {{if .RetryPaused}}<p class="flash warn" role="alert">{{T "idx.retry.paused" .RetryFailures}}</p>{{end}}
@@ -215,6 +216,8 @@
     <dd>{{until .RetryNext}} <span class="muted">({{T "idx.retry.attempt" .RetryFailures}})</span></dd>{{end}}
     {{if .RetryPaused}}<dt>{{T "idx.retry.title"}}</dt>
     <dd><span class="chip warn">{{T "idx.retry.pausedShort"}}</span></dd>{{end}}
+    {{if .HasResumeAt}}<dt>{{T "idx.resume.until"}}</dt>
+    <dd>{{date .ResumeAt}} <span class="muted">({{until .ResumeAt}})</span></dd>{{end}}
     <dt>{{T "idx.detail.frequency"}}</dt>
     <dd>{{.FrequencyLabel}} <span class="muted">({{.FrequencySource}})</span> <a href="/indexers/{{.Indexer.ID}}/edit" title="{{T "idx.detail.frequencyEditTip"}}">{{T "common.edit"}}</a></dd>
     <dt>{{T "idx.detail.queries"}}</dt>
@@ -325,12 +328,13 @@
   </dl>
 
   <h3 class="sub-head">{{T "idx.detail.hostRequests"}}</h3>
+  <p class="help">{{T "idx.detail.hostHelp"}}</p>
   {{if .HostRequests}}
   <div class="table-scroll">
     <table>
-      <thead><tr><th scope="col">{{T "idx.detail.host"}}</th><th scope="col">429</th><th scope="col">403</th><th scope="col">{{T "idx.detail.breaker"}}</th></tr></thead>
+      <thead><tr><th scope="col">{{T "idx.detail.host"}}</th><th scope="col">429</th><th scope="col">403</th><th scope="col">{{T "idx.detail.breaker"}}</th><th scope="col">{{T "idx.detail.hostResume"}}</th></tr></thead>
       <tbody>
-        {{range .HostRequests}}<tr><td>{{.Host}}</td><td>{{.RateLimited}}</td><td>{{.Forbidden}}</td><td>{{.Breaker}}</td></tr>{{end}}
+        {{range .HostRequests}}<tr><td>{{.Host}}</td><td>{{.RateLimited}}</td><td>{{.Forbidden}}</td><td>{{.Breaker}}</td><td>{{if .HasOpenUntil}}{{date .OpenUntil}}{{else}}<span class="muted">—</span>{{end}}</td></tr>{{end}}
       </tbody>
     </table>
   </div>

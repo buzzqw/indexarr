@@ -145,6 +145,20 @@ func TestPausedSourceOffersResume(t *testing.T) {
 	if !strings.Contains(page, "without editing or recreating it") {
 		t.Error("the resume action has no tooltip")
 	}
+	row, err := env.store.GetIndexer(context.Background(), env.id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	until, ok := env.manager.CircuitOpenUntil(row)
+	if !ok {
+		t.Fatal("the live breaker reports no next retry")
+	}
+	if !strings.Contains(page, "Next automatic retry") {
+		t.Error("the paused source does not name the next automatic retry")
+	}
+	if !strings.Contains(page, until.Local().Format("2006-01-02 15:04")) {
+		t.Errorf("the page does not show the next retry at %s", until.Local())
+	}
 }
 
 // TestResumeActionClearsThePause covers the action itself: the redirect carries

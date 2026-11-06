@@ -328,6 +328,32 @@ func TestPolitenessRepeated429GrowsTheHostCooldown(t *testing.T) {
 	}
 }
 
+// TestHostOpenUntilReportsTheLearnedCooldown backs the "next retry" the
+// interface and the Prowlarr status show: the site-wide cooldown a 429
+// taught, not just the shorter per-indexer breaker.
+func TestHostOpenUntilReportsTheLearnedCooldown(t *testing.T) {
+	clock := newFakeClock()
+	polite := NewPoliteness(0, 1, 99, time.Minute, clock)
+	polite.observe("TorrentGalaxy.Info.", http.StatusTooManyRequests, nil)
+
+	until, ok := polite.HostOpenUntil("torrentgalaxy.info")
+	if !ok {
+		t.Fatal("HostOpenUntil = false, want the open cooldown")
+	}
+	if want := clock.Now().Add(time.Minute); !until.Equal(want) {
+		t.Fatalf("HostOpenUntil = %s, want %s", until, want)
+	}
+	metrics := polite.HostMetrics()
+	if len(metrics) != 1 || !metrics[0].OpenUntil.Equal(until) {
+		t.Fatalf("HostMetrics = %+v, want the same OpenUntil", metrics)
+	}
+
+	polite.ResetHost("torrentgalaxy.info")
+	if _, ok := polite.HostOpenUntil("torrentgalaxy.info"); ok {
+		t.Fatal("HostOpenUntil after ResetHost = true, want false")
+	}
+}
+
 // TestPolitenessSpacesScheduledReadsAfter429 covers the other half of the
 // backoff: a periodic run of a site that answered 429 is spaced out, while a
 // live app search keeps its own window.

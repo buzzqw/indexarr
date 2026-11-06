@@ -124,7 +124,16 @@ func (s *Server) handleProwlarrIndexerStatus(w http.ResponseWriter, r *http.Requ
 			if state.Circuit == string(engine.BreakerOpen) || s.manager.CircuitState(indexer.ID, indexer.Slug) == engine.BreakerOpen {
 				calm = false
 				entry.Message = "paused after repeated failures"
-				if until, ok := s.manager.CircuitOpenUntil(indexer.ID, indexer.Slug); ok && entry.DisabledTill == "" {
+			}
+			// The learned 429 cooldown lives on the host breaker, not on the
+			// per-indexer one: read both or the client sees no pause at all
+			// while every source of that site waits for the host.
+			if until, ok := s.manager.CircuitOpenUntil(indexer); ok {
+				calm = false
+				if entry.Message == "" {
+					entry.Message = "paused after repeated failures"
+				}
+				if entry.DisabledTill == "" {
 					entry.DisabledTill = until.UTC().Format(time.RFC3339)
 				}
 			}

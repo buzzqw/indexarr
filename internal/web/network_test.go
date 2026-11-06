@@ -46,6 +46,9 @@ func TestActivityShowsNetworkCounters(t *testing.T) {
 	if !strings.Contains(metrics, `indexarr_host_rate_limited_total{host="counters.example"} 1`) {
 		t.Errorf("metrics missing the per-host 429 counter:\n%s", metrics)
 	}
+	if !strings.Contains(metrics, `indexarr_host_open_until_timestamp_seconds{host="counters.example"}`) {
+		t.Errorf("metrics missing the host cooldown:\n%s", metrics)
+	}
 }
 
 func TestSettingsNetworkSectionRoundTrip(t *testing.T) {

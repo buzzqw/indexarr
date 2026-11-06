@@ -71,6 +71,10 @@ type HostMetric struct {
 	Forbidden   uint64 // HTTP 403 responses
 	BreakerOpen uint64 // requests refused because the host breaker was open
 	State       BreakerState
+	// OpenUntil is when an open host breaker allows the next probe. It is the
+	// site-wide cooldown a 429 learnt, longer than the per-indexer one; zero
+	// when the breaker is closed or half-open.
+	OpenUntil time.Time
 }
 
 type hostCounters struct {
@@ -349,9 +353,20 @@ func (p *Politeness) HostMetrics() []HostMetric {
 	p.mu.Unlock()
 	for i := range out {
 		out[i].State = p.breaker.State(out[i].Host)
+		out[i].OpenUntil, _ = p.breaker.openUntilFor(out[i].Host)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Host < out[j].Host })
 	return out
+}
+
+// HostOpenUntil reports when an open per-host breaker allows the next probe.
+// It is the cooldown a 429 taught the whole site, shared by every source on
+// that hostname; a closed or half-open breaker reports false.
+func (p *Politeness) HostOpenUntil(host string) (time.Time, bool) {
+	if p == nil {
+		return time.Time{}, false
+	}
+	return p.breaker.openUntilFor(hostKey(host))
 }
 
 func (p *Politeness) noteStatus(host string, status int) {

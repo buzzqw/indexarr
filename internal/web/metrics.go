@@ -56,4 +56,12 @@ func (s *Server) metrics(w http.ResponseWriter, r *http.Request) {
 	for _, metric := range hostMetrics {
 		fmt.Fprintf(w, "indexarr_host_breaker_open_total{host=%q} %d\n", metric.Host, metric.BreakerOpen)
 	}
+	fmt.Fprintf(w, "# HELP indexarr_host_open_until_timestamp_seconds When an open per-host breaker allows the next probe, in unix seconds.\n")
+	fmt.Fprintf(w, "# TYPE indexarr_host_open_until_timestamp_seconds gauge\n")
+	for _, metric := range hostMetrics {
+		if metric.OpenUntil.IsZero() {
+			continue
+		}
+		fmt.Fprintf(w, "indexarr_host_open_until_timestamp_seconds{host=%q} %d\n", metric.Host, metric.OpenUntil.Unix())
+	}
 }

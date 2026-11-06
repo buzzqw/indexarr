@@ -34,6 +34,10 @@ type hostRequestView struct {
 	RateLimited uint64
 	Forbidden   uint64
 	Breaker     uint64
+	// OpenUntil is when an open host breaker allows the next probe: the
+	// site-wide cooldown a 429 learnt, shown on the Diagnostics tab.
+	OpenUntil    time.Time
+	HasOpenUntil bool
 }
 
 // indexerAccessRow is one required credential of a source: whether the vault
@@ -92,7 +96,12 @@ type indexerDetailView struct {
 	// CircuitOpen reports that the live breaker of this source is open and the
 	// next request would be refused; the Overview tab then offers "Riprendi
 	// ora", the manual reset of the cooldown.
-	CircuitOpen         bool
+	CircuitOpen bool
+	// ResumeAt is when the paused source is probed again. It is the later of
+	// the per-indexer and the shared host cooldown, so the page shows the
+	// time the operator really waits after a 429 on the whole site.
+	ResumeAt            time.Time
+	HasResumeAt         bool
 	Stats               detailStatView
 	Categories          []string
 	FilterRows          []indexerConfigEntry
@@ -296,6 +305,17 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	data.State = healthView.State
 	data.HasState = healthView.HasState
 	data.CircuitOpen = healthView.State.Circuit == string(engine.BreakerOpen)
+	if s.native != nil {
+		if until, ok := s.native.CircuitOpenUntil(in); ok {
+			data.CircuitOpen = true
+			data.ResumeAt = until
+			data.HasResumeAt = true
+		}
+	}
+	if !data.HasResumeAt && !data.State.DisabledUntil.IsZero() {
+		data.ResumeAt = data.State.DisabledUntil
+		data.HasResumeAt = true
+	}
 	data.LastRun = healthView.LastRun
 	history, _ := s.store.ListIndexerHistory(r.Context(), in.ID, 200)
 	now := time.Now()
@@ -544,6 +564,7 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 			data.HostRequests = append(data.HostRequests, hostRequestView{
 				Host: metric.Host, RateLimited: metric.RateLimited,
 				Forbidden: metric.Forbidden, Breaker: metric.BreakerOpen,
+				OpenUntil: metric.OpenUntil, HasOpenUntil: !metric.OpenUntil.IsZero(),
 			})
 		}
 	}

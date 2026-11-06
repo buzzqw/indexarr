@@ -26,6 +26,11 @@ type HomeProblem struct {
 	// to the sentence, so the operator can tell a two-minute hiccup from a
 	// source that has not worked for a day.
 	Since time.Time
+	// ResumeAt is when a paused source is probed again, including the shared
+	// host cooldown a 429 taught the site. It is the real answer to "will it
+	// come back by itself?".
+	ResumeAt    time.Time
+	HasResumeAt bool
 }
 
 // HomeStatus is the cached view of computeHomeStatus. The home page and the
@@ -73,8 +78,8 @@ type HomeStatus struct {
 	ProblemApps      int
 	// OldestProblemAt is the start of the longest-running indexer problem.
 	// The header shows it next to the count.
-	OldestProblemAt  time.Time
-	LastReleaseAt    time.Time
+	OldestProblemAt time.Time
+	LastReleaseAt   time.Time
 	// Err is a technical message for the red "cannot work" state. It is
 	// translated into a generic sentence by the template.
 	Err string
@@ -130,6 +135,12 @@ func (s *Server) computeHomeStatus(ctx context.Context) HomeStatus {
 			Since:     view.Assessment.Since,
 		}
 		problem.Code, problem.Count = homeProblemCode(view)
+		if s.native != nil {
+			if until, ok := s.native.CircuitOpenUntil(indexer); ok {
+				problem.ResumeAt = until
+				problem.HasResumeAt = true
+			}
+		}
 		if !problem.Since.IsZero() &&
 			(status.OldestProblemAt.IsZero() || problem.Since.Before(status.OldestProblemAt)) {
 			status.OldestProblemAt = problem.Since

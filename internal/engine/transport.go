@@ -358,6 +358,17 @@ func (t *Transport) BreakerOpenUntil(key string) (time.Time, bool) {
 	return t.breaker.openUntilFor(key)
 }
 
+// HostOpenUntil reports when the shared per-host breaker of one hostname
+// allows the next probe. A 429 opens this cooldown for the whole site, so it
+// can outlast the per-indexer breaker; a caller that wants the next real
+// attempt must read both and keep the later one.
+func (t *Transport) HostOpenUntil(host string) (time.Time, bool) {
+	if t == nil || t.polite == nil {
+		return time.Time{}, false
+	}
+	return t.polite.HostOpenUntil(host)
+}
+
 // ResetBreaker clears the per-indexer breaker of one key, so the next request
 // is attempted immediately. The host budget is reset separately, with
 // ResetHost: a source shares its host with its mirrors and with the legacy

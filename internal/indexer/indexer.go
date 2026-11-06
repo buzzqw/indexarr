@@ -1012,10 +1012,12 @@ func (m *Manager) CircuitState(indexerID int64, slug string) engine.BreakerState
 
 // CircuitOpenUntil reports when a paused source is probed again. It reads the
 // same transport CircuitState uses: the cached connector's private one, or the
-// shared transport.
-func (m *Manager) CircuitOpenUntil(indexerID int64, slug string) (time.Time, bool) {
+// shared transport. The host cooldown a 429 taught the site is considered too
+// and wins when it is later: that is the time the operator really waits, while
+// the per-indexer breaker only lasts the base cooldown.
+func (m *Manager) CircuitOpenUntil(indexer store.Indexer) (time.Time, bool) {
 	m.mu.Lock()
-	entry, ok := m.cache[indexerID]
+	entry, ok := m.cache[indexer.ID]
 	m.mu.Unlock()
 	transport := m.transport
 	if ok && entry.transport != nil {
@@ -1024,7 +1026,14 @@ func (m *Manager) CircuitOpenUntil(indexerID int64, slug string) (time.Time, boo
 	if transport == nil {
 		return time.Time{}, false
 	}
-	return transport.BreakerOpenUntil(slug)
+	until, found := transport.BreakerOpenUntil(indexer.Slug)
+	if host := m.indexerHost(indexer, entry, ok); host != "" {
+		if hostUntil, hostFound := transport.HostOpenUntil(host); hostFound &&
+			(!found || hostUntil.After(until)) {
+			return hostUntil, true
+		}
+	}
+	return until, found
 }
 
 // ResetCircuit clears the live breaker of one source, both the per-indexer
