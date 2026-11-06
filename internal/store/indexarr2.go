@@ -742,9 +742,23 @@ type RunRetryState struct {
 	// Paused is true when the newest run was refused by the breaker: the
 	// source was not contacted, so the interval must not postpone its retry.
 	Paused bool
+	// RateLimited is true when the newest run ended with a 429/503. The
+	// breaker owns the retry instant, so the interval must not postpone it.
+	RateLimited bool
 	// PausedUntil is when the live breaker allows the next probe. The
 	// scheduler fills it from the manager; the store leaves it zero.
 	PausedUntil time.Time
+}
+
+// rateLimitedError reports a run the site answered with a rate limit. The
+// breaker already knows when to allow the next probe, so that instant is a
+// better retry time than the escalating failure schedule.
+func rateLimitedError(status, message string) bool {
+	if !strings.EqualFold(strings.TrimSpace(status), "error") {
+		return false
+	}
+	text := strings.ToLower(message)
+	return strings.Contains(text, "rate limit") || strings.Contains(text, "too many requests")
 }
 
 // RunRetryStates returns the retry picture for every indexer. The scheduler
@@ -753,8 +767,8 @@ type RunRetryState struct {
 func (s *Store) RunRetryStates(ctx context.Context) (map[int64]RunRetryState, error) {
 	out := map[int64]RunRetryState{}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT indexer_id, status, started_at FROM (
-			SELECT indexer_id, status, started_at,
+		SELECT indexer_id, status, error, started_at FROM (
+			SELECT indexer_id, status, error, started_at,
 				ROW_NUMBER() OVER (PARTITION BY indexer_id ORDER BY started_at DESC, id DESC) AS rn
 			FROM indexer_history
 			WHERE kind IN ('run', 'catalog') AND indexer_id IS NOT NULL
@@ -767,14 +781,15 @@ func (s *Store) RunRetryStates(ctx context.Context) (map[int64]RunRetryState, er
 	counting := map[int64]bool{}
 	for rows.Next() {
 		var id, started int64
-		var status string
-		if err := rows.Scan(&id, &status, &started); err != nil {
+		var status, message string
+		if err := rows.Scan(&id, &status, &message, &started); err != nil {
 			return nil, err
 		}
 		state := out[id]
 		if state.LastRun.IsZero() {
 			state.LastRun = unixTime(started)
 			state.Paused = strings.EqualFold(strings.TrimSpace(status), "paused")
+			state.RateLimited = rateLimitedError(status, message)
 			counting[id] = true
 		}
 		if counting[id] {

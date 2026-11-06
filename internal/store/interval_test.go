@@ -154,3 +154,48 @@ func TestRunRetryStatesIgnoresPausedRows(t *testing.T) {
 		t.Fatal("the newest row is paused, the scheduler must retry it at the breaker")
 	}
 }
+
+// TestRunRetryStatesMarksRateLimitedError keeps the retry instant of a 429 on
+// the breaker: the newest error says the site asked to slow down, so the
+// scheduler must not wait the whole interval.
+func TestRunRetryStatesMarksRateLimitedError(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	if err := st.UpsertDefinition(ctx, testDefinition("limited-site")); err != nil {
+		t.Fatalf("UpsertDefinition: %v", err)
+	}
+	id, err := st.CreateIndexer(ctx, Indexer{
+		DefinitionID: "limited-site", Slug: "limited-site", Name: "Limited", Enabled: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateIndexer: %v", err)
+	}
+	if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+		IndexerID: id, Kind: "run", Status: "error",
+		Error:     "fetch: request failed: engine: rate limited by indexer",
+		StartedAt: time.Now().Add(-time.Minute),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	states, err := st.RunRetryStates(ctx)
+	if err != nil {
+		t.Fatalf("RunRetryStates: %v", err)
+	}
+	if !states[id].RateLimited {
+		t.Fatal("a rate-limited error must be retried at the breaker, not after the interval")
+	}
+
+	// Any clean result clears it again.
+	if _, err := st.RecordIndexerHistory(ctx, IndexerHistory{
+		IndexerID: id, Kind: "run", Status: "ok", StartedAt: time.Now(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	states, err = st.RunRetryStates(ctx)
+	if err != nil {
+		t.Fatalf("RunRetryStates after ok: %v", err)
+	}
+	if states[id].RateLimited {
+		t.Fatal("a clean run must clear the rate-limit flag")
+	}
+}

@@ -353,7 +353,7 @@ func dueIndexers(indexers []store.Indexer, states map[int64]store.RunRetryState,
 		// cooldown allows it; otherwise a source would sleep a whole interval
 		// after every 429, which is why the list stayed red even when the site
 		// had already answered again.
-		if state.Paused {
+		if state.Paused || state.RateLimited {
 			if state.PausedUntil.IsZero() || !now.Before(state.PausedUntil) {
 				out = append(out, indexerRow)
 			}
@@ -392,7 +392,7 @@ func (r *Runner) markPausedUntil(indexers []store.Indexer, states map[int64]stor
 	}
 	for _, indexerRow := range indexers {
 		state, ok := states[indexerRow.ID]
-		if !ok || !state.Paused {
+		if !ok || (!state.Paused && !state.RateLimited) {
 			continue
 		}
 		if until, open := r.manager.CircuitOpenUntil(indexerRow); open {

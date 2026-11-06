@@ -962,6 +962,14 @@ func TestDueIndexersRetriesAPausedSourceAtTheCooldown(t *testing.T) {
 		{"breaker already closed", store.RunRetryState{
 			LastRun: now.Add(-time.Minute), Paused: true,
 		}, 1},
+		{"429 error, breaker still open", store.RunRetryState{
+			LastRun: now.Add(-time.Minute), RateLimited: true,
+			PausedUntil: now.Add(10 * time.Minute),
+		}, 0},
+		{"429 error, cooldown ended", store.RunRetryState{
+			LastRun: now.Add(-time.Minute), RateLimited: true,
+			PausedUntil: now.Add(-time.Second),
+		}, 1},
 	}
 	for _, tc := range cases {
 		states := map[int64]store.RunRetryState{1: tc.state}
