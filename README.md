@@ -440,6 +440,13 @@ API keys, intervals, retention, UI credentials, notifications, clients,
 backups — is in the database and is changed from the **Settings** page, without
 restarting.
 
+`memory_limit_mb` is a soft cap on the Go heap, not on the resident set: the
+binary, the SQLite driver pools and the runtime add about 40 MB, and the
+daemon hands the free pages of a burst back to the operating system every five
+minutes. On a host with transparent huge pages set to `always`, the installer
+and the container also set `GODEBUG=disablethp=1`, which keeps the small heap
+on ordinary pages instead of rounding it up to 2 MiB pages.
+
 The file, the vault key lookup and every setting with its default:
 [Configuration](https://github.com/buzzqw/indexarr/wiki/Configuration).
 

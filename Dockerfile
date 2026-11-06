@@ -42,6 +42,9 @@ RUN apk add --no-cache ca-certificates tzdata \
 # Keep the vault key and the database in one volume by default. For production
 # mount the key with INDEXARR_MASTER_KEY_FILE instead of storing it in /data.
 ENV HOME=/data
+# Keep the Go heap off transparent huge pages, as the systemd unit does: a
+# 2 MiB page holding one object keeps a whole page of the arena resident.
+ENV GODEBUG=disablethp=1
 WORKDIR /data
 COPY --from=build /out/indexarr /usr/local/bin/indexarr
 COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

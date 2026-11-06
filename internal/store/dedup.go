@@ -262,36 +262,7 @@ func (s *Store) MergeDuplicates(ctx context.Context) (DedupeStats, error) {
 	}
 	defer tx.Rollback()
 
-	rows, err := tx.QueryContext(ctx, `
-		SELECT id, title, size, infohash, published_at, first_seen_at, last_seen_at
-		FROM releases ORDER BY id`)
-	if err != nil {
-		return stats, fmt.Errorf("list releases for dedupe: %w", err)
-	}
-	type candidate struct {
-		meta dedup.Meta
-	}
-	var all []candidate
-	for rows.Next() {
-		var id, size, published, firstSeen, lastSeen int64
-		var title, hash string
-		if err := rows.Scan(&id, &title, &size, &hash, &published, &firstSeen, &lastSeen); err != nil {
-			rows.Close()
-			return stats, err
-		}
-		all = append(all, candidate{meta: dedup.Meta{
-			ID: id, Title: title, Size: size, InfoHash: hash,
-			PublishedAt: unixTime(published), FirstSeenAt: unixTime(firstSeen),
-			LastSeenAt: unixTime(lastSeen),
-		}})
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return stats, err
-	}
-	stats.Before = int64(len(all))
-
-	removed := make(map[int64]struct{}, len(all)/2)
+	removed := make(map[int64]struct{})
 	merge := func(keeper, dup int64) error {
 		if keeper == dup {
 			return nil
@@ -307,35 +278,104 @@ func (s *Store) MergeDuplicates(ctx context.Context) (DedupeStats, error) {
 	}
 
 	// Pass 1: infohash. The hash is the torrent identity; identical hashes are
-	// always the same torrent, private tracker or not.
+	// always the same torrent, private tracker or not. Only the id and the
+	// hash are held: the cache has tens of thousands of rows and keeping the
+	// whole record of every one of them made this pass the largest allocation
+	// of the whole process.
+	rows, err := tx.QueryContext(ctx, `SELECT id, infohash FROM releases ORDER BY id`)
+	if err != nil {
+		return stats, fmt.Errorf("list releases for dedupe: %w", err)
+	}
 	byHash := make(map[string]int64)
-	for _, row := range all {
-		hash := strings.ToLower(strings.TrimSpace(row.meta.InfoHash))
+	var before int64
+	for rows.Next() {
+		var id int64
+		var hash string
+		if err := rows.Scan(&id, &hash); err != nil {
+			rows.Close()
+			return stats, err
+		}
+		before++
+		hash = strings.ToLower(strings.TrimSpace(hash))
 		if hash == "" {
 			continue
 		}
 		if keeper, ok := byHash[hash]; ok {
-			if err := merge(keeper, row.meta.ID); err != nil {
+			if err := merge(keeper, id); err != nil {
+				rows.Close()
 				return stats, err
 			}
 			stats.HashMerged++
 			continue
 		}
-		byHash[hash] = row.meta.ID
+		byHash[hash] = id
 	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return stats, err
+	}
+	stats.Before = before
 
 	// Pass 2: title + normalized size. A hash-bearing row is the preferred
 	// keeper so recovered hashes keep their identity.
-	byTitle := make(map[string][]dedup.Meta)
-	for _, row := range all {
-		if _, gone := removed[row.meta.ID]; gone {
+	//
+	// The title pass reads the table twice: the first read only counts the
+	// normalized keys, the second keeps the records of the keys that can
+	// match. Holding every title of the cache at once cost about forty
+	// megabytes; a key and a count cost a tenth of that, and the duplicate
+	// groups themselves are small.
+	counts := make(map[string]int, before)
+	rows, err = tx.QueryContext(ctx, `SELECT title FROM releases`)
+	if err != nil {
+		return stats, fmt.Errorf("count release titles for dedupe: %w", err)
+	}
+	for rows.Next() {
+		var title string
+		if err := rows.Scan(&title); err != nil {
+			rows.Close()
+			return stats, err
+		}
+		if normalized := dedup.NormalizedKey(title); normalized != "" {
+			counts[normalized]++
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return stats, err
+	}
+	for key, count := range counts {
+		if count < 2 {
+			delete(counts, key)
+		}
+	}
+
+	byTitle := make(map[string][]dedup.Meta, len(counts))
+	rows, err = tx.QueryContext(ctx, `
+		SELECT id, title, size, infohash, published_at, first_seen_at, last_seen_at
+		FROM releases ORDER BY id`)
+	if err != nil {
+		return stats, fmt.Errorf("list duplicate candidates for dedupe: %w", err)
+	}
+	for rows.Next() {
+		var id, size, published, firstSeen, lastSeen int64
+		var title, hash string
+		if err := rows.Scan(&id, &title, &size, &hash, &published, &firstSeen, &lastSeen); err != nil {
+			rows.Close()
+			return stats, err
+		}
+		normalized := dedup.NormalizedKey(title)
+		if _, candidate := counts[normalized]; !candidate {
 			continue
 		}
-		normalized := dedup.NormalizedKey(row.meta.Title)
-		if normalized == "" {
-			continue
-		}
-		byTitle[normalized] = append(byTitle[normalized], row.meta)
+		byTitle[normalized] = append(byTitle[normalized], dedup.Meta{
+			ID: id, Title: title, Size: size, InfoHash: hash,
+			PublishedAt: unixTime(published), FirstSeenAt: unixTime(firstSeen),
+			LastSeenAt: unixTime(lastSeen),
+		})
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return stats, err
 	}
 	keys := make([]string, 0, len(byTitle))
 	for key := range byTitle {

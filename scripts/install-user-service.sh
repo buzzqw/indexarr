@@ -280,6 +280,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+# Keep the Go heap off transparent huge pages. With THP set to "always" the
+# kernel rounds every heap arena up to 2 MiB and the resident set stays at the
+# peak even after the scavenger returns the free ranges; the heap of the
+# daemon is small, so small pages cost nothing and save tens of megabytes.
+Environment=GODEBUG=disablethp=1
 WorkingDirectory=${DATA_DIR}
 ExecStart=${BIN_TARGET} -config ${CONFIG} -listen ${LISTEN}
 Restart=always
@@ -308,6 +313,7 @@ Type=simple
 User=${SERVICE_USER}
 Group=${SERVICE_USER}
 Environment=HOME=${DATA_DIR}
+Environment=GODEBUG=disablethp=1
 WorkingDirectory=${DATA_DIR}
 ExecStart=${BIN_TARGET} -config ${CONFIG} -listen ${LISTEN}
 Restart=always

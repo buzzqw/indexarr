@@ -51,9 +51,14 @@ func Open(path string) (*Store, error) {
 	// WAL allows several readers concurrently with one writer. A small pool
 	// keeps a burst of Torznab clients from serialising behind a single
 	// connection while still bounding memory: each connection owns a 4 MiB
-	// page cache. busy_timeout absorbs the brief write-lock contention.
+	// page cache and, with the pure-Go driver, a private slab pool that a
+	// full-table pass grows to about ten megabytes. Only one connection stays
+	// idle and it is closed after half a minute, so a quiet daemon does not
+	// keep four grown pools resident. busy_timeout absorbs the brief
+	// write-lock contention while a new connection is opened.
 	db.SetMaxOpenConns(4)
-	db.SetMaxIdleConns(4)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxIdleTime(30 * time.Second)
 	if err := db.Ping(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("ping %s: %w", path, err)
