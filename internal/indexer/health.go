@@ -49,6 +49,10 @@ func (m *Manager) Health(ctx context.Context, indexerID int64) (HealthResult, er
 		Mode:  engine.ModeSearch,
 		Query: result.Query,
 		Limit: 100,
+		// A health check only counts rows: opening the details page of every
+		// result cost 50-150 requests on TorrentGalaxy and opened the 429
+		// breaker that then paused the scheduled runs too.
+		SkipDetails: true,
 	})
 	if err != nil {
 		err = fmt.Errorf("indexer %s: health: %w", indexer.Slug, err)
