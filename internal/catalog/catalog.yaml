@@ -244,6 +244,11 @@ definitions:
     state: verificata
     author: indexarr
 
+  - id: yourbittorrent
+    file: definitions/yourbittorrent.yaml
+    state: verificata
+    author: indexarr
+
   - id: bt4g
     file: definitions/bt4g.yaml
     state: verificata

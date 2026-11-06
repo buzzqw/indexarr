@@ -17201,6 +17201,37 @@
     "latest": false
   },
   {
+    "id": "yourbittorrent",
+    "name": "YourBittorrent",
+    "description": "Public YourBittorrent search through its official Torznab API (no account or API key).",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "tv",
+      "anime",
+      "music",
+      "books",
+      "games",
+      "software",
+      "xxx"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "verificata",
+    "hosts": [
+      "yourbittorrent.com"
+    ],
+    "url": "https://yourbittorrent.com/",
+    "family": "torznab",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
     "id": "yts",
     "name": "YTS",
     "description": "Public YTS movie API (JSON) with hash, size and health.",

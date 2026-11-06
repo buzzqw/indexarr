@@ -6,7 +6,7 @@ Every source listed here is shipped with indexarr: no proxy, no external
 definition file to keep in sync. The catalog has no index of its own — it
 describes how to read the sites you configure.
 
-**102 site definitions** plus 8 generic connectors: 85 verified, 3 degraded and 14 draft. A draft is usable but not production-ready.
+**103 site definitions** plus 8 generic connectors: 86 verified, 3 degraded and 14 draft. A draft is usable but not production-ready.
 
 When a definition is added, removed or changes state, this file is
 regenerated in the same commit (`make supported-list`); the catalog test fails
@@ -20,7 +20,7 @@ while it is stale, so the list cannot describe a catalog that no longer exists.
 | **Access** | `None` = public, `Account` = username and password, `Cookie` = pasted session cookie, `API key` = key or passkey, `Uploader` = the site's uploader name, `Endpoint` = the address of a Torznab/Newznab endpoint or a feed |
 | **Language** | Primary language of the site |
 
-## Torrent (101)
+## Torrent (102)
 
 | Site | Access | Language | State | Notes |
 | --- | --- | --- | --- | --- |
@@ -123,6 +123,7 @@ while it is stale, so the list cannot describe a catalog that no longer exists.
 | [VSTorrent](https://vstorrent.org/feed/) | Endpoint | en | draft | — |
 | [XXXClub](https://xxxclub.to/) | None | en | verified | — |
 | [XXXTor](https://xxxtor.com/) | None | ru | verified | — |
+| [YourBittorrent](https://yourbittorrent.com/) | Endpoint | en | verified | — |
 | [YTS](https://yts.gg/) | None | en | verified | unofficial mirror |
 | [Zamunda LIFE](https://zamunda.life/) | None | bg | verified | — |
 

@@ -245,6 +245,7 @@ func TestTorznabSiteFixtures(t *testing.T) {
 	}{
 		{"torlock", "torlock/search.xml"},
 		{"torrentfunk", "torrentfunk/search.xml"},
+		{"yourbittorrent", "yourbittorrent/search.xml"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.id, func(t *testing.T) {

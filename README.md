@@ -355,9 +355,9 @@ generated list with access method, language and state for every site is
 commit that adds or removes a provider, and a test fails while it is stale.
 
 Among the best known: 1337x, The Pirate Bay, YTS, EZTV, LimeTorrents, Torlock,
-TorrentFunk, Nyaa, Sukebei, AnimeTosho, RuTracker and RuTor for Russian
-content, TorrentGalaxy, IPTorrents, TorrentLeech (draft), and — Italian —
-MirCrew, ExtTo, CorsaroBlu, ilDraGoNeRo and DDUnlimited (eD2k).
+TorrentFunk, YourBittorrent, Nyaa, Sukebei, AnimeTosho, RuTracker and RuTor for
+Russian content, TorrentGalaxy, IPTorrents, TorrentLeech (draft), and — Italian
+— MirCrew, ExtTo, CorsaroBlu, ilDraGoNeRo and DDUnlimited (eD2k).
 
 | Source | Support | How |
 | --- | --- | --- |
