@@ -19,6 +19,10 @@ search:
       details: { selector: "a.title", attr: href, type: url }
       magnet: { selector: 'a[href^="magnet:"]', attr: href }
     required: [title, details]
+latest:
+  request:
+    get: /search
+  pagination: { type: page, start: 1, step: 1, max_pages: 1, param: page, stop_when: empty_rows }
 download:
   resolve_on: search
   from: details

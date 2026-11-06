@@ -109,18 +109,22 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 			Categories: categories,
 		})
 	} else {
-		items, err = connector.Latest(ctx, engine.LatestRequest{
+		known := func(item engine.Item) bool {
+			cached, found := m.cachedRelease(ctx, item)
+			return found && knownReleaseHasLink(cached)
+		}
+		latest := engine.LatestRequest{
 			Categories: categories,
 			MaxAge:     time.Duration(intFromConfig(config["max_age_days"])) * 24 * time.Hour,
-			Known: func(item engine.Item) bool {
-				_, found, lookupErr := m.store.FindSameRelease(ctx, &store.Release{
-					Title:    item.Title,
-					Size:     item.Size,
-					InfoHash: itemHash(item),
-				})
-				return lookupErr == nil && found
-			},
-		})
+			Known:      known,
+		}
+		// Only a torrent keeps its link in the cache: the details page of a
+		// known Usenet or eD2k row is still the only way to build the .nzb or
+		// the ed2k:// link, so those walks keep reading it.
+		if protocol := strings.ToLower(strings.TrimSpace(indexer.Protocol)); protocol == "" || protocol == "torrent" {
+			latest.SkipKnownDetails = known
+		}
+		items, err = connector.Latest(ctx, latest)
 	}
 	if err != nil {
 		return stats, fmt.Errorf("indexer %s: fetch: %w", indexer.Slug, err)
@@ -227,10 +231,28 @@ type torrentPass struct {
 func (m *Manager) runTorrentItem(ctx context.Context, pass *torrentPass, item engine.Item) error {
 	indexer, stats := pass.indexer, pass.stats
 	hash := itemHash(item)
+	// A known row of a periodic latest walk arrives without a magnet: the
+	// details page was skipped on purpose. Reuse the cached link and identity
+	// so the blocklist still sees its infohash, the magnet keeps its trackers,
+	// and the upsert updates that release instead of discarding it as linkless.
+	cached := store.Release{}
+	knownCached := false
+	if hash == "" {
+		cached, knownCached = m.cachedRelease(ctx, item)
+		if knownCached && hash == "" {
+			hash = cached.InfoHash
+			if hash == "" {
+				hash = feed.MagnetHash(cached.Magnet)
+			}
+		}
+	}
 	if hash != "" {
 		item.InfoHash = hash
 	}
 	magnet := strings.TrimSpace(item.Magnet)
+	if magnet == "" && knownCached {
+		magnet = strings.TrimSpace(cached.Magnet)
+	}
 	if magnet == "" && hash != "" {
 		magnet = feed.MagnetFromHash(hash, item.Title)
 	}
@@ -308,8 +330,13 @@ func (m *Manager) runTorrentItem(ctx context.Context, pass *torrentPass, item en
 	}
 
 	if magnet == "" && len(torrent) == 0 && !pending {
-		stats.discardNoLink()
-		return nil
+		// A known row keeps its stored link (magnet, .torrent or payload):
+		// the upsert preserves it, so the run can still refresh the seeders
+		// and last-seen time without asking the site for the page again.
+		if !knownCached || !knownReleaseHasLink(cached) {
+			stats.discardNoLink()
+			return nil
+		}
 	}
 
 	dedupKey := releaseKey(hash, item, indexer.Slug)
@@ -772,6 +799,32 @@ func itemHash(item engine.Item) string {
 		return hash
 	}
 	return feed.MagnetHash(item.Magnet)
+}
+
+// cachedRelease returns the row a hashless item already belongs to. A lookup
+// error is treated as "not known": the run then reads the site normally rather
+// than trusting a broken cache.
+func (m *Manager) cachedRelease(ctx context.Context, item engine.Item) (store.Release, bool) {
+	cached, found, err := m.store.FindSameRelease(ctx, &store.Release{
+		Title:    item.Title,
+		Size:     item.Size,
+		InfoHash: itemHash(item),
+	})
+	if err != nil {
+		return store.Release{}, false
+	}
+	return cached, found
+}
+
+// knownReleaseHasLink reports whether a cached release already carries the
+// link a grab needs. A periodic latest walk skips the details page of a known
+// row only in this case: a row whose first resolution failed stays "unknown"
+// so the next run tries again instead of leaving it linkless for ever.
+func knownReleaseHasLink(rel store.Release) bool {
+	return strings.TrimSpace(rel.Magnet) != "" ||
+		strings.TrimSpace(rel.Ed2k) != "" ||
+		rel.HasTorrent() ||
+		len(rel.Payload) > 0
 }
 
 // itemIdentity is the deduplication key inside one run: infohash, then GUID,

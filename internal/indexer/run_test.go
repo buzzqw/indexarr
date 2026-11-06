@@ -457,3 +457,26 @@ func TestSuccessfulTestClearsOldError(t *testing.T) {
 		t.Fatal("a successful test did not record a health success")
 	}
 }
+
+// TestKnownReleaseHasLink keeps the skip of a periodic latest walk honest: a
+// cached row without a magnet, an eD2k link, a .torrent or a payload is not
+// complete, so the run must open its details page again.
+func TestKnownReleaseHasLink(t *testing.T) {
+	cases := []struct {
+		name string
+		rel  store.Release
+		want bool
+	}{
+		{"magnet", store.Release{Magnet: "magnet:?xt=urn:btih:abc"}, true},
+		{"ed2k", store.Release{Ed2k: "ed2k://|file|x|1|abc|/"}, true},
+		{"torrent", store.Release{Torrent: []byte("bytes")}, true},
+		{"payload", store.Release{Payload: []byte("payload")}, true},
+		{"empty", store.Release{}, false},
+		{"blank magnet", store.Release{Magnet: "   "}, false},
+	}
+	for _, tc := range cases {
+		if got := knownReleaseHasLink(tc.rel); got != tc.want {
+			t.Errorf("%s: knownReleaseHasLink = %t, want %t", tc.name, got, tc.want)
+		}
+	}
+}

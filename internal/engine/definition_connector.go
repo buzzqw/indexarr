@@ -353,7 +353,7 @@ func (c *DefinitionConnector) latestList(ctx context.Context, req LatestRequest)
 	}
 	if !req.SkipDetails {
 		var err error
-		items, err = c.resolveSearchDetails(ctx, items)
+		items, err = c.resolveSearchDetailsSkipping(ctx, items, req.SkipKnownDetails)
 		if err != nil {
 			return nil, err
 		}

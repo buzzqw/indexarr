@@ -173,6 +173,16 @@ func (c *DefinitionConnector) maxConcurrentDownloads() int {
 // season pack, a discography) becomes one item per file, so the archive keeps
 // every link instead of only the first.
 func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []Item) ([]Item, error) {
+	return c.resolveSearchDetailsSkipping(ctx, items, nil)
+}
+
+// resolveSearchDetailsSkipping is resolveSearchDetails with one extra rule: an
+// item the caller already knows is left untouched instead of opening its
+// details page. A periodic latest walk of a listing source reads the same rows
+// every run, and their magnet is already in the cache; opening the page again
+// is the request that turns a 429 into a long cooldown. The item stays in the
+// result, so the run still refreshes its seeders and last-seen time.
+func (c *DefinitionConnector) resolveSearchDetailsSkipping(ctx context.Context, items []Item, skip func(Item) bool) ([]Item, error) {
 	if !c.resolvesOnSearch() {
 		return items, nil
 	}
@@ -190,6 +200,9 @@ func (c *DefinitionConnector) resolveSearchDetails(ctx context.Context, items []
 		if strings.TrimSpace(items[i].Magnet) != "" ||
 			strings.TrimSpace(items[i].DownloadURL) != "" ||
 			strings.TrimSpace(items[i].Ed2k) != "" {
+			continue
+		}
+		if skip != nil && skip(items[i]) {
 			continue
 		}
 		rawURL := strings.TrimSpace(items[i].DetailsURL)

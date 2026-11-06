@@ -480,3 +480,120 @@ func TestDefinitionDownloadErrorsAreRedacted(t *testing.T) {
 		t.Errorf("error %q does not report the HTTP status", message)
 	}
 }
+
+// TestLatestSkipsDetailsForKnownRows is the periodic crawl of a listing source:
+// a row already in the cache keeps its stored magnet and must not cost another
+// details request, while a new row is resolved as before. The known row stays
+// in the result, so the run still refreshes its seeders and last-seen time.
+func TestLatestSkipsDetailsForKnownRows(t *testing.T) {
+	var detailRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/search":
+			writeBody(t, w, fixture(t, "download_list.html"))
+		case "/details/1":
+			detailRequests.Add(1)
+			writeBody(t, w, fixture(t, "download_details_magnet.html"))
+		case "/details/2":
+			detailRequests.Add(1)
+			writeBody(t, w, fixture(t, "download_details_torrent.html"))
+		case "/files/2.torrent":
+			w.Header().Set("Content-Type", "application/x-bittorrent")
+			writeBody(t, w, []byte("torrent-bytes"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	connector := newDefinitionConnector(t, "download_resolve.yaml", server.URL, nil, newDefinitionClock())
+	known := func(item Item) bool { return item.Title == "Magnet Release" }
+	items, err := connector.Latest(context.Background(), LatestRequest{
+		Known:            known,
+		SkipKnownDetails: known,
+	})
+	if err != nil {
+		t.Fatalf("Latest: %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("items = %d, want 3", len(items))
+	}
+	if got := detailRequests.Load(); got != 1 {
+		t.Errorf("details requests = %d, want 1 (the known row must not be opened)", got)
+	}
+	if items[0].Magnet != "" {
+		t.Errorf("known row magnet = %q, want it left untouched", items[0].Magnet)
+	}
+	if items[1].DownloadURL != server.URL+"/files/2.torrent" {
+		t.Errorf("new row download URL = %q", items[1].DownloadURL)
+	}
+}
+
+// TestLatestAllKnownCostsOnlyTheListing is the common case of a feed that has
+// not changed: the walk reads one page and no details page at all.
+func TestLatestAllKnownCostsOnlyTheListing(t *testing.T) {
+	var detailRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/search" {
+			writeBody(t, w, fixture(t, "download_list.html"))
+			return
+		}
+		detailRequests.Add(1)
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	connector := newDefinitionConnector(t, "download_resolve.yaml", server.URL, nil, newDefinitionClock())
+	known := func(Item) bool { return true }
+	items, err := connector.Latest(context.Background(), LatestRequest{
+		Known:            known,
+		SkipKnownDetails: known,
+	})
+	if err != nil {
+		t.Fatalf("Latest: %v", err)
+	}
+	if len(items) != 3 {
+		t.Errorf("items = %d, want 3", len(items))
+	}
+	if got := detailRequests.Load(); got != 0 {
+		t.Errorf("details requests = %d, want 0", got)
+	}
+}
+
+// TestLatestKnownWithoutSkipStillReadsDetails keeps the Usenet/eD2k rule: a
+// known row there still needs its details page, because the page is the link.
+func TestLatestKnownWithoutSkipStillReadsDetails(t *testing.T) {
+	var detailRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/search":
+			writeBody(t, w, fixture(t, "download_list.html"))
+		case "/details/1":
+			detailRequests.Add(1)
+			writeBody(t, w, fixture(t, "download_details_magnet.html"))
+		case "/details/2":
+			detailRequests.Add(1)
+			writeBody(t, w, fixture(t, "download_details_torrent.html"))
+		case "/files/2.torrent":
+			w.Header().Set("Content-Type", "application/x-bittorrent")
+			writeBody(t, w, []byte("torrent-bytes"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	connector := newDefinitionConnector(t, "download_resolve.yaml", server.URL, nil, newDefinitionClock())
+	items, err := connector.Latest(context.Background(), LatestRequest{
+		Known: func(Item) bool { return true },
+	})
+	if err != nil {
+		t.Fatalf("Latest: %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("items = %d, want 3", len(items))
+	}
+	if got := detailRequests.Load(); got != 2 {
+		t.Errorf("details requests = %d, want 2 without SkipKnownDetails", got)
+	}
+}

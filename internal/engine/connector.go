@@ -219,6 +219,11 @@ type LatestRequest struct {
 	// Known reports whether an item is already in the cache. A latest reader
 	// stops after the first page where every row is known.
 	Known func(Item) bool
+	// SkipKnownDetails keeps the details page of an item the caller already
+	// has: a periodic torrent walk has the cached magnet and does not need the
+	// page again. It is separate from Known because a usenet or eD2k walk still
+	// needs the details page even for a known row: there the link is the page.
+	SkipKnownDetails func(Item) bool
 }
 
 // Payload is the bytes a download produces: a .torrent or .nzb, or a magnet
