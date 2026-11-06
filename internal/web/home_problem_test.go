@@ -1,9 +1,12 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/buzzqw/indexarr/internal/health"
 	"github.com/buzzqw/indexarr/internal/i18n"
@@ -59,6 +62,37 @@ func TestConcreteProblemCausesDoNotCarryACount(t *testing.T) {
 	}}
 	if code, count := homeProblemCode(view); code != "home.problem.flood" || count != 0 {
 		t.Fatalf("homeProblemCode = %q/%d, want home.problem.flood/0", code, count)
+	}
+}
+
+// The home line says how long the problem has lasted, so a ten-minute hiccup
+// and a day-old outage are not the same sentence. A paused run has an empty
+// metrics row: it must not be read as a search that returned nothing.
+func TestHomeProblemShowsHowLongItHasLasted(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+	id := seedBrokenIndexer(t, env, "tg-paused", "HTTP 429: too many requests")
+	start := time.Now().Add(-21*time.Hour - 10*time.Minute)
+	rows := []store.IndexerHistory{
+		{IndexerID: id, Kind: "run", Status: "paused", StartedAt: time.Now().Add(-2 * time.Hour),
+			Metrics: &store.RunMetrics{}},
+		{IndexerID: id, Kind: "run", Status: "error", Error: "HTTP 429: too many requests", StartedAt: start},
+	}
+	for _, row := range rows {
+		if _, err := env.store.RecordIndexerHistory(ctx, row); err != nil {
+			t.Fatalf("RecordIndexerHistory: %v", err)
+		}
+	}
+
+	body := get(t, env.handler, "/?lang=en").Body.String()
+	if !strings.Contains(body, "for 21 h") {
+		t.Errorf("home does not say how long the problem has lasted:\n%s", body)
+	}
+	if strings.Contains(body, "No results in the last") {
+		t.Error("a paused run was reported as a search that found nothing")
+	}
+	if !strings.Contains(body, "limiting requests") {
+		t.Error("home lost the concrete 429 cause")
 	}
 }
 

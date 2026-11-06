@@ -282,6 +282,19 @@ func (s *Server) healthProblems(r *http.Request, view indexerHealthView) []uiPro
 				ActionLabel: s.translate(r, "idx.problem.zeroAction"),
 				ActionURL:   edit,
 			})
+		case health.ReasonPaused:
+			// The breaker refused the last attempts. There is no "resume"
+			// button here: the live breaker is already closed when this reason
+			// survives alone (a manual resume), so only the explanation stays
+			// until the next real outcome either confirms or clears it.
+			if seen[health.ReasonCircuit] {
+				continue
+			}
+			out = append(out, uiProblem{
+				Text:        s.translate(r, "idx.problem.circuit"),
+				ActionLabel: s.translate(r, "idx.problem.genericAction"),
+				ActionURL:   detail,
+			})
 		}
 	}
 	return out

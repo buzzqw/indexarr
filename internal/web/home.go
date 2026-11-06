@@ -22,6 +22,10 @@ type HomeProblem struct {
 	ActionKey string
 	ActionURL string
 	Kind      string
+	// Since is when the current problem started. The home page shows it next
+	// to the sentence, so the operator can tell a two-minute hiccup from a
+	// source that has not worked for a day.
+	Since time.Time
 }
 
 // HomeStatus is the cached view of computeHomeStatus. The home page and the
@@ -67,6 +71,9 @@ type HomeStatus struct {
 	ProblemIndexers  int
 	Apps             int
 	ProblemApps      int
+	// OldestProblemAt is the start of the longest-running indexer problem.
+	// The header shows it next to the count.
+	OldestProblemAt  time.Time
 	LastReleaseAt    time.Time
 	// Err is a technical message for the red "cannot work" state. It is
 	// translated into a generic sentence by the template.
@@ -120,8 +127,13 @@ func (s *Server) computeHomeStatus(ctx context.Context) HomeStatus {
 			ActionKey: "home.action.indexer",
 			ActionURL: "/indexers/" + itoa(indexer.ID),
 			Kind:      "indexer",
+			Since:     view.Assessment.Since,
 		}
 		problem.Code, problem.Count = homeProblemCode(view)
+		if !problem.Since.IsZero() &&
+			(status.OldestProblemAt.IsZero() || problem.Since.Before(status.OldestProblemAt)) {
+			status.OldestProblemAt = problem.Since
+		}
 		status.Problems = append(status.Problems, problem)
 	}
 	applications, err := s.store.ListApplications(ctx)
@@ -172,6 +184,11 @@ func homeProblemCode(view indexerHealthView) (string, int) {
 			return "home.problem.errors", reason.Count
 		case health.ReasonZeroResults:
 			return "home.problem.zero", reason.Count
+		case health.ReasonPaused:
+			// The breaker refused the request: the source is paused, not
+			// returning an empty answer. Reusing the circuit sentence keeps
+			// the explanation the same as the detail page.
+			return "home.problem.circuit", 0
 		}
 	}
 	return "home.problem.unknown", 0

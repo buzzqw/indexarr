@@ -20,10 +20,11 @@
   <p class="status-line">
     <span class="status-dot status-problem" role="img" aria-label="{{T "home.status.attention"}}"><span class="dot" aria-hidden="true"></span></span>
     <strong>{{if eq (len .Status.Problems) .Status.ProblemIndexers}}{{T "home.status.problems" .Status.ProblemIndexers}}{{else}}{{T "home.status.issues" (len .Status.Problems)}}{{end}}</strong>
+    {{if not .Status.OldestProblemAt.IsZero}}<span class="muted problem-since">· {{since .Status.OldestProblemAt}}</span>{{end}}
   </p>
   <ul class="home-problems">
     {{range .Status.Problems}}
-    <li class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span><strong>{{.Name}}</strong> — {{if .Count}}{{T .Code .Count}}{{else}}{{T .Code}}{{end}}</span> <a class="problem-action" href="{{.ActionURL}}">{{T .ActionKey}}</a></li>
+    <li class="problem"><span class="problem-icon" aria-hidden="true">▲</span><span><strong>{{.Name}}</strong> — {{if .Count}}{{T .Code .Count}}{{else}}{{T .Code}}{{end}}{{if not .Since.IsZero}} <span class="problem-since muted">· {{since .Since}}</span>{{end}}</span> <a class="problem-action" href="{{.ActionURL}}">{{T .ActionKey}}</a></li>
     {{end}}
   </ul>
   {{else}}

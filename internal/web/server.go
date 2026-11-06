@@ -150,6 +150,7 @@ var templateFuncMap = template.FuncMap{
 	"date":       humanDate,
 	"dateOnly":   humanDateOnly,
 	"ago":        humanAgo,
+	"since":      humanSince,
 	"magnetFor":  magnetFor,
 	"catName":    categories.Name,
 	"catNameInt": func(id int) string { return categories.Name(strconv.Itoa(id)) },
@@ -299,6 +300,9 @@ func compileTemplateSet(lang i18n.Language) *templateSet {
 	}
 	funcs["ago"] = func(value time.Time) string {
 		return humanAgoLang(lang, value)
+	}
+	funcs["since"] = func(value time.Time) string {
+		return humanSinceLang(lang, value)
 	}
 	funcs["until"] = func(value time.Time) string {
 		return humanUntilLang(lang, value)
@@ -1352,6 +1356,34 @@ func humanAgoLang(lang i18n.Language, value time.Time) string {
 		return i18n.T(lang, "time.hoursAgo", int(elapsed.Hours()))
 	default:
 		return i18n.T(lang, "time.daysAgo", int(elapsed.Hours()/24))
+	}
+}
+
+func humanSince(value time.Time) string {
+	return humanSinceLang(i18n.EN, value)
+}
+
+// humanSinceLang says how long something has been going on ("for 21 h", "da
+// 21 h"). It is not the same as ago: the home page lists a problem that is
+// still open, so the sentence has to point at the elapsed time, not at a past
+// event.
+func humanSinceLang(lang i18n.Language, value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	elapsed := time.Since(value)
+	if elapsed < 0 {
+		elapsed = 0
+	}
+	switch {
+	case elapsed < time.Minute:
+		return i18n.T(lang, "time.sinceNow")
+	case elapsed < time.Hour:
+		return i18n.T(lang, "time.sinceMinutes", int(elapsed.Minutes()))
+	case elapsed < 24*time.Hour:
+		return i18n.T(lang, "time.sinceHours", int(elapsed.Hours()))
+	default:
+		return i18n.T(lang, "time.sinceDays", int(elapsed.Hours()/24))
 	}
 }
 

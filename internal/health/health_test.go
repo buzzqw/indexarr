@@ -310,7 +310,7 @@ func TestCheckerTransitionsTheDefinitionAndKeepsIt(t *testing.T) {
 }
 
 func TestReasonCodesAreStable(t *testing.T) {
-	for _, code := range []string{ReasonCircuit, ReasonLastError, ReasonErrors, ReasonZeroResults, ReasonCompleteness} {
+	for _, code := range []string{ReasonCircuit, ReasonLastError, ReasonErrors, ReasonZeroResults, ReasonPaused, ReasonCompleteness} {
 		if strings.TrimSpace(code) == "" {
 			t.Errorf("empty reason code")
 		}
@@ -362,6 +362,77 @@ func TestPausedOutcomeIsNeitherFailureNorSuccess(t *testing.T) {
 	}
 	if got := NextStateGroup(CatalogDegraded, [][]Outcome{{paused, ok}, {ok, ok}}, DefaultThresholds()); got != CatalogDegraded {
 		t.Errorf("paused recovered the definition to %q", got)
+	}
+}
+
+// A run the breaker refused carries a metrics row with zero items, because it
+// never reached the site. It must not be read as "the search found nothing":
+// that sentence sent the operator to check a query while the real cause was
+// the site's rate limit.
+func TestPausedRunsAreNotEmptyAnswers(t *testing.T) {
+	thresholds := DefaultThresholds()
+	now := time.Date(2026, 11, 5, 15, 22, 0, 0, time.UTC)
+	paused := Outcome{Kind: "run", Status: "paused", HasSeen: true, At: now}
+	newer := Outcome{Kind: "run", Status: "paused", HasSeen: true, At: now.Add(4 * time.Hour)}
+
+	got := Assess(Input{Enabled: true, Outcomes: []Outcome{newer, paused}}, thresholds)
+	if got.State != StateDegraded {
+		t.Fatalf("paused source = %q, want degraded", got.State)
+	}
+	if got.ZeroResults != 0 {
+		t.Errorf("ZeroResults = %d, want 0: a paused run contacted nothing", got.ZeroResults)
+	}
+	found := false
+	for _, reason := range got.Reasons {
+		if reason.Code != ReasonPaused {
+			continue
+		}
+		found = true
+		if reason.Count != 2 {
+			t.Errorf("paused count = %d, want 2", reason.Count)
+		}
+	}
+	if !found {
+		t.Fatalf("reasons = %#v, want %s", got.Reasons, ReasonPaused)
+	}
+	if !got.Since.Equal(now) {
+		t.Errorf("Since = %s, want the oldest paused row %s", got.Since, now)
+	}
+
+	// A clean answer after the pause clears both the state and the start.
+	recovered := Assess(Input{Enabled: true, Outcomes: []Outcome{clean(10), newer, paused}}, thresholds)
+	if recovered.State != StateOK || !recovered.Since.IsZero() {
+		t.Errorf("after a clean run = %q since %s, want ok and no start", recovered.State, recovered.Since)
+	}
+
+	// A health check refused by the breaker only says that the probe could not
+	// run: the source's own last run was clean, so the source is not paused.
+	healthPause := Outcome{Kind: "health", Status: "paused", HasSeen: true, At: now}
+	if got := Assess(Input{Enabled: true, Outcomes: []Outcome{healthPause, clean(10)}}, thresholds); got.State != StateOK {
+		t.Errorf("a paused health check alone = %q, want ok", got.State)
+	}
+}
+
+// The start of the problem is the oldest row of the streak, not the moment the
+// last error was written. A day-old outage must not look like a new one.
+func TestProblemSinceFollowsTheWholeStreak(t *testing.T) {
+	t1 := time.Date(2026, 11, 5, 10, 34, 0, 0, time.UTC)
+	t2 := t1.Add(2 * time.Hour)
+	t3 := t2.Add(1 * time.Hour)
+	outcomes := []Outcome{
+		{Kind: "run", Status: "paused", At: t3},
+		{Kind: "run", Status: "error", At: t2},
+		{Kind: "run", Status: "ok", Seen: 10, HasSeen: true, At: t1},
+	}
+	if got := problemSince(outcomes); !got.Equal(t2) {
+		t.Errorf("problemSince = %s, want %s", got, t2)
+	}
+	// A canceled row says nothing and is skipped, not used as a start.
+	if got := problemSince([]Outcome{{Kind: "run", Status: "canceled", At: t3}, {Kind: "run", Status: "error", At: t2}}); !got.Equal(t2) {
+		t.Errorf("problemSince with a canceled head = %s, want %s", got, t2)
+	}
+	if got := problemSince([]Outcome{clean(10)}); !got.IsZero() {
+		t.Errorf("problemSince on a healthy source = %s, want zero", got)
 	}
 }
 

@@ -43,6 +43,7 @@ const (
 	ReasonLastError    = "last_error"
 	ReasonErrors       = "errors"
 	ReasonZeroResults  = "zero_results"
+	ReasonPaused       = "paused"
 	ReasonCompleteness = "completeness"
 )
 
@@ -108,9 +109,12 @@ type Reason struct {
 // package receives. It is the only input of the model, so a caller cannot
 // invent a second status source.
 type Outcome struct {
-	Kind          string
-	Status        string
-	Error         string
+	Kind   string
+	Status string
+	Error  string
+	// At is when the execution started. The UI uses it to say how long the
+	// current problem has lasted, not just that it exists.
+	At            time.Time
 	Seen          int64
 	HasSeen       bool
 	FieldTotal    int64
@@ -148,6 +152,10 @@ type Assessment struct {
 	// LastError is the newest error text, redacted by the caller. The UI uses
 	// it to explain the concrete cause instead of a generic streak.
 	LastError string
+	// Since is when the current problem started: the oldest failure, empty
+	// run or breaker pause of the uninterrupted streak. It is zero when the
+	// source is healthy or the history does not reach back far enough.
+	Since time.Time
 }
 
 // Healthy reports whether the indexer has no current problem.
@@ -174,6 +182,7 @@ func OutcomesFromHistory(rows []store.IndexerHistory) []Outcome {
 			Kind:   strings.ToLower(strings.TrimSpace(row.Kind)),
 			Status: strings.ToLower(strings.TrimSpace(row.Status)),
 			Error:  strings.TrimSpace(row.Error),
+			At:     row.StartedAt,
 		}
 		if row.Metrics != nil {
 			metrics := *row.Metrics
@@ -258,6 +267,14 @@ func Assess(in Input, thresholds Thresholds) Assessment {
 			Code: ReasonZeroResults, Count: signals.zeroResults,
 		})
 	}
+	// A paused source was refused by the breaker before contacting the site.
+	// It is not a failure and not an empty answer, but it is still a source
+	// that cannot work, so it keeps its own reason instead of being reported
+	// as a wrong search query.
+	if paused := consecutivePaused(outcomes); paused > 0 {
+		assessment.Reasons = append(assessment.Reasons, Reason{Code: ReasonPaused, Count: paused})
+	}
+	assessment.Since = problemSince(outcomes)
 
 	switch {
 	case hard:
@@ -402,12 +419,79 @@ func consecutiveZero(outcomes []Outcome) int {
 		if outcomeFailed(outcome) || outcomeCanceled(outcome) {
 			break
 		}
+		// A paused run never reached the site, so its zero count says nothing
+		// about the query. It used to count as an empty answer and showed a
+		// rate-limited source as "no results: check the search query".
+		if outcomePaused(outcome) {
+			continue
+		}
 		if !outcome.HasSeen || outcome.Seen > 0 {
 			break
 		}
 		count++
 	}
 	return count
+}
+
+// consecutivePaused counts the paused scheduled runs at the head of the
+// history. They are the breaker's own record: the source has not been working,
+// but the site was not contacted, so they are neither a failure nor a clean
+// run. A paused health check is left out: it says the checker could not probe,
+// not that the source has stopped reading the site.
+func consecutivePaused(outcomes []Outcome) int {
+	count := 0
+	for _, outcome := range outcomes {
+		if outcomeCanceled(outcome) {
+			continue
+		}
+		kind := strings.ToLower(strings.TrimSpace(outcome.Kind))
+		if outcomePaused(outcome) && (kind == "run" || kind == "latest") {
+			count++
+			continue
+		}
+		// A paused health check or search says nothing about the source's
+		// schedule, so it is skipped without ending the pause streak.
+		if outcomePaused(outcome) {
+			continue
+		}
+		break
+	}
+	return count
+}
+
+// problemSince returns the start of the current problem streak, or the zero
+// time when the newest outcome is clean. It scans newest first and accepts the
+// same evidence the state uses: a failed run, an empty scheduled run or a
+// breaker pause. A canceled or paused row is not a failure, but a pause is
+// still part of the outage, so it extends the streak without adding a failure.
+func problemSince(outcomes []Outcome) time.Time {
+	var since time.Time
+	for _, outcome := range outcomes {
+		if outcomeCanceled(outcome) {
+			continue
+		}
+		if outcomePaused(outcome) {
+			if !outcome.At.IsZero() {
+				since = outcome.At
+			}
+			continue
+		}
+		if outcomeFailed(outcome) {
+			if !outcome.At.IsZero() {
+				since = outcome.At
+			}
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(outcome.Kind), "run") &&
+			outcome.HasSeen && outcome.Seen == 0 {
+			if !outcome.At.IsZero() {
+				since = outcome.At
+			}
+			continue
+		}
+		break
+	}
+	return since
 }
 
 // latestCompleteness returns the minimum field completeness of the newest

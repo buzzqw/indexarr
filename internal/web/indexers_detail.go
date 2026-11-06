@@ -337,9 +337,18 @@ func (s *Server) buildIndexerDetail(r *http.Request, id int64) (indexerDetailVie
 	// Overview tab: the operator must not have to open Data or the advanced
 	// block to learn why a source is red.
 	data.Verdict = s.verdict(r, healthView, data.Status, data.Problems)
+	if !healthView.Assessment.Since.IsZero() {
+		// The model counts the whole streak: the stored error's UpdatedAt only
+		// says when it was written last, which made a day-old problem look
+		// like it had just started.
+		data.ProblemAt = healthView.Assessment.Since
+		data.HasProblemAt = true
+	}
 	if data.LastError != "" {
 		data.ProblemDetail = feed.RedactText(data.LastError, nil)
-		if data.HasState && strings.TrimSpace(data.State.LastError) != "" && !data.State.UpdatedAt.IsZero() {
+		if data.HasProblemAt {
+			// Already set from the streak above.
+		} else if data.HasState && strings.TrimSpace(data.State.LastError) != "" && !data.State.UpdatedAt.IsZero() {
 			data.ProblemAt = data.State.UpdatedAt
 			data.HasProblemAt = true
 		} else if data.LastRun != nil && !data.LastRun.StartedAt.IsZero() {
