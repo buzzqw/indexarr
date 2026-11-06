@@ -79,7 +79,7 @@ var (
 	resolutionPattern = regexp.MustCompile(`(?i)\b(2160p|1080p|720p|480p|4k|uhd)\b`)
 	sourcePattern     = regexp.MustCompile(`(?i)\b(web[\s._-]?dl|webdl|webrip|web[\s._-]?rip|bluray|blu[\s._-]?ray|bdrip|brrip|remux|hdtv|dvdrip|web)\b`)
 	codecPattern      = regexp.MustCompile(`(?i)\b(x264|h[\s._-]?264|avc|x265|h[\s._-]?265|hevc|av1|vp9|mpeg2)\b`)
-	seasonEpisode     = regexp.MustCompile(`(?i)\bs(\d{1,2})(?:e(\d{1,3}))?\b`)
+	seasonEpisode     = regexp.MustCompile(`(?i)\bs(\d{1,2})(?:e(\d{1,3})(?:[-–]e?\d{1,3})*)?\b`)
 	crossEpisode      = regexp.MustCompile(`(?i)\b(\d{1,2})x(\d{2,3})\b`)
 	yearPattern       = regexp.MustCompile(`\b(19|20)\d{2}\b`)
 	sceneGroup        = regexp.MustCompile(`(?i).*[-–]([a-z0-9][a-z0-9._-]{0,30})\s*$`)
@@ -90,10 +90,14 @@ var (
 	// releaseSearchTags are the technical parts a release name carries around
 	// the title. They are removed by SearchName before an external metadata
 	// search, together with the file extension and the trailing group.
-	releaseSearchTags = regexp.MustCompile(`(?i)\b(?:2160p|1080p|720p|480p|4k|uhd|8[\s._-]?bit|10[\s._-]?bit|fullhd|264|265|web[\s._-]?dl|webdl|web[\s._-]?rip|webrip|blu[\s._-]?ray|bluray|bdrip|brrip|remux|hdtv|dvdrip|web|x264|h[\s._-]?264|avc|x265|h[\s._-]?265|hevc|av1|vp9|mpeg2|aac|ac3|eac3|ddp?|dts(?:[\s._-]?hd)?|truehd|atmos|dolby[\s._-]?vis(?:ion)?|flac|mp3|opus|hdr10\+?|hdr|dovi|dv|sdr|proper|repack|rerip|internal|multi|ita|italian|eng|english|sub[\s._-]?ita|ita[\s._-]?eng|eng[\s._-]?ita|amzn|dsnp|hmax|atvp|pcok|itunes|hulu|extended|unrated|uncut|remastered|mkv|mp4|avi|m4v)\b`)
+	releaseSearchTags = regexp.MustCompile(`(?i)\b(?:2160p|1080p|720p|480p|4k|uhd|8[\s._-]?bit|10[\s._-]?bit|fullhd|264|265|web[\s._-]?dl|webdl|web[\s._-]?rip|webrip|blu[\s._-]?ray|bluray|bdrip|brrip|remux|hdtv|dvdrip|web|hevc\d{1,2}|avc\d{1,2}|x26[45]\d{1,2}|h[\s._-]?26[45]\d{1,2}|x264|h[\s._-]?264|avc|x265|h[\s._-]?265|hevc|av1|vp9|mpeg2|aac|ac3|eac3|ddp?|dts(?:[\s._-]?hd)?|truehd|atmos|dolby[\s._-]?vis(?:ion)?|flac|mp3|opus|hdr10\+?|hdr|dovi|dv|sdr|proper|repack|rerip|internal|multi|ita|italian|eng|english|spa|spanish|subs|sub[\s._-]?ita|ita[\s._-]?eng|eng[\s._-]?ita|amzn|dsnp|hmax|atvp|pcok|itunes|hulu|extended|unrated|uncut|remastered|mkv|mp4|avi|m4v)\b`)
 	audioCodecs       = regexp.MustCompile(`(?i)\b(?:aac|ac3|eac3|ddp?\+?|dts(?:[\s._-]?hd)?|truehd|atmos|flac|mp3|opus)(?:[\s._-]?\d(?:[\s._-]?\d)?)?\b`)
 	audioChannels     = regexp.MustCompile(`(?i)\b(?:2[\s._-]0|5[\s._-]1|7[\s._-]1)\b`)
 	leadingBracket    = regexp.MustCompile(`^\s*\[[^\]]+\]\s*`)
+	// uploaderTail is the " byMe7alh" marker that some forums put before the
+	// group. It is case-sensitive on purpose: "Stand by Me" has a space after
+	// "by", while an uploader tag writes the name in one token.
+	uploaderTail = regexp.MustCompile(`\s+by[A-Z0-9]`)
 )
 
 // The normalizers run on every title in every result page. Building a
@@ -204,6 +208,28 @@ func extractUncached(title string) Features {
 	return out
 }
 
+// strongTechnicalCut returns the part of a release name before the first
+// marker that cannot be part of a title: a season/episode, a resolution or an
+// uploader tag. Everything after that marker is the technical tail (languages,
+// codec, group), so the title does not have to fight each token: the Sugar
+// episode "Sugar 2024 S02e06-07 [1080p Ita Eng Spa HEVC10 SubS] byMe7alh
+// [MIRCrew]" becomes "Sugar" before the rest of the cleaner runs.
+//
+// A bare year is deliberately not a cut point: "Blade Runner 2049 2017" keeps
+// "2049" because the year pass removes only the last four-digit number.
+func strongTechnicalCut(raw string) string {
+	cut := -1
+	for _, pattern := range []*regexp.Regexp{seasonEpisode, crossEpisode, resolutionPattern, uploaderTail} {
+		if loc := pattern.FindStringIndex(raw); loc != nil && (cut < 0 || loc[0] < cut) {
+			cut = loc[0]
+		}
+	}
+	if cut > 0 {
+		return strings.TrimSpace(raw[:cut])
+	}
+	return raw
+}
+
 // SearchName derives the human title from a release name for an external
 // metadata search. It drops the file extension, the technical tags (resolution,
 // source, codec, audio, HDR, language, edition), the season and episode
@@ -211,10 +237,11 @@ func extractUncached(title string) Features {
 // would type: "Mr-9.Do.or.Die.2023.1080p.ITA-ENG...mkv" becomes
 // "mr-9 do or die".
 func SearchName(title string) string {
-	raw := strings.ToLower(strings.TrimSpace(title))
-	if raw == "" {
+	trimmed := strings.TrimSpace(title)
+	if trimmed == "" {
 		return ""
 	}
+	raw := strings.ToLower(strongTechnicalCut(trimmed))
 	raw = trimMediaExtension(raw)
 	hadTags := releaseSearchTags.MatchString(raw) || audioCodecs.MatchString(raw)
 	// A leading "[Group]" is a source tag, not part of the title.

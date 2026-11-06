@@ -29,7 +29,15 @@ func TestSearchNameRemovesReleaseNoise(t *testing.T) {
 		"Il padre dell anno 2024 1080p H264 iTA EnG AC3 Sub E":                    "il padre dell anno",
 		"Sub Zero 1995 1080p BluRay x264-GROUP":                                   "sub zero",
 		"No.Technical.Tags.Here":                                                  "no technical tags here",
-		"":                                                                        "",
+		// Forum-style names put every language in one bracket, then the
+		// uploader and the group: the whole tail belongs to the release, not
+		// to the title a person types into TMDB/TVDB.
+		"Sugar 2024 S02e06-07 [1080p Ita Eng Spa HEVC10 SubS] byMe7alh [MIRCrew]":                   "sugar",
+		"The Last of Us S01e01-09 [1080p Ita Eng Spa h265 10bit SubS] byMe7alh [MIRCrew]":          "the last of us",
+		"The Last of Us S01e01 1080p Ita Eng Spa h265 10bit SubS MirCrewRelease byMe7alh":          "the last of us",
+		"Marshals A Yellowstone Story S01e01-13 [720p Ita Eng Spa SubS] byMe7alh [MIRCrew":        "marshals a yellowstone story",
+		"Sugar Spa HEVC10 Subs byMe7alh MIRCrew":                                                   "sugar",
+		"":                                                                                         "",
 	}
 	for input, want := range cases {
 		if got := SearchName(input); got != want {

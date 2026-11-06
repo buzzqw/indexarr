@@ -1333,8 +1333,10 @@ pre.yaml {
 .releases-table th:nth-child(1) { width: 2.2rem; }
 .releases-table th:nth-child(3) { width: 6rem; }
 .releases-table th:nth-child(4) { width: 5rem; }
-.releases-table th:nth-child(5) { width: 8.5rem; }
-.releases-table th:nth-child(6) { width: 12rem; }
+/* "Published" only holds a short relative date ("2h ago"): 8.5rem wasted two
+   rem that the action column needs for its five buttons. */
+.releases-table th:nth-child(5) { width: 6.5rem; }
+.releases-table th:nth-child(6) { width: 14rem; }
 .releases-table td.release-title { overflow: hidden; }
 .releases-table td.release-actions-cell { overflow: visible; }
 .releases-table .release-title-link,
@@ -2106,11 +2108,12 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
 .release-actions { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
 
 /* Wide screens keep download, magnets and metadata searches on one line, so a
-   result row stays one line tall. The action column grows to fit the widest
-   case; below this width the buttons wrap again instead of overflowing. */
-@media (min-width: 1000px) {
-  .releases-table th:nth-child(6) { width: 21rem; }
-  .release-actions { flex-wrap: nowrap; }
+   result row stays one line tall. The column fits the five buttons of a
+   torrent row (about 22rem of content plus the cell padding); below this width
+   they wrap instead of spilling past the table edge. An eD2k row adds "Copy
+   eD2k" and wraps that sixth button on a second line. */
+@media (min-width: 1300px) {
+  .releases-table th:nth-child(6) { width: 24rem; }
 }
 
 /* Edit form: the credential block is the first thing after the address. */
