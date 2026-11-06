@@ -438,7 +438,7 @@
   "home.problem.dns": "当前无法解析站点名称。通常是临时问题：indexarr 会自动重试。",
   "home.problem.errors": "连续 %d 次检查失败：打开索引器查看详情。",
   "home.problem.flood": "站点限制了搜索频率（flood control）：indexarr 会将搜索排队，并在站点允许时发送。",
-  "home.problem.healthZero": "健康检查未找到结果：定义中的搜索查询不适合该站点。",
+  "home.problem.healthZero": "健康检查未找到结果：站点有响应，但页面为空或已更改，或者定义中的搜索查询不适合该站点。",
   "home.problem.http": "站点返回了错误。",
   "home.problem.loginForm": "站点拒绝了登录表单（令牌已过期）：请重新运行测试；如果仍然失败，请刷新会话。",
   "home.problem.parse": "页面已更改：站点布局与定义不再匹配。",

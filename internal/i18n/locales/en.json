@@ -438,7 +438,7 @@
   "home.problem.dns": "The site name does not resolve right now. Usually temporary: indexarr retries by itself.",
   "home.problem.errors": "%d checks failed in a row: open the indexer for details.",
   "home.problem.flood": "The site limits searches (flood control): indexarr queues them and sends them when the site allows it.",
-  "home.problem.healthZero": "The health check found no results: the definition's search query does not suit the site.",
+  "home.problem.healthZero": "The health check found no results: the site answered but the page is empty or changed, or the definition's search query does not suit it.",
   "home.problem.http": "The site returned an error.",
   "home.problem.loginForm": "The site rejected the login form (stale token): run the test again; if it persists, refresh the session.",
   "home.problem.parse": "The page changed: the site layout no longer matches the definition.",

@@ -438,7 +438,7 @@
   "home.problem.dns": "Der Seitenname löst sich gerade nicht auf. Meist vorübergehend: indexarr versucht es selbst erneut.",
   "home.problem.errors": "%d Prüfungen in Folge fehlgeschlagen: Indexer für Details öffnen.",
   "home.problem.flood": "Die Seite begrenzt Suchanfragen (Flood-Control): indexarr stellt sie in die Warteschlange und sendet sie, wenn die Seite es zulässt.",
-  "home.problem.healthZero": "Die Gesundheitsprüfung hat keine Ergebnisse gefunden: Die Suchabfrage der Definition passt nicht zur Seite.",
+  "home.problem.healthZero": "Die Gesundheitsprüfung hat keine Ergebnisse gefunden: Die Seite hat geantwortet, ist aber leer oder hat sich geändert, oder die Suchabfrage der Definition passt nicht dazu.",
   "home.problem.http": "Die Seite hat einen Fehler zurückgegeben.",
   "home.problem.loginForm": "Die Seite hat das Anmeldeformular abgelehnt (abgelaufenes Token): Test erneut ausführen; wenn es bleibt, Sitzung erneuern.",
   "home.problem.parse": "Die Seite hat sich geändert: Das Layout passt nicht mehr zur Definition.",

@@ -438,7 +438,7 @@
   "home.problem.dns": "El nombre del sitio no se resuelve ahora. Suele ser temporal: indexarr vuelve a intentarlo solo.",
   "home.problem.errors": "%d comprobaciones fallidas seguidas: abre el indexador para ver los detalles.",
   "home.problem.flood": "El sitio limita las búsquedas (control de flood): indexarr las pone en cola y las envía cuando el sitio lo permite.",
-  "home.problem.healthZero": "La comprobación de salud no encontró resultados: la consulta de la definición no se ajusta al sitio.",
+  "home.problem.healthZero": "La comprobación de salud no encontró resultados: el sitio respondió pero la página está vacía o ha cambiado, o la consulta de la definición no se ajusta a él.",
   "home.problem.http": "El sitio devolvió un error.",
   "home.problem.loginForm": "El sitio rechazó el formulario de acceso (token caducado): vuelve a ejecutar la prueba; si persiste, renueva la sesión.",
   "home.problem.parse": "La página ha cambiado: el diseño del sitio ya no coincide con la definición.",

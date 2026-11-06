@@ -438,7 +438,7 @@
   "home.problem.dns": "Nazwa witryny nie rozwiązuje się teraz. Zwykle chwilowe: indexarr ponawia sam.",
   "home.problem.errors": "%d kontroli z rzędu nie powiodło się: otwórz indekser, aby zobaczyć szczegóły.",
   "home.problem.flood": "Witryna ogranicza wyszukiwania (flood control): indexarr kolejkuje je i wysyła, gdy witryna na to pozwala.",
-  "home.problem.healthZero": "Kontrola stanu nie znalazła wyników: zapytanie z definicji nie pasuje do witryny.",
+  "home.problem.healthZero": "Kontrola stanu nie znalazła wyników: witryna odpowiedziała, ale strona jest pusta lub się zmieniła, albo zapytanie z definicji do niej nie pasuje.",
   "home.problem.http": "Witryna zwróciła błąd.",
   "home.problem.loginForm": "Witryna odrzuciła formularz logowania (wygasły token): uruchom test ponownie; jeśli to się powtarza, odśwież sesję.",
   "home.problem.parse": "Strona się zmieniła: układ witryny nie pasuje już do definicji.",

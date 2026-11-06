@@ -438,7 +438,7 @@
   "home.problem.dns": "Le nom du site ne se résout pas pour le moment. Généralement temporaire : indexarr réessaie tout seul.",
   "home.problem.errors": "%d vérifications échouées d'affilée : ouvrez l'indexeur pour les détails.",
   "home.problem.flood": "Le site limite les recherches (flood control) : indexarr les met en file et les envoie quand le site l'autorise.",
-  "home.problem.healthZero": "Le contrôle de santé n'a trouvé aucun résultat : la requête de la définition ne convient pas au site.",
+  "home.problem.healthZero": "Le contrôle de santé n'a trouvé aucun résultat : le site a répondu mais la page est vide ou a changé, ou la requête de la définition ne lui convient pas.",
   "home.problem.http": "Le site a renvoyé une erreur.",
   "home.problem.loginForm": "Le site a refusé le formulaire de connexion (jeton expiré) : relancez le test ; si cela persiste, renouvelez la session.",
   "home.problem.parse": "La page a changé : la mise en page du site ne correspond plus à la définition.",

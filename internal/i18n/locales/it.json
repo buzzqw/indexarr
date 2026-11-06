@@ -438,7 +438,7 @@
   "home.problem.dns": "Il nome del sito non si risolve in questo momento. Di solito è temporaneo: indexarr riprova da solo.",
   "home.problem.errors": "%d controlli falliti di seguito: apri l'indexer per i dettagli.",
   "home.problem.flood": "Il sito limita le ricerche (flood control): indexarr le mette in coda e le invia quando il sito lo consente.",
-  "home.problem.healthZero": "Il controllo di salute non ha trovato risultati: la query della definizione non è adatta al sito.",
+  "home.problem.healthZero": "Il controllo di salute non ha trovato risultati: il sito ha risposto ma la pagina è vuota o cambiata, oppure la query della definizione non è adatta.",
   "home.problem.http": "Il sito ha restituito un errore.",
   "home.problem.loginForm": "Il sito ha rifiutato il form di accesso (token scaduto): riprova il test; se persiste, rinnova la sessione.",
   "home.problem.parse": "La pagina è cambiata: il layout del sito non corrisponde più alla definizione.",
