@@ -332,10 +332,13 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	}
 
 	definitionHasURL := false
+	urlDefault := ""
 	for _, setting := range parsed.Settings {
-		if setting.Name == "url" {
-			definitionHasURL = true
+		if setting.Name != "url" {
+			continue
 		}
+		definitionHasURL = true
+		urlDefault = strings.TrimSpace(setting.Default)
 	}
 	urlValue := value("url")
 	if !data.URLSecret {
@@ -344,7 +347,15 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 		}
 		knownSite := siteHasRealAddress(defID, parsed)
 		if urlValue == "" && knownSite {
-			urlValue = parsed.Meta.URLs[0]
+			// A Torznab endpoint or a feed URL is not the site's home page:
+			// when the definition states its address, use it instead of the
+			// human URL. Without this a named Torznab source was created
+			// pointing at the HTML home page and every search failed.
+			if strings.HasPrefix(urlDefault, "http://") || strings.HasPrefix(urlDefault, "https://") {
+				urlValue = urlDefault
+			} else {
+				urlValue = parsed.Meta.URLs[0]
+			}
 		}
 	}
 	data.URLValue = urlValue

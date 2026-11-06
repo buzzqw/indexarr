@@ -372,3 +372,21 @@ func stripTags(raw string) string {
 	}
 	return out.String()
 }
+
+// TestCatalogFormUsesTheDefinitionEndpoint keeps the hidden URL field on the
+// address the definition actually talks to: a named Torznab source and an RSS
+// feed are not the site's home page, and using the home page broke every
+// search or feed read.
+func TestCatalogFormUsesTheDefinitionEndpoint(t *testing.T) {
+	env := newNativeEnv(t)
+	cases := map[string]string{
+		"yourbittorrent":   "https://yourbittorrent.com/torznab/api",
+		"academictorrents": "https://academictorrents.com/rss.xml",
+	}
+	for definition, want := range cases {
+		body := get(t, env.handler, "/indexers/new?definition="+definition).Body.String()
+		if !strings.Contains(body, `name="url" value="`+want+`"`) {
+			t.Errorf("%s form does not submit %q", definition, want)
+		}
+	}
+}
