@@ -41,6 +41,7 @@ var settingsSaveSteps = []settingsSaveStep{
 	{"network", (*Server).applyNetworkSettings},
 	{"updates", (*Server).applyUpdateSettings},
 	{"backup", (*Server).applyBackupSettings},
+	{"maintenance", (*Server).applyMaintenanceSettings},
 	{"advanced", (*Server).applyAdvancedSettings},
 }
 

@@ -222,3 +222,102 @@ func TestMaintenanceHelpers(t *testing.T) {
 		t.Fatalf("Reindex: %v", err)
 	}
 }
+
+// A release with a sealed download reference is served by /dl on demand, so
+// it must survive the "no links" cleanup: on the live cache that was 29,270 of
+// 34,911 rows without a magnet or stored .torrent (IPTorrents, TorrentLeech,
+// TorrentGalaxy, LimeTorrents...). ed2k links, payloads, favorites and
+// downloaded releases stay too.
+func TestDeleteReleasesWithoutLinksKeepsEveryDownloadableRow(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	indexerID := testIndexer(t, st, "nolinks", "No links")
+	now := time.Now()
+	insert := func(rel Release, ref string) Release {
+		t.Helper()
+		rel.SearchTitle = strings.ToLower(rel.Title)
+		rel.FirstSeenAt, rel.LastSeenAt = now, now
+		if _, err := st.UpsertRelease(ctx, &rel); err != nil {
+			t.Fatalf("UpsertRelease: %v", err)
+		}
+		if err := st.RecordReleaseSource(ctx, ReleaseSource{
+			ReleaseID: rel.ID, IndexerID: indexerID,
+			FirstSeenAt: now, LastSeenAt: now, DownloadRef: ref,
+		}); err != nil {
+			t.Fatalf("RecordReleaseSource: %v", err)
+		}
+		return rel
+	}
+	insert(Release{DedupKey: "dead", Title: "Dead"}, "")
+	insert(Release{DedupKey: "ondemand", Title: "On demand"}, "sealed-ref")
+	insert(Release{DedupKey: "ed2k", Title: "Ed2k",
+		Ed2k:     "ed2k://|file|x.mkv|1|" + strings.Repeat("a", 32) + "|/",
+		Ed2kHash: strings.Repeat("a", 32)}, "")
+	insert(Release{DedupKey: "nzb", Title: "Nzb", Payload: []byte("<nzb/>"), PayloadType: "nzb"}, "")
+	favorite := insert(Release{DedupKey: "fav", Title: "Favorite"}, "")
+	if _, err := st.SetReleaseFlags(ctx, favorite.ID, true, false); err != nil {
+		t.Fatal(err)
+	}
+	downloaded := insert(Release{DedupKey: "got", Title: "Downloaded"}, "")
+	if _, err := st.DB().ExecContext(ctx,
+		`UPDATE releases SET downloaded_at = ? WHERE id = ?`, now.Unix(), downloaded.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, err := st.DeleteReleasesWithoutLinks(ctx)
+	if err != nil || removed != 1 {
+		t.Fatalf("DeleteReleasesWithoutLinks = %d, %v; want only the dead row", removed, err)
+	}
+	var left []string
+	rows, err := st.DB().QueryContext(ctx, `SELECT dedup_key FROM releases ORDER BY dedup_key`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			t.Fatal(err)
+		}
+		left = append(left, key)
+	}
+	if got := strings.Join(left, ","); got != "ed2k,fav,got,nzb,ondemand" {
+		t.Fatalf("left = %s", got)
+	}
+	report, err := st.LoadDBReport(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.ReleasesNoLink != 2 {
+		t.Fatalf("ReleasesNoLink = %d, want 2 (favorite and downloaded)", report.ReleasesNoLink)
+	}
+}
+
+func TestRoutineStorePrimitives(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	if err := st.FTSCheck(ctx); err != nil {
+		t.Fatalf("FTSCheck: %v", err)
+	}
+	if err := st.FTSRebuild(ctx); err != nil {
+		t.Fatalf("FTSRebuild: %v", err)
+	}
+	if err := st.FTSOptimize(ctx); err != nil {
+		t.Fatalf("FTSOptimize: %v", err)
+	}
+	if _, err := st.DeleteOrphans(ctx); err != nil {
+		t.Fatalf("DeleteOrphans: %v", err)
+	}
+	state, err := st.LoadMaintenanceState(ctx)
+	if err != nil || !state.DailyAt.IsZero() || state.Report != "" {
+		t.Fatalf("fresh state = %+v, %v", state, err)
+	}
+	when := time.Unix(1_800_000_000, 0)
+	if err := st.SaveMaintenanceState(ctx, MaintenanceState{DailyAt: when, Report: `{"status":"ok"}`}); err != nil {
+		t.Fatal(err)
+	}
+	state, err = st.LoadMaintenanceState(ctx)
+	if err != nil || !state.DailyAt.Equal(when) || !state.WeeklyAt.IsZero() || state.Report != `{"status":"ok"}` {
+		t.Fatalf("saved state = %+v, %v", state, err)
+	}
+}

@@ -699,6 +699,75 @@
     <article class="card"><span class="label">{{T "settings.dbFTS"}}</span><strong>{{bytes .Growth.FTSBytes}}</strong><span class="hint">{{T "settings.dbGrowthTotal" .Growth.Releases}}</span></article>
   </section>
 
+  {{with .Routine}}{{if .Available}}
+  <section class="panel" id="routine-maintenance">
+    <div class="panel-head">
+      <h2>{{T "maintenance.routine.title"}}</h2>
+      {{if .Running}}<span class="chip warn" title="{{T "maintenance.routine.runningTip"}}">{{T "maintenance.routine.running"}}</span>
+      {{else if .Requested}}<span class="chip warn" title="{{T "maintenance.routine.requestedTip"}}">{{T "maintenance.routine.requestedChip"}}</span>
+      {{else if .Enabled}}<span class="chip ok" title="{{T "maintenance.routine.onTip" .IdleMinutes}}">{{T "maintenance.routine.on"}}</span>
+      {{else}}<span class="chip" title="{{T "maintenance.routine.offTip"}}">{{T "maintenance.routine.off"}}</span>{{end}}
+    </div>
+    <p class="help">{{T "maintenance.routine.intro" .IdleMinutes}}</p>
+    <dl class="detail">
+      <dt title="{{T "maintenance.routine.lastTip"}}">{{T "maintenance.routine.last"}}</dt>
+      <dd>{{if .HasLast}}<span class="chip{{if eq .LastStatus "ok"}} ok{{else if eq .LastStatus "error"}} danger{{else}} warn{{end}}" title="{{T "maintenance.routine.statusTip"}}">{{.LastLabel}}</span> {{date .LastAt}} ({{ago .LastAt}}) · {{.LastTrigger}}{{if .LastWeekly}} · <span title="{{T "maintenance.routine.weeklyTip"}}">{{T "maintenance.routine.weekly"}}</span>{{end}} · {{duration .LastTook}}{{if and .DBBefore .DBAfter}} · <span title="{{T "maintenance.routine.sizeTip"}}">{{bytes .DBBefore}} → {{bytes .DBAfter}}</span>{{end}}{{else}}{{T "maintenance.routine.never"}}{{end}}</dd>
+      <dt title="{{T "maintenance.routine.nextTip"}}">{{T "maintenance.routine.next"}}</dt>
+      <dd>{{if not .Enabled}}{{T "maintenance.routine.nextOff"}}{{else if .NextDue.IsZero}}{{T "maintenance.routine.nextFirst" .IdleMinutes}}{{else}}{{T "maintenance.routine.nextAfter" (date .NextDue) .IdleMinutes}}{{end}}</dd>
+      <dt title="{{T "maintenance.routine.activityTip"}}">{{T "maintenance.routine.activity"}}</dt>
+      <dd>{{date .LastActive}} ({{ago .LastActive}})</dd>
+    </dl>
+    {{if .Steps}}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{{T "maintenance.routine.colStep"}}</th>
+            <th scope="col">{{T "maintenance.routine.colStatus"}}</th>
+            <th scope="col">{{T "maintenance.routine.colResult"}}</th>
+            <th scope="col" title="{{T "maintenance.routine.colTimeTip"}}">{{T "maintenance.routine.colTime"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Steps}}
+          <tr>
+            <td>{{.Label}}</td>
+            <td><span class="chip{{if eq .Status "ok"}} ok{{else if eq .Status "error"}} danger{{else if eq .Status "warn"}} warn{{end}}">{{.StatusLabel}}</span></td>
+            <td>{{.Text}}</td>
+            <td>{{duration .Took}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+    <div class="action-grid">
+      <form method="post" action="/settings">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <input type="hidden" name="section" value="maintenance">
+        <div class="field checkbox">
+          <input id="maintenance_auto" name="maintenance_auto" type="checkbox" value="1"{{if .Enabled}} checked{{end}}>
+          <label for="maintenance_auto">{{T "maintenance.routine.enable"}}</label>
+          <p class="help">{{T "maintenance.routine.enableHelp"}}</p>
+        </div>
+        <div class="field">
+          <label for="maintenance_idle_minutes">{{T "maintenance.routine.idle"}}</label>
+          <input id="maintenance_idle_minutes" name="maintenance_idle_minutes" type="number" min="5" max="240" required value="{{.IdleMinutes}}" title="{{T "maintenance.routine.idleHelp"}}">
+          <p class="help">{{T "maintenance.routine.idleHelp"}}</p>
+        </div>
+        <button class="btn primary" type="submit">{{T "common.save"}}</button>
+      </form>
+      <form method="post" action="/maintenance">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <input type="hidden" name="action" value="routine">
+        <button class="btn" type="submit" title="{{T "maintenance.routine.runNowTip"}}"{{if or .Running .Requested}} disabled{{end}}>{{T "maintenance.routine.runNow"}}</button>
+        <p class="help">{{T "maintenance.routine.runNowHelp"}}</p>
+      </form>
+    </div>
+    <p class="help">{{T "maintenance.routine.footer"}}</p>
+  </section>
+  {{end}}{{end}}
+
   <section class="panel" id="useful-sources">
     <div class="panel-head">
       <h2>{{T "maintenance.usefulTitle"}}</h2>

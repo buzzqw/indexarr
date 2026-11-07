@@ -134,7 +134,7 @@ func sendApprise(ctx context.Context, cfg Config, base string, event Event, mess
 
 func appriseType(event Event) string {
 	switch event.Kind {
-	case KindGrabFailed, KindBackupFailed, KindRunFailed:
+	case KindGrabFailed, KindBackupFailed, KindMaintenanceFailed, KindRunFailed:
 		return "failure"
 	case KindIndexerState:
 		switch strings.ToLower(strings.TrimSpace(event.Current)) {
@@ -203,7 +203,7 @@ func sendPushover(ctx context.Context, cfg Config, token, user string, event Eve
 
 func priorityFor(event Event) int {
 	switch event.Kind {
-	case KindGrabFailed, KindBackupFailed, KindRunFailed:
+	case KindGrabFailed, KindBackupFailed, KindMaintenanceFailed, KindRunFailed:
 		return 8
 	case KindIndexerState:
 		switch strings.ToLower(strings.TrimSpace(event.Current)) {
@@ -218,7 +218,7 @@ func priorityFor(event Event) int {
 
 func pushoverPriority(event Event) int {
 	switch event.Kind {
-	case KindGrabFailed, KindBackupFailed, KindRunFailed:
+	case KindGrabFailed, KindBackupFailed, KindMaintenanceFailed, KindRunFailed:
 		return 1
 	case KindIndexerState:
 		switch strings.ToLower(strings.TrimSpace(event.Current)) {
@@ -443,6 +443,8 @@ func eventType(kind string) string {
 		return "CatalogUpdated"
 	case KindBackupFailed:
 		return "BackupFailed"
+	case KindMaintenanceFailed:
+		return "MaintenanceFailed"
 	case KindIndexerDisabled:
 		return "IndexerDisabled"
 	case KindRunFailed:
@@ -456,7 +458,7 @@ func eventType(kind string) string {
 
 func healthLevel(event Event) string {
 	switch event.Kind {
-	case KindGrabFailed, KindBackupFailed, KindRunFailed:
+	case KindGrabFailed, KindBackupFailed, KindMaintenanceFailed, KindRunFailed:
 		return "error"
 	case KindIndexerState:
 		switch strings.ToLower(strings.TrimSpace(event.Current)) {

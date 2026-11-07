@@ -95,6 +95,7 @@ type settingsPage struct {
 	UsefulSources       []usefulSourceView
 	UsefulTotal         int64
 	UsefulDays          int
+	Routine             routineView
 	// Advanced
 	Definitions   []store.Definition
 	CatalogRows   []definitionRow
@@ -209,6 +210,7 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 		data.BackupKeep = settings.BackupKeep
 		data.UsefulDays = 30
 		data.UsefulSources, data.UsefulTotal = s.usefulSources(r, data.UsefulDays)
+		data.Routine = s.routineData(r)
 	}
 	if section == "advanced" {
 		data.Definitions, _ = s.store.ListDefinitions(ctx)
@@ -690,6 +692,13 @@ func (s *Server) maintenanceAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.reindexed"), "")
+	case "routine":
+		if s.routine == nil {
+			redirect(w, r, "/settings?section=maintenance", "", s.translate(r, "maintenance.routine.unavailable"))
+			return
+		}
+		s.routine.Request()
+		redirect(w, r, "/settings?section=maintenance", s.translate(r, "maintenance.routine.requested"), "")
 	case "reset_errors":
 		removed, err := s.store.ResetIndexerErrors(ctx)
 		if err != nil {

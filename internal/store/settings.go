@@ -72,6 +72,8 @@ const (
 	KeyAPIRateLimit         = "api_rate_limit_per_minute"
 	KeyBackupEnabled        = "backup_enabled"
 	KeyBackupInterval       = "backup_interval_hours"
+	KeyMaintenanceAuto      = "maintenance_auto"
+	KeyMaintenanceIdle      = "maintenance_idle_minutes"
 	KeyBackupKeep           = "backup_keep"
 	KeyTorznabLive          = "torznab_live_search"
 	KeyTorznabLiveTimeout   = "torznab_live_timeout_seconds"
@@ -174,12 +176,17 @@ type Settings struct {
 	// NotifyLanguage is the language of the notification messages when the
 	// operator wants one different from the interface. Empty means "same as
 	// the interface": UILanguage is used.
-	NotifyLanguage         string
-	AutoDisableAfter       int
-	LogLevel               string
-	APIRateLimit           int
-	BackupEnabled          bool
-	BackupIntervalHours    int
+	NotifyLanguage      string
+	AutoDisableAfter    int
+	LogLevel            string
+	APIRateLimit        int
+	BackupEnabled       bool
+	BackupIntervalHours int
+	// MaintenanceAuto runs the routine maintenance (checks, duplicate merge,
+	// cleanup of unusable rows, index upkeep, compaction) once a day when
+	// indexarr has been idle for MaintenanceIdleMinutes.
+	MaintenanceAuto        bool
+	MaintenanceIdleMinutes int
 	BackupKeep             int
 	TorznabLiveSearch      bool
 	TorznabProxyMagnets    bool // magnet grabs go through /dl and are counted
@@ -232,6 +239,8 @@ func DefaultSettings() Settings {
 		AutoDisableAfter:           0,
 		BackupEnabled:              true,
 		BackupIntervalHours:        24,
+		MaintenanceAuto:            true,
+		MaintenanceIdleMinutes:     15,
 		BackupKeep:                 7,
 		TorznabLiveSearch:          true,
 		TorznabProxyEd2k:           true,
@@ -413,6 +422,8 @@ func (s *Store) LoadSettings(ctx context.Context) (Settings, error) {
 	out.APIRateLimit = intValue(values, KeyAPIRateLimit, 0, 0, 100000)
 	out.BackupEnabled = boolValue(values, KeyBackupEnabled, true)
 	out.BackupIntervalHours = intValue(values, KeyBackupInterval, 24, 6, 168)
+	out.MaintenanceAuto = boolValue(values, KeyMaintenanceAuto, true)
+	out.MaintenanceIdleMinutes = intValue(values, KeyMaintenanceIdle, 15, 5, 240)
 	out.BackupKeep = intValue(values, KeyBackupKeep, 7, 1, 60)
 	out.TorznabLiveSearch = boolValue(values, KeyTorznabLive, true)
 	out.TorznabProxyMagnets = boolValue(values, KeyTorznabProxyMagnets, false)
@@ -494,6 +505,8 @@ func (s *Store) SaveSettings(ctx context.Context, in Settings) error {
 		KeyAPIRateLimit:         strconv.Itoa(in.APIRateLimit),
 		KeyBackupEnabled:        boolString(in.BackupEnabled),
 		KeyBackupInterval:       strconv.Itoa(in.BackupIntervalHours),
+		KeyMaintenanceAuto:      boolString(in.MaintenanceAuto),
+		KeyMaintenanceIdle:      strconv.Itoa(in.MaintenanceIdleMinutes),
 		KeyBackupKeep:           strconv.Itoa(in.BackupKeep),
 		KeyTorznabLive:          boolString(in.TorznabLiveSearch),
 		KeyTorznabProxyMagnets:  boolString(in.TorznabProxyMagnets),

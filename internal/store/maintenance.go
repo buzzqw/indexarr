@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -74,7 +76,7 @@ func (s *Store) LoadDBReport(ctx context.Context) (DBReport, error) {
 		SELECT
 			COALESCE(SUM(CASE WHEN torrent IS NOT NULL THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN magnet <> '' THEN 1 ELSE 0 END), 0),
-			COALESCE(SUM(CASE WHEN magnet = '' AND torrent IS NULL THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN `+noLinkCondition+` THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN hidden = 1 THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN favorite = 1 THEN 1 ELSE 0 END), 0)
 		FROM releases`,
@@ -217,14 +219,28 @@ func (s *Store) DeleteReleasesByIndexer(ctx context.Context, indexerID int64) (i
 	return removed, nil
 }
 
-// DeleteReleasesWithoutLinks removes rows that have neither a magnet nor a
-// stored .torrent file, so clients cannot use them.
+// noLinkCondition matches a release no client can download: no magnet, no
+// stored .torrent, no ed2k link, no stored payload (NZB) and no source with a
+// sealed download reference. The reference is how private trackers and sites
+// without magnets are served: /dl resolves it when a client grabs, so a row
+// with one is usable even though nothing is stored yet. It reads the columns
+// of the outer "releases" row.
+const noLinkCondition = `releases.magnet = '' AND COALESCE(length(releases.torrent), 0) = 0
+	AND releases.ed2k_link = '' AND COALESCE(length(releases.payload), 0) = 0
+	AND NOT EXISTS (
+		SELECT 1 FROM release_sources dl
+		WHERE dl.release_id = releases.id AND dl.download_ref <> '')`
+
+// DeleteReleasesWithoutLinks removes rows no client can download (see
+// noLinkCondition). Favorites, downloaded releases and forum history are
+// always kept.
 func (s *Store) DeleteReleasesWithoutLinks(ctx context.Context) (int64, error) {
 	forumIDs, err := s.forumIndexerIDs(ctx)
 	if err != nil {
 		return 0, err
 	}
-	query := `DELETE FROM releases WHERE magnet = '' AND torrent IS NULL`
+	query := `DELETE FROM releases WHERE ` + noLinkCondition + `
+		AND releases.favorite = 0 AND releases.downloaded_at = 0`
 	args := []any{}
 	if len(forumIDs) > 0 {
 		placeholders, forumArgs := idPlaceholders(forumIDs)
@@ -238,8 +254,143 @@ func (s *Store) DeleteReleasesWithoutLinks(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("delete releases without links: %w", err)
 	}
 	removed, _ := res.RowsAffected()
-	s.InvalidateCounts()
+	if removed > 0 {
+		s.InvalidateCounts()
+	}
 	return removed, nil
+}
+
+// FTSCheck verifies the full-text index of release titles against the
+// releases table. A nil error means the index matches.
+func (s *Store) FTSCheck(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx,
+		`INSERT INTO releases_fts(releases_fts, rank) VALUES('integrity-check', 1)`); err != nil {
+		return fmt.Errorf("title index check: %w", err)
+	}
+	return nil
+}
+
+// FTSRebuild rebuilds the full-text index of release titles from the
+// releases table.
+func (s *Store) FTSRebuild(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx,
+		`INSERT INTO releases_fts(releases_fts) VALUES('rebuild')`); err != nil {
+		return fmt.Errorf("title index rebuild: %w", err)
+	}
+	return nil
+}
+
+// FTSOptimize merges the segments of both full-text indexes (titles and file
+// names). Searches read fewer b-trees afterwards; the content is unchanged.
+func (s *Store) FTSOptimize(ctx context.Context) error {
+	for _, table := range []string{"releases_fts", "release_files_fts"} {
+		if _, err := s.db.ExecContext(ctx,
+			`INSERT INTO `+table+`(`+table+`) VALUES('optimize')`); err != nil {
+			return fmt.Errorf("optimize %s: %w", table, err)
+		}
+	}
+	return nil
+}
+
+// DeleteOrphans removes file lists and file-name index rows whose release is
+// gone. Deletes normally take them along; this is the safety net for rows
+// left by an interrupted cleanup or an older version.
+func (s *Store) DeleteOrphans(ctx context.Context) (int64, error) {
+	var total int64
+	for _, statement := range []string{
+		`DELETE FROM release_files WHERE NOT EXISTS (
+			SELECT 1 FROM releases r WHERE r.id = release_files.release_id)`,
+		`DELETE FROM release_files_fts WHERE NOT EXISTS (
+			SELECT 1 FROM releases r WHERE r.id = release_files_fts.release_id)`,
+	} {
+		res, err := s.db.ExecContext(ctx, statement)
+		if err != nil {
+			return total, fmt.Errorf("delete orphans: %w", err)
+		}
+		removed, _ := res.RowsAffected()
+		total += removed
+	}
+	return total, nil
+}
+
+// MaintenanceState is what the routine maintenance remembers between
+// restarts: when the daily and weekly passes last completed and the report
+// of the last run, as JSON written by the upkeep package.
+type MaintenanceState struct {
+	DailyAt  time.Time
+	WeeklyAt time.Time
+	Report   string
+}
+
+const (
+	keyMaintenanceDailyAt  = "maintenance_daily_at"
+	keyMaintenanceWeeklyAt = "maintenance_weekly_at"
+	keyMaintenanceReport   = "maintenance_report"
+)
+
+// LoadMaintenanceState reads the routine maintenance bookkeeping. Missing
+// keys give zero times, so a new install is due at the first idle window.
+func (s *Store) LoadMaintenanceState(ctx context.Context) (MaintenanceState, error) {
+	var out MaintenanceState
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT key, value FROM settings WHERE key IN (?, ?, ?)`,
+		keyMaintenanceDailyAt, keyMaintenanceWeeklyAt, keyMaintenanceReport)
+	if err != nil {
+		return out, fmt.Errorf("load maintenance state: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key, value string
+		if err := rows.Scan(&key, &value); err != nil {
+			return out, err
+		}
+		switch key {
+		case keyMaintenanceDailyAt:
+			out.DailyAt = parseUnix(value)
+		case keyMaintenanceWeeklyAt:
+			out.WeeklyAt = parseUnix(value)
+		case keyMaintenanceReport:
+			out.Report = value
+		}
+	}
+	return out, rows.Err()
+}
+
+// SaveMaintenanceState writes the routine maintenance bookkeeping in one
+// transaction. A zero time is stored as 0.
+func (s *Store) SaveMaintenanceState(ctx context.Context, state MaintenanceState) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for key, value := range map[string]string{
+		keyMaintenanceDailyAt:  formatUnix(state.DailyAt),
+		keyMaintenanceWeeklyAt: formatUnix(state.WeeklyAt),
+		keyMaintenanceReport:   state.Report,
+	} {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO settings(key, value) VALUES(?, ?)
+			 ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value); err != nil {
+			return fmt.Errorf("save maintenance state: %w", err)
+		}
+	}
+	return tx.Commit()
+}
+
+func parseUnix(value string) time.Time {
+	seconds, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+	if err != nil || seconds <= 0 {
+		return time.Time{}
+	}
+	return time.Unix(seconds, 0)
+}
+
+func formatUnix(t time.Time) string {
+	if t.IsZero() {
+		return "0"
+	}
+	return strconv.FormatInt(t.Unix(), 10)
 }
 
 // DeleteHiddenReleases removes every release hidden from the UI.

@@ -36,6 +36,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/native"
 	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
+	"github.com/buzzqw/indexarr/internal/upkeep"
 	"github.com/buzzqw/indexarr/internal/vault"
 	"github.com/buzzqw/indexarr/internal/web"
 )
@@ -266,6 +267,21 @@ func main() {
 	// recovers the missing infohashes within a per-site budget.
 	go dedupeLoop(ctx, st, indexerManager, logger)
 	go trimMemoryLoop(ctx, logger)
+
+	// Routine maintenance waits for an idle window (no app, client or UI
+	// change for the configured minutes) and runs once a day: checks,
+	// duplicate merge, cleanup of unusable rows, index upkeep, compaction.
+	activity := upkeep.NewActivity()
+	routine, err := upkeep.New(upkeep.Config{
+		Store: st, Activity: activity, Logger: logger, Notifier: notifier,
+		Busy: nativeRunner.MaintenanceBusy,
+	})
+	if err != nil {
+		logger.Warn("routine maintenance disabled", "error", err)
+		routine = nil
+	} else {
+		routine.Start(ctx)
+	}
 	go backfillReleaseFiles(ctx, st, logger)
 
 	var adminHandler http.Handler
@@ -291,6 +307,7 @@ func main() {
 			LogFile:  logFilePath(logFile), LogMaxMB: cfg.LogMaxMB, LogMaxFiles: cfg.LogMaxFiles,
 			GrabGuard: grabGuard, GrabRecord: grabRecord,
 			Politeness: politeness,
+			Activity:   activity, Maintenance: routine,
 			Restart: func() {
 				if err := restartProcess(stop); err != nil {
 					logger.Error("cannot restart for restore", "error", err)

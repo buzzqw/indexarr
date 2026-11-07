@@ -1004,6 +1004,16 @@ func allErrors(statuses []string) bool {
 	return true
 }
 
+// MaintenanceBusy reports work that a routine maintenance pass must not
+// overlap: an automatic backup being written, or a full run or test of every
+// source started from the UI. It is safe on a nil Runner.
+func (r *Runner) MaintenanceBusy() bool {
+	if r == nil {
+		return false
+	}
+	return r.backupRunning.Load() || r.runningAll.Load() || r.testingAll.Load()
+}
+
 // managerRedacted exposes the manager's redaction without leaking the raw
 // indexer error into the logs.
 func (r *Runner) managerRedacted(indexerID int64, err error) string {

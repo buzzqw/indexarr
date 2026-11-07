@@ -32,6 +32,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/syncjob"
 	"github.com/buzzqw/indexarr/internal/textutil"
 	"github.com/buzzqw/indexarr/internal/torznabapi"
+	"github.com/buzzqw/indexarr/internal/upkeep"
 	"github.com/buzzqw/indexarr/internal/vault"
 )
 
@@ -512,6 +513,11 @@ type Config struct {
 	// Politeness is the shared per-host budget and metric source. It is
 	// optional: without it the Activity page shows no network counters.
 	Politeness *engine.Politeness
+	// Activity records when an app, a client or a change in the UI was last
+	// served; Maintenance is the idle routine that waits for it. Both are
+	// optional.
+	Activity    *upkeep.Activity
+	Maintenance *upkeep.Routine
 }
 
 // Server serves the web interface, the Torznab API and the health endpoint.
@@ -541,6 +547,8 @@ type Server struct {
 	logMaxFiles      int
 	sync             *syncjob.Service
 	polite           *engine.Politeness
+	activity         *upkeep.Activity
+	routine          *upkeep.Routine
 	// notifier applies the notification switches, the anti-spam window and
 	// the test button. It shares the store with the rest of the server.
 	notifier *notify.Dispatcher
@@ -627,6 +635,8 @@ func New(cfg Config) *Server {
 		logMaxFiles:      cfg.LogMaxFiles,
 		sync:             cfg.Sync,
 		polite:           cfg.Politeness,
+		activity:         cfg.Activity,
+		routine:          cfg.Maintenance,
 		notifier:         notify.NewDispatcher(cfg.Store, logger),
 		smartfeedPlans:   newSmartfeedPlanStore(),
 		pendingStores:    newPendingStoreSet(),
@@ -700,22 +710,26 @@ func (s *Server) Handler() http.Handler {
 	outer := http.NewServeMux()
 	// Torznab clients authenticate with their own API key: the UI's Basic
 	// authentication must not wrap these routes.
-	outer.Handle("/api", s.torznab)
-	outer.Handle("/api/v2.0/", s.torznab)
-	outer.Handle("/newznab/api", s.torznab)
-	outer.Handle("/torznab/api", s.torznab)
-	outer.Handle("/torznab/", s.torznab)
-	outer.Handle("/dl/", s.torznab)
+	// Every request of an app or a client counts as activity: routine
+	// maintenance waits until they have been quiet for a while.
+	torznab := s.activity.Wrap(s.torznab)
+	admin := s.activity.Wrap(s.admin)
+	outer.Handle("/api", torznab)
+	outer.Handle("/api/v2.0/", torznab)
+	outer.Handle("/newznab/api", torznab)
+	outer.Handle("/torznab/api", torznab)
+	outer.Handle("/torznab/", torznab)
+	outer.Handle("/dl/", torznab)
 	if s.admin != nil {
-		outer.Handle("/api/v2/", s.admin)
-		outer.Handle("/api/v1/", s.admin)
+		outer.Handle("/api/v2/", admin)
+		outer.Handle("/api/v1/", admin)
 	}
-	outer.HandleFunc("POST /pair", s.browserCookieImport)
+	outer.Handle("POST /pair", s.activity.Wrap(http.HandlerFunc(s.browserCookieImport)))
 	outer.HandleFunc("GET /healthz", s.healthz)
 	outer.HandleFunc("GET /metrics", s.metrics)
 	outer.HandleFunc("GET /sw.js", s.serviceWorker)
 	outer.Handle("GET /static/", withCompression(http.HandlerFunc(s.serveStatic)))
-	outer.Handle("/", s.authenticate(s.withCSRF(withCompression(ui))))
+	outer.Handle("/", s.authenticate(s.withCSRF(withCompression(s.activity.WrapChanges(ui)))))
 	return s.trustedHosts(outer)
 }
 

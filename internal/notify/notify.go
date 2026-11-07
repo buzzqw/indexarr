@@ -31,6 +31,10 @@ const (
 	KindGrabSuccess    = "grab_success"
 	KindCatalogUpdated = "catalog_updated"
 	KindBackupFailed   = "backup_failed"
+	// KindMaintenanceFailed reports a routine maintenance pass that found a
+	// damaged database or could not finish a step. It follows the backup
+	// switch: both are about the safety of the data.
+	KindMaintenanceFailed = "maintenance_failed"
 	// KindRunFailed is kept for older senders and tests; new code reports a
 	// state change through KindIndexerState.
 	KindRunFailed       = "run_failed"
@@ -319,6 +323,8 @@ func TitleFor(event Event, lang i18n.Language) string {
 		title = i18n.T(lang, "notify.catalogUpdated", event.Count)
 	case KindBackupFailed:
 		title = i18n.T(lang, "notify.backupFailed")
+	case KindMaintenanceFailed:
+		title = i18n.T(lang, "notify.maintenanceFailed")
 	case KindTest:
 		title = i18n.T(lang, "notify.test")
 	case KindIndexerDisabled:
@@ -380,6 +386,8 @@ func MessageFor(event Event, lang i18n.Language, baseURL string) string {
 		b.WriteString(i18n.T(lang, "notify.msg.catalogUpdated", event.Count))
 	case KindBackupFailed:
 		b.WriteString(i18n.T(lang, "notify.msg.backupFailed"))
+	case KindMaintenanceFailed:
+		b.WriteString(i18n.T(lang, "notify.msg.maintenanceFailed"))
 	case KindTest:
 		b.WriteString(i18n.T(lang, "notify.msg.test"))
 	case KindIndexerDisabled:
@@ -483,7 +491,7 @@ func titleIcon(event Event) string {
 		default:
 			return "ℹ️"
 		}
-	case KindGrabFailed, KindBackupFailed:
+	case KindGrabFailed, KindBackupFailed, KindMaintenanceFailed:
 		return "❌"
 	case KindRunFailed:
 		return "⚠️"
@@ -590,7 +598,7 @@ func Enabled(settings store.Settings, kind string) bool {
 		return settings.NotifyGrabSuccess
 	case KindCatalogUpdated:
 		return settings.NotifyCatalogUpdated
-	case KindBackupFailed:
+	case KindBackupFailed, KindMaintenanceFailed:
 		return settings.NotifyBackupFailed
 	case KindTest:
 		return true
