@@ -13,18 +13,23 @@
     <p class="help">{{T "releases.searchIntro"}}</p>
     <fieldset class="search-source">
       <legend>{{T "releases.searchSource"}}</legend>
-      <label class="check"><input type="radio" name="source" value="catalog"{{if ne .SearchSource "live"}} checked{{end}}> <span>{{T "releases.catalogTitle"}}</span></label>
-      <label class="check"><input type="radio" name="source" value="live"{{if eq .SearchSource "live"}} checked{{end}}> <span>{{T "releases.liveTitle"}}</span></label>
-      <p class="help">{{T "releases.searchSourceHelp"}}</p>
+      <div class="source-switch">
+        <label class="source-option" title="{{T "releases.catalogIntro"}}"><input type="radio" name="source" value="catalog"{{if ne .SearchSource "live"}} checked{{end}}> <span>{{T "releases.catalogTitle"}}</span></label>
+        <label class="source-option" title="{{T "releases.liveIntro"}}"><input type="radio" name="source" value="live"{{if eq .SearchSource "live"}} checked{{end}}> <span>{{T "releases.liveTitle"}}</span></label>
+      </div>
+      <div class="source-notes">
+        <p class="help">{{T "releases.searchSourceHelp"}}</p>
+        <p class="help catalog-only">{{T "releases.catalogIntro"}}</p>
+        <p class="help live-only">{{T "releases.liveIntro"}}</p>
+      </div>
     </fieldset>
-    <p class="help catalog-only">{{T "releases.catalogIntro"}}</p>
-    <p class="help live-only">{{T "releases.liveIntro"}}</p>
   </div>
-  <div class="field grow">
+  <div class="field grow search-q">
     <label for="q">{{T "releases.searchLabel"}}</label>
     <input id="q" name="q" type="search" value="{{.Query}}" placeholder="{{T "releases.searchPlaceholder"}}" autocomplete="off" spellcheck="false" title="{{T "releases.queryHelp"}}">
     <p class="help">{{T "releases.queryHelp"}}</p>
     <div class="catalog-only">
+      <div class="query-options">
       <label class="inline-check" for="regex">
         <input id="regex" name="regex" type="checkbox" value="1"{{if .Regex}} checked{{end}}>
         {{T "releases.regex"}}
@@ -33,8 +38,9 @@
         <input id="files" name="files" type="checkbox" value="1"{{if .FilesOnly}} checked{{end}}>
         {{T "releases.filesSearch"}}
       </label>
+      </div>
       <details class="search-syntax">
-      <summary title="{{T "releases.syntaxTip"}}">{{T "releases.syntaxSummary"}}</summary>
+        <summary title="{{T "releases.syntaxTip"}}">{{T "releases.syntaxSummary"}}</summary>
       <p class="help">
         {{T "releases.searchHelpExclude"}} <code>{{T "releases.exampleExclude"}}</code>.
         {{T "releases.searchHelpQuotes"}} <code>{{T "releases.exampleQuotes"}}</code>.
@@ -44,7 +50,20 @@
     </details>
     </div>
   </div>
-  <div class="field live-only">
+  <div class="field catalog-only search-sort">
+    <label for="sort">{{T "releases.sort"}}</label>
+    <select id="sort" name="sort" title="{{T "releases.sortHelp"}}">
+      <option value="recent"{{if or (eq .Sort "") (eq .Sort "recent")}} selected{{end}}>{{T "releases.sortRecent"}}</option>
+      <option value="seen"{{if eq .Sort "seen"}} selected{{end}}>{{T "releases.sortSeen"}}</option>
+      <option value="popular"{{if eq .Sort "popular"}} selected{{end}}>{{T "releases.sortPopular"}}</option>
+      <option value="grabs"{{if eq .Sort "grabs"}} selected{{end}}>{{T "releases.sortGrabs"}}</option>
+      <option value="seeders"{{if eq .Sort "seeders"}} selected{{end}}>{{T "releases.sortSeeders"}}</option>
+      <option value="size"{{if eq .Sort "size"}} selected{{end}}>{{T "releases.sortSize"}}</option>
+      <option value="title"{{if eq .Sort "title"}} selected{{end}}>{{T "releases.sortTitle"}}</option>
+    </select>
+    <p class="help">{{T "releases.sortHelp"}}</p>
+  </div>
+  <div class="field live-only search-mode">
     <label for="mode">{{T "idx.try.mode"}}</label>
     <select id="mode" name="mode" title="{{T "releases.liveModeHelp"}}">
       <option value="search"{{if eq .LiveForm.Mode "search"}} selected{{end}}>{{T "idx.try.modeSearch"}}</option>
@@ -55,12 +74,12 @@
     </select>
     <p class="help">{{T "releases.liveModeHelp"}}</p>
   </div>
-  <div class="field small live-only">
+  <div class="field small live-only search-year">
     <label for="year">{{T "releases.liveYear"}}</label>
     <input id="year" name="year" type="number" min="0" value="{{if .LiveForm.Year}}{{.LiveForm.Year}}{{end}}" title="{{T "releases.liveYearHelp"}}">
     <p class="help">{{T "releases.liveYearHelp"}}</p>
   </div>
-  <div class="field">
+  <div class="field search-cat">
     <label for="cat">{{T "releases.category"}}</label>
     <select id="cat" name="cat" title="{{T "releases.liveCategoryHelp"}}">
       <option value="">{{T "releases.allCategories"}}</option>
@@ -73,24 +92,12 @@
     </select>
     <p class="help">{{T "releases.liveCategoryHelp"}}</p>
   </div>
-  <div class="field wide">
+  <div class="field search-idx">
     <label for="indexers">{{T "releases.indexer"}}</label>
     <select id="indexers" name="indexers" multiple size="4" title="{{T "releases.indexerFilterHelp"}}">
       {{range .LiveIndexers}}<option value="{{.ID}}"{{if .Selected}} selected{{end}}>{{.Name}}</option>{{end}}
     </select>
     <p class="help">{{T "releases.indexerFilterHelp"}}</p>
-  </div>
-  <div class="field catalog-only">
-    <label for="sort">{{T "releases.sort"}}</label>
-    <select id="sort" name="sort" title="{{T "releases.sortHelp"}}">
-      <option value="recent"{{if or (eq .Sort "") (eq .Sort "recent")}} selected{{end}}>{{T "releases.sortRecent"}}</option>
-      <option value="seen"{{if eq .Sort "seen"}} selected{{end}}>{{T "releases.sortSeen"}}</option>
-      <option value="popular"{{if eq .Sort "popular"}} selected{{end}}>{{T "releases.sortPopular"}}</option>
-      <option value="grabs"{{if eq .Sort "grabs"}} selected{{end}}>{{T "releases.sortGrabs"}}</option>
-      <option value="seeders"{{if eq .Sort "seeders"}} selected{{end}}>{{T "releases.sortSeeders"}}</option>
-      <option value="size"{{if eq .Sort "size"}} selected{{end}}>{{T "releases.sortSize"}}</option>
-      <option value="title"{{if eq .Sort "title"}} selected{{end}}>{{T "releases.sortTitle"}}</option>
-    </select>
   </div>
   <details class="filter-advanced live-only" id="release-live-advanced">
     <summary><span>{{T "releases.filters"}}</span></summary>
