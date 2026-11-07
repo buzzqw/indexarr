@@ -3,15 +3,15 @@
   <table class="definitions-table">
     <thead>
       <tr>
-        <th scope="col">{{T "definitions.id"}}</th>
-        <th scope="col">{{T "definitions.name"}}</th>
-        <th scope="col">{{T "definitions.family"}}</th>
-        <th scope="col">{{T "definitions.protocol"}}</th>
-        <th scope="col">{{T "definitions.state"}}</th>
-        <th scope="col">{{T "definitions.origin"}}</th>
-        <th scope="col">{{T "definitions.hash"}}</th>
-        <th scope="col">{{T "definitions.updated"}}</th>
-        <th scope="col">{{T "definitions.indexerCount"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.id"}}">{{T "definitions.id"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.name"}}">{{T "definitions.name"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.family"}}">{{T "definitions.family"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.protocol"}}">{{T "definitions.protocol"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.state"}}">{{T "definitions.state"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.origin"}}">{{T "definitions.origin"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.hash"}}">{{T "definitions.hash"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.updated"}}">{{T "definitions.updated"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.indexerCount"}}">{{T "definitions.indexerCount"}}</th>
         <th scope="col" class="right">{{T "definitions.action"}}</th>
       </tr>
     </thead>
@@ -26,7 +26,7 @@
         </td>
         <td>{{if .Family}}<span class="chip">{{.Family}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
         <td>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</td>
-        <td><span class="chip {{stateClass .State}}">{{stateLabel .State}}</span></td>
+        <td><span class="chip {{stateClass .State}}" title="{{T "definitions.colTip.state"}}">{{stateLabel .State}}</span></td>
         <td>{{if .Builtin}}{{T "definitions.catalogOrigin"}}{{else if .Remote}}{{T "definitions.remoteOrigin"}}{{else}}{{T "definitions.localOrigin"}}{{end}}</td>
         <td>{{if .HashShort}}<code title="{{.Hash}}">{{.HashShort}}</code>{{else}}<span class="muted">—</span>{{end}}</td>
         <td>{{date .UpdatedAt}}</td>
@@ -35,6 +35,42 @@
       </tr>
       {{else}}
       <tr><td colspan="10" class="empty">{{T "definitions.empty"}}</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+
+{{/* The short table of the definitions behind the user's indexers: only what
+     tells whether a site reads well. The full columns stay in the complete
+     list below it. */}}
+{{define "definition_table_used"}}
+<div class="table-scroll">
+  <table class="definitions-table definitions-used">
+    <thead>
+      <tr>
+        <th scope="col" title="{{T "definitions.colTip.name"}}">{{T "definitions.name"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.state"}}">{{T "definitions.state"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.protocol"}}">{{T "definitions.protocol"}}</th>
+        <th scope="col" title="{{T "definitions.colTip.origin"}}">{{T "definitions.origin"}}</th>
+        <th scope="col" class="right" title="{{T "definitions.colTip.indexerCount"}}">{{T "definitions.indexerCount"}}</th>
+        <th scope="col" class="right">{{T "definitions.action"}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .}}
+      <tr>
+        <td>
+          <a href="/definitions/{{.ID}}">{{.Name}}</a>
+          {{if .Derived}}<span class="chip warn" title="{{T "definitions.derivedTitle"}}">{{T "definitions.derived"}}</span>{{end}}
+          {{if .ParseError}}<div class="sub text-danger" title="{{.ParseError}}">{{truncate .ParseError 90}}</div>{{end}}
+        </td>
+        <td><span class="chip {{stateClass .State}}" title="{{T "definitions.colTip.state"}}">{{stateLabel .State}}</span></td>
+        <td>{{if .Protocol}}{{.Protocol}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{if .Builtin}}{{T "definitions.catalogOrigin"}}{{else if .Remote}}{{T "definitions.remoteOrigin"}}{{else}}{{T "definitions.localOrigin"}}{{end}}</td>
+        <td class="right">{{.Indexers}}</td>
+        <td class="right nowrap"><a class="btn small" href="/definitions/{{.ID}}" title="{{T "definitions.openTip"}}">{{T "definitions.open"}}</a></td>
+      </tr>
       {{end}}
     </tbody>
   </table>

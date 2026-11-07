@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -97,9 +98,12 @@ type settingsPage struct {
 	UsefulDays          int
 	Routine             routineView
 	// Advanced
-	Definitions   []store.Definition
-	CatalogRows   []definitionRow
-	LocalRows     []definitionRow
+	Definitions []store.Definition
+	CatalogRows []definitionRow
+	LocalRows   []definitionRow
+	// UsedRows are the definitions behind at least one of the user's
+	// indexers: the only ones most people ever need to look at.
+	UsedRows      []definitionRow
 	StoredSources int
 }
 
@@ -215,6 +219,16 @@ func (s *Server) settingsData(r *http.Request, settings store.Settings, section 
 	if section == "advanced" {
 		data.Definitions, _ = s.store.ListDefinitions(ctx)
 		data.CatalogRows, data.LocalRows = s.definitionRows(ctx, nil)
+		for _, rows := range [][]definitionRow{data.LocalRows, data.CatalogRows} {
+			for _, row := range rows {
+				if row.Indexers > 0 {
+					data.UsedRows = append(data.UsedRows, row)
+				}
+			}
+		}
+		sort.SliceStable(data.UsedRows, func(i, j int) bool {
+			return strings.ToLower(data.UsedRows[i].Name) < strings.ToLower(data.UsedRows[j].Name)
+		})
 		data.StoredSources, _ = s.store.StoredSourceCount(ctx)
 	}
 	return data

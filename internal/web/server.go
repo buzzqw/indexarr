@@ -232,7 +232,7 @@ var templateFuncMap = template.FuncMap{
 		switch state {
 		case "verificata", "stabile":
 			return "ok"
-		case "degradata":
+		case "degradata", "bloccata", "morta":
 			return "danger"
 		case "bozza":
 			return "warn"
@@ -423,6 +423,10 @@ func stateLabel(lang i18n.Language, state string) string {
 		return i18n.T(lang, "state.stable")
 	case "degradata":
 		return i18n.T(lang, "state.degraded")
+	case "bloccata":
+		return i18n.T(lang, "state.blocked")
+	case "morta":
+		return i18n.T(lang, "state.dead")
 	case "":
 		return i18n.T(lang, "state.unknown")
 	default:

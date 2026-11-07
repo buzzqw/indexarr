@@ -2436,3 +2436,8 @@ table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; 
 .queue-client-head h3 { margin: 0; font-size: 1rem; }
 .queue-progress { width: 100%; min-width: 7rem; height: 0.5rem; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-bottom: 0.2rem; }
 .queue-progress span { display: block; height: 100%; background: var(--accent); }
+/* The full list of definitions folds inside the panel with the panel's side
+   margin, like the text around it. */
+.panel > .definitions-all { margin: 0.6rem var(--pad-x, 1rem) 0.4rem; }
+.panel > .definitions-all > .panel-head { padding-inline: 0; }
+.panel > .definitions-all > .help { margin-bottom: 0.4rem; }
