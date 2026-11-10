@@ -154,6 +154,14 @@ var catalogCategoryOrder = []struct {
 }
 
 func (s *Server) indexerCatalogAdd(w http.ResponseWriter, r *http.Request) {
+	// The CSRF middleware parses the body only when the token is not already in
+	// the query string, so a POST with ?csrf=… would reach this handler with an
+	// empty r.Form: the chosen sites would be lost and the page would answer
+	// "select at least one site".
+	if err := r.ParseForm(); err != nil {
+		redirect(w, r, "/indexers/new", "", s.translate(r, "idx.catalog.invalid"))
+		return
+	}
 	if s.svc == nil {
 		redirect(w, r, "/indexers/new", "", s.translate(r, "indexer.error.serviceUnavailable"))
 		return

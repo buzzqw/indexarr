@@ -390,3 +390,21 @@ func TestCatalogFormUsesTheDefinitionEndpoint(t *testing.T) {
 		}
 	}
 }
+
+// TestCatalogAddReadsTheFormWhenTheTokenIsInTheQuery covers a client that puts
+// the CSRF token in the query string (the middleware then skips parsing the
+// body): the chosen sites must still reach the handler instead of the page
+// answering "select at least one site".
+func TestCatalogAddReadsTheFormWhenTheTokenIsInTheQuery(t *testing.T) {
+	env := newNativeEnv(t)
+	token, cookie := csrfFrom(t, env.handler, "/indexers/new")
+	recorder := postForm(t, env.handler, "/indexers/catalog/add?csrf="+token, url.Values{
+		"definition_id": {"thepiratebay"},
+	}, cookie)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("add = %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if location := recorder.Header().Get("Location"); !strings.HasPrefix(location, "/indexers/") {
+		t.Fatalf("Location = %q, want the detail page", location)
+	}
+}
