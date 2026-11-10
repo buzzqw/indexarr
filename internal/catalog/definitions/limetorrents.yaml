@@ -21,8 +21,21 @@ meta:
   # No other LimeTorrents domain answered from this network that day.
   urls:
     - https://www.limetorrents.fun/
-  updated: "2026-10-29"
+  updated: "2026-11-10"
   latest: false
+
+# The site answers 403 to a plain HTTP client and only a browser user agent
+# gets the search page. Without this header the connector falls back to the
+# FlareSolverr browser session, and on 2026-11-10 a search cost 33-37 s and the
+# health probe timed out at 45 s, while the same page answers in 0.2-0.6 s with
+# a browser user agent. The connector derives a transport with it for this
+# indexer only (definition_connector.go).
+settings:
+  - name: user-agent
+    type: text
+    label: "User-Agent"
+    help: "Browser user agent sent with the search, the release page and the .torrent download. LimeTorrents answers 403 without one."
+    default: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 categories:
   - { site: "Movies", standard: 2000, desc: "Movies" }

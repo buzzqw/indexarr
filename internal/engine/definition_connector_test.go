@@ -1115,3 +1115,86 @@ func TestDefinitionConnectorContextCancellation(t *testing.T) {
 		t.Fatal("Search with canceled context succeeded")
 	}
 }
+
+// TestDefinitionConnectorSendsTheUserAgentOfTheDefinition covers the setting
+// the public sites need: limetorrents answers 403 to a plain client and 200 to
+// a browser one, so without this header every search fell back to the
+// FlareSolverr browser session. The validator only accepts slug names, so the
+// definition declares "user-agent" while the connector reads "user_agent": the
+// two spellings must reach the transport, from the definition default and from
+// an explicit value.
+func TestDefinitionConnectorSendsTheUserAgentOfTheDefinition(t *testing.T) {
+	const (
+		defaultAgent  = "indexarr-test/1.0 (definition default)"
+		explicitAgent = "indexarr-test/2.0 (per source)"
+	)
+	seen := make(chan string, 8)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen <- r.Header.Get("User-Agent")
+		writeBody(t, w, []byte(`<html><body><table class="results"><tbody><tr>
+			<td><a class="title">Example release</a>
+			<a class="download" href="/example.torrent">download</a></td>
+			</tr></tbody></table></body></html>`))
+	}))
+	defer server.Close()
+
+	body := `schema: 1
+meta:
+  id: user-agent-test
+  name: User Agent Test
+  type: public
+  protocol: torrent
+  urls: ["` + server.URL + `/"]
+settings:
+  - { name: user-agent, type: text, default: "` + defaultAgent + `" }
+capabilities:
+  search: [q]
+search:
+  request:
+    get: /search
+    params: { q: "{{ query.keywords }}" }
+  response:
+    type: html
+    rows: { selector: "table.results tbody tr" }
+    fields:
+      title: { selector: "a.title" }
+      download: { selector: "a.download", attr: href, type: url }
+    required: [title, download]
+`
+	def, err := definition.Parse([]byte(body))
+	if err != nil {
+		t.Fatalf("parse definition: %v", err)
+	}
+
+	search := func(t *testing.T, settings map[string]string) string {
+		t.Helper()
+		connector, err := NewDefinitionConnector(DefinitionConfig{
+			Indexer:    IndexerRef{Slug: def.Meta.ID, Name: def.Meta.Name},
+			Definition: def,
+			Settings:   settings,
+			Transport:  NewTransport(TransportConfig{AllowPrivate: true, Clock: newDefinitionClock()}),
+		})
+		if err != nil {
+			t.Fatalf("NewDefinitionConnector: %v", err)
+		}
+		items, err := connector.Search(context.Background(), SearchRequest{Mode: ModeSearch, Query: "example"})
+		if err != nil {
+			t.Fatalf("search: %v", err)
+		}
+		if len(items) != 1 {
+			t.Fatalf("items = %d, want 1", len(items))
+		}
+		return <-seen
+	}
+
+	if got := search(t, nil); got != defaultAgent {
+		t.Fatalf("User-Agent from the definition default = %q, want %q", got, defaultAgent)
+	}
+	// The same name with the other spelling, as an installed source stores it.
+	if got := search(t, map[string]string{"user_agent": explicitAgent}); got != explicitAgent {
+		t.Fatalf("User-Agent from user_agent = %q, want %q", got, explicitAgent)
+	}
+	if got := search(t, map[string]string{"user-agent": explicitAgent}); got != explicitAgent {
+		t.Fatalf("User-Agent from user-agent = %q, want %q", got, explicitAgent)
+	}
+}

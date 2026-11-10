@@ -174,6 +174,12 @@ func NewDefinitionConnector(cfg DefinitionConfig) (*DefinitionConnector, error) 
 	if settings["apikey"] == "" {
 		settings["apikey"] = settings["api_key"]
 	}
+	// Same for the browser user agent: the code below reads user_agent, the
+	// validator only accepts the slug user-agent, and the result is kept the
+	// same spelling it documents so the transport picks it up.
+	if settings["user_agent"] == "" {
+		settings["user_agent"] = settings["user-agent"]
+	}
 	hasSetting := func(name string) bool { return strings.TrimSpace(settings[name]) != "" }
 	for _, setting := range def.Settings {
 		if setting.Required && !def.LoginSatisfied(setting.Name, hasSetting) {
