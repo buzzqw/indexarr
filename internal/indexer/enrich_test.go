@@ -117,3 +117,94 @@ func TestEnrichNeverThanksATopicOrOpensAnotherIndexersReference(t *testing.T) {
 		t.Errorf("failed = %d, want 0", report.Failed)
 	}
 }
+
+// TestEnrichStopsRetryingADeadReleasePage covers the flood seen in the field
+// (about a hundred 404s a day on limetorrents): the candidates are read oldest
+// first, so a page the site removed at the front of the queue was reopened at
+// every pass. A 404 counts on the source and, at the second failure, quarantines
+// it; a release that answers still gets its infohash.
+func TestEnrichStopsRetryingADeadReleasePage(t *testing.T) {
+	var deadHits, liveHits atomic.Int32
+	dead := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		deadHits.Add(1)
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(dead.Close)
+	live := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		liveHits.Add(1)
+		_, _ = w.Write([]byte(`<html><body><a href="magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Live">m</a></body></html>`))
+	}))
+	t.Cleanup(live.Close)
+
+	st := newTestStore(t)
+	v := newTestVault(t, 9)
+	seedDefinition(t, st, "enrich-dead", "", enrichDefinition("enrich-dead", dead.URL, false))
+	seedDefinition(t, st, "enrich-live", "", enrichDefinition("enrich-live", live.URL, false))
+	deadID := createIndexer(t, st, "enrich-dead", "enrich-dead", "Dead", "torrent", "{}")
+	liveID := createIndexer(t, st, "enrich-live", "enrich-live", "Live", "torrent", "{}")
+	m := newTestManager(t, st, v)
+
+	seal := func(indexerID int64, details string) string {
+		ref, err := SealDownloadRef(v, indexerID, engine.Item{Title: "x", DetailsURL: details})
+		if err != nil {
+			t.Fatalf("SealDownloadRef: %v", err)
+		}
+		return ref
+	}
+	seedHashlessSource(t, st, seal(deadID, dead.URL+"/gone.html"), deadID, "Dead Release")
+	seedHashlessSource(t, st, seal(liveID, live.URL+"/live.html"), liveID, "Live Release")
+
+	for pass := 1; pass <= 3; pass++ {
+		report, err := m.EnrichMissingInfohashes(context.Background(), 10)
+		if err != nil {
+			t.Fatalf("pass %d: %v", pass, err)
+		}
+		want := 0
+		if pass == 1 {
+			want = 1 // the live release receives its hash and stops being a candidate
+		}
+		if report.Recovered != want {
+			t.Fatalf("pass %d: recovered = %d, want %d", pass, report.Recovered, want)
+		}
+	}
+	if got := deadHits.Load(); got != 2 {
+		t.Fatalf("dead page opened %d times, want 2 (the first failure, then the one that quarantines)", got)
+	}
+	if got := liveHits.Load(); got != 1 {
+		t.Fatalf("live page opened %d times, want 1", got)
+	}
+}
+
+// TestEnrichNotesATemporaryFailureWithoutQuarantine keeps the quarantine for
+// dead links only: a login or a timeout says nothing about the release.
+func TestEnrichNotesATemporaryFailureWithoutQuarantine(t *testing.T) {
+	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(broken.Close)
+
+	st := newTestStore(t)
+	v := newTestVault(t, 11)
+	seedDefinition(t, st, "enrich-broken", "", enrichDefinition("enrich-broken", broken.URL, false))
+	id := createIndexer(t, st, "enrich-broken", "enrich-broken", "Broken", "torrent", "{}")
+	m := newTestManager(t, st, v)
+	ref, err := SealDownloadRef(v, id, engine.Item{Title: "x", DetailsURL: broken.URL + "/page.html"})
+	if err != nil {
+		t.Fatalf("SealDownloadRef: %v", err)
+	}
+	seedHashlessSource(t, st, ref, id, "Broken Release")
+
+	for pass := 1; pass <= 3; pass++ {
+		if _, err := m.EnrichMissingInfohashes(context.Background(), 10); err != nil {
+			t.Fatalf("pass %d: %v", pass, err)
+		}
+	}
+	// Still a candidate every time: the source is not quarantined.
+	items, err := st.HashlessSources(context.Background(), 100)
+	if err != nil {
+		t.Fatalf("HashlessSources: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("sources = %d, want the release still attempted", len(items))
+	}
+}

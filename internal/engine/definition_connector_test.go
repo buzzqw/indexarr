@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -1196,5 +1197,44 @@ search:
 	}
 	if got := search(t, map[string]string{"user-agent": explicitAgent}); got != explicitAgent {
 		t.Fatalf("User-Agent from user-agent = %q, want %q", got, explicitAgent)
+	}
+}
+
+// TestDefinitionConnectorMarksDeadReleaseLinks separates a page the site has
+// removed from a temporary failure: only the first kind may count against the
+// source and quarantine it, and the message keeps its wording.
+func TestDefinitionConnectorMarksDeadReleaseLinks(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/gone":
+			http.NotFound(w, r)
+		case "/deleted":
+			w.WriteHeader(http.StatusGone)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer server.Close()
+
+	connector := newDefinitionConnector(t, "download.yaml", server.URL, nil, newDefinitionClock())
+	cases := []struct {
+		path string
+		gone bool
+	}{
+		{"/gone", true},
+		{"/deleted", true},
+		{"/broken", false},
+	}
+	for _, tc := range cases {
+		_, err := connector.Download(context.Background(), Item{DetailsURL: server.URL + tc.path, Title: "x"})
+		if err == nil {
+			t.Fatalf("%s: want an error", tc.path)
+		}
+		if got := errors.Is(err, ErrLinkGone); got != tc.gone {
+			t.Fatalf("%s: ErrLinkGone = %v, want %v (%v)", tc.path, got, tc.gone, err)
+		}
+		if !strings.Contains(err.Error(), "details returned HTTP") {
+			t.Fatalf("%s: message = %q", tc.path, err)
+		}
 	}
 }

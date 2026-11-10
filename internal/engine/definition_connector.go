@@ -1123,6 +1123,9 @@ func (c *DefinitionConnector) downloadFromDetails(ctx context.Context, item Item
 		return Payload{}, errors.New("download: unexpected redirect from details page")
 	}
 	if response.Status < 200 || response.Status >= 400 {
+		if response.Status == http.StatusNotFound || response.Status == http.StatusGone {
+			return Payload{}, fmt.Errorf("download: details returned HTTP %d: %w", response.Status, ErrLinkGone)
+		}
 		return Payload{}, fmt.Errorf("download: details returned HTTP %d", response.Status)
 	}
 

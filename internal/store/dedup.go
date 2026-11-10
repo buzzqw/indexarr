@@ -518,7 +518,9 @@ func FuseReleases(releases []Release) []Release {
 
 // HashlessSources lists torrent releases without an infohash that still have a
 // sealed download reference. The caller caps the work per indexer so a popular
-// site cannot be hammered by the enrichment job.
+// site cannot be hammered by the enrichment job. A source under quarantine is
+// left out: its release page answered 404 twice, so opening it again at every
+// pass would only add noise (see RecordSourceDownloadFailure).
 func (s *Store) HashlessSources(ctx context.Context, scanLimit int) ([]HashlessSource, error) {
 	if scanLimit <= 0 {
 		scanLimit = 5000
@@ -530,8 +532,9 @@ func (s *Store) HashlessSources(ctx context.Context, scanLimit int) ([]HashlessS
 		JOIN indexers i ON i.id = rs.indexer_id
 		WHERE r.infohash = '' AND r.protocol = 'torrent'
 			AND rs.download_ref <> ''
+			AND (rs.quarantined_until = 0 OR rs.quarantined_until <= ?)
 		ORDER BY r.id, rs.indexer_id
-		LIMIT ?`, scanLimit)
+		LIMIT ?`, time.Now().Unix(), scanLimit)
 	if err != nil {
 		return nil, fmt.Errorf("list hashless sources: %w", err)
 	}

@@ -192,3 +192,62 @@ func TestFuseReleasesKeepsOneRowAndStrongestIdentity(t *testing.T) {
 		t.Fatalf("seeders = %d, want the healthiest copy's 30", fused[0].Seeders)
 	}
 }
+
+// TestHashlessSourcesSkipsQuarantinedSources keeps the enrichment job away from
+// a page the site has removed: the candidates are read oldest first, so a dead
+// release at the front of the queue was reopened at every pass (about a hundred
+// 404s a day on limetorrents) until its source was quarantined.
+func TestHashlessSourcesSkipsQuarantinedSources(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	mustCreateDefinition(t, st, "limetorrents")
+	indexerID := mustCreateIndexer(t, st, "limetorrents", "limetorrents", "LimeTorrents")
+	now := time.Now()
+
+	add := func(key string) Release {
+		release := Release{DedupKey: key, Title: key, SearchTitle: key, Size: 1000,
+			Protocol: "torrent", FirstSeenAt: now, LastSeenAt: now}
+		if _, err := st.UpsertRelease(ctx, &release); err != nil {
+			t.Fatalf("UpsertRelease: %v", err)
+		}
+		if err := st.RecordReleaseSource(ctx, ReleaseSource{ReleaseID: release.ID, IndexerID: indexerID,
+			DownloadRef: "sealed-" + key}); err != nil {
+			t.Fatalf("RecordReleaseSource: %v", err)
+		}
+		return release
+	}
+	live := add("live")
+	dead := add("dead")
+
+	if failures, until, err := st.RecordSourceDownloadFailure(ctx, dead.ID, indexerID, "details returned HTTP 404"); err != nil {
+		t.Fatalf("RecordSourceDownloadFailure: %v", err)
+	} else if failures != 1 || !until.IsZero() {
+		t.Fatalf("first failure = %d/%v, want 1 and no quarantine", failures, until)
+	}
+	// One failure is not a quarantine yet: the page may come back.
+	items, err := st.HashlessSources(ctx, 100)
+	if err != nil {
+		t.Fatalf("HashlessSources: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("sources = %d, want both after one failure", len(items))
+	}
+	if _, _, err := st.RecordSourceDownloadFailure(ctx, dead.ID, indexerID, "details returned HTTP 404"); err != nil {
+		t.Fatalf("second failure: %v", err)
+	}
+	items, err = st.HashlessSources(ctx, 100)
+	if err != nil {
+		t.Fatalf("HashlessSources: %v", err)
+	}
+	if len(items) != 1 || items[0].ReleaseID != live.ID {
+		t.Fatalf("sources = %+v, want only the live release", items)
+	}
+
+	// A grab that works clears the counter, and the source comes back.
+	if err := st.ClearSourceDownloadFailure(ctx, dead.ID, indexerID); err != nil {
+		t.Fatalf("ClearSourceDownloadFailure: %v", err)
+	}
+	if items, err = st.HashlessSources(ctx, 100); err != nil || len(items) != 2 {
+		t.Fatalf("sources after clearing = %d, %v, want both", len(items), err)
+	}
+}

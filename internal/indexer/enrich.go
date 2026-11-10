@@ -2,9 +2,13 @@ package indexer
 
 import (
 	"context"
+	"errors"
 	"strings"
+	"time"
 
+	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/feed"
+	"github.com/buzzqw/indexarr/internal/store"
 )
 
 // EnrichReport is the outcome of one infohash backfill pass.
@@ -73,6 +77,7 @@ func (m *Manager) EnrichMissingInfohashes(ctx context.Context, perIndexer int) (
 		payload, downloadErr := m.Download(ctx, candidate.IndexerID, parsed.Item)
 		if downloadErr != nil {
 			report.Failed++
+			m.recordEnrichFailure(ctx, candidate, downloadErr)
 			continue
 		}
 		hash := feed.MagnetHash(payload.Magnet)
@@ -101,6 +106,9 @@ func (m *Manager) EnrichMissingInfohashes(ctx context.Context, perIndexer int) (
 		if merged && keeperID != candidate.ReleaseID {
 			report.Merged++
 		}
+		// The source answers again: a later grab must not inherit the failures
+		// of a page that was dead yesterday.
+		_ = m.store.ClearSourceDownloadFailure(ctx, candidate.ReleaseID, candidate.IndexerID)
 	}
 	if report.Attempted > 0 {
 		m.logger.Info("indexer: infohash enrichment",
@@ -112,6 +120,30 @@ func (m *Manager) EnrichMissingInfohashes(ctx context.Context, perIndexer int) (
 			"skipped", report.Skipped)
 	}
 	return report, nil
+}
+
+// recordEnrichFailure keeps a dead release page from being opened at every
+// pass. The candidates are read oldest first, so without this the same few
+// hundred pages the site has removed are retried forever (about a hundred 404s
+// a day on limetorrents). A 404/410 counts on the source and quarantines it;
+// anything else is only noted for the release card, because a login or a
+// timeout says nothing about the link.
+func (m *Manager) recordEnrichFailure(ctx context.Context, candidate store.HashlessSource, downloadErr error) {
+	if errors.Is(downloadErr, engine.ErrLinkGone) {
+		failures, until, err := m.store.RecordSourceDownloadFailure(ctx, candidate.ReleaseID, candidate.IndexerID, downloadErr.Error())
+		if err != nil {
+			m.logger.Debug("indexer: cannot record the dead release link", "indexer", candidate.IndexerSlug, "error", err)
+			return
+		}
+		if failures == 2 {
+			m.logger.Info("indexer: release page gone",
+				"indexer", candidate.IndexerSlug,
+				"release", candidate.Title,
+				"retry_after", until.Format(time.RFC3339))
+		}
+		return
+	}
+	_ = m.store.RecordSourceDownloadNotice(ctx, candidate.ReleaseID, candidate.IndexerID, downloadErr.Error())
 }
 
 // engagesOnGrab reports an indexer whose download runs an engagement action
