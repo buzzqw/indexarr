@@ -1045,7 +1045,9 @@ func (c *DefinitionConnector) extractRowsWith(response *Response, spec definitio
 	case "json":
 		return extractJSONRows(response.Body, spec, base)
 	case "xml":
-		return extractXMLRows(response.Body, spec, base)
+		// A browser that solved the challenge hands back its own XML viewer:
+		// the feed is the document inside it, not the viewer page.
+		return extractXMLRows(feedXML(response.Body), spec, base)
 	default:
 		return extractHTMLRows(htmlBody(response), spec, base)
 	}
