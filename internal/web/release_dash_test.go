@@ -35,7 +35,7 @@ func TestReleaseUnknownValuesUseDash(t *testing.T) {
 	if strings.Contains(body, "0 B") {
 		t.Errorf("unknown size rendered as 0 B:\n%s", body)
 	}
-	if strings.Contains(body, ">?<") {
+	if strings.Contains(body, "<td>?</td>") {
 		t.Errorf("unknown integer rendered as ?:\n%s", body)
 	}
 	if !strings.Contains(body, "—") {

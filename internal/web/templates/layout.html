@@ -10,6 +10,16 @@
   <link rel="manifest" href="/static/manifest.webmanifest">
   <meta name="theme-color" content="#0f172a">
   <script>document.documentElement.classList.add("js");</script>
+  <script>
+    (() => {
+      try {
+        const theme = localStorage.getItem("indexarr.theme");
+        if (theme === "light" || theme === "dark" || theme === "contrast") {
+          document.documentElement.dataset.theme = theme;
+        }
+      } catch (error) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/static/app.css?v={{.AssetVersion}}">
   <script src="/static/app.js?v={{.AssetVersion}}" defer></script>
   {{if .AutoRefresh}}<meta http-equiv="refresh" content="{{.AutoRefresh}}">{{end}}
@@ -29,7 +39,7 @@
 
       <form class="global-search" role="search" action="/releases" method="get">
         <label class="sr-only" for="global-search">{{T "shell.searchLabel"}}</label>
-        <input id="global-search" name="q" type="search" autocomplete="off" placeholder="{{T "shell.searchPlaceholder"}}">
+        <input id="global-search" name="q" type="search" autocomplete="off" placeholder="{{T "shell.searchPlaceholder"}}" aria-keyshortcuts="/">
         <button class="btn small" type="submit">{{T "shell.searchButton"}}</button>
       </form>
 
@@ -44,6 +54,16 @@
       </nav>
 
       <div class="sidebar-foot">
+        <div class="sidebar-tools">
+          <label class="sidebar-tool-label" for="theme-select">{{T "shell.theme"}}</label>
+          <select id="theme-select" data-theme-select title="{{T "shell.themeHelp"}}">
+            <option value="auto">{{T "shell.themeAuto"}}</option>
+            <option value="light">{{T "shell.themeLight"}}</option>
+            <option value="dark">{{T "shell.themeDark"}}</option>
+            <option value="contrast">{{T "shell.themeContrast"}}</option>
+          </select>
+          <button class="btn small" type="button" data-shortcuts-open aria-keyshortcuts="?" title="{{T "shortcuts.openHelp"}}">{{T "shell.shortcuts"}}</button>
+        </div>
         <a class="version" href="https://github.com/buzzqw/indexarr" target="_blank" rel="noopener noreferrer" title="{{T "shell.versionTitle"}}">{{displayVersion .Version}}</a>
         <details class="lang-menu">
           <span class="sr-only">{{T "shell.language"}}</span>
@@ -77,6 +97,25 @@
       </main>
     </div>
   </div>
+
+  <dialog class="shortcuts" data-shortcuts-dialog aria-labelledby="shortcuts-title">
+    <div class="shortcuts-head">
+      <h2 id="shortcuts-title">{{T "shortcuts.title"}}</h2>
+      <form method="dialog">
+        <button class="btn small" type="submit">{{T "shortcuts.close"}}</button>
+      </form>
+    </div>
+    <p class="help">{{T "shortcuts.help"}}</p>
+    <dl class="shortcut-list">
+      <div><dt><kbd>/</kbd></dt><dd>{{T "shortcuts.search"}}</dd></div>
+      <div><dt><kbd>j</kbd></dt><dd>{{T "shortcuts.next"}}</dd></div>
+      <div><dt><kbd>k</kbd></dt><dd>{{T "shortcuts.previous"}}</dd></div>
+      <div><dt><kbd>x</kbd></dt><dd>{{T "shortcuts.select"}}</dd></div>
+      <div><dt><kbd>r</kbd></dt><dd>{{T "shortcuts.searchAgain"}}</dd></div>
+      <div><dt><kbd>?</kbd></dt><dd>{{T "shortcuts.openHelp"}}</dd></div>
+      <div><dt><kbd>Esc</kbd></dt><dd>{{T "shortcuts.escape"}}</dd></div>
+    </dl>
+  </dialog>
 
   <a class="donate" href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&amp;business=azanzani@gmail.com&amp;item_name=Support+indexarr+Project" target="_blank" rel="noopener noreferrer" title="{{T "shell.donateTitle"}}" aria-label="{{T "shell.donateTitle"}}">
     <span class="donate-icon" aria-hidden="true">❤️</span><span class="donate-label">{{T "shell.donate"}}</span>

@@ -216,6 +216,12 @@ func TestOwnedTemplatesUseCatalog(t *testing.T) {
 		"usenet":   true,
 		"ms":       true,
 		"WAL":      true,
+		// Keyboard labels in the shortcut dialog are key names, not prose.
+		"Esc": true,
+		"j":   true,
+		"k":   true,
+		"r":   true,
+		"x":   true,
 	}
 	known := make(map[string]bool, len(i18n.Keys()))
 	for _, key := range i18n.Keys() {

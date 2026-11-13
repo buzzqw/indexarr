@@ -34,6 +34,62 @@
   }
 }
 
+/* The theme picker stores an explicit choice. The attribute selector has a
+   higher specificity than :root, so it also overrides the system preference. */
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --text: #15181d;
+  --muted: #5b6472;
+  --border: #d9dfe8;
+  --accent: #1d4ed8;
+  --accent-contrast: #ffffff;
+  --ok: #157347;
+  --warn: #9a5b00;
+  --danger: #b42318;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1116;
+  --surface: #161b23;
+  --surface-2: #1d242e;
+  --text: #e8ebf0;
+  --muted: #9aa5b4;
+  --border: #2a3341;
+  --accent: #7aa8ff;
+  --accent-contrast: #09101c;
+  --ok: #5cd39b;
+  --warn: #f0b35a;
+  --danger: #ff8a80;
+  --shadow: none;
+}
+
+html[data-theme="contrast"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #0b0b0b;
+  --surface-2: #171717;
+  --text: #ffffff;
+  --muted: #d6d6d6;
+  --border: #8a8a8a;
+  --accent: #ffd400;
+  --accent-contrast: #000000;
+  --ok: #00ff88;
+  --warn: #ffcc00;
+  --danger: #ff7070;
+  --shadow: none;
+}
+
+html[data-theme="contrast"] a { text-decoration: underline; }
+html[data-theme="contrast"] :focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
 * { box-sizing: border-box; }
 
 /* .btn and other display rules must not reveal an element the markup hides,
@@ -2441,3 +2497,75 @@ table.compact th, table.compact td { padding: 0.3rem 0.5rem; font-size: 0.8rem; 
 .panel > .definitions-all { margin: 0.6rem var(--pad-x, 1rem) 0.4rem; }
 .panel > .definitions-all > .panel-head { padding-inline: 0; }
 .panel > .definitions-all > .help { margin-bottom: 0.4rem; }
+
+/* Theme picker and keyboard-shortcut help in the sidebar. Both are plain
+   controls, so they keep working when JavaScript is unavailable. */
+.sidebar-tools { display: flex; flex-direction: column; gap: 0.4rem; }
+.sidebar-tools select { width: 100%; }
+.sidebar-tools .btn { width: 100%; }
+.sidebar-tool-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shortcuts {
+  width: min(34rem, calc(100vw - 2rem));
+  padding: 1.1rem 1.2rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+.shortcuts::backdrop { background: rgba(0, 0, 0, 0.55); }
+.shortcuts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.shortcuts-head h2 { margin: 0; font-size: 1.15rem; }
+.shortcut-list { display: grid; gap: 0.45rem; margin: 0.9rem 0 0; }
+.shortcut-list > div {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.8rem;
+}
+.shortcut-list dt,
+.shortcut-list dd { margin: 0; }
+kbd {
+  display: inline-block;
+  min-width: 1.6rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  font: 600 0.78rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+}
+
+/* The row reached with j/k, for pages that list releases or indexers. */
+tr.row-focus > td { background: var(--surface-2); }
+tr.row-focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Long tables become their own scroll area on desktop, which is what makes
+   the sticky header effective. The mobile layout hides the header and turns
+   rows into cards, so it keeps the page as the only scroll area. */
+@media (min-width: 901px) {
+  .table-scroll {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--surface);
+    box-shadow: 0 1px 0 var(--border);
+  }
+}
