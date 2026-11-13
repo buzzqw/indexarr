@@ -17,6 +17,18 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// restrictDatabaseFiles removes world and group access from the database and
+// its WAL side files. The database holds session cookies, tracker passkeys and
+// cached torrent metadata, so another local user must not read it. The
+// directory keeps the mode the operator chose: a shared data directory may be
+// intentional, while the files inside stay private. chmod is best-effort: a
+// filesystem that does not support it must not stop the daemon.
+func restrictDatabaseFiles(path string) {
+	for _, name := range []string{path, path + "-wal", path + "-shm"} {
+		_ = os.Chmod(name, 0o600)
+	}
+}
+
 // Store owns the SQLite database. A single connection is kept, as the pure-Go
 // driver is serialised per connection and indexarr mixes a web UI with
 // background writers.
@@ -67,6 +79,7 @@ func Open(path string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("enable WAL on %s: %w", path, err)
 	}
+	restrictDatabaseFiles(path)
 	s := &Store{db: db, path: path}
 	if err := s.migrate(); err != nil {
 		_ = db.Close()

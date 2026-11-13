@@ -23,7 +23,7 @@ func extractHTMLRows(body []byte, schema definition.Response, base *url.URL) ([]
 
 	var rows []*html.Node
 	for _, raw := range schema.Rows.Selector {
-		selector, err := cascadia.Compile(raw)
+		selector, err := compileSelector(raw)
 		if err != nil {
 			return nil, fmt.Errorf("html: invalid row selector %q: %w", raw, err)
 		}
@@ -64,7 +64,7 @@ func extractHTMLField(row *html.Node, field definition.Field) (string, error) {
 		return htmlAttr(row, field.Attr), nil
 	}
 	for _, raw := range field.Selector {
-		selector, err := cascadia.Compile(raw)
+		selector, err := compileSelector(raw)
 		if err != nil {
 			return "", fmt.Errorf("invalid selector %q: %w", raw, err)
 		}
@@ -115,7 +115,7 @@ func extractHTMLValue(body []byte, selector, attr string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("html: parse response: %w", err)
 	}
-	compiled, err := cascadia.Compile(selector)
+	compiled, err := compileSelector(selector)
 	if err != nil {
 		return "", fmt.Errorf("html: invalid selector %q: %w", selector, err)
 	}
@@ -136,7 +136,7 @@ func extractHTMLValues(body []byte, selector, attr string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("html: parse response: %w", err)
 	}
-	compiled, err := cascadia.Compile(selector)
+	compiled, err := compileSelector(selector)
 	if err != nil {
 		return nil, fmt.Errorf("html: invalid selector %q: %w", selector, err)
 	}
@@ -162,7 +162,7 @@ func htmlSelectorPresent(body []byte, selector string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("html: parse response: %w", err)
 	}
-	compiled, err := cascadia.Compile(selector)
+	compiled, err := compileSelector(selector)
 	if err != nil {
 		return false, fmt.Errorf("html: invalid selector %q: %w", selector, err)
 	}
@@ -175,7 +175,7 @@ func firstHTMLLink(body []byte, match func(href string) bool) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("html: parse response: %w", err)
 	}
-	selector, err := cascadia.Compile("a[href]")
+	selector, err := compileSelector("a[href]")
 	if err != nil {
 		return "", err
 	}

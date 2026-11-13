@@ -742,24 +742,38 @@ if ("serviceWorker" in navigator) {
   const controls = document.querySelectorAll(
     'input:not([type="hidden"]), select, textarea, button'
   );
-  const labelFor = (root, controlId) => {
-    if (!controlId) {
-      return null;
+  // Read every label text once. Searching the whole document for each
+  // control was quadratic on the settings page and forced one layout read
+  // per input.
+  const labelTextByFor = new Map();
+  document.querySelectorAll("label[for]").forEach((label) => {
+    if (!labelTextByFor.has(label.htmlFor)) {
+      labelTextByFor.set(label.htmlFor, label.textContent.trim());
     }
-    return Array.from(root.querySelectorAll("label")).find(
-      (label) => label.htmlFor === controlId
-    ) || null;
+  });
+  const labelTextFor = (root, controlId) => {
+    if (!controlId) {
+      return "";
+    }
+    if (root === document) {
+      return labelTextByFor.get(controlId) || "";
+    }
+    const label = Array.from(root.querySelectorAll("label")).find(
+      (candidate) => candidate.htmlFor === controlId
+    );
+    return label ? label.textContent.trim() : "";
   };
   controls.forEach((control) => {
     if (control.title) {
       return;
     }
     const id = control.id;
-    const labelled = labelFor(document, id);
+    const labelled = labelTextFor(document, id);
     if (control.type === "checkbox" || control.type === "radio") {
-      const label = control.closest("label") || labelled;
-      if (label) {
-        control.title = label.textContent.trim();
+      const wrapping = control.closest("label");
+      const text = wrapping ? wrapping.textContent.trim() : labelled;
+      if (text) {
+        control.title = text;
       }
       return;
     }
@@ -771,14 +785,11 @@ if ("serviceWorker" in navigator) {
         text = help.textContent.trim();
       }
       if (!text && id) {
-        const label = labelFor(field, id);
-        if (label) {
-          text = label.textContent.trim();
-        }
+        text = labelTextFor(field, id);
       }
     }
-    if (!text && labelled) {
-      text = labelled.textContent.trim();
+    if (!text) {
+      text = labelled;
     }
     if (!text && control.tagName === "BUTTON") {
       text = control.textContent.trim();

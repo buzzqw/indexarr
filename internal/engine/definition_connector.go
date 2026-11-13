@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -816,8 +815,12 @@ func (c *DefinitionConnector) search(ctx context.Context, req SearchRequest, fir
 				}
 				return nil, err
 			}
-			page, empty, err := c.fetchSearchPage(ctx, request, build, &relogged)
-			release()
+			// The lane must be released even if the page reader panics:
+			// otherwise every later search to this indexer waits forever.
+			page, empty, err := func() (*Response, bool, error) {
+				defer release()
+				return c.fetchSearchPage(ctx, request, build, &relogged)
+			}()
 			if errors.Is(err, errSearchRefused) && len(items) > 0 {
 				// The first pages already answered: keep them.
 				break
@@ -1780,7 +1783,7 @@ func extractAuthValue(body []byte, extractor definition.Extractor) (string, erro
 		}
 		return jsonValueString(walkJSONPath(root, extractor.JSON)), nil
 	case extractor.Regex != "":
-		compiled, err := regexp.Compile(extractor.Regex)
+		compiled, err := compileRegex(extractor.Regex)
 		if err != nil {
 			return "", err
 		}

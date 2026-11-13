@@ -131,6 +131,8 @@ type Routine struct {
 
 	running   atomic.Bool
 	requested atomic.Bool
+	started   atomic.Bool
+	done      chan struct{}
 	mu        sync.Mutex
 	state     store.MaintenanceState
 	loaded    bool
@@ -164,7 +166,12 @@ func (r *Routine) Start(ctx context.Context) {
 	if r == nil {
 		return
 	}
+	if !r.started.CompareAndSwap(false, true) {
+		return
+	}
+	r.done = make(chan struct{})
 	go func() {
+		defer close(r.done)
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
 		for {
@@ -176,6 +183,15 @@ func (r *Routine) Start(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+// Wait blocks until the loop started by Start has exited. It returns at once
+// when Start was never called, so a disabled routine cannot hang shutdown.
+func (r *Routine) Wait() {
+	if r == nil || !r.started.Load() {
+		return
+	}
+	<-r.done
 }
 
 // Request asks for a pass at the next tick, without waiting for an idle

@@ -66,7 +66,7 @@ func applyFilters(value string, filters []definition.Filter) (string, error) {
 		case "suffix":
 			value = value + filter.Arg
 		case "regex":
-			compiled, err := regexp.Compile(filter.Arg)
+			compiled, err := compileRegex(filter.Arg)
 			if err != nil {
 				return "", fmt.Errorf("filter regex: invalid pattern: %w", err)
 			}

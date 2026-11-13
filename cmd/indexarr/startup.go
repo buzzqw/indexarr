@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/buzzqw/indexarr/internal/backup"
@@ -21,6 +22,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/notify"
 	"github.com/buzzqw/indexarr/internal/store"
 	"github.com/buzzqw/indexarr/internal/syncjob"
+	"github.com/buzzqw/indexarr/internal/upkeep"
 	"github.com/buzzqw/indexarr/internal/vault"
 )
 
@@ -248,11 +250,21 @@ func startAppSync(ctx context.Context, st *store.Store, secretVault *vault.Vault
 // browsers owned by the cached connectors: a stopped indexarr must not leave
 // Chromium running behind it.
 func shutdown(httpServer *http.Server, nativeRunner *native.Runner, syncService *syncjob.Service,
-	healthChecker *health.Checker, indexerManager *indexer.Manager, logger *slog.Logger) {
+	healthChecker *health.Checker, indexerManager *indexer.Manager, routine *upkeep.Routine,
+	jobs *sync.WaitGroup, logger *slog.Logger) {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		logger.Warn("HTTP shutdown", "error", err)
+	}
+	// The maintenance pass and the background jobs hold the same database:
+	// wait for them before the manager closes the sessions and the deferred
+	// st.Close() runs, so a VACUUM or a merge is never cut off mid-write.
+	if routine != nil {
+		routine.Wait()
+	}
+	if jobs != nil {
+		jobs.Wait()
 	}
 	if nativeRunner != nil {
 		nativeRunner.Wait()

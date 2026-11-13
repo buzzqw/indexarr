@@ -560,6 +560,7 @@ type Server struct {
 	// confirmation form. The personal token never travels through the HTML.
 	smartfeedPlans *smartfeedPlanStore
 	authCache      verifiedLogins
+	loginLimit     loginLimiter
 	// pendingStores holds the form values of a fourth stored source while the
 	// user reads the measured warning.
 	pendingStores *pendingStoreSet
@@ -937,13 +938,31 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			return
 		}
 		user, password, ok := r.BasicAuth()
-		userOK := subtleCompare(user, settings.UIUser)
-		passwordOK := s.authCache.verify(user, password, settings.UIPasswordHash)
-		if !ok || !userOK || !passwordOK {
+		if !ok {
+			// The first request of a browser carries no credentials at all:
+			// it is the prompt, not a failed password, and must never count
+			// against the address.
 			w.Header().Set("WWW-Authenticate", `Basic realm="indexarr"`)
 			http.Error(w, "authentication required", http.StatusUnauthorized)
 			return
 		}
+		address := clientAddress(r.RemoteAddr)
+		if wait := s.loginLimit.retryAfter(address); wait > 0 {
+			writeLoginRetry(w, wait)
+			return
+		}
+		userOK := subtleCompare(user, settings.UIUser)
+		passwordOK := s.authCache.verify(user, password, settings.UIPasswordHash)
+		if !userOK || !passwordOK {
+			if pause := s.loginLimit.fail(address); pause > 0 {
+				writeLoginRetry(w, pause)
+				return
+			}
+			w.Header().Set("WWW-Authenticate", `Basic realm="indexarr"`)
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
+		s.loginLimit.success(address)
 		next.ServeHTTP(w, r)
 	})
 }

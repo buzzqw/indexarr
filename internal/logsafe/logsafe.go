@@ -12,6 +12,11 @@ import (
 var (
 	querySecret = regexp.MustCompile(`(?i)([?&](?:apikey|api_key|passkey|rsskey|torrent_pass|token|password|secret|u|e)=)([^&\s"']+)`)
 	bareSecret  = regexp.MustCompile(`(?i)\b(apikey|api_key|passkey|rsskey|torrent_pass|token|password|secret)=([^\s&"']+)`)
+	headerAuth  = regexp.MustCompile(`(?i)((?:authorization|proxy-authorization|x-api-key|api-key)\s*:\s*(?:bearer\s+|basic\s+)?)([^\s"',;]{6,})`)
+	bearerToken = regexp.MustCompile(`(?i)\b(bearer\s+)([A-Za-z0-9._~+/=-]{8,})`)
+	webhookPath = regexp.MustCompile(`(?i)(/api/webhooks/\d+/)([^/\s?#"'&]+)`)
+	telegramBot = regexp.MustCompile(`(/bot)(\d+:[A-Za-z0-9_-]{8,})`)
+	jsonSecret  = regexp.MustCompile(`(?i)("(?:password|passwd|api_key|apikey|token|secret|cookie|authorization)"\s*:\s*")([^"]+)(")`)
 	userInfo    = regexp.MustCompile(`://[^/\s:@]+:[^/\s@]+@`)
 )
 
@@ -30,6 +35,41 @@ func Redact(text string) string {
 			return match
 		}
 		return parts[1] + "=" + mask(parts[2])
+	})
+	text = headerAuth.ReplaceAllStringFunc(text, func(match string) string {
+		parts := headerAuth.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		return parts[1] + mask(parts[2])
+	})
+	text = bearerToken.ReplaceAllStringFunc(text, func(match string) string {
+		parts := bearerToken.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		return parts[1] + mask(parts[2])
+	})
+	text = webhookPath.ReplaceAllStringFunc(text, func(match string) string {
+		parts := webhookPath.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		return parts[1] + mask(parts[2])
+	})
+	text = telegramBot.ReplaceAllStringFunc(text, func(match string) string {
+		parts := telegramBot.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		return parts[1] + mask(parts[2])
+	})
+	text = jsonSecret.ReplaceAllStringFunc(text, func(match string) string {
+		parts := jsonSecret.FindStringSubmatch(match)
+		if len(parts) != 4 {
+			return match
+		}
+		return parts[1] + mask(parts[2]) + parts[3]
 	})
 	return userInfo.ReplaceAllString(text, "://***:***@")
 }
@@ -82,6 +122,13 @@ func redactAttr(attr slog.Attr) slog.Attr {
 			clean[i] = redactAttr(child)
 		}
 		attr.Value = slog.GroupValue(clean...)
+	case slog.KindAny:
+		// logger.Error("...", "error", err) stores the error as KindAny.
+		// Without this branch the message of an *url.Error or a wrapped
+		// login failure reaches the log with the token still in it.
+		if err, ok := attr.Value.Any().(error); ok && err != nil {
+			attr.Value = slog.StringValue(Redact(err.Error()))
+		}
 	}
 	return attr
 }

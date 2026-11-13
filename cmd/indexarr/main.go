@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -265,8 +266,16 @@ func main() {
 	// first pass starts shortly after boot (so a fresh upgrade cleans the
 	// existing rows) and repeats every six hours; the enrichment step then
 	// recovers the missing infohashes within a per-site budget.
-	go dedupeLoop(ctx, st, indexerManager, logger)
-	go trimMemoryLoop(ctx, logger)
+	var maintenanceJobs sync.WaitGroup
+	maintenanceJobs.Add(3)
+	go func() {
+		defer maintenanceJobs.Done()
+		dedupeLoop(ctx, st, indexerManager, logger)
+	}()
+	go func() {
+		defer maintenanceJobs.Done()
+		trimMemoryLoop(ctx, logger)
+	}()
 
 	// Routine maintenance waits for an idle window (no app, client or UI
 	// change for the configured minutes) and runs once a day: checks,
@@ -282,7 +291,10 @@ func main() {
 	} else {
 		routine.Start(ctx)
 	}
-	go backfillReleaseFiles(ctx, st, logger)
+	go func() {
+		defer maintenanceJobs.Done()
+		backfillReleaseFiles(ctx, st, logger)
+	}()
 
 	var adminHandler http.Handler
 	adminServer, err := adminapi.New(adminapi.Config{
@@ -328,7 +340,7 @@ func main() {
 
 	<-ctx.Done()
 	logger.Info("shutting down")
-	shutdown(httpServer, nativeRunner, syncService, healthChecker, indexerManager, logger)
+	shutdown(httpServer, nativeRunner, syncService, healthChecker, indexerManager, routine, &maintenanceJobs, logger)
 	logger.Info("stopped")
 }
 
