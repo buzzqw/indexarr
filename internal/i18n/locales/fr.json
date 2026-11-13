@@ -1358,6 +1358,7 @@
   "releases.searchHelpQuotes": "Mode regex : un motif par terme, insensible à la casse ; les guillemets conservent les espaces, par ex.",
   "releases.searchLabel": "Titre ou mots",
   "releases.searchPlaceholder": "titre, -exclu, regex…",
+  "releases.seasonFilterHelp": "Ne garde que les versions d'une saison : packs de saison et épisodes. Laissez vide pour toutes les saisons.",
   "releases.selectAll": "Sélectionner toutes les sorties",
   "releases.selectAllShort": "Tout sélectionner",
   "releases.selectRelease": "Sélectionner %s",

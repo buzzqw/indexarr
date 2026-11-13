@@ -1358,6 +1358,7 @@
   "releases.searchHelpQuotes": "Tryb regex: jeden wzorzec na termin, bez rozróżniania wielkości liter; cudzysłowy zachowują spacje, np.",
   "releases.searchLabel": "Tytuł lub słowa",
   "releases.searchPlaceholder": "tytuł, -wykluczone, regex…",
+  "releases.seasonFilterHelp": "Zostawia wydania jednego sezonu: paczki sezonowe i odcinki. Pozostaw puste dla wszystkich sezonów.",
   "releases.selectAll": "Zaznacz wszystkie wydania",
   "releases.selectAllShort": "Zaznacz wszystkie",
   "releases.selectRelease": "Zaznacz %s",

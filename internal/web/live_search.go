@@ -121,10 +121,18 @@ func parseLiveSearchForm(r *http.Request) liveSearchForm {
 	if mode == "" {
 		mode = "search"
 	}
+	// The live form has its own season field: the catalogue filter uses
+	// "season" on the same form, so the two must not share a name. A request
+	// without "live_season" (an old bookmark) still reads "season".
+	_ = r.ParseForm()
+	seasonRaw := r.FormValue("season")
+	if r.Form.Has("live_season") {
+		seasonRaw = r.FormValue("live_season")
+	}
 	form := liveSearchForm{
 		Mode:     mode,
 		Query:    strings.TrimSpace(r.FormValue("q")),
-		Season:   intParam(r.FormValue("season"), 0),
+		Season:   intParam(seasonRaw, 0),
 		Episode:  intParam(r.FormValue("episode"), 0),
 		Year:     intParam(r.FormValue("year"), 0),
 		IMDbID:   strings.TrimSpace(r.FormValue("imdbid")),

@@ -321,7 +321,9 @@ func TestReleaseAdvancedFiltersPanel(t *testing.T) {
 	body := get(t, env.handler, "/releases").Body.String()
 	for _, want := range []string{
 		`id="release-advanced-filters"`,
-		`<details class="filter-advanced catalog-only"`,
+		`<div class="filter-advanced catalog-only"`,
+		`name="season"`,
+		`id="season"`,
 		">Filters</span>",
 		`name="indexers"`,
 		"One or more sites",
@@ -330,13 +332,17 @@ func TestReleaseAdvancedFiltersPanel(t *testing.T) {
 			t.Errorf("advanced filter panel missing %q", want)
 		}
 	}
+	// The filters are always visible: there is no details element to open.
+	if strings.Contains(body, `<details class="filter-advanced`) {
+		t.Error("the filters are still a collapsed panel")
+	}
 	if strings.Contains(body, "All sources") {
 		t.Error("the indexer filter still says All sources")
 	}
 
 	active := get(t, env.handler, "/releases?min_seeders=5&quality=1080p&favorites=1").Body.String()
 	if !strings.Contains(active, "3 active filters") {
-		t.Error("the closed panel does not count three active filters")
+		t.Error("the always-open panel does not count three active filters")
 	}
 	italian := get(t, env.handler, "/releases?lang=it&min_seeders=5").Body.String()
 	if !strings.Contains(italian, "1 filtro attivo") || !strings.Contains(italian, "Uno o più siti") {

@@ -1358,6 +1358,7 @@
   "releases.searchHelpQuotes": "正则模式：每个词一个不区分大小写的模式；引号可保留空格，例如",
   "releases.searchLabel": "标题或词语",
   "releases.searchPlaceholder": "标题、-排除、regex…",
+  "releases.seasonFilterHelp": "只保留某一季的发布：整季合集和单集。留空则不限季。",
   "releases.selectAll": "选择所有资源",
   "releases.selectAllShort": "全选",
   "releases.selectRelease": "选择 %s",

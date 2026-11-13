@@ -982,6 +982,16 @@ input[readonly] { background: var(--surface-2); }
 .filter-advanced > summary::before { content: "▸"; font-size: 0.75rem; }
 .filter-advanced[open] > summary::before { content: "▾"; }
 .filter-advanced[open] > summary { margin-bottom: 0.7rem; }
+/* The release filters are always open: the head is a label, not a toggle. */
+.filter-advanced-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
 .filter-advanced-body {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -996,6 +1006,9 @@ input[readonly] { background: var(--surface-2); }
    checkboxes take a row of their own instead of dropping into the numeric
    grid where their labels wrapped. */
 .filter-advanced-body.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+/* The catalogue filters carry one more short control (the season): seven fit
+   the same row on a wide screen and reflow like the six grid below it. */
+.filter-advanced-body.seven { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .filter-checks {
   grid-column: 1 / -1;
   display: grid;
@@ -1012,16 +1025,19 @@ input[readonly] { background: var(--surface-2); }
 
 @media (max-width: 1100px) {
   .filter-advanced-body { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .filter-advanced-body.six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .filter-advanced-body.six,
+  .filter-advanced-body.seven { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .filter-advanced-body > .field.wide { grid-column: span 1; }
 }
 @media (max-width: 820px) {
   .filter-advanced-body,
-  .filter-advanced-body.six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filter-advanced-body.six,
+  .filter-advanced-body.seven { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
   .filter-advanced-body,
-  .filter-advanced-body.six { grid-template-columns: minmax(0, 1fr); }
+  .filter-advanced-body.six,
+  .filter-advanced-body.seven { grid-template-columns: minmax(0, 1fr); }
   .filter-advanced-body > .field.wide { grid-column: auto; }
 }
 

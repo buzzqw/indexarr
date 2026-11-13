@@ -1358,6 +1358,7 @@
   "releases.searchHelpQuotes": "Modo regex: un patrón por término, sin distinguir mayúsculas y minúsculas; las comillas conservan los espacios, p. ej.",
   "releases.searchLabel": "Título o palabras",
   "releases.searchPlaceholder": "título, -excluido, regex…",
+  "releases.seasonFilterHelp": "Conserva las versiones de una sola temporada: paquetes de temporada y episodios. Déjalo vacío para todas las temporadas.",
   "releases.selectAll": "Seleccionar todos los lanzamientos",
   "releases.selectAllShort": "Seleccionar todo",
   "releases.selectRelease": "Seleccionar %s",

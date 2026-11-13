@@ -1358,6 +1358,7 @@
   "releases.searchHelpQuotes": "Regex mode: one case-insensitive pattern per term; quotes keep spaces, e.g.",
   "releases.searchLabel": "Title or words",
   "releases.searchPlaceholder": "title, -excluded, regex…",
+  "releases.seasonFilterHelp": "Keep the releases of one season: season packs and episodes. Leave it empty for every season.",
   "releases.selectAll": "Select all releases",
   "releases.selectAllShort": "Select all",
   "releases.selectRelease": "Select %s",

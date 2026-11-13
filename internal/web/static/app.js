@@ -220,27 +220,6 @@ if ("serviceWorker" in navigator) {
     });
   });
 
-  // Remember whether the secondary release filters were open, as described in
-  // UI-GUIDE §4.5. The panel still works without this enhancement.
-  const advancedFilters = document.getElementById("release-advanced-filters");
-  if (advancedFilters) {
-    const storageKey = "indexarr.releaseFiltersOpen";
-    try {
-      if (window.localStorage.getItem(storageKey) === "1") {
-        advancedFilters.open = true;
-      }
-    } catch {
-      // Storage can be unavailable in private modes; the closed default wins.
-    }
-    advancedFilters.addEventListener("toggle", () => {
-      try {
-        window.localStorage.setItem(storageKey, advancedFilters.open ? "1" : "0");
-      } catch {
-        // Ignore: the panel state is a convenience, not data.
-      }
-    });
-  }
-
   document.addEventListener("click", async (event) => {
     const show = event.target.closest("[data-secret-show]");
     if (show) {

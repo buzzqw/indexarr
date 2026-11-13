@@ -97,9 +97,13 @@ type releasesPage struct {
 	MaxSizeMB      int
 	// MinSeedersText, MinSizeText and MaxSizeText are the raw query values. An
 	// unset numeric filter is rendered as an empty field, never as 0.
-	MinSeedersText      string
-	MinSizeText         string
-	MaxSizeText         string
+	MinSeedersText string
+	MinSizeText    string
+	MaxSizeText    string
+	// Season keeps the releases of one season; an unset filter is rendered as
+	// an empty field, never as 0.
+	Season              int
+	SeasonText          string
 	Quality             string
 	SourceQuality       string
 	Language            string
@@ -167,7 +171,7 @@ func (s *Server) releasesSearch(w http.ResponseWriter, r *http.Request) {
 	values := url.Values{}
 	for _, key := range []string{
 		"q", "regex", "files", "cat", "sort", "quality", "source_quality",
-		"language", "min_seeders", "min_size_mb", "max_size_mb",
+		"season", "language", "min_seeders", "min_size_mb", "max_size_mb",
 		"favorites", "no_adult", "hidden", "duplicates",
 	} {
 		if value := strings.TrimSpace(r.FormValue(key)); value != "" {
@@ -242,6 +246,10 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		maxSizeMB = 0
 	}
 	quality := choiceValue(query.Get("quality"), "2160p", "1080p+", "1080p", "720p+", "720p", "480p")
+	season := intParam(query.Get("season"), 0)
+	if season < 0 {
+		season = 0
+	}
 	sourceQuality := choiceValue(query.Get("source_quality"), "webdl", "bluray", "hdtv")
 	language := languageFilterValue(query.Get("language"))
 	include, exclude, parseErr := parseSearchTerms(searchQuery, regexMode)
@@ -258,8 +266,15 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 	if maxSizeMB > 0 {
 		maxSizeText = maxSizeRaw
 	}
+	seasonText := ""
+	if season > 0 {
+		seasonText = strings.TrimSpace(query.Get("season"))
+	}
 	advancedFilterCount := 0
 	if quality != "" {
+		advancedFilterCount++
+	}
+	if season > 0 {
 		advancedFilterCount++
 	}
 	if sourceQuality != "" {
@@ -317,6 +332,8 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		MinSeedersText:      minSeedersText,
 		MinSizeText:         minSizeText,
 		MaxSizeText:         maxSizeText,
+		Season:              season,
+		SeasonText:          seasonText,
 		Quality:             quality,
 		SourceQuality:       sourceQuality,
 		Language:            language,
@@ -350,6 +367,7 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		MinSeeders:    minSeeders,
 		MinSize:       int64(minSizeMB) << 20,
 		MaxSize:       int64(maxSizeMB) << 20,
+		Season:        season,
 		Quality:       quality,
 		SourceQuality: sourceQuality,
 		Language:      language,

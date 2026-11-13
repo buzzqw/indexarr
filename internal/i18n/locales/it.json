@@ -1358,6 +1358,7 @@
   "releases.searchHelpQuotes": "Modalità regex: un pattern per termine, senza distinzione tra maiuscole e minuscole; le virgolette mantengono gli spazi, ad es.",
   "releases.searchLabel": "Titolo o parole",
   "releases.searchPlaceholder": "titolo, -escluso, regex…",
+  "releases.seasonFilterHelp": "Tieni le release di una sola stagione: pacchetti stagione ed episodi. Lascia vuoto per tutte le stagioni.",
   "releases.selectAll": "Seleziona tutte le release",
   "releases.selectAllShort": "Seleziona tutte",
   "releases.selectRelease": "Seleziona %s",

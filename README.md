@@ -168,7 +168,8 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
   `LIKE` fallback.
 - Search by **RE2 regex**, exclusion `-term`, search in torrent file names,
   filters by quality (a value with `+`, such as `1080p+`, keeps that resolution
-  and the higher ones), source, language, seeders and size.
+  and the higher ones), season, source, language, seeders and size. The
+  filters are always visible, not hidden behind a panel to open.
 - **Saved searches**, favorites, hidden releases and blocklist.
 - Automatic **retention** and manual cleanup.
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -83,5 +84,39 @@ func TestAdvancedReleaseFilters(t *testing.T) {
 	if body := get(t, env.handler, "/releases?quality=480p%2B").Body.String(); !strings.Contains(body, "An Old Show 480p") ||
 		!strings.Contains(body, "The Show 2160p BluRay") {
 		t.Error("an unknown quality must not filter")
+	}
+}
+
+// TestSeasonFilter: the season filter keeps the releases of one season, packs
+// and episodes, it carries the typed value back and counts as an active filter.
+func TestSeasonFilter(t *testing.T) {
+	env := newTestEnv(t)
+	insertSearchRelease(t, env.store, "Show S01E01 1080p", "5040")
+	insertSearchRelease(t, env.store, "Show S02E01 1080p", "5040")
+	insertSearchRelease(t, env.store, "Show S01 COMPLETE 1080p", "5040")
+	insertSearchRelease(t, env.store, "Other Show S01E02 720p", "5040")
+
+	body := get(t, env.handler, "/releases?season=1").Body.String()
+	for _, want := range []string{"Show S01E01 1080p", "Show S01 COMPLETE 1080p", "Other Show S01E02 720p"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("season 1 filter dropped %q", want)
+		}
+	}
+	if strings.Contains(body, "Show S02E01 1080p") {
+		t.Error("season 1 filter kept a season 2 release")
+	}
+	if field := regexp.MustCompile(`id="season"[^>]*value="([^"]*)"`).FindStringSubmatch(body); field == nil || field[1] != "1" {
+		t.Errorf("season field = %v, want the typed value", field)
+	}
+	if !strings.Contains(body, "1 active filter") {
+		t.Error("the season filter is not counted as active")
+	}
+
+	// An empty or negative value is not a filter.
+	for _, raw := range []string{"", "-1"} {
+		all := get(t, env.handler, "/releases?season="+url.QueryEscape(raw)).Body.String()
+		if !strings.Contains(all, "Show S02E01 1080p") {
+			t.Errorf("season=%q filtered away a season 2 release", raw)
+		}
 	}
 }

@@ -1358,6 +1358,7 @@
   "releases.searchHelpQuotes": "Regex-Modus: ein Muster pro Begriff, Groß-/Kleinschreibung wird ignoriert; Anführungszeichen erhalten Leerzeichen, z. B.",
   "releases.searchLabel": "Titel oder Wörter",
   "releases.searchPlaceholder": "Titel, -ausgeschlossen, regex…",
+  "releases.seasonFilterHelp": "Behält die Releases einer Staffel: Staffelpakete und Episoden. Leer lassen für alle Staffeln.",
   "releases.selectAll": "Alle Releases auswählen",
   "releases.selectAllShort": "Alle auswählen",
   "releases.selectRelease": "%s auswählen",

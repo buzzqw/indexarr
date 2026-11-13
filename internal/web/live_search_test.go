@@ -78,6 +78,26 @@ func TestReleasesPageHasOneSearchWithASourceChoice(t *testing.T) {
 	}
 }
 
+// TestLiveSearchSeasonHasItsOwnField: the catalogue filter and the live form
+// share one form, so the live season travels as "live_season"; an old request
+// that carries only "season" still works, an empty live field borrows nothing.
+func TestLiveSearchSeasonHasItsOwnField(t *testing.T) {
+	parse := func(values url.Values) liveSearchForm {
+		req := httptest.NewRequest(http.MethodPost, "/releases/search", strings.NewReader(values.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		return parseLiveSearchForm(req)
+	}
+	if form := parse(url.Values{"live_season": {"3"}, "season": {"1"}, "mode": {"tvsearch"}}); form.Season != 3 {
+		t.Errorf("live season = %d, want 3", form.Season)
+	}
+	if form := parse(url.Values{"season": {"2"}, "mode": {"tvsearch"}}); form.Season != 2 {
+		t.Errorf("legacy season = %d, want 2", form.Season)
+	}
+	if form := parse(url.Values{"live_season": {""}, "season": {"4"}, "mode": {"tvsearch"}}); form.Season != 0 {
+		t.Errorf("an empty live season must not borrow the catalogue one: %d", form.Season)
+	}
+}
+
 func TestLiveSearchRejectsMissingTerms(t *testing.T) {
 	env := newTestEnv(t)
 	token, cookie := csrfFrom(t, env.handler, "/releases")

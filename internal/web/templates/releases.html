@@ -99,12 +99,12 @@
     </select>
     <p class="help">{{T "releases.indexerFilterHelp"}}</p>
   </div>
-  <details class="filter-advanced live-only" id="release-live-advanced">
-    <summary><span>{{T "releases.filters"}}</span></summary>
+  <div class="filter-advanced live-only" id="release-live-advanced">
+    <div class="filter-advanced-head"><span>{{T "releases.filters"}}</span></div>
     <div class="filter-advanced-body">
       <div class="field small">
         <label for="live_season">{{T "idx.try.season"}}</label>
-        <input id="live_season" name="season" type="number" min="0" value="{{if .LiveForm.Season}}{{.LiveForm.Season}}{{end}}" title="{{T "releases.liveSeasonHelp"}}">
+        <input id="live_season" name="live_season" type="number" min="0" value="{{if .LiveForm.Season}}{{.LiveForm.Season}}{{end}}" title="{{T "releases.liveSeasonHelp"}}">
         <p class="help">{{T "releases.liveSeasonHelp"}}</p>
       </div>
       <div class="field small">
@@ -146,13 +146,13 @@
         <p class="help">{{T "releases.liveTitleFieldHelp"}}</p>
       </div>
     </div>
-  </details>
-  <details class="filter-advanced catalog-only" id="release-advanced-filters">
-    <summary>
+  </div>
+  <div class="filter-advanced catalog-only" id="release-advanced-filters">
+    <div class="filter-advanced-head">
       <span>{{T "releases.filters"}}</span>
       {{if gt .AdvancedFilterCount 0}}<span class="chip">{{if eq .AdvancedFilterCount 1}}{{T "releases.activeFilter"}}{{else}}{{T "releases.activeFilters" .AdvancedFilterCount}}{{end}}</span>{{end}}
-    </summary>
-    <div class="filter-advanced-body six">
+    </div>
+    <div class="filter-advanced-body seven">
     <div class="field">
       <label for="quality">{{T "releases.resolution"}}</label>
       <select id="quality" name="quality" title="{{T "releases.qualityHelp"}}">
@@ -164,6 +164,11 @@
         <option value="720p"{{if eq .Quality "720p"}} selected{{end}}>{{T "releases.quality720"}}</option>
         <option value="480p"{{if eq .Quality "480p"}} selected{{end}}>{{T "releases.quality480"}}</option>
       </select>
+    </div>
+    <div class="field small">
+      <label for="season">{{T "idx.try.season"}}</label>
+      <input id="season" name="season" type="number" min="0" value="{{.SeasonText}}" title="{{T "releases.seasonFilterHelp"}}">
+      <p class="help">{{T "releases.seasonFilterHelp"}}</p>
     </div>
     <div class="field">
       <label for="source_quality">{{T "releases.releaseType"}}</label>
@@ -215,7 +220,7 @@
     </div>
     </div>
     </div>
-  </details>
+  </div>
   <div class="field actions-field">
     <button class="btn primary" type="submit" title="{{T "releases.searchSubmitHelp"}}">{{T "releases.searchSubmit"}}</button>
     <a class="btn" href="/releases">{{T "common.reset"}}</a>
