@@ -167,7 +167,8 @@ Docker: [Installation](https://github.com/buzzqw/indexarr/wiki/Installation).
 - **FTS5** with trigram tokenizer: it also finds substrings; short terms use a
   `LIKE` fallback.
 - Search by **RE2 regex**, exclusion `-term`, search in torrent file names,
-  filters by quality, source, language, seeders and size.
+  filters by quality (a value with `+`, such as `1080p+`, keeps that resolution
+  and the higher ones), source, language, seeders and size.
 - **Saved searches**, favorites, hidden releases and blocklist.
 - Automatic **retention** and manual cleanup.
 

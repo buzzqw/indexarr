@@ -158,7 +158,9 @@
       <select id="quality" name="quality" title="{{T "releases.qualityHelp"}}">
         <option value=""{{if eq .Quality ""}} selected{{end}}>{{T "releases.anyQuality"}}</option>
         <option value="2160p"{{if eq .Quality "2160p"}} selected{{end}}>{{T "releases.quality2160"}}</option>
+        <option value="1080p+"{{if eq .Quality "1080p+"}} selected{{end}}>{{T "releases.quality1080plus"}}</option>
         <option value="1080p"{{if eq .Quality "1080p"}} selected{{end}}>{{T "releases.quality1080"}}</option>
+        <option value="720p+"{{if eq .Quality "720p+"}} selected{{end}}>{{T "releases.quality720plus"}}</option>
         <option value="720p"{{if eq .Quality "720p"}} selected{{end}}>{{T "releases.quality720"}}</option>
         <option value="480p"{{if eq .Quality "480p"}} selected{{end}}>{{T "releases.quality480"}}</option>
       </select>

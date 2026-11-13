@@ -1388,9 +1388,15 @@ func buildWhereMode(f Filter, withText bool) whereClause {
 		clauses = append(clauses, `size <= ?`)
 		args = append(args, f.MaxSize)
 	}
+	// A value with a trailing «+» is open upwards: 1080p+ keeps 1080p, 2160p and
+	// 4K, 720p+ also keeps 720p. The plain values keep their own resolution only.
 	switch f.Quality {
 	case "2160p":
 		clauses = append(clauses, `(search_title LIKE '%2160p%' OR search_title LIKE '%4k%')`)
+	case "1080p+":
+		clauses = append(clauses, `(search_title LIKE '%1080p%' OR search_title LIKE '%2160p%' OR search_title LIKE '%4k%')`)
+	case "720p+":
+		clauses = append(clauses, `(search_title LIKE '%720p%' OR search_title LIKE '%1080p%' OR search_title LIKE '%2160p%' OR search_title LIKE '%4k%')`)
 	case "1080p", "720p", "480p":
 		clauses = append(clauses, `search_title LIKE ? ESCAPE '\'`)
 		args = append(args, "%"+f.Quality+"%")
