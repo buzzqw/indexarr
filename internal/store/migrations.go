@@ -99,9 +99,14 @@ const (
 	// indexarr2ClientTestVersion stores the last test of a download client,
 	// so the list can show a state instead of a flash that disappears.
 	indexarr2ClientTestVersion = 31
+	// indexarr2MagnetEntityVersion repairs the magnet links stored with the
+	// ampersand escaped as &amp;. The RSS sanitiser used to rewrite every raw
+	// & of a feed, CDATA included, so a Knaben magnet lost its name and its
+	// trackers on the way into the catalog.
+	indexarr2MagnetEntityVersion = 32
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2ClientTestVersion
+	latestSchemaVersion = indexarr2MagnetEntityVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -662,6 +667,87 @@ func repairDoubleEncodedTitles(tx *sql.Tx) error {
 		}
 	}
 	return nil
+}
+
+// repairEscapedMagnets undoes the HTML escaping the RSS sanitiser used to apply
+// inside CDATA sections. A Knaben magnet stored as
+// `magnet:?xt=...&amp;dn=name&amp;tr=tracker` is not usable: the infohash
+// survives, but the name and every tracker become parameters named `amp;dn`
+// and `amp;tr`. Only the entity that introduces a magnet parameter is
+// rewritten, so a torrent whose own name contains the literal text `&amp;`
+// keeps it.
+func repairEscapedMagnets(tx *sql.Tx) error {
+	rows, err := tx.Query(`SELECT id, magnet FROM releases WHERE magnet LIKE '%&amp;%'`)
+	if err != nil {
+		return err
+	}
+	type repair struct {
+		id     int64
+		magnet string
+	}
+	var repairs []repair
+	for rows.Next() {
+		var id int64
+		var magnet string
+		if err := rows.Scan(&id, &magnet); err != nil {
+			rows.Close()
+			return err
+		}
+		fixed := unescapeMagnetParams(magnet)
+		if fixed == magnet {
+			continue
+		}
+		repairs = append(repairs, repair{id: id, magnet: fixed})
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	for _, item := range repairs {
+		if _, err := tx.Exec(`UPDATE releases SET magnet = ? WHERE id = ?`,
+			item.magnet, item.id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// unescapeMagnetParams turns `&amp;` back into `&` where the entity introduces
+// a magnet parameter (`&amp;dn=`, `&amp;tr=`, ...). The rest of the link is
+// left byte for byte as it is.
+func unescapeMagnetParams(magnet string) string {
+	if !strings.HasPrefix(strings.ToLower(magnet), "magnet:") || !strings.Contains(magnet, "&amp;") {
+		return magnet
+	}
+	var b strings.Builder
+	b.Grow(len(magnet))
+	for i := 0; i < len(magnet); {
+		if strings.HasPrefix(magnet[i:], "&amp;") && startsMagnetParam(magnet[i+len("&amp;"):]) {
+			b.WriteByte('&')
+			i += len("&amp;")
+			continue
+		}
+		b.WriteByte(magnet[i])
+		i++
+	}
+	return b.String()
+}
+
+// startsMagnetParam reports whether rest opens a magnet parameter: at least two
+// letters followed by '='. It is what separates an escaped separator from an
+// escaped ampersand inside a title.
+func startsMagnetParam(rest string) bool {
+	letters := 0
+	for letters < len(rest) && letters < 16 {
+		c := rest[letters]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			letters++
+			continue
+		}
+		break
+	}
+	return letters >= 2 && letters < len(rest) && rest[letters] == '='
 }
 
 // repairMagnetName repairs the display name of a magnet link when the name

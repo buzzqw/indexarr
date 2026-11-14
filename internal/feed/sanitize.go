@@ -32,10 +32,27 @@ var namedEntities = map[string]string{
 // valid XML: a raw & or a named HTML entity made the whole answer unreadable.
 // The function escapes unknown entities and raw ampersands, maps common HTML
 // entities and drops control characters XML forbids.
+//
+// A CDATA section is copied untouched: its text is already literal, so
+// escaping the ampersand there does not make the document more parseable, it
+// only changes the value a strict parser reads back. Knaben keeps the magnet
+// in CDATA, and escaping it silently stripped the name and the trackers from
+// every stored link (`&dn=` became `&amp;dn=`).
 func sanitizeXML(data []byte) []byte {
 	var out bytes.Buffer
 	out.Grow(len(data))
 	for i := 0; i < len(data); {
+		if data[i] == '<' && bytes.HasPrefix(data[i:], []byte("<![CDATA[")) {
+			end := bytes.Index(data[i:], []byte("]]>"))
+			if end < 0 {
+				out.Write(data[i:])
+				break
+			}
+			end += i + len("]]>")
+			out.Write(data[i:end])
+			i = end
+			continue
+		}
 		c := data[i]
 		if c < 0x20 && c != '\t' && c != '\n' && c != '\r' {
 			i++

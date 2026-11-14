@@ -725,6 +725,15 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
+	// Migration 32 repairs the magnet links the RSS sanitiser stored with the
+	// ampersand escaped. The sanitiser used to rewrite the raw & inside a
+	// CDATA section too, so a Knaben magnet arrived as `&amp;dn=`, which no
+	// client reads as the name or the tracker list. The parser now leaves
+	// CDATA alone; this pass fixes the rows already in the database.
+	if err := s.applyMigration(context.Background(), indexarr2MagnetEntityVersion,
+		"escaped magnet links", repairEscapedMagnets); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.
