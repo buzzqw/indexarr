@@ -45,6 +45,12 @@ const (
 	ReasonZeroResults  = "zero_results"
 	ReasonPaused       = "paused"
 	ReasonCompleteness = "completeness"
+	// ReasonLayout is a page that answered with rows and a definition that
+	// could not read any of them. It is the opposite of ReasonZeroResults:
+	// the site has something, the search is fine, and the parser still needs
+	// updating. Blaming the query here sent the operator to edit a filter that
+	// was never wrong.
+	ReasonLayout = "layout"
 )
 
 // Catalog states used by definitions. They are repeated here to keep the
@@ -123,6 +129,11 @@ type Outcome struct {
 	FieldCategory int64
 	FieldDate     int64
 	FieldHash     int64
+	// DiscardParse counts the rows the response carried that the definition
+	// could not turn into a release. A run with Seen 0 and DiscardParse above
+	// zero is a page whose layout no longer matches the definition, not an
+	// empty answer.
+	DiscardParse int64
 }
 
 // Input is everything Assess needs. Enabled is false when the indexer row is
@@ -194,6 +205,7 @@ func OutcomesFromHistory(rows []store.IndexerHistory) []Outcome {
 			outcome.FieldCategory = metrics.FieldCategory
 			outcome.FieldDate = metrics.FieldDate
 			outcome.FieldHash = metrics.FieldHash
+			outcome.DiscardParse = metrics.DiscardParse
 		}
 		out = append(out, outcome)
 	}
@@ -267,6 +279,14 @@ func Assess(in Input, thresholds Thresholds) Assessment {
 			Code: ReasonZeroResults, Count: signals.zeroResults,
 		})
 	}
+	// A page that answered with rows and a definition that read none of them:
+	// the search is fine and the parser is stale, so this keeps its own reason
+	// instead of counting as an empty answer.
+	if !in.FeedOnly && signals.layout >= thresholds.ConsecutiveZeroResults {
+		assessment.Reasons = append(assessment.Reasons, Reason{
+			Code: ReasonLayout, Count: signals.layout,
+		})
+	}
 	// A paused source was refused by the breaker before contacting the site.
 	// It is not a failure and not an empty answer, but it is still a source
 	// that cannot work, so it keeps its own reason instead of being reported
@@ -293,7 +313,8 @@ func Assess(in Input, thresholds Thresholds) Assessment {
 //
 //	draft            -> draft        (health never promotes a draft)
 //	verificata       -> stabile      after StableSuccesses clean outcomes
-//	verificata       -> degradata    after ConsecutiveFailures/ZeroResults or low completeness
+//	verificata       -> degradata    after ConsecutiveFailures/ZeroResults, a
+//	                                 stale layout or low completeness
 //	stabile          -> degradata    under the same conditions
 //	degradata        -> verificata   after a clean outcome, once the degraded signal is gone
 //
@@ -306,7 +327,8 @@ func NextState(current string, recent []Outcome, thresholds Thresholds) string {
 	}
 	signals := analyse(recent, thresholds)
 	degraded := signals.failures >= thresholds.ConsecutiveFailures ||
-		signals.zeroResults >= thresholds.ConsecutiveZeroResults
+		signals.zeroResults >= thresholds.ConsecutiveZeroResults ||
+		signals.layout >= thresholds.ConsecutiveZeroResults
 	latestClean := len(recent) > 0 && !outcomeFailed(recent[0]) && !outcomeCanceled(recent[0]) &&
 		!outcomePaused(recent[0]) && (!recent[0].HasSeen || recent[0].Seen > 0)
 
@@ -371,6 +393,7 @@ func NextStateGroup(current string, groups [][]Outcome, thresholds Thresholds) s
 type analysis struct {
 	failures     int
 	zeroResults  int
+	layout       int
 	completeness int
 	field        string
 }
@@ -379,6 +402,7 @@ func analyse(outcomes []Outcome, thresholds Thresholds) analysis {
 	out := analysis{completeness: -1}
 	out.failures = consecutiveFailures(outcomes)
 	out.zeroResults = consecutiveZero(outcomes)
+	out.layout = consecutiveLayout(outcomes)
 	out.completeness, out.field = latestCompleteness(outcomes)
 	return out
 }
@@ -426,6 +450,38 @@ func consecutiveZero(outcomes []Outcome) int {
 			continue
 		}
 		if !outcome.HasSeen || outcome.Seen > 0 {
+			break
+		}
+		// The page carried rows we could not read: that is a stale
+		// definition, and consecutiveLayout reports it. Counting it here told
+		// the operator to edit a search that was never wrong.
+		if outcome.DiscardParse > 0 {
+			break
+		}
+		count++
+	}
+	return count
+}
+
+// consecutiveLayout counts the scheduled runs at the head of the history whose
+// page carried rows and whose definition read none of them. It is the shape of
+// a site that changed its markup: the request works, the selectors do not.
+func consecutiveLayout(outcomes []Outcome) int {
+	count := 0
+	for _, outcome := range outcomes {
+		if !strings.EqualFold(strings.TrimSpace(outcome.Kind), "run") {
+			continue
+		}
+		if outcomeFailed(outcome) || outcomeCanceled(outcome) {
+			break
+		}
+		if outcomePaused(outcome) {
+			continue
+		}
+		if !outcome.HasSeen || outcome.Seen > 0 {
+			break
+		}
+		if outcome.DiscardParse <= 0 {
 			break
 		}
 		count++

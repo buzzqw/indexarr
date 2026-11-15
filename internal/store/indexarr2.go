@@ -948,7 +948,8 @@ func (s *Store) ListIndexerHistory(ctx context.Context, indexerID int64, limit i
 
 // ListIndexerHealthHistory returns the newest history rows of several indexers
 // in one round trip, carrying only the columns the health model reads:
-// kind, status, error, start time and the metrics it needs for completeness.
+// kind, status, error, start time, the completeness fields and the count of
+// rows the definition could not read (a stale layout, not an empty answer).
 // Query, app, latency and byte count stay zero; callers that display the log
 // still use ListIndexerHistory.
 //
@@ -971,7 +972,7 @@ func (s *Store) ListIndexerHealthHistory(ctx context.Context, indexerIDs []int64
 			m.history_id, COALESCE(m.seen, 0), COALESCE(m.field_total, 0),
 			COALESCE(m.field_size, 0), COALESCE(m.field_seeders, 0),
 			COALESCE(m.field_category, 0), COALESCE(m.field_date, 0),
-			COALESCE(m.field_hash, 0)
+			COALESCE(m.field_hash, 0), COALESCE(m.discarded_parse, 0)
 		FROM indexer_history h
 		LEFT JOIN indexer_history_metrics m ON m.history_id = h.id
 		WHERE h.indexer_id = ?
@@ -1002,10 +1003,11 @@ func (s *Store) ListIndexerHealthHistory(ctx context.Context, indexerIDs []int64
 				fieldCat  int64
 				fieldDate int64
 				fieldHash int64
+				discParse int64
 			)
 			if err := rows.Scan(&item.ID, &indexer, &item.Kind, &item.Status,
 				&item.Error, &started, &metricsID, &seen, &fieldTot, &fieldSize,
-				&fieldSeed, &fieldCat, &fieldDate, &fieldHash); err != nil {
+				&fieldSeed, &fieldCat, &fieldDate, &fieldHash, &discParse); err != nil {
 				rows.Close()
 				return nil, err
 			}
@@ -1023,6 +1025,7 @@ func (s *Store) ListIndexerHealthHistory(ctx context.Context, indexerIDs []int64
 					FieldCategory: fieldCat,
 					FieldDate:     fieldDate,
 					FieldHash:     fieldHash,
+					DiscardParse:  discParse,
 				}
 			}
 			list = append(list, item)

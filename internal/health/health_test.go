@@ -170,6 +170,43 @@ func TestAssessUsesOneModel(t *testing.T) {
 	}
 }
 
+// TestAssessNamesAStaleLayoutInsteadOfTheQuery locks the cause of a page that
+// answers with rows and a definition that reads none of them. On 2026-11-13
+// ExtTo changed its markup: every scheduled run returned 0 rows and discarded
+// 50, and the interface told the operator to edit a search that was correct.
+func TestAssessNamesAStaleLayoutInsteadOfTheQuery(t *testing.T) {
+	thresholds := DefaultThresholds()
+	unreadable := func() Outcome {
+		outcome := emptyOutcome()
+		outcome.DiscardParse = 50
+		return outcome
+	}
+	if got := consecutiveZero([]Outcome{unreadable(), unreadable(), unreadable()}); got != 0 {
+		t.Errorf("zero results = %d, want 0: the page carried rows", got)
+	}
+	if got := consecutiveLayout([]Outcome{unreadable(), unreadable(), unreadable()}); got != 3 {
+		t.Errorf("layout streak = %d, want 3", got)
+	}
+	assessment := Assess(Input{Enabled: true, Outcomes: []Outcome{unreadable(), unreadable(), unreadable()}}, thresholds)
+	if assessment.State != StateDegraded {
+		t.Errorf("stale layout = %q, want degraded", assessment.State)
+	}
+	var codes []string
+	for _, reason := range assessment.Reasons {
+		codes = append(codes, reason.Code)
+	}
+	if len(codes) != 1 || codes[0] != ReasonLayout || assessment.Reasons[0].Count != 3 {
+		t.Errorf("reasons = %+v, want one layout reason with count 3", assessment.Reasons)
+	}
+	if got := NextState(CatalogVerified, []Outcome{unreadable(), unreadable(), unreadable()}, thresholds); got != CatalogDegraded {
+		t.Errorf("catalog state = %q, want degradata", got)
+	}
+	// One readable row at the head clears it: the definition works again.
+	if got := Assess(Input{Enabled: true, Outcomes: []Outcome{clean(50), unreadable(), unreadable()}}, thresholds); got.State != StateOK {
+		t.Errorf("recovered layout = %q %+v, want ok", got.State, got.Reasons)
+	}
+}
+
 func TestOutcomesFromHistoryIgnoresTestsAndGrabs(t *testing.T) {
 	rows := []store.IndexerHistory{
 		{Kind: "grab", Status: "error"},
@@ -310,7 +347,7 @@ func TestCheckerTransitionsTheDefinitionAndKeepsIt(t *testing.T) {
 }
 
 func TestReasonCodesAreStable(t *testing.T) {
-	for _, code := range []string{ReasonCircuit, ReasonLastError, ReasonErrors, ReasonZeroResults, ReasonPaused, ReasonCompleteness} {
+	for _, code := range []string{ReasonCircuit, ReasonLastError, ReasonErrors, ReasonZeroResults, ReasonPaused, ReasonCompleteness, ReasonLayout} {
 		if strings.TrimSpace(code) == "" {
 			t.Errorf("empty reason code")
 		}

@@ -1,9 +1,16 @@
 # VERIFICATA (verified). Public ExtTo HTML listing.
 #
-# Written from the public pages captured on 2026-10-23 in
-# fixtures/extto/listing.html and fixtures/extto/detail.html. The listing
-# carries the magnet link in the same row, so the download section is a
-# fallback for layouts that only expose a detail page (resolve_on: grab).
+# Re-read on 2026-11-15 from fixtures/extto/listing-2026-11-15.html: the site
+# changed the row markup on 2026-11-13 (the title moved from `span.name` into
+# `a.torrent-title-link`, the size and age cells gained a `.add-block` label
+# before the value, and the age is now relative — "2 minutes ago" — while the
+# exact day stays in the `title` attribute). Every selector keeps the old
+# layout as a fallback, so fixtures/extto/listing.html (2026-10-23) still
+# parses; only its date is no longer read, because that layout carried no
+# `title` attribute to read it from.
+#
+# The listing carries the magnet link in the same row, so the download section
+# is a fallback for layouts that only expose a detail page (resolve_on: grab).
 #
 # The legacy sources differ by one or more `filter` query parameters:
 # `c=TV` or `c=Movies` selects a category, `u=<uploader>` selects an uploader
@@ -25,7 +32,7 @@ meta:
   description: Public ExtTo HTML listing with magnets in the row.
   urls:
     - https://extto.org/
-  updated: "2026-10-23"
+  updated: "2026-11-15"
 
 settings:
   - name: filter
@@ -69,14 +76,30 @@ search:
     type: html
     rows: { selector: "table.search-table > tbody > tr" }
     fields:
-      title:    { selector: "span.name", filters: [trim] }
+      title:
+        selector:
+          - "a.torrent-title-link"
+          - "span.name"
+        filters: [trim]
       details:  { selector: 'a[href*="/post-detail/"]', attr: href, type: url }
       magnet:   { selector: 'a[href^="magnet:"]', attr: href }
       category: { selector: 'a[href*="filter=c="]', type: category }
-      size:     { selector: "td.nowrap-td span", type: size }
+      size:
+        selector:
+          - "td.nowrap-td .add-block-wrapper span:not(.add-block)"
+          - "td.nowrap-td span:not(.add-block)"
+        type: size
       seeders:  { selector: "td.hide-on-mob span.text-success", type: int }
       leechers: { selector: "td.hide-on-mob span.text-danger", type: int }
-      date:     { selector: "td.nowrap-td:nth-child(3) span", type: date }
+      # The age cell is the third one. Since 2026-11-15 its text is relative
+      # ("2 minutes ago") and the exact day is the `title` attribute; the
+      # 2026-10-23 layout had the day as text and no attribute, so only the
+      # current layout has a date.
+      date:
+        selector: "td.nowrap-td:nth-child(3) span[title]"
+        attr: title
+        type: date
+        layouts: ["2 January 2006"]
     required: [title, details]
 
 download:
@@ -104,6 +127,9 @@ health:
 tests:
   - name: listing
     fixture: fixtures/extto/listing.html
+    expect: { min_rows: 3, required: [title, details, magnet] }
+  - name: listing-2026-11-15
+    fixture: fixtures/extto/listing-2026-11-15.html
     expect: { min_rows: 3, required: [title, details, magnet] }
   - name: detail
     fixture: fixtures/extto/detail.html

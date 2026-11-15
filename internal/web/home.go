@@ -195,6 +195,10 @@ func homeProblemCode(view indexerHealthView) (string, int) {
 			return "home.problem.errors", reason.Count
 		case health.ReasonZeroResults:
 			return "home.problem.zero", reason.Count
+		case health.ReasonLayout:
+			// The site answered with rows and the definition could not read
+			// them: the same sentence the process log uses for a stale layout.
+			return "home.problem.parse", 0
 		case health.ReasonPaused:
 			// The breaker refused the request: the source is paused, not
 			// returning an empty answer. Reusing the circuit sentence keeps

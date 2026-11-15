@@ -71,7 +71,7 @@ var rules = []struct {
 	{Disk, []string{"no space left", "disk full", "read-only file system", "permission denied"}},
 	{Vault, []string{"vault", "decrypt", "cipher", "sealed", "master key"}},
 	{Database, []string{"sqlite", "no such table", "no such column", "constraint failed", "sql:"}},
-	{Parse, []string{"parse", "unmarshal", "invalid character", "xml syntax", "unexpected end", "selector", "no rows matched"}},
+	{Parse, []string{"parse", "unmarshal", "invalid character", "xml syntax", "unexpected end", "selector", "no rows matched", "page layout changed"}},
 }
 
 // Problem returns the problem code for an error text, or "" when the text

@@ -236,8 +236,14 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 	data.FrequencyLabel, _ = s.frequencyLabels(r, data.IntervalSeconds, globalInterval)
 	if !data.Derived {
 		switch s.definitionState(r, defID) {
-		case "bozza", "degradata":
+		case "bozza":
+			// Not tested at all yet: the definition may be fine.
 			data.StateWarning = s.translate(r, "idx.testingWarning")
+		case "degradata":
+			// Tested and broken: the site changed and the definition must be
+			// re-read. "Still in testing" here read as "our fault, waiting",
+			// next to a list that already said the site returned no results.
+			data.StateWarning = s.translate(r, "idx.degradedWarning")
 		}
 	}
 	if strings.EqualFold(strings.TrimSpace(parsed.Meta.Mirror), "unofficial") {

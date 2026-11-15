@@ -282,6 +282,15 @@ func (s *Server) healthProblems(r *http.Request, view indexerHealthView) []uiPro
 				ActionLabel: s.translate(r, "idx.problem.zeroAction"),
 				ActionURL:   edit,
 			})
+		case health.ReasonLayout:
+			// The page answered and the definition read nothing: the query is
+			// not the cause, so the action opens the source instead of the
+			// query field.
+			out = append(out, uiProblem{
+				Text:        s.translate(r, "idx.problem.layout", reason.Count),
+				ActionLabel: s.translate(r, "idx.problem.genericAction"),
+				ActionURL:   detail,
+			})
 		case health.ReasonPaused:
 			// The breaker refused the last attempts. There is no "resume"
 			// button here: the live breaker is already closed when this reason

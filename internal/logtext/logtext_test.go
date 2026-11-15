@@ -45,10 +45,13 @@ func TestProblem(t *testing.T) {
 
 // The login form and the empty query have causes of their own: neither is a
 // rejected credential and neither is an unknown error.
-func TestProblemRecognisesFormTokensAndEmptyQueries(t *testing.T) {
+func TestProblemsRecogniseFormTokensEmptyQueriesAndStaleLayouts(t *testing.T) {
 	cases := map[string]string{
 		`indexer mircrew: health: login failed: Il form inviato non è valido. Prova a inviarlo di nuovo.`: LoginForm,
 		`indexer corsaro-account: health query "" returned 0 items, want at least 1`:                      Empty,
+		// A page that answers with rows the definition cannot read is a stale
+		// layout, not an empty answer: the operator was sent to the wrong fix.
+		`indexer extto: health query "test": no rows matched the definition (page layout changed)`: Parse,
 		"login failed: invalid password": Auth,
 	}
 	for input, want := range cases {

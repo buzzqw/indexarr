@@ -63,8 +63,7 @@ func (m *Manager) Health(ctx context.Context, indexerID int64) (HealthResult, er
 			stats.observeItem(item, capture.secrets)
 		}
 		if len(items) < result.MinRows {
-			err = fmt.Errorf("indexer %s: health query %q returned %d items, want at least %d",
-				indexer.Slug, result.Query, len(items), result.MinRows)
+			err = healthShortfall(indexer.Slug, result.Query, len(items), result.MinRows, stats.DiscardParse)
 		}
 	}
 	m.recordHistory(ctx, indexer.ID, "health", result.Query, statusFor(ctx, err), started, 0, err, stats)
@@ -76,6 +75,23 @@ func (m *Manager) Health(ctx context.Context, indexerID int64) (HealthResult, er
 		m.clearStateError(context.WithoutCancel(ctx), indexer.ID)
 	}
 	return result, err
+}
+
+// healthShortfall explains a check that returned fewer rows than the
+// definition asks for. The two causes are different faults and the operator was
+// sent to the wrong one: a page that answers with rows the definition cannot
+// read is a stale layout ("the page changed"), not an unsuitable search query.
+// The wording of the layout case is what logtext classifies as Parse, so Home
+// and the source log name the layout too. The number of discarded rows stays in
+// the run metrics, not here: digits such as "500" would be read as an HTTP
+// status by the same classifier.
+func healthShortfall(slug, query string, items, minRows int, discarded int) error {
+	if items == 0 && discarded > 0 {
+		return fmt.Errorf("indexer %s: health query %q: no rows matched the definition (page layout changed)",
+			slug, query)
+	}
+	return fmt.Errorf("indexer %s: health query %q returned %d items, want at least %d",
+		slug, query, items, minRows)
 }
 
 // definitionFor loads and parses the definition behind one indexer.

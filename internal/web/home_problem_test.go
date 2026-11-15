@@ -44,6 +44,7 @@ func TestCausesUseTheSameClassifierAsTheLog(t *testing.T) {
 		"indexer test: request blocked by a cloudflare challenge: HTTP 403":                                  "home.problem.cloudflare",
 		"indexer test: fetch: request failed: engine: circuit breaker open":                                  "home.problem.circuit",
 		`indexer corsaro-account: health query "" returned 0 items, want at least 1`:                         "home.problem.healthZero",
+		`indexer extto: health query "test": no rows matched the definition (page layout changed)`:           "home.problem.parse",
 		`indexer mircrew: health: login failed: Il form inviato non è valido. Prova a inviarlo di nuovo.`:    "home.problem.loginForm",
 	}
 	for message, want := range cases {
@@ -62,6 +63,30 @@ func TestConcreteProblemCausesDoNotCarryACount(t *testing.T) {
 	}}
 	if code, count := homeProblemCode(view); code != "home.problem.flood" || count != 0 {
 		t.Fatalf("homeProblemCode = %q/%d, want home.problem.flood/0", code, count)
+	}
+}
+
+// A stale layout is the opposite of an empty answer: the site has rows and the
+// definition cannot read them. Home must say "the page changed" and the source
+// card must point at the source, not at the query field.
+func TestStaleLayoutIsReportedAsAChangedPage(t *testing.T) {
+	view := indexerHealthView{
+		Indexer:    store.Indexer{ID: 10, Slug: "extto", Name: "ExtTo"},
+		Assessment: health.Assessment{Reasons: []health.Reason{{Code: health.ReasonLayout, Count: 20}}},
+	}
+	if code, count := homeProblemCode(view); code != "home.problem.parse" || count != 0 {
+		t.Errorf("homeProblemCode = %q/%d, want home.problem.parse/0", code, count)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/indexers", nil)
+	problems := (&Server{}).healthProblems(request, view)
+	if len(problems) != 1 {
+		t.Fatalf("problems = %+v, want one", problems)
+	}
+	if problems[0].Text != i18n.T(i18n.EN, "idx.problem.layout", 20) {
+		t.Errorf("text = %q", problems[0].Text)
+	}
+	if problems[0].ActionURL != "/indexers/10" {
+		t.Errorf("action = %q, want the indexer page", problems[0].ActionURL)
 	}
 }
 
