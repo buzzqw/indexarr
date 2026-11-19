@@ -24,6 +24,17 @@ Native sources / RSS / Newznab ──► scheduler ──► normalization ─�
 [Torznab API](https://github.com/buzzqw/indexarr/wiki/Torznab-API) ·
 [admin JSON API](https://github.com/buzzqw/indexarr/wiki/Admin-API).
 
+## A look
+
+A fresh test instance with a single public feed of Linux distribution ISOs.
+
+![Home: status, the Torznab address for Sonarr/Radarr and the last 24 hours](docs/screenshots/home.png)
+
+| | |
+|---|---|
+| ![Add indexer: the native catalogue with what each site needs and gives](docs/screenshots/catalog.png) | ![Search results with download, send to client and magnet actions](docs/screenshots/releases.png) |
+| **Add indexer.** The native catalogue says what each site needs, what it gives and how reliable it is; try a site before adding it. | **Search.** The stored catalogue and the live search share one page; every row names its source and can go straight to your client. |
+
 ## Installation
 
 Four ways to run indexarr. The first three need no Go toolchain; building from
