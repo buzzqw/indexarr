@@ -352,12 +352,20 @@ func (s *Server) buildCompactIndexerForm(r *http.Request, defID string, current 
 			urlValue = strings.TrimSpace(prefillURL)
 		}
 		knownSite := siteHasRealAddress(defID, parsed)
+		absoluteDefault := strings.HasPrefix(urlDefault, "http://") || strings.HasPrefix(urlDefault, "https://")
+		if urlValue == "" && absoluteDefault && !knownSite {
+			// A generic definition can still recommend an address: a Rats
+			// Search node usually runs on this machine, and the field must
+			// open with the address the definition suggests instead of asking
+			// for something the user would have to look up.
+			urlValue = urlDefault
+		}
 		if urlValue == "" && knownSite {
 			// A Torznab endpoint or a feed URL is not the site's home page:
 			// when the definition states its address, use it instead of the
 			// human URL. Without this a named Torznab source was created
 			// pointing at the HTML home page and every search failed.
-			if strings.HasPrefix(urlDefault, "http://") || strings.HasPrefix(urlDefault, "https://") {
+			if absoluteDefault {
 				urlValue = urlDefault
 			} else {
 				urlValue = parsed.Meta.URLs[0]

@@ -29,6 +29,7 @@ Russian content, TorrentGalaxy, IPTorrents, TorrentLeech (draft), and — Italia
 | Newznab / Usenet | complete (generic) | `newznab-generic`: caps, `search`/`tv`/`movie`/`music`/`book` search, `.nzb` and sending to SABnzbd/NZBGet. Native definitions for individual Usenet sites not yet in the catalog |
 | eD2k / aMule | complete | `protocol: ed2k` definitions, stored `ed2k://` links, expanded per file, sent to aMule |
 | RSS / Atom | complete | normal feeds, `.torrent`, `.nzb` or magnet enclosure |
+| Rats Search node | complete (keyword only) | `rats-generic`: the node's own REST API, magnet at grab. One word filter and a coarse content type: no `tvdbid`/`imdbid`, no category tree, and a torrent the node found only on the DHT often carries 0 seeders |
 | Private indexers with Basic | complete | HTTP username/password fields per source |
 | API key in query, header or URL | complete | `apikey` as a parameter and as `X-Api-Key` |
 | Cloudflare / challenge | with FlareSolverr | automatic retry for RSS and direct indexers; LAN addresses do not go through the solver. Solves are queued: at most two browsers are asked at once, so a cycle over many protected sites cannot make the service unresponsive |
@@ -88,6 +89,17 @@ Details, edge cases and diagnostics: [Compatibility](https://github.com/buzzqw/i
 - The catalog does not yet have native definitions for individual Usenet
   sites: the generic Newznab path is complete, site coverage grows with the
   catalog.
+- A Rats Search node answers keyword searches only: it has no id lookup and no
+  category tree, so season, episode, artist, album and year are folded into its
+  single text filter. The node cannot tell a film from an episode (both are
+  "video") and a stored release carries one category: a TV search stores a
+  video row under TV, a movie search under Movies, and a search that names
+  neither under Movies, so the client's own title and season checks still have
+  the last word. Its newest-torrents list takes no safe-search flag, so the periodic
+  walk adds whatever the node's own filter policy kept. Seeders come from a
+  tracker scrape: a torrent found only on the DHT reads 0 until the node
+  scrapes it, while the cache keeps the highest count across the sources of the
+  same infohash.
 - Download clients can be pinned per indexer, but there is no
   priority/round-robin among clients of the same protocol: the default, then
   the oldest enabled client, is chosen.

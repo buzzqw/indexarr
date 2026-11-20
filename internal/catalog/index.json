@@ -16198,6 +16198,33 @@
     "latest": false
   },
   {
+    "id": "rats-generic",
+    "name": "Rats Search (generic)",
+    "description": "Any Rats Search node; the connector reads its REST address and queries the node's own DHT index.",
+    "language": "en-US",
+    "type": "public",
+    "protocol": "torrent",
+    "categories": [
+      "movies",
+      "music",
+      "books",
+      "games",
+      "software"
+    ],
+    "required": [
+      "url"
+    ],
+    "state": "bozza",
+    "hosts": [
+      "127.0.0.1"
+    ],
+    "url": "http://127.0.0.1:8095/",
+    "source": "native",
+    "proposable": true,
+    "latest": false,
+    "scheduled": true
+  },
+  {
     "id": "rintor",
     "name": "RinTor.NeT",
     "description": "Public Russian adult tracker with a magnet on the detail page.",

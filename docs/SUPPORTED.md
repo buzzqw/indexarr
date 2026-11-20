@@ -6,7 +6,7 @@ Every source listed here is shipped with indexarr: no proxy, no external
 definition file to keep in sync. The catalog has no index of its own — it
 describes how to read the sites you configure.
 
-**103 site definitions** plus 8 generic connectors: 86 verified, 3 degraded and 14 draft. A draft is usable but not production-ready.
+**103 site definitions** plus 9 generic connectors: 86 verified, 3 degraded and 14 draft. A draft is usable but not production-ready.
 
 When a definition is added, removed or changes state, this file is
 regenerated in the same commit (`make supported-list`); the catalog test fails
@@ -143,6 +143,7 @@ same protocol or runs the same tracker software.
 | Gazelle (generic) | Any Gazelle tracker: site address and credentials |
 | Newznab (generic) | Any Newznab/Usenet indexer: full endpoint and API key |
 | NexusPHP (generic) | Any NexusPHP tracker: site address and credentials |
+| Rats Search (generic) | Any Rats Search node: its REST address, no key. A BitTorrent index crawled from the DHT, keyword search only |
 | RSS / Atom feed | Any RSS/Atom feed with a .torrent, .nzb or magnet enclosure |
 | TorrentTrader (generic) | Any TorrentTrader site: site address and credentials |
 | Torznab (generic) | Any Torznab indexer: full endpoint and API key |

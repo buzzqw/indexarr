@@ -595,6 +595,137 @@ func TestNativeTorznabConnector(t *testing.T) {
 	}
 }
 
+// TestNativeRatsConnector wires a Rats Search definition exactly as the catalog
+// ships it: one connector name, one address setting, no key. The connector is
+// built by the registry, not by the test, so a missing registration or a name
+// the definition and the code spell differently fails here.
+func TestNativeRatsConnector(t *testing.T) {
+	st := newTestStore(t)
+	v := newTestVault(t, 1)
+	manager := newTestManager(t, st, v)
+
+	body := "schema: 1\nconnector: rats\nmeta:\n  id: native-rats\n  name: Native Rats\n  type: private\n  protocol: torrent\n  urls:\n    - http://127.0.0.1:8095/\nsettings:\n  - {name: url, type: text, required: true, default: \"http://127.0.0.1:8095\"}\n  - {name: safesearch, type: checkbox}\n"
+	seedDefinition(t, st, "native-rats", "rats", body)
+	id := createIndexer(t, st, "native-rats", "native-rats", "Native Rats", "torrent", `{"url":"http://127.0.0.1:8095"}`)
+
+	connector, _, err := manager.Connector(context.Background(), id)
+	if err != nil {
+		t.Fatalf("Connector: %v", err)
+	}
+	rats, ok := connector.(*family.Rats)
+	if !ok {
+		t.Fatalf("connector = %T, want *family.Rats", connector)
+	}
+	caps := rats.Capabilities()
+	if caps.Protocol != engine.ProtocolTorrent {
+		t.Errorf("protocol = %q, want torrent", caps.Protocol)
+	}
+	// Every mode is a keyword search: a client's season, episode or year is
+	// folded into the node's single text filter, never advertised as an id
+	// lookup the node cannot answer.
+	for _, mode := range []engine.Mode{engine.ModeSearch, engine.ModeTV, engine.ModeMovie, engine.ModeMusic, engine.ModeBook} {
+		if !caps.Supports(mode) {
+			t.Errorf("mode %q is not advertised", mode)
+		}
+	}
+	if caps.SupportsParam(engine.ModeTV, engine.ParamTVDbID) || caps.SupportsParam(engine.ModeMovie, engine.ParamIMDbID) {
+		t.Errorf("the node has no id search, but an id parameter is advertised")
+	}
+}
+
+// TestRatsRunStoresTheNodesRows runs the shipped connector through a run:
+// definition → registry → HTTP → normalize → SQLite. It is the only test that
+// covers the whole path a user gets, and it pins the two decisions the cache
+// depends on: the magnet is the node's infohash, and a video row is stored
+// under the category of the search that found it.
+func TestRatsRunStoresTheNodesRows(t *testing.T) {
+	now := time.Now().UnixMilli()
+	body := fmt.Sprintf(`{"success": true, "data": [
+      {"hash": "1111111111111111111111111111111111111111", "name": "Some Show S01E01 1080p", "size": 1500000000, "added": %d, "contentType": "video", "seeders": 5},
+      {"hash": "2222222222222222222222222222222222222222", "name": "A Book (epub)", "size": 4000000, "added": %d, "contentType": "books", "seeders": 0}
+    ]}`, now, now)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/search.recent" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(server.Close)
+
+	tests := []struct {
+		name        string
+		categories  string
+		wantSeen    int
+		wantVideo   string
+		wantBook    bool
+		whyThisCase string
+	}{
+		{
+			name:        "no narrowing",
+			categories:  "",
+			wantSeen:    2,
+			wantVideo:   "2000",
+			wantBook:    true,
+			whyThisCase: "a search that names no category stores a video row under Movies",
+		},
+		{
+			name:        "narrowed to TV",
+			categories:  "5000",
+			wantSeen:    1,
+			wantVideo:   "5000",
+			wantBook:    false,
+			whyThisCase: "the source keeps only TV, so the video row is stored under TV and the book is dropped",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newTestStore(t)
+			v := newTestVault(t, 1)
+			manager := newTestManager(t, st, v)
+
+			defBody := "schema: 1\nconnector: rats\nmeta:\n  id: rats-test\n  name: Rats Test\n  type: public\n  protocol: torrent\n  urls:\n    - http://127.0.0.1:8095/\nsettings:\n  - {name: url, type: text, required: true, default: \"http://127.0.0.1:8095\"}\n"
+			seedDefinition(t, st, "rats-test", "rats", defBody)
+			config := fmt.Sprintf(`{"url":%q,"allow_private":"true","categories":%q}`, server.URL, tc.categories)
+			id := createIndexer(t, st, "rats-test", "rats-test", "Rats Test", "torrent", config)
+
+			stats, err := manager.Run(context.Background(), id)
+			if err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if stats.Seen != tc.wantSeen {
+				t.Fatalf("seen = %d, want %d: %s", stats.Seen, tc.wantSeen, tc.whyThisCase)
+			}
+
+			video, found, err := st.ReleaseByInfoHash(context.Background(), "1111111111111111111111111111111111111111")
+			if err != nil || !found {
+				t.Fatalf("the video row was not stored: found=%v err=%v", found, err)
+			}
+			if !strings.HasPrefix(video.Magnet, "magnet:?xt=urn:btih:1111111111111111111111111111111111111111") {
+				t.Errorf("magnet = %q", video.Magnet)
+			}
+			if video.Size <= 0 || video.Seeders != 5 {
+				t.Errorf("size/seeders = %d/%d", video.Size, video.Seeders)
+			}
+			if video.Category != tc.wantVideo {
+				t.Errorf("video category = %q, want %q: %s", video.Category, tc.wantVideo, tc.whyThisCase)
+			}
+
+			book, found, err := st.ReleaseByInfoHash(context.Background(), "2222222222222222222222222222222222222222")
+			if err != nil {
+				t.Fatalf("ReleaseByInfoHash: %v", err)
+			}
+			if found != tc.wantBook {
+				t.Fatalf("books row stored = %v, want %v", found, tc.wantBook)
+			}
+			if found && book.Category != "7000" {
+				t.Errorf("books category = %q, want 7000", book.Category)
+			}
+		})
+	}
+}
+
 func TestEd2kSourceStoresTorrentTopicsAsTorrents(t *testing.T) {
 	st := newTestStore(t)
 	v := newTestVault(t, 1)

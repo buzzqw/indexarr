@@ -1,0 +1,159 @@
+{
+  "success": true,
+  "requestId": "fixture-search-1",
+  "data": [
+    {
+      "hash": "1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d",
+      "name": "Big Buck Bunny 2008 1080p BluRay x264",
+      "size": 734003200,
+      "files": 2,
+      "pieceLength": 262144,
+      "added": 1795150000000,
+      "contentType": "video",
+      "contentCategory": "",
+      "seeders": 128,
+      "leechers": 4,
+      "completed": 4210,
+      "trackersChecked": 1795149000000
+    },
+    {
+      "hash": "2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e",
+      "name": "Ubuntu 24.04.1 Desktop amd64",
+      "size": 6291456000,
+      "files": 3,
+      "pieceLength": 524288,
+      "added": 1795140000000,
+      "contentType": "software",
+      "seeders": 42,
+      "leechers": 3,
+      "completed": 910
+    },
+    {
+      "hash": "3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "name": "The Dispossessed - Ursula K. Le Guin (epub)",
+      "size": 4800000,
+      "files": 1,
+      "pieceLength": 262144,
+      "added": 1795128000000,
+      "contentType": "books",
+      "seeders": 6
+    },
+    {
+      "hash": "4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f70",
+      "name": "Massive Attack - Mezzanine (FLAC)",
+      "size": 380000000,
+      "files": 11,
+      "pieceLength": 262144,
+      "added": 1795110000000,
+      "contentType": "audio",
+      "seeders": 15,
+      "leechers": 1,
+      "completed": 640
+    },
+    {
+      "hash": "5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f7081",
+      "name": "Some Show S01E02 1080p WEB-DL x264-GRP",
+      "size": 1500000000,
+      "files": 1,
+      "pieceLength": 1048576,
+      "added": 1795090000000,
+      "contentType": "video",
+      "seeders": 0,
+      "leechers": 0,
+      "completed": 3
+    },
+    {
+      "hash": "6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192",
+      "name": "Debian 12.7 netinst amd64",
+      "size": 660000000,
+      "files": 1,
+      "pieceLength": 262144,
+      "added": 1795070000000,
+      "contentType": "software",
+      "seeders": 31,
+      "leechers": 2,
+      "completed": 1880
+    },
+    {
+      "hash": "708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3",
+      "name": "OpenTTD 14.1 linux-x86_64",
+      "size": 120000000,
+      "files": 1,
+      "pieceLength": 262144,
+      "added": 1795050000000,
+      "contentType": "games",
+      "seeders": 9,
+      "leechers": 0
+    },
+    {
+      "hash": "8192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4",
+      "name": "Public Domain Paintings Pack 01",
+      "size": 2400000000,
+      "files": 850,
+      "pieceLength": 1048576,
+      "added": 1795030000000,
+      "contentType": "pictures",
+      "seeders": 2,
+      "leechers": 0,
+      "completed": 41
+    },
+    {
+      "hash": "92a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
+      "name": "dotfiles collection 2026-11",
+      "size": 12000000,
+      "files": 1200,
+      "pieceLength": 262144,
+      "added": 1795010000000,
+      "contentType": "archive",
+      "seeders": 0,
+      "leechers": 0
+    },
+    {
+      "hash": "a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6",
+      "name": "Nine Inch Nails - The Downward Spiral (MP3 320)",
+      "size": 145000000,
+      "files": 14,
+      "pieceLength": 262144,
+      "added": 1794990000000,
+      "contentType": "audio",
+      "seeders": 22,
+      "leechers": 5,
+      "completed": 1204
+    },
+    {
+      "hash": "b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7",
+      "name": "Sintel 2010 2160p",
+      "size": 1500000000,
+      "files": 1,
+      "pieceLength": 1048576,
+      "added": 1794970000000,
+      "contentType": "video",
+      "seeders": 64,
+      "leechers": 7,
+      "completed": 5120
+    },
+    {
+      "hash": "c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8",
+      "name": "Structure and Interpretation of Computer Programs (pdf)",
+      "size": 23000000,
+      "files": 1,
+      "pieceLength": 262144,
+      "added": 1794950000000,
+      "contentType": "books",
+      "seeders": 3,
+      "leechers": 0
+    },
+    {
+      "hash": "d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809",
+      "name": "Fedora 41 Workstation x86_64",
+      "size": 2100000000,
+      "files": 1,
+      "pieceLength": 524288,
+      "added": 1794930000000,
+      "contentType": "software",
+      "seeders": 17,
+      "leechers": 1,
+      "completed": 733
+    }
+  ]
+}

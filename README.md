@@ -46,7 +46,7 @@ A fresh test instance with a single public feed of Linux distribution ISOs.
   external service, no container required.
 - **It replaces Jackett and Prowlarr**, it does not proxy them: a native
   catalog of site definitions and family connectors, plus any direct
-  Torznab/Newznab endpoint, RSS feed or eD2k source.
+  Torznab/Newznab endpoint, RSS feed, eD2k source or Rats Search node.
 - **The cache is real.** Releases stay searchable when a site is slow or down,
   with deduplication, full-text search and retention.
 - **Torrents, Usenet and eD2k on one endpoint.** Torznab and Newznab together,

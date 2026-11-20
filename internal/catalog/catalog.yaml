@@ -47,6 +47,12 @@ definitions:
     state: bozza
     author: indexarr
 
+  - id: rats-generic
+    file: definitions/rats-generic.yaml
+    state: bozza
+    author: indexarr
+    note: 'Any Rats Search node through its REST API; the fixture is the documented answer, not a capture, so it stays bozza until a run against a live node.'
+
   - id: extto
     file: definitions/extto.yaml
     state: verificata

@@ -30,6 +30,7 @@ var genericConnectors = map[string]string{
 	"torznab":       "Any Torznab indexer: full endpoint and API key",
 	"newznab":       "Any Newznab/Usenet indexer: full endpoint and API key",
 	"rss":           "Any RSS/Atom feed with a .torrent, .nzb or magnet enclosure",
+	"rats":          "Any Rats Search node: its REST address, no key. A BitTorrent index crawled from the DHT, keyword search only",
 }
 
 // accessLabels turns the required setting names into one readable cell.

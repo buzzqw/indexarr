@@ -17,6 +17,7 @@ const (
 	ConnectorNexusPHP      = "nexusphp"
 	ConnectorTorrentTrader = "torrenttrader"
 	ConnectorXbtit         = "xbtit"
+	ConnectorRats          = "rats"
 )
 
 // Register adds the native family connector factories to r. Settings
@@ -24,6 +25,8 @@ const (
 // and allow_private. Gazelle additionally reads api_key (or apikey); NexusPHP
 // reads username, password and passkey. RSS reads url (or base_url),
 // default_category, query and the smartfeed flag set by the MirCrew add flow.
+// Rats Search reads url (or base_url) and the safesearch flag: a node has no
+// account, no key and one platform for every language.
 func Register(r *engine.Registry) error {
 	if r == nil {
 		return fmt.Errorf("family: nil registry")
@@ -48,6 +51,9 @@ func Register(r *engine.Registry) error {
 	}
 	if err := r.RegisterConnector(ConnectorXbtit, XbtitFactory); err != nil {
 		return fmt.Errorf("family: register %q: %w", ConnectorXbtit, err)
+	}
+	if err := r.RegisterConnector(ConnectorRats, ratsFactory); err != nil {
+		return fmt.Errorf("family: register %q: %w", ConnectorRats, err)
 	}
 	if err := r.RegisterConnector(ConnectorRSS, rssFactory); err != nil {
 		return fmt.Errorf("family: register %q: %w", ConnectorRSS, err)
@@ -181,6 +187,26 @@ func torznabFactory(cfg engine.Config) (engine.Connector, error) {
 		Transport:  transportFromSettings(cfg.Transport, settings),
 		Categories: categories,
 		UserAgent:  userAgent,
+	})
+}
+
+// ratsFactory builds a Rats Search connector from generic settings. It reads
+// url (or base_url), categories, user_agent and safesearch. The node is
+// usually on the same machine or on the LAN, so the allow_private setting of
+// the indexer form decides whether the transport may reach it.
+func ratsFactory(cfg engine.Config) (engine.Connector, error) {
+	settings := cfg.Settings
+	categories, err := parseCategoryList(settings["categories"])
+	if err != nil {
+		return nil, fmt.Errorf("rats: categories: %w", err)
+	}
+	return NewRats(RatsConfig{
+		Indexer:    cfg.Indexer,
+		BaseURL:    firstNonEmpty(settings["base_url"], settings["url"]),
+		Transport:  transportFromSettings(cfg.Transport, settings),
+		Categories: categories,
+		UserAgent:  settings["user_agent"],
+		SafeSearch: boolSetting(firstNonEmpty(settings["safesearch"], settings["safe_search"])),
 	})
 }
 

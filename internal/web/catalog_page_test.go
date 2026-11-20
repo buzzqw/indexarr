@@ -391,6 +391,26 @@ func TestCatalogFormUsesTheDefinitionEndpoint(t *testing.T) {
 	}
 }
 
+// TestCatalogFormPrefillsAGenericConnectorAddress covers the other half of the
+// same rule: a generic definition has no site address to fall back on, but it
+// can recommend one. A Rats Search node normally runs on this machine, so the
+// form opens with the address the definition declares instead of an empty
+// field the user would have to look up.
+func TestCatalogFormPrefillsAGenericConnectorAddress(t *testing.T) {
+	env := newNativeEnv(t)
+	body := get(t, env.handler, "/indexers/new?definition=rats-generic").Body.String()
+	// The attribute order in the template puts id and name before the value,
+	// so the two are checked separately.
+	if !strings.Contains(body, `name="url"`) || !strings.Contains(body, `value="http://127.0.0.1:8095"`) {
+		t.Errorf("the Rats Search form does not prefill the node address")
+	}
+	// The same form must offer the safe-search setting: it is the only filter
+	// the node has, and without a field nobody could switch it on.
+	if !strings.Contains(body, `name="setting_safesearch"`) {
+		t.Errorf("the Rats Search form has no safe-search field")
+	}
+}
+
 // TestCatalogAddReadsTheFormWhenTheTokenIsInTheQuery covers a client that puts
 // the CSRF token in the query string (the middleware then skips parsing the
 // body): the chosen sites must still reach the handler instead of the page

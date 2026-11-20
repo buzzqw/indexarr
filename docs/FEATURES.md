@@ -262,6 +262,14 @@ the native HTML sites, private sources with cookies and forums,
 Cloudflare/FlareSolverr and the Jackett/Prowlarr replacement:
 [Sources](https://github.com/buzzqw/indexarr/wiki/Sources).
 
+A **Rats Search node** is one more source: the catalog entry `Rats Search
+(generic)` takes the node's REST address, no key, and queries the BitTorrent
+index the node crawled from the DHT. It is a keyword source like the public DHT
+search engines in the catalog — one word filter and a coarse content type, no
+`tvdbid`, no category tree — and a release is grabbed as a magnet. The
+periodic walk reads the node's newest torrents, so a source added today fills
+the cache from the next run; **Test** reports how many torrents the node holds.
+
 ## Backup, maintenance and security
 
 - **Backups** run automatically with rotation and can be restored from the UI;

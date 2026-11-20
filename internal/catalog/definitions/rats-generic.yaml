@@ -1,0 +1,99 @@
+# BOZZA (draft). A Rats Search node.
+#
+# Rats Search (librats/rats-search) is not a site: it is a BitTorrent index
+# crawled from the DHT and served over the node's own REST API, documented in
+# docs/API.md of the project. The connector reads two methods — search.torrents
+# and search.recent — plus stats.get for the connection test. This definition
+# ships without a live capture: fixtures/rats/search.json follows the answer
+# envelope and the Torrent Object Format the project documents, not a page read
+# from a site. That is why the state is "bozza"; it becomes "verificata" after
+# a run against a real node.
+#
+# What the node gives and what it does not:
+#   - one word filter ("text") and one coarse content type, nothing else: no
+#     tvdbid, no imdbid, no year, no category tree, no pagination beyond an
+#     index offset. Season, episode and year are folded into the words;
+#   - seeders come from a tracker scrape, so a torrent found only on the DHT
+#     carries 0 until the node scrapes it. indexarr keeps the highest count
+#     across the sources of one release, so a row a site also lists keeps the
+#     site's numbers;
+#   - a row carries an infohash and no .torrent: the release reaches the client
+#     as a magnet;
+#   - a bare 40-character infohash sent as the query is answered by the node
+#     with a DHT metadata lookup, so a hash-only request works too.
+#
+# Safe search only narrows keyword searches: the node's newest-torrents list
+# takes no such flag, so the periodic walk adds whatever the node's own filter
+# policy kept. Adult releases have no content type of their own and arrive as
+# "video"; the search page's adult filter hides them from the results.
+#
+# A node is usually on the same machine or on the LAN: switch on "allow private
+# addresses" on the source, otherwise the transport refuses the address.
+schema: 1
+connector: rats
+
+meta:
+  id: rats-generic
+  name: Rats Search (generic)
+  language: en-US
+  # Public: the node's REST API has no account and no key, only an address. The
+  # address is usually a private one, so the form's "local network" switch is
+  # what the source needs, not a credential.
+  type: public
+  protocol: torrent
+  author: indexarr
+  description: Any Rats Search node; the connector reads its REST address and queries the node's own DHT index.
+  urls:
+    - http://127.0.0.1:8095/
+  updated: "2026-11-20"
+  # A node is local and cheap to ask: one page of its newest torrents, no page
+  # to scrape and no rate limit to respect. The global default (one hour) would
+  # keep a fresh installation nearly empty.
+  interval: 15m
+
+settings:
+  - name: url
+    type: text
+    label: "Node address"
+    help: "REST address of the Rats Search node, for example http://127.0.0.1:8095. The /api suffix is optional. A node on this machine or on the LAN also needs “allow private addresses”."
+    default: "http://127.0.0.1:8095"
+    required: true
+  - name: safesearch
+    type: checkbox
+    label: "Safe search"
+    help: "Ask the node to keep adult releases out of keyword searches. The node's own filter decides what is adult, and its newest-torrents list takes no such flag."
+    default: "false"
+
+# One row per content type the node detects. Only "video" is ambiguous: the node
+# reads the file type, so a film and an episode look the same. A stored release
+# carries one category, and the search that finds it decides — a TV search
+# stores it under TV (5000), a movie search and the manual search page under
+# Movies (2000) — so both clients keep working from the cache.
+categories:
+  - { site: "video", standard: 2000, desc: "Movies and TV" }
+  - { site: "audio", standard: 3000, desc: "Audio" }
+  - { site: "books", standard: 7000, desc: "Books" }
+  - { site: "software", standard: 4000, desc: "PC" }
+  - { site: "games", standard: 4050, desc: "Games" }
+  - { site: "pictures", standard: 8000, desc: "Pictures" }
+  - { site: "archive", standard: 8000, desc: "Archives" }
+  - { site: "other", standard: 8000, desc: "Other" }
+
+capabilities:
+  search: [q]
+  tv-search: [q, season, ep]
+  movie-search: [q, year]
+  music-search: [q, artist, album]
+  book-search: [q, author, title]
+
+# The node answers "test" with whatever its index holds. A node that has just
+# started crawling returns nothing, and the check reports that as a shortfall:
+# the first crawl has not run yet.
+health:
+  query: test
+  min_rows: 1
+
+tests:
+  - name: search
+    fixture: fixtures/rats/search.json
+    expect: { min_rows: 10, required: [title, magnet, size, category] }
