@@ -14,6 +14,7 @@
 #   install.sh                       wrapper to the installer
 #   scripts/install-user-service.sh  the installer itself
 #   examples/                        indexarr.json, the systemd unit, sample definitions
+#   docs/                            installation, features, compatibility and the source list
 #   README.md, SUPPORTED.md (the generated source list), LICENSE (when present)
 #   INSTALL.md                       the two commands to start from the archive
 #
@@ -110,6 +111,14 @@ build_one() {
 	install -m 0755 install.sh "${dir}/install.sh"
 	install -m 0755 scripts/install-user-service.sh "${dir}/scripts/install-user-service.sh"
 	cp -a examples "${dir}/examples"
+	# The README links the user-facing documents in docs/, so the archive
+	# carries them too; SUPPORTED.md stays at the top level for readers of the
+	# older layout. Internal notes (backlog, audits) are not shipped.
+	mkdir -p "${dir}/docs"
+	install -m 0644 docs/INSTALLATION.md docs/FEATURES.md docs/COMPATIBILITY.md \
+		docs/SUPPORTED.md docs/DOWNLOAD_CONFIRMATION.md "${dir}/docs/"
+	# The README shows screenshots stored in docs/screenshots/.
+	cp -a docs/screenshots "${dir}/docs/screenshots"
 	cp README.md "${dir}/README.md"
 	cp docs/SUPPORTED.md "${dir}/SUPPORTED.md"
 	[[ -f LICENSE ]] && cp LICENSE "${dir}/LICENSE"
