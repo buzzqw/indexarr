@@ -274,6 +274,18 @@ func TestReleaseTableLayoutModel(t *testing.T) {
 	if !regexp.MustCompile(`title="\d{4}-\d{2}-\d{2} \d{2}:\d{2}"`).MatchString(body) {
 		t.Error("the relative date has no full date in its title")
 	}
+	// A release a client already received carries a chip, so the same row is
+	// not sent a second time by mistake.
+	if err := env.store.MarkReleaseDownloaded(context.Background(), release.ID); err != nil {
+		t.Fatalf("MarkReleaseDownloaded: %v", err)
+	}
+	body = get(t, env.handler, "/releases?q=very+long+release").Body.String()
+	if !strings.Contains(body, ">Sent</span>") {
+		t.Error("the release table does not mark a release already sent")
+	}
+	if !strings.Contains(body, "Sent to a download client on ") {
+		t.Error("the sent chip has no grab time in its tooltip")
+	}
 
 	css := get(t, env.handler, "/static/app.css").Body.String()
 	for _, want := range []string{

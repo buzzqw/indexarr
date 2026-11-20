@@ -388,7 +388,12 @@ func qbAdd(ctx context.Context, client *http.Client, base, label string, cfg Con
 	if cfg.SavePath != "" {
 		_ = writer.WriteField("savepath", cfg.SavePath)
 	}
+	// qBittorrent 5.x (Web API >= 2.11.2) renamed the field to "stopped" and
+	// ignores the old name; older builds know only "paused". Sending both keeps
+	// the pause honoured on either version, and a qBittorrent-compatible
+	// client (Gextto) ignores the field it does not know.
 	_ = writer.WriteField("paused", boolString(cfg.Paused))
+	_ = writer.WriteField("stopped", boolString(cfg.Paused))
 	if cfg.SeedRatio > 0 {
 		_ = writer.WriteField("ratioLimit", strconv.FormatFloat(cfg.SeedRatio, 'f', -1, 64))
 	}

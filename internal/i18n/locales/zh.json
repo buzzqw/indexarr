@@ -1311,6 +1311,8 @@
   "releases.deletedCount": "已删除 %d 个资源",
   "releases.download": "下载",
   "releases.downloadTorrent": "下载 .torrent",
+  "releases.downloaded": "已发送",
+  "releases.downloadedTip": "%s 已发送到下载客户端",
   "releases.empty": "没有资源匹配此筛选条件。",
   "releases.externalSearchHelp": "TMDB 和 TVDB 按钮会在新标签页中打开以去掉分辨率、编码、语言、小组标记以及附加在原名后的意大利语标题的标题为关键词的站点搜索；它们不使用 API 密钥，也不会修改任何内容。",
   "releases.error.invalidID": "资源 ID 无效",

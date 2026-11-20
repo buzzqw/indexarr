@@ -11,17 +11,28 @@ import (
 
 var (
 	querySecret = regexp.MustCompile(`(?i)([?&](?:apikey|api_key|passkey|rsskey|torrent_pass|token|password|secret|u|e)=)([^&\s"']+)`)
-	bareSecret  = regexp.MustCompile(`(?i)\b(apikey|api_key|passkey|rsskey|torrent_pass|token|password|secret)=([^\s&"']+)`)
-	headerAuth  = regexp.MustCompile(`(?i)((?:authorization|proxy-authorization|x-api-key|api-key)\s*:\s*(?:bearer\s+|basic\s+)?)([^\s"',;]{6,})`)
-	bearerToken = regexp.MustCompile(`(?i)\b(bearer\s+)([A-Za-z0-9._~+/=-]{8,})`)
-	webhookPath = regexp.MustCompile(`(?i)(/api/webhooks/\d+/)([^/\s?#"'&]+)`)
-	telegramBot = regexp.MustCompile(`(/bot)(\d+:[A-Za-z0-9_-]{8,})`)
-	jsonSecret  = regexp.MustCompile(`(?i)("(?:password|passwd|api_key|apikey|token|secret|cookie|authorization)"\s*:\s*")([^"]+)(")`)
-	userInfo    = regexp.MustCompile(`://[^/\s:@]+:[^/\s@]+@`)
+	// jsonQuerySecret stops at a JSON-escaped ampersand (\u0026). Without it the
+	// generic rule below masks the parameter and the rest of the JSON string,
+	// because a backslash is not one of its separators.
+	jsonQuerySecret = regexp.MustCompile(`(?i)(apikey|api_key|passkey|rsskey|torrent_pass|token|password|secret)=([^\\\s&"']+)\\u0026`)
+	bareSecret      = regexp.MustCompile(`(?i)\b(apikey|api_key|passkey|rsskey|torrent_pass|token|password|secret)=([^\s&"']+)`)
+	headerAuth      = regexp.MustCompile(`(?i)((?:authorization|proxy-authorization|x-api-key|api-key)\s*:\s*(?:bearer\s+|basic\s+)?)([^\s"',;]{6,})`)
+	bearerToken     = regexp.MustCompile(`(?i)\b(bearer\s+)([A-Za-z0-9._~+/=-]{8,})`)
+	webhookPath     = regexp.MustCompile(`(?i)(/api/webhooks/\d+/)([^/\s?#"'&]+)`)
+	telegramBot     = regexp.MustCompile(`(/bot)(\d+:[A-Za-z0-9_-]{8,})`)
+	jsonSecret      = regexp.MustCompile(`(?i)("(?:password|passwd|api_key|apikey|token|secret|cookie|authorization)"\s*:\s*")([^"]+)(")`)
+	userInfo        = regexp.MustCompile(`://[^/\s:@]+:[^/\s@]+@`)
 )
 
 // Redact masks credential-looking query parameters and URL userinfo.
 func Redact(text string) string {
+	text = jsonQuerySecret.ReplaceAllStringFunc(text, func(match string) string {
+		parts := jsonQuerySecret.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		return parts[1] + "=" + mask(parts[2]) + `\u0026`
+	})
 	text = querySecret.ReplaceAllStringFunc(text, func(match string) string {
 		parts := querySecret.FindStringSubmatch(match)
 		if len(parts) != 3 {

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	"github.com/buzzqw/indexarr/internal/indexer"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -60,8 +61,8 @@ func TestDownloadLinkStoresTheResolvedMagnet(t *testing.T) {
 	}
 	linkReleaseIndexer(t, st, "resolved", release.ID)
 	const magnet = "magnet:?xt=urn:btih:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-	api.SetDownloadResolver(func(context.Context, int64) ([]byte, string, string, error) {
-		return []byte(magnet), "application/x-magnet", "", nil
+	api.SetDownloadResolver(func(context.Context, int64) (downloadproxy.Payload, error) {
+		return downloadproxy.Payload{Body: []byte(magnet), ContentType: "application/x-magnet"}, nil
 	})
 
 	recorder := do(t, api, "/dl/"+itoa(release.ID)+".torrent?apikey=secret")

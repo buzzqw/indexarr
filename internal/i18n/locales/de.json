@@ -1311,6 +1311,8 @@
   "releases.deletedCount": "%d Release(s) gelöscht",
   "releases.download": "Herunterladen",
   "releases.downloadTorrent": ".torrent herunterladen",
+  "releases.downloaded": "Gesendet",
+  "releases.downloadedTip": "Am %s an einen Download-Client gesendet",
   "releases.empty": "Keine Releases entsprechen diesem Filter.",
   "releases.externalSearchHelp": "Die Schaltflächen TMDB und TVDB öffnen eine Suche auf diesen Seiten mit dem von Auflösung, Codec, Sprache, Gruppe und einem nach dem Original angehängten italienischen Titel bereinigten Titel in einem neuen Tab; sie brauchen keinen API-Schlüssel und ändern nichts.",
   "releases.error.invalidID": "Ungültige Release-ID",

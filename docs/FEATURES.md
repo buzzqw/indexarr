@@ -70,6 +70,9 @@ version.
   free releases even when the source is not configured for it, and the source
   setting stays untouched. `freeleech=1` has no effect on a definition that
   cannot mark free releases: returning nothing would be a lie, not a filter.
+- **Usenet failover headers**: a proxied `.nzb` keeps the upstream
+  `X-DNZB-*` headers, so SABnzbd's "use alternative NZB" and NZBGet's
+  FailureLink work through indexarr.
 - Multiple API keys, per-key revocation and per-key rate limit.
 - **Remote catalog**: *Settings → Advanced → Definitions* (and
   `POST /api/v2/catalog/import`) reads a catalog directory from an address —
@@ -93,7 +96,9 @@ version.
   **live on the indexers** (free text, TV, movies, music and books,
   IMDb/TMDb/TVDb ids, selection of multiple indexers, categories) and **the
   stored catalogue** (filters, saved searches and **bulk send** to clients).
-  Every result names its source and can be sent to the client from the row.
+  Every result names its source and can be sent to the client from the row; a
+  release already sent shows a **Sent** chip with the time, so it is not
+  grabbed twice by mistake.
 - **Indexers** with a single list, Run/Test/Run all/Test all/Test problems,
   detail, edit, clone, JSON export/import, feed discovery and cookie import.
   The mass actions keep each site's interval and anti-flood limit.
@@ -180,7 +185,7 @@ Supported:
 
 | Client | Protocol | Notes |
 | --- | --- | --- |
-| qBittorrent | torrent | Web API v2, category, path, pause, seed ratio/time |
+| qBittorrent | torrent | Web API v2, category, path, pause (4.x `paused` and 5.x `stopped`), seed ratio/time |
 | Gextto / gx-torrent | torrent | qBittorrent-compatible `/api/v2`, password or API key |
 | Transmission | torrent | RPC, magnet and `.torrent` |
 | Deluge | torrent | JSON-RPC |
@@ -210,7 +215,10 @@ values.
 Statistics → **Queue** reads the live queue of qBittorrent, Gextto /
 gx-torrent, Transmission, Deluge, SABnzbd and NZBGet. It is read-only: progress,
 speed and ETA are what the client reports. The other client types show a note
-instead of pretending the queue is empty.
+instead of pretending the queue is empty. The qBittorrent row accepts the
+number-as-string fields some builds return and shows the 5.x `stopped` states
+as **paused**, so a client upgrade does not empty the queue or change its
+words.
 
 A delivery is not a completed download. A client that knows when the file
 arrives can report it to `POST /api/v2/downloads/confirm`, with the same API key

@@ -20,6 +20,7 @@ import (
 	"github.com/buzzqw/indexarr/internal/catalog"
 	"github.com/buzzqw/indexarr/internal/categories"
 	"github.com/buzzqw/indexarr/internal/dedup"
+	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/feed"
 	"github.com/buzzqw/indexarr/internal/i18n"
@@ -492,9 +493,10 @@ type Config struct {
 	// Torznab API key itself, so it is mounted outside the UI session.
 	Admin http.Handler
 	// DownloadResolver fetches a payload that is not stored yet (an opaque
-	// release_sources.download_ref). It returns body, content type and
-	// filename. Optional: without it the proxy only serves stored payloads.
-	DownloadResolver func(context.Context, int64) ([]byte, string, string, error)
+	// release_sources.download_ref). It returns the body, content type,
+	// filename and the upstream headers the client needs. Optional: without
+	// it the proxy only serves stored payloads.
+	DownloadResolver func(context.Context, int64) (downloadproxy.Payload, error)
 	// Vault seals the API keys of the downstream applications. It is
 	// optional: without it the application pages still list the configured
 	// entries but cannot store a new key.
@@ -545,7 +547,7 @@ type Server struct {
 	// downloadResolver opens a sealed details reference. It is shared with
 	// the Torznab server and used by the release page when an eD2k release
 	// still needs its link.
-	downloadResolver func(context.Context, int64) ([]byte, string, string, error)
+	downloadResolver func(context.Context, int64) (downloadproxy.Payload, error)
 	logFile          string
 	logMaxMB         int
 	logMaxFiles      int

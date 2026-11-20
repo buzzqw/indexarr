@@ -85,13 +85,13 @@ func (c *delugeClient) Queue(ctx context.Context) ([]QueueItem, error) {
 	}
 	var result struct {
 		Torrents map[string]struct {
-			Name         string  `json:"name"`
-			TotalSize    int64   `json:"total_size"`
-			Progress     float64 `json:"progress"`
-			DownloadRate int64   `json:"download_rate"`
-			UploadRate   int64   `json:"upload_rate"`
-			ETA          int64   `json:"eta"`
-			State        string  `json:"state"`
+			Name         string    `json:"name"`
+			TotalSize    flexInt   `json:"total_size"`
+			Progress     flexFloat `json:"progress"`
+			DownloadRate flexInt   `json:"download_rate"`
+			UploadRate   flexInt   `json:"upload_rate"`
+			ETA          flexInt   `json:"eta"`
+			State        string    `json:"state"`
 		} `json:"torrents"`
 	}
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -99,8 +99,9 @@ func (c *delugeClient) Queue(ctx context.Context) ([]QueueItem, error) {
 	}
 	items := make([]QueueItem, 0, len(result.Torrents))
 	for hash, row := range result.Torrents {
-		progress := clampProgress(row.Progress / 100)
-		done := int64(float64(row.TotalSize) * progress)
+		size := int64(row.TotalSize)
+		progress := clampProgress(float64(row.Progress) / 100)
+		done := int64(float64(size) * progress)
 		eta := time.Duration(0)
 		if row.ETA > 0 {
 			eta = time.Duration(row.ETA) * time.Second
@@ -108,11 +109,11 @@ func (c *delugeClient) Queue(ctx context.Context) ([]QueueItem, error) {
 		items = append(items, QueueItem{
 			Name:      row.Name,
 			Hash:      hash,
-			Size:      row.TotalSize,
+			Size:      size,
 			Done:      done,
 			Progress:  progress,
-			SpeedDown: row.DownloadRate,
-			SpeedUp:   row.UploadRate,
+			SpeedDown: int64(row.DownloadRate),
+			SpeedUp:   int64(row.UploadRate),
 			ETA:       eta,
 			State:     row.State,
 		})

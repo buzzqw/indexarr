@@ -1311,6 +1311,8 @@
   "releases.deletedCount": "%d lanzamiento(s) eliminado(s)",
   "releases.download": "Descargar",
   "releases.downloadTorrent": "Descargar .torrent",
+  "releases.downloaded": "Enviada",
+  "releases.downloadedTip": "Enviada a un cliente de descargas el %s",
   "releases.empty": "Ningún lanzamiento coincide con este filtro.",
   "releases.externalSearchHelp": "Los botones TMDB y TVDB abren una búsqueda en esos sitios con el título limpio de resolución, códec, idioma, grupo y de un título italiano añadido tras el original, en una pestaña nueva; no usan claves API y no cambian nada.",
   "releases.error.invalidID": "ID de lanzamiento no válido",

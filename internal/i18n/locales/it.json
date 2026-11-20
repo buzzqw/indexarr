@@ -1311,6 +1311,8 @@
   "releases.deletedCount": "%d release eliminata/e",
   "releases.download": "Scarica",
   "releases.downloadTorrent": "Scarica .torrent",
+  "releases.downloaded": "Inviata",
+  "releases.downloadedTip": "Inviata a un client di download il %s",
   "releases.empty": "Nessuna release corrisponde a questo filtro.",
   "releases.externalSearchHelp": "I pulsanti TMDB e TVDB aprono una ricerca su quei siti con il titolo ripulito da risoluzione, codec, lingua, gruppo e dal titolo italiano aggiunto dopo l’originale, in una nuova scheda; non usano chiavi API e non modificano nulla.",
   "releases.error.invalidID": "ID release non valido",

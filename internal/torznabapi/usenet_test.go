@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	"github.com/buzzqw/indexarr/internal/engine"
 	"github.com/buzzqw/indexarr/internal/store"
 )
@@ -140,16 +141,25 @@ func TestDownloadResolverFetchesAndCachesOpaquePayload(t *testing.T) {
 
 	nzb := []byte(`<?xml version="1.0"?><nzb><file subject="opaque"/></nzb>`)
 	calls := 0
-	api.SetDownloadResolver(func(ctx context.Context, releaseID int64) ([]byte, string, string, error) {
+	api.SetDownloadResolver(func(ctx context.Context, releaseID int64) (downloadproxy.Payload, error) {
 		calls++
 		if releaseID != release.ID {
-			return nil, "", "", errors.New("wrong release")
+			return downloadproxy.Payload{}, errors.New("wrong release")
 		}
 		// Mimic downloadproxy: cache the body on the release before serving it.
 		if err := st.SavePayload(ctx, releaseID, nzb, "application/x-nzb", "usenet"); err != nil {
-			return nil, "", "", err
+			return downloadproxy.Payload{}, err
 		}
-		return nzb, "application/x-nzb", "Opaque Release.nzb", nil
+		return downloadproxy.Payload{
+			Body:        nzb,
+			ContentType: "application/x-nzb",
+			Filename:    "Opaque Release.nzb",
+			Headers: map[string]string{
+				"X-DNZB-Failure":     "1",
+				"X-DNZB-FailureLink": "https://indexer.example/retry?id=abc123guid",
+				"Set-Cookie":         "session=must-not-leak",
+			},
+		}, nil
 	})
 
 	search := do(t, api, "/api?t=search&apikey=secret&q=Opaque")
@@ -163,6 +173,15 @@ func TestDownloadResolverFetchesAndCachesOpaquePayload(t *testing.T) {
 	}
 	if got := first.Header().Get("Content-Disposition"); !strings.Contains(got, "Opaque Release.nzb") {
 		t.Errorf("content disposition = %q", got)
+	}
+	if got := first.Header().Get("X-DNZB-Failure"); got != "1" {
+		t.Errorf("X-DNZB-Failure = %q, want 1", got)
+	}
+	if got := first.Header().Get("X-DNZB-FailureLink"); got == "" {
+		t.Error("X-DNZB-FailureLink was not forwarded")
+	}
+	if got := first.Header().Get("Set-Cookie"); got != "" {
+		t.Errorf("a non X-DNZB header was forwarded: %q", got)
 	}
 	if calls != 1 {
 		t.Fatalf("resolver calls = %d, want 1", calls)

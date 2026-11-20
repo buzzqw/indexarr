@@ -1311,6 +1311,8 @@
   "releases.deletedCount": "%d release(s) deleted",
   "releases.download": "Download",
   "releases.downloadTorrent": "Download .torrent",
+  "releases.downloaded": "Sent",
+  "releases.downloadedTip": "Sent to a download client on %s",
   "releases.empty": "No releases match this filter.",
   "releases.externalSearchHelp": "The TMDB and TVDB buttons open a search on those sites with the title cleaned of resolution, codec, language, group and a localized title appended after the original, in a new tab; they use no API key and change nothing.",
   "releases.error.invalidID": "Invalid release ID",

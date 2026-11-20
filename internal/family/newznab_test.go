@@ -531,6 +531,9 @@ func TestNewznabDownload(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/x-nzb")
+		w.Header().Set("X-DNZB-Failure", "1")
+		w.Header().Set("X-DNZB-FailureLink", "https://indexer.example/retry?id=abc123guid")
+		w.Header().Set("Set-Cookie", "session=must-not-leak")
 		_, _ = io.WriteString(w, "<nzb></nzb>")
 	}))
 	defer server.Close()
@@ -559,6 +562,15 @@ func TestNewznabDownload(t *testing.T) {
 	}
 	if payload.Filename != "Example_Release.Name.nzb" {
 		t.Errorf("filename = %q", payload.Filename)
+	}
+	if got := payload.Headers[http.CanonicalHeaderKey("X-DNZB-Failure")]; got != "1" {
+		t.Errorf("X-DNZB-Failure = %q", got)
+	}
+	if got := payload.Headers[http.CanonicalHeaderKey("X-DNZB-FailureLink")]; got == "" {
+		t.Error("X-DNZB-FailureLink was dropped")
+	}
+	if _, ok := payload.Headers[http.CanonicalHeaderKey("Set-Cookie")]; ok {
+		t.Error("a non X-DNZB header was kept")
 	}
 
 	fail.Store(true)

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/buzzqw/indexarr/internal/backup"
+	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	"github.com/buzzqw/indexarr/internal/store"
 )
 
@@ -506,8 +507,8 @@ func TestEd2kTopicResolvedToMagnetBecomesTorrent(t *testing.T) {
 	const magnet = "magnet:?xt=urn:btih:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	const link = "ed2k://|file|Film.mkv|700|0123456789abcdef0123456789abcdef|/"
 	answer := magnet
-	env.server.downloadResolver = func(context.Context, int64) ([]byte, string, string, error) {
-		return []byte(answer), "", "", nil
+	env.server.downloadResolver = func(context.Context, int64) (downloadproxy.Payload, error) {
+		return downloadproxy.Payload{Body: []byte(answer)}, nil
 	}
 	release := env.server.openEd2kTopic(context.Background(), store.Release{ID: 1, Protocol: "ed2k"})
 	if release.Protocol != "torrent" || release.Magnet != magnet {

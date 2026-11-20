@@ -44,10 +44,17 @@ func TestRedactHeadersWebhooksAndJSON(t *testing.T) {
 		"discord":       "POST https://discord.com/api/webhooks/123456/" + secret,
 		"telegram":      "https://api.telegram.org/bot123456:" + secret + "/sendMessage",
 		"json":          `{"password":"` + secret + `","user":"me"}`,
+		"json-escaped":  `{"url":"https://host/1/api?t=caps\u0026apikey=` + secret + `\u0026extended=1"}`,
 	} {
 		if out := Redact(input); strings.Contains(out, secret) {
 			t.Errorf("%s leaked the secret: %q", name, out)
 		}
+	}
+	// The escaped ampersand must survive so the rest of the JSON keeps its
+	// meaning; masking used to run to the end of the value.
+	escaped := Redact(`{"url":"https://host/1/api?t=caps\u0026apikey=` + secret + `\u0026extended=1"}`)
+	if !strings.Contains(escaped, `\u0026extended=1`) {
+		t.Errorf("json-escaped tail was lost: %q", escaped)
 	}
 }
 

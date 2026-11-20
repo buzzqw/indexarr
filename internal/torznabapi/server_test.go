@@ -872,7 +872,9 @@ func TestDownloadErrorsAreReadable(t *testing.T) {
 		{&downloadproxy.Error{Kind: downloadproxy.ErrQuarantined, Message: "quarantined", RetryAfter: time.Now().Add(time.Hour)}, http.StatusServiceUnavailable, "quarantined"},
 	}
 	for _, tc := range cases {
-		api.SetDownloadResolver(func(context.Context, int64) ([]byte, string, string, error) { return nil, "", "", tc.err })
+		api.SetDownloadResolver(func(context.Context, int64) (downloadproxy.Payload, error) {
+			return downloadproxy.Payload{}, tc.err
+		})
 		rec := do(t, api, "/dl/"+itoa(release.ID)+".torrent?apikey=secret")
 		if rec.Code != tc.status {
 			t.Errorf("%v: status = %d, want %d", tc.err, rec.Code, tc.status)

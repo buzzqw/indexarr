@@ -77,7 +77,7 @@ type Server struct {
 	provenanceMu sync.Mutex
 	provenance   map[int64]provenanceCacheEntry
 
-	downloadResolver func(context.Context, int64) ([]byte, string, string, error)
+	downloadResolver func(context.Context, int64) (downloadproxy.Payload, error)
 
 	grabCheck  func(context.Context, int64) error
 	grabRecord func(context.Context, int64, int64, string) error
@@ -125,8 +125,9 @@ func (s *Server) SetLatestIndexers(fn func(context.Context) ([]int64, error)) {
 
 // SetDownloadResolver installs the callback used to fetch a payload that is
 // not stored yet (an opaque release_sources.download_ref). The callback
-// returns body, content type and filename.
-func (s *Server) SetDownloadResolver(fn func(context.Context, int64) ([]byte, string, string, error)) {
+// returns the body, content type, filename and the upstream headers a client
+// needs (X-DNZB-*).
+func (s *Server) SetDownloadResolver(fn func(context.Context, int64) (downloadproxy.Payload, error)) {
 	s.downloadResolver = fn
 }
 
@@ -1124,11 +1125,14 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		}
 		return
 	}
-	body, contentType, filename, payloadErr := s.releasePayload(ctx, release, usenet)
+	payload, payloadErr := s.releasePayload(ctx, release, usenet)
 	if payloadErr != nil {
 		s.writeDownloadError(w, payloadErr)
 		return
 	}
+	body := payload.Body
+	contentType := payload.ContentType
+	filename := payload.Filename
 	magnet := ""
 	if trimmed := strings.TrimSpace(string(body)); strings.HasPrefix(strings.ToLower(trimmed), "magnet:") {
 		magnet = trimmed
@@ -1199,6 +1203,7 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	forwardDNZBHeaders(w, payload.Headers)
 	if r.Method == http.MethodHead {
 		return
 	}
@@ -1211,6 +1216,39 @@ func (s *Server) serveRelease(w http.ResponseWriter, r *http.Request, release st
 		via = indexer.GrabViaNZB
 	}
 	s.finishGrab(ctx, grabIndexerID, release, via)
+}
+
+// forwardDNZBHeaders copies the upstream Newznab failure headers onto the
+// proxied download. SABnzbd uses X-DNZB-Failure/X-DNZB-FailureLink to switch
+// to an alternative NZB, NZBGet uses X-DNZB-RCode and FailureLink through its
+// FailureLink extension. Only that family is forwarded, the value is stripped
+// of control characters, and a malformed name is ignored.
+func forwardDNZBHeaders(w http.ResponseWriter, headers map[string]string) {
+	for name, value := range headers {
+		name = http.CanonicalHeaderKey(strings.TrimSpace(name))
+		if !strings.HasPrefix(strings.ToLower(name), "x-dnzb-") || !validHeaderName(name) {
+			continue
+		}
+		value = strings.TrimSpace(strings.NewReplacer("\r", "", "\n", "").Replace(value))
+		if value == "" || len(value) > 1024 {
+			continue
+		}
+		w.Header().Set(name, value)
+	}
+}
+
+func validHeaderName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // admitGrab resolves the indexer that supplied the release and applies its
@@ -1299,37 +1337,49 @@ func releaseCategories(category string) []string {
 
 // releasePayload returns the stored bytes or asks the download resolver for
 // them. The resolver is only consulted when no matching payload is cached.
-func (s *Server) releasePayload(ctx context.Context, release store.Release, usenet bool) ([]byte, string, string, error) {
+func (s *Server) releasePayload(ctx context.Context, release store.Release, usenet bool) (downloadproxy.Payload, error) {
 	if usenet {
 		if len(release.Payload) > 0 {
-			return release.Payload, release.PayloadType, NZBFilename(release.Title), nil
+			return downloadproxy.Payload{
+				Body:        release.Payload,
+				ContentType: release.PayloadType,
+				Filename:    NZBFilename(release.Title),
+			}, nil
 		}
 	} else {
 		if len(release.Torrent) > 0 {
 			if err := downloadproxy.ValidateHTMLBody(release.Torrent); err != nil {
-				return nil, "", "", err
+				return downloadproxy.Payload{}, err
 			}
-			return release.Torrent, "application/x-bittorrent", TorrentFilename(release.Title), nil
+			return downloadproxy.Payload{
+				Body:        release.Torrent,
+				ContentType: "application/x-bittorrent",
+				Filename:    TorrentFilename(release.Title),
+			}, nil
 		}
 		if len(release.Payload) > 0 && !isUsenetRelease(release) {
 			if err := downloadproxy.ValidateHTMLBody(release.Payload); err != nil {
-				return nil, "", "", err
+				return downloadproxy.Payload{}, err
 			}
-			return release.Payload, release.PayloadType, TorrentFilename(release.Title), nil
+			return downloadproxy.Payload{
+				Body:        release.Payload,
+				ContentType: release.PayloadType,
+				Filename:    TorrentFilename(release.Title),
+			}, nil
 		}
 	}
 	if s.downloadResolver == nil {
-		return nil, "", "", nil
+		return downloadproxy.Payload{}, nil
 	}
-	body, contentType, filename, err := s.downloadResolver(ctx, release.ID)
+	payload, err := s.downloadResolver(ctx, release.ID)
 	if err != nil {
 		s.log.Warn("torznab: resolve release payload", "release_id", release.ID, "error", err)
-		return nil, "", "", err
+		return downloadproxy.Payload{}, err
 	}
-	if len(body) == 0 {
-		return nil, "", "", nil
+	if len(payload.Body) == 0 {
+		return downloadproxy.Payload{}, nil
 	}
-	return body, contentType, filename, nil
+	return payload, nil
 }
 
 func (s *Server) writeDownloadError(w http.ResponseWriter, err error) {

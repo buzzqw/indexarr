@@ -173,11 +173,11 @@ func (s *Server) openEd2kTopic(ctx context.Context, release store.Release) store
 		strings.TrimSpace(release.Ed2k) != "" || s.downloadResolver == nil {
 		return release
 	}
-	body, _, _, err := s.downloadResolver(ctx, release.ID)
+	payload, err := s.downloadResolver(ctx, release.ID)
 	if err != nil {
 		return release
 	}
-	link := strings.TrimSpace(string(body))
+	link := strings.TrimSpace(string(payload.Body))
 	switch lower := strings.ToLower(link); {
 	case strings.HasPrefix(lower, "ed2k://"):
 		release.Ed2k = link

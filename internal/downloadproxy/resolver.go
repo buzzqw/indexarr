@@ -175,6 +175,9 @@ type Payload struct {
 	Filename    string
 	Magnet      string
 	Ed2k        string
+	// Headers are the upstream X-DNZB-* headers of this download, when it was
+	// fetched now. A cached payload has none.
+	Headers map[string]string
 }
 
 // Resolve returns the payload of one release. Stored bytes are served locally;
@@ -321,7 +324,7 @@ func (r *Resolver) Resolve(ctx context.Context, releaseID int64) (Payload, error
 		if filename == "" {
 			filename = Filename(release.Title, protocol)
 		}
-		return Payload{Body: body, ContentType: contentType, Filename: filename}, nil
+		return Payload{Body: body, ContentType: contentType, Filename: filename, Headers: fetched.Headers}, nil
 	}
 
 	if lastErr != nil {

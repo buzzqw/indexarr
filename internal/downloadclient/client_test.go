@@ -14,7 +14,7 @@ import (
 
 func TestQBittorrentMagnet(t *testing.T) {
 	var added bool
-	var category, paused string
+	var category, paused, stopped string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v2/auth/login":
@@ -32,6 +32,7 @@ func TestQBittorrentMagnet(t *testing.T) {
 			}
 			category = r.FormValue("category")
 			paused = r.FormValue("paused")
+			stopped = r.FormValue("stopped")
 			_, _ = w.Write([]byte("Ok."))
 		default:
 			http.NotFound(w, r)
@@ -46,8 +47,8 @@ func TestQBittorrentMagnet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Add: %v", err)
 	}
-	if !added || category != "indexarr" || paused != "false" {
-		t.Errorf("added=%v category=%q paused=%q", added, category, paused)
+	if !added || category != "indexarr" || paused != "false" || stopped != "false" {
+		t.Errorf("added=%v category=%q paused=%q stopped=%q", added, category, paused, stopped)
 	}
 }
 

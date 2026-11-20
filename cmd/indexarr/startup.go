@@ -185,9 +185,10 @@ func syncCatalog(ctx context.Context, st *store.Store, notifier *notify.Dispatch
 }
 
 // downloadResolverFunc returns the payload of a release for the web
-// interface: the file body, its content type and its file name. A magnet or
-// an eD2k link comes back as the body, with its own content type.
-type downloadResolverFunc = func(context.Context, int64) ([]byte, string, string, error)
+// interface: the file body, its content type, its file name and the upstream
+// headers a Usenet client needs. A magnet or an eD2k link comes back as the
+// body, with its own content type.
+type downloadResolverFunc = func(context.Context, int64) (downloadproxy.Payload, error)
 
 // newDownloadResolver builds the download proxy. It needs the native runtime
 // and the vault; without them it returns nil and the interface offers no
@@ -203,21 +204,21 @@ func newDownloadResolver(st *store.Store, secretVault *vault.Vault, manager *ind
 		logger.Warn("download proxy disabled", "error", err)
 		return nil
 	}
-	return func(ctx context.Context, id int64) ([]byte, string, string, error) {
+	return func(ctx context.Context, id int64) (downloadproxy.Payload, error) {
 		payload, err := resolver.Resolve(ctx, id)
 		if err != nil {
-			return nil, "", "", err
+			return downloadproxy.Payload{}, err
 		}
 		if len(payload.Body) > 0 {
-			return payload.Body, payload.ContentType, payload.Filename, nil
+			return payload, nil
 		}
 		if magnet := strings.TrimSpace(payload.Magnet); magnet != "" {
-			return []byte(magnet), "application/x-magnet", "", nil
+			return downloadproxy.Payload{Body: []byte(magnet), ContentType: "application/x-magnet", Headers: payload.Headers}, nil
 		}
 		if link := strings.TrimSpace(payload.Ed2k); link != "" {
-			return []byte(link), "application/x-ed2k", "", nil
+			return downloadproxy.Payload{Body: []byte(link), ContentType: "application/x-ed2k", Headers: payload.Headers}, nil
 		}
-		return nil, "", "", errors.New("payload unavailable")
+		return downloadproxy.Payload{}, errors.New("payload unavailable")
 	}
 }
 

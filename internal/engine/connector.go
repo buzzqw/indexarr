@@ -235,6 +235,10 @@ type Payload struct {
 	Filename    string
 	Magnet      string
 	Ed2k        string
+	// Headers carries the upstream response headers a client needs after a
+	// proxied download. Only X-DNZB-* is kept: SABnzbd and NZBGet use them for
+	// the alternative-NZB and FailureLink paths.
+	Headers map[string]string
 }
 
 // TestPhase is one step of an indexer test (login, search, download).

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -112,7 +113,30 @@ func (n *Newznab) Download(ctx context.Context, item engine.Item) (engine.Payloa
 		Body:        resp.Body,
 		ContentType: "application/x-nzb",
 		Filename:    safeFilename(item.Title, ".nzb"),
+		Headers:     dnzbHeaders(resp.Header),
 	}, nil
+}
+
+// dnzbHeaders keeps the X-DNZB-* response headers. SABnzbd reads
+// X-DNZB-Failure/X-DNZB-FailureLink to retry with an alternative NZB and
+// NZBGet reads X-DNZB-RCode/FailureLink through its FailureLink extension; a
+// proxied download that drops them disables both.
+func dnzbHeaders(header http.Header) map[string]string {
+	var out map[string]string
+	for name, values := range header {
+		if !strings.HasPrefix(strings.ToLower(name), "x-dnzb-") || len(values) == 0 {
+			continue
+		}
+		value := strings.TrimSpace(values[0])
+		if value == "" {
+			continue
+		}
+		if out == nil {
+			out = map[string]string{}
+		}
+		out[http.CanonicalHeaderKey(name)] = value
+	}
+	return out
 }
 
 // Test implements engine.Connector. Download is skipped because it would

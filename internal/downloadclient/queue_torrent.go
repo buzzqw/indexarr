@@ -46,31 +46,31 @@ func qbQueue(ctx context.Context, client *http.Client, base string, cfg Config) 
 			response.StatusCode, redactText(string(body), maxErrorBody, cfg.Password))
 	}
 	var rows []struct {
-		Hash       string  `json:"hash"`
-		Name       string  `json:"name"`
-		Size       int64   `json:"size"`
-		TotalSize  int64   `json:"total_size"`
-		Progress   float64 `json:"progress"`
-		AmountLeft int64   `json:"amount_left"`
-		Downloaded int64   `json:"downloaded"`
-		DLRate     int64   `json:"dlspeed"`
-		ULRate     int64   `json:"upspeed"`
-		ETA        int64   `json:"eta"`
-		State      string  `json:"state"`
-		Completion int64   `json:"completion_on"`
+		Hash       string    `json:"hash"`
+		Name       string    `json:"name"`
+		Size       flexInt   `json:"size"`
+		TotalSize  flexInt   `json:"total_size"`
+		Progress   flexFloat `json:"progress"`
+		AmountLeft flexInt   `json:"amount_left"`
+		Downloaded flexInt   `json:"downloaded"`
+		DLRate     flexInt   `json:"dlspeed"`
+		ULRate     flexInt   `json:"upspeed"`
+		ETA        flexInt   `json:"eta"`
+		State      string    `json:"state"`
+		Completion flexInt   `json:"completion_on"`
 	}
 	if err := json.Unmarshal(body, &rows); err != nil {
 		return nil, fmt.Errorf("qBittorrent queue response: %w", err)
 	}
 	items := make([]QueueItem, 0, len(rows))
 	for _, row := range rows {
-		total := row.TotalSize
+		total := int64(row.TotalSize)
 		if total <= 0 {
-			total = row.Size
+			total = int64(row.Size)
 		}
-		done := row.Downloaded
+		done := int64(row.Downloaded)
 		if row.AmountLeft >= 0 && total > 0 {
-			done = total - row.AmountLeft
+			done = total - int64(row.AmountLeft)
 		}
 		if done < 0 {
 			done = 0
@@ -87,14 +87,26 @@ func qbQueue(ctx context.Context, client *http.Client, base string, cfg Config) 
 			Hash:      row.Hash,
 			Size:      total,
 			Done:      done,
-			Progress:  clampProgress(row.Progress),
-			SpeedDown: row.DLRate,
-			SpeedUp:   row.ULRate,
+			Progress:  clampProgress(float64(row.Progress)),
+			SpeedDown: int64(row.DLRate),
+			SpeedUp:   int64(row.ULRate),
 			ETA:       eta,
-			State:     row.State,
+			State:     qbState(row.State),
 		})
 	}
 	return items, nil
+}
+
+// qbState normalizes the qBittorrent names. The Web API renamed the paused
+// states to stoppedDL/stoppedUP in 5.x; the queue shows the same word for both
+// generations so a client upgrade does not change what the page says.
+func qbState(state string) string {
+	switch strings.TrimSpace(state) {
+	case "pausedDL", "pausedUP", "stoppedDL", "stoppedUP":
+		return "paused"
+	default:
+		return state
+	}
 }
 
 func queueTransmission(ctx context.Context, cfg Config) ([]QueueItem, error) {
@@ -113,15 +125,15 @@ func queueTransmission(ctx context.Context, cfg Config) ([]QueueItem, error) {
 	}
 	var result struct {
 		Torrents []struct {
-			Hash          string  `json:"hashString"`
-			Name          string  `json:"name"`
-			TotalSize     int64   `json:"totalSize"`
-			PercentDone   float64 `json:"percentDone"`
-			RateDownload  int64   `json:"rateDownload"`
-			RateUpload    int64   `json:"rateUpload"`
-			ETA           int64   `json:"eta"`
-			Status        int     `json:"status"`
-			LeftUntilDone int64   `json:"leftUntilDone"`
+			Hash          string    `json:"hashString"`
+			Name          string    `json:"name"`
+			TotalSize     flexInt   `json:"totalSize"`
+			PercentDone   flexFloat `json:"percentDone"`
+			RateDownload  flexInt   `json:"rateDownload"`
+			RateUpload    flexInt   `json:"rateUpload"`
+			ETA           flexInt   `json:"eta"`
+			Status        flexInt   `json:"status"`
+			LeftUntilDone flexInt   `json:"leftUntilDone"`
 		} `json:"torrents"`
 	}
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -129,12 +141,13 @@ func queueTransmission(ctx context.Context, cfg Config) ([]QueueItem, error) {
 	}
 	items := make([]QueueItem, 0, len(result.Torrents))
 	for _, row := range result.Torrents {
-		done := row.TotalSize - row.LeftUntilDone
+		size := int64(row.TotalSize)
+		done := size - int64(row.LeftUntilDone)
 		if done < 0 {
 			done = 0
 		}
-		if done > row.TotalSize {
-			done = row.TotalSize
+		if done > size {
+			done = size
 		}
 		eta := time.Duration(0)
 		if row.ETA > 0 {
@@ -143,13 +156,13 @@ func queueTransmission(ctx context.Context, cfg Config) ([]QueueItem, error) {
 		items = append(items, QueueItem{
 			Name:      row.Name,
 			Hash:      row.Hash,
-			Size:      row.TotalSize,
+			Size:      size,
 			Done:      done,
-			Progress:  clampProgress(row.PercentDone),
-			SpeedDown: row.RateDownload,
-			SpeedUp:   row.RateUpload,
+			Progress:  clampProgress(float64(row.PercentDone)),
+			SpeedDown: int64(row.RateDownload),
+			SpeedUp:   int64(row.RateUpload),
 			ETA:       eta,
-			State:     transmissionState(row.Status),
+			State:     transmissionState(int(row.Status)),
 		})
 	}
 	return items, nil
