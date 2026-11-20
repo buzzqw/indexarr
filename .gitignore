@@ -34,3 +34,4 @@ __pycache__/
 # Note private e di lavoro: restano in locale, non nel repository
 /docs/BACKLOG.md
 /docs/internal/
+/docs/AUDIT-2026-11-13.md
