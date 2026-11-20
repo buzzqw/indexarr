@@ -953,6 +953,8 @@
   "idx.smartfeed.useT2": "Usa t=2 e conserva gli altri parametri",
   "idx.smartfeed.username": "Utente MirCrew (ricerca/grab)",
   "idx.statusBlocked": "Bloccato",
+  "idx.statusInternal": "Interno",
+  "idx.statusInternalHelp": "Errore di indexarr, non del sito: il motivo è nella riga di storico",
   "idx.statusDegraded": "Degradato",
   "idx.statusDisabled": "Disattivato",
   "idx.statusOk": "Funziona",

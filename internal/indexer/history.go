@@ -63,6 +63,12 @@ const StatusPaused = "paused"
 // a shutdown, or a caller whose deadline ended. It says nothing about the site.
 const StatusCanceled = "canceled"
 
+// StatusInternal is the history status of a failure inside indexarr (storage,
+// configuration, result handling). It is not the site's fault: the health
+// model, the auto-disable policy and the notifications must not treat it as a
+// source failure.
+const StatusInternal = "internal"
+
 // statusFor classifies an operation. A caller cancellation wins over every
 // other classification because it says why the run actually stopped. A
 // Cloudflare challenge is "blocked": it is not a generic failure and it has
@@ -93,6 +99,18 @@ func statusFor(ctx context.Context, err error) string {
 		// contacted. It is a pause, not a new failure: it must not extend the
 		// retry streak, the auto-disable count or the error notification.
 		return StatusPaused
+	}
+	if errors.Is(err, ErrQueryLimit) {
+		// The operator's daily query budget, not the site, stopped this run.
+		// It is a pause with its own explanation and must not degrade the
+		// source or feed the auto-disable count.
+		return StatusPaused
+	}
+	if IsInternal(err) {
+		// indexarr failed, not the site: storage, configuration or result
+		// handling. The row keeps the reason, but health, the breaker and the
+		// notifications must not blame the source.
+		return StatusInternal
 	}
 	if err != nil {
 		return "error"
@@ -164,7 +182,7 @@ func (m *Manager) deferredSearchObserver(indexer store.Indexer) engine.DeferredS
 func (m *Manager) checkQueryLimit(ctx context.Context, indexerID int64) error {
 	indexer, err := m.store.GetIndexer(ctx, indexerID)
 	if err != nil {
-		return fmt.Errorf("indexer %d: %w", indexerID, err)
+		return Internal("load indexer for the query limit", fmt.Errorf("indexer %d: %w", indexerID, err))
 	}
 	if indexer.QueryLimit <= 0 {
 		return nil
@@ -172,7 +190,7 @@ func (m *Manager) checkQueryLimit(ctx context.Context, indexerID int64) error {
 	count, err := m.store.CountIndexerQueries(ctx, indexerID, queryHistoryKinds,
 		time.Now().Add(-24*time.Hour))
 	if err != nil {
-		return fmt.Errorf("indexer %s: count queries: %w", indexer.Slug, err)
+		return Internal("count the queries of the day", fmt.Errorf("indexer %s: count queries: %w", indexer.Slug, err))
 	}
 	if count >= indexer.QueryLimit {
 		return fmt.Errorf("indexer %s: %w (%d/%d in 24h)",

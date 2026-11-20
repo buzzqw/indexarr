@@ -979,3 +979,17 @@ func TestDueIndexersRetriesAPausedSourceAtTheCooldown(t *testing.T) {
 		}
 	}
 }
+
+// TestAllErrorsLeavesOutInternalAndPaused keeps the auto-disable policy on the
+// site: a failure inside indexarr or a paused run breaks the streak.
+func TestAllErrorsLeavesOutInternalAndPaused(t *testing.T) {
+	if allErrors([]string{"error", "internal"}) {
+		t.Error("an internal failure must not complete an auto-disable streak")
+	}
+	if allErrors([]string{"error", "paused"}) {
+		t.Error("a paused run must not complete an auto-disable streak")
+	}
+	if !allErrors([]string{"error", "blocked"}) {
+		t.Error("a blocked (Cloudflare) run is still a failure for auto-disable")
+	}
+}

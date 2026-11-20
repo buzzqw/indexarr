@@ -121,6 +121,7 @@ func (s *Store) migrate() error {
 			category           TEXT    NOT NULL DEFAULT '',
 			published_at       INTEGER NOT NULL DEFAULT 0,
 			guid               TEXT    NOT NULL DEFAULT '',
+			public_guid        TEXT    NOT NULL DEFAULT '',
 			magnet             TEXT    NOT NULL DEFAULT '',
 			torrent            BLOB,
 			torrent_size       INTEGER NOT NULL DEFAULT 0,
@@ -165,6 +166,15 @@ func (s *Store) migrate() error {
 		`CREATE INDEX IF NOT EXISTS releases_imdb ON releases(imdb_id)`,
 		`CREATE INDEX IF NOT EXISTS releases_tmdb ON releases(tmdb_id)`,
 		`CREATE INDEX IF NOT EXISTS releases_tvdb ON releases(tvdb_id)`,
+		// The alias table keeps the identity of a row merged into another one
+		// resolvable. The index on public_guid is created after
+		// ensureReleaseColumns, because an upgraded database gains the column
+		// there.
+		`CREATE TABLE IF NOT EXISTS release_guid_alias (
+			guid       TEXT PRIMARY KEY,
+			release_id INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE
+		)`,
+		`CREATE INDEX IF NOT EXISTS release_guid_alias_release ON release_guid_alias(release_id)`,
 	}
 	for _, statement := range statements {
 		if _, err := s.db.Exec(statement); err != nil {
@@ -1030,6 +1040,7 @@ func (s *Store) ensureReleaseColumns() error {
 		{"ed2k_link", "TEXT NOT NULL DEFAULT ''"},
 		{"ed2k_hash", "TEXT NOT NULL DEFAULT ''"},
 		{"languages", "TEXT NOT NULL DEFAULT ''"},
+		{"public_guid", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		exists, err := s.columnExists("releases", column.name)
 		if err != nil {
@@ -1041,6 +1052,21 @@ func (s *Store) ensureReleaseColumns() error {
 		if _, err := s.db.Exec("ALTER TABLE releases ADD COLUMN " + column.name + " " + column.ddl); err != nil {
 			return fmt.Errorf("migrate releases.%s: %w", column.name, err)
 		}
+		if column.name == "public_guid" {
+			// One-time backfill: today's GUID is the identity clients already
+			// know, so the column starts from exactly that value. New rows get
+			// theirs at insert and keep it for life.
+			if _, err := s.db.Exec(`UPDATE releases SET public_guid = CASE
+				WHEN infohash <> '' THEN infohash
+				WHEN ed2k_hash <> '' THEN lower(ed2k_hash)
+				ELSE 'indexarr-' || dedup_key END
+				WHERE public_guid = ''`); err != nil {
+				return fmt.Errorf("backfill releases.public_guid: %w", err)
+			}
+		}
+	}
+	if _, err := s.db.Exec(`CREATE INDEX IF NOT EXISTS releases_public_guid ON releases(public_guid)`); err != nil {
+		return fmt.Errorf("index releases.public_guid: %w", err)
 	}
 	return nil
 }

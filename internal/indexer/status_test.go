@@ -46,3 +46,27 @@ func TestStatusForTimeoutIsAFailure(t *testing.T) {
 		t.Errorf("statusFor(caller deadline) = %q, want %q", got, StatusCanceled)
 	}
 }
+
+// TestStatusForInternalAndQueryLimitAreNotSiteFailures locks the attribution:
+// a storage or configuration failure belongs to indexarr, and the daily query
+// budget belongs to the operator. Neither may degrade the source.
+func TestStatusForInternalAndQueryLimitAreNotSiteFailures(t *testing.T) {
+	storeErr := Internal("store release", errors.New("database is locked (517)"))
+	wrapped := fmt.Errorf("indexer tg: run: %w", storeErr)
+	if !IsInternal(wrapped) {
+		t.Fatal("IsInternal did not walk the wrapping chain")
+	}
+	if got := statusFor(context.Background(), wrapped); got != StatusInternal {
+		t.Errorf("statusFor(internal) = %q, want %q", got, StatusInternal)
+	}
+	if got := statusFor(context.Background(), Internal("store", nil)); got != "ok" {
+		t.Errorf("statusFor(Internal(nil)) = %q, want ok", got)
+	}
+	limit := fmt.Errorf("indexer tg: %w", ErrQueryLimit)
+	if got := statusFor(context.Background(), limit); got != StatusPaused {
+		t.Errorf("statusFor(query limit) = %q, want %q", got, StatusPaused)
+	}
+	if got := statusFor(context.Background(), fmt.Errorf("site said 500")); got != "error" {
+		t.Errorf("a remote failure is still an error, got %q", got)
+	}
+}

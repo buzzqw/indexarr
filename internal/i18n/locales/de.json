@@ -953,6 +953,8 @@
   "idx.smartfeed.useT2": "t=2 verwenden und andere Parameter behalten",
   "idx.smartfeed.username": "MirCrew-Benutzername (Suche/Grab)",
   "idx.statusBlocked": "Blockiert",
+  "idx.statusInternal": "Intern",
+  "idx.statusInternalHelp": "Fehler in indexarr, nicht auf der Seite: der Grund steht in der Verlaufszeile",
   "idx.statusDegraded": "Eingeschränkt",
   "idx.statusDisabled": "Deaktiviert",
   "idx.statusOk": "Funktioniert",

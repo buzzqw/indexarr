@@ -73,6 +73,10 @@ version.
 - **Usenet failover headers**: a proxied `.nzb` keeps the upstream
   `X-DNZB-*` headers, so SABnzbd's "use alternative NZB" and NZBGet's
   FailureLink work through indexarr.
+- **Stable identity**: the `<guid>` of a release is assigned on its first
+  sighting (infohash, eD2k hash or a fallback key) and never changes when a
+  later download adds the infohash. After a merge, the GUIDs a client already
+  saw stay resolvable for `t=get`.
 - Multiple API keys, per-key revocation and per-key rate limit.
 - **Remote catalog**: *Settings → Advanced → Definitions* (and
   `POST /api/v2/catalog/import`) reads a catalog directory from an address —
@@ -161,7 +165,10 @@ Search syntax, saved searches, rules, sending to clients and notifications:
   cleared as soon as a health check or a run succeeds, so a timeout from hours
   ago does not keep the dashboard red, and every cause (rate limit, flood
   control, DNS, page changed) has its own sentence instead of "unexpected
-  error". The health check and the periodic runs keep the sources of one site
+  error". A failure inside indexarr — storage, configuration, result handling
+  — is recorded as **internal** and kept apart: it explains itself in the
+  history, without degrading the source, feeding the auto-disable count or
+  sending a status notification. The health check and the periodic runs keep the sources of one site
   apart: they are checked one after the other, and even when several are due
   only one is read per tick, so a site is never asked for everything at the
   same second.

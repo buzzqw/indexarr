@@ -909,6 +909,16 @@ func (r *Runner) afterRun(ctx context.Context, indexerRow store.Indexer, outcome
 	case outcome.Skipped:
 		// A disabled or search-only indexer says nothing about the site.
 		return
+	case errors.Is(outcome.Err, indexer.ErrQueryLimit):
+		// The operator's daily budget stopped the run, not the site: no state
+		// change and no alert.
+		return
+	case indexer.IsInternal(outcome.Err):
+		// indexarr failed, not the site: no state change, no notification and
+		// no auto-disable. The history row already carries the reason.
+		r.logger.Warn("native: internal failure; the source keeps its state",
+			"indexer", indexerRow.Slug, "error", outcome.Err)
+		return
 	case outcome.Err != nil:
 		status = notify.StateError
 		if errors.Is(outcome.Err, engine.ErrChallenge) {

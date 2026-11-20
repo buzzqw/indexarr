@@ -111,7 +111,7 @@ func TestCanceledSearchDoesNotConsumeQueryLimit(t *testing.T) {
 	}
 }
 
-func TestRunRespectsQueryLimitAndRecordsError(t *testing.T) {
+func TestRunRespectsQueryLimitAndRecordsAPause(t *testing.T) {
 	st := newTestStore(t)
 	v := newTestVault(t, 1)
 	server := newSearchServer(t)
@@ -135,7 +135,7 @@ func TestRunRespectsQueryLimitAndRecordsError(t *testing.T) {
 	if historyErr != nil {
 		t.Fatalf("ListIndexerHistory: %v", historyErr)
 	}
-	if len(history) == 0 || history[0].Kind != "run" || history[0].Status != "error" {
+	if len(history) == 0 || history[0].Kind != "run" || history[0].Status != StatusPaused {
 		t.Fatalf("rejected run history = %+v", history)
 	}
 	if !strings.Contains(history[0].Error, "daily query limit") {

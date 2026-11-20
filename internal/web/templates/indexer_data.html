@@ -39,7 +39,7 @@
         <tr>
           <td class="nowrap log-when">{{date .StartedAt}}<div class="sub">{{ago .StartedAt}}</div></td>
           <td class="log-kind">{{kindLabel .Kind}}</td>
-          <td class="log-result">{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
+          <td class="log-result">{{if eq .Status "error"}}<span class="chip danger">{{T "common.error"}}</span>{{else if eq .Status "canceled"}}<span class="chip warn">{{T "common.canceled"}}</span>{{else if eq .Status "internal"}}<span class="chip warn" title="{{T "idx.statusInternalHelp"}}">{{T "idx.statusInternal"}}</span>{{else}}<span class="chip ok">{{T "common.ok"}}</span>{{end}}</td>
           <td class="log-num log-seen" data-label="{{T "idx.data.seen"}}">{{.Metrics.Seen}}</td>
           <td class="log-num log-new" data-label="{{T "idx.data.new"}}">{{.Metrics.ItemsNew}}</td>
           <td class="log-num log-dup" data-label="{{T "idx.data.duplicates"}}">{{.Metrics.Duplicates}}</td>

@@ -424,3 +424,59 @@ func recordProvenance(t *testing.T, st *Store, releaseID, indexerID int64) {
 		t.Fatalf("RecordReleaseSource: %v", err)
 	}
 }
+
+// TestPublicGUIDBackfillsAnOlderDatabase covers the upgrade path: a database
+// created before the column existed starts from the GUID clients already know
+// (infohash, eD2k hash or indexarr-<key>) instead of an empty value.
+func TestPublicGUIDBackfillsAnOlderDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "older.db")
+	st, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	ctx := context.Background()
+	now := time.Now()
+	hashed := Release{
+		DedupKey: "hash-key", InfoHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Title: "Hashed", SearchTitle: "hashed", Size: 10, Protocol: "torrent",
+		FirstSeenAt: now, LastSeenAt: now,
+	}
+	hashless := Release{
+		DedupKey: "title:loose", Title: "Hashless", SearchTitle: "hashless",
+		Size: 20, Protocol: "torrent", FirstSeenAt: now, LastSeenAt: now,
+	}
+	for _, rel := range []*Release{&hashed, &hashless} {
+		if _, err := st.UpsertRelease(ctx, rel); err != nil {
+			t.Fatalf("UpsertRelease: %v", err)
+		}
+	}
+	// Remove the column the way an upgraded database looks.
+	if _, err := st.DB().Exec(`DROP INDEX IF EXISTS releases_public_guid`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.DB().Exec(`ALTER TABLE releases DROP COLUMN public_guid`); err != nil {
+		t.Fatalf("drop column: %v", err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	reopened, err := Open(path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer reopened.Close()
+	got, err := reopened.GetRelease(ctx, hashed.ID)
+	if err != nil {
+		t.Fatalf("GetRelease hashed: %v", err)
+	}
+	if got.PublicGUID != hashed.InfoHash {
+		t.Errorf("hashed public guid = %q, want %q", got.PublicGUID, hashed.InfoHash)
+	}
+	got, err = reopened.GetRelease(ctx, hashless.ID)
+	if err != nil {
+		t.Fatalf("GetRelease hashless: %v", err)
+	}
+	if got.PublicGUID != "indexarr-title:loose" {
+		t.Errorf("hashless public guid = %q", got.PublicGUID)
+	}
+}

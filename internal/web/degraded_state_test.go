@@ -165,3 +165,24 @@ func TestDegradedPageUsesTheRequestedLanguage(t *testing.T) {
 		t.Error("completeness still degrades the Italian detail")
 	}
 }
+
+// TestInternalFailureHasItsOwnChip keeps an indexarr failure distinct from a
+// site failure in the history table: the operator must not read a storage
+// error as a broken tracker.
+func TestInternalFailureHasItsOwnChip(t *testing.T) {
+	env := newHealthEnv(t)
+	indexerID := seedDataIndexer(t, env, "internal-history", "Internal History")
+	if _, err := env.store.RecordIndexerHistory(context.Background(), store.IndexerHistory{
+		IndexerID: indexerID, Kind: "run", Status: "internal",
+		Error: "database is locked (517)", StartedAt: time.Now(),
+	}); err != nil {
+		t.Fatalf("RecordIndexerHistory: %v", err)
+	}
+	body := get(t, env.handler, "/indexers/"+strconv.FormatInt(indexerID, 10)).Body.String()
+	if !strings.Contains(body, ">Internal</span>") {
+		t.Error("the history row does not show the internal status")
+	}
+	if !strings.Contains(body, "indexarr failed here") {
+		t.Error("the internal chip has no explanation in its tooltip")
+	}
+}

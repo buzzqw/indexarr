@@ -330,7 +330,8 @@ func NextState(current string, recent []Outcome, thresholds Thresholds) string {
 		signals.zeroResults >= thresholds.ConsecutiveZeroResults ||
 		signals.layout >= thresholds.ConsecutiveZeroResults
 	latestClean := len(recent) > 0 && !outcomeFailed(recent[0]) && !outcomeCanceled(recent[0]) &&
-		!outcomePaused(recent[0]) && (!recent[0].HasSeen || recent[0].Seen > 0)
+		!outcomePaused(recent[0]) && !outcomeInternal(recent[0]) &&
+		(!recent[0].HasSeen || recent[0].Seen > 0)
 
 	switch {
 	case degraded:
@@ -422,7 +423,7 @@ func consecutiveFailures(outcomes []Outcome) int {
 func consecutiveClean(outcomes []Outcome) int {
 	count := 0
 	for _, outcome := range outcomes {
-		if outcomeFailed(outcome) || outcomeCanceled(outcome) || outcomePaused(outcome) {
+		if outcomeFailed(outcome) || outcomeCanceled(outcome) || outcomePaused(outcome) || outcomeInternal(outcome) {
 			break
 		}
 		count++
@@ -440,7 +441,7 @@ func consecutiveZero(outcomes []Outcome) int {
 		if !strings.EqualFold(strings.TrimSpace(outcome.Kind), "run") {
 			continue
 		}
-		if outcomeFailed(outcome) || outcomeCanceled(outcome) {
+		if outcomeFailed(outcome) || outcomeCanceled(outcome) || outcomeInternal(outcome) {
 			break
 		}
 		// A paused run never reached the site, so its zero count says nothing
@@ -472,7 +473,7 @@ func consecutiveLayout(outcomes []Outcome) int {
 		if !strings.EqualFold(strings.TrimSpace(outcome.Kind), "run") {
 			continue
 		}
-		if outcomeFailed(outcome) || outcomeCanceled(outcome) {
+		if outcomeFailed(outcome) || outcomeCanceled(outcome) || outcomeInternal(outcome) {
 			break
 		}
 		if outcomePaused(outcome) {
@@ -526,8 +527,8 @@ func problemSince(outcomes []Outcome) time.Time {
 		if outcomeCanceled(outcome) {
 			continue
 		}
-		if outcomePaused(outcome) {
-			if !outcome.At.IsZero() {
+		if outcomePaused(outcome) || outcomeInternal(outcome) {
+			if outcomePaused(outcome) && !outcome.At.IsZero() {
 				since = outcome.At
 			}
 			continue
@@ -604,7 +605,8 @@ func latestCleanOutcome(outcomes []Outcome) bool {
 	default:
 		return false
 	}
-	return !outcomeFailed(latest) && !outcomeCanceled(latest) && !outcomePaused(latest)
+	return !outcomeFailed(latest) && !outcomeCanceled(latest) &&
+		!outcomePaused(latest) && !outcomeInternal(latest)
 }
 
 func outcomeCanceled(outcome Outcome) bool {
@@ -615,6 +617,13 @@ func outcomeCanceled(outcome Outcome) bool {
 // the row says nothing about the site's health and is not a clean success.
 func outcomePaused(outcome Outcome) bool {
 	return strings.EqualFold(strings.TrimSpace(outcome.Status), "paused")
+}
+
+// outcomeInternal is a failure inside indexarr (storage, configuration,
+// result handling): it says nothing about the site, so it neither counts as a
+// failure nor as a success.
+func outcomeInternal(outcome Outcome) bool {
+	return strings.EqualFold(strings.TrimSpace(outcome.Status), "internal")
 }
 
 // ---------------------------------------------------------------- Checker

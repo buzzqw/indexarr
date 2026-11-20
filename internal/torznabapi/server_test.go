@@ -918,3 +918,25 @@ func TestAppFromRequestRecognisesGextto(t *testing.T) {
 		t.Errorf("the explicit header lost to the live_wait marker: %q", got)
 	}
 }
+
+// TestTorznabUsesTheStablePublicGUID keeps the identity a client already saw:
+// when a release gained its infohash after the first sighting, the item keeps
+// the older <guid> and t=get still resolves it.
+func TestTorznabUsesTheStablePublicGUID(t *testing.T) {
+	api, st := newAPI(t)
+	hash := "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+	torrent := []byte("d4:infod4:name4:testee")
+	id := insertRelease(t, st, "Stable Show S01E01 1080p", "5040", hash, "", torrent)
+	if _, err := st.DB().Exec(
+		`UPDATE releases SET public_guid = 'indexarr-stable-key' WHERE id = ?`, id); err != nil {
+		t.Fatal(err)
+	}
+	body := do(t, api, "/api?t=search&apikey=secret&q=Stable+Show").Body.String()
+	if !strings.Contains(body, `<guid isPermaLink="false">indexarr-stable-key</guid>`) {
+		t.Fatalf("item does not carry the stable guid:\n%s", body)
+	}
+	byGUID := do(t, api, "/api?t=get&id=indexarr-stable-key&apikey=secret")
+	if byGUID.Code != http.StatusOK || byGUID.Body.String() != string(torrent) {
+		t.Fatalf("t=get by stable guid = %d: %s", byGUID.Code, byGUID.Body.String())
+	}
+}

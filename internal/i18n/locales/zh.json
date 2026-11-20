@@ -953,6 +953,8 @@
   "idx.smartfeed.useT2": "使用 t=2 并保留其他参数",
   "idx.smartfeed.username": "MirCrew 用户名（搜索/抓取）",
   "idx.statusBlocked": "已阻止",
+  "idx.statusInternal": "内部错误",
+  "idx.statusInternalHelp": "这是 indexarr 的故障，不是站点的：原因见历史记录",
   "idx.statusDegraded": "已降级",
   "idx.statusDisabled": "已停用",
   "idx.statusOk": "正常",

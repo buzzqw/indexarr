@@ -1009,7 +1009,7 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 				LastSeenAt:     now,
 			}
 			if _, err := m.store.UpsertRelease(ctx, release); err != nil {
-				return stored, err
+				return stored, Internal("store a live result", err)
 			}
 			if err := m.store.RecordReleaseSource(ctx, store.ReleaseSource{
 				ReleaseID:   release.ID,
@@ -1090,7 +1090,7 @@ func (m *Manager) storeLiveItems(ctx context.Context, indexer store.Indexer, ite
 			LastSeenAt:     now,
 		}
 		if _, err := m.store.UpsertRelease(ctx, release); err != nil {
-			return stored, err
+			return stored, Internal("store a live result", err)
 		}
 		if err := m.store.RecordReleaseSource(ctx, store.ReleaseSource{
 			ReleaseID:   release.ID,

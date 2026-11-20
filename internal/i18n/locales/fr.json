@@ -953,6 +953,8 @@
   "idx.smartfeed.useT2": "Utiliser t=2 et garder les autres paramètres",
   "idx.smartfeed.username": "Utilisateur MirCrew (recherche/grab)",
   "idx.statusBlocked": "Bloqué",
+  "idx.statusInternal": "Interne",
+  "idx.statusInternalHelp": "Échec d’indexarr, pas du site : la raison est dans la ligne d’historique",
   "idx.statusDegraded": "Dégradé",
   "idx.statusDisabled": "Désactivé",
   "idx.statusOk": "Fonctionne",

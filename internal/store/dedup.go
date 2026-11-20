@@ -144,6 +144,21 @@ func (s *Store) MergeReleaseRows(ctx context.Context, keeperID, dupID int64) err
 }
 
 func mergeReleasePair(ctx context.Context, tx *sql.Tx, keeperID, dupID int64) error {
+	// The public GUID of the older row survives, so the identity a client saw
+	// first is the one the merged release keeps.
+	var keeperGUID, dupGUID string
+	var keeperFirst, dupFirst int64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT public_guid, first_seen_at FROM releases WHERE id = ?`, keeperID).
+		Scan(&keeperGUID, &keeperFirst); err != nil {
+		return fmt.Errorf("read keeper identity: %w", err)
+	}
+	if err := tx.QueryRowContext(ctx,
+		`SELECT public_guid, first_seen_at FROM releases WHERE id = ?`, dupID).
+		Scan(&dupGUID, &dupFirst); err != nil {
+		return fmt.Errorf("read duplicate identity: %w", err)
+	}
+	chosenGUID := earliestGUID(keeperGUID, keeperFirst, dupGUID, dupFirst)
 	// Provenance first: the delete cascades release_sources, so moving the
 	// rows before deleting the duplicate keeps every source reachable.
 	if _, err := tx.ExecContext(ctx, `
@@ -231,12 +246,13 @@ func mergeReleasePair(ctx context.Context, tx *sql.Tx, keeperID, dupID int64) er
 			favorite = MAX(favorite, COALESCE((
 				SELECT favorite FROM releases WHERE id = ?), 0)),
 			hidden = MIN(hidden, COALESCE((
-				SELECT hidden FROM releases WHERE id = ?), 0))
+				SELECT hidden FROM releases WHERE id = ?), 0)),
+			public_guid = CASE WHEN ? <> '' THEN ? ELSE public_guid END
 		FROM (SELECT first_seen_at FROM releases WHERE id = ?) AS dup
 		WHERE releases.id = ?`,
 		dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID,
 		dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID, dupID,
-		dupID, dupID, dupID, keeperID)
+		dupID, dupID, chosenGUID, chosenGUID, dupID, keeperID)
 	if err != nil {
 		return fmt.Errorf("merge release metadata: %w", err)
 	}
@@ -244,10 +260,43 @@ func mergeReleasePair(ctx context.Context, tx *sql.Tx, keeperID, dupID int64) er
 	if affected == 0 {
 		return sql.ErrNoRows
 	}
+	// Every identity the two rows used to have stays resolvable: a client
+	// that stored the GUID of the row that disappeared can still ask for the
+	// merged release.
+	for _, guid := range []string{keeperGUID, dupGUID} {
+		if guid == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO release_guid_alias(guid, release_id) VALUES(?, ?)
+			ON CONFLICT(guid) DO UPDATE SET release_id = excluded.release_id`,
+			guid, keeperID); err != nil {
+			return fmt.Errorf("alias release guid: %w", err)
+		}
+	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM releases WHERE id = ?`, dupID); err != nil {
 		return fmt.Errorf("delete duplicate release: %w", err)
 	}
 	return nil
+}
+
+// earliestGUID returns the identity of the row that appeared first. A missing
+// first-seen time loses to a real one; a tie keeps the keeper.
+func earliestGUID(a string, aFirst int64, b string, bFirst int64) string {
+	switch {
+	case a == "":
+		return b
+	case b == "":
+		return a
+	case aFirst <= 0:
+		return b
+	case bFirst <= 0:
+		return a
+	case bFirst < aFirst:
+		return b
+	default:
+		return a
+	}
 }
 
 // MergeDuplicates runs the idempotent cleanup on the whole cache. It first
@@ -452,6 +501,10 @@ func FuseReleases(releases []Release) []Release {
 			continue
 		}
 		keeper := &out[matched]
+		// The identity of the copy that appeared first wins, even when the
+		// surviving row is the other one.
+		keeper.PublicGUID = earliestGUID(keeper.PublicGUID, releaseFirstSeenUnix(*keeper),
+			rel.PublicGUID, releaseFirstSeenUnix(rel))
 		if keeper.InfoHash == "" && rel.InfoHash != "" {
 			// Keep the position but adopt the strongest identity, retaining
 			// the swarm of the hashless copy and the fields it filled in.
@@ -468,6 +521,7 @@ func FuseReleases(releases []Release) []Release {
 			if rel.Magnet == "" {
 				rel.Magnet = keeper.Magnet
 			}
+			rel.PublicGUID = keeper.PublicGUID
 			if !rel.HasTorrent() {
 				rel.Torrent = keeper.Torrent
 				rel.torrentStored = keeper.torrentStored
@@ -514,6 +568,13 @@ func FuseReleases(releases []Release) []Release {
 		}
 	}
 	return out
+}
+
+func releaseFirstSeenUnix(release Release) int64 {
+	if release.FirstSeenAt.IsZero() {
+		return 0
+	}
+	return release.FirstSeenAt.Unix()
 }
 
 // HashlessSources lists torrent releases without an infohash that still have a

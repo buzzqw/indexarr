@@ -257,11 +257,12 @@ func New(cfg Config) (*Manager, error) {
 func (m *Manager) Connector(ctx context.Context, indexerID int64) (engine.Connector, store.Indexer, error) {
 	indexer, err := m.store.GetIndexer(ctx, indexerID)
 	if err != nil {
-		return nil, store.Indexer{}, fmt.Errorf("indexer %d: %w", indexerID, err)
+		return nil, store.Indexer{}, Internal("load indexer",
+			fmt.Errorf("indexer %d: %w", indexerID, err))
 	}
 	connector, err := m.connectorFor(ctx, indexer)
 	if err != nil {
-		return nil, indexer, err
+		return nil, indexer, Internal("build the connector", err)
 	}
 	return connector, indexer, nil
 }

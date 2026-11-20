@@ -1816,12 +1816,11 @@ func (s *Server) writeItem(b *bytes.Buffer, base string, settings *store.Setting
 	if published.IsZero() {
 		published = release.FirstSeenAt
 	}
-	guid := release.InfoHash
-	if guid == "" && strings.TrimSpace(release.Ed2kHash) != "" {
-		guid = strings.ToLower(strings.TrimSpace(release.Ed2kHash))
-	}
+	guid := strings.TrimSpace(release.PublicGUID)
 	if guid == "" {
-		guid = "indexarr-" + release.DedupKey
+		// Rows written before the public identity existed, or a caller that
+		// built a Release in memory.
+		guid = store.PublicGUID(release.InfoHash, release.Ed2kHash, release.DedupKey)
 	}
 	b.WriteString(`<item>`)
 	writeTag(b, "title", release.Title)

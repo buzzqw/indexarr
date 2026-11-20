@@ -27,8 +27,9 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 
 	indexer, loadErr := m.store.GetIndexer(ctx, indexerID)
 	if loadErr != nil {
+		loadErr = Internal("load indexer", fmt.Errorf("indexer %d: %w", indexerID, loadErr))
 		m.finishRun(ctx, indexerID, "", "", started, 0, loadErr, stats)
-		return stats, fmt.Errorf("indexer %d: %w", indexerID, loadErr)
+		return stats, loadErr
 	}
 
 	config, configErr := decodeConfig(indexer.ConfigJSON)
@@ -47,7 +48,8 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 	}()
 
 	if configErr != nil {
-		return stats, fmt.Errorf("indexer %s: parse config_json: %w", indexer.Slug, configErr)
+		return stats, Internal("parse config_json",
+			fmt.Errorf("indexer %s: parse config_json: %w", indexer.Slug, configErr))
 	}
 
 	if err := m.checkQueryLimit(ctx, indexer.ID); err != nil {
@@ -56,7 +58,7 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 
 	connector, err := m.connectorFor(ctx, indexer)
 	if err != nil {
-		return stats, err
+		return stats, Internal("build the connector", err)
 	}
 	capture = newRunCapture(m.sampleSecrets(ctx, indexer.ID))
 	ctx = engine.WithResponseObserver(ctx, capture.observe)
@@ -136,7 +138,8 @@ func (m *Manager) Run(ctx context.Context, indexerID int64) (stats *RunStats, er
 
 	rules, err := m.store.ListBlocklist(ctx)
 	if err != nil {
-		return stats, fmt.Errorf("indexer %s: load blocklist: %w", indexer.Slug, err)
+		return stats, Internal("load the blocklist",
+			fmt.Errorf("indexer %s: load blocklist: %w", indexer.Slug, err))
 	}
 	matcher := store.NewBlocklistMatcher(rules)
 	seen := make(map[string]struct{}, len(items))
@@ -410,7 +413,8 @@ func (m *Manager) runTorrentItem(ctx context.Context, pass *torrentPass, item en
 
 	isNew, storeErr := m.store.UpsertRelease(ctx, release)
 	if storeErr != nil {
-		return fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr)
+		return Internal("store release",
+			fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr))
 	}
 	if isNew {
 		stats.New++
@@ -502,7 +506,8 @@ func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item
 	var payloadType string
 	existing, found, err := m.store.ReleaseByKey(ctx, dedupKey)
 	if err != nil {
-		return fmt.Errorf("indexer %s: load release %q: %w", indexer.Slug, item.Title, err)
+		return Internal("load release",
+			fmt.Errorf("indexer %s: load release %q: %w", indexer.Slug, item.Title, err))
 	}
 	if found {
 		switch {
@@ -594,7 +599,8 @@ func (m *Manager) runUsenetItem(ctx context.Context, indexer store.Indexer, item
 
 	isNew, storeErr := m.store.UpsertRelease(ctx, release)
 	if storeErr != nil {
-		return fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr)
+		return Internal("store release",
+			fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr))
 	}
 	if isNew {
 		stats.New++
@@ -699,7 +705,8 @@ func (m *Manager) runEd2kItem(ctx context.Context, indexer store.Indexer, item e
 
 	isNew, storeErr := m.store.UpsertRelease(ctx, release)
 	if storeErr != nil {
-		return fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr)
+		return Internal("store release",
+			fmt.Errorf("indexer %s: store release %q: %w", indexer.Slug, item.Title, storeErr))
 	}
 	if isNew {
 		stats.New++
@@ -926,6 +933,12 @@ func (m *Manager) finishRun(ctx context.Context, indexerID int64, slug, query st
 		// error the operator already sees. The row stays in the history with
 		// its reason.
 		state.LastError = previousError
+	case status == StatusInternal:
+		// The failure is ours, not the site's: keep the stored cause (if any)
+		// and leave the history row as the place that explains it.
+		state.LastError = previousError
+		m.logger.Warn("indexer: internal failure; the source is not blamed",
+			"indexer", slug, "error", m.redact(indexerID, errorText(runErr)))
 	default:
 		state.LastError = m.redact(indexerID, errorText(runErr))
 	}

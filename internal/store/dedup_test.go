@@ -179,8 +179,8 @@ func TestSetReleaseInfoHashMergesIntoExistingHashRow(t *testing.T) {
 
 func TestFuseReleasesKeepsOneRowAndStrongestIdentity(t *testing.T) {
 	now := time.Now()
-	hashless := Release{ID: 1, Title: "Show.S01E01.1080p.WEB-DL.x264-GRP", SearchTitle: NormalizeSearch("Show.S01E01.1080p.WEB-DL.x264-GRP"), Size: 1_500_000_000, Magnet: "magnet:?xt=urn:btih:nohash", Seeders: 30, FirstSeenAt: now, LastSeenAt: now}
-	hashed := Release{ID: 2, Title: "Show S01E01 1080p WEB DL x264 GRP", SearchTitle: NormalizeSearch("Show S01E01 1080p WEB DL x264 GRP"), Size: 1_500_000_000, InfoHash: "dddddddddddddddddddddddddddddddddddddddd", Seeders: 5, FirstSeenAt: now, LastSeenAt: now}
+	hashless := Release{ID: 1, Title: "Show.S01E01.1080p.WEB-DL.x264-GRP", SearchTitle: NormalizeSearch("Show.S01E01.1080p.WEB-DL.x264-GRP"), Size: 1_500_000_000, Magnet: "magnet:?xt=urn:btih:nohash", Seeders: 30, PublicGUID: "indexarr-old", FirstSeenAt: now.Add(-2 * time.Hour), LastSeenAt: now}
+	hashed := Release{ID: 2, Title: "Show S01E01 1080p WEB DL x264 GRP", SearchTitle: NormalizeSearch("Show S01E01 1080p WEB DL x264 GRP"), Size: 1_500_000_000, InfoHash: "dddddddddddddddddddddddddddddddddddddddd", Seeders: 5, PublicGUID: "dddddddddddddddddddddddddddddddddddddddd", FirstSeenAt: now.Add(-time.Hour), LastSeenAt: now}
 	fused := FuseReleases([]Release{hashless, hashed})
 	if len(fused) != 1 {
 		t.Fatalf("fused rows = %d, want 1", len(fused))
@@ -190,6 +190,9 @@ func TestFuseReleasesKeepsOneRowAndStrongestIdentity(t *testing.T) {
 	}
 	if fused[0].Seeders != 30 {
 		t.Fatalf("seeders = %d, want the healthiest copy's 30", fused[0].Seeders)
+	}
+	if fused[0].PublicGUID != "indexarr-old" {
+		t.Fatalf("fused guid = %q, want the identity of the older copy", fused[0].PublicGUID)
 	}
 }
 
@@ -249,5 +252,80 @@ func TestHashlessSourcesSkipsQuarantinedSources(t *testing.T) {
 	}
 	if items, err = st.HashlessSources(ctx, 100); err != nil || len(items) != 2 {
 		t.Fatalf("sources after clearing = %d, %v, want both", len(items), err)
+	}
+}
+
+// TestPublicGUIDIsAssignedOnceAndSurvivesTheInfohash locks the identity rule:
+// the GUID a client sees is fixed at the first insert. A later .torrent that
+// gives the release its infohash must not rename it.
+func TestPublicGUIDIsAssignedOnceAndSurvivesTheInfohash(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	now := time.Now()
+	release := Release{
+		DedupKey: "title:stable", Title: "Show S01E01 1080p", SearchTitle: NormalizeSearch("Show S01E01 1080p"),
+		Size: 1500, Protocol: "torrent", FirstSeenAt: now, LastSeenAt: now,
+	}
+	if _, err := st.UpsertRelease(ctx, &release); err != nil {
+		t.Fatalf("UpsertRelease: %v", err)
+	}
+	if release.PublicGUID != "indexarr-title:stable" {
+		t.Fatalf("first public guid = %q", release.PublicGUID)
+	}
+	hash := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	again := release
+	again.InfoHash = hash
+	if _, err := st.UpsertRelease(ctx, &again); err != nil {
+		t.Fatalf("UpsertRelease with hash: %v", err)
+	}
+	stored, err := st.GetRelease(ctx, release.ID)
+	if err != nil {
+		t.Fatalf("GetRelease: %v", err)
+	}
+	if stored.PublicGUID != "indexarr-title:stable" {
+		t.Fatalf("public guid changed with the infohash: %q", stored.PublicGUID)
+	}
+	if stored.InfoHash != hash {
+		t.Fatalf("infohash = %q, want %q", stored.InfoHash, hash)
+	}
+}
+
+// TestMergeKeepsTheOlderGUIDAndAliasesTheOther keeps the identity a client saw
+// first and leaves the other one resolvable after the row has been removed.
+func TestMergeKeepsTheOlderGUIDAndAliasesTheOther(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	now := time.Now()
+	older := Release{
+		DedupKey: "key-old", Title: "The Movie 2024 1080p", SearchTitle: NormalizeSearch("The Movie 2024 1080p"),
+		Size: 4000, Protocol: "torrent", FirstSeenAt: now.Add(-2 * time.Hour), LastSeenAt: now,
+	}
+	if _, err := st.UpsertRelease(ctx, &older); err != nil {
+		t.Fatalf("UpsertRelease older: %v", err)
+	}
+	newer := Release{
+		DedupKey: "key-new", Title: "The.Movie.2024.1080p", SearchTitle: NormalizeSearch("The.Movie.2024.1080p"),
+		Size: 4000, Protocol: "torrent", FirstSeenAt: now.Add(-time.Hour), LastSeenAt: now,
+	}
+	if _, err := st.UpsertRelease(ctx, &newer); err != nil {
+		t.Fatalf("UpsertRelease newer: %v", err)
+	}
+	if _, err := st.DB().ExecContext(ctx,
+		`UPDATE releases SET public_guid = 'client-guid-new' WHERE id = ?`, newer.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.MergeReleaseRows(ctx, newer.ID, older.ID); err != nil {
+		t.Fatalf("MergeReleaseRows: %v", err)
+	}
+	merged, err := st.GetRelease(ctx, newer.ID)
+	if err != nil {
+		t.Fatalf("GetRelease: %v", err)
+	}
+	if merged.PublicGUID != "indexarr-key-old" {
+		t.Fatalf("merged public guid = %q, want the older identity", merged.PublicGUID)
+	}
+	byAlias, found, err := st.ReleaseByExternalID(ctx, "client-guid-new")
+	if err != nil || !found || byAlias.ID != newer.ID {
+		t.Fatalf("alias lookup = %+v found=%v err=%v", byAlias, found, err)
 	}
 }

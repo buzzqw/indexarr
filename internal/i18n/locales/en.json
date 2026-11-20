@@ -953,6 +953,8 @@
   "idx.smartfeed.useT2": "Use t=2 and keep the other parameters",
   "idx.smartfeed.username": "MirCrew username (search/grab)",
   "idx.statusBlocked": "Blocked",
+  "idx.statusInternal": "Internal",
+  "idx.statusInternalHelp": "indexarr failed here, not the site: the reason is in the history row",
   "idx.statusDegraded": "Degraded",
   "idx.statusDisabled": "Disabled",
   "idx.statusOk": "Working",

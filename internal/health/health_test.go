@@ -35,6 +35,10 @@ func failed() Outcome {
 	return Outcome{Kind: "run", Status: "error"}
 }
 
+func internalFailure() Outcome {
+	return Outcome{Kind: "run", Status: "internal"}
+}
+
 func lowCompleteness() Outcome {
 	return Outcome{
 		Kind: "run", Status: "ok", HasSeen: true, Seen: 10,
@@ -96,6 +100,9 @@ func TestNextStateTransitions(t *testing.T) {
 			FieldCategory: 10, FieldDate: 10, FieldHash: 10,
 		}}, CatalogVerified},
 		{"completeness below threshold is neutral", CatalogVerified, []Outcome{lowCompleteness()}, CatalogVerified},
+		{"an internal failure does not degrade", CatalogVerified, []Outcome{internalFailure(), internalFailure(), internalFailure()}, CatalogVerified},
+		{"an internal failure does not recover", CatalogDegraded, []Outcome{internalFailure()}, CatalogDegraded},
+		{"an internal row is not a clean one", CatalogVerified, []Outcome{clean(5), clean(5), internalFailure()}, CatalogVerified},
 		{"a clean outcome recovers a degraded site", CatalogDegraded, []Outcome{clean(5)}, CatalogVerified},
 		{"an empty outcome does not recover", CatalogDegraded, []Outcome{emptyOutcome()}, CatalogDegraded},
 		{"a low-completeness outcome does not keep a site degraded", CatalogDegraded, []Outcome{lowCompleteness()}, CatalogVerified},
@@ -147,6 +154,14 @@ func TestAssessUsesOneModel(t *testing.T) {
 	}
 	if got := Assess(Input{Enabled: true, LastError: "boom", Outcomes: []Outcome{{Kind: "run", Status: "canceled"}}}, thresholds); got.State != StateProblem {
 		t.Errorf("canceled after error = %q, want problem", got.State)
+	}
+	// An internal failure says nothing about the site: it neither keeps nor
+	// clears the stored error on its own.
+	if got := Assess(Input{Enabled: true, LastError: "boom", Outcomes: []Outcome{internalFailure()}}, thresholds); got.State != StateProblem {
+		t.Errorf("internal after error = %q, want problem (stored error still actionable)", got.State)
+	}
+	if got := Assess(Input{Enabled: true, Outcomes: []Outcome{internalFailure()}}, thresholds); got.State == StateProblem || got.State == StateDegraded {
+		t.Errorf("a lone internal failure = %q, want no source degradation", got.State)
 	}
 
 	degraded := Assess(Input{Enabled: true, Outcomes: []Outcome{emptyOutcome(), emptyOutcome(), emptyOutcome()}}, thresholds)

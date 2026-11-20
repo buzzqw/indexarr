@@ -43,7 +43,12 @@ type Release struct {
 	Category    string
 	PublishedAt time.Time
 	GUID        string
-	Magnet      string
+	// PublicGUID is the identity indexarr shows to clients. It is assigned on
+	// the first insert (infohash, eD2k hash or "indexarr-"+dedup key) and never
+	// changes when a later download adds the real infohash, so Sonarr, Radarr
+	// and an RSS downloader keep recognizing the same release.
+	PublicGUID string
+	Magnet     string
 	// Ed2k is an `ed2k://|file|...|/` link and Ed2kHash its lowercase MD4.
 	// They are the transfer identity of an eD2k release, next to Magnet and
 	// Torrent; a row has at most one of the three.
@@ -126,7 +131,7 @@ type Filter struct {
 
 const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
 	search_title, size, seeders, leechers, category, published_at,
-	guid, magnet, ed2k_link, ed2k_hash, torrent, torrent_size, torrent_fetched_at,
+	guid, public_guid, magnet, ed2k_link, ed2k_hash, torrent, torrent_size, torrent_fetched_at,
 	first_seen_at, last_seen_at, times_seen, favorite, hidden,
 	protocol, payload, payload_type, downloaded_at, freeleech, languages`
 
@@ -135,9 +140,27 @@ const releaseColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, titl
 // record header, so a result page never reads the blob overflow pages.
 const releaseListColumns = `id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
 	search_title, size, seeders, leechers, category, published_at,
-	guid, magnet, ed2k_link, ed2k_hash, length(torrent) > 0, torrent_size, torrent_fetched_at,
+	guid, public_guid, magnet, ed2k_link, ed2k_hash, length(torrent) > 0, torrent_size, torrent_fetched_at,
 	first_seen_at, last_seen_at, times_seen, favorite, hidden,
 	protocol, length(payload) > 0, payload_type, downloaded_at, freeleech, languages`
+
+// PublicGUID is the identity a client sees: the infohash, the eD2k hash or a
+// fallback derived from the dedup key. It is assigned on the first insert and
+// never rewritten, so a later infohash does not rename a release a client has
+// already seen. Callers use it for new rows and for the one-time backfill.
+func PublicGUID(infoHash, ed2kHash, dedupKey string) string {
+	if hash := strings.TrimSpace(infoHash); hash != "" {
+		return hash
+	}
+	if hash := strings.ToLower(strings.TrimSpace(ed2kHash)); hash != "" {
+		return hash
+	}
+	key := strings.TrimSpace(dedupKey)
+	if key == "" {
+		return ""
+	}
+	return "indexarr-" + key
+}
 
 // ErrNoPayload reports that a release has neither a torrent nor a generic
 // payload stored.
@@ -207,6 +230,13 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 			return false, err
 		}
 	}
+	// The public identity is fixed on the first insert. A row first seen
+	// without an infohash keeps its "indexarr-<key>" GUID when the hash
+	// arrives, so a client that already saw the release does not treat it as
+	// a new one.
+	if strings.TrimSpace(rel.PublicGUID) == "" {
+		rel.PublicGUID = PublicGUID(rel.InfoHash, rel.Ed2kHash, rel.DedupKey)
+	}
 	// A torrent fetched after the first sighting gives the release its real
 	// identity: reuse the key already stored for that infohash instead of
 	// creating a second row.
@@ -239,8 +269,8 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 		INSERT INTO releases(dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
 			search_title, size, seeders, leechers, category, published_at,
 			guid, magnet, ed2k_link, ed2k_hash, torrent, torrent_size, torrent_fetched_at,
-			first_seen_at, last_seen_at, protocol, payload, payload_type, times_seen, freeleech, languages)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+			first_seen_at, last_seen_at, protocol, payload, payload_type, times_seen, freeleech, languages, public_guid)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
 		ON CONFLICT(dedup_key) DO UPDATE SET
 			infohash = CASE WHEN excluded.infohash <> '' THEN excluded.infohash ELSE releases.infohash END,
 			imdb_id = CASE WHEN excluded.imdb_id <> '' THEN excluded.imdb_id ELSE releases.imdb_id END,
@@ -273,7 +303,8 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 		rel.Category, rel.PublishedAt.Unix(),
 		rel.GUID, rel.Magnet, rel.Ed2k, rel.Ed2kHash, torrent, rel.TorrentSize,
 		rel.TorrentFetchedAt.Unix(), rel.FirstSeenAt.Unix(), rel.LastSeenAt.Unix(),
-		rel.Protocol, payload, rel.PayloadType, freeleech, rel.Languages, boolInt(protocolProvided)).Scan(&id, &timesSeen)
+		rel.Protocol, payload, rel.PayloadType, freeleech, rel.Languages,
+		rel.PublicGUID, boolInt(protocolProvided)).Scan(&id, &timesSeen)
 	if err != nil {
 		return false, fmt.Errorf("upsert release: %w", err)
 	}
@@ -332,12 +363,28 @@ func (s *Store) ReleaseByExternalID(ctx context.Context, id string) (Release, bo
 	key := strings.TrimPrefix(id, "indexarr-")
 	row := s.db.QueryRowContext(ctx,
 		`SELECT `+releaseColumns+` FROM releases
-		 WHERE guid = ? OR infohash = ? OR dedup_key = ? OR dedup_key = ? OR dedup_key = ?
+		 WHERE public_guid = ? OR guid = ? OR infohash = ?
+		    OR dedup_key = ? OR dedup_key = ? OR dedup_key = ?
 		 ORDER BY id LIMIT 1`,
-		id, lower, id, key, "indexarr-"+key)
+		id, id, lower, id, key, "indexarr-"+key)
 	rel, err := scanRelease(row)
 	if errors.Is(err, sql.ErrNoRows) {
-		return Release{}, false, nil
+		// The GUID of a row merged into another one stays resolvable: a client
+		// that stored the old identifier can still ask for the release.
+		var releaseID int64
+		aliasErr := s.db.QueryRowContext(ctx,
+			`SELECT release_id FROM release_guid_alias WHERE guid = ?`, id).Scan(&releaseID)
+		if errors.Is(aliasErr, sql.ErrNoRows) {
+			return Release{}, false, nil
+		}
+		if aliasErr != nil {
+			return Release{}, false, aliasErr
+		}
+		merged, mergedErr := s.GetRelease(ctx, releaseID)
+		if errors.Is(mergedErr, sql.ErrNoRows) {
+			return Release{}, false, nil
+		}
+		return merged, mergedErr == nil, mergedErr
 	}
 	return rel, err == nil, err
 }
@@ -1671,7 +1718,7 @@ func scanReleaseExtra(scanner interface{ Scan(...any) error }, list bool, extra 
 	dest := []any{&out.ID, &out.DedupKey, &out.InfoHash, &out.IMDbID, &out.TMDbID,
 		&out.TVDbID, &out.Title, &out.SearchTitle, &out.Size, &out.Seeders,
 		&out.Leechers, &out.Category, &published,
-		&out.GUID, &out.Magnet, &out.Ed2k, &out.Ed2kHash, torrentDest, &out.TorrentSize, &torrentFetched,
+		&out.GUID, &out.PublicGUID, &out.Magnet, &out.Ed2k, &out.Ed2kHash, torrentDest, &out.TorrentSize, &torrentFetched,
 		&firstSeen, &lastSeen, &out.TimesSeen, &favorite, &hidden,
 		&out.Protocol, payloadDest, &out.PayloadType, &downloadedAt, &freeleech,
 		&out.Languages}
