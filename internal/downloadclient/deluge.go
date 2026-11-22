@@ -30,6 +30,9 @@ func newDeluge(cfg Config) (*delugeClient, error) {
 }
 
 func (c *delugeClient) Send(ctx context.Context, item Item) error {
+	if err := checkItemSize(item); err != nil {
+		return err
+	}
 	if len(item.Torrent) == 0 && strings.TrimSpace(item.Magnet) == "" && strings.TrimSpace(item.URL) == "" {
 		return fmt.Errorf("release has neither a .torrent nor a magnet")
 	}

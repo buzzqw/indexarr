@@ -143,10 +143,11 @@ func sessionCommand(ctx context.Context, client *http.Client, endpoint string, p
 	}
 	requestCtx, cancel := context.WithTimeout(ctx, timeout+15*time.Second)
 	defer cancel()
-	if err := acquireSlot(requestCtx); err != nil {
+	release, err := acquireSlot(requestCtx)
+	if err != nil {
 		return nil, err
 	}
-	defer releaseSlot()
+	defer release()
 	request, err := http.NewRequestWithContext(requestCtx, http.MethodPost, command, bytes.NewReader(encoded))
 	if err != nil {
 		return nil, err

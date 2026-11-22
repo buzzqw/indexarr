@@ -21,11 +21,21 @@ func extractHTMLRows(body []byte, schema definition.Response, base *url.URL) ([]
 		return nil, fmt.Errorf("html: parse response: %w", err)
 	}
 
-	var rows []*html.Node
+	// Selectors are a fallback chain: a site changes its markup, the new
+	// selector is tried first and the old one stays as a fallback. One broken
+	// selector must not defeat the others; remember the error and return it
+	// only when no selector in the chain produced any row.
+	var (
+		rows            []*html.Node
+		firstCompileErr error
+	)
 	for _, raw := range schema.Rows.Selector {
 		selector, err := compileSelector(raw)
 		if err != nil {
-			return nil, fmt.Errorf("html: invalid row selector %q: %w", raw, err)
+			if firstCompileErr == nil {
+				firstCompileErr = fmt.Errorf("html: invalid row selector %q: %w", raw, err)
+			}
+			continue
 		}
 		nodes := cascadia.QueryAll(document, selector)
 		if len(nodes) > 0 {
@@ -35,6 +45,9 @@ func extractHTMLRows(body []byte, schema definition.Response, base *url.URL) ([]
 	}
 	if len(schema.Rows.Selector) == 0 {
 		return nil, fmt.Errorf("html: response rows selector is required")
+	}
+	if len(rows) == 0 && firstCompileErr != nil {
+		return nil, firstCompileErr
 	}
 
 	out := make([]map[string]string, 0, len(rows))

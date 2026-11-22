@@ -27,6 +27,9 @@ func newNZBGet(cfg Config) (*nzbgetClient, error) {
 }
 
 func (c *nzbgetClient) Send(ctx context.Context, item Item) error {
+	if err := checkItemSize(item); err != nil {
+		return err
+	}
 	if len(item.NZB) > 0 {
 		return c.append(ctx, item)
 	}

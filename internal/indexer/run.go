@@ -943,7 +943,7 @@ func (m *Manager) finishRun(ctx context.Context, indexerID int64, slug, query st
 		state.LastError = m.redact(indexerID, errorText(runErr))
 	}
 	state.UpdatedAt = time.Now()
-	if err := m.store.UpsertIndexerState(base, state); err != nil {
+	if err := m.store.UpdateIndexerRunState(base, state); err != nil {
 		m.logger.Warn("indexer: update state", "indexer_id", indexerID, "error", err)
 	}
 }

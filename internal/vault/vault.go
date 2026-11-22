@@ -170,11 +170,21 @@ func decodeKey(raw string) ([]byte, error) {
 	return nil, errors.New("vault: master key must be 64-character hex or base64")
 }
 
+// hardenKeyFile removes group and other access from an existing key file. A
+// secret mount or a plain cp often creates it with 0644; the key stays usable
+// when chmod is not possible, so the result is deliberately best-effort.
+func hardenKeyFile(path string) {
+	if info, err := os.Stat(path); err == nil && info.Mode().Perm()&0o077 != 0 {
+		_ = os.Chmod(path, 0o600)
+	}
+}
+
 // loadOrCreateKey reads the key file, creating it with 32 random bytes and
 // 0600 permissions when it does not exist.
 func loadOrCreateKey(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err == nil {
+		hardenKeyFile(path)
 		if len(data) == keySize {
 			return data, nil
 		}

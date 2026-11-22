@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -524,6 +525,13 @@ type Config struct {
 	// optional.
 	Activity    *upkeep.Activity
 	Maintenance *upkeep.Routine
+	// Notifier is the single dispatcher shared with the scheduler, the health
+	// checker and the Torznab API. Two dispatchers would batch the same grab
+	// into two notifications. Optional for tests that build Config directly.
+	Notifier *notify.Dispatcher
+	// Degraded names the subsystems that failed to start. /healthz reports
+	// them so a supervisor can tell "running" from "running but useless".
+	Degraded []string
 }
 
 // Server serves the web interface, the Torznab API and the health endpoint.
@@ -532,6 +540,7 @@ type Server struct {
 	log         *slog.Logger
 	version     string
 	started     time.Time
+	degraded    []string
 	torznab     *torznabapi.Server
 	static      http.Handler
 	staticETags map[string]string
@@ -590,6 +599,15 @@ type Server struct {
 }
 
 // New builds the HTTP server.
+// notifierFor returns the application's dispatcher when it was injected and
+// falls back to a private one for tests and thin embedders.
+func notifierFor(cfg Config, logger *slog.Logger) *notify.Dispatcher {
+	if cfg.Notifier != nil {
+		return cfg.Notifier
+	}
+	return notify.NewDispatcher(cfg.Store, logger)
+}
+
 func New(cfg Config) *Server {
 	logger := cfg.Logger
 	if logger == nil {
@@ -625,6 +643,7 @@ func New(cfg Config) *Server {
 		log:              logger,
 		version:          cfg.Version,
 		started:          cfg.Started,
+		degraded:         append([]string(nil), cfg.Degraded...),
 		torznab:          torznabapi.New(cfg.Store, logger, cfg.Version),
 		static:           http.StripPrefix("/static/", http.FileServer(http.FS(sub))),
 		staticETags:      staticFileETags(sub),
@@ -644,7 +663,7 @@ func New(cfg Config) *Server {
 		polite:           cfg.Politeness,
 		activity:         cfg.Activity,
 		routine:          cfg.Maintenance,
-		notifier:         notify.NewDispatcher(cfg.Store, logger),
+		notifier:         notifierFor(cfg, logger),
 		smartfeedPlans:   newSmartfeedPlanStore(),
 		pendingStores:    newPendingStoreSet(),
 		catalogIndex:     catalog.Index,
@@ -1286,13 +1305,25 @@ func redirectTab(w http.ResponseWriter, r *http.Request, path, tab string) {
 }
 
 func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	if len(s.degraded) > 0 {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		payload, err := json.Marshal(struct {
+			Status   string   `json:"status"`
+			Disabled []string `json:"disabled"`
+			Version  string   `json:"version"`
+		}{Status: "degraded", Disabled: s.degraded, Version: s.version})
+		if err == nil {
+			_, _ = w.Write(payload)
+		}
+		return
+	}
 	stats, err := s.store.CachedStats(r.Context())
 	if err != nil {
 		http.Error(w, `{"status":"error"}`, http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
 	fmt.Fprintf(w, `{"status":"ok","version":%q,"uptime_seconds":%d,"releases":%d,"indexers":%d,"db_bytes":%d}`,
 		s.version, int64(time.Since(s.started).Seconds()), stats.Releases, stats.Indexers, stats.DBBytes)
 }

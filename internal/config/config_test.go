@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -55,6 +56,16 @@ func TestLoadRejectsMalformedJSON(t *testing.T) {
 	}
 	if _, err := Load(path); err == nil {
 		t.Fatal("expected an error")
+	}
+}
+
+func TestLoadRejectsUnknownKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "indexarr.json")
+	if err := os.WriteFile(path, []byte(`{"listten":"0.0.0.0:9999"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil || !strings.Contains(err.Error(), "listten") {
+		t.Fatalf("Load unknown key error = %v", err)
 	}
 }
 

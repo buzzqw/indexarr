@@ -128,6 +128,61 @@ func TestFTSMigrationRebuildsExistingRows(t *testing.T) {
 	}
 }
 
+// TestTextCountWithHiddenAndFavoriteFilters checks the small-result path of
+// countReleases. A row that is both hidden and not a favorite must be counted
+// once by each exclusion, not subtracted twice from the FTS total.
+func TestTextCountWithHiddenAndFavoriteFilters(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	now := time.Now()
+	for _, tc := range []struct {
+		key      string
+		favorite bool
+		hidden   bool
+	}{
+		{"visible-favorite", true, false},
+		{"hidden-favorite", true, true},
+		{"hidden-plain", false, true},
+		{"visible-plain", false, false},
+	} {
+		rel := Release{
+			DedupKey: tc.key, Title: "Alpha Show " + tc.key,
+			SearchTitle: NormalizeSearch("Alpha Show " + tc.key),
+			Category:    "5040", FirstSeenAt: now, LastSeenAt: now,
+		}
+		if _, err := st.UpsertRelease(ctx, &rel); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := st.SetReleaseFlags(ctx, rel.ID, tc.favorite, tc.hidden); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		name          string
+		includeHidden bool
+		favoritesOnly bool
+		want          int64
+	}{
+		{"visible only", false, false, 2},
+		{"include hidden", true, false, 4},
+		{"favorites only", false, true, 1},
+		{"favorites including hidden", true, true, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, total, err := st.SearchReleases(ctx, Filter{
+				Query: "alpha", IncludeHidden: tc.includeHidden,
+				FavoritesOnly: tc.favoritesOnly, Limit: 10,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if total != tc.want {
+				t.Errorf("total = %d, want %d", total, tc.want)
+			}
+		})
+	}
+}
+
 func TestFTSQueryPlanUsesIndex(t *testing.T) {
 	st := newTestStore(t)
 	plan := ""

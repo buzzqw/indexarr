@@ -397,16 +397,6 @@ func (s *Store) migrate() error {
 	// Migration 12 records download-attempt health per source. A repeated
 	// 404 quarantines that source with a growing backoff; any success clears
 	// it. Login/challenge errors are informational and do not kill the link.
-	if err := s.applyMigration(context.Background(), indexarr2SeedersCheckedVersion,
-		"seeders refresh timestamp", func(tx *sql.Tx) error {
-			_, err := tx.Exec(`ALTER TABLE release_sources ADD COLUMN seeders_checked_at INTEGER NOT NULL DEFAULT 0`)
-			return err
-		}); err != nil {
-		return err
-	}
-	// Migration 12 records download-attempt health per source. A repeated
-	// 404 quarantines that source with a growing backoff; any success clears
-	// it. Login/challenge errors are informational and do not kill the link.
 	if err := s.applyMigration(context.Background(), indexarr2DownloadStatusVersion,
 		"download status and quarantine", func(tx *sql.Tx) error {
 			for _, statement := range []string{
@@ -419,6 +409,15 @@ func (s *Store) migrate() error {
 				}
 			}
 			return nil
+		}); err != nil {
+		return err
+	}
+	// Migration 13 keeps the time of the last seeders refresh per source so a
+	// sweep does not ask the same site twice inside its interval.
+	if err := s.applyMigration(context.Background(), indexarr2SeedersCheckedVersion,
+		"seeders refresh timestamp", func(tx *sql.Tx) error {
+			_, err := tx.Exec(`ALTER TABLE release_sources ADD COLUMN seeders_checked_at INTEGER NOT NULL DEFAULT 0`)
+			return err
 		}); err != nil {
 		return err
 	}
@@ -532,9 +531,6 @@ func (s *Store) migrate() error {
 	// The indexer protocol CHECK must accept ed2k before any eD2k indexer can
 	// be created. It is a table rebuild, so it runs after every additive
 	// migration and before the indexes.
-	if err := s.applyRemoteOriginMigration(context.Background()); err != nil {
-		return err
-	}
 	if err := s.applyEd2kProtocolMigration(context.Background()); err != nil {
 		return err
 	}
@@ -643,15 +639,6 @@ func (s *Store) migrate() error {
 		}); err != nil {
 		return err
 	}
-	// Migration 25 repairs the titles a site handed out with the wrong
-	// charset, together with the search title and the magnet name built from
-	// them: the bytes are all there, only read as Latin-1/CP1252 (see
-	// textutil.RepairDoubleEncoded). Only the rows the repair changes are
-	// touched.
-	if err := s.applyMigration(context.Background(), indexarr2TitleMojibakeVersion,
-		"double encoded titles", repairDoubleEncodedTitles); err != nil {
-		return err
-	}
 	// Migration 23 gives one indexer its own request timeout. The fetch
 	// timeout is shared, so before this the only way to give a slow site a
 	// longer window was to slow down every source; zero keeps the global one.
@@ -661,6 +648,21 @@ func (s *Store) migrate() error {
 				ADD COLUMN request_timeout_seconds INTEGER NOT NULL DEFAULT 0`)
 			return err
 		}); err != nil {
+		return err
+	}
+	// Migration 24 adds the remote origin to a definition, so a catalogue
+	// import can be told apart from a local edit. It rebuilds the definitions
+	// table and therefore runs after the additive migrations that touch it.
+	if err := s.applyRemoteOriginMigration(context.Background()); err != nil {
+		return err
+	}
+	// Migration 25 repairs the titles a site handed out with the wrong
+	// charset, together with the search title and the magnet name built from
+	// them: the bytes are all there, only read as Latin-1/CP1252 (see
+	// textutil.RepairDoubleEncoded). Only the rows the repair changes are
+	// touched.
+	if err := s.applyMigration(context.Background(), indexarr2TitleMojibakeVersion,
+		"double encoded titles", repairDoubleEncodedTitles); err != nil {
 		return err
 	}
 	// Migration 26 stores the completion a download client reports. The grab
@@ -930,16 +932,24 @@ func (s *Store) dropLegacySources(tx *sql.Tx) error {
 		)`); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(`INSERT INTO releases_new(
-			id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title, search_title,
-			size, seeders, leechers, category, published_at, guid, magnet, torrent,
-			torrent_size, torrent_fetched_at, first_seen_at, last_seen_at, times_seen,
-			favorite, hidden, protocol, payload, payload_type)
-			SELECT id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title, search_title,
-			size, seeders, leechers, category, published_at, guid, magnet, torrent,
-			torrent_size, torrent_fetched_at, first_seen_at, last_seen_at, times_seen,
-			favorite, hidden, protocol, payload, payload_type
-			FROM releases`); err != nil {
+		// Copy every column the new table declares that the old one also has.
+		// A fixed list silently lost downloaded_at on databases upgraded from
+		// the legacy schema; that timestamp links a grab to its release.
+		copyColumns := strings.Split(`id, dedup_key, infohash, imdb_id, tmdb_id, tvdb_id,
+			title, search_title, size, seeders, leechers, category, published_at,
+			guid, magnet, torrent, torrent_size, torrent_fetched_at, first_seen_at,
+			last_seen_at, times_seen, favorite, hidden, protocol, payload, payload_type`, ",")
+		for i := range copyColumns {
+			copyColumns[i] = strings.TrimSpace(copyColumns[i])
+		}
+		if has, err := hasColumn("releases", "downloaded_at"); err != nil {
+			return err
+		} else if has {
+			copyColumns = append(copyColumns, "downloaded_at")
+		}
+		columnList := strings.Join(copyColumns, ", ")
+		if _, err := tx.Exec(`INSERT INTO releases_new(` + columnList + `)
+			SELECT ` + columnList + ` FROM releases`); err != nil {
 			return fmt.Errorf("copy releases: %w", err)
 		}
 		if _, err := tx.Exec(`DROP TABLE releases`); err != nil {
@@ -1157,6 +1167,12 @@ func (s *Store) BackupTo(ctx context.Context, target string) error {
 	quoted := strings.ReplaceAll(target, "'", "''")
 	if _, err := s.db.ExecContext(ctx, "VACUUM INTO '"+quoted+"'"); err != nil {
 		return fmt.Errorf("backup: %w", err)
+	}
+	// SQLite creates the target with the process umask, often 0644. The
+	// plain API key lives in settings, so a temporary backup must not be
+	// readable by other local users before it is zipped or exported.
+	if err := os.Chmod(target, 0o600); err != nil {
+		return fmt.Errorf("backup: restrict %s: %w", target, err)
 	}
 	return nil
 }

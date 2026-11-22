@@ -226,6 +226,21 @@ func Export(ctx context.Context, st *store.Store, dir string) (string, error) {
 	return target, nil
 }
 
+// checkpointBeforeCopy flushes the WAL into the main database file so the
+// safety copy taken before a staged restore includes the last commits. It runs
+// before the service opens the store, so there is no concurrent writer.
+func checkpointBeforeCopy(dbPath string) error {
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return fmt.Errorf("open for checkpoint: %w", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`PRAGMA wal_checkpoint(TRUNCATE)`); err != nil {
+		return fmt.Errorf("checkpoint: %w", err)
+	}
+	return nil
+}
+
 func writeZip(source, target string) error {
 	in, err := os.Open(source)
 	if err != nil {
@@ -444,6 +459,13 @@ func ApplyPending(dbPath string) (bool, error) {
 		return false, err
 	}
 	if _, err := os.Stat(dbPath); err == nil {
+		// The service is stopped while a restore is staged, but a crash can
+		// leave committed frames in the WAL. Copying the main file alone would
+		// save an older snapshot and deleting the WAL below would destroy the
+		// only copy of those commits.
+		if err := checkpointBeforeCopy(dbPath); err != nil {
+			return false, fmt.Errorf("save current database: %w", err)
+		}
 		target := filepath.Join(dir, preRestorePrefix+time.Now().Format("20060102-150405")+zipSuffix)
 		if err := writeZip(dbPath, target); err != nil {
 			return false, fmt.Errorf("save current database: %w", err)

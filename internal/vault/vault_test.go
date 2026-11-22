@@ -28,6 +28,27 @@ func mustVault(t *testing.T, key []byte) *Vault {
 	return v
 }
 
+func TestExistingKeyFileIsHardened(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "master.key")
+	if err := os.WriteFile(path, []byte(hex.EncodeToString(testKey(7))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	key, err := loadOrCreateKey(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(key) != keySize {
+		t.Fatalf("key length = %d", len(key))
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("key permissions = %#o, want 0600", perm)
+	}
+}
+
 func TestNew(t *testing.T) {
 	if _, err := New(nil); !errors.Is(err, ErrKeyRequired) {
 		t.Fatalf("New(nil) error = %v, want %v", err, ErrKeyRequired)

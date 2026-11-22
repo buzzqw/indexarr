@@ -42,12 +42,24 @@ import (
 	"github.com/buzzqw/indexarr/internal/web"
 )
 
-// version is set at build time with -ldflags "-X main.version=...".
-var version = "dev"
+// version, commit and buildDate are set at build time with
+// -ldflags "-X main.version=... -X main.commit=... -X main.buildDate=...".
+var (
+	version   = "dev"
+	commit    = ""
+	buildDate = ""
+)
 
 // maskSecret keeps enough of a key to identify it without publishing it in
 // the journal. Four characters are enough for "which key is this" and useless
 // for authentication.
+func valueOrDash(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "-"
+	}
+	return value
+}
+
 func maskSecret(value string) string {
 	if len(value) <= 4 {
 		return "…"
@@ -100,6 +112,9 @@ func main() {
 	cfg, showVersion := loadStartupConfig()
 	if showVersion {
 		fmt.Printf("indexarr %s\n", version)
+		if commit != "" || buildDate != "" {
+			fmt.Printf("commit: %s\nbuild:  %s\n", valueOrDash(commit), valueOrDash(buildDate))
+		}
 		return
 	}
 	// Reserve the listen address before the database, the catalog and the
@@ -119,6 +134,9 @@ func main() {
 		defer logFile.Close()
 	}
 	logger := newLogger(levelVar, logBuffer, logOut)
+	// Dependencies that log through slog.Default() must use the same redacting
+	// handler as the rest of the service, not the standard logger on stderr.
+	slog.SetDefault(logger)
 	if logFileErr != nil {
 		logger.Warn("log file unavailable; logging to stdout only", "path", cfg.LogFile, "error", logFileErr)
 	}
@@ -296,6 +314,22 @@ func main() {
 		backfillReleaseFiles(ctx, st, logger)
 	}()
 
+	// A subsystem that failed to start must be visible to supervisors: the
+	// daemon can answer /healthz while doing none of its work.
+	var degraded []string
+	if indexerManager == nil {
+		degraded = append(degraded, "indexers")
+	}
+	if nativeRunner == nil {
+		degraded = append(degraded, "scheduler")
+	}
+	if healthChecker == nil {
+		degraded = append(degraded, "health")
+	}
+	if len(degraded) > 0 {
+		logger.Warn("starting in degraded state", "disabled", degraded)
+	}
+
 	var adminHandler http.Handler
 	adminServer, err := adminapi.New(adminapi.Config{
 		Store: st, Vault: secretVault, Manager: indexerManager, Sync: syncService,
@@ -320,6 +354,8 @@ func main() {
 			GrabGuard: grabGuard, GrabRecord: grabRecord,
 			Politeness: politeness,
 			Activity:   activity, Maintenance: routine,
+			Notifier:   notifier,
+			Degraded:   degraded,
 			Restart: func() {
 				if err := restartProcess(stop); err != nil {
 					logger.Error("cannot restart for restore", "error", err)
@@ -328,6 +364,7 @@ func main() {
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
+		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 	go func() {
 		base := displayURL(cfg.Listen)

@@ -720,7 +720,12 @@ func (c *Checker) RunOnce(ctx context.Context) ([]Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("health: list indexers: %w", err)
 	}
-	settings, _ := c.store.LoadSettings(ctx)
+	settings, err := c.store.LoadSettings(ctx)
+	if err != nil {
+		// A zero Settings would silently drop the state-change notification:
+		// Configured() would be false. Skip the pass and keep the old state.
+		return nil, fmt.Errorf("health: load settings: %w", err)
+	}
 
 	results := make([]Result, len(indexers))
 	sem := make(chan struct{}, 3)

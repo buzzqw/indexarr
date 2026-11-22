@@ -556,6 +556,10 @@ type Dispatcher struct {
 
 	grabMu      sync.Mutex
 	grabBatches map[string]*grabBatch
+	// notifyMu serializes the check-then-act anti-spam window. Without it two
+	// concurrent identical events both see "not sent recently" and both
+	// deliver, and the ledger is written twice.
+	notifyMu sync.Mutex
 }
 
 // NewDispatcher builds a dispatcher; the store may be nil, in which case the
@@ -678,6 +682,8 @@ func (d *Dispatcher) Dispatch(ctx context.Context, settings store.Settings, even
 		}
 	}
 	if d.Store != nil && event.Kind != KindNewReleases && event.Kind != KindTest {
+		d.notifyMu.Lock()
+		defer d.notifyMu.Unlock()
 		last, err := d.Store.NotificationSentAt(ctx, event.Kind, dedupeSource)
 		if err == nil && !last.IsZero() && event.At.Sub(last) < settings.NotifyCooldown() {
 			return false

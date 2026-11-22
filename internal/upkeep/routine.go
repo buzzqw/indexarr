@@ -324,7 +324,11 @@ func (r *Routine) saveState(ctx context.Context, state store.MaintenanceState) {
 // now is the scheduling clock (it decides which passes are due and is what
 // the state remembers); the report measures real time.
 func (r *Routine) run(parent context.Context, trigger string, state store.MaintenanceState, now time.Time) Report {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), runTimeout)
+	// Keep the parent's cancellation: a SIGTERM during a VACUUM or REINDEX
+	// must be able to abort the step instead of hanging shutdown until the
+	// run timeout. A manual pass started by the UI keeps the HTTP request's
+	// context, which is cancelled only when the client goes away.
+	ctx, cancel := context.WithTimeout(parent, runTimeout)
 	defer cancel()
 	started := time.Now()
 	weekly := state.WeeklyAt.IsZero() || now.Sub(state.WeeklyAt) >= weeklyEvery

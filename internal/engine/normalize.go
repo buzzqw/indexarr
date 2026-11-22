@@ -108,7 +108,9 @@ func parseSize(raw string) int64 {
 			"TIB": 1024 * 1024 * 1024 * 1024,
 		}[strings.ToUpper(match[2])]
 		value := number * multiplier
-		if value > float64(math.MaxInt64) {
+		// float64(MaxInt64) is exactly 2^63: converting it wraps to MinInt64,
+		// so the boundary itself must be rejected too.
+		if value >= float64(math.MaxInt64) {
 			return 0
 		}
 		return int64(value)
@@ -122,7 +124,7 @@ func parseSize(raw string) int64 {
 	// example 4.769627296e+09. Accept it when it is a whole number of bytes;
 	// anything fractional stays unknown rather than being rounded.
 	if value, err := strconv.ParseFloat(strings.ReplaceAll(raw, ",", ""), 64); err == nil {
-		if value >= 0 && value <= float64(math.MaxInt64) && value == math.Trunc(value) {
+		if value >= 0 && value < float64(math.MaxInt64) && value == math.Trunc(value) {
 			return int64(value)
 		}
 	}

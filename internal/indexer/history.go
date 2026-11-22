@@ -2,7 +2,6 @@ package indexer
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -446,20 +445,11 @@ func (m *Manager) Test(ctx context.Context, indexerID int64) (engine.TestResult,
 	return result, err
 }
 
-// clearStateError removes a stale last error after a successful check.
+// clearStateError removes a stale last error after a successful check. The
+// store updates just that field, so a run that ends at the same instant keeps
+// its breaker state and its own error.
 func (m *Manager) clearStateError(ctx context.Context, indexerID int64) {
-	state, err := m.store.GetIndexerState(ctx, indexerID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		m.logger.Warn("indexer: load state", "indexer_id", indexerID, "error", err)
-		return
-	}
-	state.IndexerID = indexerID
-	if strings.TrimSpace(state.Circuit) == "" {
-		state.Circuit = "closed"
-	}
-	state.LastError = ""
-	state.UpdatedAt = time.Now()
-	if err := m.store.UpsertIndexerState(ctx, state); err != nil {
+	if err := m.store.ClearIndexerStateError(ctx, indexerID); err != nil {
 		m.logger.Warn("indexer: update state", "indexer_id", indexerID, "error", err)
 	}
 }

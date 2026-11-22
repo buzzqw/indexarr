@@ -342,10 +342,13 @@ func (c *DefinitionConnector) savePendingSearches() {
 // connector is closed (indexer deleted, disabled or definition changed).
 func (c *DefinitionConnector) drainSearchQueue(ctx context.Context) {
 	defer func() {
-		// A panic must not leave the queue marked as draining forever.
+		// A panic must not leave the queue marked as draining, nor the lane
+		// pointing at a page that will never finish: both would block every
+		// later search to this indexer forever.
 		_ = recover()
 		c.floodMu.Lock()
 		c.searchDraining = false
+		c.searchSending = nil
 		c.floodMu.Unlock()
 	}()
 	for {
@@ -555,8 +558,12 @@ func (c *DefinitionConnector) sendDeferredSearchOnce(ctx context.Context, entry 
 	}
 	relogged := false
 	sent := time.Now()
-	response, empty, err := c.fetchSearchPage(ctx, request, build, &relogged)
-	release()
+	// The lane token belongs to the transport and must go back even when the
+	// page reader panics; the foreground path uses the same closure.
+	response, empty, err := func() (*Response, bool, error) {
+		defer release()
+		return c.fetchSearchPage(ctx, request, build, &relogged)
+	}()
 	if err != nil {
 		return 0, sent, err
 	}

@@ -126,6 +126,9 @@ func (a *amuleClient) ensureLogin(ctx context.Context) error {
 }
 
 func (a *amuleClient) Send(ctx context.Context, item Item) error {
+	if err := checkItemSize(item); err != nil {
+		return err
+	}
 	link := strings.TrimSpace(item.Ed2k)
 	if link == "" {
 		return fmt.Errorf("aMule: no eD2k link to add")

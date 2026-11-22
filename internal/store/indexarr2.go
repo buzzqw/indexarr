@@ -572,6 +572,50 @@ func (s *Store) UpsertIndexerState(ctx context.Context, in IndexerState) error {
 	return nil
 }
 
+// ClearIndexerStateError removes a stale error after a successful check. It
+// touches only the error and the timestamp: a run that finished at the same
+// moment may have just recorded a breaker state or a session, and a full-row
+// read-modify-write would restore the stale copy over it.
+func (s *Store) ClearIndexerStateError(ctx context.Context, indexerID int64) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE indexer_state
+		   SET last_error = '',
+		       circuit = CASE WHEN circuit = '' THEN 'closed' ELSE circuit END,
+		       updated_at = ?
+		 WHERE indexer_id = ?`, time.Now().Unix(), indexerID)
+	if err != nil {
+		return fmt.Errorf("clear indexer state error %d: %w", indexerID, err)
+	}
+	s.InvalidateCounts()
+	return nil
+}
+
+// UpdateIndexerRunState writes only the fields owned by a run: the breaker,
+// its cooldown, the last error and the timestamp. Session fields are written by
+// the code that establishes the session and are never overwritten here.
+func (s *Store) UpdateIndexerRunState(ctx context.Context, in IndexerState) error {
+	if in.Circuit == "" {
+		in.Circuit = "closed"
+	}
+	if in.UpdatedAt.IsZero() {
+		in.UpdatedAt = time.Now()
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO indexer_state(indexer_id, circuit, disabled_until, last_error, updated_at)
+		VALUES(?, ?, ?, ?, ?)
+		ON CONFLICT(indexer_id) DO UPDATE SET
+			circuit = excluded.circuit,
+			disabled_until = excluded.disabled_until,
+			last_error = excluded.last_error,
+			updated_at = excluded.updated_at`,
+		in.IndexerID, in.Circuit, in.DisabledUntil.Unix(), in.LastError, in.UpdatedAt.Unix())
+	if err != nil {
+		return fmt.Errorf("update indexer run state %d: %w", in.IndexerID, err)
+	}
+	s.InvalidateCounts()
+	return nil
+}
+
 // GetIndexerState loads the runtime state of an indexer.
 func (s *Store) GetIndexerState(ctx context.Context, indexerID int64) (IndexerState, error) {
 	row := s.db.QueryRowContext(ctx, `

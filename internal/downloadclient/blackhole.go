@@ -85,7 +85,7 @@ func (c *blackholeClient) write(name string, data []byte) error {
 		_ = os.Remove(target)
 		if retry := os.Rename(tempName, target); retry != nil {
 			os.Remove(tempName)
-			return fmt.Errorf("write %s: %w", name, err)
+			return fmt.Errorf("write %s: %w", name, retry)
 		}
 	}
 	return nil

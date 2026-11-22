@@ -5,6 +5,7 @@
 package config
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -65,7 +66,11 @@ func Load(path string) (Config, error) {
 	case err != nil:
 		return cfg, fmt.Errorf("read %s: %w", abs, err)
 	default:
-		if err := json.Unmarshal(data, &cfg); err != nil {
+		// A typo in a key must not silently fall back to another listen
+		// address or database path.
+		decoder := json.NewDecoder(bytes.NewReader(data))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&cfg); err != nil {
 			return cfg, fmt.Errorf("parse %s: %w", abs, err)
 		}
 	}
@@ -80,7 +85,7 @@ func Load(path string) (Config, error) {
 	if !filepath.IsAbs(cfg.DBPath) {
 		cfg.DBPath = filepath.Join(filepath.Dir(abs), cfg.DBPath)
 	}
-	if cfg.MemoryLimitMB < 0 {
+	if cfg.MemoryLimitMB < 0 || cfg.MemoryLimitMB > 4096 {
 		cfg.MemoryLimitMB = Default().MemoryLimitMB
 	}
 	cfg.VaultKeyPath = strings.TrimSpace(cfg.VaultKeyPath)

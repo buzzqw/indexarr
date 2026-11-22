@@ -249,15 +249,20 @@ func probe(ctx context.Context, client *http.Client, item target) verification {
 
 var titlePattern = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
 
+// htmlTitle returns a valid UTF-8 title. Slicing the raw bytes used to split
+// multibyte runes, and a non-UTF-8 page (Windows-1251 trackers are common in
+// the catalog) ended up as a !!binary blob in verification.yaml. Replacing
+// invalid sequences keeps the evidence readable without adding a charset
+// dependency to this tool.
 func htmlTitle(body []byte) string {
 	match := titlePattern.FindSubmatch(body)
 	if len(match) < 2 {
 		return ""
 	}
-	title := string(match[1])
+	title := strings.ToValidUTF8(string(match[1]), "")
 	title = strings.Join(strings.Fields(title), " ")
-	if len(title) > 160 {
-		title = title[:160]
+	if runes := []rune(title); len(runes) > 160 {
+		title = string(runes[:160])
 	}
 	return title
 }

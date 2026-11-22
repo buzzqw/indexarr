@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestHTMLTitleHandlesUnicodeAndAttributes(t *testing.T) {
@@ -18,6 +19,19 @@ func TestHTMLTitleHandlesUnicodeAndAttributes(t *testing.T) {
 	}
 	if got := htmlTitle([]byte(`no title`)); got != "" {
 		t.Errorf("htmlTitle without a title = %q", got)
+	}
+}
+
+func TestHTMLTitleIsUTF8AndTruncatesAtRunes(t *testing.T) {
+	// A Windows-1251 page used to be marshalled as !!binary in the evidence.
+	cp1251 := []byte{0xcf, 0xf0, 0xe8, 0xe2, 0xe5, 0xf2}
+	body := append([]byte(`<title>`), append(cp1251, []byte(`</title>`)...)...)
+	if got := htmlTitle(body); !utf8.ValidString(got) {
+		t.Errorf("htmlTitle = %q, invalid UTF-8", got)
+	}
+	long := strings.Repeat("è", 200)
+	if got := htmlTitle([]byte(`<title>` + long + `</title>`)); got != strings.Repeat("è", 160) {
+		t.Errorf("long title not truncated at a rune boundary: %q", got)
 	}
 }
 

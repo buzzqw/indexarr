@@ -152,6 +152,82 @@ func TestMigrationIdempotent(t *testing.T) {
 	}
 }
 
+// TestIndexerStateFieldScopedWrites checks that a successful manual Test and a
+// concurrent run completion cannot overwrite each other's fields. The old
+// full-row upsert made the last writer win on cookies, breaker and error.
+// TestMigrationsAreAppliedInVersionOrder guards the application order, not
+// just the set of applied versions. A rebuild placed after an ALTER that adds
+// a column it must preserve would otherwise pass every other migration test.
+func TestMigrationsAreAppliedInVersionOrder(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	rows, err := st.DB().QueryContext(ctx, `SELECT version FROM schema_migrations ORDER BY rowid`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	previous := 0
+	for rows.Next() {
+		var version int
+		if err := rows.Scan(&version); err != nil {
+			t.Fatal(err)
+		}
+		if version <= previous {
+			t.Errorf("migration %d applied after %d", version, previous)
+		}
+		previous = version
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if previous != latestSchemaVersion {
+		t.Errorf("last applied migration = %d, want %d", previous, latestSchemaVersion)
+	}
+}
+
+func TestIndexerStateFieldScopedWrites(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	mustCreateDefinition(t, st, "state-def")
+	id := mustCreateIndexer(t, st, "state-def", "state", "State")
+	now := time.Now()
+	if err := st.UpsertIndexerState(ctx, IndexerState{
+		IndexerID: id, CookiesEnc: []byte("session"), LastLoginAt: now,
+		Circuit: "open", DisabledUntil: now.Add(time.Hour),
+		LastError: "site refused", UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.ClearIndexerStateError(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	state, err := st.GetIndexerState(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.LastError != "" || state.Circuit != "open" || string(state.CookiesEnc) != "session" {
+		t.Fatalf("after clear: error %q circuit %q cookies %q", state.LastError, state.Circuit, state.CookiesEnc)
+	}
+	if state.DisabledUntil.Before(now.Add(59 * time.Minute)) {
+		t.Errorf("breaker cooldown was lost: %v", state.DisabledUntil)
+	}
+	if err := st.UpdateIndexerRunState(ctx, IndexerState{
+		IndexerID: id, Circuit: "closed", LastError: "run failed", UpdatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	state, err = st.GetIndexerState(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.LastError != "run failed" || state.Circuit != "closed" {
+		t.Errorf("after run: error %q circuit %q", state.LastError, state.Circuit)
+	}
+	if string(state.CookiesEnc) != "session" || state.LastLoginAt.Before(now.Add(-time.Minute)) {
+		t.Errorf("session was overwritten by the run: cookies %q login %v", state.CookiesEnc, state.LastLoginAt)
+	}
+}
+
 func TestFailedMigrationRollsBack(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
@@ -780,6 +856,7 @@ func TestDropLegacySourcesMigration(t *testing.T) {
 		`ALTER TABLE releases ADD COLUMN source_id INTEGER REFERENCES sources(id) ON DELETE SET NULL`,
 		`ALTER TABLE releases ADD COLUMN source_name TEXT NOT NULL DEFAULT ''`,
 		`UPDATE releases SET source_id = 1, source_name = 'old' WHERE id = ?`,
+		`UPDATE releases SET downloaded_at = 1700000000 WHERE id = ?`,
 		`UPDATE indexers SET legacy_source_id = 1 WHERE id = ?`,
 		`DELETE FROM schema_migrations WHERE version = 3`,
 	} {
@@ -834,6 +911,14 @@ func TestDropLegacySourcesMigration(t *testing.T) {
 	}
 	if _, err := migrated.GetRelease(ctx, release.ID); err != nil {
 		t.Errorf("release was not preserved: %v", err)
+	}
+	var downloadedAt int64
+	if err := migrated.DB().QueryRowContext(ctx,
+		`SELECT downloaded_at FROM releases WHERE id = ?`, release.ID).Scan(&downloadedAt); err != nil {
+		t.Fatal(err)
+	}
+	if downloadedAt != 1_700_000_000 {
+		t.Errorf("downloaded_at after migration = %d, want 1700000000", downloadedAt)
 	}
 	if _, err := migrated.GetIndexer(ctx, keepID); err != nil {
 		t.Errorf("native indexer was not preserved: %v", err)

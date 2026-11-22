@@ -282,6 +282,7 @@ func readKeyFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("vault: read master key file %s: %w", path, err)
 	}
+	hardenKeyFile(path)
 	if len(data) == keySize {
 		return data, nil
 	}

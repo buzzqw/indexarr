@@ -885,40 +885,34 @@ func orderedIndex(sort string) (string, bool) {
 }
 
 // countReleases counts the matches. For a pure text query it reads the FTS
-// index alone (no row lookups) and subtracts the matches hidden by curation;
-// the general query has to visit every matching row.
+// index alone (no row lookups) when no curation filter is active; otherwise it
+// counts the matches that satisfy every filter at once. Subtracting each
+// exclusion separately would count a row that is both hidden and not a
+// favorite twice.
 func (s *Store) countReleases(ctx context.Context, f Filter, where whereClause) (int64, error) {
 	if where.pureText {
-		var total int64
-		if err := s.db.QueryRowContext(ctx,
-			`SELECT COUNT(*) FROM releases_fts WHERE releases_fts MATCH ?`, where.ftsMatch).
-			Scan(&total); err != nil {
-			return 0, err
-		}
-		if !f.IncludeHidden {
-			var hidden int64
-			if err := s.db.QueryRowContext(ctx, `
-				SELECT COUNT(*) FROM releases
-				WHERE hidden = 1
-				  AND id IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`,
-				where.ftsMatch).Scan(&hidden); err != nil {
+		if f.IncludeHidden && !f.FavoritesOnly {
+			var total int64
+			if err := s.db.QueryRowContext(ctx,
+				`SELECT COUNT(*) FROM releases_fts WHERE releases_fts MATCH ?`, where.ftsMatch).
+				Scan(&total); err != nil {
 				return 0, err
 			}
-			total -= hidden
+			return total, nil
+		}
+		conditions := make([]string, 0, 2)
+		if !f.IncludeHidden {
+			conditions = append(conditions, `hidden = 0`)
 		}
 		if f.FavoritesOnly {
-			var notFavorite int64
-			if err := s.db.QueryRowContext(ctx, `
-				SELECT COUNT(*) FROM releases
-				WHERE favorite = 0
-				  AND id IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`,
-				where.ftsMatch).Scan(&notFavorite); err != nil {
-				return 0, err
-			}
-			total -= notFavorite
+			conditions = append(conditions, `favorite = 1`)
 		}
-		if total < 0 {
-			total = 0
+		var total int64
+		if err := s.db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM releases WHERE `+strings.Join(conditions, " AND ")+
+				` AND id IN (SELECT rowid FROM releases_fts WHERE releases_fts MATCH ?)`,
+			where.ftsMatch).Scan(&total); err != nil {
+			return 0, err
 		}
 		return total, nil
 	}

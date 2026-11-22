@@ -39,6 +39,9 @@ func (c *sabnzbdClient) apiKey() string {
 }
 
 func (c *sabnzbdClient) Send(ctx context.Context, item Item) error {
+	if err := checkItemSize(item); err != nil {
+		return err
+	}
 	if len(item.NZB) > 0 {
 		return c.addFile(ctx, item)
 	}

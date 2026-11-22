@@ -246,14 +246,33 @@ func startAppSync(ctx context.Context, st *store.Store, secretVault *vault.Vault
 	return syncService
 }
 
+// waitBounded runs one shutdown stage and reports whether it finished inside
+// the global budget. The stages below used to have no bound at all, so a long
+// maintenance pass could keep SIGTERM pending until the supervisor killed the
+// process mid-write.
+func waitBounded(done <-chan struct{}, name string, wait func(), logger *slog.Logger) {
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		wait()
+	}()
+	select {
+	case <-finished:
+	case <-done:
+		logger.Warn("shutdown: stage timed out", "stage", name)
+	}
+}
+
 // shutdown stops the HTTP server within fifteen seconds, waits for the
-// background jobs to finish their current pass, and closes the FlareSolverr
-// browsers owned by the cached connectors: a stopped indexarr must not leave
-// Chromium running behind it.
+// background jobs to finish their current pass inside one overall budget, and
+// closes the FlareSolverr browsers owned by the cached connectors: a stopped
+// indexarr must not leave Chromium running behind it.
 func shutdown(httpServer *http.Server, nativeRunner *native.Runner, syncService *syncjob.Service,
 	healthChecker *health.Checker, indexerManager *indexer.Manager, routine *upkeep.Routine,
 	jobs *sync.WaitGroup, logger *slog.Logger) {
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	totalCtx, totalCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer totalCancel()
+	shutdownCtx, cancel := context.WithTimeout(totalCtx, 15*time.Second)
 	defer cancel()
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		logger.Warn("HTTP shutdown", "error", err)
@@ -262,22 +281,22 @@ func shutdown(httpServer *http.Server, nativeRunner *native.Runner, syncService 
 	// wait for them before the manager closes the sessions and the deferred
 	// st.Close() runs, so a VACUUM or a merge is never cut off mid-write.
 	if routine != nil {
-		routine.Wait()
+		waitBounded(totalCtx.Done(), "maintenance", routine.Wait, logger)
 	}
 	if jobs != nil {
-		jobs.Wait()
+		waitBounded(totalCtx.Done(), "background jobs", jobs.Wait, logger)
 	}
 	if nativeRunner != nil {
-		nativeRunner.Wait()
+		waitBounded(totalCtx.Done(), "scheduler", nativeRunner.Wait, logger)
 	}
 	if syncService != nil {
-		syncService.Wait()
+		waitBounded(totalCtx.Done(), "app sync", syncService.Wait, logger)
 	}
 	if healthChecker != nil {
-		healthChecker.Wait()
+		waitBounded(totalCtx.Done(), "health", healthChecker.Wait, logger)
 	}
 	if indexerManager != nil {
-		sessionCtx, sessionCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		sessionCtx, sessionCancel := context.WithTimeout(totalCtx, 10*time.Second)
 		indexerManager.CloseAll(sessionCtx)
 		sessionCancel()
 	}

@@ -13,6 +13,8 @@ import (
 	"unicode/utf8"
 
 	"log/slog"
+
+	"github.com/buzzqw/indexarr/internal/logsafe"
 )
 
 const (
@@ -322,6 +324,11 @@ var (
 )
 
 func redact(text string) string {
+	// Use the same pattern set as the outer logsafe handler. This buffer is
+	// sometimes attached directly by embedders, where logsafe is not wrapped
+	// around it and its narrower patterns would let rsskey, torrent_pass and
+	// bot tokens through.
+	text = logsafe.Redact(text)
 	text = secretPattern.ReplaceAllString(text, "$1=***")
 	return basicPattern.ReplaceAllString(text, "$1***@")
 }

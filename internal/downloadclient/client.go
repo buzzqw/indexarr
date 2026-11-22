@@ -245,6 +245,9 @@ var (
 )
 
 func (c *clientFuncs) Send(ctx context.Context, item Item) error {
+	if err := checkItemSize(item); err != nil {
+		return err
+	}
 	return c.send(ctx, c.cfg, item)
 }
 

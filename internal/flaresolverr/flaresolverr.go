@@ -38,25 +38,26 @@ func SetMaxConcurrency(n int) {
 	slotsMu.Unlock()
 }
 
-func acquireSlot(ctx context.Context) error {
+// acquireSlot returns a release function bound to the channel that was
+// actually acquired. Releasing on the current channel after a resize would
+// leave the old one permanently full and stall every later solve.
+func acquireSlot(ctx context.Context) (func(), error) {
 	slotsMu.RLock()
 	queue := slots
 	slotsMu.RUnlock()
 	select {
 	case queue <- struct{}{}:
-		return nil
+		var once sync.Once
+		return func() {
+			once.Do(func() {
+				select {
+				case <-queue:
+				default:
+				}
+			})
+		}, nil
 	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-func releaseSlot() {
-	slotsMu.RLock()
-	queue := slots
-	slotsMu.RUnlock()
-	select {
-	case <-queue:
-	default:
+		return nil, ctx.Err()
 	}
 }
 
@@ -133,10 +134,11 @@ func Fetch(ctx context.Context, client *http.Client, endpoint, rawURL string, op
 	}
 	requestCtx, cancel := context.WithTimeout(ctx, timeout+15*time.Second)
 	defer cancel()
-	if err := acquireSlot(requestCtx); err != nil {
+	release, err := acquireSlot(requestCtx)
+	if err != nil {
 		return nil, 0, fmt.Errorf("flaresolverr: waiting for a browser slot: %w", err)
 	}
-	defer releaseSlot()
+	defer release()
 	request, err := http.NewRequestWithContext(requestCtx, http.MethodPost, command, bytes.NewReader(payload))
 	if err != nil {
 		return nil, 0, err

@@ -1733,13 +1733,17 @@ func conditionMatches(condition definition.Condition, response *Response) (bool,
 	}
 	matched := true
 	if condition.Selector != "" {
-		present, err := htmlSelectorPresent(response.Body, condition.Selector)
+		// Both halves of one condition must read the same bytes: a page in a
+		// non-UTF-8 charset was otherwise matched as raw bytes and extracted
+		// after conversion, so a Cyrillic "contains" never matched.
+		body := htmlBody(response)
+		present, err := htmlSelectorPresent(body, condition.Selector)
 		if err != nil {
 			return false, err
 		}
 		matched = present
 		if present && strings.TrimSpace(condition.Contains) != "" {
-			text, err := extractHTMLValue(htmlBody(response), condition.Selector, "text")
+			text, err := extractHTMLValue(body, condition.Selector, "text")
 			if err != nil {
 				return false, err
 			}

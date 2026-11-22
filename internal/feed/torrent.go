@@ -69,7 +69,18 @@ func parseBencodeString(data []byte, pos int) ([]byte, int, error) {
 	return data[start:end], end, nil
 }
 
+// maxBencodeDepth bounds nesting from an untrusted .torrent: a hostile file
+// with thousands of nested lists must not exhaust the goroutine stack.
+const maxBencodeDepth = 64
+
 func parseBencodeValue(data []byte, pos int) (int, error) {
+	return parseBencodeValueDepth(data, pos, 0)
+}
+
+func parseBencodeValueDepth(data []byte, pos, depth int) (int, error) {
+	if depth > maxBencodeDepth {
+		return 0, errors.New("bencode nesting too deep")
+	}
 	if pos >= len(data) {
 		return 0, errors.New("truncated bencode value")
 	}
@@ -93,7 +104,7 @@ func parseBencodeValue(data []byte, pos int) (int, error) {
 					return 0, err
 				}
 			}
-			end, err = parseBencodeValue(data, end)
+			end, err = parseBencodeValueDepth(data, end, depth+1)
 			if err != nil {
 				return 0, err
 			}

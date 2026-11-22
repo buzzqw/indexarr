@@ -32,9 +32,13 @@ type newznabAPI struct {
 	baseURL string
 	breaker string
 
-	capsMu sync.Mutex
-	caps   *Caps
-	capsAt time.Time
+	// capsMu guards the cached snapshot; capsFetchMu serializes the one fetch
+	// that refreshes it. No lock is held across the network call: live fan-out
+	// asks Capabilities() on every request and must never wait for caps I/O.
+	capsMu     sync.RWMutex
+	capsFetchMu sync.Mutex
+	caps       *Caps
+	capsAt     time.Time
 }
 
 func newNewznabAPI(name string, protocol engine.Protocol, cfg NewznabConfig) (*newznabAPI, error) {
@@ -67,9 +71,9 @@ func newNewznabAPI(name string, protocol engine.Protocol, cfg NewznabConfig) (*n
 // Capabilities implements engine.Connector. Until a caps document has been
 // fetched it advertises every search mode with its usual parameters.
 func (a *newznabAPI) Capabilities() engine.Capabilities {
-	a.capsMu.Lock()
+	a.capsMu.RLock()
 	cached := a.caps.clone()
-	a.capsMu.Unlock()
+	a.capsMu.RUnlock()
 
 	caps := engine.Capabilities{
 		Protocol: a.protocol,
@@ -100,16 +104,31 @@ func (a *newznabAPI) Capabilities() engine.Capabilities {
 }
 
 // Caps fetches and parses the caps document. Results are cached for one hour;
-// any failure invalidates the cache so the next call retries.
+// any failure invalidates the cache so the next call retries. Only the fetch is
+// serialized: readers keep using the last good snapshot while it runs.
 func (a *newznabAPI) Caps(ctx context.Context) (*Caps, error) {
-	a.capsMu.Lock()
-	defer a.capsMu.Unlock()
-
 	now := time.Now()
-	if a.caps != nil && now.Sub(a.capsAt) < newznabCapsTTL {
-		return a.caps.clone(), nil
+	a.capsMu.RLock()
+	cached, cachedAt := a.caps, a.capsAt
+	a.capsMu.RUnlock()
+	if cached != nil && now.Sub(cachedAt) < newznabCapsTTL {
+		return cached.clone(), nil
 	}
+
+	a.capsFetchMu.Lock()
+	defer a.capsFetchMu.Unlock()
+	a.capsMu.RLock()
+	cached, cachedAt = a.caps, a.capsAt
+	a.capsMu.RUnlock()
+	if cached != nil && time.Since(cachedAt) < newznabCapsTTL {
+		return cached.clone(), nil
+	}
+	// Invalidate the stale document while fetching: a failed refresh must
+	// never leave the old caps looking current.
+	a.capsMu.Lock()
 	a.caps = nil
+	a.capsAt = time.Time{}
+	a.capsMu.Unlock()
 
 	values := url.Values{}
 	values.Set("t", "caps")
@@ -118,20 +137,28 @@ func (a *newznabAPI) Caps(ctx context.Context) (*Caps, error) {
 	}
 	resp, err := a.get(ctx, values, a.name+": caps request")
 	if err != nil {
+		a.capsMu.Lock()
 		a.capsAt = time.Time{}
+		a.capsMu.Unlock()
 		return nil, err
 	}
 	if resp.Status < 200 || resp.Status >= 300 {
+		a.capsMu.Lock()
 		a.capsAt = time.Time{}
+		a.capsMu.Unlock()
 		return nil, fmt.Errorf("%s: caps failed with HTTP status %d", a.name, resp.Status)
 	}
 	parsed, err := ParseCaps(resp.Body)
 	if err != nil {
+		a.capsMu.Lock()
 		a.capsAt = time.Time{}
+		a.capsMu.Unlock()
 		return nil, fmt.Errorf("%s: parse caps: %s", a.name, redact(err.Error(), a.cfg.APIKey))
 	}
+	a.capsMu.Lock()
 	a.caps = parsed
-	a.capsAt = now
+	a.capsAt = time.Now()
+	a.capsMu.Unlock()
 	return parsed.clone(), nil
 }
 
