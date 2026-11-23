@@ -112,7 +112,7 @@ var templateSets = newTemplateCache()
 var pageNames = []string{
 	"dashboard", "releases", "release",
 	"run", "settings", "discover", "error",
-	"definition", "definition_form", "indexers", "indexer", "indexer_form", "cookie_import",
+	"definition", "definition_form", "definition_debug", "indexers", "indexer", "indexer_form", "cookie_import",
 	"applications", "application_form", "activity", "logs_section", "setup", "proxies",
 	"download_client_form", "site_preview", "smartfeed_form", "store_warning",
 }
@@ -792,6 +792,8 @@ func (s *Server) uiRoutes() *http.ServeMux {
 	ui.HandleFunc("/sources/", s.sourcesRedirect)
 	ui.HandleFunc("GET /definitions", s.definitionsRedirect)
 	ui.HandleFunc("GET /definitions/new", s.definitionNew)
+	ui.HandleFunc("GET /definitions/debug", s.definitionDebug)
+	ui.HandleFunc("POST /definitions/debug", s.definitionDebug)
 	ui.HandleFunc("POST /definitions", s.definitionCreate)
 	ui.HandleFunc("GET /definitions/{id}", s.definitionPage)
 	ui.HandleFunc("GET /indexers", s.indexersUnifiedPage)
@@ -1184,6 +1186,8 @@ func pageHelpKey(r *http.Request) string {
 		return "definitions"
 	case path == "/definitions/new":
 		return "definition_form"
+	case path == "/definitions/debug":
+		return "definition_debug"
 	case strings.HasPrefix(path, "/definitions/"):
 		return "definition"
 	case path == "/maintenance":

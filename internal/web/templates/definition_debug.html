@@ -1,0 +1,77 @@
+{{define "content"}}
+<section class="page-head">
+  <div>
+    <h1>{{T "defDebug.title"}}</h1>
+    <p class="muted">{{T "defDebug.subtitle"}}</p>
+  </div>
+  <a class="btn" href="/definitions" title="{{T "defDebug.backTip"}}">{{T "definition.back"}}</a>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>{{T "defDebug.guideTitle"}}</h2></div>
+  <ol class="guide-steps">
+    <li>{{T "defDebug.guide1"}}</li>
+    <li>{{T "defDebug.guide2"}}</li>
+    <li>{{T "defDebug.guide3"}}</li>
+  </ol>
+</section>
+
+<form class="panel form" method="post" action="/definitions/debug">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <div class="field">
+    <label for="dd-html">{{T "defDebug.htmlLabel"}}</label>
+    <textarea id="dd-html" name="html" rows="10" spellcheck="false" title="{{T "defDebug.htmlTip"}}">{{.HTML}}</textarea>
+    <p class="help">{{T "defDebug.htmlHelp"}}</p>
+  </div>
+  <div class="form-grid">
+    <div class="field grow">
+      <label for="dd-rows">{{T "defDebug.rowsLabel"}}</label>
+      <input id="dd-rows" name="row_selector" type="text" value="{{.RowSelector}}" spellcheck="false" title="{{T "defDebug.rowsTip"}}">
+      <p class="help">{{T "defDebug.rowsHelp"}}</p>
+    </div>
+    <div class="field grow">
+      <label for="dd-field">{{T "defDebug.fieldLabel"}}</label>
+      <input id="dd-field" name="field_selector" type="text" value="{{.FieldSelector}}" spellcheck="false" title="{{T "defDebug.fieldTip"}}">
+      <p class="help">{{T "defDebug.fieldHelp"}}</p>
+    </div>
+    <div class="field grow">
+      <label for="dd-attr">{{T "defDebug.attributeLabel"}}</label>
+      <input id="dd-attr" name="attribute" type="text" value="{{.Attribute}}" spellcheck="false" title="{{T "defDebug.attributeTip"}}">
+      <p class="help">{{T "defDebug.attributeHelp"}}</p>
+    </div>
+    <div class="field grow">
+      <label for="dd-pattern">{{T "defDebug.patternLabel"}}</label>
+      <input id="dd-pattern" name="pattern" type="text" value="{{.Pattern}}" spellcheck="false" title="{{T "defDebug.patternTip"}}">
+      <p class="help">{{T "defDebug.patternHelp"}}</p>
+    </div>
+  </div>
+  <div class="actions form-actions">
+    <button class="btn primary" type="submit" title="{{T "defDebug.submitTip"}}">{{T "defDebug.submit"}}</button>
+  </div>
+</form>
+
+{{with .Result}}
+<section class="panel">
+  <div class="panel-head"><h2>{{T "defDebug.resultTitle"}}</h2></div>
+  {{if .Error}}
+  <div class="prose"><p class="flash err" role="alert">{{.Error}}</p></div>
+  {{else}}
+  <p class="muted">{{T "defDebug.rowCount" .RowCount}}</p>
+  {{if .Truncated}}<p class="help">{{T "defDebug.truncated" .RowCount}}</p>{{end}}
+  {{if .NoRows}}<p class="flash warn" role="alert">{{T "defDebug.noRows"}}</p>{{end}}
+  {{range .Rows}}
+  <div class="detail">
+    <h3>{{T "defDebug.rowHeading" .Number}}</h3>
+    <dl class="detail">
+      <dt>{{T "defDebug.valueLabel"}}</dt><dd><code>{{.Value}}</code></dd>
+      {{if $.Pattern}}
+      <dt>{{T "defDebug.patternLabel"}}</dt><dd>{{if .Match}}{{T "defDebug.matchYes"}}{{else}}{{T "defDebug.matchNo"}}{{end}}</dd>
+      {{if .Groups}}<dt>{{T "defDebug.groupsLabel"}}</dt><dd>{{range .Groups}}<code>{{.}}</code> {{end}}</dd>{{end}}
+      {{end}}
+    </dl>
+  </div>
+  {{end}}
+  {{end}}
+</section>
+{{end}}
+{{end}}

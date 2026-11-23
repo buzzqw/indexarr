@@ -17,6 +17,10 @@ var (
 	regexEntries atomic.Int64
 )
 
+// CompileRegex is the exported form used by the definition debugger, so the
+// pattern is checked with the same engine (and cache) as a definition filter.
+func CompileRegex(pattern string) (*regexp.Regexp, error) { return compileRegex(pattern) }
+
 func compileRegex(pattern string) (*regexp.Regexp, error) {
 	if cached, ok := regexCache.Load(pattern); ok {
 		return cached.(*regexp.Regexp), nil

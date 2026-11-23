@@ -6,6 +6,7 @@
   </div>
   <div class="actions">
     <a class="btn" href="/definitions">{{T "definition.back"}}</a>
+    <a class="btn" href="/definitions/debug" title="{{T "defDebug.navTip"}}">{{T "defDebug.nav"}}</a>
     {{if not .Builtin}}<a class="btn" href="/indexers/new?definition={{.Definition.ID}}" title="{{T "definition.createIndexerTitle"}}">{{T "definition.createIndexer"}}</a>{{end}}
   </div>
 </section>

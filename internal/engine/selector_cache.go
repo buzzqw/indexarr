@@ -19,6 +19,11 @@ var (
 	selectorEntries atomic.Int64
 )
 
+// CompileSelector is the exported form used by tools that test the same
+// selectors the engine runs (the definition debugger). It shares the cache
+// with the engine so a selector proven in the tool behaves the same in a run.
+func CompileSelector(raw string) (cascadia.Selector, error) { return compileSelector(raw) }
+
 func compileSelector(raw string) (cascadia.Selector, error) {
 	if cached, ok := selectorCache.Load(raw); ok {
 		return cached.(cascadia.Selector), nil
