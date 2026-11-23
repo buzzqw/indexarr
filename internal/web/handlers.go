@@ -82,6 +82,8 @@ type releasesPage struct {
 	ExportURLCSV   string
 	ExportURLJSON  string
 	Filter         store.Filter
+	LiveSince      int64
+	LiveLimit      int
 	Indexers       []store.Indexer
 	Pager          pager
 	Query          string
@@ -145,6 +147,7 @@ type liveSearchForm struct {
 	Title      string
 	Category   string
 	IndexerIDs []int64
+	Limit      int
 }
 
 // liveIndexerOption is one row of the multi-select. Selected is resolved in the

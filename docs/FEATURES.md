@@ -107,6 +107,8 @@ version.
   **live on the indexers** (free text, TV, movies, music and books,
   IMDb/TMDb/TVDb ids, selection of multiple indexers, categories) and **the
   stored catalogue** (filters, saved searches and **bulk send** to clients).
+  A live search can ask for 50, 100 or 200 rows per page; later pages reuse
+  what the first fan-out stored instead of asking the sites again.
   Every result names its source and can be sent to the client from the row; a
   release already sent shows a **Sent** chip with the time, so it is not
   grabbed twice by mistake.

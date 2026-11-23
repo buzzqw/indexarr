@@ -74,6 +74,15 @@
     </select>
     <p class="help">{{T "releases.liveModeHelp"}}</p>
   </div>
+  <div class="field small live-only search-limit">
+    <label for="live_limit">{{T "releases.liveLimit"}}</label>
+    <select id="live_limit" name="live_limit" title="{{T "releases.liveLimitTip"}}">
+      <option value="50"{{if eq .LiveForm.Limit 50}} selected{{end}}>50</option>
+      <option value="100"{{if eq .LiveForm.Limit 100}} selected{{end}}>100</option>
+      <option value="200"{{if eq .LiveForm.Limit 200}} selected{{end}}>200</option>
+    </select>
+    <p class="help">{{T "releases.liveLimitHelp"}}</p>
+  </div>
   <div class="field small live-only search-year">
     <label for="year">{{T "releases.liveYear"}}</label>
     <input id="year" name="year" type="number" min="0" value="{{if .LiveForm.Year}}{{.LiveForm.Year}}{{end}}" title="{{T "releases.liveYearHelp"}}">

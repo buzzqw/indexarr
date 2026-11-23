@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -57,6 +58,8 @@ func (s *Server) renderLiveSearch(w http.ResponseWriter, r *http.Request, form l
 		s.render(w, r, "releases", data, http.StatusOK)
 		return
 	}
+	limit := liveLimit(form.Limit)
+	data.LiveLimit = limit
 	timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
 	if timeout <= 0 {
 		timeout = 20 * time.Second
@@ -78,7 +81,7 @@ func (s *Server) renderLiveSearch(w http.ResponseWriter, r *http.Request, form l
 		Author:     form.Author,
 		Title:      form.Title,
 		Categories: form.categoryIDs(),
-		Limit:      releasesPerPage,
+		Limit:      limit,
 		IndexerIDs: form.IndexerIDs,
 		ForceLive:  true,
 	})
@@ -92,7 +95,7 @@ func (s *Server) renderLiveSearch(w http.ResponseWriter, r *http.Request, form l
 
 	filter := store.Filter{
 		Sort:      "recent",
-		Limit:     releasesPerPage,
+		Limit:     limit,
 		SeenSince: started,
 	}
 	if len(form.IndexerIDs) > 0 {
@@ -112,8 +115,111 @@ func (s *Server) renderLiveSearch(w http.ResponseWriter, r *http.Request, form l
 		total -= merged
 	}
 	data.Releases = releases
-	data.Pager = newPager(r, "/releases", total, releasesPerPage, 0)
+	data.LiveSince = started.Unix()
+	data.Pager = livePager(r, livePageValues(form, limit, started.Unix()), total, limit, 0)
 	s.render(w, r, "releases", data, http.StatusOK)
+}
+
+// releasesLivePage serves the later pages of a live search without running the
+// fan-out again: the rows were stored by the first request and carry a
+// last_seen_at at or after live_since.
+func (s *Server) releasesLivePage(w http.ResponseWriter, r *http.Request) {
+	form := parseLiveSearchForm(r)
+	limit := liveLimit(form.Limit)
+	since := int64Param(r.URL.Query().Get("live_since"), 0)
+	page := intParam(r.URL.Query().Get("page"), 1)
+	if page < 1 {
+		page = 1
+	}
+	indexers, _ := s.store.ListIndexers(r.Context())
+	saved, _ := s.store.ListSavedSearches(r.Context())
+	data := releasesPage{
+		base:          s.newBaseT(r, "releases.title", "releases"),
+		Indexers:      indexers,
+		SavedSearches: saved,
+		SearchSource:  "live",
+		Query:         form.Query,
+		Category:      form.Category,
+		IndexerIDs:    append([]int64(nil), form.IndexerIDs...),
+		LiveForm:      form,
+		LiveIndexers:  liveIndexerOptions(indexers, form.IndexerIDs, false),
+		LivePerformed: since > 0,
+		LiveSince:     since,
+		LiveLimit:     limit,
+	}
+	if since <= 0 {
+		data.LiveError = s.translate(r, "releases.livePageExpired")
+		s.render(w, r, "releases", data, http.StatusOK)
+		return
+	}
+	offset := (page - 1) * limit
+	filter := store.Filter{
+		Sort:      "recent",
+		Limit:     limit,
+		Offset:    offset,
+		SeenSince: time.Unix(since, 0),
+	}
+	if len(form.IndexerIDs) > 0 {
+		filter.IndexerIDs = append([]int64(nil), form.IndexerIDs...)
+	}
+	releases, total, err := s.store.SearchReleases(r.Context(), filter)
+	if err != nil {
+		data.LiveError = err.Error()
+		s.render(w, r, "releases", data, http.StatusOK)
+		return
+	}
+	before := len(releases)
+	releases = store.FuseReleases(releases)
+	if merged := int64(before - len(releases)); merged > 0 && total > merged {
+		total -= merged
+	}
+	data.Releases = releases
+	data.Pager = newPager(r, "/releases/live", total, limit, offset)
+	s.render(w, r, "releases", data, http.StatusOK)
+}
+
+// liveLimit keeps the page size inside a bound: a larger answer is still
+// bounded by the server, and a missing or invalid value keeps the old 50.
+func liveLimit(raw int) int {
+	if raw < releasesPerPage {
+		return releasesPerPage
+	}
+	if raw > 500 {
+		return 500
+	}
+	return raw
+}
+
+// livePageValues carries the form and the timestamp of the first fan-out into
+// every later page, so paging never asks the sites again.
+func livePageValues(form liveSearchForm, limit int, since int64) url.Values {
+	values := url.Values{}
+	values.Set("source", "live")
+	values.Set("live_since", strconv.FormatInt(since, 10))
+	values.Set("live_limit", strconv.Itoa(limit))
+	for key, value := range map[string]string{
+		"mode": form.Mode, "q": form.Query, "live_season": strconv.Itoa(form.Season),
+		"episode": strconv.Itoa(form.Episode), "year": strconv.Itoa(form.Year),
+		"imdbid": form.IMDbID, "tmdbid": form.TMDbID, "tvdbid": form.TVDbID,
+		"artist": form.Artist, "album": form.Album, "author": form.Author,
+		"title": form.Title, "cat": form.Category,
+	} {
+		if value != "" && value != "0" {
+			values.Set(key, value)
+		}
+	}
+	for _, id := range form.IndexerIDs {
+		values.Add("indexers", strconv.FormatInt(id, 10))
+	}
+	return values
+}
+
+func livePager(r *http.Request, values url.Values, total int64, limit, offset int) pager {
+	paged := r.Clone(r.Context())
+	target := *r.URL
+	target.RawQuery = values.Encode()
+	paged.URL = &target
+	return newPager(paged, "/releases/live", total, limit, offset)
 }
 
 func parseLiveSearchForm(r *http.Request) liveSearchForm {
@@ -143,6 +249,7 @@ func parseLiveSearchForm(r *http.Request) liveSearchForm {
 		Author:   strings.TrimSpace(r.FormValue("author")),
 		Title:    strings.TrimSpace(r.FormValue("title")),
 		Category: strings.TrimSpace(r.FormValue("cat")),
+		Limit:    intParam(r.FormValue("live_limit"), releasesPerPage),
 	}
 	if form.Season < 0 {
 		form.Season = 0

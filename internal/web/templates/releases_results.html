@@ -93,7 +93,7 @@
   </section>
 </form>
 
-{{if not .LivePerformed}}
+{{if or (not .LivePerformed) .LiveSince}}
 <nav class="pagination" aria-label="{{T "releases.pagination"}}">
   {{if .Pager.Prev}}<a class="btn small" href="{{.Pager.Prev}}">{{T "releases.previous"}}</a>{{else}}<span class="btn small disabled">{{T "releases.previous"}}</span>{{end}}
   <span class="muted">{{T "releases.pageSummary" .Pager.Page .Pager.Pages .Pager.FirstItem .Pager.LastItem .Pager.Total}}</span>
