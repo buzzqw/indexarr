@@ -23,6 +23,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/buzzqw/indexarr/internal/categories"
+	"github.com/buzzqw/indexarr/internal/dedup"
 	"github.com/buzzqw/indexarr/internal/definition"
 	"github.com/buzzqw/indexarr/internal/downloadproxy"
 	"github.com/buzzqw/indexarr/internal/engine"
@@ -365,6 +366,22 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			filter.Limit = clampLimitToCaps(filter.Limit, byID, out.IndexerIDs)
 		}
 	}
+	// An id-only request still has an answer in the cache, but a source that
+	// declares only q would be skipped by the live fan-out. Borrow a title
+	// from the cached release for the fan-out only: the stored search keeps
+	// the id filter, so no cached row is lost or re-filtered by that title.
+	liveFilter := filter
+	if liveSearch && strings.TrimSpace(filter.Query) == "" &&
+		(filter.IMDbID != "" || filter.TMDbID != "" || filter.TVDbID != "") {
+		if title, ok, titleErr := s.store.TitleForExternalID(ctx, filter.IMDbID, filter.TMDbID, filter.TVDbID); titleErr != nil {
+			s.log.Warn("torznab: resolve the title of an identifier", "component", "indexarr",
+				"subsystem", "torznab", "error", titleErr)
+		} else if ok {
+			if clean := dedup.SearchName(title); clean != "" {
+				liveFilter.Query = clean
+			}
+		}
+	}
 	if selection.empty() {
 		out.Body = s.searchXML(base, settings, apiKey, nil, 0, filter.Offset, nil)
 		return out
@@ -382,7 +399,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	// indexer, and Servarr validates a new per-site indexer with an empty
 	// tvsearch/movie request. Filtering that request by "latest" made every
 	// search-only site fail the add with "no results" (Blocco C).
-	if aggregate && !liveQueryEligible(mode, filter) && (mode == "search" || mode == "tvsearch") && s.latestIndexers != nil {
+	if aggregate && !liveQueryEligible(mode, liveFilter) && (mode == "search" || mode == "tvsearch") && s.latestIndexers != nil {
 		latest, latestErr := s.latestIndexers(ctx)
 		if latestErr != nil {
 			s.log.Warn("torznab: load latest indexers", "component", "indexarr",
@@ -398,7 +415,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	// A page after the first one reuses the workers started for the first page.
 	// Waiting for them keeps the rows found in the late tail in the same
 	// client search instead of a later one; the first page stays fast.
-	if filter.Offset > 0 && liveSearch && s.liveWait != nil && liveQueryEligible(mode, filter) {
+	if filter.Offset > 0 && liveSearch && s.liveWait != nil && liveQueryEligible(mode, liveFilter) {
 		wait := time.Duration(settings.TorznabLiveWait) * time.Second
 		if wait <= 0 {
 			wait = 5 * time.Second
@@ -414,7 +431,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			wait = timeout
 		}
 		waitCtx, cancel := context.WithTimeout(ctx, wait)
-		s.liveWait(waitCtx, liveQueryFor(mode, filter, app, freeleech), wait)
+		s.liveWait(waitCtx, liveQueryFor(mode, liveFilter, app, freeleech), wait)
 		cancel()
 	}
 	// The aggregated endpoint fuses a bounded window below and replaces the
@@ -435,7 +452,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	// is not replaced: what came back in time is stored, then the same cache
 	// query runs again and provenance deduplicates the union.
 	livePartial := false
-	if filter.Offset == 0 && liveSearch && s.liveSearch != nil && liveQueryEligible(mode, filter) {
+	if filter.Offset == 0 && liveSearch && s.liveSearch != nil && liveQueryEligible(mode, liveFilter) {
 		timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
 		if timeout <= 0 {
 			timeout = 20 * time.Second
@@ -454,7 +471,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 			wait = timeout
 		}
 		liveCtx, cancel := context.WithTimeout(ctx, wait)
-		liveResult, liveErr := s.liveSearch(liveCtx, liveQueryFor(mode, filter, app, freeleech))
+		liveResult, liveErr := s.liveSearch(liveCtx, liveQueryFor(mode, liveFilter, app, freeleech))
 		cancel()
 		out.Live = liveResult.Indexers
 		for _, result := range liveResult.Indexers {

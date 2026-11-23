@@ -65,7 +65,9 @@ version.
   off, and `cache=only` returns only the stored answer even when it is on.
   The requested `limit` is capped by the smallest `<limits max>` declared by
   the selected sources, so a client cannot ask a site for more rows than it
-  will return.
+  will return. An ID-only request (`imdbid`, `tmdbid`, `tvdbid`) borrows the
+  title of a cached release for the live fan-out, so keyword-only sources join
+  it instead of being skipped; the stored answer keeps the id filter.
 - Jackett-compatible aggregate filters: `tag`, `indexer_type`, `lang`,
   `status=healthy|failing|unknown` (the same health model as the web UI) and
   `test=passed|failed` (the last health check). `status=enabled|disabled`
