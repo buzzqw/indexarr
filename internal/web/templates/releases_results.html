@@ -67,6 +67,14 @@
       <button class="btn" type="button" data-bulk-copy-magnets data-copied-label="{{T "common.copied"}}" data-failed-label="{{T "common.copyFailed"}}" data-empty-label="{{T "releases.bulkCopyEmpty"}}" title="{{T "releases.bulkCopyHint"}}">{{T "releases.bulkCopyMagnets"}}</button>
       <span class="muted">{{T "releases.selectToDelete"}} · {{T "releases.bulkGrabHint"}} · {{T "releases.bulkCopyHint"}}</span>
     </div>
+    <div class="panel-foot bulk-curate">
+      <button class="btn" type="submit" name="op" value="favorite" title="{{T "releases.bulkFavoriteTip"}}">{{T "releases.bulkFavorite"}}</button>
+      <button class="btn" type="submit" name="op" value="unfavorite" title="{{T "releases.bulkUnfavoriteTip"}}">{{T "releases.bulkUnfavorite"}}</button>
+      <button class="btn" type="submit" name="op" value="hide" title="{{T "releases.bulkHideTip"}}">{{T "releases.bulkHide"}}</button>
+      <button class="btn" type="submit" name="op" value="unhide" title="{{T "releases.bulkUnhideTip"}}">{{T "releases.bulkUnhide"}}</button>
+      <button class="btn danger" type="submit" name="op" value="block" data-confirm="{{T "releases.bulkBlockConfirm"}}" title="{{T "releases.bulkBlockTip"}}">{{T "releases.bulkBlock"}}</button>
+    </div>
+    <p class="help">{{T "releases.bulkCurateHelp"}}</p>
   </section>
 </form>
 

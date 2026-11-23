@@ -491,15 +491,15 @@ func (s *Server) releaseDelete(w http.ResponseWriter, r *http.Request) {
 func (s *Server) releasesDelete(w http.ResponseWriter, r *http.Request) {
 	ids := releaseIDsFromForm(r)
 	if len(ids) == 0 {
-		redirect(w, r, "/releases", "", s.translate(r, "releases.noneSelected"))
+		redirect(w, r, bulkReturnURL(r), "", s.translate(r, "releases.noneSelected"))
 		return
 	}
 	removed, err := s.store.DeleteReleases(r.Context(), ids)
 	if err != nil {
-		redirect(w, r, "/releases", "", err.Error())
+		redirect(w, r, bulkReturnURL(r), "", err.Error())
 		return
 	}
-	redirect(w, r, "/releases", s.translate(r, "releases.deletedCount", removed), "")
+	redirect(w, r, bulkReturnURL(r), s.translate(r, "releases.deletedCount", removed), "")
 }
 
 // releaseIDsFromForm reads the ids checkboxes of the results table. Invalid

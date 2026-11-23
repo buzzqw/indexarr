@@ -209,23 +209,26 @@ func liveIndexerOptions(indexers []store.Indexer, selected []int64, defaultAll b
 }
 
 // releasesBulk is the single POST target of the results table. Delete keeps
-// its old route as an alias, while grab sends every selected release and
-// reports how many succeeded instead of stopping at the first failure.
+// its old route as an alias, grab sends every selected release and the
+// curation actions set flags or add blocklist rules, all reporting how many
+// succeeded instead of stopping at the first failure.
 func (s *Server) releasesBulk(w http.ResponseWriter, r *http.Request) {
 	switch strings.ToLower(strings.TrimSpace(r.FormValue("op"))) {
 	case "", "delete":
 		s.releasesDelete(w, r)
 	case "grab":
 		s.releasesGrab(w, r)
+	case "favorite", "unfavorite", "hide", "unhide", "block":
+		s.releasesCurate(w, r)
 	default:
-		redirect(w, r, "/releases", "", s.translate(r, "releases.bulkInvalidOp"))
+		redirect(w, r, bulkReturnURL(r), "", s.translate(r, "releases.bulkInvalidOp"))
 	}
 }
 
 func (s *Server) releasesGrab(w http.ResponseWriter, r *http.Request) {
 	ids := releaseIDsFromForm(r)
 	if len(ids) == 0 {
-		redirect(w, r, "/releases", "", s.translate(r, "releases.noneSelected"))
+		redirect(w, r, bulkReturnURL(r), "", s.translate(r, "releases.noneSelected"))
 		return
 	}
 	sent, failed := 0, 0
@@ -272,8 +275,8 @@ func (s *Server) releasesGrab(w http.ResponseWriter, r *http.Request) {
 	}
 	message := s.translate(r, "releases.bulkGrabResult", sent, failed)
 	if failed > 0 {
-		redirect(w, r, "/releases", "", message)
+		redirect(w, r, bulkReturnURL(r), "", message)
 		return
 	}
-	redirect(w, r, "/releases", message, "")
+	redirect(w, r, bulkReturnURL(r), message, "")
 }
