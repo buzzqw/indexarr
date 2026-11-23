@@ -332,6 +332,9 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 		selection = selectionForIndexer(indexer)
 	}
 	out.IndexerIDs, out.IndexerNames = selectionLists(selection)
+	// The cache parameter can force a fresh fan-out or ask for the stored
+	// answer only, without changing the saved setting for other clients.
+	liveSearch := liveSearchEnabled(settings.TorznabLiveSearch, query.Get("cache"))
 
 	filter := store.Filter{
 		Query:   strings.TrimSpace(query.Get("q")),
@@ -351,6 +354,16 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	}
 	if rawCategories := strings.TrimSpace(query.Get("cat")); rawCategories != "" {
 		filter.Categories = splitCategories(rawCategories)
+	}
+	// Respect the page size a site declares in its <limits max> instead of
+	// asking for rows the indexer will refuse to return.
+	if s.indexerCaps != nil && len(out.IndexerIDs) > 0 {
+		if byID, capsErr := s.indexerCaps(ctx, out.IndexerIDs); capsErr != nil {
+			s.log.Warn("torznab: load caps for the page size", "component", "indexarr",
+				"subsystem", "torznab", "error", capsErr)
+		} else {
+			filter.Limit = clampLimitToCaps(filter.Limit, byID, out.IndexerIDs)
+		}
 	}
 	if selection.empty() {
 		out.Body = s.searchXML(base, settings, apiKey, nil, 0, filter.Offset, nil)
@@ -385,7 +398,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	// A page after the first one reuses the workers started for the first page.
 	// Waiting for them keeps the rows found in the late tail in the same
 	// client search instead of a later one; the first page stays fast.
-	if filter.Offset > 0 && settings.TorznabLiveSearch && s.liveWait != nil && liveQueryEligible(mode, filter) {
+	if filter.Offset > 0 && liveSearch && s.liveWait != nil && liveQueryEligible(mode, filter) {
 		wait := time.Duration(settings.TorznabLiveWait) * time.Second
 		if wait <= 0 {
 			wait = 5 * time.Second
@@ -422,7 +435,7 @@ func (s *Server) runSearch(ctx context.Context, slug string, query url.Values, s
 	// is not replaced: what came back in time is stored, then the same cache
 	// query runs again and provenance deduplicates the union.
 	livePartial := false
-	if filter.Offset == 0 && settings.TorznabLiveSearch && s.liveSearch != nil && liveQueryEligible(mode, filter) {
+	if filter.Offset == 0 && liveSearch && s.liveSearch != nil && liveQueryEligible(mode, filter) {
 		timeout := time.Duration(settings.TorznabLiveTimeout) * time.Second
 		if timeout <= 0 {
 			timeout = 20 * time.Second

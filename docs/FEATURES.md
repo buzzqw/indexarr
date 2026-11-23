@@ -61,6 +61,11 @@ version.
 - **Live search** on every query (on by default): the enabled sources that can
   search are asked at that moment, what arrives in time is saved and merged
   with the cache; the aggregated endpoint returns one row per release.
+  `cache=false` forces a fresh fan-out for one call even when live search is
+  off, and `cache=only` returns only the stored answer even when it is on.
+  The requested `limit` is capped by the smallest `<limits max>` declared by
+  the selected sources, so a client cannot ask a site for more rows than it
+  will return.
 - Jackett-compatible aggregate filters: `tag`, `indexer_type`, `lang`,
   `status=healthy|failing|unknown` (the same health model as the web UI) and
   `test=passed|failed` (the last health check). `status=enabled|disabled`

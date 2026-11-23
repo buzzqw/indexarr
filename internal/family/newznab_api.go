@@ -35,10 +35,10 @@ type newznabAPI struct {
 	// capsMu guards the cached snapshot; capsFetchMu serializes the one fetch
 	// that refreshes it. No lock is held across the network call: live fan-out
 	// asks Capabilities() on every request and must never wait for caps I/O.
-	capsMu     sync.RWMutex
+	capsMu      sync.RWMutex
 	capsFetchMu sync.Mutex
-	caps       *Caps
-	capsAt     time.Time
+	caps        *Caps
+	capsAt      time.Time
 }
 
 func newNewznabAPI(name string, protocol engine.Protocol, cfg NewznabConfig) (*newznabAPI, error) {
@@ -99,6 +99,9 @@ func (a *newznabAPI) Capabilities() engine.Capabilities {
 	}
 	if ids := flattenCapsCategories(cached.Categories); len(ids) > 0 {
 		caps.Categories = ids
+	}
+	if cached.Limits.Max > 0 {
+		caps.MaxLimit = cached.Limits.Max
 	}
 	return caps
 }

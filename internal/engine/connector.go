@@ -138,6 +138,9 @@ type Capabilities struct {
 	Modes      []Mode
 	Params     map[Mode][]string
 	Categories []int
+	// MaxLimit is the page size declared by the indexer's <limits max> (0 when
+	// unknown). The Torznab server clamps a client's requested limit to it.
+	MaxLimit int
 	// LocalOnly marks a connector that has no remote query endpoint (an RSS
 	// feed). It can answer from its cached feed but must not join the live
 	// fan-out.
