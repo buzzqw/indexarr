@@ -294,6 +294,12 @@
   <button class="btn" type="submit">{{T "common.save"}}</button>
 </form>
 
+<div class="export-actions">
+  <span class="muted">{{T "export.help"}}</span>
+  <a class="btn small" href="{{.ExportURLCSV}}" download title="{{T "export.csvTip"}}">{{T "export.csv"}}</a>
+  <a class="btn small" href="{{.ExportURLJSON}}" download title="{{T "export.jsonTip"}}">{{T "export.json"}}</a>
+</div>
+
 <div id="releases-results" aria-busy="false">
   {{template "releases_results" .}}
 </div>

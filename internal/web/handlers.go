@@ -79,6 +79,9 @@ type releasesPage struct {
 	Releases       []store.Release
 	Provenance     map[int64]store.ReleaseProvenance
 	ReturnURL      string
+	ExportURLCSV   string
+	ExportURLJSON  string
+	Filter         store.Filter
 	Indexers       []store.Indexer
 	Pager          pager
 	Query          string
@@ -387,10 +390,17 @@ func (s *Server) releasesData(r *http.Request) (releasesPage, error) {
 		}
 	}
 	data.Releases = releases
+	data.Filter = filter
 	data.Pager = newPager(r, "/releases", total, releasesPerPage, filter.Offset)
 	data.ReturnURL = "/releases"
 	if data.CurrentQuery != "" {
 		data.ReturnURL += "?" + data.CurrentQuery
+	}
+	data.ExportURLCSV = "/releases/export?format=csv"
+	data.ExportURLJSON = "/releases/export?format=json"
+	if data.CurrentQuery != "" {
+		data.ExportURLCSV += "&" + data.CurrentQuery
+		data.ExportURLJSON += "&" + data.CurrentQuery
 	}
 	if ids := releaseIDs(releases); len(ids) > 0 {
 		provenance, err := s.store.ReleaseProvenance(r.Context(), ids)

@@ -775,6 +775,7 @@ func (s *Server) uiRoutes() *http.ServeMux {
 	ui.HandleFunc("POST /releases/search", s.releasesSearch)
 	ui.HandleFunc("POST /releases/live", s.releasesLive)
 	ui.HandleFunc("POST /releases/bulk", s.releasesBulk)
+	ui.HandleFunc("GET /releases/export", s.releasesExport)
 	ui.HandleFunc("POST /releases/saved", s.savedSearchAdd)
 	ui.HandleFunc("POST /releases/saved/{id}/delete", s.savedSearchDelete)
 	ui.HandleFunc("GET /releases/{id}", s.releasePage)
