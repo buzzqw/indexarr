@@ -746,10 +746,18 @@ func (s *Store) migrate() error {
 		"escaped magnet links", repairEscapedMagnets); err != nil {
 		return err
 	}
+	// Migration 33 keeps the key the duplicate pass needs next to the title.
+	// The backfill runs in bounded batches: holding every title of a large
+	// cache at once was the memory spike this migration removes.
+	if err := s.applyMigration(context.Background(), indexarr2NormTitleVersion,
+		"normalized release titles", backfillNormTitles); err != nil {
+		return err
+	}
 	// These indexes depend on columns added by ensureReleaseColumns, and the
 	// release table may have been rebuilt by migration 3, so they are created
 	// after the numbered migrations.
 	for _, statement := range []string{
+		`CREATE INDEX IF NOT EXISTS releases_norm_title ON releases(norm_title)`,
 		`CREATE INDEX IF NOT EXISTS releases_ed2k ON releases(ed2k_hash)`,
 		`CREATE INDEX IF NOT EXISTS releases_hidden ON releases(hidden)`,
 		`CREATE INDEX IF NOT EXISTS releases_favorite ON releases(favorite)`,
@@ -909,6 +917,7 @@ func (s *Store) dropLegacySources(tx *sql.Tx) error {
 			tmdb_id            TEXT    NOT NULL DEFAULT '',
 			tvdb_id            TEXT    NOT NULL DEFAULT '',
 			title              TEXT    NOT NULL,
+			norm_title         TEXT    NOT NULL DEFAULT '',
 			search_title       TEXT    NOT NULL DEFAULT '',
 			size               INTEGER NOT NULL DEFAULT 0,
 			seeders            INTEGER NOT NULL DEFAULT 0,
@@ -942,10 +951,12 @@ func (s *Store) dropLegacySources(tx *sql.Tx) error {
 		for i := range copyColumns {
 			copyColumns[i] = strings.TrimSpace(copyColumns[i])
 		}
-		if has, err := hasColumn("releases", "downloaded_at"); err != nil {
-			return err
-		} else if has {
-			copyColumns = append(copyColumns, "downloaded_at")
+		for _, optional := range []string{"downloaded_at", "norm_title"} {
+			if has, err := hasColumn("releases", optional); err != nil {
+				return err
+			} else if has {
+				copyColumns = append(copyColumns, optional)
+			}
 		}
 		columnList := strings.Join(copyColumns, ", ")
 		if _, err := tx.Exec(`INSERT INTO releases_new(` + columnList + `)

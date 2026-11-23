@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/buzzqw/indexarr/internal/dedup"
 )
 
 func dedupFixture(t *testing.T, st *Store) (indexerIDs []int64) {
@@ -56,8 +58,8 @@ func TestMergeDuplicatesKeepsEverySourceAndFavorite(t *testing.T) {
 	// so the cleanup job is tested against a row inserted directly.
 	now := time.Now().Unix()
 	if _, err := st.DB().ExecContext(ctx, `
-		INSERT INTO releases(dedup_key, title, search_title, size, first_seen_at, last_seen_at, favorite)
-		VALUES('key-b', ?, ?, ?, ?, ?, 0)`, titleB, NormalizeSearch(titleB), 4_300_000_000, now, now); err != nil {
+		INSERT INTO releases(dedup_key, title, norm_title, search_title, size, first_seen_at, last_seen_at, favorite)
+		VALUES('key-b', ?, ?, ?, ?, ?, ?, 0)`, titleB, dedup.NormalizedKey(titleB), NormalizeSearch(titleB), 4_300_000_000, now, now); err != nil {
 		t.Fatalf("insert duplicate: %v", err)
 	}
 	var bID int64

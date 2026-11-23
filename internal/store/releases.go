@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/buzzqw/indexarr/internal/dedup"
 	"github.com/buzzqw/indexarr/internal/textutil"
 )
 
@@ -267,16 +268,17 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 	}
 	err = s.db.QueryRowContext(ctx, `
 		INSERT INTO releases(dedup_key, infohash, imdb_id, tmdb_id, tvdb_id, title,
-			search_title, size, seeders, leechers, category, published_at,
+			norm_title, search_title, size, seeders, leechers, category, published_at,
 			guid, magnet, ed2k_link, ed2k_hash, torrent, torrent_size, torrent_fetched_at,
 			first_seen_at, last_seen_at, protocol, payload, payload_type, times_seen, freeleech, languages, public_guid)
-		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
 		ON CONFLICT(dedup_key) DO UPDATE SET
 			infohash = CASE WHEN excluded.infohash <> '' THEN excluded.infohash ELSE releases.infohash END,
 			imdb_id = CASE WHEN excluded.imdb_id <> '' THEN excluded.imdb_id ELSE releases.imdb_id END,
 			tmdb_id = CASE WHEN excluded.tmdb_id <> '' THEN excluded.tmdb_id ELSE releases.tmdb_id END,
 			tvdb_id = CASE WHEN excluded.tvdb_id <> '' THEN excluded.tvdb_id ELSE releases.tvdb_id END,
 			title = CASE WHEN excluded.title <> '' THEN excluded.title ELSE releases.title END,
+			norm_title = CASE WHEN excluded.title <> '' THEN excluded.norm_title ELSE releases.norm_title END,
 			search_title = CASE WHEN excluded.search_title <> '' THEN excluded.search_title ELSE releases.search_title END,
 			size = CASE WHEN excluded.size > 0 THEN excluded.size ELSE releases.size END,
 			seeders = CASE WHEN excluded.seeders >= 0 THEN excluded.seeders ELSE releases.seeders END,
@@ -299,7 +301,7 @@ func (s *Store) UpsertRelease(ctx context.Context, rel *Release) (bool, error) {
 			times_seen = releases.times_seen + 1
 		RETURNING id, times_seen`,
 		rel.DedupKey, rel.InfoHash, rel.IMDbID, rel.TMDbID, rel.TVDbID,
-		rel.Title, rel.SearchTitle, rel.Size, rel.Seeders, rel.Leechers,
+		rel.Title, dedup.NormalizedKey(rel.Title), rel.SearchTitle, rel.Size, rel.Seeders, rel.Leechers,
 		rel.Category, rel.PublishedAt.Unix(),
 		rel.GUID, rel.Magnet, rel.Ed2k, rel.Ed2kHash, torrent, rel.TorrentSize,
 		rel.TorrentFetchedAt.Unix(), rel.FirstSeenAt.Unix(), rel.LastSeenAt.Unix(),

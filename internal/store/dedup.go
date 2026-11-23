@@ -373,46 +373,42 @@ func (s *Store) MergeDuplicates(ctx context.Context) (DedupeStats, error) {
 	// match. Holding every title of the cache at once cost about forty
 	// megabytes; a key and a count cost a tenth of that, and the duplicate
 	// groups themselves are small.
-	counts := make(map[string]int, before)
-	rows, err = tx.QueryContext(ctx, `SELECT title FROM releases`)
+	// The normalized key is stored by migration 33, so SQL can group only the
+	// rows that can match instead of reading and normalizing every title in Go.
+	counts := make(map[string]int)
+	rows, err = tx.QueryContext(ctx, `SELECT norm_title, COUNT(*) FROM releases
+		WHERE norm_title <> '' GROUP BY norm_title HAVING COUNT(*) > 1`)
 	if err != nil {
-		return stats, fmt.Errorf("count release titles for dedupe: %w", err)
+		return stats, fmt.Errorf("count duplicate titles for dedupe: %w", err)
 	}
 	for rows.Next() {
-		var title string
-		if err := rows.Scan(&title); err != nil {
+		var key string
+		var count int
+		if err := rows.Scan(&key, &count); err != nil {
 			rows.Close()
 			return stats, err
 		}
-		if normalized := dedup.NormalizedKey(title); normalized != "" {
-			counts[normalized]++
-		}
+		counts[key] = count
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
 		return stats, err
 	}
-	for key, count := range counts {
-		if count < 2 {
-			delete(counts, key)
-		}
-	}
 
 	byTitle := make(map[string][]dedup.Meta, len(counts))
 	rows, err = tx.QueryContext(ctx, `
-		SELECT id, title, size, infohash, published_at, first_seen_at, last_seen_at
+		SELECT id, title, norm_title, size, infohash, published_at, first_seen_at, last_seen_at
 		FROM releases ORDER BY id`)
 	if err != nil {
 		return stats, fmt.Errorf("list duplicate candidates for dedupe: %w", err)
 	}
 	for rows.Next() {
 		var id, size, published, firstSeen, lastSeen int64
-		var title, hash string
-		if err := rows.Scan(&id, &title, &size, &hash, &published, &firstSeen, &lastSeen); err != nil {
+		var title, normalized, hash string
+		if err := rows.Scan(&id, &title, &normalized, &size, &hash, &published, &firstSeen, &lastSeen); err != nil {
 			rows.Close()
 			return stats, err
 		}
-		normalized := dedup.NormalizedKey(title)
 		if _, candidate := counts[normalized]; !candidate {
 			continue
 		}

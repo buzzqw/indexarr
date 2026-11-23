@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buzzqw/indexarr/internal/dedup"
 	"github.com/buzzqw/indexarr/internal/textutil"
 )
 
@@ -104,9 +105,14 @@ const (
 	// & of a feed, CDATA included, so a Knaben magnet lost its name and its
 	// trackers on the way into the catalog.
 	indexarr2MagnetEntityVersion = 32
+	// indexarr2NormTitleVersion stores the normalized title used by the
+	// duplicate pass. Reading and normalizing every title twice on each cleanup
+	// allocated about 32 MB on a 90k-row cache; with the key in the table SQL
+	// can group only the rows that can actually match.
+	indexarr2NormTitleVersion = 33
 	// latestSchemaVersion is the newest numbered migration. Tests use it
 	// instead of pinning a version so a new migration does not break them.
-	latestSchemaVersion = indexarr2MagnetEntityVersion
+	latestSchemaVersion = indexarr2NormTitleVersion
 )
 
 const schemaMigrationsDDL = `CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -711,6 +717,71 @@ func repairEscapedMagnets(tx *sql.Tx) error {
 		}
 	}
 	return nil
+}
+
+// backfillNormTitles adds the normalized title column and fills it with the
+// exact same key the Go dedup pass computed before the migration. The work is
+// done in bounded batches so a large cache never holds every title in memory
+// at once: the migration transaction stays one unit of work.
+func backfillNormTitles(tx *sql.Tx) error {
+	// A rebuild by migration 3 may have created the column already when this
+	// migration is re-applied to a legacy database, so adding it is conditional.
+	var present int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('releases')
+		WHERE name = 'norm_title'`).Scan(&present); err != nil {
+		return err
+	}
+	if present == 0 {
+		if _, err := tx.Exec(`ALTER TABLE releases
+			ADD COLUMN norm_title TEXT NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
+	const batch = 1000
+	var lastID int64
+	for {
+		rows, err := tx.Query(`SELECT id, title FROM releases
+			WHERE id > ? AND norm_title = '' ORDER BY id LIMIT ?`, lastID, batch)
+		if err != nil {
+			return err
+		}
+		type pair struct {
+			id  int64
+			key string
+		}
+		items := make([]pair, 0, batch)
+		for rows.Next() {
+			var id int64
+			var title string
+			if err := rows.Scan(&id, &title); err != nil {
+				rows.Close()
+				return err
+			}
+			items = append(items, pair{id: id, key: dedup.NormalizedKey(title)})
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return err
+		}
+		if len(items) == 0 {
+			return nil
+		}
+		statement, err := tx.Prepare(`UPDATE releases SET norm_title = ? WHERE id = ?`)
+		if err != nil {
+			return err
+		}
+		for _, item := range items {
+			if _, err := statement.Exec(item.key, item.id); err != nil {
+				statement.Close()
+				return err
+			}
+		}
+		if err := statement.Close(); err != nil {
+			return err
+		}
+		lastID = items[len(items)-1].id
+	}
 }
 
 // unescapeMagnetParams turns `&amp;` back into `&` where the entity introduces
