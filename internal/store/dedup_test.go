@@ -196,6 +196,57 @@ func TestFuseReleasesKeepsOneRowAndStrongestIdentity(t *testing.T) {
 	}
 }
 
+// The hashed copy wins the identity, but the hashless one may be the only row
+// carrying a payload or a metadata id, and its first sighting is the older
+// one. Losing those fields made the fused release unresolvable in the UI.
+func TestFuseReleasesHashlessKeeperKeepsItsMetadata(t *testing.T) {
+	now := time.Now()
+	hashless := Release{
+		ID: 11, Title: "Show.S01E02.1080p.WEB-DL.x264-GRP",
+		SearchTitle: NormalizeSearch("Show.S01E02.1080p.WEB-DL.x264-GRP"),
+		Size:        1_500_000_000,
+		InfoHash:    "",
+		Magnet:      "magnet:?xt=urn:btih:nohash",
+		Payload:     []byte("payload"),
+		PayloadType: "application/x-nzb",
+		IMDbID:      "1234567",
+		TMDbID:      "76543",
+		TVDbID:      "54321",
+		PublicGUID:  "indexarr-old",
+		FirstSeenAt: now.Add(-3 * time.Hour),
+		LastSeenAt:  now,
+	}
+	hashed := Release{
+		ID: 12, Title: "Show S01E02 1080p WEB DL x264 GRP",
+		SearchTitle: NormalizeSearch("Show S01E02 1080p WEB DL x264 GRP"),
+		Size:        1_500_000_000,
+		InfoHash:    "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+		Seeders:     5,
+		FirstSeenAt: now.Add(-time.Hour),
+		LastSeenAt:  now,
+	}
+	fused := FuseReleases([]Release{hashless, hashed})
+	if len(fused) != 1 {
+		t.Fatalf("fused rows = %d, want 1", len(fused))
+	}
+	got := fused[0]
+	if got.InfoHash != hashed.InfoHash {
+		t.Errorf("infohash = %q, want the hashed copy", got.InfoHash)
+	}
+	if string(got.Payload) != "payload" || got.PayloadType != "application/x-nzb" {
+		t.Errorf("payload = %q/%q, want the hashless copy's", got.Payload, got.PayloadType)
+	}
+	if got.IMDbID != "1234567" || got.TMDbID != "76543" || got.TVDbID != "54321" {
+		t.Errorf("metadata ids = %q/%q/%q", got.IMDbID, got.TMDbID, got.TVDbID)
+	}
+	if !got.FirstSeenAt.Equal(hashless.FirstSeenAt) {
+		t.Errorf("first seen = %v, want the hashless copy's %v", got.FirstSeenAt, hashless.FirstSeenAt)
+	}
+	if got.PublicGUID != "indexarr-old" {
+		t.Errorf("guid = %q, want the older copy's", got.PublicGUID)
+	}
+}
+
 // TestHashlessSourcesSkipsQuarantinedSources keeps the enrichment job away from
 // a page the site has removed: the candidates are read oldest first, so a dead
 // release at the front of the queue was reopened at every pass (about a hundred

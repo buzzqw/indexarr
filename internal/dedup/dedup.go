@@ -120,6 +120,14 @@ var nonGroups = map[string]bool{
 	"mkv": true, "mp4": true, "avi": true, "torrent": true,
 }
 
+// The separators are fixed: building a Replacer per row made every release
+// link on the page allocate one, even though the same six pairs are used
+// every time. Keeping them as package values changes no output.
+var (
+	searchSeparators = strings.NewReplacer(".", " ", "_", " ", "[", " ", "]", " ", "(", " ", ")", " ")
+	groupSeparators  = strings.NewReplacer(".", " ", "[", " ", "]", " ", "(", " ", ")", " ")
+)
+
 // featureCacheMax bounds the parsed-title cache. Result pages repeat the same
 // releases across Arr polls and duplicate comparisons, while a pathological
 // feed may contain tens of thousands of distinct titles; an unbounded map
@@ -267,7 +275,7 @@ func SearchName(title string) string {
 			raw = strings.TrimRight(strings.TrimSuffix(trimmed, group), " ._-")
 		}
 	}
-	raw = strings.NewReplacer(".", " ", "_", " ", "[", " ", "]", " ", "(", " ", ")", " ").Replace(raw)
+	raw = searchSeparators.Replace(raw)
 	words := make([]string, 0, 8)
 	for _, token := range strings.Fields(raw) {
 		token = strings.Trim(token, "-")
@@ -332,9 +340,7 @@ func trimLocalizedTitle(words []string) []string {
 // last word of "9-1-1 2024 1080p" is not a group, while "MIRCrew" after
 // "… iTA EnG" is.
 func searchGroup(title string) string {
-	normalized := strings.NewReplacer(
-		".", " ", "[", " ", "]", " ", "(", " ", ")", " ",
-	).Replace(strings.ToLower(strings.TrimSpace(title)))
+	normalized := groupSeparators.Replace(strings.ToLower(strings.TrimSpace(title)))
 	// "7.1" becomes "7 1" with the separators above; the channel is a single
 	// technical token, not a title number.
 	normalized = audioChannels.ReplaceAllString(normalized, " ")

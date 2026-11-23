@@ -512,7 +512,10 @@ func FuseReleases(releases []Release) []Release {
 			rel.Seeders = maxInt64(rel.Seeders, keeper.Seeders)
 			rel.Leechers = maxInt64(rel.Leechers, keeper.Leechers)
 			rel.TimesSeen += keeper.TimesSeen
-			if keeper.FirstSeenAt.IsZero() || (!rel.FirstSeenAt.IsZero() && rel.FirstSeenAt.After(keeper.FirstSeenAt)) {
+			// The surviving row must keep the earliest first sighting: only a
+			// real earlier date from the keeper may replace one on rel. A zero
+			// keeper date is missing data, not an earlier sighting.
+			if !keeper.FirstSeenAt.IsZero() && (rel.FirstSeenAt.IsZero() || rel.FirstSeenAt.After(keeper.FirstSeenAt)) {
 				rel.FirstSeenAt = keeper.FirstSeenAt
 			}
 			if rel.LastSeenAt.Before(keeper.LastSeenAt) {
@@ -520,6 +523,23 @@ func FuseReleases(releases []Release) []Release {
 			}
 			if rel.Magnet == "" {
 				rel.Magnet = keeper.Magnet
+			}
+			// The hashless copy may be the only one carrying a payload or a
+			// metadata id. Copy every field the normal branch preserves,
+			// otherwise adopting the hashed copy silently loses them.
+			if !rel.HasPayload() {
+				rel.Payload = keeper.Payload
+				rel.payloadStored = keeper.payloadStored
+				rel.PayloadType = keeper.PayloadType
+			}
+			if rel.IMDbID == "" {
+				rel.IMDbID = keeper.IMDbID
+			}
+			if rel.TMDbID == "" {
+				rel.TMDbID = keeper.TMDbID
+			}
+			if rel.TVDbID == "" {
+				rel.TVDbID = keeper.TVDbID
 			}
 			rel.PublicGUID = keeper.PublicGUID
 			if !rel.HasTorrent() {
