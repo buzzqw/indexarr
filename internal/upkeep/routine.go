@@ -22,13 +22,15 @@ const (
 	StepForeign    = "foreign_keys"
 	StepTitleIndex = "title_index"
 	StepDedupe     = "dedupe"
-	StepNoLinks    = "no_links"
-	StepOrphans    = "orphans"
-	StepFTS        = "fts_optimize"
-	StepAnalyze    = "analyze"
-	StepReindex    = "reindex"
-	StepVacuum     = "vacuum"
-	StepCheckpoint = "checkpoint"
+	// StepRedundantTorrents drops .torrent files that a magnet already covers.
+	StepRedundantTorrents = "redundant_torrents"
+	StepNoLinks           = "no_links"
+	StepOrphans           = "orphans"
+	StepFTS               = "fts_optimize"
+	StepAnalyze           = "analyze"
+	StepReindex           = "reindex"
+	StepVacuum            = "vacuum"
+	StepCheckpoint        = "checkpoint"
 )
 
 // Step outcomes.
@@ -456,6 +458,18 @@ func (r *Routine) steps(weekly bool) []step {
 				return failed(err)
 			}
 			return StepResult{Status: StatusOK, Count: stats.Removed}
+		}},
+		{id: StepRedundantTorrents, run: func(ctx context.Context) StepResult {
+			var removed int64
+			err := retryLocked(ctx, func() error {
+				var err error
+				removed, err = st.ClearRedundantTorrents(ctx)
+				return err
+			})
+			if err != nil {
+				return failed(err)
+			}
+			return StepResult{Status: StatusOK, Count: removed}
 		}},
 		{id: StepNoLinks, run: func(ctx context.Context) StepResult {
 			var removed int64

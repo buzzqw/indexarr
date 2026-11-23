@@ -284,8 +284,9 @@ the cache from the next run; **Test** reports how many torrents the node holds.
 - **Backups** run automatically with rotation and can be restored from the UI;
   the vault key is not in the database and must be kept separately.
 - **Maintenance**: database report, integrity/quick/foreign-key checks, vacuum,
-  optimize/checkpoint, analyze, rebuild indexes, deduplication, `.torrent`
-  cleanup, retention and purge per indexer.
+  optimize/checkpoint, analyze, rebuild indexes, deduplication, automatic
+  removal of `.torrent` payloads already covered by a magnet (the files that
+  are the only download route are kept), retention and purge per indexer.
 - **Diagnostics**: Prometheus metrics on `/metrics`, run history, per-host
   counters and the system log with filters and runtime verbosity.
 - **Security**: the Torznab API key is mandatory, the UI can use HTTP Basic,

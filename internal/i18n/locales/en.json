@@ -2987,6 +2987,7 @@
   "maintenance.step.foreign_keys": "Links between tables",
   "maintenance.step.title_index": "Title index",
   "maintenance.step.dedupe": "Duplicate merge",
+  "maintenance.step.redundant_torrents": "Redundant .torrent files",
   "maintenance.step.no_links": "Releases without links",
   "maintenance.step.orphans": "Orphan rows",
   "maintenance.step.fts_optimize": "Search indexes",

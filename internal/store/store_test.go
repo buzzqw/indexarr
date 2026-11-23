@@ -220,6 +220,55 @@ func TestReleaseUpsertAndSearch(t *testing.T) {
 	}
 }
 
+func TestClearRedundantTorrentsKeepsTheOnlyDownloadRoute(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+	makeRelease := func(key, title, magnet string, withTorrent bool) Release {
+		rel := Release{DedupKey: key, Title: title, SearchTitle: NormalizeSearch(title),
+			Magnet: magnet, Size: 1000, FirstSeenAt: time.Now(), LastSeenAt: time.Now()}
+		if withTorrent {
+			rel.Torrent = []byte("d4:infod4:name4:testee")
+			rel.TorrentSize = int64(len(rel.Torrent))
+		}
+		if _, err := st.UpsertRelease(ctx, &rel); err != nil {
+			t.Fatal(err)
+		}
+		return rel
+	}
+	both := makeRelease("both", "Both Show S01E01", "magnet:?xt=urn:btih:aa", true)
+	fileOnly := makeRelease("file-only", "File Only S01E02", "", true)
+	magnetOnly := makeRelease("magnet-only", "Magnet Only S01E03", "magnet:?xt=urn:btih:bb", false)
+
+	removed, err := st.ClearRedundantTorrents(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed != 1 {
+		t.Fatalf("removed = %d, want 1", removed)
+	}
+	for _, tc := range []struct {
+		rel  Release
+		want bool
+	}{
+		{both, false}, {fileOnly, true}, {magnetOnly, false},
+	} {
+		stored, err := st.GetRelease(ctx, tc.rel.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := stored.HasTorrent(); got != tc.want {
+			t.Errorf("release %q HasTorrent = %v, want %v", tc.rel.DedupKey, got, tc.want)
+		}
+		if tc.rel.Magnet != "" && stored.Magnet == "" {
+			t.Errorf("release %q lost its magnet", tc.rel.DedupKey)
+		}
+	}
+	// Idempotent: a second pass finds nothing left to drop.
+	if again, err := st.ClearRedundantTorrents(ctx); err != nil || again != 0 {
+		t.Fatalf("second pass removed %d rows, err %v", again, err)
+	}
+}
+
 func TestDedupeBackupAndClearTorrents(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)

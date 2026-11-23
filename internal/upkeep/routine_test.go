@@ -60,7 +60,7 @@ func TestRoutineWaitsForTheIdleWindow(t *testing.T) {
 	}
 	steps := stepStatus(report)
 	for _, id := range []string{StepIntegrity, StepForeign, StepTitleIndex, StepDedupe,
-		StepNoLinks, StepOrphans, StepFTS, StepAnalyze, StepReindex, StepVacuum, StepCheckpoint} {
+		StepRedundantTorrents, StepNoLinks, StepOrphans, StepFTS, StepAnalyze, StepReindex, StepVacuum, StepCheckpoint} {
 		if steps[id] != StatusOK {
 			t.Errorf("step %s = %q, want ok (%+v)", id, steps[id], report.Steps)
 		}

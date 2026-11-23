@@ -171,6 +171,8 @@ func routineStepKey(id string) string {
 		return "maintenance.step.title_index"
 	case upkeep.StepDedupe:
 		return "maintenance.step.dedupe"
+	case upkeep.StepRedundantTorrents:
+		return "maintenance.step.redundant_torrents"
 	case upkeep.StepNoLinks:
 		return "maintenance.step.no_links"
 	case upkeep.StepOrphans:

@@ -1152,6 +1152,20 @@ func (s *Store) ClearTorrents(ctx context.Context) (int64, error) {
 	return res.RowsAffected()
 }
 
+// ClearRedundantTorrents removes the stored .torrent payloads of releases that
+// already carry a magnet, keeping the files that are the only download route.
+// On a large cache this is the difference between losing a convenience and
+// losing the release: the magnet still resolves the same torrent.
+func (s *Store) ClearRedundantTorrents(ctx context.Context) (int64, error) {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE releases SET torrent = NULL, torrent_size = 0, torrent_fetched_at = 0
+		WHERE torrent IS NOT NULL AND magnet <> ''`)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // DedupeByInfoHash merges rows that share an infohash, keeping the oldest row
 // and the best data of the duplicates, and returns how many rows were removed.
 func (s *Store) DedupeByInfoHash(ctx context.Context) (int64, error) {

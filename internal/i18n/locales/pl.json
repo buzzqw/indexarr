@@ -2987,6 +2987,7 @@
   "maintenance.step.foreign_keys": "Powiązania między tabelami",
   "maintenance.step.title_index": "Indeks tytułów",
   "maintenance.step.dedupe": "Scalanie duplikatów",
+  "maintenance.step.redundant_torrents": "Nadmiarowe pliki .torrent",
   "maintenance.step.no_links": "Wydania bez linku",
   "maintenance.step.orphans": "Osierocone wiersze",
   "maintenance.step.fts_optimize": "Indeksy wyszukiwania",

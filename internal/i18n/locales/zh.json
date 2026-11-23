@@ -2987,6 +2987,7 @@
   "maintenance.step.foreign_keys": "表间引用",
   "maintenance.step.title_index": "标题索引",
   "maintenance.step.dedupe": "合并重复项",
+  "maintenance.step.redundant_torrents": "多余的 .torrent 文件",
   "maintenance.step.no_links": "无链接的发布",
   "maintenance.step.orphans": "孤立行",
   "maintenance.step.fts_optimize": "搜索索引",
