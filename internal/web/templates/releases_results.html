@@ -14,34 +14,49 @@
 <p class="muted results-filter-empty" data-results-filter-empty hidden>{{T "releases.filterResultsEmpty"}}</p>
 <p class="help">{{T "releases.externalSearchHelp"}}</p>
 
+<details class="columns-menu" data-columns-menu>
+  <summary class="btn small" title="{{T "cols.tip"}}">{{T "cols.title"}}</summary>
+  <div class="columns-panel">
+    <p class="help">{{T "cols.help"}}</p>
+    <ul class="columns-list" data-columns-list>
+      <li data-column-row="title"><label><input type="checkbox" data-column-toggle="title" checked> {{T "releases.colTitle"}}</label><button class="btn small" type="button" data-column-move="up" data-column-key="title" aria-label="{{T "cols.moveUp"}} {{T "releases.colTitle"}}" title="{{T "cols.moveUpTip"}}">↑</button><button class="btn small" type="button" data-column-move="down" data-column-key="title" aria-label="{{T "cols.moveDown"}} {{T "releases.colTitle"}}" title="{{T "cols.moveDownTip"}}">↓</button></li>
+      <li data-column-row="size"><label><input type="checkbox" data-column-toggle="size" checked> {{T "releases.colSize"}}</label><button class="btn small" type="button" data-column-move="up" data-column-key="size" aria-label="{{T "cols.moveUp"}} {{T "releases.colSize"}}" title="{{T "cols.moveUpTip"}}">↑</button><button class="btn small" type="button" data-column-move="down" data-column-key="size" aria-label="{{T "cols.moveDown"}} {{T "releases.colSize"}}" title="{{T "cols.moveDownTip"}}">↓</button></li>
+      <li data-column-row="seeders"><label><input type="checkbox" data-column-toggle="seeders" checked> {{T "releases.colSeeders"}}</label><button class="btn small" type="button" data-column-move="up" data-column-key="seeders" aria-label="{{T "cols.moveUp"}} {{T "releases.colSeeders"}}" title="{{T "cols.moveUpTip"}}">↑</button><button class="btn small" type="button" data-column-move="down" data-column-key="seeders" aria-label="{{T "cols.moveDown"}} {{T "releases.colSeeders"}}" title="{{T "cols.moveDownTip"}}">↓</button></li>
+      <li data-column-row="published"><label><input type="checkbox" data-column-toggle="published" checked> {{T "releases.colPublished"}}</label><button class="btn small" type="button" data-column-move="up" data-column-key="published" aria-label="{{T "cols.moveUp"}} {{T "releases.colPublished"}}" title="{{T "cols.moveUpTip"}}">↑</button><button class="btn small" type="button" data-column-move="down" data-column-key="published" aria-label="{{T "cols.moveDown"}} {{T "releases.colPublished"}}" title="{{T "cols.moveDownTip"}}">↓</button></li>
+    </ul>
+    <p class="help">{{T "cols.locked"}}</p>
+    <button class="btn small" type="button" data-columns-reset title="{{T "cols.resetTip"}}">{{T "cols.reset"}}</button>
+  </div>
+</details>
+
 <form method="post" action="/releases/bulk">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <input type="hidden" name="return" value="{{.ReturnURL}}">
   <section class="panel">
     <div class="table-scroll">
-      <table class="releases-table">
+      <table class="releases-table" data-columns>
         <thead>
           <tr>
-            <th scope="col" class="check" data-label="{{T "releases.selectAllShort"}}"><input type="checkbox" data-select-all aria-label="{{T "releases.selectAll"}}"></th>
-            <th scope="col">{{T "releases.colTitle"}}</th>
-            <th scope="col">{{T "releases.colSize"}}</th>
-            <th scope="col">{{T "releases.colSeeders"}}</th>
-            <th scope="col">{{T "releases.colPublished"}}</th>
-            <th scope="col" class="right">{{T "releases.download"}}</th>
+            <th scope="col" class="check" data-column="check" data-label="{{T "releases.selectAllShort"}}"><input type="checkbox" data-select-all aria-label="{{T "releases.selectAll"}}"></th>
+            <th scope="col" data-column="title">{{T "releases.colTitle"}}</th>
+            <th scope="col" data-column="size">{{T "releases.colSize"}}</th>
+            <th scope="col" data-column="seeders">{{T "releases.colSeeders"}}</th>
+            <th scope="col" data-column="published">{{T "releases.colPublished"}}</th>
+            <th scope="col" class="right" data-column="actions">{{T "releases.download"}}</th>
           </tr>
         </thead>
         <tbody>
           {{range .Releases}}
           <tr>
-            <td class="check"><input type="checkbox" name="ids" value="{{.ID}}" data-bulk-check{{with magnetFor .}} data-magnet="{{.}}"{{end}} aria-label="{{T "releases.selectRelease" .Title}}"></td>
-            <td class="release-title">
+            <td class="check" data-column="check"><input type="checkbox" name="ids" value="{{.ID}}" data-bulk-check{{with magnetFor .}} data-magnet="{{.}}"{{end}} aria-label="{{T "releases.selectRelease" .Title}}"></td>
+            <td class="release-title" data-column="title">
               <a class="release-title-link" href="/releases/{{.ID}}" title="{{.Title}}">{{.Title}}</a>{{if .Favorite}} <span class="chip" title="{{T "releases.favorite"}}">★</span>{{end}}{{if .DownloadedAt}} <span class="chip" title="{{T "releases.downloadedTip" (date .DownloadedAt)}}">{{T "releases.downloaded"}}</span>{{end}}{{if .HasTorrent}} <span class="chip">{{T "releases.torrent"}}</span>{{end}}{{with index $.Provenance .ID}}{{if .BestIndexerName}} <span class="badge soft" title="{{range $i, $name := .Names}}{{if $i}} · {{end}}{{$name}}{{end}}">{{.BestIndexerName}}{{if gt .Indexers 1}} +{{dec .Indexers}}{{end}}</span>{{end}}{{end}}
               <span class="release-meta">{{T "releases.leechersInline" (numOrDash .Leechers)}} · {{if .Category}}{{catName .Category}}{{else}}—{{end}}</span>
             </td>
-            <td class="nowrap">{{sizeOrDash .Size}}</td>
-            <td>{{numOrDash .Seeders}}</td>
-            <td class="nowrap">{{if .PublishedAt.IsZero}}—{{else}}<span title="{{date .PublishedAt}}">{{ago .PublishedAt}}</span>{{end}}</td>
-            <td class="right release-actions-cell">
+            <td class="nowrap" data-column="size">{{sizeOrDash .Size}}</td>
+            <td data-column="seeders">{{numOrDash .Seeders}}</td>
+            <td class="nowrap" data-column="published">{{if .PublishedAt.IsZero}}—{{else}}<span title="{{date .PublishedAt}}">{{ago .PublishedAt}}</span>{{end}}</td>
+            <td class="right release-actions-cell" data-column="actions">
               <span class="release-actions">
                 {{if .HasTorrent}}<a class="btn small primary" href="/releases/{{.ID}}/torrent" title="{{T "releases.downloadTorrent"}}">{{T "releases.download"}}</a>
                 {{else if .Magnet}}<a class="btn small primary" href="{{safeURL .Magnet}}" title="{{T "releases.magnetLink"}}">{{T "releases.download"}}</a>
@@ -56,7 +71,7 @@
             </td>
           </tr>
           {{else}}
-          <tr><td colspan="6" class="empty">{{T "releases.empty"}}</td></tr>
+          <tr><td colspan="6" class="empty" data-columns-empty>{{T "releases.empty"}}</td></tr>
           {{end}}
         </tbody>
       </table>

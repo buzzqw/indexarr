@@ -1079,3 +1079,112 @@ if ("serviceWorker" in navigator) {
     }
   });
 })();
+
+// Personalize the releases table: show/hide and reorder the data columns.
+// The order and the hidden set live in localStorage; with JavaScript off the
+// server-rendered table keeps every column in its usual order.
+(() => {
+  const table = document.querySelector(".releases-table[data-columns]");
+  const menu = document.querySelector("[data-columns-menu]");
+  const list = document.querySelector("[data-columns-list]");
+  if (!table || !menu || !list) {
+    return;
+  }
+  const storageKey = "indexarr.columns.releases";
+  const defaults = ["title", "size", "seeders", "published"];
+  const first = "check";
+  const last = "actions";
+  let state = { order: [...defaults], hidden: [] };
+
+  const load = () => {
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.order) || !Array.isArray(parsed.hidden)) {
+        return;
+      }
+      const order = parsed.order.filter((key) => defaults.includes(key));
+      defaults.forEach((key) => {
+        if (!order.includes(key)) {
+          order.push(key);
+        }
+      });
+      state = { order, hidden: parsed.hidden.filter((key) => defaults.includes(key)) };
+    } catch (_) {
+      // A broken or blocked store simply falls back to the default layout.
+    }
+  };
+
+  const save = () => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(state));
+    } catch (_) {
+      // The change still applies for this page load.
+    }
+    apply();
+  };
+
+  function apply() {
+    const order = [first, ...state.order, last];
+    table.querySelectorAll("thead tr, tbody tr").forEach((row) => {
+      const cells = Array.from(row.children).filter((cell) => cell.dataset.column);
+      cells.sort((a, b) => order.indexOf(a.dataset.column) - order.indexOf(b.dataset.column));
+      cells.forEach((cell) => {
+        row.appendChild(cell);
+        cell.hidden = state.hidden.includes(cell.dataset.column);
+      });
+    });
+    const empty = table.querySelector("[data-columns-empty]");
+    if (empty) {
+      empty.colSpan = order.length - state.hidden.length;
+    }
+    document.querySelectorAll("[data-column-toggle]").forEach((box) => {
+      box.checked = !state.hidden.includes(box.dataset.columnToggle);
+    });
+    state.order.forEach((key) => {
+      const item = list.querySelector('[data-column-row="' + key + '"]');
+      if (item) {
+        list.appendChild(item);
+      }
+    });
+  }
+
+  document.querySelectorAll("[data-column-toggle]").forEach((box) => {
+    box.addEventListener("change", () => {
+      const key = box.dataset.columnToggle;
+      state.hidden = box.checked
+        ? state.hidden.filter((value) => value !== key)
+        : [...state.hidden, key];
+      save();
+    });
+  });
+
+  document.querySelectorAll("[data-column-move]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.columnKey;
+      const index = state.order.indexOf(key);
+      const next = index + (button.dataset.columnMove === "up" ? -1 : 1);
+      if (index < 0 || next < 0 || next >= state.order.length) {
+        return;
+      }
+      const swapped = state.order[next];
+      state.order[next] = key;
+      state.order[index] = swapped;
+      save();
+    });
+  });
+
+  const reset = menu.querySelector("[data-columns-reset]");
+  if (reset) {
+    reset.addEventListener("click", () => {
+      state = { order: [...defaults], hidden: [] };
+      save();
+    });
+  }
+
+  load();
+  apply();
+})();

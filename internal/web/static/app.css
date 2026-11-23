@@ -1454,6 +1454,19 @@ pre.yaml {
 }
 
 /* Keep the release table inside its container. */
+/* Column preferences are stored in the browser; the table keeps its layout
+   when JavaScript is off and locked columns (selection and actions) stay put. */
+.columns-menu { margin: 0 0 0.8rem; }
+.columns-menu > summary { display: inline-flex; align-items: center; cursor: pointer; list-style: none; }
+.columns-menu > summary::-webkit-details-marker { display: none; }
+.columns-panel { margin-top: 0.5rem; padding: 0.8rem 1rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.columns-list { list-style: none; margin: 0 0 0.6rem; padding: 0; display: grid; gap: 0.35rem; }
+.columns-list li { display: flex; align-items: center; gap: 0.4rem; }
+.columns-list label { flex: 1 1 auto; cursor: pointer; }
+.columns-list input { width: auto; min-width: 0; }
+.columns-list .btn { flex: 0 0 auto; }
+.releases-table [data-column][hidden] { display: none; }
+
 .releases-table { width: 100%; table-layout: fixed; }
 .releases-table th,
 .releases-table td { white-space: nowrap; }
@@ -1462,13 +1475,13 @@ pre.yaml {
    translation. The title column has no fixed width, so it takes the rest: the
    other columns only need room for their value, not for a sentence. */
 .releases-table th { overflow: visible; text-overflow: clip; }
-.releases-table th:nth-child(1) { width: 2.2rem; }
-.releases-table th:nth-child(3) { width: 6rem; }
-.releases-table th:nth-child(4) { width: 5rem; }
+.releases-table th[data-column="check"] { width: 2.2rem; }
+.releases-table th[data-column="size"] { width: 6rem; }
+.releases-table th[data-column="seeders"] { width: 5rem; }
 /* "Published" only holds a short relative date ("2h ago"): 8.5rem wasted two
    rem that the action column needs for its five buttons. */
-.releases-table th:nth-child(5) { width: 6.5rem; }
-.releases-table th:nth-child(6) { width: 14rem; }
+.releases-table th[data-column="published"] { width: 6.5rem; }
+.releases-table th[data-column="actions"] { width: 14rem; }
 .releases-table td.release-title { overflow: hidden; }
 .releases-table td.release-actions-cell { overflow: visible; }
 .releases-table .release-title-link,
@@ -2251,7 +2264,7 @@ button[aria-busy="true"], .btn[aria-busy="true"] { opacity: 0.72; cursor: progre
    they wrap instead of spilling past the table edge. An eD2k row adds "Copy
    eD2k" and wraps that sixth button on a second line. */
 @media (min-width: 1300px) {
-  .releases-table th:nth-child(6) { width: 24rem; }
+  .releases-table th[data-column="actions"] { width: 24rem; }
 }
 
 /* Edit form: the credential block is the first thing after the address. */
